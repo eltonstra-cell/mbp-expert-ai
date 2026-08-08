@@ -1,0 +1,2 @@
+export type Empresa={id:string;cnpj:string;nomeFantasia:string;razaoSocial:string;situacao:string;cnae:string;cnaeDescricao:string;tipo:string;logradouro:string;numero:string;complemento:string;bairro:string;cep:string;municipio:string;uf:string;telefone:string;email:string;responsavel:string;criadoEm:string};
+export type AppDB={empresas:Record<string,Empresa>;empresaAtualId:string|null;visitas:{id:string;empresaId:string;data:string;status:string}[];ncs:{id:string;empresaId:string;titulo:string;prioridade:string;status:string}[]};

@@ -1,30 +1,21 @@
-# MBP Expert AI v1
+# MBP Expert AI v2.0
 
-Base funcional em Next.js 16 + React 19 + TypeScript + Tailwind CSS.
+Fundação da versão profissional do sistema.
 
-## Já funciona
+## Nesta versão
+- novo dashboard
+- cadastro de empresas
+- consulta de CNPJ
+- empresa ativa
+- persistência local organizada
+- estrutura pronta para banco online e autenticação
 
-* múltiplos clientes
-* consulta de CNPJ via rota do servidor
-* seleção de cliente atual
-* ambientes
-* visita guiada do recebimento
-* não conformidades
-* relatório de demonstração
-* persistência local no navegador
-
-## Próximos módulos
-
-* banco de dados persistente
-* login
-* fotos reais
-* áudio
-* plano de ação
-* manual parametrizado
-* POPs
-* IA técnica
-
-## Publicação
-
-O projeto foi preparado para Vercel. Ao subir estes arquivos no repositório GitHub conectado ao Vercel, o deploy deve ocorrer automaticamente.Teste de deploy automático - 07/08/2026
-
+## Próxima etapa
+- banco de dados online
+- login
+- checklist modular
+- fotos e áudio
+- não conformidades completas
+- plano de ação
+- relatórios PDF
+- IA técnica
