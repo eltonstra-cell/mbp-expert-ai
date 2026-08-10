@@ -8,11 +8,12 @@ import type {
   ChecklistItem,
   ChecklistStatus,
   Empresa,
+  Evidencia,
   Visita,
 } from "@/types";
 import { emptyDB, loadDB, saveDB } from "@/lib/storage";
 
-type View = "inicio" | "empresas" | "visitas" | "visita" | "ambientes" | "checklist" | "ncs" | "plano";
+type View = "inicio" | "empresas" | "visitas" | "visita" | "ambientes" | "checklist" | "ncs" | "plano" | "evidencias";
 
 const labels: Record<string, string> = {
   nomeFantasia: "Nome fantasia",
@@ -270,6 +271,10 @@ export default function Home() {
   const [ambienteChecklistAtivo, setAmbienteChecklistAtivo] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
+  const [evidenciaDescricao, setEvidenciaDescricao] = useState("");
+  const [evidenciaAmbiente, setEvidenciaAmbiente] = useState("");
+  const [evidenciaNcId, setEvidenciaNcId] = useState("");
+  const [evidenciaMsg, setEvidenciaMsg] = useState("");
 
   const [form, setForm] = useState({
     cnpj: "",
@@ -357,7 +362,12 @@ export default function Home() {
       }
     }
 
-    setDb({ ...s, visitas: vs, ncs: ncsSincronizadas });
+    setDb({
+      ...s,
+      visitas: vs,
+      ncs: ncsSincronizadas,
+      evidencias: Array.isArray((s as any).evidencias) ? (s as any).evidencias : [],
+    });
     setReady(true);
   }, []);
 
@@ -388,6 +398,11 @@ export default function Home() {
     (nc: any) => (nc.acaoCorretiva || "").trim().length > 0
   ).length;
   const acoesConcluidas = ncsVisita.filter((nc) => nc.status === "Resolvida").length;
+  const evidenciasVisita = (db.evidencias || []).filter(
+    (ev) => ev.visitaId === visitaAtual?.id
+  );
+  const fotosVisita = evidenciasVisita.filter((ev) => ev.tipo === "Foto").length;
+  const audiosVisita = evidenciasVisita.filter((ev) => ev.tipo === "Áudio").length;
 
   async function buscar() {
     const c = form.cnpj.replace(/\D/g, "");
@@ -669,6 +684,80 @@ export default function Home() {
     });
   }
 
+  function abrirEvidencias() {
+    if (!visitaAtual) return;
+    setEvidenciaDescricao("");
+    setEvidenciaAmbiente((visitaAtual.ambientes || [])[0] || "");
+    setEvidenciaNcId("");
+    setEvidenciaMsg("");
+    setView("evidencias");
+  }
+
+  function arquivoParaDataUrl(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = () => reject(new Error("Não foi possível ler o arquivo."));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function adicionarEvidencia(
+    file: File | undefined,
+    tipo: "Foto" | "Áudio"
+  ) {
+    if (!file || !visitaAtual) return;
+
+    const limite = tipo === "Foto" ? 1.5 * 1024 * 1024 : 3 * 1024 * 1024;
+    if (file.size > limite) {
+      setEvidenciaMsg(
+        tipo === "Foto"
+          ? "A foto está muito grande para esta versão local. Use uma imagem de até 1,5 MB."
+          : "O áudio está muito grande para esta versão local. Use um arquivo de até 3 MB."
+      );
+      return;
+    }
+
+    try {
+      const dataUrl = await arquivoParaDataUrl(file);
+      const ev: Evidencia = {
+        id: crypto.randomUUID(),
+        empresaId: visitaAtual.empresaId,
+        visitaId: visitaAtual.id,
+        tipo,
+        nomeArquivo: file.name || (tipo === "Foto" ? "foto.jpg" : "audio"),
+        mimeType: file.type || (tipo === "Foto" ? "image/jpeg" : "audio/mpeg"),
+        dataUrl,
+        descricao: evidenciaDescricao.trim(),
+        ambiente: evidenciaAmbiente || "",
+        ncId: evidenciaNcId || undefined,
+        criadoEm: new Date().toISOString(),
+      };
+
+      setDb((o) => ({
+        ...o,
+        evidencias: [ev, ...(o.evidencias || [])],
+        visitas: o.visitas.map((v) =>
+          v.id === visitaAtual.id
+            ? { ...v, progresso: Math.max(v.progresso || 0, 60) }
+            : v
+        ),
+      }));
+      setEvidenciaDescricao("");
+      setEvidenciaMsg(`${tipo} adicionada com sucesso.`);
+    } catch {
+      setEvidenciaMsg("Não foi possível adicionar esta evidência.");
+    }
+  }
+
+  function excluirEvidencia(id: string) {
+    if (!window.confirm("Excluir esta evidência?")) return;
+    setDb((o) => ({
+      ...o,
+      evidencias: (o.evidencias || []).filter((ev) => ev.id !== id),
+    }));
+  }
+
   function atualizarNC(
     ncId: string,
     patch: {
@@ -723,7 +812,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.6
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.7
             </div>
           </div>
           {atual && (
@@ -1036,6 +1125,200 @@ export default function Home() {
                 >
                   Voltar à Central da Visita
                 </button>
+              </div>
+            </div>
+          </section>
+        ) : view === "evidencias" && visitaAtual ? (
+          <section className="space-y-4">
+            <div className="rounded-2xl bg-white p-5 shadow-sm">
+              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <div className="text-xs font-extrabold uppercase text-[#2F5597]">
+                    Evidências da inspeção
+                  </div>
+                  <h1 className="mt-1 text-2xl font-extrabold">Fotos e áudio</h1>
+                  <p className="text-sm text-slate-500">
+                    {empresaVisita?.nomeFantasia} • {fdata(visitaAtual.data)}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setView("visita")}
+                  className="rounded-xl bg-slate-100 px-4 py-2 font-bold"
+                >
+                  Voltar à Central
+                </button>
+              </div>
+
+              <div className="mt-5 grid gap-3 md:grid-cols-3">
+                <MetricCard label="Evidências" value={evidenciasVisita.length} />
+                <MetricCard label="Fotos" value={fotosVisita} />
+                <MetricCard label="Áudios" value={audiosVisita} />
+              </div>
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-[380px_1fr]">
+              <div className="rounded-2xl bg-white p-5 shadow-sm">
+                <h2 className="text-xl font-extrabold">Nova evidência</h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Registre a situação observada e vincule ao ambiente ou à NC quando necessário.
+                </p>
+
+                <label className="mt-5 block">
+                  <span className="mb-1 block text-xs font-extrabold text-slate-500">
+                    Ambiente
+                  </span>
+                  <select
+                    value={evidenciaAmbiente}
+                    onChange={(e) => setEvidenciaAmbiente(e.target.value)}
+                    className="w-full rounded-xl border bg-white p-3"
+                  >
+                    <option value="">Sem ambiente específico</option>
+                    {(visitaAtual.ambientes || []).map((amb) => (
+                      <option key={amb} value={amb}>{amb}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="mt-3 block">
+                  <span className="mb-1 block text-xs font-extrabold text-slate-500">
+                    Vincular à Não Conformidade
+                  </span>
+                  <select
+                    value={evidenciaNcId}
+                    onChange={(e) => setEvidenciaNcId(e.target.value)}
+                    className="w-full rounded-xl border bg-white p-3"
+                  >
+                    <option value="">Nenhuma NC específica</option>
+                    {ncsVisita.map((nc, idx) => (
+                      <option key={nc.id} value={nc.id}>
+                        NC {idx + 1} — {nc.ambiente} — {nc.titulo}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="mt-3 block">
+                  <span className="mb-1 block text-xs font-extrabold text-slate-500">
+                    Descrição
+                  </span>
+                  <textarea
+                    rows={3}
+                    value={evidenciaDescricao}
+                    onChange={(e) => setEvidenciaDescricao(e.target.value)}
+                    placeholder="Ex.: embalagem avariada identificada no recebimento..."
+                    className="w-full rounded-xl border p-3"
+                  />
+                </label>
+
+                <div className="mt-5 grid gap-3">
+                  <label className="cursor-pointer rounded-xl bg-[#2F5597] p-4 text-center font-extrabold text-white">
+                    📷 Tirar ou adicionar foto
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        void adicionarEvidencia(file, "Foto");
+                        e.currentTarget.value = "";
+                      }}
+                    />
+                  </label>
+
+                  <label className="cursor-pointer rounded-xl bg-[#17365D] p-4 text-center font-extrabold text-white">
+                    🎙️ Adicionar áudio
+                    <input
+                      type="file"
+                      accept="audio/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        void adicionarEvidencia(file, "Áudio");
+                        e.currentTarget.value = "";
+                      }}
+                    />
+                  </label>
+                </div>
+
+                {evidenciaMsg && (
+                  <div className="mt-4 rounded-xl bg-blue-50 p-3 text-sm text-blue-900">
+                    {evidenciaMsg}
+                  </div>
+                )}
+
+                <div className="mt-4 rounded-xl bg-amber-50 p-3 text-xs text-amber-900">
+                  Nesta versão de teste, fotos e áudios ficam salvos localmente neste navegador.
+                  Para uso comercial, moveremos os arquivos para armazenamento online.
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="rounded-2xl bg-white p-5 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-xl font-extrabold">Registros da visita</h2>
+                      <p className="text-sm text-slate-500">
+                        Evidências organizadas da mais recente para a mais antiga.
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold">
+                      {evidenciasVisita.length}
+                    </span>
+                  </div>
+                </div>
+
+                {evidenciasVisita.length === 0 ? (
+                  <div className="rounded-2xl bg-white p-8 text-center shadow-sm">
+                    <div className="text-xl font-extrabold">Nenhuma evidência registrada</div>
+                    <p className="mt-2 text-sm text-slate-500">
+                      Adicione uma foto ou áudio durante a inspeção.
+                    </p>
+                  </div>
+                ) : (
+                  evidenciasVisita.map((ev) => {
+                    const ncRelacionada = ncsVisita.find((nc) => nc.id === ev.ncId);
+                    return (
+                      <article key={ev.id} className="rounded-2xl bg-white p-5 shadow-sm">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <div className="text-xs font-extrabold uppercase text-slate-400">
+                              {ev.tipo} • {ev.ambiente || "Sem ambiente específico"}
+                            </div>
+                            <div className="mt-1 font-extrabold">
+                              {ev.descricao || ev.nomeArquivo}
+                            </div>
+                            {ncRelacionada && (
+                              <div className="mt-2 inline-block rounded-full bg-red-50 px-3 py-1 text-xs font-extrabold text-red-700">
+                                Vinculada à NC — {ncRelacionada.categoria}
+                              </div>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => excluirEvidencia(ev.id)}
+                            className="rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700"
+                          >
+                            Excluir
+                          </button>
+                        </div>
+
+                        {ev.tipo === "Foto" ? (
+                          <img
+                            src={ev.dataUrl}
+                            alt={ev.descricao || "Evidência fotográfica"}
+                            className="mt-4 max-h-[520px] w-full rounded-xl border object-contain"
+                          />
+                        ) : (
+                          <audio controls src={ev.dataUrl} className="mt-4 w-full" />
+                        )}
+
+                        <div className="mt-3 text-xs text-slate-400">
+                          {new Date(ev.criadoEm).toLocaleString("pt-BR")}
+                        </div>
+                      </article>
+                    );
+                  })
+                )}
               </div>
             </div>
           </section>
@@ -1559,7 +1842,14 @@ export default function Home() {
                 </div>
               </button>
 
-              <div className="rounded-2xl bg-white p-5 shadow-sm opacity-70">
+              <button
+                onClick={abrirEvidencias}
+                className={`rounded-2xl bg-white p-5 text-left shadow-sm ${
+                  evidenciasVisita.length > 0
+                    ? "border-2 border-violet-200"
+                    : "border border-transparent"
+                }`}
+              >
                 <div className="text-xs font-extrabold uppercase text-slate-400">
                   Evidências
                 </div>
@@ -1567,7 +1857,17 @@ export default function Home() {
                 <p className="mt-1 text-sm text-slate-500">
                   Registros de campo vinculados à visita.
                 </p>
-              </div>
+                <div className="mt-4 flex items-center justify-between">
+                  <span className="font-extrabold text-violet-700">
+                    Abrir evidências →
+                  </span>
+                  {evidenciasVisita.length > 0 && (
+                    <span className="rounded-full bg-violet-50 px-3 py-1 text-xs font-extrabold text-violet-700">
+                      {evidenciasVisita.length} registros
+                    </span>
+                  )}
+                </div>
+              </button>
 
               <button
                 onClick={() => setView("ncs")}

@@ -71,9 +71,24 @@ export type NaoConformidade = {
   criadoEm: string;
 };
 
+export type Evidencia = {
+  id: string;
+  empresaId: string;
+  visitaId: string;
+  tipo: "Foto" | "Áudio";
+  nomeArquivo: string;
+  mimeType: string;
+  dataUrl: string;
+  descricao: string;
+  ambiente: string;
+  ncId?: string;
+  criadoEm: string;
+};
+
 export type AppDB = {
   empresas: Record<string, Empresa>;
   empresaAtualId: string | null;
   visitas: Visita[];
   ncs: NaoConformidade[];
+  evidencias: Evidencia[];
 };
