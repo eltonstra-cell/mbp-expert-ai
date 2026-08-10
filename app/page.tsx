@@ -654,7 +654,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.5.1
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.5.2
             </div>
           </div>
           {atual && (
@@ -1161,7 +1161,12 @@ export default function Home() {
                             <button
                               key={status}
                               onClick={() =>
-                                atualizarChecklistItem(item.id, { status })
+                                atualizarChecklistItem(item.id, {
+                                  status,
+                                  ...(status !== "Não Conforme"
+                                    ? { observacao: "" }
+                                    : {}),
+                                })
                               }
                               className={`rounded-xl px-3 py-3 text-sm font-extrabold ${
                                 item.status === status
