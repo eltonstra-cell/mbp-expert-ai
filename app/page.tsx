@@ -275,6 +275,10 @@ export default function Home() {
   const [evidenciaAmbiente, setEvidenciaAmbiente] = useState("");
   const [evidenciaNcId, setEvidenciaNcId] = useState("");
   const [evidenciaMsg, setEvidenciaMsg] = useState("");
+  const [syncStatus, setSyncStatus] = useState<
+    "conectando" | "sincronizado" | "local" | "erro"
+  >("conectando");
+  const [syncAtualizadoEm, setSyncAtualizadoEm] = useState("");
 
   const [form, setForm] = useState({
     cnpj: "",
@@ -303,7 +307,72 @@ export default function Home() {
   });
 
   useEffect(() => {
-    const s = loadDB();
+    let cancelado = false;
+
+    async function iniciarDados() {
+      let s = loadDB();
+
+      setSyncStatus("conectando");
+
+      try {
+        const response = await fetch("/api/state", {
+          method: "GET",
+          cache: "no-store",
+        });
+        const cloud = await response.json();
+
+        if (cloud?.configured) {
+          if (cloud.data && typeof cloud.data === "object") {
+            // Nuvem já existente: passa a ser a fonte compartilhada.
+            s = cloud.data as AppDB;
+            saveDB(s);
+            setSyncStatus("sincronizado");
+            setSyncAtualizadoEm(
+              cloud.updatedAt
+                ? new Date(cloud.updatedAt).toLocaleString("pt-BR")
+                : ""
+            );
+          } else {
+            // Primeira migração: envia o conteúdo deste dispositivo apenas
+            // se ele realmente possuir dados.
+            const possuiDadosLocais =
+              Object.keys(s.empresas || {}).length > 0 ||
+              (s.visitas || []).length > 0 ||
+              (s.ncs || []).length > 0 ||
+              (s.evidencias || []).length > 0;
+
+            if (possuiDadosLocais) {
+              const upload = await fetch("/api/state", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ data: s }),
+              });
+
+              if (upload.ok) {
+                const salvo = await upload.json();
+                setSyncStatus("sincronizado");
+                setSyncAtualizadoEm(
+                  salvo.updatedAt
+                    ? new Date(salvo.updatedAt).toLocaleString("pt-BR")
+                    : ""
+                );
+              } else {
+                setSyncStatus("erro");
+              }
+            } else {
+              // Dispositivo novo + nuvem ainda vazia:
+              // não grava uma base vazia.
+              setSyncStatus("sincronizado");
+            }
+          }
+        } else {
+          setSyncStatus("local");
+        }
+      } catch {
+        // Continua funcionando pelo localStorage se estiver sem conexão.
+        setSyncStatus("erro");
+      }
+
     const vs = (s.visitas || []).map((v: any) => ({
       id: v.id,
       empresaId: v.empresaId,
@@ -368,11 +437,54 @@ export default function Home() {
       ncs: ncsSincronizadas,
       evidencias: Array.isArray((s as any).evidencias) ? (s as any).evidencias : [],
     });
-    setReady(true);
+
+      if (!cancelado) setReady(true);
+    }
+
+    void iniciarDados();
+
+    return () => {
+      cancelado = true;
+    };
   }, []);
 
   useEffect(() => {
-    if (ready) saveDB(db);
+    if (!ready) return;
+
+    // Mantém uma cópia no navegador como contingência/offline.
+    saveDB(db);
+
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await fetch("/api/state", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ data: db }),
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result?.configured !== false) {
+            setSyncStatus("sincronizado");
+            setSyncAtualizadoEm(
+              result.updatedAt
+                ? new Date(result.updatedAt).toLocaleString("pt-BR")
+                : new Date().toLocaleString("pt-BR")
+            );
+          } else {
+            setSyncStatus("local");
+          }
+        } else if (response.status === 503) {
+          setSyncStatus("local");
+        } else {
+          setSyncStatus("erro");
+        }
+      } catch {
+        setSyncStatus("erro");
+      }
+    }, 700);
+
+    return () => window.clearTimeout(timer);
   }, [db, ready]);
 
   const atual = db.empresaAtualId ? db.empresas[db.empresaAtualId] : undefined;
@@ -812,17 +924,44 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.7.1
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.8
             </div>
           </div>
-          {atual && (
-            <div className="rounded-xl bg-white/10 px-4 py-2">
+          <div className="flex flex-col gap-2 md:flex-row md:items-center">
+            <div
+              className={`rounded-xl px-3 py-2 text-xs font-bold ${
+                syncStatus === "sincronizado"
+                  ? "bg-emerald-100 text-emerald-800"
+                  : syncStatus === "conectando"
+                  ? "bg-blue-100 text-blue-800"
+                  : syncStatus === "local"
+                  ? "bg-amber-100 text-amber-800"
+                  : "bg-red-100 text-red-800"
+              }`}
+              title={
+                syncAtualizadoEm
+                  ? `Última sincronização: ${syncAtualizadoEm}`
+                  : ""
+              }
+            >
+              {syncStatus === "sincronizado"
+                ? "☁️ Nuvem sincronizada"
+                : syncStatus === "conectando"
+                ? "☁️ Conectando..."
+                : syncStatus === "local"
+                ? "💻 Somente local"
+                : "⚠️ Falha na sincronização"}
+            </div>
+
+            {atual && (
+              <div className="rounded-xl bg-white/10 px-4 py-2">
               <div className="text-[10px] font-extrabold uppercase text-blue-100">
                 Empresa ativa
               </div>
-              <div className="font-extrabold">{atual.nomeFantasia}</div>
-            </div>
-          )}
+                <div className="font-extrabold">{atual.nomeFantasia}</div>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
