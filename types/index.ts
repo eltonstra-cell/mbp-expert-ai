@@ -64,6 +64,10 @@ export type NaoConformidade = {
   observacao: string;
   prioridade: string;
   status: "Aberta" | "Em tratamento" | "Resolvida";
+  acaoCorretiva?: string;
+  responsavelAcao?: string;
+  prazo?: string;
+  acompanhamento?: string;
   criadoEm: string;
 };
 

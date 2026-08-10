@@ -12,7 +12,7 @@ import type {
 } from "@/types";
 import { emptyDB, loadDB, saveDB } from "@/lib/storage";
 
-type View = "inicio" | "empresas" | "visitas" | "visita" | "ambientes" | "checklist" | "ncs";
+type View = "inicio" | "empresas" | "visitas" | "visita" | "ambientes" | "checklist" | "ncs" | "plano";
 
 const labels: Record<string, string> = {
   nomeFantasia: "Nome fantasia",
@@ -384,6 +384,10 @@ export default function Home() {
     : 0;
   const ncsVisita = (db.ncs || []).filter((nc) => nc.visitaId === visitaAtual?.id);
   const ncsAbertas = ncsVisita.filter((nc) => nc.status !== "Resolvida").length;
+  const acoesDefinidas = ncsVisita.filter(
+    (nc: any) => (nc.acaoCorretiva || "").trim().length > 0
+  ).length;
+  const acoesConcluidas = ncsVisita.filter((nc) => nc.status === "Resolvida").length;
 
   async function buscar() {
     const c = form.cnpj.replace(/\D/g, "");
@@ -665,6 +669,24 @@ export default function Home() {
     });
   }
 
+  function atualizarNC(
+    ncId: string,
+    patch: {
+      acaoCorretiva?: string;
+      responsavelAcao?: string;
+      prazo?: string;
+      acompanhamento?: string;
+      status?: "Aberta" | "Em tratamento" | "Resolvida";
+    }
+  ) {
+    setDb((o) => ({
+      ...o,
+      ncs: (o.ncs || []).map((nc) =>
+        nc.id === ncId ? { ...nc, ...patch } : nc
+      ),
+    }));
+  }
+
   function concluir(id: string) {
     setDb((o) => ({
       ...o,
@@ -701,7 +723,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.5.3
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.6
             </div>
           </div>
           {atual && (
@@ -1016,6 +1038,173 @@ export default function Home() {
                 </button>
               </div>
             </div>
+          </section>
+        ) : view === "plano" && visitaAtual ? (
+          <section className="space-y-4">
+            <div className="rounded-2xl bg-white p-5 shadow-sm">
+              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <div className="text-xs font-extrabold uppercase text-[#2F5597]">
+                    Gestão das correções
+                  </div>
+                  <h1 className="mt-1 text-2xl font-extrabold">Plano de ação</h1>
+                  <p className="text-sm text-slate-500">
+                    {empresaVisita?.nomeFantasia} • {fdata(visitaAtual.data)}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setView("visita")}
+                  className="rounded-xl bg-slate-100 px-4 py-2 font-bold"
+                >
+                  Voltar à Central
+                </button>
+              </div>
+
+              <div className="mt-5 grid gap-3 md:grid-cols-4">
+                <MetricCard label="NCs" value={ncsVisita.length} />
+                <MetricCard label="Ações definidas" value={acoesDefinidas} />
+                <MetricCard label="Em aberto" value={ncsAbertas} />
+                <MetricCard label="Resolvidas" value={acoesConcluidas} />
+              </div>
+            </div>
+
+            {ncsVisita.length === 0 ? (
+              <div className="rounded-2xl bg-white p-8 text-center shadow-sm">
+                <div className="text-xl font-extrabold">Nenhuma ação necessária</div>
+                <p className="mt-2 text-sm text-slate-500">
+                  O plano de ação será formado a partir das não conformidades da visita.
+                </p>
+                <button
+                  onClick={() => setView("checklist")}
+                  className="mt-5 rounded-xl bg-[#2F5597] px-5 py-3 font-extrabold text-white"
+                >
+                  Abrir checklist
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {ncsVisita.map((nc, idx) => (
+                  <article
+                    key={nc.id}
+                    className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+                  >
+                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                      <div>
+                        <div className="text-xs font-extrabold uppercase tracking-wide text-slate-400">
+                          Ação {String(idx + 1).padStart(2, "0")} • {nc.ambiente} • {nc.categoria}
+                        </div>
+                        <h2 className="mt-1 text-xl font-extrabold">{nc.titulo}</h2>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <span
+                            className={`rounded-full px-2.5 py-1 text-[11px] font-extrabold ${
+                              nc.criticidade === "Crítica"
+                                ? "bg-red-50 text-red-700"
+                                : nc.criticidade === "Importante"
+                                ? "bg-amber-50 text-amber-700"
+                                : "bg-slate-100 text-slate-600"
+                            }`}
+                          >
+                            {nc.criticidade}
+                          </span>
+                          {nc.referencia && (
+                            <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-700">
+                              {nc.referencia}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <select
+                        value={nc.status}
+                        onChange={(e) =>
+                          atualizarNC(nc.id, {
+                            status: e.target.value as "Aberta" | "Em tratamento" | "Resolvida",
+                          })
+                        }
+                        className="rounded-xl border bg-white px-3 py-2 text-sm font-extrabold"
+                      >
+                        <option value="Aberta">Aberta</option>
+                        <option value="Em tratamento">Em tratamento</option>
+                        <option value="Resolvida">Resolvida</option>
+                      </select>
+                    </div>
+
+                    {nc.observacao && (
+                      <div className="mt-4 rounded-xl bg-red-50 p-4">
+                        <div className="text-xs font-extrabold uppercase text-red-700">
+                          Constatação em campo
+                        </div>
+                        <p className="mt-1 text-sm text-red-900">{nc.observacao}</p>
+                      </div>
+                    )}
+
+                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                      <label className="md:col-span-2">
+                        <span className="mb-1 block text-xs font-extrabold text-slate-500">
+                          Ação corretiva
+                        </span>
+                        <textarea
+                          rows={3}
+                          value={(nc as any).acaoCorretiva || ""}
+                          onChange={(e) =>
+                            atualizarNC(nc.id, { acaoCorretiva: e.target.value })
+                          }
+                          placeholder="Descreva o que deverá ser feito para corrigir a não conformidade..."
+                          className="w-full rounded-xl border p-3"
+                        />
+                      </label>
+
+                      <label>
+                        <span className="mb-1 block text-xs font-extrabold text-slate-500">
+                          Responsável
+                        </span>
+                        <input
+                          value={(nc as any).responsavelAcao || ""}
+                          onChange={(e) =>
+                            atualizarNC(nc.id, { responsavelAcao: e.target.value })
+                          }
+                          placeholder="Nome do responsável pela correção"
+                          className="w-full rounded-xl border p-3"
+                        />
+                      </label>
+
+                      <label>
+                        <span className="mb-1 block text-xs font-extrabold text-slate-500">
+                          Prazo
+                        </span>
+                        <input
+                          type="date"
+                          value={(nc as any).prazo || ""}
+                          onChange={(e) =>
+                            atualizarNC(nc.id, { prazo: e.target.value })
+                          }
+                          className="w-full rounded-xl border p-3"
+                        />
+                      </label>
+
+                      <label className="md:col-span-2">
+                        <span className="mb-1 block text-xs font-extrabold text-slate-500">
+                          Acompanhamento / verificação
+                        </span>
+                        <textarea
+                          rows={2}
+                          value={(nc as any).acompanhamento || ""}
+                          onChange={(e) =>
+                            atualizarNC(nc.id, { acompanhamento: e.target.value })
+                          }
+                          placeholder="Registre retorno, evidência de correção ou observações do acompanhamento..."
+                          className="w-full rounded-xl border p-3"
+                        />
+                      </label>
+                    </div>
+
+                    <div className="mt-4 rounded-xl bg-slate-50 p-3 text-xs text-slate-500">
+                      As alterações são salvas automaticamente.
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
           </section>
         ) : view === "ncs" && visitaAtual ? (
           <section className="space-y-4">
@@ -1393,7 +1582,15 @@ export default function Home() {
                 </div>
               </button>
 
-              <div className="rounded-2xl bg-white p-5 shadow-sm opacity-70">
+              <button
+                onClick={() => setView("plano")}
+                disabled={ncsVisita.length === 0}
+                className={`rounded-2xl bg-white p-5 text-left shadow-sm ${
+                  ncsVisita.length > 0
+                    ? "border-2 border-blue-200"
+                    : "opacity-60"
+                }`}
+              >
                 <div className="text-xs font-extrabold uppercase text-slate-400">
                   Gestão
                 </div>
@@ -1401,7 +1598,23 @@ export default function Home() {
                 <p className="mt-1 text-sm text-slate-500">
                   Responsáveis, prazos e acompanhamento.
                 </p>
-              </div>
+                <div className="mt-4">
+                  {ncsVisita.length > 0 ? (
+                    <div className="flex items-center justify-between">
+                      <span className="font-extrabold text-[#2F5597]">
+                        Abrir plano de ação →
+                      </span>
+                      <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-extrabold text-blue-700">
+                        {acoesDefinidas}/{ncsVisita.length}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-xs font-bold text-slate-400">
+                      Gere uma NC primeiro
+                    </span>
+                  )}
+                </div>
+              </button>
 
               <div className="rounded-2xl bg-white p-5 shadow-sm opacity-70">
                 <div className="text-xs font-extrabold uppercase text-slate-400">
