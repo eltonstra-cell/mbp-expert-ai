@@ -12,7 +12,7 @@ import type {
 } from "@/types";
 import { emptyDB, loadDB, saveDB } from "@/lib/storage";
 
-type View = "inicio" | "empresas" | "visitas" | "visita" | "ambientes" | "checklist";
+type View = "inicio" | "empresas" | "visitas" | "visita" | "ambientes" | "checklist" | "ncs";
 
 const labels: Record<string, string> = {
   nomeFantasia: "Nome fantasia",
@@ -349,6 +349,8 @@ export default function Home() {
   const percentualChecklist = totalChecklist
     ? Math.round((respondidos / totalChecklist) * 100)
     : 0;
+  const ncsVisita = (db.ncs || []).filter((nc) => nc.visitaId === visitaAtual?.id);
+  const ncsAbertas = ncsVisita.filter((nc) => nc.status !== "Resolvida").length;
 
   async function buscar() {
     const c = form.cnpj.replace(/\D/g, "");
@@ -524,35 +526,56 @@ export default function Home() {
   ) {
     if (!visitaAtual) return;
 
-    setDb((o) => ({
-      ...o,
-      visitas: o.visitas.map((v) => {
+    setDb((o) => {
+      let itemAtualizado: ChecklistItem | undefined;
+      const visitasAtualizadas = o.visitas.map((v) => {
         if (v.id !== visitaAtual.id) return v;
 
-        const novoChecklist = (v.checklist || []).map((item) =>
-          item.id === itemId ? { ...item, ...patch } : item
-        );
+        const novoChecklist = (v.checklist || []).map((item) => {
+          const atualizado = item.id === itemId ? { ...item, ...patch } : item;
+          if (item.id === itemId) itemAtualizado = atualizado;
+          return atualizado;
+        });
 
-        const respondidosLocal = novoChecklist.filter(
-          (i) => i.status !== "Pendente"
-        ).length;
-
+        const respondidosLocal = novoChecklist.filter((i) => i.status !== "Pendente").length;
         const pct = novoChecklist.length
           ? Math.round((respondidosLocal / novoChecklist.length) * 100)
           : 0;
+        const progresso = Math.max(15, Math.min(55, 15 + Math.round(pct * 0.4)));
 
-        const progresso = Math.max(
-          15,
-          Math.min(55, 15 + Math.round(pct * 0.4))
-        );
+        return { ...v, checklist: novoChecklist, progresso };
+      });
 
-        return {
-          ...v,
-          checklist: novoChecklist,
-          progresso,
-        };
-      }),
-    }));
+      let ncs = o.ncs || [];
+      if (itemAtualizado) {
+        const item = itemAtualizado as ChecklistItem;
+        const idNc = `${visitaAtual.id}:${item.id}`;
+        if (item.status === "Não Conforme") {
+          const existente = ncs.find((nc) => nc.id === idNc);
+          const nc = {
+            id: idNc,
+            empresaId: visitaAtual.empresaId,
+            visitaId: visitaAtual.id,
+            ambiente: item.ambiente,
+            checklistItemId: item.id,
+            titulo: item.titulo,
+            categoria: item.categoria,
+            criticidade: item.criticidade || "Rotina" as const,
+            referencia: item.referencia || "",
+            orientacao: item.orientacao || "",
+            observacao: item.observacao || "",
+            prioridade: item.criticidade || "Rotina",
+            status: existente?.status || "Aberta" as const,
+            criadoEm: existente?.criadoEm || new Date().toISOString(),
+          };
+          ncs = existente ? ncs.map((x) => x.id === idNc ? { ...x, ...nc } : x) : [nc, ...ncs];
+        } else {
+          ncs = ncs.filter((nc) => nc.id !== idNc);
+        }
+      }
+
+      return { ...o, visitas: visitasAtualizadas, ncs };
+    });
   }
 
   function concluir(id: string) {
@@ -591,7 +614,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.4
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.5
             </div>
           </div>
           {atual && (
@@ -907,6 +930,53 @@ export default function Home() {
               </div>
             </div>
           </section>
+        ) : view === "ncs" && visitaAtual ? (
+          <section className="space-y-4">
+            <div className="rounded-2xl bg-white p-5 shadow-sm">
+              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <div className="text-xs font-extrabold uppercase text-red-700">Resultado da inspeção</div>
+                  <h1 className="mt-1 text-2xl font-extrabold">Não conformidades</h1>
+                  <p className="text-sm text-slate-500">{empresaVisita?.nomeFantasia} • {fdata(visitaAtual.data)}</p>
+                </div>
+                <button onClick={() => setView("visita")} className="rounded-xl bg-slate-100 px-4 py-2 font-bold">Voltar à Central</button>
+              </div>
+              <div className="mt-5 grid gap-3 md:grid-cols-3">
+                <MetricCard label="NCs identificadas" value={ncsVisita.length} />
+                <MetricCard label="Abertas" value={ncsAbertas} />
+                <MetricCard label="Resolvidas" value={ncsVisita.filter((nc) => nc.status === "Resolvida").length} />
+              </div>
+            </div>
+
+            {ncsVisita.length === 0 ? (
+              <div className="rounded-2xl bg-white p-8 text-center shadow-sm">
+                <div className="text-xl font-extrabold">Nenhuma não conformidade registrada</div>
+                <p className="mt-2 text-sm text-slate-500">Itens marcados como Não Conforme no checklist aparecerão aqui automaticamente.</p>
+                <button onClick={abrirChecklist} className="mt-5 rounded-xl bg-[#2F5597] px-5 py-3 font-extrabold text-white">Abrir checklist</button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {ncsVisita.map((nc, idx) => (
+                  <article key={nc.id} className="rounded-2xl border-2 border-red-100 bg-white p-5 shadow-sm">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                      <div>
+                        <div className="text-xs font-extrabold uppercase tracking-wide text-slate-400">NC {String(idx + 1).padStart(2, "0")} • {nc.ambiente} • {nc.categoria}</div>
+                        <h2 className="mt-1 text-xl font-extrabold">{nc.titulo}</h2>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <span className={`rounded-full px-2.5 py-1 text-[11px] font-extrabold ${nc.criticidade === "Crítica" ? "bg-red-50 text-red-700" : nc.criticidade === "Importante" ? "bg-amber-50 text-amber-700" : "bg-slate-100 text-slate-600"}`}>{nc.criticidade}</span>
+                          {nc.referencia && <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-700">{nc.referencia}</span>}
+                        </div>
+                      </div>
+                      <span className="rounded-full bg-red-50 px-3 py-1 text-xs font-extrabold text-red-700">{nc.status}</span>
+                    </div>
+                    {nc.observacao && <div className="mt-4 rounded-xl bg-red-50 p-4"><div className="text-xs font-extrabold uppercase text-red-700">Constatação em campo</div><p className="mt-1 text-sm text-red-900">{nc.observacao}</p></div>}
+                    {nc.orientacao && <div className="mt-3 rounded-xl bg-slate-50 p-4"><div className="text-xs font-extrabold uppercase text-slate-500">Orientação técnica</div><p className="mt-1 text-sm text-slate-700">{nc.orientacao}</p></div>}
+                    <div className="mt-4 text-xs text-slate-400">Gerada automaticamente a partir do checklist técnico.</div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
         ) : view === "checklist" && visitaAtual ? (
           <section className="space-y-4">
             <div className="rounded-2xl bg-white p-5 shadow-sm">
@@ -1218,17 +1288,18 @@ export default function Home() {
                 </p>
               </div>
 
-              <div className="rounded-2xl bg-white p-5 shadow-sm opacity-70">
-                <div className="text-xs font-extrabold uppercase text-slate-400">
-                  Resultado
+              <button
+                onClick={() => setView("ncs")}
+                className={`rounded-2xl bg-white p-5 text-left shadow-sm ${ncsVisita.length ? "border-2 border-red-200" : "border border-transparent"}`}
+              >
+                <div className="text-xs font-extrabold uppercase text-slate-400">Resultado</div>
+                <div className="mt-2 text-xl font-extrabold">Não conformidades</div>
+                <p className="mt-1 text-sm text-slate-500">Pendências, risco, legislação e ação corretiva.</p>
+                <div className="mt-4 flex items-center justify-between">
+                  <span className="font-extrabold text-red-700">Abrir não conformidades →</span>
+                  {ncsVisita.length > 0 && <span className="rounded-full bg-red-50 px-3 py-1 text-xs font-extrabold text-red-700">{ncsAbertas} abertas</span>}
                 </div>
-                <div className="mt-2 text-xl font-extrabold">
-                  Não conformidades
-                </div>
-                <p className="mt-1 text-sm text-slate-500">
-                  Pendências, risco, legislação e ação corretiva.
-                </p>
-              </div>
+              </button>
 
               <div className="rounded-2xl bg-white p-5 shadow-sm opacity-70">
                 <div className="text-xs font-extrabold uppercase text-slate-400">

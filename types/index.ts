@@ -53,12 +53,18 @@ export type Visita = {
 export type NaoConformidade = {
   id: string;
   empresaId: string;
-  visitaId?: string;
-  ambiente?: string;
-  checklistItemId?: string;
+  visitaId: string;
+  ambiente: string;
+  checklistItemId: string;
   titulo: string;
+  categoria: string;
+  criticidade: ChecklistCriticidade;
+  referencia: string;
+  orientacao: string;
+  observacao: string;
   prioridade: string;
-  status: string;
+  status: "Aberta" | "Em tratamento" | "Resolvida";
+  criadoEm: string;
 };
 
 export type AppDB = {
