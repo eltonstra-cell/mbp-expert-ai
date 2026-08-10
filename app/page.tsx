@@ -565,15 +565,62 @@ export default function Home() {
         if (v.id !== visitaAtual.id) return v;
 
         const novoChecklist = (v.checklist || []).map((item) => {
-          const patchNormalizado =
-            item.id === itemId &&
+          if (item.id !== itemId) return item;
+
+          const itemComMemoria = item as ChecklistItem & {
+            observacaoNCMemoria?: string;
+          };
+
+          let patchNormalizado: any = { ...patch };
+
+          // Ao sair de "Não Conforme", limpa a observação visível,
+          // mas guarda internamente a última constatação para possível retorno.
+          if (
             patch.status !== undefined &&
             patch.status !== "Não Conforme" &&
             patch.status !== "Pendente"
-              ? { ...patch, observacao: "" }
-              : patch;
-          const atualizado = item.id === itemId ? { ...item, ...patchNormalizado } : item;
-          if (item.id === itemId) itemAtualizado = atualizado;
+          ) {
+            patchNormalizado = {
+              ...patchNormalizado,
+              observacaoNCMemoria:
+                item.observacao ||
+                itemComMemoria.observacaoNCMemoria ||
+                "",
+              observacao: "",
+            };
+          }
+
+          // Ao voltar para "Não Conforme", restaura automaticamente
+          // a última constatação registrada.
+          if (patch.status === "Não Conforme") {
+            patchNormalizado = {
+              ...patchNormalizado,
+              observacao:
+                item.observacao ||
+                itemComMemoria.observacaoNCMemoria ||
+                "",
+            };
+          }
+
+          // Enquanto estiver "Não Conforme", cada edição da observação
+          // também atualiza a memória interna.
+          if (
+            patch.status === undefined &&
+            patch.observacao !== undefined &&
+            item.status === "Não Conforme"
+          ) {
+            patchNormalizado = {
+              ...patchNormalizado,
+              observacaoNCMemoria: patch.observacao,
+            };
+          }
+
+          const atualizado = {
+            ...item,
+            ...patchNormalizado,
+          } as ChecklistItem;
+
+          itemAtualizado = atualizado;
           return atualizado;
         });
 
@@ -654,7 +701,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.5.2
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.5.3
             </div>
           </div>
           {atual && (
