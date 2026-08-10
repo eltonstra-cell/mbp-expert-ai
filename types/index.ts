@@ -20,6 +20,13 @@ export type Empresa = {
   criadoEm: string;
 };
 
+export type AmbienteVisita = {
+  id: string;
+  nome: string;
+  origem: "Padrão" | "Personalizado";
+  ordem: number;
+};
+
 export type Visita = {
   id: string;
   empresaId: string;
@@ -29,6 +36,7 @@ export type Visita = {
   observacoes: string;
   progresso: number;
   criadoEm: string;
+  ambientes: AmbienteVisita[];
 };
 
 export type NaoConformidade = {
