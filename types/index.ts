@@ -22,6 +22,8 @@ export type Empresa = {
 
 export type ChecklistStatus = "Pendente" | "Conforme" | "Não Conforme" | "Não se aplica";
 
+export type ChecklistCriticidade = "Crítica" | "Importante" | "Rotina";
+
 export type ChecklistItem = {
   id: string;
   ambiente: string;
@@ -29,6 +31,9 @@ export type ChecklistItem = {
   categoria: string;
   status: ChecklistStatus;
   observacao: string;
+  criticidade?: ChecklistCriticidade;
+  referencia?: string;
+  orientacao?: string;
 };
 
 export type Visita = {
@@ -42,6 +47,7 @@ export type Visita = {
   criadoEm: string;
   ambientes?: string[];
   checklist?: ChecklistItem[];
+  checklistVersao?: number;
 };
 
 export type NaoConformidade = {

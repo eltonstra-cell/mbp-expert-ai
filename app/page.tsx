@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import MetricCard from "@/components/MetricCard";
 import type {
   AppDB,
+  ChecklistCriticidade,
   ChecklistItem,
   ChecklistStatus,
   Empresa,
@@ -49,14 +50,99 @@ const ambientesPadrao = [
 
 const modelosChecklist: Record<
   string,
-  { categoria: string; titulo: string }[]
+  {
+    categoria: string;
+    titulo: string;
+    criticidade?: ChecklistCriticidade;
+    referencia?: string;
+    orientacao?: string;
+  }[]
 > = {
   Recebimento: [
-    { categoria: "Fornecedor", titulo: "Fornecedor aprovado e identificado" },
-    { categoria: "Temperatura", titulo: "Temperatura dos produtos compatível com o recebimento" },
-    { categoria: "Integridade", titulo: "Embalagens íntegras e sem sinais de contaminação" },
-    { categoria: "Validade", titulo: "Prazo de validade conferido no recebimento" },
-    { categoria: "Higiene", titulo: "Área de recebimento limpa e organizada" },
+    {
+      categoria: "Área de recepção",
+      titulo: "Recebimento realizado em área protegida, limpa e organizada",
+      criticidade: "Importante",
+      referencia: "RDC 216/2004 — item 4.7.2",
+      orientacao: "Verifique proteção contra poeira, chuva, sujidades e risco de contaminação durante a descarga.",
+    },
+    {
+      categoria: "Fornecedor",
+      titulo: "Matérias-primas, ingredientes e embalagens são inspecionados e aprovados no recebimento",
+      criticidade: "Crítica",
+      referencia: "RDC 216/2004 — item 4.7.3",
+      orientacao: "A aprovação deve considerar condições do produto, embalagem, conservação e critérios definidos pelo serviço.",
+    },
+    {
+      categoria: "Integridade",
+      titulo: "Embalagens primárias estão íntegras, sem violação, vazamento, estufamento ou dano relevante",
+      criticidade: "Crítica",
+      referencia: "RDC 216/2004 — item 4.7.3",
+      orientacao: "Produtos com embalagem comprometida não devem ser aceitos quando houver risco à segurança ou integridade.",
+    },
+    {
+      categoria: "Temperatura",
+      titulo: "Temperatura dos produtos que exigem conservação especial é verificada no recebimento",
+      criticidade: "Crítica",
+      referencia: "RDC 216/2004 — item 4.7.3",
+      orientacao: "Compare com a condição de conservação indicada para o produto e com os critérios internos/legislação específica aplicável.",
+    },
+    {
+      categoria: "Validade",
+      titulo: "Prazo de validade é conferido antes da aceitação dos produtos",
+      criticidade: "Crítica",
+      referencia: "RDC 216/2004 — item 4.7.4",
+      orientacao: "Produtos vencidos devem ser rejeitados e devolvidos ou segregados até sua destinação adequada.",
+    },
+    {
+      categoria: "Reprovação",
+      titulo: "Produtos ou lotes reprovados são devolvidos ou segregados e identificados até destinação final",
+      criticidade: "Crítica",
+      referencia: "RDC 216/2004 — item 4.7.4",
+      orientacao: "Evite que produtos reprovados permaneçam misturados aos produtos liberados para uso.",
+    },
+    {
+      categoria: "Identificação",
+      titulo: "Produto recebido possui identificação e informações suficientes para controle e rastreabilidade",
+      criticidade: "Importante",
+      referencia: "Boas Práticas — controle de recebimento e rastreabilidade",
+      orientacao: "Observe identificação do produto, fabricante/fornecedor, lote quando aplicável e demais informações necessárias ao controle interno.",
+    },
+    {
+      categoria: "Condições do transporte",
+      titulo: "Veículo e condições de transporte não apresentam riscos evidentes de contaminação ao alimento",
+      criticidade: "Crítica",
+      referencia: "RDC 216/2004 — princípios de prevenção da contaminação no recebimento",
+      orientacao: "Observe limpeza, organização, proteção da carga, odores, pragas, cargas incompatíveis e condição geral.",
+    },
+    {
+      categoria: "Características do produto",
+      titulo: "Produtos não apresentam alterações sensoriais ou sinais visíveis incompatíveis com sua condição normal",
+      criticidade: "Importante",
+      referencia: "Boas Práticas — inspeção e aprovação no recebimento",
+      orientacao: "Quando aplicável, observe cor, odor, textura, presença de líquido anormal, descongelamento ou deterioração.",
+    },
+    {
+      categoria: "Registro",
+      titulo: "O estabelecimento mantém controle do recebimento compatível com os riscos e procedimentos adotados",
+      criticidade: "Importante",
+      referencia: "RDC 216/2004 — controle operacional de Boas Práticas",
+      orientacao: "O registro pode incluir data, fornecedor, produto, temperatura quando aplicável, condição e decisão de aceitar ou rejeitar.",
+    },
+    {
+      categoria: "Fluxo",
+      titulo: "Produtos aprovados são encaminhados ao armazenamento sem permanência desnecessária em temperatura ambiente",
+      criticidade: "Crítica",
+      referencia: "RDC 216/2004 — itens 4.7.5 e 4.8.5",
+      orientacao: "Priorize perecíveis e reduza o tempo fora das condições adequadas de conservação.",
+    },
+    {
+      categoria: "Armazenamento imediato",
+      titulo: "Produtos recebidos são armazenados em local limpo, organizado e protegido contra contaminantes",
+      criticidade: "Importante",
+      referencia: "RDC 216/2004 — item 4.7.5",
+      orientacao: "Após a aprovação, o produto deve seguir para armazenamento adequado sem contato com fontes de contaminação.",
+    },
   ],
   "Armazenamento seco / Estoque": [
     { categoria: "Organização", titulo: "Produtos organizados por categoria e afastados do piso" },
@@ -164,6 +250,9 @@ function criarChecklist(ambientes: string[]): ChecklistItem[] {
       categoria: item.categoria,
       status: "Pendente" as ChecklistStatus,
       observacao: "",
+      criticidade: item.criticidade || "Rotina",
+      referencia: item.referencia || "Boas Práticas — critério operacional",
+      orientacao: item.orientacao || "",
     }));
   });
 }
@@ -232,6 +321,7 @@ export default function Home() {
             .filter(Boolean)
         : [],
       checklist: Array.isArray(v.checklist) ? v.checklist : [],
+      checklistVersao: typeof v.checklistVersao === "number" ? v.checklistVersao : 1,
     })) as Visita[];
 
     setDb({ ...s, visitas: vs });
@@ -339,6 +429,7 @@ export default function Home() {
       criadoEm: new Date().toISOString(),
       ambientes: [],
       checklist: [],
+      checklistVersao: 2,
     };
     setDb((o) => ({ ...o, visitas: [v, ...o.visitas] }));
     setShowVisitaForm(false);
@@ -404,18 +495,25 @@ export default function Home() {
     if (!visitaAtual || !(visitaAtual.ambientes || []).length) return;
 
     const checklistExistente = visitaAtual.checklist || [];
-    if (checklistExistente.length === 0) {
+    const possuiRespostas = checklistExistente.some(
+      (item) => item.status !== "Pendente" || item.observacao.trim().length > 0
+    );
+    const precisaAtualizarModelo =
+      (visitaAtual.checklistVersao || 1) < 2 && !possuiRespostas;
+
+    if (checklistExistente.length === 0 || precisaAtualizarModelo) {
       const novoChecklist = criarChecklist(visitaAtual.ambientes || []);
       setDb((o) => ({
         ...o,
         visitas: o.visitas.map((v) =>
-          v.id === visitaAtual.id ? { ...v, checklist: novoChecklist } : v
+          v.id === visitaAtual.id
+            ? { ...v, checklist: novoChecklist, checklistVersao: 2 }
+            : v
         ),
       }));
-      setAmbienteChecklistAtivo((visitaAtual.ambientes || [])[0] || null);
-    } else {
-      setAmbienteChecklistAtivo((visitaAtual.ambientes || [])[0] || null);
     }
+
+    setAmbienteChecklistAtivo((visitaAtual.ambientes || [])[0] || null);
 
     setView("checklist");
   }
@@ -493,7 +591,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.3.2
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.4
             </div>
           </div>
           {atual && (
@@ -905,6 +1003,31 @@ export default function Home() {
                           <h3 className="mt-1 text-lg font-extrabold">
                             {item.titulo}
                           </h3>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {item.criticidade && (
+                              <span
+                                className={`rounded-full px-2.5 py-1 text-[11px] font-extrabold ${
+                                  item.criticidade === "Crítica"
+                                    ? "bg-red-50 text-red-700"
+                                    : item.criticidade === "Importante"
+                                    ? "bg-amber-50 text-amber-700"
+                                    : "bg-slate-100 text-slate-600"
+                                }`}
+                              >
+                                {item.criticidade}
+                              </span>
+                            )}
+                            {item.referencia && (
+                              <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-700">
+                                {item.referencia}
+                              </span>
+                            )}
+                          </div>
+                          {item.orientacao && (
+                            <p className="mt-2 text-sm text-slate-500">
+                              {item.orientacao}
+                            </p>
+                          )}
                         </div>
 
                         <div
