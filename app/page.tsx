@@ -224,7 +224,13 @@ export default function Home() {
           ? 100
           : 0,
       criadoEm: v.criadoEm || v.data || new Date().toISOString(),
-      ambientes: Array.isArray(v.ambientes) ? v.ambientes : [],
+      ambientes: Array.isArray(v.ambientes)
+        ? v.ambientes
+            .map((a: any) =>
+              typeof a === "string" ? a : typeof a?.nome === "string" ? a.nome : ""
+            )
+            .filter(Boolean)
+        : [],
       checklist: Array.isArray(v.checklist) ? v.checklist : [],
     })) as Visita[];
 
@@ -487,7 +493,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.3.1
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.3.2
             </div>
           </div>
           {atual && (
