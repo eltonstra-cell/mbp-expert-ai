@@ -20,11 +20,15 @@ export type Empresa = {
   criadoEm: string;
 };
 
-export type AmbienteVisita = {
+export type ChecklistStatus = "Pendente" | "Conforme" | "Não Conforme" | "Não se aplica";
+
+export type ChecklistItem = {
   id: string;
-  nome: string;
-  origem: "Padrão" | "Personalizado";
-  ordem: number;
+  ambiente: string;
+  titulo: string;
+  categoria: string;
+  status: ChecklistStatus;
+  observacao: string;
 };
 
 export type Visita = {
@@ -36,12 +40,16 @@ export type Visita = {
   observacoes: string;
   progresso: number;
   criadoEm: string;
-  ambientes: AmbienteVisita[];
+  ambientes?: string[];
+  checklist?: ChecklistItem[];
 };
 
 export type NaoConformidade = {
   id: string;
   empresaId: string;
+  visitaId?: string;
+  ambiente?: string;
+  checklistItemId?: string;
   titulo: string;
   prioridade: string;
   status: string;

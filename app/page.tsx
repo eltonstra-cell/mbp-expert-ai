@@ -2,10 +2,16 @@
 
 import { useEffect, useMemo, useState } from "react";
 import MetricCard from "@/components/MetricCard";
-import type { AmbienteVisita, AppDB, Empresa, Visita } from "@/types";
+import type {
+  AppDB,
+  ChecklistItem,
+  ChecklistStatus,
+  Empresa,
+  Visita,
+} from "@/types";
 import { emptyDB, loadDB, saveDB } from "@/lib/storage";
 
-type View = "inicio" | "empresas" | "visitas" | "visita" | "ambientes";
+type View = "inicio" | "empresas" | "visitas" | "visita" | "ambientes" | "checklist";
 
 const labels: Record<string, string> = {
   nomeFantasia: "Nome fantasia",
@@ -26,7 +32,7 @@ const labels: Record<string, string> = {
   responsavel: "Responsável",
 };
 
-const AMBIENTES_PADRAO = [
+const ambientesPadrao = [
   "Recebimento",
   "Armazenamento seco / Estoque",
   "Câmara refrigerada",
@@ -41,16 +47,126 @@ const AMBIENTES_PADRAO = [
   "Área externa",
 ];
 
-const hoje = () => {
-  const now = new Date();
-  const offset = now.getTimezoneOffset();
-  return new Date(now.getTime() - offset * 60000).toISOString().slice(0, 10);
+const modelosChecklist: Record<
+  string,
+  { categoria: string; titulo: string }[]
+> = {
+  Recebimento: [
+    { categoria: "Fornecedor", titulo: "Fornecedor aprovado e identificado" },
+    { categoria: "Temperatura", titulo: "Temperatura dos produtos compatível com o recebimento" },
+    { categoria: "Integridade", titulo: "Embalagens íntegras e sem sinais de contaminação" },
+    { categoria: "Validade", titulo: "Prazo de validade conferido no recebimento" },
+    { categoria: "Higiene", titulo: "Área de recebimento limpa e organizada" },
+  ],
+  "Armazenamento seco / Estoque": [
+    { categoria: "Organização", titulo: "Produtos organizados por categoria e afastados do piso" },
+    { categoria: "Validade", titulo: "Controle PEPS/PVPS aplicado" },
+    { categoria: "Identificação", titulo: "Produtos abertos identificados e datados" },
+    { categoria: "Integridade", titulo: "Sem presença de embalagens danificadas ou infestação" },
+    { categoria: "Higiene", titulo: "Prateleiras e ambiente em boas condições de limpeza" },
+  ],
+  "Câmara refrigerada": [
+    { categoria: "Temperatura", titulo: "Temperatura da câmara dentro do padrão definido" },
+    { categoria: "Organização", titulo: "Alimentos organizados evitando contaminação cruzada" },
+    { categoria: "Identificação", titulo: "Preparações e produtos identificados e datados" },
+    { categoria: "Integridade", titulo: "Equipamento em bom estado e sem excesso de gelo" },
+    { categoria: "Higiene", titulo: "Câmara limpa e sem acúmulo de resíduos" },
+  ],
+  "Câmara de congelamento": [
+    { categoria: "Temperatura", titulo: "Temperatura de congelamento adequada" },
+    { categoria: "Organização", titulo: "Produtos organizados e separados por categoria" },
+    { categoria: "Identificação", titulo: "Produtos identificados e dentro do prazo" },
+    { categoria: "Integridade", titulo: "Ausência de queimadura por frio ou embalagens rompidas" },
+    { categoria: "Higiene", titulo: "Equipamento limpo e em bom estado" },
+  ],
+  "Pré-preparo": [
+    { categoria: "Higiene", titulo: "Bancadas e utensílios higienizados adequadamente" },
+    { categoria: "Contaminação cruzada", titulo: "Fluxo evita contato entre alimentos crus e prontos" },
+    { categoria: "Manipuladores", titulo: "Manipuladores seguem boas práticas de higiene" },
+    { categoria: "Tempo/temperatura", titulo: "Exposição dos alimentos fora de refrigeração é controlada" },
+    { categoria: "Identificação", titulo: "Alimentos em preparo identificados quando necessário" },
+  ],
+  "Preparo / Cocção": [
+    { categoria: "Temperatura", titulo: "Cocção atinge parâmetros seguros definidos" },
+    { categoria: "Higiene", titulo: "Equipamentos e utensílios em boas condições de higiene" },
+    { categoria: "Manipuladores", titulo: "Conduta dos manipuladores adequada durante o preparo" },
+    { categoria: "Contaminação cruzada", titulo: "Utensílios e superfícies evitam contaminação cruzada" },
+    { categoria: "Manutenção", titulo: "Equipamentos estão íntegros e em funcionamento adequado" },
+  ],
+  "Distribuição / Exposição": [
+    { categoria: "Temperatura", titulo: "Temperatura de exposição é monitorada" },
+    { categoria: "Proteção", titulo: "Alimentos expostos estão protegidos contra contaminação" },
+    { categoria: "Tempo", titulo: "Tempo de exposição é controlado" },
+    { categoria: "Utensílios", titulo: "Utensílios de serviço estão limpos e adequados" },
+    { categoria: "Higiene", titulo: "Área de distribuição permanece limpa e organizada" },
+  ],
+  "Higienização de utensílios": [
+    { categoria: "Fluxo", titulo: "Fluxo de higienização evita cruzamento entre sujo e limpo" },
+    { categoria: "Produto químico", titulo: "Produtos saneantes estão regularizados e identificados" },
+    { categoria: "Diluição", titulo: "Diluição e tempo de contato seguem orientação definida" },
+    { categoria: "Secagem", titulo: "Utensílios secam de forma higiênica" },
+    { categoria: "Armazenamento", titulo: "Utensílios limpos são armazenados protegidos" },
+  ],
+  "DML / Material de limpeza": [
+    { categoria: "Armazenamento", titulo: "Produtos químicos armazenados separados de alimentos" },
+    { categoria: "Identificação", titulo: "Frascos e recipientes estão identificados" },
+    { categoria: "Segurança", titulo: "Acesso e uso dos produtos são controlados" },
+    { categoria: "Organização", titulo: "Materiais de limpeza estão organizados" },
+    { categoria: "Higiene", titulo: "DML está limpo e sem acúmulo de resíduos" },
+  ],
+  "Sanitários / Vestiários": [
+    { categoria: "Higiene", titulo: "Instalações estão limpas e conservadas" },
+    { categoria: "Lavatório", titulo: "Há sabonete líquido, papel e meio adequado de secagem" },
+    { categoria: "Acesso", titulo: "Sanitários não se comunicam diretamente com áreas de preparo" },
+    { categoria: "Organização", titulo: "Pertences pessoais estão armazenados adequadamente" },
+    { categoria: "Conservação", titulo: "Portas, ralos e instalações estão em bom estado" },
+  ],
+  "Área de resíduos": [
+    { categoria: "Acondicionamento", titulo: "Resíduos estão acondicionados em recipientes adequados" },
+    { categoria: "Tampa", titulo: "Lixeiras possuem tampa e acionamento adequado quando aplicável" },
+    { categoria: "Fluxo", titulo: "Retirada de resíduos não contamina áreas de produção" },
+    { categoria: "Higiene", titulo: "Área de resíduos está limpa e organizada" },
+    { categoria: "Controle de pragas", titulo: "Não há sinais de atração ou abrigo de pragas" },
+  ],
+  "Área externa": [
+    { categoria: "Conservação", titulo: "Área externa está conservada e sem acúmulo de materiais" },
+    { categoria: "Pragas", titulo: "Não há condições favoráveis à proliferação de pragas" },
+    { categoria: "Drenagem", titulo: "Não há água parada ou problemas de drenagem" },
+    { categoria: "Acesso", titulo: "Acessos estão protegidos e organizados" },
+    { categoria: "Higiene", titulo: "Entorno do estabelecimento está limpo" },
+  ],
 };
 
-const formatarData = (data: string) =>
-  data
-    ? new Date(data.length === 10 ? `${data}T12:00:00` : data).toLocaleDateString("pt-BR")
-    : "—";
+function hojeISO() {
+  const n = new Date();
+  const o = n.getTimezoneOffset();
+  return new Date(n.getTime() - o * 60000).toISOString().slice(0, 10);
+}
+
+function fdata(d: string) {
+  return d ? new Date(d.length === 10 ? d + "T12:00:00" : d).toLocaleDateString("pt-BR") : "—";
+}
+
+function criarChecklist(ambientes: string[]): ChecklistItem[] {
+  return ambientes.flatMap((ambiente, ambienteIndex) => {
+    const itens = modelosChecklist[ambiente] || [
+      { categoria: "Estrutura", titulo: "Estrutura em boas condições de conservação" },
+      { categoria: "Higiene", titulo: "Ambiente limpo e organizado" },
+      { categoria: "Processo", titulo: "Fluxo operacional reduz risco de contaminação" },
+      { categoria: "Identificação", titulo: "Materiais e produtos estão identificados adequadamente" },
+      { categoria: "Boas práticas", titulo: "Boas práticas são observadas no ambiente" },
+    ];
+
+    return itens.map((item, itemIndex) => ({
+      id: `${ambienteIndex}-${itemIndex}-${crypto.randomUUID()}`,
+      ambiente,
+      titulo: item.titulo,
+      categoria: item.categoria,
+      status: "Pendente" as ChecklistStatus,
+      observacao: "",
+    }));
+  });
+}
 
 export default function Home() {
   const [db, setDb] = useState<AppDB>(emptyDB);
@@ -60,11 +176,11 @@ export default function Home() {
   const [showVisitaForm, setShowVisitaForm] = useState(false);
   const [visitaAtualId, setVisitaAtualId] = useState<string | null>(null);
   const [criandoVisita, setCriandoVisita] = useState(false);
+  const [ambientesSelecionados, setAmbientesSelecionados] = useState<string[]>([]);
+  const [ambientePersonalizado, setAmbientePersonalizado] = useState("");
+  const [ambienteChecklistAtivo, setAmbienteChecklistAtivo] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
-  const [novoAmbiente, setNovoAmbiente] = useState("");
-  const [ambientesRascunho, setAmbientesRascunho] = useState<AmbienteVisita[]>([]);
-  const [ambientesSalvosAgora, setAmbientesSalvosAgora] = useState(false);
 
   const [form, setForm] = useState({
     cnpj: "",
@@ -86,18 +202,18 @@ export default function Home() {
     responsavel: "",
   });
 
-  const [visitaForm, setVisitaForm] = useState({
-    data: hoje(),
+  const [vf, setVf] = useState({
+    data: hojeISO(),
     responsavel: "",
     observacoes: "",
   });
 
   useEffect(() => {
-    const stored = loadDB();
-    const visitasNormalizadas = (stored.visitas || []).map((v: any) => ({
+    const s = loadDB();
+    const vs = (s.visitas || []).map((v: any) => ({
       id: v.id,
       empresaId: v.empresaId,
-      data: v.data || hoje(),
+      data: v.data || hojeISO(),
       status: v.status === "Concluída" ? "Concluída" : "Em andamento",
       responsavel: v.responsavel || "",
       observacoes: v.observacoes || "",
@@ -105,13 +221,14 @@ export default function Home() {
         typeof v.progresso === "number"
           ? v.progresso
           : v.status === "Concluída"
-            ? 100
-            : 0,
+          ? 100
+          : 0,
       criadoEm: v.criadoEm || v.data || new Date().toISOString(),
       ambientes: Array.isArray(v.ambientes) ? v.ambientes : [],
+      checklist: Array.isArray(v.checklist) ? v.checklist : [],
     })) as Visita[];
 
-    setDb({ ...stored, visitas: visitasNormalizadas });
+    setDb({ ...s, visitas: vs });
     setReady(true);
   }, []);
 
@@ -119,54 +236,57 @@ export default function Home() {
     if (ready) saveDB(db);
   }, [db, ready]);
 
-  const empresaAtual = db.empresaAtualId ? db.empresas[db.empresaAtualId] : undefined;
+  const atual = db.empresaAtualId ? db.empresas[db.empresaAtualId] : undefined;
   const visitaAtual = visitaAtualId ? db.visitas.find((v) => v.id === visitaAtualId) : undefined;
-  const empresaDaVisita = visitaAtual ? db.empresas[visitaAtual.empresaId] : undefined;
-
-  const visitasOrdenadas = useMemo(
+  const empresaVisita = visitaAtual ? db.empresas[visitaAtual.empresaId] : undefined;
+  const visitas = useMemo(
     () =>
       [...db.visitas].sort((a, b) =>
-        (b.criadoEm || b.data || "").localeCompare(a.criadoEm || a.data || ""),
+        (b.criadoEm || b.data || "").localeCompare(a.criadoEm || a.data || "")
       ),
-    [db.visitas],
+    [db.visitas]
   );
 
-  async function buscarCnpj() {
-    const cnpj = form.cnpj.replace(/\D/g, "");
-    if (cnpj.length !== 14) {
+  const checklistAtual = visitaAtual?.checklist || [];
+  const respondidos = checklistAtual.filter((i) => i.status !== "Pendente").length;
+  const totalChecklist = checklistAtual.length;
+  const percentualChecklist = totalChecklist
+    ? Math.round((respondidos / totalChecklist) * 100)
+    : 0;
+
+  async function buscar() {
+    const c = form.cnpj.replace(/\D/g, "");
+    if (c.length !== 14) {
       setMsg("Informe um CNPJ com 14 dígitos.");
       return;
     }
-
     setLoading(true);
     setMsg("Buscando...");
-
     try {
-      const response = await fetch(`/api/cnpj/${cnpj}`);
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Não encontrado");
-
-      setForm((current) => ({
-        ...current,
-        cnpj: data.cnpj || cnpj,
-        nomeFantasia: data.nome_fantasia || "",
-        razaoSocial: data.razao_social || "",
-        situacao: data.descricao_situacao_cadastral || "",
-        cnae: String(data.cnae_fiscal || ""),
-        cnaeDescricao: data.cnae_fiscal_descricao || "",
-        logradouro: data.logradouro || "",
-        numero: data.numero || "",
-        complemento: data.complemento || "",
-        bairro: data.bairro || "",
-        cep: data.cep || "",
-        municipio: data.municipio || "",
-        uf: data.uf || "",
-        telefone: data.ddd_telefone_1 || "",
-        email: data.email || "",
+      const r = await fetch(`/api/cnpj/${c}`);
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || "Não encontrado");
+      setForm((f) => ({
+        ...f,
+        cnpj: d.cnpj || c,
+        nomeFantasia: d.nome_fantasia || "",
+        razaoSocial: d.razao_social || "",
+        situacao: d.descricao_situacao_cadastral || "",
+        cnae: String(d.cnae_fiscal || ""),
+        cnaeDescricao: d.cnae_fiscal_descricao || "",
+        logradouro: d.logradouro || "",
+        numero: d.numero || "",
+        complemento: d.complemento || "",
+        bairro: d.bairro || "",
+        cep: d.cep || "",
+        municipio: d.municipio || "",
+        uf: d.uf || "",
+        telefone: d.ddd_telefone_1 || "",
+        email: d.email || "",
       }));
       setMsg("Empresa encontrada. Confira os dados.");
-    } catch (error) {
-      setMsg(error instanceof Error ? error.message : "Falha na consulta");
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Falha na consulta");
     } finally {
       setLoading(false);
     }
@@ -174,177 +294,190 @@ export default function Home() {
 
   function salvarEmpresa() {
     const id = form.cnpj.replace(/\D/g, "") || crypto.randomUUID();
-    const empresa: Empresa = {
+    const emp: Empresa = {
       id,
       ...form,
       nomeFantasia: form.nomeFantasia || form.razaoSocial || "Sem nome",
       criadoEm: new Date().toISOString(),
     };
-
-    setDb((current) => ({
-      ...current,
+    setDb((o) => ({
+      ...o,
       empresaAtualId: id,
-      empresas: { ...current.empresas, [id]: empresa },
+      empresas: { ...o.empresas, [id]: emp },
     }));
     setShowEmpresaForm(false);
     setView("empresas");
   }
 
-  function abrirNovaVisita() {
-    if (!empresaAtual) {
+  function novaVisita() {
+    if (!atual) {
       setView("empresas");
       return;
     }
-
-    setVisitaForm({ data: hoje(), responsavel: "", observacoes: "" });
+    setVf({ data: hojeISO(), responsavel: "", observacoes: "" });
     setShowVisitaForm(true);
     setView("visitas");
   }
 
   function salvarVisita() {
-    if (!empresaAtual || criandoVisita) return;
-
+    if (!atual || criandoVisita) return;
     setCriandoVisita(true);
-    const visita: Visita = {
+    const v: Visita = {
       id: crypto.randomUUID(),
-      empresaId: empresaAtual.id,
-      data: visitaForm.data || hoje(),
+      empresaId: atual.id,
+      data: vf.data || hojeISO(),
       status: "Em andamento",
-      responsavel: visitaForm.responsavel.trim(),
-      observacoes: visitaForm.observacoes.trim(),
+      responsavel: vf.responsavel.trim(),
+      observacoes: vf.observacoes.trim(),
       progresso: 0,
       criadoEm: new Date().toISOString(),
       ambientes: [],
+      checklist: [],
     };
-
-    setDb((current) => ({ ...current, visitas: [visita, ...current.visitas] }));
+    setDb((o) => ({ ...o, visitas: [v, ...o.visitas] }));
     setShowVisitaForm(false);
-    setVisitaAtualId(visita.id);
+    setVisitaAtualId(v.id);
     setView("visita");
-    window.setTimeout(() => setCriandoVisita(false), 500);
+    setTimeout(() => setCriandoVisita(false), 500);
   }
 
-  function continuarVisita(id: string) {
-    const visita = db.visitas.find((item) => item.id === id);
-    if (!visita) return;
-
-    setDb((current) => ({ ...current, empresaAtualId: visita.empresaId }));
+  function continuar(id: string) {
+    const v = db.visitas.find((x) => x.id === id);
+    if (!v) return;
+    setDb((o) => ({ ...o, empresaAtualId: v.empresaId }));
     setVisitaAtualId(id);
     setView("visita");
   }
 
-  function concluirVisita(id: string) {
-    setDb((current) => ({
-      ...current,
-      visitas: current.visitas.map((v) =>
-        v.id === id ? { ...v, status: "Concluída", progresso: 100 } : v,
+  function abrirAmbientes() {
+    if (!visitaAtual) return;
+    setAmbientesSelecionados(visitaAtual.ambientes || []);
+    setAmbientePersonalizado("");
+    setView("ambientes");
+  }
+
+  function toggleAmbiente(nome: string) {
+    setAmbientesSelecionados((atual) =>
+      atual.includes(nome) ? atual.filter((x) => x !== nome) : [...atual, nome]
+    );
+  }
+
+  function adicionarPersonalizado() {
+    const nome = ambientePersonalizado.trim();
+    if (!nome) return;
+    if (!ambientesSelecionados.includes(nome)) {
+      setAmbientesSelecionados((a) => [...a, nome]);
+    }
+    setAmbientePersonalizado("");
+  }
+
+  function salvarAmbientes() {
+    if (!visitaAtual || ambientesSelecionados.length === 0) return;
+
+    setDb((o) => ({
+      ...o,
+      visitas: o.visitas.map((v) => {
+        if (v.id !== visitaAtual.id) return v;
+
+        const ambientesMudaram =
+          JSON.stringify(v.ambientes || []) !== JSON.stringify(ambientesSelecionados);
+
+        return {
+          ...v,
+          ambientes: ambientesSelecionados,
+          checklist: ambientesMudaram ? [] : v.checklist || [],
+          progresso: Math.max(v.progresso || 0, 15),
+        };
+      }),
+    }));
+
+    setView("visita");
+  }
+
+  function abrirChecklist() {
+    if (!visitaAtual || !(visitaAtual.ambientes || []).length) return;
+
+    const checklistExistente = visitaAtual.checklist || [];
+    if (checklistExistente.length === 0) {
+      const novoChecklist = criarChecklist(visitaAtual.ambientes || []);
+      setDb((o) => ({
+        ...o,
+        visitas: o.visitas.map((v) =>
+          v.id === visitaAtual.id ? { ...v, checklist: novoChecklist } : v
+        ),
+      }));
+      setAmbienteChecklistAtivo((visitaAtual.ambientes || [])[0] || null);
+    } else {
+      setAmbienteChecklistAtivo((visitaAtual.ambientes || [])[0] || null);
+    }
+
+    setView("checklist");
+  }
+
+  function atualizarChecklistItem(
+    itemId: string,
+    patch: Partial<Pick<ChecklistItem, "status" | "observacao">>
+  ) {
+    if (!visitaAtual) return;
+
+    setDb((o) => ({
+      ...o,
+      visitas: o.visitas.map((v) => {
+        if (v.id !== visitaAtual.id) return v;
+
+        const novoChecklist = (v.checklist || []).map((item) =>
+          item.id === itemId ? { ...item, ...patch } : item
+        );
+
+        const respondidosLocal = novoChecklist.filter(
+          (i) => i.status !== "Pendente"
+        ).length;
+
+        const pct = novoChecklist.length
+          ? Math.round((respondidosLocal / novoChecklist.length) * 100)
+          : 0;
+
+        const progresso = Math.max(
+          15,
+          Math.min(55, 15 + Math.round(pct * 0.4))
+        );
+
+        return {
+          ...v,
+          checklist: novoChecklist,
+          progresso,
+        };
+      }),
+    }));
+  }
+
+  function concluir(id: string) {
+    setDb((o) => ({
+      ...o,
+      visitas: o.visitas.map((v) =>
+        v.id === id ? { ...v, status: "Concluída", progresso: 100 } : v
       ),
     }));
   }
 
-  function reabrirVisita(id: string) {
-    setDb((current) => ({
-      ...current,
-      visitas: current.visitas.map((v) =>
+  function reabrir(id: string) {
+    setDb((o) => ({
+      ...o,
+      visitas: o.visitas.map((v) =>
         v.id === id
           ? { ...v, status: "Em andamento", progresso: Math.min(v.progresso || 0, 90) }
-          : v,
+          : v
       ),
     }));
   }
 
-  function excluirVisita(id: string) {
+  function excluir(id: string) {
     if (!window.confirm("Excluir esta visita? Esta ação não pode ser desfeita.")) return;
-
-    setDb((current) => ({
-      ...current,
-      visitas: current.visitas.filter((v) => v.id !== id),
-    }));
-
+    setDb((o) => ({ ...o, visitas: o.visitas.filter((v) => v.id !== id) }));
     if (visitaAtualId === id) {
       setVisitaAtualId(null);
       setView("visitas");
     }
-  }
-
-  function abrirAmbientes() {
-    if (!visitaAtual) return;
-    setAmbientesRascunho(visitaAtual.ambientes || []);
-    setNovoAmbiente("");
-    setAmbientesSalvosAgora(false);
-    setView("ambientes");
-  }
-
-  function ambienteSelecionado(nome: string) {
-    return ambientesRascunho.some((a) => a.nome.toLowerCase() === nome.toLowerCase());
-  }
-
-  function alternarAmbientePadrao(nome: string) {
-    if (ambienteSelecionado(nome)) {
-      setAmbientesRascunho((current) =>
-        current
-          .filter((a) => a.nome.toLowerCase() !== nome.toLowerCase())
-          .map((a, index) => ({ ...a, ordem: index + 1 })),
-      );
-      return;
-    }
-
-    setAmbientesRascunho((current) => [
-      ...current,
-      {
-        id: crypto.randomUUID(),
-        nome,
-        origem: "Padrão",
-        ordem: current.length + 1,
-      },
-    ]);
-  }
-
-  function adicionarAmbientePersonalizado() {
-    const nome = novoAmbiente.trim();
-    if (!nome || ambienteSelecionado(nome)) return;
-
-    setAmbientesRascunho((current) => [
-      ...current,
-      {
-        id: crypto.randomUUID(),
-        nome,
-        origem: "Personalizado",
-        ordem: current.length + 1,
-      },
-    ]);
-    setNovoAmbiente("");
-  }
-
-  function removerAmbiente(id: string) {
-    setAmbientesRascunho((current) =>
-      current
-        .filter((a) => a.id !== id)
-        .map((a, index) => ({ ...a, ordem: index + 1 })),
-    );
-  }
-
-  function salvarAmbientes() {
-    if (!visitaAtual) return;
-
-    const ambientesOrdenados = ambientesRascunho.map((a, index) => ({
-      ...a,
-      ordem: index + 1,
-    }));
-
-    setDb((current) => ({
-      ...current,
-      visitas: current.visitas.map((v) =>
-        v.id === visitaAtual.id
-          ? {
-              ...v,
-              ambientes: ambientesOrdenados,
-              progresso: ambientesOrdenados.length > 0 ? Math.max(v.progresso || 0, 15) : 0,
-            }
-          : v,
-      ),
-    }));
-    setAmbientesSalvosAgora(true);
   }
 
   return (
@@ -354,23 +487,40 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.2
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.3
             </div>
           </div>
-          {empresaAtual && (
+          {atual && (
             <div className="rounded-xl bg-white/10 px-4 py-2">
-              <div className="text-[10px] font-extrabold uppercase text-blue-100">Empresa ativa</div>
-              <div className="font-extrabold">{empresaAtual.nomeFantasia}</div>
+              <div className="text-[10px] font-extrabold uppercase text-blue-100">
+                Empresa ativa
+              </div>
+              <div className="font-extrabold">{atual.nomeFantasia}</div>
             </div>
           )}
         </div>
       </header>
 
       <div className="mx-auto max-w-7xl p-4">
-        <nav className="mb-4 flex flex-wrap gap-2">
-          <button onClick={() => setView("inicio")} className="rounded-xl bg-slate-200 px-4 py-2 font-bold">Início</button>
-          <button onClick={() => setView("empresas")} className="rounded-xl bg-slate-200 px-4 py-2 font-bold">Empresas</button>
-          <button onClick={() => setView("visitas")} className="rounded-xl bg-[#17365D] px-4 py-2 font-bold text-white">Visitas</button>
+        <nav className="mb-4 flex gap-2">
+          <button
+            onClick={() => setView("inicio")}
+            className="rounded-xl bg-slate-200 px-4 py-2 font-bold"
+          >
+            Início
+          </button>
+          <button
+            onClick={() => setView("empresas")}
+            className="rounded-xl bg-slate-200 px-4 py-2 font-bold"
+          >
+            Empresas
+          </button>
+          <button
+            onClick={() => setView("visitas")}
+            className="rounded-xl bg-[#17365D] px-4 py-2 font-bold text-white"
+          >
+            Visitas
+          </button>
         </nav>
 
         {showEmpresaForm ? (
@@ -378,169 +528,454 @@ export default function Home() {
             <div className="flex justify-between gap-4">
               <div>
                 <h2 className="text-2xl font-extrabold">Nova empresa</h2>
-                <p className="text-sm text-slate-500">Digite o CNPJ para buscar os dados automaticamente.</p>
+                <p className="text-sm text-slate-500">
+                  Digite o CNPJ para buscar os dados automaticamente.
+                </p>
               </div>
-              <button onClick={() => setShowEmpresaForm(false)} className="rounded-xl bg-slate-100 px-3 py-2 font-bold">Fechar</button>
+              <button
+                onClick={() => setShowEmpresaForm(false)}
+                className="rounded-xl bg-slate-100 px-3 py-2 font-bold"
+              >
+                Fechar
+              </button>
             </div>
+
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               <label>
-                <span className="mb-1 block text-xs font-bold text-slate-500">CNPJ</span>
+                <span className="mb-1 block text-xs font-bold text-slate-500">
+                  CNPJ
+                </span>
                 <div className="flex gap-2">
-                  <input className="w-full rounded-xl border p-3" value={form.cnpj} onChange={(e) => setForm({ ...form, cnpj: e.target.value })} />
-                  <button onClick={buscarCnpj} className="rounded-xl bg-slate-900 px-4 font-bold text-white">{loading ? "..." : "Buscar"}</button>
+                  <input
+                    className="w-full rounded-xl border p-3"
+                    value={form.cnpj}
+                    onChange={(e) => setForm({ ...form, cnpj: e.target.value })}
+                  />
+                  <button
+                    onClick={buscar}
+                    className="rounded-xl bg-slate-900 px-4 font-bold text-white"
+                  >
+                    {loading ? "..." : "Buscar"}
+                  </button>
                 </div>
               </label>
-              {Object.entries(form).filter(([key]) => key !== "cnpj").map(([key, value]) => (
-                <label key={key}>
-                  <span className="mb-1 block text-xs font-bold text-slate-500">{labels[key] || key}</span>
-                  <input className="w-full rounded-xl border p-3" value={value} onChange={(e) => setForm({ ...form, [key]: e.target.value })} />
-                </label>
-              ))}
+
+              {Object.entries(form)
+                .filter(([k]) => k !== "cnpj")
+                .map(([k, v]) => (
+                  <label key={k}>
+                    <span className="mb-1 block text-xs font-bold text-slate-500">
+                      {labels[k] || k}
+                    </span>
+                    <input
+                      className="w-full rounded-xl border p-3"
+                      value={v}
+                      onChange={(e) =>
+                        setForm({ ...form, [k]: e.target.value })
+                      }
+                    />
+                  </label>
+                ))}
             </div>
-            {msg && <div className="mt-3 rounded-xl bg-amber-50 p-3 text-sm">{msg}</div>}
-            <button onClick={salvarEmpresa} className="mt-4 w-full rounded-xl bg-[#2F5597] p-3 font-extrabold text-white">Salvar empresa</button>
+
+            {msg && (
+              <div className="mt-3 rounded-xl bg-amber-50 p-3 text-sm">
+                {msg}
+              </div>
+            )}
+
+            <button
+              onClick={salvarEmpresa}
+              className="mt-4 w-full rounded-xl bg-[#2F5597] p-3 font-extrabold text-white"
+            >
+              Salvar empresa
+            </button>
           </section>
         ) : showVisitaForm ? (
           <section className="rounded-2xl bg-white p-5 shadow-sm">
             <div className="flex justify-between gap-4">
               <div>
-                <div className="text-xs font-extrabold uppercase text-[#2F5597]">Nova visita</div>
-                <h2 className="mt-1 text-2xl font-extrabold">{empresaAtual?.nomeFantasia}</h2>
-                <p className="text-sm text-slate-500">Esta visita ficará vinculada automaticamente à empresa ativa.</p>
+                <div className="text-xs font-extrabold uppercase text-[#2F5597]">
+                  Nova visita
+                </div>
+                <h2 className="mt-1 text-2xl font-extrabold">
+                  {atual?.nomeFantasia}
+                </h2>
+                <p className="text-sm text-slate-500">
+                  Esta visita ficará vinculada automaticamente à empresa ativa.
+                </p>
               </div>
-              <button onClick={() => setShowVisitaForm(false)} className="rounded-xl bg-slate-100 px-3 py-2 font-bold">Fechar</button>
+              <button
+                onClick={() => setShowVisitaForm(false)}
+                className="rounded-xl bg-slate-100 px-3 py-2 font-bold"
+              >
+                Fechar
+              </button>
             </div>
+
             <div className="mt-5 grid gap-4 md:grid-cols-2">
               <label>
-                <span className="mb-1 block text-xs font-bold text-slate-500">Data da visita</span>
-                <input type="date" className="w-full rounded-xl border p-3" value={visitaForm.data} onChange={(e) => setVisitaForm({ ...visitaForm, data: e.target.value })} />
+                <span className="mb-1 block text-xs font-bold text-slate-500">
+                  Data da visita
+                </span>
+                <input
+                  type="date"
+                  className="w-full rounded-xl border p-3"
+                  value={vf.data}
+                  onChange={(e) => setVf({ ...vf, data: e.target.value })}
+                />
               </label>
+
               <label>
-                <span className="mb-1 block text-xs font-bold text-slate-500">Responsável pela visita</span>
-                <input className="w-full rounded-xl border p-3" value={visitaForm.responsavel} onChange={(e) => setVisitaForm({ ...visitaForm, responsavel: e.target.value })} />
+                <span className="mb-1 block text-xs font-bold text-slate-500">
+                  Responsável pela visita
+                </span>
+                <input
+                  className="w-full rounded-xl border p-3"
+                  value={vf.responsavel}
+                  onChange={(e) =>
+                    setVf({ ...vf, responsavel: e.target.value })
+                  }
+                />
               </label>
+
               <label className="md:col-span-2">
-                <span className="mb-1 block text-xs font-bold text-slate-500">Observações iniciais</span>
-                <textarea rows={4} className="w-full rounded-xl border p-3" value={visitaForm.observacoes} onChange={(e) => setVisitaForm({ ...visitaForm, observacoes: e.target.value })} />
+                <span className="mb-1 block text-xs font-bold text-slate-500">
+                  Observações iniciais
+                </span>
+                <textarea
+                  rows={4}
+                  className="w-full rounded-xl border p-3"
+                  value={vf.observacoes}
+                  onChange={(e) =>
+                    setVf({ ...vf, observacoes: e.target.value })
+                  }
+                />
               </label>
             </div>
-            <button onClick={salvarVisita} disabled={criandoVisita} className="mt-5 w-full rounded-xl bg-[#2F5597] p-3 font-extrabold text-white disabled:opacity-50">{criandoVisita ? "Criando..." : "Criar visita"}</button>
+
+            <button
+              onClick={salvarVisita}
+              disabled={criandoVisita}
+              className="mt-5 w-full rounded-xl bg-[#2F5597] p-3 font-extrabold text-white disabled:opacity-50"
+            >
+              {criandoVisita ? "Criando..." : "Criar visita"}
+            </button>
           </section>
         ) : view === "ambientes" && visitaAtual ? (
           <section className="space-y-4">
             <div className="rounded-2xl bg-white p-5 shadow-sm">
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div>
-                  <div className="text-xs font-extrabold uppercase tracking-wide text-[#2F5597]">Etapa 1 • Ambientes</div>
-                  <h1 className="mt-1 text-2xl font-extrabold">Defina os setores desta visita</h1>
-                  <p className="mt-1 text-sm text-slate-500">{empresaDaVisita?.nomeFantasia} • {formatarData(visitaAtual.data)}</p>
+                  <div className="text-xs font-extrabold uppercase text-[#2F5597]">
+                    Ambientes
+                  </div>
+                  <h1 className="mt-1 text-2xl font-extrabold">
+                    Defina os setores desta visita
+                  </h1>
+                  <p className="text-sm text-slate-500">
+                    {empresaVisita?.nomeFantasia} • {fdata(visitaAtual.data)}
+                  </p>
                 </div>
-                <button onClick={() => setView("visita")} className="rounded-xl bg-slate-100 px-4 py-2 font-bold">Voltar à central</button>
+                <button
+                  onClick={() => setView("visita")}
+                  className="rounded-xl bg-slate-100 px-4 py-2 font-bold"
+                >
+                  Voltar à Central
+                </button>
               </div>
+
               <div className="mt-5 rounded-xl bg-blue-50 p-4 text-sm text-blue-900">
-                Selecione apenas os ambientes que realmente serão avaliados. O checklist da próxima etapa será montado a partir desta seleção.
+                Selecione apenas os ambientes que realmente serão avaliados. O
+                checklist será montado a partir desta seleção.
               </div>
             </div>
 
-            <div className="grid gap-4 lg:grid-cols-[1.4fr_0.8fr]">
+            <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
               <div className="rounded-2xl bg-white p-5 shadow-sm">
-                <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center justify-between gap-3">
                   <div>
-                    <h2 className="text-xl font-extrabold">Ambientes sugeridos</h2>
-                    <p className="text-sm text-slate-500">Clique para incluir ou remover da visita.</p>
+                    <h2 className="text-xl font-extrabold">
+                      Ambientes sugeridos
+                    </h2>
+                    <p className="text-sm text-slate-500">
+                      Clique para incluir ou remover da visita.
+                    </p>
                   </div>
-                  <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold text-slate-600">
-                    {ambientesRascunho.length} selecionado{ambientesRascunho.length === 1 ? "" : "s"}
+                  <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold">
+                    {ambientesSelecionados.length} selecionados
                   </div>
                 </div>
 
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  {AMBIENTES_PADRAO.map((nome) => {
-                    const selecionado = ambienteSelecionado(nome);
+                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                  {ambientesPadrao.map((nome) => {
+                    const ativo = ambientesSelecionados.includes(nome);
                     return (
                       <button
                         key={nome}
-                        onClick={() => alternarAmbientePadrao(nome)}
-                        className={`rounded-xl border-2 p-4 text-left transition ${
-                          selecionado
-                            ? "border-[#2F5597] bg-blue-50"
-                            : "border-slate-200 bg-white hover:border-slate-300"
+                        onClick={() => toggleAmbiente(nome)}
+                        className={`flex items-center justify-between rounded-xl border p-4 text-left font-extrabold transition ${
+                          ativo
+                            ? "border-[#2F5597] bg-blue-50 text-[#17365D]"
+                            : "border-slate-200 bg-white"
                         }`}
                       >
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="font-extrabold">{nome}</div>
-                          <div className={`flex h-6 w-6 items-center justify-center rounded-full text-sm font-extrabold ${selecionado ? "bg-[#2F5597] text-white" : "bg-slate-100 text-slate-400"}`}>
-                            {selecionado ? "✓" : "+"}
-                          </div>
-                        </div>
+                        <span>{nome}</span>
+                        <span>{ativo ? "✓" : "+"}</span>
                       </button>
                     );
                   })}
                 </div>
 
                 <div className="mt-6 border-t pt-5">
-                  <h3 className="font-extrabold">Adicionar ambiente personalizado</h3>
-                  <p className="mt-1 text-sm text-slate-500">Use quando o estabelecimento tiver um setor específico que não aparece acima.</p>
-                  <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                  <h3 className="font-extrabold">
+                    Adicionar ambiente personalizado
+                  </h3>
+                  <div className="mt-2 flex gap-2">
                     <input
-                      value={novoAmbiente}
-                      onChange={(e) => setNovoAmbiente(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          adicionarAmbientePersonalizado();
-                        }
-                      }}
-                      placeholder="Ex.: Açougue, Padaria, Sushi bar, Lactário..."
-                      className="flex-1 rounded-xl border p-3"
+                      className="w-full rounded-xl border p-3"
+                      placeholder="Ex.: Padaria, Açougue, Sushi bar..."
+                      value={ambientePersonalizado}
+                      onChange={(e) =>
+                        setAmbientePersonalizado(e.target.value)
+                      }
                     />
-                    <button onClick={adicionarAmbientePersonalizado} className="rounded-xl bg-slate-900 px-5 py-3 font-extrabold text-white">Adicionar</button>
+                    <button
+                      onClick={adicionarPersonalizado}
+                      className="rounded-xl bg-[#17365D] px-4 font-bold text-white"
+                    >
+                      Adicionar
+                    </button>
                   </div>
                 </div>
               </div>
 
-              <aside className="rounded-2xl bg-white p-5 shadow-sm">
-                <div className="flex items-center justify-between gap-3">
+              <div className="rounded-2xl bg-white p-5 shadow-sm">
+                <div className="flex items-center justify-between">
                   <h2 className="text-xl font-extrabold">Roteiro da visita</h2>
-                  <span className="text-xs font-bold text-slate-400">ordem atual</span>
+                  <span className="text-xs font-bold text-slate-400">
+                    ordem atual
+                  </span>
                 </div>
 
-                {ambientesRascunho.length === 0 ? (
-                  <div className="mt-4 rounded-xl border border-dashed p-5 text-center text-sm text-slate-500">Nenhum ambiente selecionado ainda.</div>
-                ) : (
-                  <div className="mt-4 space-y-2">
-                    {ambientesRascunho.map((ambiente, index) => (
-                      <div key={ambiente.id} className="flex items-center gap-3 rounded-xl border p-3">
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#17365D] text-xs font-extrabold text-white">{index + 1}</div>
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate font-extrabold">{ambiente.nome}</div>
-                          <div className="text-[11px] font-bold uppercase tracking-wide text-slate-400">{ambiente.origem}</div>
+                <div className="mt-4 space-y-2">
+                  {ambientesSelecionados.length === 0 ? (
+                    <div className="rounded-xl border border-dashed p-5 text-center text-sm text-slate-500">
+                      Nenhum ambiente selecionado ainda.
+                    </div>
+                  ) : (
+                    ambientesSelecionados.map((nome, idx) => (
+                      <div
+                        key={nome}
+                        className="flex items-center justify-between rounded-xl bg-slate-50 p-3"
+                      >
+                        <div>
+                          <div className="text-xs font-extrabold text-slate-400">
+                            {String(idx + 1).padStart(2, "0")}
+                          </div>
+                          <div className="font-extrabold">{nome}</div>
                         </div>
-                        <button onClick={() => removerAmbiente(ambiente.id)} className="rounded-lg bg-red-50 px-2 py-1 text-xs font-extrabold text-red-600">Remover</button>
+                        <button
+                          onClick={() => toggleAmbiente(nome)}
+                          className="rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700"
+                        >
+                          Remover
+                        </button>
                       </div>
-                    ))}
-                  </div>
-                )}
-
-                {ambientesSalvosAgora && (
-                  <div className="mt-4 rounded-xl bg-emerald-50 p-3 text-sm font-bold text-emerald-700">Ambientes salvos nesta visita.</div>
-                )}
+                    ))
+                  )}
+                </div>
 
                 <button
                   onClick={salvarAmbientes}
-                  disabled={ambientesRascunho.length === 0}
-                  className="mt-5 w-full rounded-xl bg-[#2F5597] p-3 font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-40"
+                  disabled={ambientesSelecionados.length === 0}
+                  className="mt-5 w-full rounded-xl bg-[#2F5597] p-3 font-extrabold text-white disabled:opacity-40"
                 >
                   Salvar ambientes
                 </button>
 
                 <button
                   onClick={() => setView("visita")}
-                  className="mt-2 w-full rounded-xl bg-slate-100 p-3 font-bold text-slate-700"
+                  className="mt-2 w-full rounded-xl bg-slate-100 p-3 font-bold"
                 >
                   Voltar à Central da Visita
                 </button>
+              </div>
+            </div>
+          </section>
+        ) : view === "checklist" && visitaAtual ? (
+          <section className="space-y-4">
+            <div className="rounded-2xl bg-white p-5 shadow-sm">
+              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <div className="text-xs font-extrabold uppercase text-[#2F5597]">
+                    Checklist técnico
+                  </div>
+                  <h1 className="mt-1 text-2xl font-extrabold">
+                    Avaliação por ambiente
+                  </h1>
+                  <p className="text-sm text-slate-500">
+                    {empresaVisita?.nomeFantasia} • {fdata(visitaAtual.data)}
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setView("visita")}
+                  className="rounded-xl bg-slate-100 px-4 py-2 font-bold"
+                >
+                  Voltar à Central
+                </button>
+              </div>
+
+              <div className="mt-5 grid gap-3 md:grid-cols-3">
+                <MetricCard label="Itens" value={totalChecklist} />
+                <MetricCard label="Respondidos" value={respondidos} />
+                <MetricCard label="Progresso checklist" value={`${percentualChecklist}%`} />
+              </div>
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
+              <aside className="rounded-2xl bg-white p-4 shadow-sm">
+                <div className="text-sm font-extrabold">Ambientes da visita</div>
+                <div className="mt-3 space-y-2">
+                  {(visitaAtual.ambientes || []).map((ambiente) => {
+                    const itensAmb = checklistAtual.filter((i) => i.ambiente === ambiente);
+                    const respAmb = itensAmb.filter((i) => i.status !== "Pendente").length;
+                    const ativo = ambienteChecklistAtivo === ambiente;
+
+                    return (
+                      <button
+                        key={ambiente}
+                        onClick={() => setAmbienteChecklistAtivo(ambiente)}
+                        className={`w-full rounded-xl p-3 text-left ${
+                          ativo ? "bg-[#17365D] text-white" : "bg-slate-50"
+                        }`}
+                      >
+                        <div className="font-extrabold">{ambiente}</div>
+                        <div
+                          className={`mt-1 text-xs ${
+                            ativo ? "text-blue-100" : "text-slate-500"
+                          }`}
+                        >
+                          {respAmb}/{itensAmb.length} respondidos
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </aside>
+
+              <div className="space-y-3">
+                <div className="rounded-2xl bg-white p-5 shadow-sm">
+                  <div className="text-xs font-extrabold uppercase text-slate-400">
+                    Ambiente atual
+                  </div>
+                  <h2 className="mt-1 text-2xl font-extrabold">
+                    {ambienteChecklistAtivo}
+                  </h2>
+                  <p className="text-sm text-slate-500">
+                    Marque Conforme, Não Conforme ou Não se aplica e registre observações quando necessário.
+                  </p>
+                </div>
+
+                {checklistAtual
+                  .filter((i) => i.ambiente === ambienteChecklistAtivo)
+                  .map((item, idx) => (
+                    <article
+                      key={item.id}
+                      className={`rounded-2xl bg-white p-5 shadow-sm ${
+                        item.status === "Não Conforme"
+                          ? "border-2 border-red-200"
+                          : item.status === "Conforme"
+                          ? "border border-emerald-200"
+                          : "border border-transparent"
+                      }`}
+                    >
+                      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                        <div>
+                          <div className="text-xs font-extrabold uppercase tracking-wide text-slate-400">
+                            Item {idx + 1} • {item.categoria}
+                          </div>
+                          <h3 className="mt-1 text-lg font-extrabold">
+                            {item.titulo}
+                          </h3>
+                        </div>
+
+                        <div
+                          className={`rounded-full px-3 py-1 text-xs font-extrabold ${
+                            item.status === "Conforme"
+                              ? "bg-emerald-50 text-emerald-700"
+                              : item.status === "Não Conforme"
+                              ? "bg-red-50 text-red-700"
+                              : item.status === "Não se aplica"
+                              ? "bg-slate-100 text-slate-600"
+                              : "bg-amber-50 text-amber-700"
+                          }`}
+                        >
+                          {item.status}
+                        </div>
+                      </div>
+
+                      <div className="mt-4 grid grid-cols-3 gap-2">
+                        {(["Conforme", "Não Conforme", "Não se aplica"] as ChecklistStatus[]).map(
+                          (status) => (
+                            <button
+                              key={status}
+                              onClick={() =>
+                                atualizarChecklistItem(item.id, { status })
+                              }
+                              className={`rounded-xl px-3 py-3 text-sm font-extrabold ${
+                                item.status === status
+                                  ? status === "Conforme"
+                                    ? "bg-emerald-600 text-white"
+                                    : status === "Não Conforme"
+                                    ? "bg-red-600 text-white"
+                                    : "bg-slate-700 text-white"
+                                  : "bg-slate-100 text-slate-700"
+                              }`}
+                            >
+                              {status}
+                            </button>
+                          )
+                        )}
+                      </div>
+
+                      <label className="mt-4 block">
+                        <span className="mb-1 block text-xs font-bold text-slate-500">
+                          Observação
+                        </span>
+                        <textarea
+                          rows={3}
+                          className="w-full rounded-xl border p-3"
+                          placeholder={
+                            item.status === "Não Conforme"
+                              ? "Descreva a não conformidade observada..."
+                              : "Observação opcional"
+                          }
+                          value={item.observacao}
+                          onChange={(e) =>
+                            atualizarChecklistItem(item.id, {
+                              observacao: e.target.value,
+                            })
+                          }
+                        />
+                      </label>
+
+                      {item.status === "Não Conforme" && (
+                        <div className="mt-3 rounded-xl bg-red-50 p-3 text-sm text-red-800">
+                          Este item ficará preparado para alimentar o módulo de
+                          Não Conformidades na próxima etapa.
+                        </div>
+                      )}
+                    </article>
+                  ))}
+
+                <div className="rounded-2xl bg-blue-50 p-4 text-sm text-blue-900">
+                  As respostas são salvas automaticamente no navegador. Na próxima
+                  versão, os itens marcados como <b>Não Conforme</b> poderão gerar
+                  NC com foto, risco, legislação, prazo e ação corretiva.
+                </div>
+              </div>
             </div>
           </section>
         ) : view === "visita" && visitaAtual ? (
@@ -548,14 +983,26 @@ export default function Home() {
             <div className="rounded-2xl bg-white p-5 shadow-sm">
               <div className="flex flex-col gap-4 md:flex-row md:justify-between">
                 <div>
-                  <div className="text-xs font-extrabold uppercase text-[#2F5597]">Central da Visita</div>
-                  <h1 className="mt-1 text-2xl font-extrabold">{empresaDaVisita?.nomeFantasia}</h1>
+                  <div className="text-xs font-extrabold uppercase text-[#2F5597]">
+                    Central da Visita
+                  </div>
+                  <h1 className="mt-1 text-2xl font-extrabold">
+                    {empresaVisita?.nomeFantasia}
+                  </h1>
                   <div className="mt-1 text-sm text-slate-500">
-                    {formatarData(visitaAtual.data)}
-                    {visitaAtual.responsavel ? ` • ${visitaAtual.responsavel}` : " • Responsável não informado"}
+                    {fdata(visitaAtual.data)}
+                    {visitaAtual.responsavel
+                      ? ` • ${visitaAtual.responsavel}`
+                      : " • Responsável não informado"}
                   </div>
                 </div>
-                <button onClick={() => setView("visitas")} className="rounded-xl bg-slate-100 px-4 py-2 font-bold">Voltar</button>
+
+                <button
+                  onClick={() => setView("visitas")}
+                  className="rounded-xl bg-slate-100 px-4 py-2 font-bold"
+                >
+                  Voltar
+                </button>
               </div>
 
               <div className="mt-5">
@@ -564,56 +1011,142 @@ export default function Home() {
                   <span>{visitaAtual.progresso || 0}%</span>
                 </div>
                 <div className="h-3 rounded-full bg-slate-100">
-                  <div className="h-full rounded-full bg-[#2F5597]" style={{ width: `${visitaAtual.progresso || 0}%` }} />
+                  <div
+                    className="h-full rounded-full bg-[#2F5597]"
+                    style={{ width: `${visitaAtual.progresso || 0}%` }}
+                  />
                 </div>
               </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              <button onClick={abrirAmbientes} className="rounded-2xl border-2 border-[#2F5597] bg-white p-5 text-left shadow-sm transition hover:bg-blue-50">
-                <div className="text-xs font-extrabold uppercase text-[#2F5597]">Etapa 1</div>
+              <button
+                onClick={abrirAmbientes}
+                className="rounded-2xl border-2 border-[#2F5597] bg-white p-5 text-left shadow-sm"
+              >
+                <div className="text-xs font-extrabold uppercase text-[#2F5597]">
+                  Etapa 1
+                </div>
                 <div className="mt-2 text-xl font-extrabold">Ambientes</div>
-                <p className="mt-1 text-sm text-slate-500">Selecione os setores que serão avaliados nesta visita.</p>
-                <div className="mt-4 flex items-center justify-between gap-3">
-                  <span className="font-extrabold text-[#2F5597]">Abrir ambientes →</span>
-                  {visitaAtual.ambientes.length > 0 && <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-extrabold text-emerald-700">{visitaAtual.ambientes.length} selecionados</span>}
+                <p className="mt-1 text-sm text-slate-500">
+                  Selecione os setores que serão avaliados nesta visita.
+                </p>
+                <div className="mt-4 flex items-center justify-between">
+                  <span className="font-extrabold text-[#2F5597]">
+                    Abrir ambientes →
+                  </span>
+                  {(visitaAtual.ambientes || []).length > 0 && (
+                    <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-extrabold text-emerald-700">
+                      {(visitaAtual.ambientes || []).length} selecionados
+                    </span>
+                  )}
                 </div>
               </button>
 
-              <div className={`rounded-2xl bg-white p-5 shadow-sm ${visitaAtual.ambientes.length > 0 ? "border-2 border-emerald-200" : "opacity-65"}`}>
-                <div className="text-xs font-extrabold uppercase text-slate-400">Etapa 2</div>
-                <div className="mt-2 text-xl font-extrabold">Checklist</div>
-                <p className="mt-1 text-sm text-slate-500">Avaliação guiada por ambiente e critérios técnicos.</p>
-                <div className="mt-4 text-xs font-bold text-slate-400">
-                  {visitaAtual.ambientes.length > 0 ? "Ambientes definidos • próxima versão" : "Defina os ambientes primeiro"}
+              <button
+                onClick={abrirChecklist}
+                disabled={!(visitaAtual.ambientes || []).length}
+                className={`rounded-2xl bg-white p-5 text-left shadow-sm ${
+                  (visitaAtual.ambientes || []).length
+                    ? "border-2 border-emerald-200"
+                    : "opacity-60"
+                }`}
+              >
+                <div className="text-xs font-extrabold uppercase text-slate-400">
+                  Etapa 2
                 </div>
+                <div className="mt-2 text-xl font-extrabold">Checklist</div>
+                <p className="mt-1 text-sm text-slate-500">
+                  Avaliação guiada por ambiente e critérios técnicos.
+                </p>
+                <div className="mt-4">
+                  {(visitaAtual.ambientes || []).length ? (
+                    <div className="flex items-center justify-between">
+                      <span className="font-extrabold text-emerald-700">
+                        Abrir checklist →
+                      </span>
+                      {totalChecklist > 0 && (
+                        <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-extrabold text-blue-700">
+                          {percentualChecklist}%
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-xs font-bold text-slate-400">
+                      Defina os ambientes primeiro
+                    </span>
+                  )}
+                </div>
+              </button>
+
+              <div className="rounded-2xl bg-white p-5 shadow-sm opacity-70">
+                <div className="text-xs font-extrabold uppercase text-slate-400">
+                  Evidências
+                </div>
+                <div className="mt-2 text-xl font-extrabold">Fotos e áudio</div>
+                <p className="mt-1 text-sm text-slate-500">
+                  Registros de campo vinculados à visita.
+                </p>
               </div>
 
-              {[
-                ["Evidências", "Fotos e áudio", "Registros de campo vinculados à visita."],
-                ["Resultado", "Não conformidades", "Pendências, risco, legislação e ação corretiva."],
-                ["Gestão", "Plano de ação", "Responsáveis, prazos e acompanhamento."],
-                ["Encerramento", "Relatório", "Revisão e geração do documento final."],
-              ].map(([etapa, titulo, descricao]) => (
-                <div key={titulo} className="rounded-2xl bg-white p-5 shadow-sm opacity-65">
-                  <div className="text-xs font-extrabold uppercase text-slate-400">{etapa}</div>
-                  <div className="mt-2 text-xl font-extrabold">{titulo}</div>
-                  <p className="mt-1 text-sm text-slate-500">{descricao}</p>
+              <div className="rounded-2xl bg-white p-5 shadow-sm opacity-70">
+                <div className="text-xs font-extrabold uppercase text-slate-400">
+                  Resultado
                 </div>
-              ))}
+                <div className="mt-2 text-xl font-extrabold">
+                  Não conformidades
+                </div>
+                <p className="mt-1 text-sm text-slate-500">
+                  Pendências, risco, legislação e ação corretiva.
+                </p>
+              </div>
+
+              <div className="rounded-2xl bg-white p-5 shadow-sm opacity-70">
+                <div className="text-xs font-extrabold uppercase text-slate-400">
+                  Gestão
+                </div>
+                <div className="mt-2 text-xl font-extrabold">Plano de ação</div>
+                <p className="mt-1 text-sm text-slate-500">
+                  Responsáveis, prazos e acompanhamento.
+                </p>
+              </div>
+
+              <div className="rounded-2xl bg-white p-5 shadow-sm opacity-70">
+                <div className="text-xs font-extrabold uppercase text-slate-400">
+                  Encerramento
+                </div>
+                <div className="mt-2 text-xl font-extrabold">Relatório</div>
+                <p className="mt-1 text-sm text-slate-500">
+                  Revisão e geração do documento final.
+                </p>
+              </div>
             </div>
           </section>
         ) : view === "inicio" ? (
           <div className="space-y-4">
             <section className="rounded-2xl bg-gradient-to-r from-[#17365D] to-[#2F5597] p-5 text-white shadow-sm">
-              <div className="text-xs font-extrabold uppercase text-blue-100">Painel da consultoria</div>
-              <h1 className="mt-2 text-3xl font-extrabold">Operação em campo</h1>
+              <div className="text-xs font-extrabold uppercase text-blue-100">
+                Painel da consultoria
+              </div>
+              <h1 className="mt-2 text-3xl font-extrabold">
+                Operação em campo
+              </h1>
             </section>
+
             <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
-              <MetricCard label="Empresas" value={Object.keys(db.empresas).length} />
+              <MetricCard
+                label="Empresas"
+                value={Object.keys(db.empresas).length}
+              />
               <MetricCard label="Visitas" value={db.visitas.length} />
-              <MetricCard label="Em andamento" value={db.visitas.filter((v) => v.status === "Em andamento").length} />
-              <MetricCard label="Concluídas" value={db.visitas.filter((v) => v.status === "Concluída").length} />
+              <MetricCard
+                label="Em andamento"
+                value={db.visitas.filter((v) => v.status === "Em andamento").length}
+              />
+              <MetricCard
+                label="Concluídas"
+                value={db.visitas.filter((v) => v.status === "Concluída").length}
+              />
             </section>
           </div>
         ) : view === "empresas" ? (
@@ -621,21 +1154,50 @@ export default function Home() {
             <div className="flex justify-between gap-4">
               <div>
                 <h1 className="text-2xl font-extrabold">Empresas</h1>
-                <p className="text-sm text-slate-500">Cadastre e selecione seus clientes.</p>
+                <p className="text-sm text-slate-500">
+                  Cadastre e selecione seus clientes.
+                </p>
               </div>
-              <button onClick={() => setShowEmpresaForm(true)} className="rounded-xl bg-[#2F5597] px-4 py-3 font-extrabold text-white">+ Nova empresa</button>
+
+              <button
+                onClick={() => setShowEmpresaForm(true)}
+                className="rounded-xl bg-[#2F5597] px-4 py-3 font-extrabold text-white"
+              >
+                + Nova empresa
+              </button>
             </div>
+
             <div className="mt-4 grid gap-3 md:grid-cols-2">
-              {Object.values(db.empresas).map((empresa) => (
-                <div key={empresa.id} className={`rounded-xl border p-4 ${db.empresaAtualId === empresa.id ? "border-[#2F5597] bg-blue-50" : ""}`}>
-                  <div className="font-extrabold">{empresa.nomeFantasia}</div>
-                  <div className="text-sm text-slate-500">{empresa.razaoSocial}</div>
+              {Object.values(db.empresas).map((e) => (
+                <div
+                  key={e.id}
+                  className={`rounded-xl border p-4 ${
+                    db.empresaAtualId === e.id
+                      ? "border-[#2F5597] bg-blue-50"
+                      : ""
+                  }`}
+                >
+                  <div className="font-extrabold">{e.nomeFantasia}</div>
+                  <div className="text-sm text-slate-500">{e.razaoSocial}</div>
                   <div className="mt-4 flex gap-2">
-                    <button onClick={() => setDb((current) => ({ ...current, empresaAtualId: empresa.id }))} className="flex-1 rounded-xl bg-slate-100 px-4 py-2 font-bold">
-                      {db.empresaAtualId === empresa.id ? "Empresa ativa" : "Selecionar"}
+                    <button
+                      onClick={() =>
+                        setDb((o) => ({ ...o, empresaAtualId: e.id }))
+                      }
+                      className="flex-1 rounded-xl bg-slate-100 px-4 py-2 font-bold"
+                    >
+                      {db.empresaAtualId === e.id
+                        ? "Empresa ativa"
+                        : "Selecionar"}
                     </button>
-                    {db.empresaAtualId === empresa.id && (
-                      <button onClick={abrirNovaVisita} className="rounded-xl bg-[#2F5597] px-4 py-2 font-bold text-white">Nova visita</button>
+
+                    {db.empresaAtualId === e.id && (
+                      <button
+                        onClick={novaVisita}
+                        className="rounded-xl bg-[#2F5597] px-4 py-2 font-bold text-white"
+                      >
+                        Nova visita
+                      </button>
                     )}
                   </div>
                 </div>
@@ -647,39 +1209,81 @@ export default function Home() {
             <div className="rounded-2xl bg-white p-5 shadow-sm">
               <div className="flex justify-between gap-4">
                 <div>
-                  <div className="text-xs font-extrabold uppercase text-[#2F5597]">Módulo Visitas</div>
-                  <h1 className="mt-1 text-2xl font-extrabold">Visitas técnicas</h1>
+                  <div className="text-xs font-extrabold uppercase text-[#2F5597]">
+                    Módulo Visitas
+                  </div>
+                  <h1 className="mt-1 text-2xl font-extrabold">
+                    Visitas técnicas
+                  </h1>
                 </div>
-                <button onClick={abrirNovaVisita} disabled={!empresaAtual} className="rounded-xl bg-[#2F5597] px-4 py-3 font-extrabold text-white disabled:opacity-40">+ Nova visita</button>
+
+                <button
+                  onClick={novaVisita}
+                  disabled={!atual}
+                  className="rounded-xl bg-[#2F5597] px-4 py-3 font-extrabold text-white disabled:opacity-40"
+                >
+                  + Nova visita
+                </button>
               </div>
             </div>
 
             <div className="grid gap-4 lg:grid-cols-2">
-              {visitasOrdenadas.map((visita) => {
-                const empresa = db.empresas[visita.empresaId];
+              {visitas.map((v) => {
+                const e = db.empresas[v.empresaId];
                 return (
-                  <article key={visita.id} className="rounded-2xl bg-white p-5 shadow-sm">
+                  <article
+                    key={v.id}
+                    className="rounded-2xl bg-white p-5 shadow-sm"
+                  >
                     <div className="flex justify-between gap-3">
                       <div>
-                        <div className="text-xs font-extrabold uppercase text-slate-400">{formatarData(visita.data)}</div>
-                        <h2 className="mt-1 text-xl font-extrabold">{empresa?.nomeFantasia}</h2>
-                        <p className="text-sm text-slate-500">{visita.responsavel || "Responsável não informado"}</p>
-                        {visita.ambientes.length > 0 && <p className="mt-2 text-xs font-bold text-[#2F5597]">{visita.ambientes.length} ambientes definidos</p>}
+                        <div className="text-xs font-extrabold uppercase text-slate-400">
+                          {fdata(v.data)}
+                        </div>
+                        <h2 className="mt-1 text-xl font-extrabold">
+                          {e?.nomeFantasia}
+                        </h2>
+                        <p className="text-sm text-slate-500">
+                          {v.responsavel || "Responsável não informado"}
+                        </p>
                       </div>
-                      <span className={`h-fit rounded-full px-3 py-1 text-xs font-extrabold ${visita.status === "Concluída" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
-                        {visita.status}
+
+                      <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-extrabold text-amber-700">
+                        {v.status}
                       </span>
                     </div>
-                    <div className="mt-5 flex flex-wrap gap-2">
-                      {visita.status === "Em andamento" ? (
+
+                    <div className="mt-5 flex gap-2">
+                      {v.status === "Em andamento" ? (
                         <>
-                          <button onClick={() => continuarVisita(visita.id)} className="flex-1 rounded-xl bg-[#17365D] px-4 py-2 font-bold text-white">Continuar visita</button>
-                          <button onClick={() => concluirVisita(visita.id)} className="rounded-xl bg-emerald-50 px-4 py-2 font-bold text-emerald-700">Concluir</button>
+                          <button
+                            onClick={() => continuar(v.id)}
+                            className="flex-1 rounded-xl bg-[#17365D] px-4 py-2 font-bold text-white"
+                          >
+                            Continuar visita
+                          </button>
+                          <button
+                            onClick={() => concluir(v.id)}
+                            className="rounded-xl bg-emerald-50 px-4 py-2 font-bold text-emerald-700"
+                          >
+                            Concluir
+                          </button>
                         </>
                       ) : (
-                        <button onClick={() => reabrirVisita(visita.id)} className="flex-1 rounded-xl bg-slate-100 px-4 py-2 font-bold">Reabrir visita</button>
+                        <button
+                          onClick={() => reabrir(v.id)}
+                          className="flex-1 rounded-xl bg-slate-100 px-4 py-2 font-bold"
+                        >
+                          Reabrir visita
+                        </button>
                       )}
-                      <button onClick={() => excluirVisita(visita.id)} className="rounded-xl bg-red-50 px-4 py-2 font-bold text-red-700">Excluir</button>
+
+                      <button
+                        onClick={() => excluir(v.id)}
+                        className="rounded-xl bg-red-50 px-4 py-2 font-bold text-red-700"
+                      >
+                        Excluir
+                      </button>
                     </div>
                   </article>
                 );
