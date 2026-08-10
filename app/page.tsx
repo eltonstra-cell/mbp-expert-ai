@@ -487,7 +487,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.3
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.3.1
             </div>
           </div>
           {atual && (
@@ -1063,7 +1063,7 @@ export default function Home() {
                   {(visitaAtual.ambientes || []).length ? (
                     <div className="flex items-center justify-between">
                       <span className="font-extrabold text-emerald-700">
-                        Abrir checklist →
+                        Abrir checklist técnico →
                       </span>
                       {totalChecklist > 0 && (
                         <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-extrabold text-blue-700">
