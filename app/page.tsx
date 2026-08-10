@@ -324,7 +324,40 @@ export default function Home() {
       checklistVersao: typeof v.checklistVersao === "number" ? v.checklistVersao : 1,
     })) as Visita[];
 
-    setDb({ ...s, visitas: vs });
+    // Sincroniza NCs já existentes no checklist com o módulo de Não Conformidades.
+    // Isso também migra visitas criadas antes da v2.5.
+    let ncsSincronizadas = Array.isArray(s.ncs) ? [...s.ncs] : [];
+    for (const visita of vs) {
+      for (const item of visita.checklist || []) {
+        const idNc = `${visita.id}:${item.id}`;
+        if (item.status === "Não Conforme") {
+          const existente = ncsSincronizadas.find((nc: any) => nc.id === idNc);
+          const nc = {
+            id: idNc,
+            empresaId: visita.empresaId,
+            visitaId: visita.id,
+            ambiente: item.ambiente,
+            checklistItemId: item.id,
+            titulo: item.titulo,
+            categoria: item.categoria,
+            criticidade: item.criticidade || "Rotina" as const,
+            referencia: item.referencia || "",
+            orientacao: item.orientacao || "",
+            observacao: item.observacao || "",
+            prioridade: item.criticidade || "Rotina",
+            status: existente?.status || "Aberta" as const,
+            criadoEm: existente?.criadoEm || new Date().toISOString(),
+          };
+          ncsSincronizadas = existente
+            ? ncsSincronizadas.map((x: any) => x.id === idNc ? { ...x, ...nc } : x)
+            : [nc, ...ncsSincronizadas];
+        } else {
+          ncsSincronizadas = ncsSincronizadas.filter((nc: any) => nc.id !== idNc);
+        }
+      }
+    }
+
+    setDb({ ...s, visitas: vs, ncs: ncsSincronizadas });
     setReady(true);
   }, []);
 
@@ -532,7 +565,14 @@ export default function Home() {
         if (v.id !== visitaAtual.id) return v;
 
         const novoChecklist = (v.checklist || []).map((item) => {
-          const atualizado = item.id === itemId ? { ...item, ...patch } : item;
+          const patchNormalizado =
+            item.id === itemId &&
+            patch.status !== undefined &&
+            patch.status !== "Não Conforme" &&
+            patch.status !== "Pendente"
+              ? { ...patch, observacao: "" }
+              : patch;
+          const atualizado = item.id === itemId ? { ...item, ...patchNormalizado } : item;
           if (item.id === itemId) itemAtualizado = atualizado;
           return atualizado;
         });
@@ -614,7 +654,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.5
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.5.1
             </div>
           </div>
           {atual && (
