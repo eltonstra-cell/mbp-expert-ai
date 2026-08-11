@@ -1,6 +1,6 @@
 {
   "name": "mbp-expert-ai",
-  "version": "2.13.0",
+  "version": "2.14.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -12,7 +12,9 @@
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "@neondatabase/serverless": "^1.0.1",
-    "@vercel/blob": "^2.6.1"
+    "@vercel/blob": "^2.6.1",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^3.0.2"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.0",

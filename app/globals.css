@@ -200,3 +200,62 @@
     text-decoration: none !important;
   }
 }
+
+
+/* ===== Exportação direta para PDF ===== */
+#relatorio-visita.pdf-export {
+  width: 980px !important;
+  max-width: 980px !important;
+  margin: 0 !important;
+  padding: 18px !important;
+  background: #ffffff !important;
+}
+
+#relatorio-visita.pdf-export .print-only {
+  display: block !important;
+}
+
+#relatorio-visita.pdf-export .print-control,
+#relatorio-visita.pdf-export .no-print {
+  display: none !important;
+}
+
+#relatorio-visita.pdf-export .report-document-header {
+  display: flex !important;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 32px;
+  border-bottom: 2px solid #17365D;
+  padding-bottom: 14px;
+  margin-bottom: 18px;
+}
+
+#relatorio-visita.pdf-export .report-brand {
+  font-size: 24px;
+  font-weight: 800;
+  color: #17365D;
+}
+
+#relatorio-visita.pdf-export .report-subtitle {
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+}
+
+#relatorio-visita.pdf-export .report-date {
+  font-size: 13px;
+  font-weight: 700;
+  color: #334155;
+  white-space: nowrap;
+}
+
+#relatorio-visita.pdf-export .shadow-sm,
+#relatorio-visita.pdf-export .shadow-md {
+  box-shadow: none !important;
+}
+
+#relatorio-visita.pdf-export img {
+  max-height: 430px !important;
+  object-fit: contain !important;
+}

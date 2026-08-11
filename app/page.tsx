@@ -271,6 +271,7 @@ export default function Home() {
   const [ambienteChecklistAtivo, setAmbienteChecklistAtivo] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
+  const [gerandoPdf, setGerandoPdf] = useState(false);
   const [evidenciaDescricao, setEvidenciaDescricao] = useState("");
   const [evidenciaAmbiente, setEvidenciaAmbiente] = useState("");
   const [evidenciaNcId, setEvidenciaNcId] = useState("");
@@ -647,6 +648,147 @@ export default function Home() {
   const percentualConformidade = itensAvaliadosVisita
     ? Math.round((conformesVisita / itensAvaliadosVisita) * 100)
     : 0;
+
+  async function baixarPdfRelatorio() {
+    if (!visitaAtual || !empresaVisita || gerandoPdf) return;
+
+    const elemento = document.getElementById("relatorio-visita");
+    if (!elemento) return;
+
+    setGerandoPdf(true);
+
+    try {
+      // Aguarda imagens ainda carregando para evitar PDF sem evidências.
+      const imagens = Array.from(
+        elemento.querySelectorAll("img")
+      ) as HTMLImageElement[];
+
+      await Promise.all(
+        imagens.map(
+          (img) =>
+            new Promise<void>((resolve) => {
+              if (img.complete) {
+                resolve();
+                return;
+              }
+              img.addEventListener("load", () => resolve(), { once: true });
+              img.addEventListener("error", () => resolve(), { once: true });
+            })
+        )
+      );
+
+      elemento.classList.add("pdf-export");
+
+      // Importação dinâmica evita aumentar o carregamento inicial do sistema.
+      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+        import("html2canvas"),
+        import("jspdf"),
+      ]);
+
+      const canvas = await html2canvas(elemento, {
+        scale: 1.6,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        logging: false,
+        windowWidth: 1100,
+        ignoreElements: (node) =>
+          node instanceof HTMLElement &&
+          node.classList.contains("print-control"),
+      });
+
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+        compress: true,
+      });
+
+      const paginaLargura = 210;
+      const paginaAltura = 297;
+      const margemX = 10;
+      const margemY = 10;
+      const larguraUtil = paginaLargura - margemX * 2;
+      const alturaUtil = paginaAltura - margemY * 2;
+
+      const proporcao = larguraUtil / canvas.width;
+      const alturaPaginaPx = Math.floor(alturaUtil / proporcao);
+
+      let yOrigem = 0;
+      let pagina = 0;
+
+      while (yOrigem < canvas.height) {
+        const alturaRecorte = Math.min(
+          alturaPaginaPx,
+          canvas.height - yOrigem
+        );
+
+        const paginaCanvas = document.createElement("canvas");
+        paginaCanvas.width = canvas.width;
+        paginaCanvas.height = alturaRecorte;
+
+        const ctx = paginaCanvas.getContext("2d");
+        if (!ctx) throw new Error("Falha ao preparar uma página do PDF.");
+
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, paginaCanvas.width, paginaCanvas.height);
+        ctx.drawImage(
+          canvas,
+          0,
+          yOrigem,
+          canvas.width,
+          alturaRecorte,
+          0,
+          0,
+          canvas.width,
+          alturaRecorte
+        );
+
+        const imagem = paginaCanvas.toDataURL("image/jpeg", 0.88);
+        const alturaMm = alturaRecorte * proporcao;
+
+        if (pagina > 0) pdf.addPage();
+
+        pdf.addImage(
+          imagem,
+          "JPEG",
+          margemX,
+          margemY,
+          larguraUtil,
+          alturaMm,
+          undefined,
+          "FAST"
+        );
+
+        yOrigem += alturaRecorte;
+        pagina += 1;
+      }
+
+      const nomeEmpresa = (
+        empresaVisita.nomeFantasia ||
+        empresaVisita.razaoSocial ||
+        "empresa"
+      )
+        .replace(/[^\p{L}\p{N}]+/gu, "-")
+        .replace(/^-+|-+$/g, "")
+        .toLowerCase();
+
+      const dataArquivo = (visitaAtual.data || "")
+        .replace(/\//g, "-")
+        .replace(/\s+/g, "-");
+
+      pdf.save(
+        `relatorio-${nomeEmpresa || "visita"}-${dataArquivo || "inspecao"}.pdf`
+      );
+    } catch (error) {
+      console.error("Falha ao gerar PDF:", error);
+      window.alert(
+        "Não foi possível gerar o PDF automaticamente. Use a opção Imprimir como alternativa."
+      );
+    } finally {
+      elemento.classList.remove("pdf-export");
+      setGerandoPdf(false);
+    }
+  }
 
   async function buscar() {
     const c = form.cnpj.replace(/\D/g, "");
@@ -1202,7 +1344,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.13
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.14
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
@@ -2414,16 +2556,29 @@ export default function Home() {
                 </button>
               </div>
 
-              <div className="print-control mt-5">
+              <div
+                className="print-control mt-5 grid gap-2 md:grid-cols-[1fr_auto]"
+                data-html2canvas-ignore="true"
+              >
+                <button
+                  type="button"
+                  onClick={baixarPdfRelatorio}
+                  disabled={gerandoPdf}
+                  className="w-full rounded-xl bg-[#2F5597] px-5 py-4 text-base font-extrabold text-white shadow-md transition hover:bg-[#24477f] disabled:cursor-wait disabled:opacity-70"
+                >
+                  {gerandoPdf ? "Gerando PDF..." : "Baixar relatório em PDF"}
+                </button>
+
                 <button
                   type="button"
                   onClick={() => window.print()}
-                  className="w-full rounded-xl bg-[#2F5597] px-5 py-4 text-base font-extrabold text-white shadow-md transition hover:bg-[#24477f]"
+                  className="rounded-xl bg-slate-100 px-5 py-4 text-base font-bold text-slate-900"
                 >
-                  Gerar PDF / Imprimir relatório
+                  Imprimir
                 </button>
-                <p className="mt-2 text-center text-xs text-slate-500">
-                  No celular, escolha as opções de impressão/compartilhamento para salvar o relatório em PDF.
+
+                <p className="text-center text-xs text-slate-500 md:col-span-2">
+                  O PDF é gerado diretamente. Use “Imprimir” apenas se quiser enviar para uma impressora.
                 </p>
               </div>
 
@@ -2684,7 +2839,7 @@ export default function Home() {
                 Relatório pronto para revisão
               </div>
               <p className="mt-1 text-sm text-blue-800">
-                Use “Gerar PDF / Imprimir” no topo para salvar uma cópia em PDF.
+                Use “Baixar relatório em PDF” no topo para gerar o arquivo diretamente.
                 Itens pendentes permanecem sinalizados para evitar interpretar uma inspeção parcial como concluída.
               </p>
             </div>
