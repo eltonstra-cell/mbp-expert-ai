@@ -1,1 +1,11 @@
 @import "tailwindcss";*{box-sizing:border-box}body{margin:0;background:#f4f7fb;color:#172033;font-family:Arial,Helvetica,sans-serif}button,input,select,textarea{font:inherit}button{cursor:pointer}
+@media print {
+  @page { size: A4; margin: 12mm; }
+  body { background: white !important; }
+  body * { visibility: hidden; }
+  #relatorio-visita, #relatorio-visita * { visibility: visible; }
+  #relatorio-visita { position: absolute; inset: 0; width: 100%; }
+  #relatorio-visita article, #relatorio-visita > div { break-inside: avoid; box-shadow: none !important; }
+  #relatorio-visita img { max-height: 110mm !important; }
+  .no-print { display: none !important; }
+}

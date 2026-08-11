@@ -643,8 +643,9 @@ export default function Home() {
   const pendentesVisita = checklistAtual.filter(
     (item) => item.status === "Pendente"
   ).length;
-  const percentualConformidade = respondidos
-    ? Math.round((conformesVisita / respondidos) * 100)
+  const itensAvaliadosVisita = conformesVisita + naoConformesVisita;
+  const percentualConformidade = itensAvaliadosVisita
+    ? Math.round((conformesVisita / itensAvaliadosVisita) * 100)
     : 0;
 
   async function buscar() {
@@ -1423,7 +1424,7 @@ export default function Home() {
             </button>
           </section>
         ) : view === "ambientes" && visitaAtual ? (
-          <section className="space-y-4">
+          <section id="relatorio-visita" className="space-y-4">
             <div className="rounded-2xl bg-white p-5 shadow-sm">
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div>
@@ -1437,12 +1438,20 @@ export default function Home() {
                     {empresaVisita?.nomeFantasia} • {fdata(visitaAtual.data)}
                   </p>
                 </div>
-                <button
-                  onClick={() => setView("visita")}
-                  className="rounded-xl bg-slate-100 px-4 py-2 font-bold"
-                >
-                  Voltar à Central
-                </button>
+                <div className="flex gap-2 no-print">
+                  <button
+                    onClick={() => window.print()}
+                    className="rounded-xl bg-[#2F5597] px-4 py-2 font-bold text-white"
+                  >
+                    Gerar PDF / Imprimir
+                  </button>
+                  <button
+                    onClick={() => setView("visita")}
+                    className="rounded-xl bg-slate-100 px-4 py-2 font-bold"
+                  >
+                    Voltar à Central
+                  </button>
+                </div>
               </div>
 
               <div className="mt-5 rounded-xl bg-blue-50 p-4 text-sm text-blue-900">
@@ -2415,8 +2424,8 @@ export default function Home() {
             </div>
 
             <div className="grid gap-3 md:grid-cols-4">
-              <MetricCard label="Checklist" value={`${percentualChecklist}%`} />
-              <MetricCard label="Conformidade" value={`${percentualConformidade}%`} />
+              <MetricCard label="Progresso do checklist" value={`${percentualChecklist}%`} />
+              <MetricCard label="Conformidade dos itens avaliados" value={`${percentualConformidade}%`} />
               <MetricCard label="Não conformidades" value={ncsVisita.length} />
               <MetricCard label="Evidências" value={evidenciasVisita.length} />
             </div>
@@ -2488,7 +2497,7 @@ export default function Home() {
                   </h2>
                 </div>
                 <div className="text-sm font-bold text-slate-500">
-                  {respondidos}/{totalChecklist} respondidos
+                  {respondidos}/{totalChecklist} respondidos • {itensAvaliadosVisita} item(ns) avaliados para conformidade
                 </div>
               </div>
 
@@ -2657,13 +2666,13 @@ export default function Home() {
               )}
             </article>
 
-            <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5">
+            <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5 no-print">
               <div className="text-sm font-extrabold text-blue-900">
-                Próxima etapa
+                Relatório pronto para revisão
               </div>
               <p className="mt-1 text-sm text-blue-800">
-                Esta é a revisão consolidada da visita. Depois de validarmos esta
-                tela, o próximo passo será gerar o PDF profissional do relatório.
+                Use “Gerar PDF / Imprimir” no topo para salvar uma cópia em PDF.
+                Itens pendentes permanecem sinalizados para evitar interpretar uma inspeção parcial como concluída.
               </p>
             </div>
           </section>
