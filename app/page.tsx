@@ -1202,7 +1202,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.11.1.2
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.12.1
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
@@ -1424,7 +1424,7 @@ export default function Home() {
             </button>
           </section>
         ) : view === "ambientes" && visitaAtual ? (
-          <section id="relatorio-visita" className="space-y-4">
+          <section className="space-y-4">
             <div className="rounded-2xl bg-white p-5 shadow-sm">
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div>
@@ -1438,20 +1438,12 @@ export default function Home() {
                     {empresaVisita?.nomeFantasia} • {fdata(visitaAtual.data)}
                   </p>
                 </div>
-                <div className="flex gap-2 no-print">
-                  <button
-                    onClick={() => window.print()}
-                    className="rounded-xl bg-[#2F5597] px-4 py-2 font-bold text-white"
-                  >
-                    Gerar PDF / Imprimir
-                  </button>
-                  <button
-                    onClick={() => setView("visita")}
-                    className="rounded-xl bg-slate-100 px-4 py-2 font-bold"
-                  >
-                    Voltar à Central
-                  </button>
-                </div>
+                <button
+                  onClick={() => setView("visita")}
+                  className="rounded-xl bg-slate-100 px-4 py-2 font-bold"
+                >
+                  Voltar à Central
+                </button>
               </div>
 
               <div className="mt-5 rounded-xl bg-blue-50 p-4 text-sm text-blue-900">
@@ -2392,7 +2384,7 @@ export default function Home() {
             </div>
           </section>
         ) : view === "relatorio" && visitaAtual ? (
-          <section className="space-y-4">
+          <section id="relatorio-visita" className="space-y-4">
             <div className="rounded-2xl bg-white p-5 shadow-sm">
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div>
@@ -2406,12 +2398,21 @@ export default function Home() {
                     Revisão consolidada dos registros realizados em campo.
                   </p>
                 </div>
-                <button
-                  onClick={() => setView("visita")}
-                  className="rounded-xl bg-slate-100 px-4 py-2 font-bold"
-                >
-                  Voltar à Central
-                </button>
+
+                <div className="no-print grid gap-2 sm:flex sm:flex-wrap sm:justify-end">
+                  <button
+                    onClick={() => window.print()}
+                    className="rounded-xl bg-[#2F5597] px-4 py-3 font-extrabold text-white shadow-sm"
+                  >
+                    Gerar PDF / Imprimir
+                  </button>
+                  <button
+                    onClick={() => setView("visita")}
+                    className="rounded-xl bg-slate-100 px-4 py-3 font-bold"
+                  >
+                    Voltar à Central
+                  </button>
+                </div>
               </div>
 
               {pendentesVisita > 0 && (
