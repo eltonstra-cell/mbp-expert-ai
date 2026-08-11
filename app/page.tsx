@@ -681,7 +681,7 @@ export default function Home() {
 
       // Importação dinâmica evita aumentar o carregamento inicial do sistema.
       const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
-        import("html2canvas"),
+        import("html2canvas-pro"),
         import("jspdf"),
       ]);
 
@@ -781,8 +781,10 @@ export default function Home() {
       );
     } catch (error) {
       console.error("Falha ao gerar PDF:", error);
+      const detalhe =
+        error instanceof Error ? error.message : "erro desconhecido";
       window.alert(
-        "Não foi possível gerar o PDF automaticamente. Use a opção Imprimir como alternativa."
+        `Não foi possível gerar o PDF automaticamente. Detalhe: ${detalhe}. Use “Imprimir” como alternativa enquanto corrigimos.`
       );
     } finally {
       elemento.classList.remove("pdf-export");
@@ -1344,7 +1346,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.14
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.14.1
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
