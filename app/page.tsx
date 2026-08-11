@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import MetricCard from "@/components/MetricCard";
 import type {
   AppDB,
@@ -279,6 +279,8 @@ export default function Home() {
     "conectando" | "sincronizado" | "local" | "erro"
   >("conectando");
   const [syncAtualizadoEm, setSyncAtualizadoEm] = useState("");
+  const ultimaNuvemRef = useRef<number>(0);
+  const aplicandoNuvemRef = useRef(false);
 
   const [form, setForm] = useState({
     cnpj: "",
@@ -306,6 +308,52 @@ export default function Home() {
     observacoes: "",
   });
 
+
+  async function buscarEstadoNuvem(aplicarMesmoSeIgual = false) {
+    try {
+      const response = await fetch("/api/state", {
+        method: "GET",
+        cache: "no-store",
+      });
+      const cloud = await response.json();
+
+      if (!cloud?.configured) {
+        setSyncStatus("local");
+        return;
+      }
+
+      const cloudTs = cloud.updatedAt
+        ? new Date(cloud.updatedAt).getTime()
+        : 0;
+
+      if (
+        cloud.data &&
+        typeof cloud.data === "object" &&
+        (aplicarMesmoSeIgual || cloudTs > ultimaNuvemRef.current)
+      ) {
+        aplicandoNuvemRef.current = true;
+        ultimaNuvemRef.current = cloudTs;
+
+        const novo = cloud.data as AppDB;
+        setDb(novo);
+        saveDB(novo);
+
+        window.setTimeout(() => {
+          aplicandoNuvemRef.current = false;
+        }, 0);
+      }
+
+      setSyncStatus("sincronizado");
+      setSyncAtualizadoEm(
+        cloud.updatedAt
+          ? new Date(cloud.updatedAt).toLocaleString("pt-BR")
+          : ""
+      );
+    } catch {
+      setSyncStatus("erro");
+    }
+  }
+
   useEffect(() => {
     let cancelado = false;
 
@@ -326,6 +374,9 @@ export default function Home() {
             // Nuvem já existente: passa a ser a fonte compartilhada.
             s = cloud.data as AppDB;
             saveDB(s);
+            ultimaNuvemRef.current = cloud.updatedAt
+              ? new Date(cloud.updatedAt).getTime()
+              : 0;
             setSyncStatus("sincronizado");
             setSyncAtualizadoEm(
               cloud.updatedAt
@@ -350,6 +401,9 @@ export default function Home() {
 
               if (upload.ok) {
                 const salvo = await upload.json();
+                ultimaNuvemRef.current = salvo.updatedAt
+                  ? new Date(salvo.updatedAt).getTime()
+                  : Date.now();
                 setSyncStatus("sincronizado");
                 setSyncAtualizadoEm(
                   salvo.updatedAt
@@ -451,11 +505,42 @@ export default function Home() {
   useEffect(() => {
     if (!ready) return;
 
-    // Mantém uma cópia no navegador como contingência/offline.
     saveDB(db);
+
+    if (aplicandoNuvemRef.current) return;
 
     const timer = window.setTimeout(async () => {
       try {
+        const check = await fetch("/api/state", {
+          method: "GET",
+          cache: "no-store",
+        });
+        const cloud = await check.json();
+
+        const cloudTs = cloud?.updatedAt
+          ? new Date(cloud.updatedAt).getTime()
+          : 0;
+
+        if (cloud?.data && cloudTs > ultimaNuvemRef.current) {
+          aplicandoNuvemRef.current = true;
+          ultimaNuvemRef.current = cloudTs;
+
+          const novo = cloud.data as AppDB;
+          setDb(novo);
+          saveDB(novo);
+          setSyncStatus("sincronizado");
+          setSyncAtualizadoEm(
+            cloud.updatedAt
+              ? new Date(cloud.updatedAt).toLocaleString("pt-BR")
+              : ""
+          );
+
+          window.setTimeout(() => {
+            aplicandoNuvemRef.current = false;
+          }, 0);
+          return;
+        }
+
         const response = await fetch("/api/state", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -464,7 +549,12 @@ export default function Home() {
 
         if (response.ok) {
           const result = await response.json();
+
           if (result?.configured !== false) {
+            ultimaNuvemRef.current = result.updatedAt
+              ? new Date(result.updatedAt).getTime()
+              : Date.now();
+
             setSyncStatus("sincronizado");
             setSyncAtualizadoEm(
               result.updatedAt
@@ -486,6 +576,32 @@ export default function Home() {
 
     return () => window.clearTimeout(timer);
   }, [db, ready]);
+
+
+  useEffect(() => {
+    if (!ready) return;
+
+    const atualizar = () => {
+      if (document.visibilityState === "visible") {
+        void buscarEstadoNuvem();
+      }
+    };
+
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === "visible") {
+        void buscarEstadoNuvem();
+      }
+    }, 5000);
+
+    window.addEventListener("focus", atualizar);
+    document.addEventListener("visibilitychange", atualizar);
+
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", atualizar);
+      document.removeEventListener("visibilitychange", atualizar);
+    };
+  }, [ready]);
 
   const atual = db.empresaAtualId ? db.empresas[db.empresaAtualId] : undefined;
   const visitaAtual = visitaAtualId ? db.visitas.find((v) => v.id === visitaAtualId) : undefined;
@@ -924,7 +1040,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.8
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.8.2
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
@@ -969,19 +1085,37 @@ export default function Home() {
         <nav className="mb-4 flex gap-2">
           <button
             onClick={() => setView("inicio")}
-            className="rounded-xl bg-slate-200 px-4 py-2 font-bold"
+            className={`rounded-xl px-4 py-2 font-bold ${
+              view === "inicio"
+                ? "bg-[#17365D] text-white"
+                : "bg-slate-200 text-slate-900"
+            }`}
           >
             Início
           </button>
           <button
             onClick={() => setView("empresas")}
-            className="rounded-xl bg-slate-200 px-4 py-2 font-bold"
+            className={`rounded-xl px-4 py-2 font-bold ${
+              view === "empresas"
+                ? "bg-[#17365D] text-white"
+                : "bg-slate-200 text-slate-900"
+            }`}
           >
             Empresas
           </button>
           <button
             onClick={() => setView("visitas")}
-            className="rounded-xl bg-[#17365D] px-4 py-2 font-bold text-white"
+            className={`rounded-xl px-4 py-2 font-bold ${
+              view === "visitas" ||
+              view === "visita" ||
+              view === "ambientes" ||
+              view === "checklist" ||
+              view === "ncs" ||
+              view === "plano" ||
+              view === "evidencias"
+                ? "bg-[#17365D] text-white"
+                : "bg-slate-200 text-slate-900"
+            }`}
           >
             Visitas
           </button>
