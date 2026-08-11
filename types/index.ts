@@ -78,7 +78,9 @@ export type Evidencia = {
   tipo: "Foto" | "Áudio";
   nomeArquivo: string;
   mimeType: string;
-  dataUrl: string;
+  dataUrl?: string;
+  blobPathname?: string;
+  blobUrl?: string;
   descricao: string;
   ambiente: string;
   ncId?: string;

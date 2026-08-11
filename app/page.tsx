@@ -1667,12 +1667,12 @@ export default function Home() {
 
                         {ev.tipo === "Foto" ? (
                           <img
-                            src={ev.dataUrl}
+                            src={urlEvidencia(ev)}
                             alt={ev.descricao || "Evidência fotográfica"}
                             className="mt-4 max-h-[520px] w-full rounded-xl border object-contain"
                           />
                         ) : (
-                          <audio controls src={ev.dataUrl} className="mt-4 w-full" />
+                          <audio controls src={urlEvidencia(ev)} className="mt-4 w-full" />
                         )}
 
                         <div className="mt-3 text-xs text-slate-400">
