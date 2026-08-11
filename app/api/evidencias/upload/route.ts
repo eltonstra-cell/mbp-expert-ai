@@ -39,7 +39,6 @@ export async function POST(request: Request) {
       pathname: blob.pathname,
       url: blob.url,
       contentType: blob.contentType,
-      size: blob.size,
     });
   } catch (error) {
     console.error("Falha no upload Blob:", error);
