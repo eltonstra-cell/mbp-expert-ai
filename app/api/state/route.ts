@@ -12,7 +12,7 @@ function getSql() {
   return neon(url);
 }
 
-async function ensureTable(sql: ReturnType<typeof neon>) {
+async function ensureTable(sql: any) {
   await sql`
     CREATE TABLE IF NOT EXISTS mbp_cloud_state (
       workspace_id TEXT PRIMARY KEY,
@@ -59,7 +59,11 @@ export async function GET() {
   } catch (error) {
     console.error("GET /api/state", error);
     return NextResponse.json(
-      { configured: true, data: null, error: "Falha ao carregar dados da nuvem." },
+      {
+        configured: true,
+        data: null,
+        error: "Falha ao carregar dados da nuvem.",
+      },
       { status: 500 }
     );
   }
@@ -70,7 +74,10 @@ export async function PUT(request: Request) {
 
   if (!sql) {
     return NextResponse.json(
-      { configured: false, error: "DATABASE_URL não configurada." },
+      {
+        configured: false,
+        error: "DATABASE_URL não configurada.",
+      },
       { status: 503 }
     );
   }
@@ -80,12 +87,16 @@ export async function PUT(request: Request) {
     const data = body?.data;
 
     if (!data || typeof data !== "object") {
-      return NextResponse.json({ error: "Dados inválidos." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Dados inválidos." },
+        { status: 400 }
+      );
     }
 
     await ensureTable(sql);
 
     const payload = JSON.stringify(data);
+
     const rows = await sql`
       INSERT INTO mbp_cloud_state (workspace_id, data, updated_at)
       VALUES (${WORKSPACE_ID}, ${payload}::jsonb, NOW())
@@ -104,7 +115,10 @@ export async function PUT(request: Request) {
   } catch (error) {
     console.error("PUT /api/state", error);
     return NextResponse.json(
-      { configured: true, error: "Falha ao salvar dados na nuvem." },
+      {
+        configured: true,
+        error: "Falha ao salvar dados na nuvem.",
+      },
       { status: 500 }
     );
   }
