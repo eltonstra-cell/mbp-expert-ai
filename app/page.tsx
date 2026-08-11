@@ -930,31 +930,80 @@ export default function Home() {
     });
   }
 
+  async function comprimirFoto(file: File): Promise<string> {
+    const original = await arquivoParaDataUrl(file);
+
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error("Não foi possível processar a foto."));
+      el.src = original;
+    });
+
+    const maxDim = 1600;
+    let width = img.naturalWidth;
+    let height = img.naturalHeight;
+
+    if (width > maxDim || height > maxDim) {
+      const escala = Math.min(maxDim / width, maxDim / height);
+      width = Math.max(1, Math.round(width * escala));
+      height = Math.max(1, Math.round(height * escala));
+    }
+
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Não foi possível preparar a foto.");
+
+    ctx.drawImage(img, 0, 0, width, height);
+
+    const alvo = 700 * 1024;
+    let qualidade = 0.82;
+    let resultado = canvas.toDataURL("image/jpeg", qualidade);
+
+    while (
+      Math.ceil((resultado.length * 3) / 4) > alvo &&
+      qualidade > 0.5
+    ) {
+      qualidade = Math.max(0.5, qualidade - 0.08);
+      resultado = canvas.toDataURL("image/jpeg", qualidade);
+    }
+
+    return resultado;
+  }
+
   async function adicionarEvidencia(
     file: File | undefined,
     tipo: "Foto" | "Áudio"
   ) {
     if (!file || !visitaAtual) return;
 
-    const limite = tipo === "Foto" ? 1.5 * 1024 * 1024 : 3 * 1024 * 1024;
-    if (file.size > limite) {
+    if (tipo === "Áudio" && file.size > 3 * 1024 * 1024) {
       setEvidenciaMsg(
-        tipo === "Foto"
-          ? "A foto está muito grande para esta versão local. Use uma imagem de até 1,5 MB."
-          : "O áudio está muito grande para esta versão local. Use um arquivo de até 3 MB."
+        "O áudio está muito grande para esta versão. Use um arquivo de até 3 MB."
       );
       return;
     }
 
     try {
-      const dataUrl = await arquivoParaDataUrl(file);
+      setEvidenciaMsg(
+        tipo === "Foto" ? "Otimizando foto..." : "Processando áudio..."
+      );
+
+      const dataUrl =
+        tipo === "Foto"
+          ? await comprimirFoto(file)
+          : await arquivoParaDataUrl(file);
+
       const ev: Evidencia = {
         id: crypto.randomUUID(),
         empresaId: visitaAtual.empresaId,
         visitaId: visitaAtual.id,
         tipo,
         nomeArquivo: file.name || (tipo === "Foto" ? "foto.jpg" : "audio"),
-        mimeType: file.type || (tipo === "Foto" ? "image/jpeg" : "audio/mpeg"),
+        mimeType: tipo === "Foto" ? "image/jpeg" : file.type || "audio/mpeg",
         dataUrl,
         descricao: evidenciaDescricao.trim(),
         ambiente: evidenciaAmbiente || "",
@@ -972,7 +1021,11 @@ export default function Home() {
         ),
       }));
       setEvidenciaDescricao("");
-      setEvidenciaMsg(`${tipo} adicionada com sucesso.`);
+      setEvidenciaMsg(
+        tipo === "Foto"
+          ? "Foto otimizada e adicionada com sucesso."
+          : "Áudio adicionado com sucesso."
+      );
     } catch {
       setEvidenciaMsg("Não foi possível adicionar esta evidência.");
     }
@@ -1040,7 +1093,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.8.2
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.9
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
