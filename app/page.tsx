@@ -931,47 +931,65 @@ export default function Home() {
   }
 
   async function comprimirFoto(file: File): Promise<string> {
-    const original = await arquivoParaDataUrl(file);
-
-    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const el = new Image();
-      el.onload = () => resolve(el);
-      el.onerror = () => reject(new Error("Não foi possível processar a foto."));
-      el.src = original;
-    });
-
     const maxDim = 1600;
-    let width = img.naturalWidth;
-    let height = img.naturalHeight;
-
-    if (width > maxDim || height > maxDim) {
-      const escala = Math.min(maxDim / width, maxDim / height);
-      width = Math.max(1, Math.round(width * escala));
-      height = Math.max(1, Math.round(height * escala));
-    }
-
-    const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Não foi possível preparar a foto.");
-
-    ctx.drawImage(img, 0, 0, width, height);
-
     const alvo = 700 * 1024;
-    let qualidade = 0.82;
-    let resultado = canvas.toDataURL("image/jpeg", qualidade);
 
-    while (
-      Math.ceil((resultado.length * 3) / 4) > alvo &&
-      qualidade > 0.5
-    ) {
-      qualidade = Math.max(0.5, qualidade - 0.08);
-      resultado = canvas.toDataURL("image/jpeg", qualidade);
+    // Object URL tende a ser mais confiável no Safari/iPhone para fotos
+    // recém-capturadas pela câmera do que carregar uma data URL diretamente.
+    const objectUrl = URL.createObjectURL(file);
+
+    try {
+      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const el = new Image();
+
+        el.onload = () => resolve(el);
+        el.onerror = () =>
+          reject(new Error("O navegador não conseguiu abrir a foto capturada."));
+
+        el.src = objectUrl;
+      });
+
+      let width = img.naturalWidth || img.width;
+      let height = img.naturalHeight || img.height;
+
+      if (!width || !height) {
+        throw new Error("A foto não possui dimensões válidas.");
+      }
+
+      if (width > maxDim || height > maxDim) {
+        const escala = Math.min(maxDim / width, maxDim / height);
+        width = Math.max(1, Math.round(width * escala));
+        height = Math.max(1, Math.round(height * escala));
+      }
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Não foi possível preparar a foto.");
+
+      ctx.drawImage(img, 0, 0, width, height);
+
+      let qualidade = 0.82;
+      let resultado = canvas.toDataURL("image/jpeg", qualidade);
+
+      while (
+        Math.ceil((resultado.length * 3) / 4) > alvo &&
+        qualidade > 0.5
+      ) {
+        qualidade = Math.max(0.5, qualidade - 0.08);
+        resultado = canvas.toDataURL("image/jpeg", qualidade);
+      }
+
+      if (!resultado || resultado === "data:,") {
+        throw new Error("A conversão da foto falhou.");
+      }
+
+      return resultado;
+    } finally {
+      URL.revokeObjectURL(objectUrl);
     }
-
-    return resultado;
   }
 
   async function adicionarEvidencia(
@@ -1011,23 +1029,35 @@ export default function Home() {
         criadoEm: new Date().toISOString(),
       };
 
-      setDb((o) => ({
-        ...o,
-        evidencias: [ev, ...(o.evidencias || [])],
-        visitas: o.visitas.map((v) =>
-          v.id === visitaAtual.id
-            ? { ...v, progresso: Math.max(v.progresso || 0, 60) }
-            : v
-        ),
-      }));
+      setDb((o) => {
+        const atualizado: AppDB = {
+          ...o,
+          evidencias: [ev, ...(o.evidencias || [])],
+          visitas: o.visitas.map((v) =>
+            v.id === visitaAtual.id
+              ? { ...v, progresso: Math.max(v.progresso || 0, 60) }
+              : v
+          ),
+        };
+
+        // Grava imediatamente no armazenamento local antes da sincronização.
+        saveDB(atualizado);
+        return atualizado;
+      });
+
       setEvidenciaDescricao("");
       setEvidenciaMsg(
         tipo === "Foto"
-          ? "Foto otimizada e adicionada com sucesso."
-          : "Áudio adicionado com sucesso."
+          ? "Foto registrada. Sincronizando com a nuvem..."
+          : "Áudio registrado. Sincronizando com a nuvem..."
       );
-    } catch {
-      setEvidenciaMsg("Não foi possível adicionar esta evidência.");
+    } catch (error) {
+      console.error("Falha ao adicionar evidência:", error);
+      setEvidenciaMsg(
+        tipo === "Foto"
+          ? "A foto foi capturada, mas não pôde ser processada. Tente novamente."
+          : "Não foi possível adicionar este áudio."
+      );
     }
   }
 
@@ -1093,7 +1123,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.9
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.9.1
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
@@ -1544,10 +1574,17 @@ export default function Home() {
                       accept="image/*"
                       capture="environment"
                       className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        void adicionarEvidencia(file, "Foto");
-                        e.currentTarget.value = "";
+                      onChange={async (e) => {
+                        const input = e.currentTarget;
+                        const file = input.files?.[0];
+
+                        if (!file) {
+                          setEvidenciaMsg("Nenhuma foto foi recebida da câmera.");
+                          return;
+                        }
+
+                        await adicionarEvidencia(file, "Foto");
+                        input.value = "";
                       }}
                     />
                   </label>
@@ -1574,8 +1611,8 @@ export default function Home() {
                 )}
 
                 <div className="mt-4 rounded-xl bg-amber-50 p-3 text-xs text-amber-900">
-                  Nesta versão de teste, fotos e áudios ficam salvos localmente neste navegador.
-                  Para uso comercial, moveremos os arquivos para armazenamento online.
+                  Fotos são otimizadas no aparelho e sincronizadas com a base da visita.
+                  O armazenamento dedicado de arquivos será a próxima evolução do módulo.
                 </div>
               </div>
 
