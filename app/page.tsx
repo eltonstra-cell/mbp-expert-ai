@@ -985,6 +985,43 @@ export default function Home() {
     }));
   }
 
+  function finalizarInspecao() {
+    if (!visitaAtual) return;
+    const alertas: string[] = [];
+    if (pendentesVisita > 0) alertas.push(`${pendentesVisita} item(ns) pendente(s) no checklist`);
+    if (ncsSomenteAbertas > 0) alertas.push(`${ncsSomenteAbertas} não conformidade(s) aberta(s)`);
+    if (ncsSemAcao > 0) alertas.push(`${ncsSemAcao} não conformidade(s) sem ação corretiva definida`);
+    if (!(visitaAtual.observacoes || "").trim()) alertas.push("conclusão / observação final não preenchida");
+
+    const ressalvas = alertas.length
+      ? `\n\nAtenção:\n• ${alertas.join("\n• ")}\n\nÉ possível finalizar com essas ressalvas.`
+      : "";
+    if (!window.confirm(`Finalizar esta inspeção?${ressalvas}\n\nA visita ficará marcada como Concluída.`)) return;
+
+    const agora = new Date().toISOString();
+    setDb((atual) => ({
+      ...atual,
+      visitas: atual.visitas.map((visita) =>
+        visita.id === visitaAtual.id
+          ? { ...visita, status: "Concluída", observacoes: visita.observacoes, encerradaEm: agora } as Visita
+          : visita
+      ),
+    }));
+  }
+
+  function reabrirInspecao() {
+    if (!visitaAtual) return;
+    if (!window.confirm("Reabrir esta inspeção?\n\nA visita voltará para Em andamento.")) return;
+    setDb((atual) => ({
+      ...atual,
+      visitas: atual.visitas.map((visita) =>
+        visita.id === visitaAtual.id
+          ? { ...visita, status: "Em andamento", encerradaEm: undefined } as Visita
+          : visita
+      ),
+    }));
+  }
+
   async function buscar() {
     const c = form.cnpj.replace(/\D/g, "");
     if (c.length !== 14) {
@@ -1539,7 +1576,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.15
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.16
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
@@ -2741,6 +2778,11 @@ export default function Home() {
                   <p className="mt-1 text-sm text-slate-500">
                     Revisão consolidada dos registros realizados em campo.
                   </p>
+                  <div className="mt-3">
+                    <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${visitaAtual.status === "Concluída" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
+                      {visitaAtual.status === "Concluída" ? "● Inspeção concluída" : "● Inspeção em andamento"}
+                    </span>
+                  </div>
                 </div>
 
                 <button
@@ -2749,6 +2791,24 @@ export default function Home() {
                 >
                   Voltar à Central
                 </button>
+              </div>
+
+              <div className="print-control mt-5" data-html2canvas-ignore="true">
+                {visitaAtual.status === "Concluída" ? (
+                  <div className="flex flex-col gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <div className="font-extrabold text-emerald-900">✓ Inspeção finalizada</div>
+                      <div className="text-sm text-emerald-800">Esta visita está marcada como Concluída.</div>
+                    </div>
+                    <button type="button" onClick={reabrirInspecao} className="rounded-xl bg-white px-4 py-3 text-sm font-extrabold text-emerald-900 shadow-sm">
+                      Reabrir inspeção
+                    </button>
+                  </div>
+                ) : (
+                  <button type="button" onClick={finalizarInspecao} className="w-full rounded-xl bg-emerald-700 px-5 py-4 text-base font-extrabold text-white shadow-md">
+                    ✓ Finalizar inspeção
+                  </button>
+                )}
               </div>
 
               <div
@@ -3042,6 +3102,9 @@ export default function Home() {
               <h2 className="mt-1 text-xl font-extrabold">
                 Síntese da inspeção
               </h2>
+              <div className={`mt-3 rounded-xl border p-3 text-sm font-extrabold ${visitaAtual.status === "Concluída" ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-amber-200 bg-amber-50 text-amber-900"}`}>
+                Status da inspeção: {visitaAtual.status}
+              </div>
 
               <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <div className="rounded-xl bg-slate-100 p-4">
