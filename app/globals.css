@@ -8,4 +8,5 @@
   #relatorio-visita article, #relatorio-visita > div { break-inside: avoid; box-shadow: none !important; }
   #relatorio-visita img { max-height: 110mm !important; }
   .no-print { display: none !important; }
+  .print-control { display: none !important; }
 }

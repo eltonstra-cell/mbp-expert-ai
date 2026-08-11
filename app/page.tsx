@@ -1202,7 +1202,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.12.1
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.12.2
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
@@ -2399,20 +2399,25 @@ export default function Home() {
                   </p>
                 </div>
 
-                <div className="no-print grid gap-2 sm:flex sm:flex-wrap sm:justify-end">
-                  <button
-                    onClick={() => window.print()}
-                    className="rounded-xl bg-[#2F5597] px-4 py-3 font-extrabold text-white shadow-sm"
-                  >
-                    Gerar PDF / Imprimir
-                  </button>
-                  <button
-                    onClick={() => setView("visita")}
-                    className="rounded-xl bg-slate-100 px-4 py-3 font-bold"
-                  >
-                    Voltar à Central
-                  </button>
-                </div>
+                <button
+                  onClick={() => setView("visita")}
+                  className="print-control rounded-xl bg-slate-100 px-4 py-3 font-bold"
+                >
+                  Voltar à Central
+                </button>
+              </div>
+
+              <div className="print-control mt-5">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="w-full rounded-xl bg-[#2F5597] px-5 py-4 text-base font-extrabold text-white shadow-md transition hover:bg-[#24477f]"
+                >
+                  Gerar PDF / Imprimir relatório
+                </button>
+                <p className="mt-2 text-center text-xs text-slate-500">
+                  No celular, escolha as opções de impressão/compartilhamento para salvar o relatório em PDF.
+                </p>
               </div>
 
               {pendentesVisita > 0 && (
