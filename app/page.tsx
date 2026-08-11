@@ -696,16 +696,42 @@ export default function Home() {
       // Blocos que não devem ser cortados no meio entre páginas.
       const blocosProtegidos = Array.from(
         elemento.querySelectorAll(".print-card")
-      )
-        .map((node) => {
-          const rect = (node as HTMLElement).getBoundingClientRect();
-          return {
-            topCss: Math.max(0, rect.top - elementoRect.top),
-            bottomCss: Math.max(0, rect.bottom - elementoRect.top),
-            heightCss: rect.height,
-          };
-        })
-        .sort((a, b) => a.topCss - b.topCss);
+      ).map((node) => {
+        const rect = (node as HTMLElement).getBoundingClientRect();
+        return {
+          topCss: Math.max(0, rect.top - elementoRect.top),
+          bottomCss: Math.max(0, rect.bottom - elementoRect.top),
+          heightCss: rect.height,
+        };
+      });
+
+      // Mantém o título "Registros de campo / Evidências" junto com
+      // pelo menos a primeira evidência. Sem isso, o título pode ficar
+      // sozinho no fim de uma página e as fotos começarem na seguinte.
+      const tituloEvidencias = Array.from(
+        elemento.querySelectorAll("h2")
+      ).find((node) =>
+        (node.textContent || "").trim().toLowerCase() === "evidências"
+      ) as HTMLElement | undefined;
+
+      if (tituloEvidencias) {
+        const secao = tituloEvidencias.closest("section") as HTMLElement | null;
+        const primeiroCard =
+          secao?.querySelector(".print-card") as HTMLElement | null;
+
+        if (secao && primeiroCard) {
+          const secaoRect = secao.getBoundingClientRect();
+          const cardRect = primeiroCard.getBoundingClientRect();
+
+          blocosProtegidos.push({
+            topCss: Math.max(0, secaoRect.top - elementoRect.top),
+            bottomCss: Math.max(0, cardRect.bottom - elementoRect.top),
+            heightCss: Math.max(0, cardRect.bottom - secaoRect.top),
+          });
+        }
+      }
+
+      blocosProtegidos.sort((a, b) => a.topCss - b.topCss);
 
       const canvas = await html2canvas(elemento, {
         scale: 1.6,
@@ -1469,7 +1495,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.14.2
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.14.3
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
