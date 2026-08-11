@@ -1201,7 +1201,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.11.2
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.11.1.2
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
@@ -2360,12 +2360,7 @@ export default function Home() {
 
               <button
                 onClick={() => setView("relatorio")}
-                disabled={totalChecklist === 0}
-                className={`rounded-2xl bg-white p-5 text-left shadow-sm transition ${
-                  totalChecklist > 0
-                    ? "hover:-translate-y-0.5 hover:shadow-md"
-                    : "cursor-not-allowed opacity-60"
-                }`}
+                className="rounded-2xl bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
               >
                 <div className="text-xs font-extrabold uppercase text-slate-400">
                   Encerramento
@@ -2374,21 +2369,15 @@ export default function Home() {
                 <p className="mt-1 text-sm text-slate-500">
                   Revisão consolidada da inspeção e dos registros da visita.
                 </p>
-                <div className="mt-4">
-                  {totalChecklist > 0 ? (
-                    <div className="flex items-center justify-between">
-                      <span className="font-extrabold text-[#2F5597]">
-                        Abrir relatório →
-                      </span>
-                      <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold text-slate-600">
-                        {percentualChecklist}% checklist
-                      </span>
-                    </div>
-                  ) : (
-                    <span className="text-xs font-bold text-slate-400">
-                      Inicie o checklist primeiro
-                    </span>
-                  )}
+                <div className="mt-4 flex items-center justify-between">
+                  <span className="font-extrabold text-[#2F5597]">
+                    Abrir relatório →
+                  </span>
+                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold text-slate-600">
+                    {totalChecklist > 0
+                      ? `${percentualChecklist}% checklist`
+                      : "Prévia"}
+                  </span>
                 </div>
               </button>
             </div>
