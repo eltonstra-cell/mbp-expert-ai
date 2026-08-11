@@ -10,3 +10,193 @@
   .no-print { display: none !important; }
   .print-control { display: none !important; }
 }
+
+
+/* ===== Relatório PDF / A4 ===== */
+.print-only {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm 11mm 14mm 11mm;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+    color: #111827 !important;
+    font-size: 10pt !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  #relatorio-visita,
+  #relatorio-visita * {
+    visibility: visible;
+  }
+
+  #relatorio-visita {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .report-print {
+    gap: 5mm !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .print-control,
+  .no-print {
+    display: none !important;
+  }
+
+  .report-document-header {
+    display: flex !important;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10mm;
+    border-bottom: 1.5px solid #17365D;
+    padding-bottom: 4mm;
+    margin-bottom: 5mm;
+  }
+
+  .report-brand {
+    font-size: 16pt;
+    font-weight: 800;
+    color: #17365D;
+    line-height: 1.1;
+  }
+
+  .report-subtitle {
+    margin-top: 1.5mm;
+    font-size: 9pt;
+    font-weight: 600;
+    color: #475569;
+  }
+
+  .report-date {
+    font-size: 9pt;
+    font-weight: 700;
+    color: #334155;
+    white-space: nowrap;
+  }
+
+  #relatorio-visita .rounded-2xl,
+  #relatorio-visita .rounded-xl {
+    border-radius: 3mm !important;
+  }
+
+  #relatorio-visita .shadow-sm,
+  #relatorio-visita .shadow-md {
+    box-shadow: none !important;
+  }
+
+  #relatorio-visita .bg-white {
+    background: #fff !important;
+  }
+
+  #relatorio-visita .p-5 {
+    padding: 4mm !important;
+  }
+
+  #relatorio-visita .p-4 {
+    padding: 3.5mm !important;
+  }
+
+  #relatorio-visita .mt-5 {
+    margin-top: 4mm !important;
+  }
+
+  #relatorio-visita .mt-4 {
+    margin-top: 3mm !important;
+  }
+
+  #relatorio-visita .mt-3 {
+    margin-top: 2.5mm !important;
+  }
+
+  #relatorio-visita .space-y-4 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 4mm !important;
+  }
+
+  #relatorio-visita h1 {
+    font-size: 18pt !important;
+    line-height: 1.15 !important;
+  }
+
+  #relatorio-visita h2 {
+    font-size: 13pt !important;
+    line-height: 1.2 !important;
+  }
+
+  #relatorio-visita p,
+  #relatorio-visita div,
+  #relatorio-visita span {
+    line-height: 1.3;
+  }
+
+  .print-block,
+  .print-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .print-card {
+    margin-bottom: 3mm !important;
+  }
+
+  /* NCs podem quebrar entre cartões, mas nunca dentro de um cartão */
+  #relatorio-visita article .space-y-3 {
+    display: block !important;
+  }
+
+  /* Evidências: duas fotos por linha, tamanho controlado */
+  #relatorio-visita .md\:grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  #relatorio-visita img {
+    max-height: 78mm !important;
+    width: 100% !important;
+    object-fit: contain !important;
+    page-break-inside: avoid !important;
+  }
+
+  #relatorio-visita audio {
+    display: none !important;
+  }
+
+  /* Remove navegação externa e elementos interativos */
+  header,
+  nav {
+    display: none !important;
+  }
+
+  /* Mantém cores funcionais de status no PDF */
+  .bg-emerald-50,
+  .bg-red-50,
+  .bg-amber-50,
+  .bg-blue-50,
+  .bg-slate-100 {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  a {
+    color: inherit !important;
+    text-decoration: none !important;
+  }
+}

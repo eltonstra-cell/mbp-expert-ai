@@ -1202,7 +1202,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.12.2
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.13
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
@@ -2384,7 +2384,14 @@ export default function Home() {
             </div>
           </section>
         ) : view === "relatorio" && visitaAtual ? (
-          <section id="relatorio-visita" className="space-y-4">
+          <section id="relatorio-visita" className="report-print space-y-4">
+            <div className="print-only report-document-header">
+              <div>
+                <div className="report-brand">MBP Expert AI</div>
+                <div className="report-subtitle">Relatório Técnico de Inspeção em Segurança dos Alimentos</div>
+              </div>
+              <div className="report-date">{fdata(visitaAtual.data)}</div>
+            </div>
             <div className="rounded-2xl bg-white p-5 shadow-sm">
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div>
@@ -2492,7 +2499,7 @@ export default function Home() {
               </article>
             </div>
 
-            <article className="rounded-2xl bg-white p-5 shadow-sm">
+            <article className="print-block rounded-2xl bg-white p-5 shadow-sm">
               <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                 <div>
                   <div className="text-xs font-extrabold uppercase text-slate-400">
@@ -2543,7 +2550,7 @@ export default function Home() {
               </div>
             </article>
 
-            <article className="rounded-2xl bg-white p-5 shadow-sm">
+            <article className="print-block rounded-2xl bg-white p-5 shadow-sm">
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <div className="text-xs font-extrabold uppercase text-slate-400">
@@ -2567,7 +2574,7 @@ export default function Home() {
                   {ncsVisita.map((nc, idx) => (
                     <div
                       key={nc.id}
-                      className="rounded-xl border border-slate-200 p-4"
+                      className="print-card rounded-xl border border-slate-200 p-4"
                     >
                       <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
                         <div>
@@ -2619,7 +2626,7 @@ export default function Home() {
               )}
             </article>
 
-            <article className="rounded-2xl bg-white p-5 shadow-sm">
+            <article className="print-block rounded-2xl bg-white p-5 shadow-sm">
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <div className="text-xs font-extrabold uppercase text-slate-400">
@@ -2641,7 +2648,7 @@ export default function Home() {
                   {evidenciasVisita.map((ev) => (
                     <div
                       key={ev.id}
-                      className="overflow-hidden rounded-xl border border-slate-200"
+                      className="print-card overflow-hidden rounded-xl border border-slate-200"
                     >
                       <div className="p-4">
                         <div className="text-xs font-extrabold uppercase text-slate-400">
