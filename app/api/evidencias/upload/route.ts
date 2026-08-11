@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
 import { put } from "@vercel/blob";
+import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -9,10 +9,15 @@ export async function POST(request: Request) {
     const form = await request.formData();
     const file = form.get("file");
     const visitaId = String(form.get("visitaId") || "sem-visita");
-    const evidenciaId = String(form.get("evidenciaId") || crypto.randomUUID());
+    const evidenciaId = String(
+      form.get("evidenciaId") || crypto.randomUUID()
+    );
 
     if (!(file instanceof File)) {
-      return NextResponse.json({ error: "Arquivo não recebido." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Arquivo não recebido." },
+        { status: 400 }
+      );
     }
 
     if (file.size > 8 * 1024 * 1024) {
@@ -22,10 +27,11 @@ export async function POST(request: Request) {
       );
     }
 
-    const nome = (file.name || "arquivo")
-      .normalize("NFKD")
-      .replace(/[^\w.-]+/g, "-")
-      .replace(/-+/g, "-");
+    const nome =
+      (file.name || "arquivo")
+        .normalize("NFKD")
+        .replace(/[^\w.-]+/g, "-")
+        .replace(/-+/g, "-") || "arquivo";
 
     const pathname = `evidencias/${visitaId}/${evidenciaId}-${nome}`;
 

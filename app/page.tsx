@@ -992,6 +992,53 @@ export default function Home() {
     }
   }
 
+  async function dataUrlParaBlob(dataUrl: string): Promise<Blob> {
+    const response = await fetch(dataUrl);
+    if (!response.ok) throw new Error("Não foi possível preparar a foto para envio.");
+    return await response.blob();
+  }
+
+  async function enviarArquivoParaBlob(
+    conteudo: Blob | File,
+    nomeArquivo: string,
+    visitaId: string,
+    evidenciaId: string
+  ): Promise<{ pathname: string; url: string }> {
+    const form = new FormData();
+    form.append("file", conteudo, nomeArquivo);
+    form.append("visitaId", visitaId);
+    form.append("evidenciaId", evidenciaId);
+
+    const response = await fetch("/api/evidencias/upload", {
+      method: "POST",
+      body: form,
+    });
+
+    const body = await response.json().catch(() => null);
+
+    if (!response.ok || !body?.pathname) {
+      throw new Error(
+        body?.error || "Não foi possível enviar a evidência para o armazenamento."
+      );
+    }
+
+    return {
+      pathname: String(body.pathname),
+      url: String(body.url || ""),
+    };
+  }
+
+  function urlEvidencia(ev: Evidencia): string {
+    if (ev.blobPathname) {
+      return `/api/evidencias/file?pathname=${encodeURIComponent(
+        ev.blobPathname
+      )}`;
+    }
+
+    // Compatibilidade com evidências antigas já salvas em Base64.
+    return ev.dataUrl || "";
+  }
+
   async function adicionarEvidencia(
     file: File | undefined,
     tipo: "Foto" | "Áudio"
@@ -1010,19 +1057,35 @@ export default function Home() {
         tipo === "Foto" ? "Otimizando foto..." : "Processando áudio..."
       );
 
-      const dataUrl =
+      const evidenciaId = crypto.randomUUID();
+      const nomeArquivo =
+        file.name || (tipo === "Foto" ? "foto.jpg" : "audio");
+      const mimeType =
+        tipo === "Foto" ? "image/jpeg" : file.type || "audio/mpeg";
+
+      const conteudo: Blob | File =
         tipo === "Foto"
-          ? await comprimirFoto(file)
-          : await arquivoParaDataUrl(file);
+          ? await dataUrlParaBlob(await comprimirFoto(file))
+          : file;
+
+      setEvidenciaMsg("Enviando evidência para o armazenamento seguro...");
+
+      const blob = await enviarArquivoParaBlob(
+        conteudo,
+        nomeArquivo,
+        visitaAtual.id,
+        evidenciaId
+      );
 
       const ev: Evidencia = {
-        id: crypto.randomUUID(),
+        id: evidenciaId,
         empresaId: visitaAtual.empresaId,
         visitaId: visitaAtual.id,
         tipo,
-        nomeArquivo: file.name || (tipo === "Foto" ? "foto.jpg" : "audio"),
-        mimeType: tipo === "Foto" ? "image/jpeg" : file.type || "audio/mpeg",
-        dataUrl,
+        nomeArquivo,
+        mimeType,
+        blobPathname: blob.pathname,
+        blobUrl: blob.url,
         descricao: evidenciaDescricao.trim(),
         ambiente: evidenciaAmbiente || "",
         ncId: evidenciaNcId || undefined,
@@ -1048,8 +1111,8 @@ export default function Home() {
       setEvidenciaDescricao("");
       setEvidenciaMsg(
         tipo === "Foto"
-          ? "Foto registrada. Sincronizando com a nuvem..."
-          : "Áudio registrado. Sincronizando com a nuvem..."
+          ? "Foto enviada ao armazenamento e registrada. Sincronizando dados..."
+          : "Áudio enviado ao armazenamento e registrado. Sincronizando dados..."
       );
     } catch (error) {
       console.error("Falha ao adicionar evidência:", error);
@@ -1123,7 +1186,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.9.1
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.10.2.2
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
@@ -1611,8 +1674,8 @@ export default function Home() {
                 )}
 
                 <div className="mt-4 rounded-xl bg-amber-50 p-3 text-xs text-amber-900">
-                  Fotos são otimizadas no aparelho e sincronizadas com a base da visita.
-                  O armazenamento dedicado de arquivos será a próxima evolução do módulo.
+                  Fotos e áudios novos são armazenados no Blob privado.
+                  O Neon guarda apenas os dados e a referência da evidência.
                 </div>
               </div>
 
