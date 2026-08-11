@@ -705,28 +705,40 @@ export default function Home() {
         };
       });
 
-      // Mantém o título "Registros de campo / Evidências" junto com
-      // pelo menos a primeira evidência. Sem isso, o título pode ficar
-      // sozinho no fim de uma página e as fotos começarem na seguinte.
-      const tituloEvidencias = Array.from(
-        elemento.querySelectorAll("h2")
-      ).find((node) =>
-        (node.textContent || "").trim().toLowerCase() === "evidências"
-      ) as HTMLElement | undefined;
+      // Proteção rígida da abertura da seção Evidências:
+      // título + contador + primeira linha de fotos devem permanecer juntos.
+      const secaoEvidencias = elemento.querySelector(
+        '[data-pdf-section="evidencias"]'
+      ) as HTMLElement | null;
 
-      if (tituloEvidencias) {
-        const secao = tituloEvidencias.closest("section") as HTMLElement | null;
-        const primeiroCard =
-          secao?.querySelector(".print-card") as HTMLElement | null;
+      if (secaoEvidencias) {
+        const cardsEvidencia = Array.from(
+          secaoEvidencias.querySelectorAll(".print-card")
+        ) as HTMLElement[];
 
-        if (secao && primeiroCard) {
-          const secaoRect = secao.getBoundingClientRect();
-          const cardRect = primeiroCard.getBoundingClientRect();
+        if (cardsEvidencia.length > 0) {
+          const secaoRect = secaoEvidencias.getBoundingClientRect();
+
+          // Em telas largas, protege os dois primeiros cards (primeira linha).
+          // Em telas estreitas, protege pelo menos o primeiro card.
+          const primeiroRect = cardsEvidencia[0].getBoundingClientRect();
+          const segundoRect =
+            cardsEvidencia.length > 1
+              ? cardsEvidencia[1].getBoundingClientRect()
+              : null;
+
+          const mesmaLinha =
+            segundoRect &&
+            Math.abs(segundoRect.top - primeiroRect.top) < 20;
+
+          const fimProtegido = mesmaLinha
+            ? Math.max(primeiroRect.bottom, segundoRect!.bottom)
+            : primeiroRect.bottom;
 
           blocosProtegidos.push({
             topCss: Math.max(0, secaoRect.top - elementoRect.top),
-            bottomCss: Math.max(0, cardRect.bottom - elementoRect.top),
-            heightCss: Math.max(0, cardRect.bottom - secaoRect.top),
+            bottomCss: Math.max(0, fimProtegido - elementoRect.top),
+            heightCss: Math.max(0, fimProtegido - secaoRect.top),
           });
         }
       }
@@ -785,13 +797,20 @@ export default function Home() {
         if (fimDesejado < canvas.height) {
           // Se a quebra cair dentro de um cartão, move a quebra para
           // imediatamente antes do cartão.
-          const atravessado = protegidosPx.find(
+          const atravessados = protegidosPx.filter(
             (bloco) =>
               bloco.top > inicio + folgaPx &&
               bloco.top < fimDesejado &&
               bloco.bottom > fimDesejado &&
               bloco.height < alturaPaginaPx - folgaPx
           );
+
+          // Se mais de um bloco protegido atravessar a quebra, usa o que
+          // começa mais cedo. Isso garante que o cabeçalho de Evidências
+          // seja levado junto com a primeira linha de fotos.
+          const atravessado = atravessados.sort(
+            (a, b) => a.top - b.top
+          )[0];
 
           if (atravessado) {
             const fimSeguro = atravessado.top - folgaPx;
@@ -1495,7 +1514,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.14.3
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.14.4
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
@@ -2932,7 +2951,10 @@ export default function Home() {
               )}
             </article>
 
-            <article className="print-block rounded-2xl bg-white p-5 shadow-sm">
+            <article
+              data-pdf-section="evidencias"
+              className="print-block rounded-2xl bg-white p-5 shadow-sm"
+            >
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <div className="text-xs font-extrabold uppercase text-slate-400">
