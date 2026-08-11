@@ -632,6 +632,18 @@ export default function Home() {
   );
   const fotosVisita = evidenciasVisita.filter((ev) => ev.tipo === "Foto").length;
   const audiosVisita = evidenciasVisita.filter((ev) => ev.tipo === "Áudio").length;
+  const ncsSomenteAbertas = ncsVisita.filter(
+    (nc) => nc.status === "Aberta"
+  ).length;
+  const ncsEmTratamento = ncsVisita.filter(
+    (nc) => nc.status === "Em tratamento"
+  ).length;
+  const ncsResolvidas = ncsVisita.filter(
+    (nc) => nc.status === "Resolvida"
+  ).length;
+  const ncsSemAcao = ncsVisita.filter(
+    (nc: any) => !(nc.acaoCorretiva || "").trim()
+  ).length;
   const conformesVisita = checklistAtual.filter(
     (item) => item.status === "Conforme"
   ).length;
@@ -958,6 +970,19 @@ export default function Home() {
       elemento.classList.remove("pdf-export");
       setGerandoPdf(false);
     }
+  }
+
+  function atualizarConclusaoRelatorio(valor: string) {
+    if (!visitaAtual) return;
+
+    setDb((atual) => ({
+      ...atual,
+      visitas: atual.visitas.map((visita) =>
+        visita.id === visitaAtual.id
+          ? { ...visita, observacoes: valor }
+          : visita
+      ),
+    }));
   }
 
   async function buscar() {
@@ -1514,7 +1539,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.14.4
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.15
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
@@ -3005,6 +3030,136 @@ export default function Home() {
                   ))}
                 </div>
               )}
+            </article>
+
+            <article
+              data-pdf-section="fechamento"
+              className="print-card rounded-2xl bg-white p-5 shadow-sm"
+            >
+              <div className="text-xs font-extrabold uppercase text-slate-400">
+                Fechamento técnico
+              </div>
+              <h2 className="mt-1 text-xl font-extrabold">
+                Síntese da inspeção
+              </h2>
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="rounded-xl bg-slate-100 p-4">
+                  <div className="text-xs font-extrabold uppercase text-slate-500">
+                    Checklist
+                  </div>
+                  <div className="mt-1 font-extrabold">
+                    {respondidos}/{totalChecklist} respondidos
+                  </div>
+                </div>
+
+                <div className="rounded-xl bg-red-50 p-4">
+                  <div className="text-xs font-extrabold uppercase text-red-700">
+                    Abertas
+                  </div>
+                  <div className="mt-1 text-xl font-extrabold">
+                    {ncsSomenteAbertas}
+                  </div>
+                </div>
+
+                <div className="rounded-xl bg-amber-50 p-4">
+                  <div className="text-xs font-extrabold uppercase text-amber-700">
+                    Em tratamento
+                  </div>
+                  <div className="mt-1 text-xl font-extrabold">
+                    {ncsEmTratamento}
+                  </div>
+                </div>
+
+                <div className="rounded-xl bg-emerald-50 p-4">
+                  <div className="text-xs font-extrabold uppercase text-emerald-700">
+                    Resolvidas
+                  </div>
+                  <div className="mt-1 text-xl font-extrabold">
+                    {ncsResolvidas}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+                {pendentesVisita > 0 ? (
+                  <p>
+                    A inspeção permanece <strong>em andamento</strong>, com{" "}
+                    <strong>{pendentesVisita} item(ns) pendente(s)</strong> no
+                    checklist.
+                  </p>
+                ) : (
+                  <p>
+                    O checklist desta visita foi totalmente respondido.
+                  </p>
+                )}
+
+                {ncsVisita.length > 0 ? (
+                  <p className="mt-2">
+                    Foram registradas{" "}
+                    <strong>{ncsVisita.length} não conformidade(s)</strong>.
+                    {" "}
+                    {ncsSemAcao > 0
+                      ? `${ncsSemAcao} ainda não possui(em) ação corretiva definida.`
+                      : "Todas possuem ação corretiva definida."}
+                  </p>
+                ) : (
+                  <p className="mt-2">
+                    Não foram registradas não conformidades nesta visita.
+                  </p>
+                )}
+              </div>
+
+              <div className="mt-5">
+                <label className="no-print block">
+                  <span className="mb-2 block text-sm font-extrabold text-slate-700">
+                    Conclusão / observações do consultor
+                  </span>
+                  <textarea
+                    value={visitaAtual.observacoes || ""}
+                    onChange={(e) =>
+                      atualizarConclusaoRelatorio(e.target.value)
+                    }
+                    placeholder="Registre aqui a conclusão técnica, orientações gerais, pontos prioritários ou observações finais da visita."
+                    className="min-h-32 w-full rounded-xl border border-slate-300 bg-white p-4 text-sm outline-none focus:border-[#2F5597]"
+                  />
+                  <span className="mt-2 block text-xs text-slate-500">
+                    O conteúdo é salvo junto da visita e incluído no PDF.
+                  </span>
+                </label>
+
+                <div className="print-only">
+                  <div className="mb-2 text-sm font-extrabold text-slate-700">
+                    Conclusão / observações do consultor
+                  </div>
+                  <div className="min-h-20 whitespace-pre-wrap rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+                    {visitaAtual.observacoes?.trim() ||
+                      "Nenhuma conclusão ou observação final registrada."}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-10 grid gap-10 md:grid-cols-2">
+                <div>
+                  <div className="border-t border-slate-500 pt-2 text-center text-xs font-extrabold text-slate-700">
+                    {visitaAtual.responsavel ||
+                      "Consultor / Responsável técnico"}
+                  </div>
+                  <div className="mt-1 text-center text-[11px] text-slate-500">
+                    Responsável pela inspeção
+                  </div>
+                </div>
+
+                <div>
+                  <div className="border-t border-slate-500 pt-2 text-center text-xs font-extrabold text-slate-700">
+                    {empresaVisita?.responsavel ||
+                      "Responsável pelo estabelecimento"}
+                  </div>
+                  <div className="mt-1 text-center text-[11px] text-slate-500">
+                    Ciência e recebimento
+                  </div>
+                </div>
+              </div>
             </article>
 
             <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5 no-print">
