@@ -658,7 +658,7 @@ export default function Home() {
     setGerandoPdf(true);
 
     try {
-      // Aguarda imagens ainda carregando para evitar PDF sem evidências.
+      // Aguarda as evidências fotográficas carregarem.
       const imagens = Array.from(
         elemento.querySelectorAll("img")
       ) as HTMLImageElement[];
@@ -679,11 +679,33 @@ export default function Home() {
 
       elemento.classList.add("pdf-export");
 
-      // Importação dinâmica evita aumentar o carregamento inicial do sistema.
+      // Aguarda o navegador aplicar o layout específico da exportação.
+      await new Promise<void>((resolve) =>
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => resolve())
+        )
+      );
+
       const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
         import("html2canvas-pro"),
         import("jspdf"),
       ]);
+
+      const elementoRect = elemento.getBoundingClientRect();
+
+      // Blocos que não devem ser cortados no meio entre páginas.
+      const blocosProtegidos = Array.from(
+        elemento.querySelectorAll(".print-card")
+      )
+        .map((node) => {
+          const rect = (node as HTMLElement).getBoundingClientRect();
+          return {
+            topCss: Math.max(0, rect.top - elementoRect.top),
+            bottomCss: Math.max(0, rect.bottom - elementoRect.top),
+            heightCss: rect.height,
+          };
+        })
+        .sort((a, b) => a.topCss - b.topCss);
 
       const canvas = await html2canvas(elemento, {
         scale: 1.6,
@@ -706,35 +728,93 @@ export default function Home() {
       const paginaLargura = 210;
       const paginaAltura = 297;
       const margemX = 10;
-      const margemY = 10;
+      const margemTopo = 11;
+      const margemRodape = 12;
       const larguraUtil = paginaLargura - margemX * 2;
-      const alturaUtil = paginaAltura - margemY * 2;
+      const alturaUtil = paginaAltura - margemTopo - margemRodape;
 
-      const proporcao = larguraUtil / canvas.width;
-      const alturaPaginaPx = Math.floor(alturaUtil / proporcao);
+      const mmPorCanvasPx = larguraUtil / canvas.width;
+      const alturaPaginaPx = Math.floor(alturaUtil / mmPorCanvasPx);
 
-      let yOrigem = 0;
-      let pagina = 0;
+      // Converte as posições dos cards do DOM para pixels do canvas.
+      const escalaCanvasY =
+        elementoRect.height > 0 ? canvas.height / elementoRect.height : 1;
 
-      while (yOrigem < canvas.height) {
-        const alturaRecorte = Math.min(
-          alturaPaginaPx,
-          canvas.height - yOrigem
+      const protegidosPx = blocosProtegidos.map((bloco) => ({
+        top: Math.round(bloco.topCss * escalaCanvasY),
+        bottom: Math.round(bloco.bottomCss * escalaCanvasY),
+        height: Math.round(bloco.heightCss * escalaCanvasY),
+      }));
+
+      const cortes: { inicio: number; fim: number }[] = [];
+      let inicio = 0;
+      const folgaPx = Math.max(8, Math.round(4 / mmPorCanvasPx));
+
+      while (inicio < canvas.height) {
+        let fimDesejado = Math.min(
+          inicio + alturaPaginaPx,
+          canvas.height
         );
+
+        if (fimDesejado < canvas.height) {
+          // Se a quebra cair dentro de um cartão, move a quebra para
+          // imediatamente antes do cartão.
+          const atravessado = protegidosPx.find(
+            (bloco) =>
+              bloco.top > inicio + folgaPx &&
+              bloco.top < fimDesejado &&
+              bloco.bottom > fimDesejado &&
+              bloco.height < alturaPaginaPx - folgaPx
+          );
+
+          if (atravessado) {
+            const fimSeguro = atravessado.top - folgaPx;
+
+            // Evita criar uma página quase vazia.
+            if (fimSeguro - inicio >= alturaPaginaPx * 0.35) {
+              fimDesejado = fimSeguro;
+            }
+          }
+        }
+
+        // Proteção contra loop em layouts inesperados.
+        if (fimDesejado <= inicio) {
+          fimDesejado = Math.min(
+            inicio + alturaPaginaPx,
+            canvas.height
+          );
+        }
+
+        cortes.push({ inicio, fim: fimDesejado });
+        inicio = fimDesejado;
+      }
+
+      const totalPaginas = cortes.length;
+
+      cortes.forEach((corte, indice) => {
+        const alturaRecorte = corte.fim - corte.inicio;
 
         const paginaCanvas = document.createElement("canvas");
         paginaCanvas.width = canvas.width;
         paginaCanvas.height = alturaRecorte;
 
         const ctx = paginaCanvas.getContext("2d");
-        if (!ctx) throw new Error("Falha ao preparar uma página do PDF.");
+        if (!ctx) {
+          throw new Error("Falha ao preparar uma página do PDF.");
+        }
 
         ctx.fillStyle = "#ffffff";
-        ctx.fillRect(0, 0, paginaCanvas.width, paginaCanvas.height);
+        ctx.fillRect(
+          0,
+          0,
+          paginaCanvas.width,
+          paginaCanvas.height
+        );
+
         ctx.drawImage(
           canvas,
           0,
-          yOrigem,
+          corte.inicio,
           canvas.width,
           alturaRecorte,
           0,
@@ -743,25 +823,68 @@ export default function Home() {
           alturaRecorte
         );
 
-        const imagem = paginaCanvas.toDataURL("image/jpeg", 0.88);
-        const alturaMm = alturaRecorte * proporcao;
+        const imagem = paginaCanvas.toDataURL(
+          "image/jpeg",
+          0.9
+        );
+        const alturaMm = alturaRecorte * mmPorCanvasPx;
 
-        if (pagina > 0) pdf.addPage();
+        if (indice > 0) pdf.addPage();
 
         pdf.addImage(
           imagem,
           "JPEG",
           margemX,
-          margemY,
+          margemTopo,
           larguraUtil,
           alturaMm,
           undefined,
           "FAST"
         );
 
-        yOrigem += alturaRecorte;
-        pagina += 1;
-      }
+        // Cabeçalho discreto a partir da segunda página.
+        if (indice > 0) {
+          pdf.setFont("helvetica", "bold");
+          pdf.setFontSize(8);
+          pdf.setTextColor(23, 54, 93);
+          pdf.text(
+            "MBP Expert AI • Relatório Técnico de Inspeção",
+            margemX,
+            6.5
+          );
+        }
+
+        // Rodapé profissional em todas as páginas.
+        pdf.setDrawColor(210, 218, 229);
+        pdf.line(
+          margemX,
+          paginaAltura - 8.5,
+          paginaLargura - margemX,
+          paginaAltura - 8.5
+        );
+
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(7.5);
+        pdf.setTextColor(100, 116, 139);
+
+        const empresaRodape =
+          empresaVisita.nomeFantasia ||
+          empresaVisita.razaoSocial ||
+          "Visita técnica";
+
+        pdf.text(
+          empresaRodape.slice(0, 62),
+          margemX,
+          paginaAltura - 4.5
+        );
+
+        pdf.text(
+          `Página ${indice + 1} de ${totalPaginas}`,
+          paginaLargura - margemX,
+          paginaAltura - 4.5,
+          { align: "right" }
+        );
+      });
 
       const nomeEmpresa = (
         empresaVisita.nomeFantasia ||
@@ -1346,7 +1469,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.14.1
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.14.2
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
