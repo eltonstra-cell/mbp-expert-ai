@@ -13,7 +13,7 @@ import type {
 } from "@/types";
 import { emptyDB, loadDB, saveDB } from "@/lib/storage";
 
-type View = "inicio" | "empresas" | "visitas" | "visita" | "ambientes" | "checklist" | "ncs" | "plano" | "evidencias";
+type View = "inicio" | "empresas" | "visitas" | "visita" | "ambientes" | "checklist" | "ncs" | "plano" | "evidencias" | "relatorio";
 
 const labels: Record<string, string> = {
   nomeFantasia: "Nome fantasia",
@@ -631,6 +631,21 @@ export default function Home() {
   );
   const fotosVisita = evidenciasVisita.filter((ev) => ev.tipo === "Foto").length;
   const audiosVisita = evidenciasVisita.filter((ev) => ev.tipo === "Áudio").length;
+  const conformesVisita = checklistAtual.filter(
+    (item) => item.status === "Conforme"
+  ).length;
+  const naoConformesVisita = checklistAtual.filter(
+    (item) => item.status === "Não Conforme"
+  ).length;
+  const naoSeAplicaVisita = checklistAtual.filter(
+    (item) => item.status === "Não se aplica"
+  ).length;
+  const pendentesVisita = checklistAtual.filter(
+    (item) => item.status === "Pendente"
+  ).length;
+  const percentualConformidade = respondidos
+    ? Math.round((conformesVisita / respondidos) * 100)
+    : 0;
 
   async function buscar() {
     const c = form.cnpj.replace(/\D/g, "");
@@ -1186,7 +1201,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.10.2.2
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.11.2
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
@@ -1258,7 +1273,8 @@ export default function Home() {
               view === "checklist" ||
               view === "ncs" ||
               view === "plano" ||
-              view === "evidencias"
+              view === "evidencias" ||
+              view === "relatorio"
                 ? "bg-[#17365D] text-white"
                 : "bg-slate-200 text-slate-900"
             }`}
@@ -2342,15 +2358,324 @@ export default function Home() {
                 </div>
               </button>
 
-              <div className="rounded-2xl bg-white p-5 shadow-sm opacity-70">
+              <button
+                onClick={() => setView("relatorio")}
+                disabled={totalChecklist === 0}
+                className={`rounded-2xl bg-white p-5 text-left shadow-sm transition ${
+                  totalChecklist > 0
+                    ? "hover:-translate-y-0.5 hover:shadow-md"
+                    : "cursor-not-allowed opacity-60"
+                }`}
+              >
                 <div className="text-xs font-extrabold uppercase text-slate-400">
                   Encerramento
                 </div>
                 <div className="mt-2 text-xl font-extrabold">Relatório</div>
                 <p className="mt-1 text-sm text-slate-500">
-                  Revisão e geração do documento final.
+                  Revisão consolidada da inspeção e dos registros da visita.
                 </p>
+                <div className="mt-4">
+                  {totalChecklist > 0 ? (
+                    <div className="flex items-center justify-between">
+                      <span className="font-extrabold text-[#2F5597]">
+                        Abrir relatório →
+                      </span>
+                      <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold text-slate-600">
+                        {percentualChecklist}% checklist
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-xs font-bold text-slate-400">
+                      Inicie o checklist primeiro
+                    </span>
+                  )}
+                </div>
+              </button>
+            </div>
+          </section>
+        ) : view === "relatorio" && visitaAtual ? (
+          <section className="space-y-4">
+            <div className="rounded-2xl bg-white p-5 shadow-sm">
+              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <div className="text-xs font-extrabold uppercase text-[#2F5597]">
+                    Encerramento da inspeção
+                  </div>
+                  <h1 className="mt-1 text-2xl font-extrabold">
+                    Relatório da visita
+                  </h1>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Revisão consolidada dos registros realizados em campo.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setView("visita")}
+                  className="rounded-xl bg-slate-100 px-4 py-2 font-bold"
+                >
+                  Voltar à Central
+                </button>
               </div>
+
+              {pendentesVisita > 0 && (
+                <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                  <strong>Atenção:</strong> ainda existem {pendentesVisita} item(ns)
+                  pendente(s) no checklist. O relatório pode ser revisado, mas a
+                  inspeção ainda não está totalmente preenchida.
+                </div>
+              )}
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-4">
+              <MetricCard label="Checklist" value={`${percentualChecklist}%`} />
+              <MetricCard label="Conformidade" value={`${percentualConformidade}%`} />
+              <MetricCard label="Não conformidades" value={ncsVisita.length} />
+              <MetricCard label="Evidências" value={evidenciasVisita.length} />
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-3">
+              <article className="rounded-2xl bg-white p-5 shadow-sm lg:col-span-2">
+                <div className="text-xs font-extrabold uppercase text-slate-400">
+                  Identificação
+                </div>
+                <h2 className="mt-1 text-xl font-extrabold">
+                  {empresaVisita?.nomeFantasia || empresaVisita?.razaoSocial || "Empresa"}
+                </h2>
+                <div className="mt-4 grid gap-3 text-sm md:grid-cols-2">
+                  <div>
+                    <span className="font-extrabold text-slate-500">CNPJ</span>
+                    <div>{empresaVisita?.cnpj || "Não informado"}</div>
+                  </div>
+                  <div>
+                    <span className="font-extrabold text-slate-500">Data da visita</span>
+                    <div>{fdata(visitaAtual.data)}</div>
+                  </div>
+                  <div>
+                    <span className="font-extrabold text-slate-500">Responsável pela visita</span>
+                    <div>{visitaAtual.responsavel || "Não informado"}</div>
+                  </div>
+                  <div>
+                    <span className="font-extrabold text-slate-500">Município / UF</span>
+                    <div>
+                      {[empresaVisita?.municipio, empresaVisita?.uf]
+                        .filter(Boolean)
+                        .join(" / ") || "Não informado"}
+                    </div>
+                  </div>
+                </div>
+              </article>
+
+              <article className="rounded-2xl bg-white p-5 shadow-sm">
+                <div className="text-xs font-extrabold uppercase text-slate-400">
+                  Escopo
+                </div>
+                <h2 className="mt-1 text-xl font-extrabold">Ambientes avaliados</h2>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {(visitaAtual.ambientes || []).length > 0 ? (
+                    (visitaAtual.ambientes || []).map((ambiente) => (
+                      <span
+                        key={ambiente}
+                        className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-800"
+                      >
+                        {ambiente}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-sm text-slate-500">
+                      Nenhum ambiente selecionado.
+                    </span>
+                  )}
+                </div>
+              </article>
+            </div>
+
+            <article className="rounded-2xl bg-white p-5 shadow-sm">
+              <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                <div>
+                  <div className="text-xs font-extrabold uppercase text-slate-400">
+                    Resultado técnico
+                  </div>
+                  <h2 className="mt-1 text-xl font-extrabold">
+                    Resumo do checklist
+                  </h2>
+                </div>
+                <div className="text-sm font-bold text-slate-500">
+                  {respondidos}/{totalChecklist} respondidos
+                </div>
+              </div>
+
+              <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="rounded-xl bg-emerald-50 p-4">
+                  <div className="text-xs font-extrabold uppercase text-emerald-700">
+                    Conforme
+                  </div>
+                  <div className="mt-1 text-2xl font-extrabold">
+                    {conformesVisita}
+                  </div>
+                </div>
+                <div className="rounded-xl bg-red-50 p-4">
+                  <div className="text-xs font-extrabold uppercase text-red-700">
+                    Não conforme
+                  </div>
+                  <div className="mt-1 text-2xl font-extrabold">
+                    {naoConformesVisita}
+                  </div>
+                </div>
+                <div className="rounded-xl bg-slate-100 p-4">
+                  <div className="text-xs font-extrabold uppercase text-slate-600">
+                    Não se aplica
+                  </div>
+                  <div className="mt-1 text-2xl font-extrabold">
+                    {naoSeAplicaVisita}
+                  </div>
+                </div>
+                <div className="rounded-xl bg-amber-50 p-4">
+                  <div className="text-xs font-extrabold uppercase text-amber-700">
+                    Pendente
+                  </div>
+                  <div className="mt-1 text-2xl font-extrabold">
+                    {pendentesVisita}
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <article className="rounded-2xl bg-white p-5 shadow-sm">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <div className="text-xs font-extrabold uppercase text-slate-400">
+                    Achados da inspeção
+                  </div>
+                  <h2 className="mt-1 text-xl font-extrabold">
+                    Não conformidades
+                  </h2>
+                </div>
+                <span className="rounded-full bg-red-50 px-3 py-1 text-xs font-extrabold text-red-700">
+                  {ncsVisita.length}
+                </span>
+              </div>
+
+              {ncsVisita.length === 0 ? (
+                <div className="mt-4 rounded-xl bg-emerald-50 p-4 text-sm text-emerald-800">
+                  Nenhuma não conformidade registrada nesta visita.
+                </div>
+              ) : (
+                <div className="mt-4 space-y-3">
+                  {ncsVisita.map((nc, idx) => (
+                    <div
+                      key={nc.id}
+                      className="rounded-xl border border-slate-200 p-4"
+                    >
+                      <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                        <div>
+                          <div className="text-xs font-extrabold uppercase text-slate-400">
+                            NC {String(idx + 1).padStart(2, "0")} • {nc.ambiente}
+                          </div>
+                          <div className="mt-1 font-extrabold">{nc.titulo}</div>
+                        </div>
+                        <span
+                          className={`w-fit rounded-full px-3 py-1 text-xs font-extrabold ${
+                            nc.status === "Resolvida"
+                              ? "bg-emerald-50 text-emerald-700"
+                              : nc.status === "Em tratamento"
+                                ? "bg-amber-50 text-amber-700"
+                                : "bg-red-50 text-red-700"
+                          }`}
+                        >
+                          {nc.status}
+                        </span>
+                      </div>
+
+                      <div className="mt-3 rounded-lg bg-red-50 p-3 text-sm">
+                        <span className="font-extrabold text-red-700">
+                          Constatação:
+                        </span>{" "}
+                        {nc.observacao || "Sem observação registrada."}
+                      </div>
+
+                      <div className="mt-3 grid gap-3 text-sm md:grid-cols-2">
+                        <div>
+                          <span className="font-extrabold text-slate-500">
+                            Ação corretiva
+                          </span>
+                          <div>{nc.acaoCorretiva || "Não definida"}</div>
+                        </div>
+                        <div>
+                          <span className="font-extrabold text-slate-500">
+                            Responsável / Prazo
+                          </span>
+                          <div>
+                            {nc.responsavelAcao || "Não informado"}
+                            {nc.prazo ? ` • ${fdata(nc.prazo)}` : ""}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </article>
+
+            <article className="rounded-2xl bg-white p-5 shadow-sm">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <div className="text-xs font-extrabold uppercase text-slate-400">
+                    Registros de campo
+                  </div>
+                  <h2 className="mt-1 text-xl font-extrabold">Evidências</h2>
+                </div>
+                <div className="text-sm font-bold text-slate-500">
+                  {fotosVisita} foto(s) • {audiosVisita} áudio(s)
+                </div>
+              </div>
+
+              {evidenciasVisita.length === 0 ? (
+                <p className="mt-4 text-sm text-slate-500">
+                  Nenhuma evidência registrada nesta visita.
+                </p>
+              ) : (
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  {evidenciasVisita.map((ev) => (
+                    <div
+                      key={ev.id}
+                      className="overflow-hidden rounded-xl border border-slate-200"
+                    >
+                      <div className="p-4">
+                        <div className="text-xs font-extrabold uppercase text-slate-400">
+                          {ev.tipo} • {ev.ambiente || "Sem ambiente"}
+                        </div>
+                        <div className="mt-1 font-extrabold">
+                          {ev.descricao || ev.nomeArquivo}
+                        </div>
+                      </div>
+                      {ev.tipo === "Foto" ? (
+                        <img
+                          src={urlEvidencia(ev)}
+                          alt={ev.descricao || "Evidência fotográfica"}
+                          className="max-h-80 w-full object-contain"
+                        />
+                      ) : (
+                        <div className="p-4 pt-0">
+                          <audio
+                            controls
+                            src={urlEvidencia(ev)}
+                            className="w-full"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </article>
+
+            <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5">
+              <div className="text-sm font-extrabold text-blue-900">
+                Próxima etapa
+              </div>
+              <p className="mt-1 text-sm text-blue-800">
+                Esta é a revisão consolidada da visita. Depois de validarmos esta
+                tela, o próximo passo será gerar o PDF profissional do relatório.
+              </p>
             </div>
           </section>
         ) : view === "inicio" ? (
