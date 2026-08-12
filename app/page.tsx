@@ -433,6 +433,7 @@ export default function Home() {
       empresaId: v.empresaId,
       data: v.data || hojeISO(),
       status: v.status === "Concluída" ? "Concluída" : "Em andamento",
+      encerradaEm: typeof v.encerradaEm === "string" ? v.encerradaEm : undefined,
       responsavel: v.responsavel || "",
       observacoes: v.observacoes || "",
       progresso:
@@ -985,7 +986,44 @@ export default function Home() {
     }));
   }
 
-  function finalizarInspecao() {
+  async function salvarEstadoImediato(novo: AppDB) {
+    saveDB(novo);
+    setDb(novo);
+    setSyncStatus("conectando");
+
+    try {
+      const response = await fetch("/api/state", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ data: novo }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Falha ao salvar na nuvem (${response.status})`);
+      }
+
+      const result = await response.json();
+      ultimaNuvemRef.current = result.updatedAt
+        ? new Date(result.updatedAt).getTime()
+        : Date.now();
+      setSyncStatus("sincronizado");
+      setSyncAtualizadoEm(
+        result.updatedAt
+          ? new Date(result.updatedAt).toLocaleString("pt-BR")
+          : new Date().toLocaleString("pt-BR")
+      );
+      return true;
+    } catch (error) {
+      console.error("Falha ao salvar encerramento na nuvem:", error);
+      setSyncStatus("erro");
+      window.alert(
+        "A alteração foi salva neste dispositivo, mas não foi possível confirmar a gravação na nuvem. Verifique a conexão antes de sair da página."
+      );
+      return false;
+    }
+  }
+
+  async function finalizarInspecao() {
     if (!visitaAtual) return;
     const alertas: string[] = [];
     if (pendentesVisita > 0) alertas.push(`${pendentesVisita} item(ns) pendente(s) no checklist`);
@@ -999,27 +1037,32 @@ export default function Home() {
     if (!window.confirm(`Finalizar esta inspeção?${ressalvas}\n\nA visita ficará marcada como Concluída.`)) return;
 
     const agora = new Date().toISOString();
-    setDb((atual) => ({
-      ...atual,
-      visitas: atual.visitas.map((visita) =>
+    const novo: AppDB = {
+      ...db,
+      visitas: db.visitas.map((visita) =>
         visita.id === visitaAtual.id
-          ? { ...visita, status: "Concluída", observacoes: visita.observacoes, encerradaEm: agora } as Visita
+          ? ({ ...visita, status: "Concluída", encerradaEm: agora } as any)
           : visita
       ),
-    }));
+    };
+
+    await salvarEstadoImediato(novo);
   }
 
-  function reabrirInspecao() {
+  async function reabrirInspecao() {
     if (!visitaAtual) return;
     if (!window.confirm("Reabrir esta inspeção?\n\nA visita voltará para Em andamento.")) return;
-    setDb((atual) => ({
-      ...atual,
-      visitas: atual.visitas.map((visita) =>
+
+    const novo: AppDB = {
+      ...db,
+      visitas: db.visitas.map((visita) =>
         visita.id === visitaAtual.id
-          ? { ...visita, status: "Em andamento", encerradaEm: undefined } as Visita
+          ? ({ ...visita, status: "Em andamento", encerradaEm: undefined } as any)
           : visita
       ),
-    }));
+    };
+
+    await salvarEstadoImediato(novo);
   }
 
   async function buscar() {
@@ -1576,7 +1619,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.16
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.16.1
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
