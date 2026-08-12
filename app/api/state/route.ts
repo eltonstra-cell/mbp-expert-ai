@@ -22,6 +22,22 @@ async function ensureTable(sql: any) {
   `;
 }
 
+async function currentState(sql: any) {
+  const rows = await sql`
+    SELECT data, updated_at
+    FROM mbp_cloud_state
+    WHERE workspace_id = ${WORKSPACE_ID}
+    LIMIT 1
+  `;
+
+  if (!rows.length) return { data: null, updatedAt: null };
+
+  return {
+    data: rows[0].data,
+    updatedAt: rows[0].updated_at,
+  };
+}
+
 export async function GET() {
   const sql = getSql();
 
@@ -35,26 +51,12 @@ export async function GET() {
 
   try {
     await ensureTable(sql);
-
-    const rows = await sql`
-      SELECT data, updated_at
-      FROM mbp_cloud_state
-      WHERE workspace_id = ${WORKSPACE_ID}
-      LIMIT 1
-    `;
-
-    if (!rows.length) {
-      return NextResponse.json({
-        configured: true,
-        data: null,
-        updatedAt: null,
-      });
-    }
+    const atual = await currentState(sql);
 
     return NextResponse.json({
       configured: true,
-      data: rows[0].data,
-      updatedAt: rows[0].updated_at,
+      data: atual.data,
+      updatedAt: atual.updatedAt,
     });
   } catch (error) {
     console.error("GET /api/state", error);
@@ -74,10 +76,7 @@ export async function PUT(request: Request) {
 
   if (!sql) {
     return NextResponse.json(
-      {
-        configured: false,
-        error: "DATABASE_URL não configurada.",
-      },
+      { configured: false, error: "DATABASE_URL não configurada." },
       { status: 503 }
     );
   }
@@ -85,6 +84,10 @@ export async function PUT(request: Request) {
   try {
     const body = await request.json();
     const data = body?.data;
+    const expectedUpdatedAt =
+      typeof body?.expectedUpdatedAt === "string"
+        ? body.expectedUpdatedAt
+        : null;
 
     if (!data || typeof data !== "object") {
       return NextResponse.json(
@@ -94,31 +97,71 @@ export async function PUT(request: Request) {
     }
 
     await ensureTable(sql);
-
     const payload = JSON.stringify(data);
 
-    const rows = await sql`
-      INSERT INTO mbp_cloud_state (workspace_id, data, updated_at)
-      VALUES (${WORKSPACE_ID}, ${payload}::jsonb, NOW())
-      ON CONFLICT (workspace_id)
-      DO UPDATE SET
-        data = EXCLUDED.data,
-        updated_at = NOW()
+    // Sem versão esperada, só é permitido criar uma base que ainda não existe.
+    if (!expectedUpdatedAt) {
+      const inserted = await sql`
+        INSERT INTO mbp_cloud_state (workspace_id, data, updated_at)
+        VALUES (${WORKSPACE_ID}, ${payload}::jsonb, NOW())
+        ON CONFLICT (workspace_id) DO NOTHING
+        RETURNING updated_at
+      `;
+
+      if (inserted.length) {
+        return NextResponse.json({
+          ok: true,
+          configured: true,
+          updatedAt: inserted[0].updated_at,
+        });
+      }
+
+      const atual = await currentState(sql);
+      return NextResponse.json(
+        {
+          ok: false,
+          conflict: true,
+          configured: true,
+          data: atual.data,
+          updatedAt: atual.updatedAt,
+        },
+        { status: 409 }
+      );
+    }
+
+    // Só grava se a versão carregada por este aparelho ainda for a atual.
+    const updated = await sql`
+      UPDATE mbp_cloud_state
+      SET data = ${payload}::jsonb,
+          updated_at = NOW()
+      WHERE workspace_id = ${WORKSPACE_ID}
+        AND updated_at = ${expectedUpdatedAt}::timestamptz
       RETURNING updated_at
     `;
 
-    return NextResponse.json({
-      ok: true,
-      configured: true,
-      updatedAt: rows[0]?.updated_at || null,
-    });
+    if (updated.length) {
+      return NextResponse.json({
+        ok: true,
+        configured: true,
+        updatedAt: updated[0].updated_at,
+      });
+    }
+
+    const atual = await currentState(sql);
+    return NextResponse.json(
+      {
+        ok: false,
+        conflict: true,
+        configured: true,
+        data: atual.data,
+        updatedAt: atual.updatedAt,
+      },
+      { status: 409 }
+    );
   } catch (error) {
     console.error("PUT /api/state", error);
     return NextResponse.json(
-      {
-        configured: true,
-        error: "Falha ao salvar dados na nuvem.",
-      },
+      { configured: true, error: "Falha ao salvar dados na nuvem." },
       { status: 500 }
     );
   }

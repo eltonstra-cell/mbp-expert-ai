@@ -285,6 +285,7 @@ export default function Home() {
   const [syncErroVisivel, setSyncErroVisivel] = useState(false);
   const [syncAtualizadoEm, setSyncAtualizadoEm] = useState("");
   const ultimaNuvemRef = useRef<number>(0);
+  const ultimaNuvemVersaoRef = useRef<string | null>(null);
   const aplicandoNuvemRef = useRef(false);
   const falhasSyncRef = useRef(0);
   const retrySyncTimerRef = useRef<number | null>(null);
@@ -371,6 +372,45 @@ export default function Home() {
     setSyncStatus("erro");
   }
 
+  function aplicarEstadoDaNuvem(cloud: any) {
+    if (!cloud?.data || typeof cloud.data !== "object") return false;
+
+    const novo = cloud.data as AppDB;
+    aplicandoNuvemRef.current = true;
+    ultimaNuvemVersaoRef.current = cloud.updatedAt || null;
+    ultimaNuvemRef.current = cloud.updatedAt
+      ? new Date(cloud.updatedAt).getTime()
+      : 0;
+
+    setDb(novo);
+    saveDB(novo);
+
+    window.setTimeout(() => {
+      aplicandoNuvemRef.current = false;
+    }, 0);
+
+    return true;
+  }
+
+  async function tratarConflitoDaNuvem(response: Response) {
+    if (response.status !== 409) return false;
+
+    const conflito = await response.json();
+
+    if (conflito?.data && typeof conflito.data === "object") {
+      aplicarEstadoDaNuvem(conflito);
+      sincronizacaoOk();
+      setSyncStatus("sincronizado");
+      setSyncAtualizadoEm(
+        conflito.updatedAt
+          ? new Date(conflito.updatedAt).toLocaleString("pt-BR")
+          : ""
+      );
+    }
+
+    return true;
+  }
+
   async function buscarEstadoNuvem(aplicarMesmoSeIgual = false) {
     try {
       const response = await fetch("/api/state", {
@@ -384,25 +424,19 @@ export default function Home() {
         return;
       }
 
-      const cloudTs = cloud.updatedAt
-        ? new Date(cloud.updatedAt).getTime()
-        : 0;
+      const versaoMudou =
+        !!cloud.updatedAt &&
+        cloud.updatedAt !== ultimaNuvemVersaoRef.current;
 
       if (
         cloud.data &&
         typeof cloud.data === "object" &&
-        (aplicarMesmoSeIgual || cloudTs > ultimaNuvemRef.current)
+        (aplicarMesmoSeIgual || versaoMudou)
       ) {
-        aplicandoNuvemRef.current = true;
-        ultimaNuvemRef.current = cloudTs;
-
-        const novo = cloud.data as AppDB;
-        setDb(novo);
-        saveDB(novo);
-
-        window.setTimeout(() => {
-          aplicandoNuvemRef.current = false;
-        }, 0);
+        aplicarEstadoDaNuvem(cloud);
+      } else if (cloud.updatedAt) {
+        ultimaNuvemVersaoRef.current = cloud.updatedAt;
+        ultimaNuvemRef.current = new Date(cloud.updatedAt).getTime();
       }
 
       sincronizacaoOk();
@@ -440,6 +474,7 @@ export default function Home() {
             ultimaNuvemRef.current = cloud.updatedAt
               ? new Date(cloud.updatedAt).getTime()
               : 0;
+            ultimaNuvemVersaoRef.current = cloud.updatedAt || null;
             sincronizacaoOk();
             setSyncStatus("sincronizado");
             setSyncAtualizadoEm(
@@ -460,7 +495,10 @@ export default function Home() {
               const upload = await fetch("/api/state", {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ data: s }),
+                body: JSON.stringify({
+                  data: s,
+                  expectedUpdatedAt: null,
+                }),
               });
 
               if (upload.ok) {
@@ -468,6 +506,7 @@ export default function Home() {
                 ultimaNuvemRef.current = salvo.updatedAt
                   ? new Date(salvo.updatedAt).getTime()
                   : Date.now();
+                ultimaNuvemVersaoRef.current = salvo.updatedAt || null;
                 sincronizacaoOk();
             setSyncStatus("sincronizado");
                 setSyncAtualizadoEm(
@@ -631,23 +670,24 @@ export default function Home() {
 
     const timer = window.setTimeout(async () => {
       try {
+        // Antes de gravar, verifica se outro aparelho publicou uma versão nova.
         const check = await fetch("/api/state", {
           method: "GET",
           cache: "no-store",
         });
         const cloud = await check.json();
 
-        const cloudTs = cloud?.updatedAt
-          ? new Date(cloud.updatedAt).getTime()
-          : 0;
+        if (!cloud?.configured) {
+          setSyncStatus("local");
+          return;
+        }
 
-        if (cloud?.data && cloudTs > ultimaNuvemRef.current) {
-          aplicandoNuvemRef.current = true;
-          ultimaNuvemRef.current = cloudTs;
+        const versaoMudou =
+          !!cloud.updatedAt &&
+          cloud.updatedAt !== ultimaNuvemVersaoRef.current;
 
-          const novo = cloud.data as AppDB;
-          setDb(novo);
-          saveDB(novo);
+        if (cloud?.data && versaoMudou) {
+          aplicarEstadoDaNuvem(cloud);
           sincronizacaoOk();
           setSyncStatus("sincronizado");
           setSyncAtualizadoEm(
@@ -655,29 +695,31 @@ export default function Home() {
               ? new Date(cloud.updatedAt).toLocaleString("pt-BR")
               : ""
           );
-
-          window.setTimeout(() => {
-            aplicandoNuvemRef.current = false;
-          }, 0);
           return;
         }
 
         const response = await fetch("/api/state", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ data: db }),
+          body: JSON.stringify({
+            data: db,
+            expectedUpdatedAt: ultimaNuvemVersaoRef.current,
+          }),
         });
+
+        if (await tratarConflitoDaNuvem(response)) return;
 
         if (response.ok) {
           const result = await response.json();
 
           if (result?.configured !== false) {
+            ultimaNuvemVersaoRef.current = result.updatedAt || null;
             ultimaNuvemRef.current = result.updatedAt
               ? new Date(result.updatedAt).getTime()
               : Date.now();
 
             sincronizacaoOk();
-          setSyncStatus("sincronizado");
+            setSyncStatus("sincronizado");
             setSyncAtualizadoEm(
               result.updatedAt
                 ? new Date(result.updatedAt).toLocaleString("pt-BR")
@@ -1115,17 +1157,42 @@ export default function Home() {
       const response = await fetch("/api/state", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data: novo }),
+        body: JSON.stringify({
+          data: novo,
+          expectedUpdatedAt: ultimaNuvemVersaoRef.current,
+        }),
       });
+
+      if (response.status === 409) {
+        const conflito = await response.json();
+
+        if (conflito?.data && typeof conflito.data === "object") {
+          aplicarEstadoDaNuvem(conflito);
+          sincronizacaoOk();
+          setSyncStatus("sincronizado");
+          setSyncAtualizadoEm(
+            conflito.updatedAt
+              ? new Date(conflito.updatedAt).toLocaleString("pt-BR")
+              : ""
+          );
+        }
+
+        window.alert(
+          "Outro dispositivo alterou estes dados antes desta ação. A versão mais recente da nuvem foi carregada. Confira a visita e repita a ação."
+        );
+        return false;
+      }
 
       if (!response.ok) {
         throw new Error(`Falha ao salvar na nuvem (${response.status})`);
       }
 
       const result = await response.json();
+      ultimaNuvemVersaoRef.current = result.updatedAt || null;
       ultimaNuvemRef.current = result.updatedAt
         ? new Date(result.updatedAt).getTime()
         : Date.now();
+
       sincronizacaoOk();
       setSyncStatus("sincronizado");
       setSyncAtualizadoEm(
@@ -1135,7 +1202,7 @@ export default function Home() {
       );
       return true;
     } catch (error) {
-      console.error("Falha ao salvar encerramento na nuvem:", error);
+      console.error("Falha ao salvar alteração na nuvem:", error);
       setSyncStatus("erro");
       window.alert(
         "A alteração foi salva neste dispositivo, mas não foi possível confirmar a gravação na nuvem. Verifique a conexão antes de sair da página."
@@ -1740,7 +1807,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.16.4.1
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.17
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
