@@ -285,6 +285,8 @@ export default function Home() {
   const [syncAtualizadoEm, setSyncAtualizadoEm] = useState("");
   const ultimaNuvemRef = useRef<number>(0);
   const aplicandoNuvemRef = useRef(false);
+  const falhasSyncRef = useRef(0);
+  const retrySyncTimerRef = useRef<number | null>(null);
 
   const [form, setForm] = useState({
     cnpj: "",
@@ -306,12 +308,54 @@ export default function Home() {
     responsavel: "",
   });
 
+  useEffect(() => {
+    return () => {
+      if (retrySyncTimerRef.current !== null) {
+        window.clearTimeout(retrySyncTimerRef.current);
+      }
+    };
+  }, []);
+
   const [vf, setVf] = useState({
     data: hojeISO(),
     responsavel: "",
     observacoes: "",
   });
 
+
+  function sincronizacaoOk() {
+    falhasSyncRef.current = 0;
+
+    if (retrySyncTimerRef.current !== null) {
+      window.clearTimeout(retrySyncTimerRef.current);
+      retrySyncTimerRef.current = null;
+    }
+  }
+
+  function registrarFalhaSincronizacao() {
+    falhasSyncRef.current += 1;
+
+    // Falhas rápidas de rede são comuns durante F5/reconexão.
+    // Nas primeiras tentativas, mostramos "Conectando..." em vez de
+    // assustar o usuário com um falso erro.
+    if (falhasSyncRef.current < 3) {
+      setSyncStatus("conectando");
+
+      if (retrySyncTimerRef.current !== null) {
+        window.clearTimeout(retrySyncTimerRef.current);
+      }
+
+      retrySyncTimerRef.current = window.setTimeout(() => {
+        retrySyncTimerRef.current = null;
+        void buscarEstadoNuvem(false);
+      }, 1500);
+
+      return;
+    }
+
+    // Só após três falhas consecutivas mostramos erro real.
+    setSyncStatus("erro");
+  }
 
   async function buscarEstadoNuvem(aplicarMesmoSeIgual = false) {
     try {
@@ -347,6 +391,7 @@ export default function Home() {
         }, 0);
       }
 
+      sincronizacaoOk();
       setSyncStatus("sincronizado");
       setSyncAtualizadoEm(
         cloud.updatedAt
@@ -354,7 +399,7 @@ export default function Home() {
           : ""
       );
     } catch {
-      setSyncStatus("erro");
+      registrarFalhaSincronizacao();
     }
   }
 
@@ -381,6 +426,7 @@ export default function Home() {
             ultimaNuvemRef.current = cloud.updatedAt
               ? new Date(cloud.updatedAt).getTime()
               : 0;
+            sincronizacaoOk();
             setSyncStatus("sincronizado");
             setSyncAtualizadoEm(
               cloud.updatedAt
@@ -408,7 +454,8 @@ export default function Home() {
                 ultimaNuvemRef.current = salvo.updatedAt
                   ? new Date(salvo.updatedAt).getTime()
                   : Date.now();
-                setSyncStatus("sincronizado");
+                sincronizacaoOk();
+            setSyncStatus("sincronizado");
                 setSyncAtualizadoEm(
                   salvo.updatedAt
                     ? new Date(salvo.updatedAt).toLocaleString("pt-BR")
@@ -420,15 +467,16 @@ export default function Home() {
             } else {
               // Dispositivo novo + nuvem ainda vazia:
               // não grava uma base vazia.
-              setSyncStatus("sincronizado");
+              sincronizacaoOk();
+            setSyncStatus("sincronizado");
             }
           }
         } else {
           setSyncStatus("local");
         }
       } catch {
-        // Continua funcionando pelo localStorage se estiver sem conexão.
-        setSyncStatus("erro");
+        // Continua funcionando pelo localStorage enquanto tenta reconectar.
+        registrarFalhaSincronizacao();
       }
 
     const vs = (s.visitas || []).map((v: any) => ({
@@ -586,6 +634,7 @@ export default function Home() {
           const novo = cloud.data as AppDB;
           setDb(novo);
           saveDB(novo);
+          sincronizacaoOk();
           setSyncStatus("sincronizado");
           setSyncAtualizadoEm(
             cloud.updatedAt
@@ -613,7 +662,8 @@ export default function Home() {
               ? new Date(result.updatedAt).getTime()
               : Date.now();
 
-            setSyncStatus("sincronizado");
+            sincronizacaoOk();
+          setSyncStatus("sincronizado");
             setSyncAtualizadoEm(
               result.updatedAt
                 ? new Date(result.updatedAt).toLocaleString("pt-BR")
@@ -625,10 +675,10 @@ export default function Home() {
         } else if (response.status === 503) {
           setSyncStatus("local");
         } else {
-          setSyncStatus("erro");
+          registrarFalhaSincronizacao();
         }
       } catch {
-        setSyncStatus("erro");
+        registrarFalhaSincronizacao();
       }
     }, 700);
 
@@ -1062,6 +1112,7 @@ export default function Home() {
       ultimaNuvemRef.current = result.updatedAt
         ? new Date(result.updatedAt).getTime()
         : Date.now();
+      sincronizacaoOk();
       setSyncStatus("sincronizado");
       setSyncAtualizadoEm(
         result.updatedAt
@@ -1675,7 +1726,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.16.1
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.16.3
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
