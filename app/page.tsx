@@ -280,9 +280,9 @@ export default function Home() {
   const [evidenciaNcId, setEvidenciaNcId] = useState("");
   const [evidenciaMsg, setEvidenciaMsg] = useState("");
   const [syncStatus, setSyncStatus] = useState<
-  const [syncErroVisivel, setSyncErroVisivel] = useState(false);
     "conectando" | "sincronizado" | "local" | "erro"
   >("conectando");
+  const [syncErroVisivel, setSyncErroVisivel] = useState(false);
   const [syncAtualizadoEm, setSyncAtualizadoEm] = useState("");
   const ultimaNuvemRef = useRef<number>(0);
   const aplicandoNuvemRef = useRef(false);
@@ -1740,7 +1740,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.16.4
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.16.4.1
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
