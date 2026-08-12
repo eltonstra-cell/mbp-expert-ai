@@ -280,6 +280,7 @@ export default function Home() {
   const [evidenciaNcId, setEvidenciaNcId] = useState("");
   const [evidenciaMsg, setEvidenciaMsg] = useState("");
   const [syncStatus, setSyncStatus] = useState<
+  const [syncErroVisivel, setSyncErroVisivel] = useState(false);
     "conectando" | "sincronizado" | "local" | "erro"
   >("conectando");
   const [syncAtualizadoEm, setSyncAtualizadoEm] = useState("");
@@ -307,6 +308,19 @@ export default function Home() {
     email: "",
     responsavel: "",
   });
+
+  useEffect(() => {
+    if (syncStatus !== "erro") {
+      setSyncErroVisivel(false);
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setSyncErroVisivel(true);
+    }, 5000);
+
+    return () => window.clearTimeout(timer);
+  }, [syncStatus]);
 
   useEffect(() => {
     return () => {
@@ -1726,7 +1740,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.16.3
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.16.4
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
@@ -1738,7 +1752,9 @@ export default function Home() {
                   ? "bg-blue-100 text-blue-800"
                   : syncStatus === "local"
                   ? "bg-amber-100 text-amber-800"
-                  : "bg-red-100 text-red-800"
+                  : syncErroVisivel
+                  ? "bg-red-100 text-red-800"
+                  : "bg-blue-100 text-blue-800"
               }`}
               title={
                 syncAtualizadoEm
@@ -1752,7 +1768,9 @@ export default function Home() {
                 ? "☁️ Conectando..."
                 : syncStatus === "local"
                 ? "💻 Somente local"
-                : "⚠️ Falha na sincronização"}
+                : syncErroVisivel
+                ? "⚠️ Falha na sincronização"
+                : "☁️ Conectando..."}
             </div>
 
             {atual && (
