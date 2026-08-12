@@ -15,6 +15,9 @@ import { emptyDB, loadDB, saveDB } from "@/lib/storage";
 
 type View = "inicio" | "empresas" | "visitas" | "visita" | "ambientes" | "checklist" | "ncs" | "plano" | "evidencias" | "relatorio";
 
+const NAV_STORAGE_KEY = "mbp-expert-ai:navegacao:v1";
+const VISIT_VIEWS: View[] = ["visita", "ambientes", "checklist", "ncs", "plano", "evidencias", "relatorio"];
+
 const labels: Record<string, string> = {
   nomeFantasia: "Nome fantasia",
   razaoSocial: "Razão social",
@@ -487,12 +490,52 @@ export default function Home() {
       }
     }
 
-    setDb({
+    const dbNormalizado: AppDB = {
       ...s,
       visitas: vs,
       ncs: ncsSincronizadas,
       evidencias: Array.isArray((s as any).evidencias) ? (s as any).evidencias : [],
-    });
+    };
+
+    setDb(dbNormalizado);
+
+    // Restaura a tela e a visita em que o consultor estava antes de atualizar
+    // a página. A navegação é local ao dispositivo; os dados continuam na nuvem.
+    try {
+      const rawNav = window.localStorage.getItem(NAV_STORAGE_KEY);
+      if (rawNav) {
+        const nav = JSON.parse(rawNav) as {
+          view?: View;
+          visitaAtualId?: string | null;
+          ambienteChecklistAtivo?: string | null;
+        };
+        const viewSalva = nav.view;
+        const visitaSalva = nav.visitaAtualId
+          ? dbNormalizado.visitas.find((v) => v.id === nav.visitaAtualId)
+          : undefined;
+
+        if (viewSalva && VISIT_VIEWS.includes(viewSalva)) {
+          if (visitaSalva) {
+            setVisitaAtualId(visitaSalva.id);
+            setView(viewSalva);
+            if (
+              nav.ambienteChecklistAtivo &&
+              (visitaSalva.ambientes || []).includes(nav.ambienteChecklistAtivo)
+            ) {
+              setAmbienteChecklistAtivo(nav.ambienteChecklistAtivo);
+            }
+          } else {
+            setVisitaAtualId(null);
+            setView("visitas");
+          }
+        } else if (viewSalva && ["inicio", "empresas", "visitas"].includes(viewSalva)) {
+          setView(viewSalva);
+          setVisitaAtualId(null);
+        }
+      }
+    } catch {
+      // Se a preferência local estiver inválida, inicia normalmente.
+    }
 
       if (!cancelado) setReady(true);
     }
@@ -503,6 +546,19 @@ export default function Home() {
       cancelado = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+
+    try {
+      window.localStorage.setItem(
+        NAV_STORAGE_KEY,
+        JSON.stringify({ view, visitaAtualId, ambienteChecklistAtivo })
+      );
+    } catch {
+      // A navegação continua funcionando mesmo se o armazenamento local falhar.
+    }
+  }, [view, visitaAtualId, ambienteChecklistAtivo, ready]);
 
   useEffect(() => {
     if (!ready) return;
