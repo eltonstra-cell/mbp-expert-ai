@@ -38,7 +38,7 @@ async function currentState(sql: any) {
   };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const sql = getSql();
 
   if (!sql) {
@@ -51,6 +51,24 @@ export async function GET() {
 
   try {
     await ensureTable(sql);
+
+    const url = new URL(request.url);
+    const somenteMeta = url.searchParams.get("meta") === "1";
+
+    if (somenteMeta) {
+      const rows = await sql`
+        SELECT updated_at
+        FROM mbp_cloud_state
+        WHERE workspace_id = ${WORKSPACE_ID}
+        LIMIT 1
+      `;
+
+      return NextResponse.json({
+        configured: true,
+        updatedAt: rows.length ? rows[0].updated_at : null,
+      });
+    }
+
     const atual = await currentState(sql);
 
     return NextResponse.json({

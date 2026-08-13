@@ -331,6 +331,26 @@ export default function Home() {
     };
   }, []);
 
+  useEffect(() => {
+    const sincronizarAoVoltar = () => {
+      if (document.visibilityState === "visible") {
+        void buscarEstadoNuvem(false);
+      }
+    };
+
+    const sincronizarAoFocar = () => {
+      void buscarEstadoNuvem(false);
+    };
+
+    document.addEventListener("visibilitychange", sincronizarAoVoltar);
+    window.addEventListener("focus", sincronizarAoFocar);
+
+    return () => {
+      document.removeEventListener("visibilitychange", sincronizarAoVoltar);
+      window.removeEventListener("focus", sincronizarAoFocar);
+    };
+  }, []);
+
   const [vf, setVf] = useState({
     data: hojeISO(),
     responsavel: "",
@@ -413,39 +433,52 @@ export default function Home() {
 
   async function buscarEstadoNuvem(aplicarMesmoSeIgual = false) {
     try {
-      const response = await fetch("/api/state", {
+      // Consulta leve: retorna apenas configured + updatedAt.
+      const metaResponse = await fetch("/api/state?meta=1", {
         method: "GET",
         cache: "no-store",
       });
-      const cloud = await response.json();
+      const meta = await metaResponse.json();
 
-      if (!cloud?.configured) {
+      if (!meta?.configured) {
         setSyncStatus("local");
         return;
       }
 
       const versaoMudou =
-        !!cloud.updatedAt &&
-        cloud.updatedAt !== ultimaNuvemVersaoRef.current;
+        !!meta.updatedAt &&
+        meta.updatedAt !== ultimaNuvemVersaoRef.current;
 
-      if (
-        cloud.data &&
-        typeof cloud.data === "object" &&
-        (aplicarMesmoSeIgual || versaoMudou)
-      ) {
-        aplicarEstadoDaNuvem(cloud);
-      } else if (cloud.updatedAt) {
-        ultimaNuvemVersaoRef.current = cloud.updatedAt;
-        ultimaNuvemRef.current = new Date(cloud.updatedAt).getTime();
+      if (aplicarMesmoSeIgual || versaoMudou) {
+        // Só baixa o JSON completo quando a versão realmente mudou.
+        const response = await fetch("/api/state", {
+          method: "GET",
+          cache: "no-store",
+        });
+        const cloud = await response.json();
+
+        if (cloud?.data && typeof cloud.data === "object") {
+          aplicarEstadoDaNuvem(cloud);
+        } else if (cloud?.updatedAt) {
+          ultimaNuvemVersaoRef.current = cloud.updatedAt;
+          ultimaNuvemRef.current = new Date(cloud.updatedAt).getTime();
+        }
+
+        setSyncAtualizadoEm(
+          cloud?.updatedAt
+            ? new Date(cloud.updatedAt).toLocaleString("pt-BR")
+            : ""
+        );
+      } else if (meta.updatedAt) {
+        ultimaNuvemVersaoRef.current = meta.updatedAt;
+        ultimaNuvemRef.current = new Date(meta.updatedAt).getTime();
+        setSyncAtualizadoEm(
+          new Date(meta.updatedAt).toLocaleString("pt-BR")
+        );
       }
 
       sincronizacaoOk();
       setSyncStatus("sincronizado");
-      setSyncAtualizadoEm(
-        cloud.updatedAt
-          ? new Date(cloud.updatedAt).toLocaleString("pt-BR")
-          : ""
-      );
     } catch {
       registrarFalhaSincronizacao();
     }
@@ -670,28 +703,38 @@ export default function Home() {
 
     const timer = window.setTimeout(async () => {
       try {
-        // Antes de gravar, verifica se outro aparelho publicou uma versão nova.
-        const check = await fetch("/api/state", {
+        // Checagem leve antes de gravar: não baixa o banco completo.
+        const metaResponse = await fetch("/api/state?meta=1", {
           method: "GET",
           cache: "no-store",
         });
-        const cloud = await check.json();
+        const meta = await metaResponse.json();
 
-        if (!cloud?.configured) {
+        if (!meta?.configured) {
           setSyncStatus("local");
           return;
         }
 
         const versaoMudou =
-          !!cloud.updatedAt &&
-          cloud.updatedAt !== ultimaNuvemVersaoRef.current;
+          !!meta.updatedAt &&
+          meta.updatedAt !== ultimaNuvemVersaoRef.current;
 
-        if (cloud?.data && versaoMudou) {
-          aplicarEstadoDaNuvem(cloud);
+        if (versaoMudou) {
+          // Outro aparelho alterou a base. Só agora baixamos o estado completo.
+          const cloudResponse = await fetch("/api/state", {
+            method: "GET",
+            cache: "no-store",
+          });
+          const cloud = await cloudResponse.json();
+
+          if (cloud?.data && typeof cloud.data === "object") {
+            aplicarEstadoDaNuvem(cloud);
+          }
+
           sincronizacaoOk();
           setSyncStatus("sincronizado");
           setSyncAtualizadoEm(
-            cloud.updatedAt
+            cloud?.updatedAt
               ? new Date(cloud.updatedAt).toLocaleString("pt-BR")
               : ""
           );
@@ -736,7 +779,7 @@ export default function Home() {
       } catch {
         registrarFalhaSincronizacao();
       }
-    }, 700);
+    }, 1200);
 
     return () => window.clearTimeout(timer);
   }, [db, ready]);
@@ -1807,7 +1850,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.17
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.18
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
