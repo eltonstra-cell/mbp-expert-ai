@@ -1966,7 +1966,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.23
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.24
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
@@ -2556,7 +2556,7 @@ export default function Home() {
               </div>
 
               <div className="mt-5 grid gap-3 md:grid-cols-4">
-                <MetricCard label="NCs" value={ncsVisita.length} />
+                <MetricCard label="Não conformidades" value={ncsVisita.length} />
                 <MetricCard label="Ações definidas" value={acoesDefinidas} />
                 <MetricCard label="Em aberto" value={ncsAbertas} />
                 <MetricCard label="Resolvidas" value={acoesConcluidas} />
@@ -2751,7 +2751,14 @@ export default function Home() {
                   const vencida = situacaoPrazo.label === "Vencida";
                   const evidenciasDaNc = (db.evidencias || []).filter((ev) => ev.ncId === nc.id);
                   return (
-                    <div key={nc.id} className="rounded-2xl bg-white p-5 shadow-sm">
+                    <div
+                      key={nc.id}
+                      className={`rounded-2xl p-5 shadow-sm ${
+                        nc.status === "Resolvida"
+                          ? "border border-emerald-200 bg-emerald-50/40"
+                          : "bg-white"
+                      }`}
+                    >
                       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                         <div>
                           <div className="flex flex-wrap gap-2">
@@ -2788,6 +2795,24 @@ export default function Home() {
                         )}
                       </div>
                       <div className="mt-3 rounded-xl border border-slate-200 p-3"><div className="text-xs font-extrabold uppercase text-slate-500">Ação corretiva</div><div className="mt-1 text-sm">{nc.acaoCorretiva?.trim() || "Ainda não definida no plano de ação."}</div></div>
+                      {nc.status === "Resolvida" && (
+                        <div className="mt-3 grid gap-3 md:grid-cols-3">
+                          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3">
+                            <div className="text-xs font-extrabold uppercase text-emerald-700">Fechamento</div>
+                            <div className="mt-1 font-bold text-emerald-950">
+                              {nc.resolvidaEm ? new Date(nc.resolvidaEm).toLocaleString("pt-BR") : "Data não registrada"}
+                            </div>
+                          </div>
+                          <div className="rounded-xl border border-violet-200 bg-violet-50 p-3">
+                            <div className="text-xs font-extrabold uppercase text-violet-700">Evidências</div>
+                            <div className="mt-1 font-bold text-violet-950">{evidenciasDaNc.length} vinculada(s)</div>
+                          </div>
+                          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                            <div className="text-xs font-extrabold uppercase text-slate-500">Registros de acompanhamento</div>
+                            <div className="mt-1 font-bold text-slate-900">{nc.historicoAcompanhamento?.length || 0} registro(s)</div>
+                          </div>
+                        </div>
+                      )}
                       {nc.status === "Resolvida" && evidenciasDaNc.length === 0 && (
                         <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
                           <span className="font-extrabold">Atenção:</span> esta ação está marcada como resolvida, mas ainda não possui evidência vinculada.
@@ -2877,6 +2902,14 @@ export default function Home() {
                           <div className="mt-1 text-sm text-emerald-800">
                             O histórico e as evidências permanecem disponíveis para rastreabilidade.
                           </div>
+                          {nc.historicoAcompanhamento?.length ? (
+                            <div className="mt-3 rounded-xl bg-white/70 p-3">
+                              <div className="text-xs font-extrabold uppercase text-emerald-700">Registro final</div>
+                              <div className="mt-1 text-sm font-medium text-emerald-950">
+                                {[...nc.historicoAcompanhamento].sort((a, b) => b.criadoEm.localeCompare(a.criadoEm))[0].observacao}
+                              </div>
+                            </div>
+                          ) : null}
                         </div>
                       )}
 
