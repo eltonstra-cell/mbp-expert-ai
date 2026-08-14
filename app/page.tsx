@@ -314,6 +314,18 @@ function situacaoPrazoNC(prazo?: string, status?: string) {
   return { label: "Dentro do prazo", classe: "bg-blue-100 text-blue-800" };
 }
 
+function chaveCriterio(item: {
+  ambiente?: string;
+  categoria?: string;
+  titulo?: string;
+}) {
+  return [
+    (item.ambiente || "").trim().toLocaleLowerCase("pt-BR"),
+    (item.categoria || "").trim().toLocaleLowerCase("pt-BR"),
+    (item.titulo || "").trim().toLocaleLowerCase("pt-BR"),
+  ].join("::");
+}
+
 export default function Home() {
   const [db, setDb] = useState<AppDB>(emptyDB);
   const [ready, setReady] = useState(false);
@@ -919,6 +931,70 @@ export default function Home() {
       nc.empresaId === db.empresaAtualId &&
       !idsVisitasEmpresaAtual.has(nc.visitaId)
   ).length;
+
+  const comparacaoVisitas = useMemo(() => {
+    const ordenadas = [...visitasEmpresaAtual].sort((a, b) =>
+      (b.data || b.criadoEm || "").localeCompare(a.data || a.criadoEm || "")
+    );
+
+    if (ordenadas.length < 2) return null;
+
+    const atualComp = ordenadas[0];
+    const anteriorComp = ordenadas[1];
+
+    function resumoChecklist(visita: Visita) {
+      const checklist = visita.checklist || [];
+      const conformes = checklist.filter((item) => item.status === "Conforme").length;
+      const naoConformes = checklist.filter((item) => item.status === "Não Conforme").length;
+      const avaliados = conformes + naoConformes;
+      return {
+        conformes,
+        naoConformes,
+        avaliados,
+        conformidade: avaliados ? Math.round((conformes / avaliados) * 100) : 0,
+      };
+    }
+
+    const resumoAtual = resumoChecklist(atualComp);
+    const resumoAnterior = resumoChecklist(anteriorComp);
+
+    const ncsAtual = (db.ncs || []).filter((nc) => nc.visitaId === atualComp.id);
+    const ncsAnterior = (db.ncs || []).filter((nc) => nc.visitaId === anteriorComp.id);
+
+    const chavesAtual = new Set(ncsAtual.map(chaveCriterio));
+    const chavesAnterior = new Set(ncsAnterior.map(chaveCriterio));
+
+    const novas = ncsAtual.filter((nc) => !chavesAnterior.has(chaveCriterio(nc)));
+    const reincidentes = ncsAtual.filter((nc) => chavesAnterior.has(chaveCriterio(nc)));
+
+    const checklistAtualPorChave = new Map(
+      (atualComp.checklist || []).map((item) => [chaveCriterio(item), item])
+    );
+
+    const corrigidas = ncsAnterior.filter((nc) => {
+      const itemAtual = checklistAtualPorChave.get(chaveCriterio(nc));
+      return itemAtual?.status === "Conforme";
+    });
+
+    const aindaPendentes = ncsAnterior.filter((nc) =>
+      chavesAtual.has(chaveCriterio(nc))
+    );
+
+    return {
+      atual: atualComp,
+      anterior: anteriorComp,
+      resumoAtual,
+      resumoAnterior,
+      deltaConformidade: resumoAtual.conformidade - resumoAnterior.conformidade,
+      deltaNc: ncsAtual.length - ncsAnterior.length,
+      ncsAtual,
+      ncsAnterior,
+      novas,
+      reincidentes,
+      corrigidas,
+      aindaPendentes,
+    };
+  }, [visitasEmpresaAtual, db.ncs]);
 
   const checklistAtual = visitaAtual?.checklist || [];
   const respondidos = checklistAtual.filter((i) => i.status !== "Pendente").length;
@@ -2005,7 +2081,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.26
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.27
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
@@ -4112,18 +4188,151 @@ export default function Home() {
               )}
             </div>
 
-            {visitasEmpresaAtual.length >= 2 && (
-              <div className="rounded-2xl bg-white p-5 shadow-sm">
-                <div className="text-xs font-extrabold uppercase text-[#2F5597]">
+            {comparacaoVisitas ? (
+              <div className="space-y-4">
+                <div className="rounded-2xl bg-white p-5 shadow-sm">
+                  <div className="text-xs font-extrabold uppercase text-[#2F5597]">
+                    Comparação entre visitas
+                  </div>
+                  <div className="mt-1 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+                    <div>
+                      <h2 className="text-xl font-extrabold">Tendência de evolução</h2>
+                      <p className="mt-1 text-sm text-slate-500">
+                        {fdata(comparacaoVisitas.anterior.data)} → {fdata(comparacaoVisitas.atual.data)}
+                      </p>
+                    </div>
+                    <div className={`rounded-full px-4 py-2 text-sm font-extrabold ${
+                      comparacaoVisitas.deltaConformidade > 0
+                        ? "bg-emerald-100 text-emerald-800"
+                        : comparacaoVisitas.deltaConformidade < 0
+                          ? "bg-red-100 text-red-800"
+                          : "bg-slate-100 text-slate-700"
+                    }`}>
+                      {comparacaoVisitas.deltaConformidade > 0 ? "+" : ""}
+                      {comparacaoVisitas.deltaConformidade} p.p. de conformidade
+                    </div>
+                  </div>
+
+                  <div className="mt-5 grid gap-3 md:grid-cols-4">
+                    <div className="rounded-xl bg-blue-50 p-4">
+                      <div className="text-xs font-extrabold uppercase text-blue-700">Conformidade anterior</div>
+                      <div className="mt-1 text-2xl font-extrabold text-blue-950">
+                        {comparacaoVisitas.resumoAnterior.avaliados
+                          ? `${comparacaoVisitas.resumoAnterior.conformidade}%`
+                          : "—"}
+                      </div>
+                    </div>
+                    <div className="rounded-xl bg-emerald-50 p-4">
+                      <div className="text-xs font-extrabold uppercase text-emerald-700">Conformidade atual</div>
+                      <div className="mt-1 text-2xl font-extrabold text-emerald-950">
+                        {comparacaoVisitas.resumoAtual.avaliados
+                          ? `${comparacaoVisitas.resumoAtual.conformidade}%`
+                          : "—"}
+                      </div>
+                    </div>
+                    <div className="rounded-xl bg-red-50 p-4">
+                      <div className="text-xs font-extrabold uppercase text-red-700">Não conformidades</div>
+                      <div className="mt-1 text-2xl font-extrabold text-red-950">
+                        {comparacaoVisitas.ncsAnterior.length} → {comparacaoVisitas.ncsAtual.length}
+                      </div>
+                    </div>
+                    <div className="rounded-xl bg-slate-50 p-4">
+                      <div className="text-xs font-extrabold uppercase text-slate-500">Variação de NCs</div>
+                      <div className={`mt-1 text-2xl font-extrabold ${
+                        comparacaoVisitas.deltaNc < 0
+                          ? "text-emerald-700"
+                          : comparacaoVisitas.deltaNc > 0
+                            ? "text-red-700"
+                            : "text-slate-900"
+                      }`}>
+                        {comparacaoVisitas.deltaNc > 0 ? "+" : ""}
+                        {comparacaoVisitas.deltaNc}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 lg:grid-cols-4">
+                  <div className="rounded-2xl border border-red-100 bg-red-50 p-4">
+                    <div className="text-xs font-extrabold uppercase text-red-700">Novas não conformidades</div>
+                    <div className="mt-1 text-3xl font-extrabold text-red-950">{comparacaoVisitas.novas.length}</div>
+                    <p className="mt-1 text-xs text-red-800">Não apareciam na visita anterior.</p>
+                  </div>
+                  <div className="rounded-2xl border border-amber-100 bg-amber-50 p-4">
+                    <div className="text-xs font-extrabold uppercase text-amber-700">Reincidências</div>
+                    <div className="mt-1 text-3xl font-extrabold text-amber-950">{comparacaoVisitas.reincidentes.length}</div>
+                    <p className="mt-1 text-xs text-amber-800">Persistiram como não conformes.</p>
+                  </div>
+                  <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
+                    <div className="text-xs font-extrabold uppercase text-emerald-700">Itens corrigidos</div>
+                    <div className="mt-1 text-3xl font-extrabold text-emerald-950">{comparacaoVisitas.corrigidas.length}</div>
+                    <p className="mt-1 text-xs text-emerald-800">Eram NCs e passaram a Conforme.</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <div className="text-xs font-extrabold uppercase text-slate-600">Pendências mantidas</div>
+                    <div className="mt-1 text-3xl font-extrabold text-slate-950">{comparacaoVisitas.aindaPendentes.length}</div>
+                    <p className="mt-1 text-xs text-slate-600">Continuam presentes na nova visita.</p>
+                  </div>
+                </div>
+
+                {(comparacaoVisitas.reincidentes.length > 0 ||
+                  comparacaoVisitas.novas.length > 0 ||
+                  comparacaoVisitas.corrigidas.length > 0) && (
+                  <div className="rounded-2xl bg-white p-5 shadow-sm">
+                    <h3 className="text-lg font-extrabold">Leitura da evolução</h3>
+                    <div className="mt-4 grid gap-4 lg:grid-cols-3">
+                      <div>
+                        <div className="text-xs font-extrabold uppercase text-amber-700">Reincidências</div>
+                        <div className="mt-2 space-y-2">
+                          {comparacaoVisitas.reincidentes.length ? comparacaoVisitas.reincidentes.slice(0, 5).map((nc) => (
+                            <div key={nc.id} className="rounded-xl bg-amber-50 p-3 text-sm">
+                              <div className="font-extrabold">{nc.titulo}</div>
+                              <div className="mt-1 text-xs text-amber-800">{nc.ambiente}</div>
+                            </div>
+                          )) : <div className="text-sm text-slate-500">Nenhuma reincidência.</div>}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs font-extrabold uppercase text-red-700">Novas</div>
+                        <div className="mt-2 space-y-2">
+                          {comparacaoVisitas.novas.length ? comparacaoVisitas.novas.slice(0, 5).map((nc) => (
+                            <div key={nc.id} className="rounded-xl bg-red-50 p-3 text-sm">
+                              <div className="font-extrabold">{nc.titulo}</div>
+                              <div className="mt-1 text-xs text-red-800">{nc.ambiente}</div>
+                            </div>
+                          )) : <div className="text-sm text-slate-500">Nenhuma nova não conformidade.</div>}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs font-extrabold uppercase text-emerald-700">Corrigidas</div>
+                        <div className="mt-2 space-y-2">
+                          {comparacaoVisitas.corrigidas.length ? comparacaoVisitas.corrigidas.slice(0, 5).map((nc) => (
+                            <div key={nc.id} className="rounded-xl bg-emerald-50 p-3 text-sm">
+                              <div className="font-extrabold">{nc.titulo}</div>
+                              <div className="mt-1 text-xs text-emerald-800">{nc.ambiente}</div>
+                            </div>
+                          )) : <div className="text-sm text-slate-500">Nenhum item confirmado como corrigido.</div>}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : visitasEmpresaAtual.length === 1 ? (
+              <div className="rounded-2xl border border-blue-100 bg-blue-50 p-5">
+                <div className="text-xs font-extrabold uppercase text-blue-700">
                   Comparação entre visitas
                 </div>
-                <h2 className="mt-1 text-xl font-extrabold">Tendência de evolução</h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  Os indicadores abaixo passam a permitir comparação cronológica entre as inspeções.
-                  As visitas continuam detalhadas logo abaixo, da mais recente para a mais antiga.
+                <h2 className="mt-1 text-lg font-extrabold text-blue-950">
+                  Aguardando a próxima visita
+                </h2>
+                <p className="mt-1 text-sm text-blue-900">
+                  Quando uma segunda visita for registrada para esta empresa, o sistema comparará
+                  automaticamente conformidade, novas não conformidades, reincidências, pendências
+                  mantidas e itens corrigidos.
                 </p>
               </div>
-            )}
+            ) : null}
 
             {visitasEmpresaAtual.length === 0 ? (
               <div className="rounded-2xl bg-white p-8 text-center shadow-sm">
