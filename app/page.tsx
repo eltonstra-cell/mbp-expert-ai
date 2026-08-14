@@ -1954,7 +1954,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.21
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.22
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
@@ -2737,6 +2737,7 @@ export default function Home() {
                 }).map((nc) => {
                   const situacaoPrazo = situacaoPrazoNC(nc.prazo, nc.status);
                   const vencida = situacaoPrazo.label === "Vencida";
+                  const evidenciasDaNc = (db.evidencias || []).filter((ev) => ev.ncId === nc.id);
                   return (
                     <div key={nc.id} className="rounded-2xl bg-white p-5 shadow-sm">
                       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
@@ -2745,6 +2746,15 @@ export default function Home() {
                             <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold">{nc.criticidade}</span>
                             <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${nc.status === "Resolvida" ? "bg-emerald-100 text-emerald-800" : nc.status === "Em tratamento" ? "bg-amber-100 text-amber-800" : "bg-red-100 text-red-800"}`}>{nc.status}</span>
                             <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${situacaoPrazo.classe}`}>{situacaoPrazo.label}</span>
+                            <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${
+                              evidenciasDaNc.length > 0
+                                ? "bg-violet-100 text-violet-800"
+                                : "bg-slate-100 text-slate-600"
+                            }`}>
+                              {evidenciasDaNc.length > 0
+                                ? `${evidenciasDaNc.length} evidência(s)`
+                                : "Sem evidência"}
+                            </span>
                             {!nc.acaoCorretiva?.trim() && nc.status !== "Resolvida" && <span className="rounded-full bg-slate-800 px-3 py-1 text-xs font-extrabold text-white">Ação não definida</span>}
                           </div>
                           <h2 className="mt-3 text-lg font-extrabold">{nc.titulo}</h2>
@@ -2758,6 +2768,80 @@ export default function Home() {
                         <div className="rounded-xl bg-slate-50 p-3"><div className="text-xs font-extrabold uppercase text-slate-500">Situação do prazo</div><div className="mt-1 font-bold">{situacaoPrazo.label}</div></div>
                       </div>
                       <div className="mt-3 rounded-xl border border-slate-200 p-3"><div className="text-xs font-extrabold uppercase text-slate-500">Ação corretiva</div><div className="mt-1 text-sm">{nc.acaoCorretiva?.trim() || "Ainda não definida no plano de ação."}</div></div>
+                      {nc.status === "Resolvida" && evidenciasDaNc.length === 0 && (
+                        <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                          <span className="font-extrabold">Atenção:</span> esta ação está marcada como resolvida, mas ainda não possui evidência vinculada.
+                        </div>
+                      )}
+                      <div className="mt-4 rounded-xl border border-violet-100 bg-violet-50 p-4">
+                        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                          <div>
+                            <div className="text-xs font-extrabold uppercase text-violet-800">
+                              Evidências da correção
+                            </div>
+                            <div className="mt-1 text-sm text-violet-950">
+                              {evidenciasDaNc.length > 0
+                                ? `${evidenciasDaNc.length} registro(s) vinculado(s) a esta não conformidade.`
+                                : "Nenhuma evidência vinculada a esta não conformidade."}
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => {
+                              setEvidenciaNcId(nc.id);
+                              setEvidenciaAmbiente(nc.ambiente || "");
+                              setView("evidencias");
+                            }}
+                            className="rounded-xl bg-violet-700 px-4 py-2 text-sm font-extrabold text-white"
+                          >
+                            + Adicionar evidência
+                          </button>
+                        </div>
+
+                        {evidenciasDaNc.length > 0 && (
+                          <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                            {evidenciasDaNc.slice(0, 6).map((ev) => (
+                              <div key={ev.id} className="rounded-xl border border-violet-100 bg-white p-3">
+                                <div className="text-xs font-extrabold uppercase text-violet-700">
+                                  {ev.tipo}
+                                </div>
+                                <div className="mt-1 truncate text-sm font-bold">
+                                  {ev.descricao?.trim() || ev.nomeArquivo}
+                                </div>
+                                <div className="mt-1 text-xs text-slate-500">
+                                  {new Date(ev.criadoEm).toLocaleString("pt-BR")}
+                                </div>
+                                {ev.tipo === "Foto" && (ev.blobUrl || ev.dataUrl) && (
+                                  <img
+                                    src={ev.blobUrl || ev.dataUrl}
+                                    alt={ev.descricao || ev.nomeArquivo}
+                                    className="mt-3 h-28 w-full rounded-lg object-cover"
+                                  />
+                                )}
+                                {ev.tipo === "Áudio" && (ev.blobUrl || ev.dataUrl) && (
+                                  <audio
+                                    controls
+                                    className="mt-3 w-full"
+                                    src={ev.blobUrl || ev.dataUrl}
+                                  />
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {evidenciasDaNc.length > 6 && (
+                          <button
+                            onClick={() => {
+                              setEvidenciaNcId(nc.id);
+                              setView("evidencias");
+                            }}
+                            className="mt-3 text-sm font-extrabold text-violet-800"
+                          >
+                            Ver todas as evidências →
+                          </button>
+                        )}
+                      </div>
+
                       <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50 p-4">
                         <div className="text-xs font-extrabold uppercase text-[#2F5597]">Registrar atualização</div>
                         <div className="mt-3 grid gap-3 md:grid-cols-[1fr_190px]">
