@@ -13,10 +13,10 @@ import type {
 } from "@/types";
 import { emptyDB, loadDB, saveDB } from "@/lib/storage";
 
-type View = "inicio" | "empresas" | "visitas" | "visita" | "ambientes" | "checklist" | "ncs" | "plano" | "acompanhamento" | "evidencias" | "relatorio";
+type View = "inicio" | "empresas" | "visitas" | "visita" | "ambientes" | "checklist" | "ncs" | "plano" | "acompanhamento" | "historico" | "evidencias" | "relatorio";
 
 const NAV_STORAGE_KEY = "mbp-expert-ai:navegacao:v1";
-const VISIT_VIEWS: View[] = ["visita", "ambientes", "checklist", "ncs", "plano", "acompanhamento", "evidencias", "relatorio"];
+const VISIT_VIEWS: View[] = ["visita", "ambientes", "checklist", "ncs", "plano", "acompanhamento", "historico", "evidencias", "relatorio"];
 
 const labels: Record<string, string> = {
   nomeFantasia: "Nome fantasia",
@@ -880,6 +880,30 @@ export default function Home() {
       ),
     [db.visitas]
   );
+
+  const visitasEmpresaAtual = useMemo(
+    () =>
+      visitas.filter((v) => v.empresaId === db.empresaAtualId),
+    [visitas, db.empresaAtualId]
+  );
+
+  const ncsEmpresaAtual = useMemo(
+    () =>
+      (db.ncs || []).filter((nc) => nc.empresaId === db.empresaAtualId),
+    [db.ncs, db.empresaAtualId]
+  );
+
+  const visitasEmpresaConcluidas = visitasEmpresaAtual.filter(
+    (v) => v.status === "Concluída"
+  ).length;
+
+  const ncsEmpresaAbertas = ncsEmpresaAtual.filter(
+    (nc) => nc.status !== "Resolvida"
+  ).length;
+
+  const ncsEmpresaResolvidas = ncsEmpresaAtual.filter(
+    (nc) => nc.status === "Resolvida"
+  ).length;
 
   const checklistAtual = visitaAtual?.checklist || [];
   const respondidos = checklistAtual.filter((i) => i.status !== "Pendente").length;
@@ -1966,7 +1990,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.24
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.25
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
@@ -2043,6 +2067,7 @@ export default function Home() {
               view === "ncs" ||
               view === "plano" ||
               view === "acompanhamento" ||
+              view === "historico" ||
               view === "evidencias" ||
               view === "relatorio"
                 ? "bg-[#17365D] text-white"
@@ -2713,7 +2738,7 @@ export default function Home() {
                 <button onClick={() => setView("visita")} className="rounded-xl bg-slate-100 px-4 py-2 font-bold">Voltar à Central</button>
               </div>
               <div className="mt-5 grid gap-3 md:grid-cols-4">
-                <MetricCard label="NCs" value={ncsVisita.length} />
+                <MetricCard label="Não conformidades" value={ncsVisita.length} />
                 <MetricCard label="Em aberto" value={ncsVisita.filter((nc) => nc.status !== "Resolvida").length} />
                 <MetricCard label="Resolvidas" value={ncsVisita.filter((nc) => nc.status === "Resolvida").length} />
                 <MetricCard label="Vencidas" value={ncsVisita.filter((nc) => situacaoPrazoNC(nc.prazo, nc.status).label === "Vencida").length} />
@@ -4032,6 +4057,143 @@ export default function Home() {
               ))}
             </div>
           </section>
+        ) : view === "historico" && atual ? (
+          <section className="space-y-4">
+            <div className="rounded-2xl bg-white p-5 shadow-sm">
+              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <div className="text-xs font-extrabold uppercase text-[#2F5597]">
+                    Histórico da empresa
+                  </div>
+                  <h1 className="mt-1 text-2xl font-extrabold">
+                    Evolução das visitas
+                  </h1>
+                  <p className="mt-1 text-sm text-slate-500">
+                    {atual.nomeFantasia} • acompanhamento consolidado ao longo do tempo
+                  </p>
+                </div>
+                <button
+                  onClick={() => setView("visitas")}
+                  className="rounded-xl bg-slate-100 px-4 py-2 font-bold"
+                >
+                  Voltar às visitas
+                </button>
+              </div>
+
+              <div className="mt-5 grid gap-3 md:grid-cols-4">
+                <MetricCard label="Visitas" value={visitasEmpresaAtual.length} />
+                <MetricCard label="Concluídas" value={visitasEmpresaConcluidas} />
+                <MetricCard label="Não conformidades abertas" value={ncsEmpresaAbertas} />
+                <MetricCard label="Não conformidades resolvidas" value={ncsEmpresaResolvidas} />
+              </div>
+            </div>
+
+            {visitasEmpresaAtual.length === 0 ? (
+              <div className="rounded-2xl bg-white p-8 text-center shadow-sm">
+                <div className="text-xl font-extrabold">Nenhuma visita registrada</div>
+                <p className="mt-2 text-sm text-slate-500">
+                  O histórico será formado conforme novas visitas forem realizadas.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {[...visitasEmpresaAtual]
+                  .sort((a, b) => (b.data || "").localeCompare(a.data || ""))
+                  .map((v, idx) => {
+                    const checklist = v.checklist || [];
+                    const conformes = checklist.filter((item) => item.status === "Conforme").length;
+                    const naoConformes = checklist.filter((item) => item.status === "Não Conforme").length;
+                    const avaliados = conformes + naoConformes;
+                    const conformidade = avaliados
+                      ? Math.round((conformes / avaliados) * 100)
+                      : 0;
+                    const ncsDaVisita = (db.ncs || []).filter((nc) => nc.visitaId === v.id);
+                    const abertas = ncsDaVisita.filter((nc) => nc.status !== "Resolvida").length;
+                    const resolvidas = ncsDaVisita.filter((nc) => nc.status === "Resolvida").length;
+                    const evidencias = (db.evidencias || []).filter((ev) => ev.visitaId === v.id).length;
+
+                    return (
+                      <article key={v.id} className="rounded-2xl bg-white p-5 shadow-sm">
+                        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                          <div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold text-slate-600">
+                                Visita {visitasEmpresaAtual.length - idx}
+                              </span>
+                              <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${
+                                v.status === "Concluída"
+                                  ? "bg-emerald-100 text-emerald-800"
+                                  : "bg-amber-100 text-amber-800"
+                              }`}>
+                                {v.status}
+                              </span>
+                            </div>
+                            <h2 className="mt-3 text-xl font-extrabold">{fdata(v.data)}</h2>
+                            <p className="mt-1 text-sm text-slate-500">
+                              {v.responsavel || "Responsável não informado"}
+                            </p>
+                          </div>
+
+                          <button
+                            onClick={() => {
+                              setVisitaAtualId(v.id);
+                              setView(v.status === "Concluída" ? "relatorio" : "visita");
+                            }}
+                            className="rounded-xl bg-[#17365D] px-4 py-2 font-bold text-white"
+                          >
+                            {v.status === "Concluída" ? "Abrir relatório" : "Abrir visita"}
+                          </button>
+                        </div>
+
+                        <div className="mt-4 grid gap-3 md:grid-cols-4">
+                          <div className="rounded-xl bg-blue-50 p-3">
+                            <div className="text-xs font-extrabold uppercase text-blue-700">
+                              Conformidade
+                            </div>
+                            <div className="mt-1 text-2xl font-extrabold text-blue-950">
+                              {avaliados ? `${conformidade}%` : "—"}
+                            </div>
+                          </div>
+                          <div className="rounded-xl bg-red-50 p-3">
+                            <div className="text-xs font-extrabold uppercase text-red-700">
+                              Não conformidades
+                            </div>
+                            <div className="mt-1 text-2xl font-extrabold text-red-950">
+                              {ncsDaVisita.length}
+                            </div>
+                          </div>
+                          <div className="rounded-xl bg-amber-50 p-3">
+                            <div className="text-xs font-extrabold uppercase text-amber-700">
+                              Em aberto
+                            </div>
+                            <div className="mt-1 text-2xl font-extrabold text-amber-950">
+                              {abertas}
+                            </div>
+                          </div>
+                          <div className="rounded-xl bg-violet-50 p-3">
+                            <div className="text-xs font-extrabold uppercase text-violet-700">
+                              Evidências
+                            </div>
+                            <div className="mt-1 text-2xl font-extrabold text-violet-950">
+                              {evidencias}
+                            </div>
+                          </div>
+                        </div>
+
+                        {ncsDaVisita.length > 0 && (
+                          <div className="mt-4 rounded-xl border border-slate-200 p-3 text-sm text-slate-700">
+                            <span className="font-extrabold">
+                              Situação das não conformidades:
+                            </span>{" "}
+                            {abertas} aberta(s) • {resolvidas} resolvida(s)
+                          </div>
+                        )}
+                      </article>
+                    );
+                  })}
+              </div>
+            )}
+          </section>
         ) : (
           <section className="space-y-4">
             <div className="rounded-2xl bg-white p-5 shadow-sm">
@@ -4045,13 +4207,22 @@ export default function Home() {
                   </h1>
                 </div>
 
-                <button
-                  onClick={novaVisita}
-                  disabled={!atual}
-                  className="rounded-xl bg-[#2F5597] px-4 py-3 font-extrabold text-white disabled:opacity-40"
-                >
-                  + Nova visita
-                </button>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setView("historico")}
+                    disabled={!atual}
+                    className="rounded-xl bg-slate-100 px-4 py-3 font-extrabold text-[#17365D] disabled:opacity-40"
+                  >
+                    Histórico da empresa
+                  </button>
+                  <button
+                    onClick={novaVisita}
+                    disabled={!atual}
+                    className="rounded-xl bg-[#2F5597] px-4 py-3 font-extrabold text-white disabled:opacity-40"
+                  >
+                    + Nova visita
+                  </button>
+                </div>
               </div>
             </div>
 
