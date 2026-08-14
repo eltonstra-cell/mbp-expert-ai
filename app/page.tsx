@@ -1041,6 +1041,26 @@ export default function Home() {
   const percentualConformidade = itensAvaliadosVisita
     ? Math.round((conformesVisita / itensAvaliadosVisita) * 100)
     : 0;
+  const ncsCriticasVisita = ncsVisita.filter(
+    (nc) => nc.criticidade === "Crítica"
+  ).length;
+  const ncsImportantesVisita = ncsVisita.filter(
+    (nc) => nc.criticidade === "Importante"
+  ).length;
+  const ncsSemResponsavel = ncsVisita.filter(
+    (nc: any) => !(nc.responsavelAcao || "").trim()
+  ).length;
+  const ncsSemPrazo = ncsVisita.filter(
+    (nc: any) => !(nc.prazo || "").trim()
+  ).length;
+  const ncsVencidasRelatorio = ncsVisita.filter(
+    (nc: any) => situacaoPrazoNC(nc.prazo, nc.status).label === "Vencida"
+  ).length;
+  const relatorioProntoParaEncerrar =
+    pendentesVisita === 0 &&
+    ncsSemAcao === 0 &&
+    ncsSemResponsavel === 0 &&
+    ncsSemPrazo === 0;
 
   async function baixarPdfRelatorio() {
     if (!visitaAtual || !empresaVisita || gerandoPdf) return;
@@ -1338,7 +1358,7 @@ export default function Home() {
         .replace(/\s+/g, "-");
 
       pdf.save(
-        `relatorio-${nomeEmpresa || "visita"}-${dataArquivo || "inspecao"}.pdf`
+        `relatorio-tecnico-${nomeEmpresa || "visita"}-${dataArquivo || "inspecao"}.pdf`
       );
     } catch (error) {
       console.error("Falha ao gerar PDF:", error);
@@ -2081,7 +2101,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.27
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.28
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
@@ -3684,6 +3704,53 @@ export default function Home() {
               <MetricCard label="Evidências" value={evidenciasVisita.length} />
             </div>
 
+            <article className="print-card rounded-2xl bg-white p-5 shadow-sm">
+              <div className="text-xs font-extrabold uppercase text-[#2F5597]">
+                Resumo executivo
+              </div>
+              <h2 className="mt-1 text-xl font-extrabold">Panorama da inspeção</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                Foram avaliados <strong>{itensAvaliadosVisita} item(ns)</strong>, com{" "}
+                <strong>{conformesVisita} conforme(s)</strong> e{" "}
+                <strong>{naoConformesVisita} não conforme(s)</strong>, resultando em{" "}
+                <strong>{percentualConformidade}% de conformidade</strong> entre os itens avaliados.
+                {pendentesVisita > 0
+                  ? ` Permanecem ${pendentesVisita} item(ns) pendente(s) de avaliação.`
+                  : " Não há itens pendentes no checklist."}
+              </p>
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="rounded-xl bg-red-50 p-4">
+                  <div className="text-xs font-extrabold uppercase text-red-700">NCs críticas</div>
+                  <div className="mt-1 text-2xl font-extrabold text-red-950">{ncsCriticasVisita}</div>
+                </div>
+                <div className="rounded-xl bg-amber-50 p-4">
+                  <div className="text-xs font-extrabold uppercase text-amber-700">NCs importantes</div>
+                  <div className="mt-1 text-2xl font-extrabold text-amber-950">{ncsImportantesVisita}</div>
+                </div>
+                <div className="rounded-xl bg-blue-50 p-4">
+                  <div className="text-xs font-extrabold uppercase text-blue-700">Ações definidas</div>
+                  <div className="mt-1 text-2xl font-extrabold text-blue-950">{acoesDefinidas}/{ncsVisita.length}</div>
+                </div>
+                <div className="rounded-xl bg-slate-100 p-4">
+                  <div className="text-xs font-extrabold uppercase text-slate-600">Ações vencidas</div>
+                  <div className="mt-1 text-2xl font-extrabold text-slate-950">{ncsVencidasRelatorio}</div>
+                </div>
+              </div>
+
+              {!relatorioProntoParaEncerrar && (
+                <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                  <div className="font-extrabold">Pendências para um fechamento completo</div>
+                  <div className="mt-1">
+                    {pendentesVisita > 0 && <span>{pendentesVisita} item(ns) de checklist pendente(s). </span>}
+                    {ncsSemAcao > 0 && <span>{ncsSemAcao} NC(s) sem ação corretiva. </span>}
+                    {ncsSemResponsavel > 0 && <span>{ncsSemResponsavel} NC(s) sem responsável. </span>}
+                    {ncsSemPrazo > 0 && <span>{ncsSemPrazo} NC(s) sem prazo.</span>}
+                  </div>
+                </div>
+              )}
+            </article>
+
             <div className="grid gap-4 lg:grid-cols-3">
               <article className="rounded-2xl bg-white p-5 shadow-sm lg:col-span-2">
                 <div className="text-xs font-extrabold uppercase text-slate-400">
@@ -3837,6 +3904,23 @@ export default function Home() {
                         </span>
                       </div>
 
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <span className={`rounded-full px-2.5 py-1 text-[11px] font-extrabold ${
+                          nc.criticidade === "Crítica"
+                            ? "bg-red-100 text-red-800"
+                            : nc.criticidade === "Importante"
+                              ? "bg-amber-100 text-amber-800"
+                              : "bg-slate-100 text-slate-700"
+                        }`}>
+                          {nc.criticidade}
+                        </span>
+                        {nc.referencia && (
+                          <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-700">
+                            {nc.referencia}
+                          </span>
+                        )}
+                      </div>
+
                       <div className="mt-3 rounded-lg bg-red-50 p-3 text-sm">
                         <span className="font-extrabold text-red-700">
                           Constatação:
@@ -3857,12 +3941,24 @@ export default function Home() {
                           </span>
                           <div>
                             {nc.responsavelAcao || "Não informado"}
-                            {nc.prazo ? ` • ${fdata(nc.prazo)}` : ""}
+                            {nc.prazo ? ` • ${fdata(nc.prazo)}` : " • Sem prazo"}
+                          </div>
+                          <div className="mt-1 text-xs font-bold text-slate-500">
+                            Situação do prazo: {situacaoPrazoNC(nc.prazo, nc.status).label}
                           </div>
                         </div>
+                        {nc.acompanhamento && (
+                          <div className="md:col-span-2">
+                            <span className="font-extrabold text-slate-500">
+                              Acompanhamento / verificação
+                            </span>
+                            <div>{nc.acompanhamento}</div>
+                          </div>
+                        )}
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </article>
@@ -3889,7 +3985,9 @@ export default function Home() {
                 </p>
               ) : (
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  {evidenciasVisita.map((ev) => (
+                  {evidenciasVisita.map((ev) => {
+                    const ncRelacionadaRelatorio = ncsVisita.find((nc) => nc.id === ev.ncId);
+                    return (
                     <div
                       key={ev.id}
                       className="print-card overflow-hidden rounded-xl border border-slate-200"
@@ -3900,6 +3998,14 @@ export default function Home() {
                         </div>
                         <div className="mt-1 font-extrabold">
                           {ev.descricao || ev.nomeArquivo}
+                        </div>
+                        {ncRelacionadaRelatorio && (
+                          <div className="mt-2 text-xs font-bold text-red-700">
+                            Evidência vinculada: {ncRelacionadaRelatorio.titulo}
+                          </div>
+                        )}
+                        <div className="mt-2 text-[11px] text-slate-400">
+                          Registro: {new Date(ev.criadoEm).toLocaleString("pt-BR")}
                         </div>
                       </div>
                       {ev.tipo === "Foto" ? (
@@ -4031,6 +4137,19 @@ export default function Home() {
                       "Nenhuma conclusão ou observação final registrada."}
                   </div>
                 </div>
+              </div>
+
+              <div className="mt-5 rounded-xl border border-slate-200 bg-white p-4 text-xs text-slate-600">
+                <div className="font-extrabold uppercase text-slate-700">Rastreabilidade do relatório</div>
+                <div className="mt-2 grid gap-2 md:grid-cols-2">
+                  <div><strong>Empresa:</strong> {empresaVisita?.cnpj || "CNPJ não informado"} — {empresaVisita?.nomeFantasia || empresaVisita?.razaoSocial || "Empresa"}</div>
+                  <div><strong>Visita:</strong> {fdata(visitaAtual.data)} — {visitaAtual.id}</div>
+                  <div><strong>Status:</strong> {visitaAtual.status}</div>
+                  <div><strong>Gerado em:</strong> {new Date().toLocaleString("pt-BR")}</div>
+                </div>
+                <p className="mt-2">
+                  Este documento consolida os registros vinculados à visita. Informações não registradas permanecem identificadas como não informadas ou pendentes.
+                </p>
               </div>
 
               <div className="mt-10 grid gap-10 md:grid-cols-2">
