@@ -35,6 +35,10 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    if (result.statusCode !== 200 || !result.stream) {
+      return new NextResponse("Arquivo não encontrado.", { status: 404 });
+    }
+
     return new NextResponse(result.stream, {
       headers: {
         "Content-Type":
