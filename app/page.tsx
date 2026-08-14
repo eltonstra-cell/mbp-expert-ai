@@ -262,14 +262,55 @@ function criarChecklist(ambientes: string[]): ChecklistItem[] {
 }
 
 function situacaoPrazoNC(prazo?: string, status?: string) {
-  if (status === "Resolvida") return { label: "Concluída", classe: "bg-emerald-100 text-emerald-800" };
-  if (!prazo) return { label: "Sem prazo", classe: "bg-slate-100 text-slate-700" };
-  const hoje = new Date();
-  hoje.setHours(0, 0, 0, 0);
-  const dataPrazo = new Date(`${prazo}T00:00:00`);
-  const diff = Math.ceil((dataPrazo.getTime() - hoje.getTime()) / 86400000);
-  if (diff < 0) return { label: "Vencida", classe: "bg-red-600 text-white" };
-  if (diff <= 3) return { label: "Vencendo", classe: "bg-amber-100 text-amber-900" };
+  if (status === "Resolvida") {
+    return { label: "Concluída", classe: "bg-emerald-100 text-emerald-800" };
+  }
+
+  if (!prazo) {
+    return { label: "Sem prazo", classe: "bg-slate-100 text-slate-700" };
+  }
+
+  const partes = prazo.split("-").map(Number);
+  if (partes.length !== 3 || partes.some((n) => !Number.isFinite(n))) {
+    return { label: "Sem prazo", classe: "bg-slate-100 text-slate-700" };
+  }
+
+  const [ano, mes, dia] = partes;
+
+  // Usa datas locais ao meio-dia para evitar qualquer deslocamento de fuso/DST.
+  const agora = new Date();
+  const hojeLocal = new Date(
+    agora.getFullYear(),
+    agora.getMonth(),
+    agora.getDate(),
+    12,
+    0,
+    0,
+    0
+  );
+
+  const prazoLocal = new Date(
+    ano,
+    mes - 1,
+    dia,
+    12,
+    0,
+    0,
+    0
+  );
+
+  const diffDias = Math.round(
+    (prazoLocal.getTime() - hojeLocal.getTime()) / 86400000
+  );
+
+  if (diffDias < 0) {
+    return { label: "Vencida", classe: "bg-red-600 text-white" };
+  }
+
+  if (diffDias <= 3) {
+    return { label: "Vencendo", classe: "bg-amber-100 text-amber-900" };
+  }
+
   return { label: "Dentro do prazo", classe: "bg-blue-100 text-blue-800" };
 }
 
@@ -1865,7 +1906,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.20
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.20.1
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
@@ -2646,10 +2687,8 @@ export default function Home() {
                   if (a.status !== "Resolvida" && b.status === "Resolvida") return -1;
                   return (a.prazo || "9999-12-31").localeCompare(b.prazo || "9999-12-31");
                 }).map((nc) => {
-                  const hoje = new Date(); hoje.setHours(0,0,0,0);
-                  const pd = nc.prazo ? new Date(`${nc.prazo}T00:00:00`) : null;
-                  const vencida = !!pd && pd.getTime() < hoje.getTime() && nc.status !== "Resolvida";
                   const situacaoPrazo = situacaoPrazoNC(nc.prazo, nc.status);
+                  const vencida = situacaoPrazo.label === "Vencida";
                   return (
                     <div key={nc.id} className="rounded-2xl bg-white p-5 shadow-sm">
                       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
