@@ -1882,7 +1882,19 @@ export default function Home() {
       return;
     }
 
-    const novoStatus = statusAcompanhamento[ncId];
+    const ncAtual = (db.ncs || []).find((nc) => nc.id === ncId);
+    if (!ncAtual) return;
+
+    const statusFinal = statusAcompanhamento[ncId] || ncAtual.status;
+    const evidenciasDaNc = (db.evidencias || []).filter((ev) => ev.ncId === ncId);
+
+    if (statusFinal === "Resolvida" && evidenciasDaNc.length === 0) {
+      window.alert(
+        "Antes de marcar como Resolvida, vincule pelo menos uma evidência da correção."
+      );
+      return;
+    }
+
     const agora = new Date().toISOString();
 
     setDb((o) => ({
@@ -1890,7 +1902,6 @@ export default function Home() {
       ncs: (o.ncs || []).map((nc) => {
         if (nc.id !== ncId) return nc;
 
-        const statusFinal = novoStatus || nc.status;
         const historico = [
           ...(nc.historicoAcompanhamento || []),
           {
@@ -1905,6 +1916,7 @@ export default function Home() {
           ...nc,
           status: statusFinal,
           acompanhamento: texto,
+          resolvidaEm: statusFinal === "Resolvida" ? agora : undefined,
           historicoAcompanhamento: historico,
         };
       }),
@@ -1954,7 +1966,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.22.1
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.23
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
@@ -2766,6 +2778,14 @@ export default function Home() {
                         <div className="rounded-xl bg-slate-50 p-3"><div className="text-xs font-extrabold uppercase text-slate-500">Responsável</div><div className="mt-1 font-bold">{nc.responsavelAcao || "Não definido"}</div></div>
                         <div className="rounded-xl bg-slate-50 p-3"><div className="text-xs font-extrabold uppercase text-slate-500">Prazo</div><div className={`mt-1 font-bold ${vencida ? "text-red-700" : ""}`}>{nc.prazo ? fdata(nc.prazo) : "Não definido"}</div></div>
                         <div className="rounded-xl bg-slate-50 p-3"><div className="text-xs font-extrabold uppercase text-slate-500">Situação do prazo</div><div className="mt-1 font-bold">{situacaoPrazo.label}</div></div>
+                        {nc.status === "Resolvida" && nc.resolvidaEm && (
+                          <div className="rounded-xl bg-emerald-50 p-3 md:col-span-3">
+                            <div className="text-xs font-extrabold uppercase text-emerald-700">Resolvida em</div>
+                            <div className="mt-1 font-bold text-emerald-900">
+                              {new Date(nc.resolvidaEm).toLocaleString("pt-BR")}
+                            </div>
+                          </div>
+                        )}
                       </div>
                       <div className="mt-3 rounded-xl border border-slate-200 p-3"><div className="text-xs font-extrabold uppercase text-slate-500">Ação corretiva</div><div className="mt-1 text-sm">{nc.acaoCorretiva?.trim() || "Ainda não definida no plano de ação."}</div></div>
                       {nc.status === "Resolvida" && evidenciasDaNc.length === 0 && (
@@ -2849,8 +2869,21 @@ export default function Home() {
                         )}
                       </div>
 
+                      {nc.status === "Resolvida" && (
+                        <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+                          <div className="text-sm font-extrabold text-emerald-900">
+                            ✓ Não conformidade resolvida
+                          </div>
+                          <div className="mt-1 text-sm text-emerald-800">
+                            O histórico e as evidências permanecem disponíveis para rastreabilidade.
+                          </div>
+                        </div>
+                      )}
+
                       <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50 p-4">
-                        <div className="text-xs font-extrabold uppercase text-[#2F5597]">Registrar atualização</div>
+                        <div className="text-xs font-extrabold uppercase text-[#2F5597]">
+                          {nc.status === "Resolvida" ? "Registrar nova atualização / reabrir" : "Registrar atualização"}
+                        </div>
                         <div className="mt-3 grid gap-3 md:grid-cols-[1fr_190px]">
                           <textarea
                             rows={3}
@@ -2883,8 +2916,15 @@ export default function Home() {
                               onClick={() => registrarAcompanhamento(nc.id)}
                               className="w-full rounded-xl bg-[#17365D] p-3 text-sm font-extrabold text-white"
                             >
-                              Registrar atualização
+                              {statusAcompanhamento[nc.id] === "Resolvida"
+                                ? "Concluir e registrar"
+                                : "Registrar atualização"}
                             </button>
+                            {statusAcompanhamento[nc.id] === "Resolvida" && (
+                              <div className="rounded-lg bg-amber-50 p-2 text-xs font-bold text-amber-900">
+                                Para concluir, é necessário ter pelo menos uma evidência vinculada.
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>

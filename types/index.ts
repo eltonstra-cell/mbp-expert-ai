@@ -76,6 +76,7 @@ export type NaoConformidade = {
   prazo?: string;
   acompanhamento?: string;
   historicoAcompanhamento?: HistoricoAcompanhamento[];
+  resolvidaEm?: string;
   criadoEm: string;
 };
 
