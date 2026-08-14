@@ -887,10 +887,19 @@ export default function Home() {
     [visitas, db.empresaAtualId]
   );
 
+  const idsVisitasEmpresaAtual = useMemo(
+    () => new Set(visitasEmpresaAtual.map((v) => v.id)),
+    [visitasEmpresaAtual]
+  );
+
   const ncsEmpresaAtual = useMemo(
     () =>
-      (db.ncs || []).filter((nc) => nc.empresaId === db.empresaAtualId),
-    [db.ncs, db.empresaAtualId]
+      (db.ncs || []).filter(
+        (nc) =>
+          nc.empresaId === db.empresaAtualId &&
+          idsVisitasEmpresaAtual.has(nc.visitaId)
+      ),
+    [db.ncs, db.empresaAtualId, idsVisitasEmpresaAtual]
   );
 
   const visitasEmpresaConcluidas = visitasEmpresaAtual.filter(
@@ -903,6 +912,12 @@ export default function Home() {
 
   const ncsEmpresaResolvidas = ncsEmpresaAtual.filter(
     (nc) => nc.status === "Resolvida"
+  ).length;
+
+  const ncsEmpresaForaDoHistorico = (db.ncs || []).filter(
+    (nc) =>
+      nc.empresaId === db.empresaAtualId &&
+      !idsVisitasEmpresaAtual.has(nc.visitaId)
   ).length;
 
   const checklistAtual = visitaAtual?.checklist || [];
@@ -1990,7 +2005,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.25
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.26
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
@@ -4086,7 +4101,29 @@ export default function Home() {
                 <MetricCard label="Não conformidades abertas" value={ncsEmpresaAbertas} />
                 <MetricCard label="Não conformidades resolvidas" value={ncsEmpresaResolvidas} />
               </div>
+
+              {ncsEmpresaForaDoHistorico > 0 && (
+                <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                  <span className="font-extrabold">Dados anteriores preservados:</span>{" "}
+                  {ncsEmpresaForaDoHistorico} registro(s) de não conformidade da empresa não estão
+                  vinculados a uma visita atualmente existente. Eles foram excluídos dos indicadores
+                  de evolução para evitar contagem incorreta.
+                </div>
+              )}
             </div>
+
+            {visitasEmpresaAtual.length >= 2 && (
+              <div className="rounded-2xl bg-white p-5 shadow-sm">
+                <div className="text-xs font-extrabold uppercase text-[#2F5597]">
+                  Comparação entre visitas
+                </div>
+                <h2 className="mt-1 text-xl font-extrabold">Tendência de evolução</h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Os indicadores abaixo passam a permitir comparação cronológica entre as inspeções.
+                  As visitas continuam detalhadas logo abaixo, da mais recente para a mais antiga.
+                </p>
+              </div>
+            )}
 
             {visitasEmpresaAtual.length === 0 ? (
               <div className="rounded-2xl bg-white p-8 text-center shadow-sm">
