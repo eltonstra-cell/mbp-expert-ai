@@ -50,6 +50,13 @@ export type Visita = {
   checklistVersao?: number;
 };
 
+export type HistoricoAcompanhamento = {
+  id: string;
+  criadoEm: string;
+  observacao: string;
+  status: "Aberta" | "Em tratamento" | "Resolvida";
+};
+
 export type NaoConformidade = {
   id: string;
   empresaId: string;
@@ -68,6 +75,7 @@ export type NaoConformidade = {
   responsavelAcao?: string;
   prazo?: string;
   acompanhamento?: string;
+  historicoAcompanhamento?: HistoricoAcompanhamento[];
   criadoEm: string;
 };
 

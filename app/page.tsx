@@ -335,6 +335,10 @@ export default function Home() {
   const [filtroAcompanhamento, setFiltroAcompanhamento] = useState<
     "Todos" | "Abertas" | "Em tratamento" | "Resolvidas" | "Vencidas"
   >("Todos");
+  const [textoAcompanhamento, setTextoAcompanhamento] = useState<Record<string, string>>({});
+  const [statusAcompanhamento, setStatusAcompanhamento] = useState<
+    Record<string, "Aberta" | "Em tratamento" | "Resolvida">
+  >({});
   const [syncStatus, setSyncStatus] = useState<
     "conectando" | "sincronizado" | "local" | "erro"
   >("conectando");
@@ -1870,6 +1874,50 @@ export default function Home() {
     }));
   }
 
+  function registrarAcompanhamento(ncId: string) {
+    const texto = (textoAcompanhamento[ncId] || "").trim();
+
+    if (!texto) {
+      window.alert("Digite uma atualização antes de registrar.");
+      return;
+    }
+
+    const novoStatus = statusAcompanhamento[ncId];
+    const agora = new Date().toISOString();
+
+    setDb((o) => ({
+      ...o,
+      ncs: (o.ncs || []).map((nc) => {
+        if (nc.id !== ncId) return nc;
+
+        const statusFinal = novoStatus || nc.status;
+        const historico = [
+          ...(nc.historicoAcompanhamento || []),
+          {
+            id: crypto.randomUUID(),
+            criadoEm: agora,
+            observacao: texto,
+            status: statusFinal,
+          },
+        ];
+
+        return {
+          ...nc,
+          status: statusFinal,
+          acompanhamento: texto,
+          historicoAcompanhamento: historico,
+        };
+      }),
+    }));
+
+    setTextoAcompanhamento((o) => ({ ...o, [ncId]: "" }));
+    setStatusAcompanhamento((o) => {
+      const novo = { ...o };
+      delete novo[ncId];
+      return novo;
+    });
+  }
+
   function concluir(id: string) {
     setDb((o) => ({
       ...o,
@@ -1906,7 +1954,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.20.1
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.21
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
@@ -2710,7 +2758,91 @@ export default function Home() {
                         <div className="rounded-xl bg-slate-50 p-3"><div className="text-xs font-extrabold uppercase text-slate-500">Situação do prazo</div><div className="mt-1 font-bold">{situacaoPrazo.label}</div></div>
                       </div>
                       <div className="mt-3 rounded-xl border border-slate-200 p-3"><div className="text-xs font-extrabold uppercase text-slate-500">Ação corretiva</div><div className="mt-1 text-sm">{nc.acaoCorretiva?.trim() || "Ainda não definida no plano de ação."}</div></div>
-                      {nc.acompanhamento?.trim() && <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50 p-3"><div className="text-xs font-extrabold uppercase text-emerald-800">Acompanhamento</div><div className="mt-1 whitespace-pre-wrap text-sm text-emerald-950">{nc.acompanhamento}</div></div>}
+                      <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50 p-4">
+                        <div className="text-xs font-extrabold uppercase text-[#2F5597]">Registrar atualização</div>
+                        <div className="mt-3 grid gap-3 md:grid-cols-[1fr_190px]">
+                          <textarea
+                            rows={3}
+                            className="w-full rounded-xl border bg-white p-3 text-sm"
+                            placeholder="Ex.: piso comprado; aguardando instalação; correção concluída..."
+                            value={textoAcompanhamento[nc.id] || ""}
+                            onChange={(e) =>
+                              setTextoAcompanhamento((o) => ({
+                                ...o,
+                                [nc.id]: e.target.value,
+                              }))
+                            }
+                          />
+                          <div className="space-y-2">
+                            <select
+                              className="w-full rounded-xl border bg-white p-3 text-sm font-bold"
+                              value={statusAcompanhamento[nc.id] || nc.status}
+                              onChange={(e) =>
+                                setStatusAcompanhamento((o) => ({
+                                  ...o,
+                                  [nc.id]: e.target.value as "Aberta" | "Em tratamento" | "Resolvida",
+                                }))
+                              }
+                            >
+                              <option value="Aberta">Aberta</option>
+                              <option value="Em tratamento">Em tratamento</option>
+                              <option value="Resolvida">Resolvida</option>
+                            </select>
+                            <button
+                              onClick={() => registrarAcompanhamento(nc.id)}
+                              className="w-full rounded-xl bg-[#17365D] p-3 text-sm font-extrabold text-white"
+                            >
+                              Registrar atualização
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {(nc.historicoAcompanhamento?.length || nc.acompanhamento?.trim()) && (
+                        <div className="mt-4 rounded-xl border border-slate-200 p-4">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="text-xs font-extrabold uppercase text-slate-500">Histórico de acompanhamento</div>
+                            <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
+                              {nc.historicoAcompanhamento?.length || 1} registro(s)
+                            </div>
+                          </div>
+
+                          <div className="mt-3 space-y-3">
+                            {nc.historicoAcompanhamento?.length ? (
+                              [...nc.historicoAcompanhamento]
+                                .sort((a, b) => b.criadoEm.localeCompare(a.criadoEm))
+                                .map((item) => (
+                                  <div key={item.id} className="rounded-xl bg-slate-50 p-3">
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                      <div className="text-xs font-bold text-slate-500">
+                                        {new Date(item.criadoEm).toLocaleString("pt-BR")}
+                                      </div>
+                                      <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${
+                                        item.status === "Resolvida"
+                                          ? "bg-emerald-100 text-emerald-800"
+                                          : item.status === "Em tratamento"
+                                            ? "bg-amber-100 text-amber-800"
+                                            : "bg-red-100 text-red-800"
+                                      }`}>
+                                        {item.status}
+                                      </span>
+                                    </div>
+                                    <div className="mt-2 whitespace-pre-wrap text-sm text-slate-800">
+                                      {item.observacao}
+                                    </div>
+                                  </div>
+                                ))
+                            ) : (
+                              <div className="rounded-xl bg-slate-50 p-3">
+                                <div className="text-xs font-bold text-slate-500">Registro anterior</div>
+                                <div className="mt-2 whitespace-pre-wrap text-sm text-slate-800">
+                                  {nc.acompanhamento}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
