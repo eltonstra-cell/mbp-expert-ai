@@ -1108,7 +1108,7 @@ export default function Home() {
 
       // Blocos que não devem ser cortados no meio entre páginas.
       const blocosProtegidos = Array.from(
-        elemento.querySelectorAll(".print-card")
+        elemento.querySelectorAll(".print-card, .print-block")
       ).map((node) => {
         const rect = (node as HTMLElement).getBoundingClientRect();
         return {
@@ -1156,6 +1156,27 @@ export default function Home() {
         }
       }
 
+      // Mantém o título de Não Conformidades junto da primeira NC.
+      // Evita uma página terminar apenas com o cabeçalho da seção.
+      const secaoNCs = elemento.querySelector(
+        '[data-pdf-section="nao-conformidades"]'
+      ) as HTMLElement | null;
+
+      if (secaoNCs) {
+        const primeiraNC = secaoNCs.querySelector(".print-card") as HTMLElement | null;
+
+        if (primeiraNC) {
+          const secaoRect = secaoNCs.getBoundingClientRect();
+          const primeiraRect = primeiraNC.getBoundingClientRect();
+
+          blocosProtegidos.push({
+            topCss: Math.max(0, secaoRect.top - elementoRect.top),
+            bottomCss: Math.max(0, primeiraRect.bottom - elementoRect.top),
+            heightCss: Math.max(0, primeiraRect.bottom - secaoRect.top),
+          });
+        }
+      }
+
       blocosProtegidos.sort((a, b) => a.topCss - b.topCss);
 
       const canvas = await html2canvas(elemento, {
@@ -1199,7 +1220,7 @@ export default function Home() {
 
       const cortes: { inicio: number; fim: number }[] = [];
       let inicio = 0;
-      const folgaPx = Math.max(8, Math.round(4 / mmPorCanvasPx));
+      const folgaPx = Math.max(10, Math.round(5 / mmPorCanvasPx));
 
       while (inicio < canvas.height) {
         let fimDesejado = Math.min(
@@ -2101,7 +2122,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.28.2
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.29
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
@@ -3858,7 +3879,10 @@ export default function Home() {
               </div>
             </article>
 
-            <article className="print-block rounded-2xl bg-white p-5 shadow-sm">
+            <article
+              data-pdf-section="nao-conformidades"
+              className="print-block rounded-2xl bg-white p-5 shadow-sm"
+            >
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <div className="text-xs font-extrabold uppercase text-slate-400">
