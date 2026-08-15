@@ -1693,6 +1693,31 @@ export default function Home() {
     setView("checklist");
   }
 
+  function rolarParaProximoPendente(itemIdAtual: string) {
+    if (!visitaAtual) return;
+
+    const itensDoAmbiente = (visitaAtual.checklist || []).filter(
+      (item) => item.ambiente === ambienteChecklistAtivo
+    );
+    const indiceAtual = itensDoAmbiente.findIndex((item) => item.id === itemIdAtual);
+
+    const proximo =
+      itensDoAmbiente
+        .slice(indiceAtual + 1)
+        .find((item) => item.status === "Pendente") ||
+      itensDoAmbiente
+        .slice(0, Math.max(0, indiceAtual))
+        .find((item) => item.status === "Pendente");
+
+    if (!proximo) return;
+
+    window.setTimeout(() => {
+      document
+        .getElementById(`checklist-item-${proximo.id}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 180);
+  }
+
   function atualizarChecklistItem(
     itemId: string,
     patch: Partial<Pick<ChecklistItem, "status" | "observacao">>
@@ -2135,7 +2160,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.31
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.32
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
@@ -3317,7 +3342,8 @@ export default function Home() {
                   .map((item, idx) => (
                     <article
                       key={item.id}
-                      className={`rounded-2xl bg-white p-5 shadow-sm ${
+                      id={`checklist-item-${item.id}`}
+                      className={`scroll-mt-4 rounded-2xl bg-white p-5 shadow-sm ${
                         item.status === "Não Conforme"
                           ? "border-2 border-red-200"
                           : item.status === "Conforme"
@@ -3380,14 +3406,21 @@ export default function Home() {
                           (status) => (
                             <button
                               key={status}
-                              onClick={() =>
+                              onClick={() => {
                                 atualizarChecklistItem(item.id, {
                                   status,
                                   ...(status !== "Não Conforme"
                                     ? { observacao: "" }
                                     : {}),
-                                })
-                              }
+                                });
+
+                                if (
+                                  status === "Conforme" ||
+                                  status === "Não se aplica"
+                                ) {
+                                  rolarParaProximoPendente(item.id);
+                                }
+                              }}
                               className={`rounded-xl px-3 py-3 text-sm font-extrabold ${
                                 item.status === status
                                   ? status === "Conforme"
@@ -3420,6 +3453,15 @@ export default function Home() {
                               })
                             }
                           />
+                          {item.observacao.trim() && (
+                            <button
+                              type="button"
+                              onClick={() => rolarParaProximoPendente(item.id)}
+                              className="mt-2 w-full rounded-xl bg-[#173B67] px-4 py-3 text-sm font-extrabold text-white"
+                            >
+                              Próximo item →
+                            </button>
+                          )}
                         </label>
                       ) : (
                         <details className="mt-3 rounded-xl border border-slate-200 bg-slate-50/60">
