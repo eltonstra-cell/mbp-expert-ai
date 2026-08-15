@@ -2135,7 +2135,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.30
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.31
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
@@ -3284,7 +3284,14 @@ export default function Home() {
                             ativo ? "text-blue-100" : "text-slate-500"
                           }`}
                         >
-                          {respAmb}/{itensAmb.length} respondidos
+                          <span>{respAmb}/{itensAmb.length} respondidos</span>
+                          {itensAmb.length > 0 && respAmb === itensAmb.length && (
+                            <span className={`ml-2 font-extrabold ${
+                              ativo ? "text-emerald-200" : "text-emerald-700"
+                            }`}>
+                              ✓ Concluído
+                            </span>
+                          )}
                         </div>
                       </button>
                     );
@@ -3397,26 +3404,43 @@ export default function Home() {
                         )}
                       </div>
 
-                      <label className="mt-4 block">
-                        <span className="mb-1 block text-xs font-bold text-slate-500">
-                          Observação
-                        </span>
-                        <textarea
-                          rows={3}
-                          className="w-full rounded-xl border p-3"
-                          placeholder={
-                            item.status === "Não Conforme"
-                              ? "Descreva a não conformidade observada..."
-                              : "Observação opcional"
-                          }
-                          value={item.observacao}
-                          onChange={(e) =>
-                            atualizarChecklistItem(item.id, {
-                              observacao: e.target.value,
-                            })
-                          }
-                        />
-                      </label>
+                      {item.status === "Não Conforme" ? (
+                        <label className="mt-4 block">
+                          <span className="mb-1 block text-xs font-bold text-red-700">
+                            Descrição da não conformidade
+                          </span>
+                          <textarea
+                            rows={3}
+                            className="w-full rounded-xl border border-red-200 p-3"
+                            placeholder="Descreva a não conformidade observada..."
+                            value={item.observacao}
+                            onChange={(e) =>
+                              atualizarChecklistItem(item.id, {
+                                observacao: e.target.value,
+                              })
+                            }
+                          />
+                        </label>
+                      ) : (
+                        <details className="mt-3 rounded-xl border border-slate-200 bg-slate-50/60">
+                          <summary className="cursor-pointer select-none px-3 py-2 text-xs font-bold text-slate-500">
+                            + Observação opcional
+                          </summary>
+                          <div className="px-3 pb-3">
+                            <textarea
+                              rows={2}
+                              className="w-full rounded-xl border p-3"
+                              placeholder="Observação opcional"
+                              value={item.observacao}
+                              onChange={(e) =>
+                                atualizarChecklistItem(item.id, {
+                                  observacao: e.target.value,
+                                })
+                              }
+                            />
+                          </div>
+                        </details>
+                      )}
 
                       {item.status === "Não Conforme" && (
                         <div className="mt-3 rounded-xl bg-red-50 p-3 text-sm text-red-800">
