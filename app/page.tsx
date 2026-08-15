@@ -1472,14 +1472,27 @@ export default function Home() {
 
   async function finalizarInspecao() {
     if (!visitaAtual) return;
+
+    // Uma inspeção só pode ser marcada como concluída quando todos os itens
+    // do checklist dos ambientes selecionados tiverem sido avaliados.
+    // Não conformidades podem permanecer abertas, pois seguem para o pós-visita.
+    if (pendentesVisita > 0) {
+      window.alert(
+        `Não é possível finalizar esta inspeção ainda.\n\n` +
+        `Existem ${pendentesVisita} item(ns) pendente(s) no checklist.\n\n` +
+        `Avalie todos os itens selecionados como Conforme, Não conforme ou Não se aplica. ` +
+        `Depois disso, a inspeção poderá ser concluída normalmente.`
+      );
+      return;
+    }
+
     const alertas: string[] = [];
-    if (pendentesVisita > 0) alertas.push(`${pendentesVisita} item(ns) pendente(s) no checklist`);
-    if (ncsSomenteAbertas > 0) alertas.push(`${ncsSomenteAbertas} não conformidade(s) aberta(s)`);
-    if (ncsSemAcao > 0) alertas.push(`${ncsSemAcao} não conformidade(s) sem ação corretiva definida`);
+    if (ncsSomenteAbertas > 0) alertas.push(`${ncsSomenteAbertas} não conformidade(s) seguirá(ão) aberta(s) para acompanhamento`);
+    if (ncsSemAcao > 0) alertas.push(`${ncsSemAcao} não conformidade(s) ainda está(ão) sem ação corretiva definida`);
     if (!(visitaAtual.observacoes || "").trim()) alertas.push("conclusão / observação final não preenchida");
 
     const ressalvas = alertas.length
-      ? `\n\nAtenção:\n• ${alertas.join("\n• ")}\n\nÉ possível finalizar com essas ressalvas.`
+      ? `\n\nAtenção:\n• ${alertas.join("\n• ")}\n\nEssas pendências não impedem o encerramento da inspeção e continuarão disponíveis no pós-visita.`
       : "";
     if (!window.confirm(`Finalizar esta inspeção?${ressalvas}\n\nA visita ficará marcada como Concluída.`)) return;
 
@@ -2122,7 +2135,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.29
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.30
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
