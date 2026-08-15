@@ -2162,7 +2162,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.33
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.34
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
@@ -2207,8 +2207,8 @@ export default function Home() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-7xl p-4">
-        <nav className="mb-4 flex gap-2">
+      <div className="mx-auto max-w-7xl px-3 py-4 sm:p-4">
+        <nav className="mb-4 flex flex-wrap gap-2">
           <button
             onClick={() => setView("inicio")}
             className={`rounded-xl px-4 py-2 font-bold ${
@@ -3508,8 +3508,8 @@ export default function Home() {
           </section>
         ) : view === "visita" && visitaAtual ? (
           <section className="space-y-4">
-            <div className="rounded-2xl bg-white p-5 shadow-sm">
-              <div className="flex flex-col gap-4 md:flex-row md:justify-between">
+            <div className="rounded-2xl bg-white p-4 shadow-sm sm:p-5">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <div className="text-xs font-extrabold uppercase text-[#2F5597]">
                     Central da Visita
@@ -3527,7 +3527,7 @@ export default function Home() {
 
                 <button
                   onClick={() => setView("visitas")}
-                  className="rounded-xl bg-slate-100 px-4 py-2 font-bold"
+                  className="w-full rounded-xl bg-slate-100 px-4 py-3 font-bold sm:w-auto"
                 >
                   Voltar
                 </button>
@@ -3547,10 +3547,10 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <button
                 onClick={abrirAmbientes}
-                className="rounded-2xl border-2 border-[#2F5597] bg-white p-5 text-left shadow-sm"
+                className="min-h-[118px] rounded-2xl border-2 border-[#2F5597] bg-white p-4 text-left shadow-sm sm:p-5"
               >
                 <div className="text-xs font-extrabold uppercase text-[#2F5597]">
                   Etapa 1
@@ -3682,7 +3682,7 @@ export default function Home() {
               </button>
               <button
                 onClick={() => setView("acompanhamento")}
-                className="rounded-2xl bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                className="min-h-[118px] rounded-2xl bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:p-5"
               >
                 <div className="text-xs font-extrabold uppercase text-emerald-700">Pós-visita</div>
                 <div className="mt-1 text-lg font-extrabold">Acompanhamento</div>
@@ -3691,7 +3691,7 @@ export default function Home() {
 
               <button
                 onClick={() => setView("relatorio")}
-                className="rounded-2xl bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                className="min-h-[118px] rounded-2xl bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:p-5"
               >
                 <div className="text-xs font-extrabold uppercase text-slate-400">
                   Encerramento
