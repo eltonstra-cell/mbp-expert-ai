@@ -1693,7 +1693,7 @@ export default function Home() {
     setView("checklist");
   }
 
-  function rolarParaProximoPendente(itemIdAtual: string) {
+  function rolarParaProximoItem(itemIdAtual: string) {
     if (!visitaAtual) return;
 
     const itensDoAmbiente = (visitaAtual.checklist || []).filter(
@@ -1701,15 +1701,17 @@ export default function Home() {
     );
     const indiceAtual = itensDoAmbiente.findIndex((item) => item.id === itemIdAtual);
 
-    const proximo =
-      itensDoAmbiente
-        .slice(indiceAtual + 1)
-        .find((item) => item.status === "Pendente") ||
-      itensDoAmbiente
-        .slice(0, Math.max(0, indiceAtual))
-        .find((item) => item.status === "Pendente");
+    if (indiceAtual < 0) return;
 
-    if (!proximo) return;
+    const proximo = itensDoAmbiente[indiceAtual + 1];
+
+    if (!proximo) {
+      window.setTimeout(() => {
+        const topoAmbiente = document.getElementById("checklist-ambiente-topo");
+        topoAmbiente?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 180);
+      return;
+    }
 
     window.setTimeout(() => {
       document
@@ -2160,7 +2162,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.32
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.33
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
@@ -3325,7 +3327,10 @@ export default function Home() {
               </aside>
 
               <div className="space-y-3">
-                <div className="rounded-2xl bg-white p-5 shadow-sm">
+                <div
+                  id="checklist-ambiente-topo"
+                  className="scroll-mt-4 rounded-2xl bg-white p-5 shadow-sm"
+                >
                   <div className="text-xs font-extrabold uppercase text-slate-400">
                     Ambiente atual
                   </div>
@@ -3418,7 +3423,7 @@ export default function Home() {
                                   status === "Conforme" ||
                                   status === "Não se aplica"
                                 ) {
-                                  rolarParaProximoPendente(item.id);
+                                  rolarParaProximoItem(item.id);
                                 }
                               }}
                               className={`rounded-xl px-3 py-3 text-sm font-extrabold ${
@@ -3456,7 +3461,7 @@ export default function Home() {
                           {item.observacao.trim() && (
                             <button
                               type="button"
-                              onClick={() => rolarParaProximoPendente(item.id)}
+                              onClick={() => rolarParaProximoItem(item.id)}
                               className="mt-2 w-full rounded-xl bg-[#173B67] px-4 py-3 text-sm font-extrabold text-white"
                             >
                               Próximo item →
