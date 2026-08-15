@@ -643,6 +643,7 @@ export default function Home() {
       data: v.data || hojeISO(),
       status: v.status === "Concluída" ? "Concluída" : "Em andamento",
       encerradaEm: typeof v.encerradaEm === "string" ? v.encerradaEm : undefined,
+      historicoStatus: Array.isArray(v.historicoStatus) ? v.historicoStatus : [],
       responsavel: v.responsavel || "",
       observacoes: v.observacoes || "",
       progresso:
@@ -1501,7 +1502,21 @@ export default function Home() {
       ...db,
       visitas: db.visitas.map((visita) =>
         visita.id === visitaAtual.id
-          ? ({ ...visita, status: "Concluída", encerradaEm: agora } as any)
+          ? ({
+              ...visita,
+              status: "Concluída",
+              encerradaEm: agora,
+              historicoStatus: [
+                ...(visita.historicoStatus || []),
+                {
+                  id: crypto.randomUUID(),
+                  criadoEm: agora,
+                  de: visita.status,
+                  para: "Concluída",
+                  motivo: "Inspeção finalizada pelo usuário.",
+                },
+              ],
+            } as any)
           : visita
       ),
     };
@@ -1511,13 +1526,33 @@ export default function Home() {
 
   async function reabrirInspecao() {
     if (!visitaAtual) return;
-    if (!window.confirm("Reabrir esta inspeção?\n\nA visita voltará para Em andamento.")) return;
 
+    const confirmado = window.confirm(
+      "Reabrir esta inspeção?\n\n" +
+      "A visita voltará para Em andamento e poderá ser alterada novamente. " +
+      "O encerramento anterior permanecerá registrado no histórico de rastreabilidade."
+    );
+    if (!confirmado) return;
+
+    const agora = new Date().toISOString();
     const novo: AppDB = {
       ...db,
       visitas: db.visitas.map((visita) =>
         visita.id === visitaAtual.id
-          ? ({ ...visita, status: "Em andamento", encerradaEm: undefined } as any)
+          ? ({
+              ...visita,
+              status: "Em andamento",
+              historicoStatus: [
+                ...(visita.historicoStatus || []),
+                {
+                  id: crypto.randomUUID(),
+                  criadoEm: agora,
+                  de: visita.status,
+                  para: "Em andamento",
+                  motivo: "Inspeção reaberta pelo usuário.",
+                },
+              ],
+            } as any)
           : visita
       ),
     };
@@ -2045,7 +2080,28 @@ export default function Home() {
   }
 
   function excluirEvidencia(id: string) {
-    if (!window.confirm("Excluir esta evidência?")) return;
+    const evidencia = (db.evidencias || []).find((ev) => ev.id === id);
+    if (!evidencia) return;
+
+    const ncRelacionada = evidencia.ncId
+      ? (db.ncs || []).find((nc) => nc.id === evidencia.ncId)
+      : undefined;
+
+    if (ncRelacionada?.status === "Resolvida") {
+      window.alert(
+        "Esta evidência está vinculada a uma Não Conformidade resolvida e faz parte da rastreabilidade do fechamento.\n\n" +
+        "Para alterá-la, reabra primeiro a Não Conformidade pelo Acompanhamento."
+      );
+      return;
+    }
+
+    const descricao = evidencia.descricao || evidencia.nomeArquivo || "evidência";
+    if (
+      !window.confirm(
+        `Remover esta evidência do registro da visita?\n\n${descricao}\n\nEssa ação altera a documentação da inspeção.`
+      )
+    ) return;
+
     setDb((o) => ({
       ...o,
       evidencias: (o.evidencias || []).filter((ev) => ev.id !== id),
@@ -2147,7 +2203,37 @@ export default function Home() {
   }
 
   function excluir(id: string) {
-    if (!window.confirm("Excluir esta visita? Esta ação não pode ser desfeita.")) return;
+    const visita = db.visitas.find((v) => v.id === id);
+    if (!visita) return;
+
+    const respostas = (visita.checklist || []).filter(
+      (item) => item.status !== "Pendente"
+    ).length;
+    const ncsLigadas = (db.ncs || []).filter((nc) => nc.visitaId === id).length;
+    const evidenciasLigadas = (db.evidencias || []).filter(
+      (ev) => ev.visitaId === id
+    ).length;
+
+    if (
+      respostas > 0 ||
+      ncsLigadas > 0 ||
+      evidenciasLigadas > 0 ||
+      visita.status === "Concluída"
+    ) {
+      window.alert(
+        "Esta visita já possui registros e foi protegida contra exclusão acidental.\n\n" +
+        `Respostas: ${respostas}\nNão conformidades: ${ncsLigadas}\nEvidências: ${evidenciasLigadas}\n\n` +
+        "Nesta versão, somente visitas vazias podem ser excluídas."
+      );
+      return;
+    }
+
+    const digitado = window.prompt(
+      'Esta visita ainda está vazia. Para excluí-la definitivamente, digite EXCLUIR:'
+    );
+
+    if (digitado !== "EXCLUIR") return;
+
     setDb((o) => ({ ...o, visitas: o.visitas.filter((v) => v.id !== id) }));
     if (visitaAtualId === id) {
       setVisitaAtualId(null);
@@ -2162,7 +2248,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.34
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.35
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
@@ -2806,19 +2892,24 @@ export default function Home() {
                         </div>
                       </div>
 
-                      <select
-                        value={nc.status}
-                        onChange={(e) =>
-                          atualizarNC(nc.id, {
-                            status: e.target.value as "Aberta" | "Em tratamento" | "Resolvida",
-                          })
-                        }
-                        className="rounded-xl border bg-white px-3 py-2 text-sm font-extrabold"
-                      >
-                        <option value="Aberta">Aberta</option>
-                        <option value="Em tratamento">Em tratamento</option>
-                        <option value="Resolvida">Resolvida</option>
-                      </select>
+                      {nc.status === "Resolvida" ? (
+                        <div className="rounded-xl bg-emerald-100 px-3 py-2 text-sm font-extrabold text-emerald-800">
+                          Resolvida • edição protegida
+                        </div>
+                      ) : (
+                        <select
+                          value={nc.status}
+                          onChange={(e) =>
+                            atualizarNC(nc.id, {
+                              status: e.target.value as "Aberta" | "Em tratamento",
+                            })
+                          }
+                          className="rounded-xl border bg-white px-3 py-2 text-sm font-extrabold"
+                        >
+                          <option value="Aberta">Aberta</option>
+                          <option value="Em tratamento">Em tratamento</option>
+                        </select>
+                      )}
                     </div>
 
                     {nc.observacao && (
@@ -2838,6 +2929,7 @@ export default function Home() {
                         <textarea
                           rows={3}
                           value={(nc as any).acaoCorretiva || ""}
+                          disabled={nc.status === "Resolvida"}
                           onChange={(e) =>
                             atualizarNC(nc.id, { acaoCorretiva: e.target.value })
                           }
@@ -2852,6 +2944,7 @@ export default function Home() {
                         </span>
                         <input
                           value={(nc as any).responsavelAcao || ""}
+                          disabled={nc.status === "Resolvida"}
                           onChange={(e) =>
                             atualizarNC(nc.id, { responsavelAcao: e.target.value })
                           }
@@ -2867,6 +2960,7 @@ export default function Home() {
                         <input
                           type="date"
                           value={(nc as any).prazo || ""}
+                          disabled={nc.status === "Resolvida"}
                           onChange={(e) =>
                             atualizarNC(nc.id, { prazo: e.target.value })
                           }
@@ -2881,6 +2975,7 @@ export default function Home() {
                         <textarea
                           rows={2}
                           value={(nc as any).acompanhamento || ""}
+                          disabled={nc.status === "Resolvida"}
                           onChange={(e) =>
                             atualizarNC(nc.id, { acompanhamento: e.target.value })
                           }
@@ -2890,9 +2985,16 @@ export default function Home() {
                       </label>
                     </div>
 
-                    <div className="mt-4 rounded-xl bg-slate-50 p-3 text-xs text-slate-500">
-                      As alterações são salvas automaticamente.
-                    </div>
+                    {nc.status === "Resolvida" ? (
+                      <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900">
+                        Registro protegido. Para reabrir ou alterar uma Não Conformidade resolvida,
+                        use o módulo Acompanhamento e registre uma nova atualização no histórico.
+                      </div>
+                    ) : (
+                      <div className="mt-4 rounded-xl bg-slate-50 p-3 text-xs text-slate-500">
+                        As alterações são salvas automaticamente.
+                      </div>
+                    )}
                   </article>
                 ))}
               </div>

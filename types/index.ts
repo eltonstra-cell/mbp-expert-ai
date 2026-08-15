@@ -36,6 +36,14 @@ export type ChecklistItem = {
   orientacao?: string;
 };
 
+export type HistoricoStatusVisita = {
+  id: string;
+  criadoEm: string;
+  de: "Em andamento" | "Concluída";
+  para: "Em andamento" | "Concluída";
+  motivo: string;
+};
+
 export type Visita = {
   id: string;
   empresaId: string;
@@ -48,6 +56,8 @@ export type Visita = {
   ambientes?: string[];
   checklist?: ChecklistItem[];
   checklistVersao?: number;
+  encerradaEm?: string;
+  historicoStatus?: HistoricoStatusVisita[];
 };
 
 export type HistoricoAcompanhamento = {
