@@ -87,6 +87,8 @@ export type NaoConformidade = {
   acompanhamento?: string;
   historicoAcompanhamento?: HistoricoAcompanhamento[];
   resolvidaEm?: string;
+  /** Mantém a NC para restauração caso o checklist seja temporariamente alterado para Conforme/Não se aplica. */
+  inativaNoChecklist?: boolean;
   criadoEm: string;
 };
 

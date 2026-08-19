@@ -686,13 +686,16 @@ export default function Home() {
             observacao: item.observacao || "",
             prioridade: item.criticidade || "Rotina",
             status: existente?.status || "Aberta" as const,
+            inativaNoChecklist: false,
             criadoEm: existente?.criadoEm || new Date().toISOString(),
           };
           ncsSincronizadas = existente
             ? ncsSincronizadas.map((x: any) => x.id === idNc ? { ...x, ...nc } : x)
             : [nc, ...ncsSincronizadas];
         } else {
-          ncsSincronizadas = ncsSincronizadas.filter((nc: any) => nc.id !== idNc);
+          ncsSincronizadas = ncsSincronizadas.map((nc: any) =>
+            nc.id === idNc ? { ...nc, inativaNoChecklist: true } : nc
+          );
         }
       }
     }
@@ -910,7 +913,8 @@ export default function Home() {
       (db.ncs || []).filter(
         (nc) =>
           nc.empresaId === db.empresaAtualId &&
-          idsVisitasEmpresaAtual.has(nc.visitaId)
+          idsVisitasEmpresaAtual.has(nc.visitaId) &&
+          !nc.inativaNoChecklist
       ),
     [db.ncs, db.empresaAtualId, idsVisitasEmpresaAtual]
   );
@@ -1003,7 +1007,7 @@ export default function Home() {
   const percentualChecklist = totalChecklist
     ? Math.round((respondidos / totalChecklist) * 100)
     : 0;
-  const ncsVisita = (db.ncs || []).filter((nc) => nc.visitaId === visitaAtual?.id);
+  const ncsVisita = (db.ncs || []).filter((nc) => nc.visitaId === visitaAtual?.id && !nc.inativaNoChecklist);
   const ncsAbertas = ncsVisita.filter((nc) => nc.status !== "Resolvida").length;
   const acoesDefinidas = ncsVisita.filter(
     (nc: any) => (nc.acaoCorretiva || "").trim().length > 0
@@ -1855,11 +1859,16 @@ export default function Home() {
             observacao: item.observacao || "",
             prioridade: item.criticidade || "Rotina",
             status: existente?.status || "Aberta" as const,
+            inativaNoChecklist: false,
             criadoEm: existente?.criadoEm || new Date().toISOString(),
           };
           ncs = existente ? ncs.map((x) => x.id === idNc ? { ...x, ...nc } : x) : [nc, ...ncs];
         } else {
-          ncs = ncs.filter((nc) => nc.id !== idNc);
+          // Não apaga a NC: apenas a retira dos módulos ativos. Se o item voltar
+          // a "Não Conforme", todo o plano, evidências e histórico reaparecem.
+          ncs = ncs.map((nc) =>
+            nc.id === idNc ? { ...nc, inativaNoChecklist: true } : nc
+          );
         }
       }
 
@@ -2118,6 +2127,23 @@ export default function Home() {
       status?: "Aberta" | "Em tratamento" | "Resolvida";
     }
   ) {
+    if (patch.status === "Em tratamento") {
+      const ncAtual = (db.ncs || []).find((nc) => nc.id === ncId);
+      if (ncAtual) {
+        const faltantes = [
+          !ncAtual.acaoCorretiva?.trim() ? "Ação corretiva" : "",
+          !ncAtual.responsavelAcao?.trim() ? "Responsável" : "",
+          !ncAtual.prazo?.trim() ? "Prazo" : "",
+        ].filter(Boolean);
+        if (faltantes.length) {
+          window.alert(
+            `Antes de colocar esta Não Conformidade em tratamento, preencha: ${faltantes.join(", ")}.`
+          );
+          return;
+        }
+      }
+    }
+
     setDb((o) => ({
       ...o,
       ncs: (o.ncs || []).map((nc) =>
@@ -2140,11 +2166,35 @@ export default function Home() {
     const statusFinal = statusAcompanhamento[ncId] || ncAtual.status;
     const evidenciasDaNc = (db.evidencias || []).filter((ev) => ev.ncId === ncId);
 
-    if (statusFinal === "Resolvida" && evidenciasDaNc.length === 0) {
-      window.alert(
-        "Antes de marcar como Resolvida, vincule pelo menos uma evidência da correção."
-      );
-      return;
+    if (statusFinal === "Em tratamento") {
+      const faltantes = [
+        !ncAtual.acaoCorretiva?.trim() ? "Ação corretiva" : "",
+        !ncAtual.responsavelAcao?.trim() ? "Responsável" : "",
+        !ncAtual.prazo?.trim() ? "Prazo" : "",
+      ].filter(Boolean);
+
+      if (faltantes.length) {
+        window.alert(
+          `Antes de colocar esta Não Conformidade em tratamento, preencha: ${faltantes.join(", ")}.`
+        );
+        return;
+      }
+    }
+
+    if (statusFinal === "Resolvida") {
+      const faltantes = [
+        !ncAtual.acaoCorretiva?.trim() ? "Ação corretiva" : "",
+        !ncAtual.responsavelAcao?.trim() ? "Responsável" : "",
+        !ncAtual.prazo?.trim() ? "Prazo" : "",
+        evidenciasDaNc.length === 0 ? "pelo menos uma evidência da correção" : "",
+      ].filter(Boolean);
+
+      if (faltantes.length) {
+        window.alert(
+          `Não é possível concluir esta Não Conformidade. Preencha/vincule: ${faltantes.join(", ")}.`
+        );
+        return;
+      }
     }
 
     const agora = new Date().toISOString();
@@ -2248,7 +2298,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.35
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.36
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
