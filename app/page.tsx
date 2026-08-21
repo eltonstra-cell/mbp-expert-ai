@@ -886,6 +886,15 @@ export default function Home() {
     };
   }, [ready]);
 
+  useEffect(() => {
+    if (!visitaAtualId) return;
+    const visita = db.visitas.find((v) => v.id === visitaAtualId);
+    if (visita && db.empresaAtualId && visita.empresaId !== db.empresaAtualId) {
+      setVisitaAtualId(null);
+      if (VISIT_VIEWS.includes(view)) setView("visitas");
+    }
+  }, [db.empresaAtualId, db.visitas, visitaAtualId, view]);
+
   const atual = db.empresaAtualId ? db.empresas[db.empresaAtualId] : undefined;
   const visitaAtual = visitaAtualId ? db.visitas.find((v) => v.id === visitaAtualId) : undefined;
   const empresaVisita = visitaAtual ? db.empresas[visitaAtual.empresaId] : undefined;
@@ -2182,11 +2191,35 @@ export default function Home() {
     }
 
     if (statusFinal === "Resolvida") {
+      const historicoAtual = ncAtual.historicoAcompanhamento || [];
+      let indiceUltimaResolucao = -1;
+      historicoAtual.forEach((item, indice) => {
+        if (item.status === "Resolvida") indiceUltimaResolucao = indice;
+      });
+      const reaberturaDepoisDaResolucao =
+        indiceUltimaResolucao >= 0
+          ? historicoAtual
+              .slice(indiceUltimaResolucao + 1)
+              .find((item) => item.status !== "Resolvida")
+          : undefined;
+      const exigeNovaEvidencia = !!reaberturaDepoisDaResolucao;
+      const possuiEvidenciaNova = exigeNovaEvidencia
+        ? evidenciasDaNc.some(
+            (ev) =>
+              new Date(ev.criadoEm).getTime() >
+              new Date(reaberturaDepoisDaResolucao!.criadoEm).getTime()
+          )
+        : evidenciasDaNc.length > 0;
+
       const faltantes = [
         !ncAtual.acaoCorretiva?.trim() ? "Ação corretiva" : "",
         !ncAtual.responsavelAcao?.trim() ? "Responsável" : "",
         !ncAtual.prazo?.trim() ? "Prazo" : "",
-        evidenciasDaNc.length === 0 ? "pelo menos uma evidência da correção" : "",
+        !possuiEvidenciaNova
+          ? exigeNovaEvidencia
+            ? "pelo menos uma nova evidência registrada após a reabertura"
+            : "pelo menos uma evidência da correção"
+          : "",
       ].filter(Boolean);
 
       if (faltantes.length) {
@@ -2198,6 +2231,14 @@ export default function Home() {
     }
 
     const agora = new Date().toISOString();
+    const concluidaAposPrazo =
+      statusFinal === "Resolvida" &&
+      situacaoPrazoNC(ncAtual.prazo, "Em tratamento").label === "Vencida";
+    const observacaoHistorico = concluidaAposPrazo
+      ? `${texto} • Concluída após o prazo. Prazo original: ${fdata(
+          ncAtual.prazo || ""
+        )} | Conclusão: ${new Date(agora).toLocaleString("pt-BR")}.`
+      : texto;
 
     setDb((o) => ({
       ...o,
@@ -2209,7 +2250,7 @@ export default function Home() {
           {
             id: crypto.randomUUID(),
             criadoEm: agora,
-            observacao: texto,
+            observacao: observacaoHistorico,
             status: statusFinal,
           },
         ];
@@ -2298,7 +2339,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.36
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.37
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
@@ -3496,7 +3537,14 @@ export default function Home() {
 
                 {checklistAtual
                   .filter((i) => i.ambiente === ambienteChecklistAtivo)
-                  .map((item, idx) => (
+                  .map((item, idx) => {
+                    const ncDoItem = (db.ncs || []).find(
+                      (nc) =>
+                        nc.visitaId === visitaAtual.id &&
+                        nc.checklistItemId === item.id &&
+                        !nc.inativaNoChecklist
+                    );
+                    return (
                     <article
                       key={item.id}
                       id={`checklist-item-${item.id}`}
@@ -3547,6 +3595,8 @@ export default function Home() {
                           className={`rounded-full px-3 py-1 text-xs font-extrabold ${
                             item.status === "Conforme"
                               ? "bg-emerald-50 text-emerald-700"
+                              : item.status === "Não Conforme" && ncDoItem?.status === "Resolvida"
+                              ? "bg-emerald-50 text-emerald-700"
                               : item.status === "Não Conforme"
                               ? "bg-red-50 text-red-700"
                               : item.status === "Não se aplica"
@@ -3554,7 +3604,9 @@ export default function Home() {
                               : "bg-amber-50 text-amber-700"
                           }`}
                         >
-                          {item.status}
+                          {item.status === "Não Conforme" && ncDoItem
+                            ? `Não Conforme • ${ncDoItem.status}`
+                            : item.status}
                         </div>
                       </div>
 
@@ -3642,18 +3694,32 @@ export default function Home() {
                       )}
 
                       {item.status === "Não Conforme" && (
-                        <div className="mt-3 rounded-xl bg-red-50 p-3 text-sm text-red-800">
-                          Este item ficará preparado para alimentar o módulo de
-                          Não Conformidades na próxima etapa.
-                        </div>
+                        ncDoItem ? (
+                          <div
+                            className={`mt-3 rounded-xl p-3 text-sm ${
+                              ncDoItem.status === "Resolvida"
+                                ? "bg-emerald-50 text-emerald-800"
+                                : "bg-amber-50 text-amber-900"
+                            }`}
+                          >
+                            {ncDoItem.status === "Resolvida"
+                              ? "Não conformidade registrada e resolvida. O achado original permanece no checklist para rastreabilidade."
+                              : `Não conformidade já registrada e em acompanhamento — status: ${ncDoItem.status}.`}
+                          </div>
+                        ) : (
+                          <div className="mt-3 rounded-xl bg-red-50 p-3 text-sm text-red-800">
+                            Este item gerará uma Não Conformidade para acompanhamento.
+                          </div>
+                        )
                       )}
                     </article>
-                  ))}
+                    );
+                  })}
 
                 <div className="rounded-2xl bg-blue-50 p-4 text-sm text-blue-900">
-                  As respostas são salvas automaticamente no navegador. Na próxima
-                  versão, os itens marcados como <b>Não Conforme</b> poderão gerar
-                  NC com foto, risco, legislação, prazo e ação corretiva.
+                  As respostas são salvas automaticamente. Itens marcados como
+                  <b> Não Conforme</b> geram uma Não Conformidade vinculada ao critério,
+                  preservando plano, evidências e histórico para rastreabilidade.
                 </div>
               </div>
             </div>
@@ -4504,9 +4570,10 @@ export default function Home() {
                   <div className="text-sm text-slate-500">{e.razaoSocial}</div>
                   <div className="mt-4 flex gap-2">
                     <button
-                      onClick={() =>
-                        setDb((o) => ({ ...o, empresaAtualId: e.id }))
-                      }
+                      onClick={() => {
+                        setDb((o) => ({ ...o, empresaAtualId: e.id }));
+                        setVisitaAtualId(null);
+                      }}
                       className="flex-1 rounded-xl bg-slate-100 px-4 py-2 font-bold"
                     >
                       {db.empresaAtualId === e.id
@@ -4852,7 +4919,7 @@ export default function Home() {
             </div>
 
             <div className="grid gap-4 lg:grid-cols-2">
-              {visitas.map((v) => {
+              {visitasEmpresaAtual.map((v) => {
                 const e = db.empresas[v.empresaId];
                 return (
                   <article
