@@ -1,46 +1,21 @@
-# MBP Expert AI v2.0
+# MBP Expert AI — v2.40
 
-Fundação da versão profissional do sistema.
+## Correção principal
 
-## Nesta versão
-- novo dashboard
-- cadastro de empresas
-- consulta de CNPJ
-- empresa ativa
-- persistência local organizada
-- estrutura pronta para banco online e autenticação
+A sincronização usava `updated_at` como controle de versão. O PostgreSQL/Neon armazena timestamps com precisão de microssegundos, enquanto o valor retornado ao navegador por JSON é serializado com precisão de milissegundos. Na gravação seguinte, a comparação exata podia falhar mesmo sem alteração por outro dispositivo.
 
-## Próxima etapa
-- banco de dados online
-- login
-- checklist modular
-- fotos e áudio
-- não conformidades completas
-- plano de ação
-- relatórios PDF
-- IA técnica
+Nesta versão, o endpoint de estado:
 
-## v2.37 — Correções de isolamento e rastreabilidade
-- Visitas filtradas pela empresa ativa, com proteção contra navegação para visita de outra empresa.
-- Checklist diferencia NC ativa, em tratamento e resolvida sem apagar o achado original.
-- NC reaberta exige nova evidência registrada após a reabertura antes de nova conclusão.
-- Conclusão após prazo vencido fica explicitamente registrada no histórico, preservando prazo original e data/hora da conclusão.
+- grava `updated_at` normalizado para milissegundos;
+- compara a versão recebida também em precisão de milissegundos;
+- mantém o controle otimista de concorrência entre dispositivos;
+- evita falsos conflitos/falhas ao finalizar ou reabrir inspeções.
 
+## Teste recomendado
 
-## v2.38 — Relatório profissional e cadastros editáveis
-
-- Responsável pela visita passa a ser obrigatório na criação da inspeção.
-- Campo opcional de identificação profissional do consultor, exibido no relatório/PDF.
-- Conclusão técnica separada das observações iniciais, com sugestão automática baseada nos resultados da inspeção.
-- Inspeções concluídas sem conclusão manual recebem sugestão técnica automática no fechamento.
-- Cadastro de empresas pode ser editado após a criação, inclusive o responsável pelo estabelecimento usado na assinatura do relatório.
-- Relatório preserva observações iniciais e usa a conclusão técnica específica para o fechamento.
-
-
-## v2.39 — Sincronização robusta no encerramento
-
-- Evita corrida entre gravação imediata, autosave e consulta periódica ao finalizar/reabrir inspeções.
-- Faz até 3 tentativas antes de considerar uma falha real de sincronização.
-- Após falha de resposta, consulta a nuvem para confirmar se o servidor já recebeu a alteração.
-- Trata como sucesso conflitos em que a nuvem já contém exatamente o estado que acabou de ser salvo.
-- O alerta de falha só aparece depois das tentativas e da verificação do estado remoto.
+1. aguardar “Nuvem sincronizada”;
+2. reabrir uma inspeção concluída;
+3. aguardar “Nuvem sincronizada”;
+4. finalizar novamente;
+5. confirmar que não aparece o alerta de gravação pendente;
+6. atualizar a página e verificar que o status persistiu.

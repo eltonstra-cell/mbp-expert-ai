@@ -121,7 +121,7 @@ export async function PUT(request: Request) {
     if (!expectedUpdatedAt) {
       const inserted = await sql`
         INSERT INTO mbp_cloud_state (workspace_id, data, updated_at)
-        VALUES (${WORKSPACE_ID}, ${payload}::jsonb, NOW())
+        VALUES (${WORKSPACE_ID}, ${payload}::jsonb, date_trunc('milliseconds', clock_timestamp()))
         ON CONFLICT (workspace_id) DO NOTHING
         RETURNING updated_at
       `;
@@ -151,9 +151,12 @@ export async function PUT(request: Request) {
     const updated = await sql`
       UPDATE mbp_cloud_state
       SET data = ${payload}::jsonb,
-          updated_at = NOW()
+          updated_at = date_trunc('milliseconds', clock_timestamp())
       WHERE workspace_id = ${WORKSPACE_ID}
-        AND updated_at = ${expectedUpdatedAt}::timestamptz
+        -- O timestamp chega ao navegador via JSON com precisão de milissegundos.
+        -- PostgreSQL/Neon pode armazenar microssegundos; comparar o valor bruto
+        -- fazia uma versão válida parecer conflito e impedia PUTs subsequentes.
+        AND date_trunc('milliseconds', updated_at) = ${expectedUpdatedAt}::timestamptz
       RETURNING updated_at
     `;
 

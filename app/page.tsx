@@ -2526,7 +2526,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.39
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.40
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
