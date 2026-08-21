@@ -331,6 +331,7 @@ export default function Home() {
   const [ready, setReady] = useState(false);
   const [view, setView] = useState<View>("inicio");
   const [showEmpresaForm, setShowEmpresaForm] = useState(false);
+  const [editingEmpresaId, setEditingEmpresaId] = useState<string | null>(null);
   const [showVisitaForm, setShowVisitaForm] = useState(false);
   const [visitaAtualId, setVisitaAtualId] = useState<string | null>(null);
   const [criandoVisita, setCriandoVisita] = useState(false);
@@ -426,6 +427,7 @@ export default function Home() {
   const [vf, setVf] = useState({
     data: hojeISO(),
     responsavel: "",
+    responsavelIdentificacao: "",
     observacoes: "",
   });
 
@@ -1408,6 +1410,52 @@ export default function Home() {
     }
   }
 
+  function gerarConclusaoAutomatica() {
+    const partes: string[] = [];
+
+    partes.push(
+      `A inspeção avaliou ${itensAvaliadosVisita} item(ns), com ${conformesVisita} conforme(s) e ${naoConformesVisita} não conforme(s), resultando em ${percentualConformidade}% de conformidade entre os itens avaliados.`
+    );
+
+    if (ncsVisita.length === 0) {
+      partes.push("Não foram registradas não conformidades nesta visita.");
+    } else {
+      partes.push(
+        `Foram registradas ${ncsVisita.length} não conformidade(s): ${ncsResolvidas} resolvida(s), ${ncsEmTratamento} em tratamento e ${ncsSomenteAbertas} aberta(s).`
+      );
+
+      if (ncsCriticasVisita > 0 || ncsImportantesVisita > 0) {
+        partes.push(
+          `Entre os achados, ${ncsCriticasVisita} foram classificados como críticos e ${ncsImportantesVisita} como importantes.`
+        );
+      }
+
+      if (acoesDefinidas === ncsVisita.length) {
+        partes.push("Todas as não conformidades possuem ação corretiva definida.");
+      } else {
+        partes.push(
+          `${ncsVisita.length - acoesDefinidas} não conformidade(s) ainda necessita(m) de definição de ação corretiva.`
+        );
+      }
+    }
+
+    if (evidenciasVisita.length > 0) {
+      partes.push(
+        `Foram vinculadas ${evidenciasVisita.length} evidência(s) aos registros da inspeção para fins de rastreabilidade.`
+      );
+    }
+
+    if (pendentesVisita > 0) {
+      partes.push(
+        `A inspeção permanece parcial, com ${pendentesVisita} item(ns) pendente(s) no checklist.`
+      );
+    } else {
+      partes.push("O checklist foi integralmente respondido.");
+    }
+
+    return partes.join(" ");
+  }
+
   function atualizarConclusaoRelatorio(valor: string) {
     if (!visitaAtual) return;
 
@@ -1415,7 +1463,27 @@ export default function Home() {
       ...atual,
       visitas: atual.visitas.map((visita) =>
         visita.id === visitaAtual.id
-          ? { ...visita, observacoes: valor }
+          ? { ...visita, conclusao: valor }
+          : visita
+      ),
+    }));
+  }
+
+  function atualizarResponsavelRelatorio(nome: string, identificacao?: string) {
+    if (!visitaAtual) return;
+
+    setDb((atual) => ({
+      ...atual,
+      visitas: atual.visitas.map((visita) =>
+        visita.id === visitaAtual.id
+          ? {
+              ...visita,
+              responsavel: nome,
+              responsavelIdentificacao:
+                identificacao !== undefined
+                  ? identificacao
+                  : visita.responsavelIdentificacao,
+            }
           : visita
       ),
     }));
@@ -1503,7 +1571,7 @@ export default function Home() {
     const alertas: string[] = [];
     if (ncsSomenteAbertas > 0) alertas.push(`${ncsSomenteAbertas} não conformidade(s) seguirá(ão) aberta(s) para acompanhamento`);
     if (ncsSemAcao > 0) alertas.push(`${ncsSemAcao} não conformidade(s) ainda está(ão) sem ação corretiva definida`);
-    if (!(visitaAtual.observacoes || "").trim()) alertas.push("conclusão / observação final não preenchida");
+    if (!(visitaAtual.conclusao || "").trim()) alertas.push("conclusão / observação final não preenchida — será gerada uma sugestão automática");
 
     const ressalvas = alertas.length
       ? `\n\nAtenção:\n• ${alertas.join("\n• ")}\n\nEssas pendências não impedem o encerramento da inspeção e continuarão disponíveis no pós-visita.`
@@ -1518,6 +1586,7 @@ export default function Home() {
           ? ({
               ...visita,
               status: "Concluída",
+              conclusao: (visita.conclusao || "").trim() || gerarConclusaoAutomatica(),
               encerradaEm: agora,
               historicoStatus: [
                 ...(visita.historicoStatus || []),
@@ -1612,19 +1681,48 @@ export default function Home() {
   }
 
   function salvarEmpresa() {
-    const id = form.cnpj.replace(/\D/g, "") || crypto.randomUUID();
+    const id = editingEmpresaId || form.cnpj.replace(/\D/g, "") || crypto.randomUUID();
+    const anterior = editingEmpresaId ? db.empresas[editingEmpresaId] : undefined;
     const emp: Empresa = {
       id,
       ...form,
+      cnpj: editingEmpresaId ? (anterior?.cnpj || form.cnpj) : form.cnpj,
       nomeFantasia: form.nomeFantasia || form.razaoSocial || "Sem nome",
-      criadoEm: new Date().toISOString(),
+      criadoEm: anterior?.criadoEm || new Date().toISOString(),
     };
     setDb((o) => ({
       ...o,
       empresaAtualId: id,
       empresas: { ...o.empresas, [id]: emp },
     }));
+    setEditingEmpresaId(null);
     setShowEmpresaForm(false);
+    setView("empresas");
+  }
+
+  function editarEmpresa(empresa: Empresa) {
+    setForm({
+      cnpj: empresa.cnpj || "",
+      nomeFantasia: empresa.nomeFantasia || "",
+      razaoSocial: empresa.razaoSocial || "",
+      situacao: empresa.situacao || "",
+      cnae: empresa.cnae || "",
+      cnaeDescricao: empresa.cnaeDescricao || "",
+      tipo: empresa.tipo || "Outro",
+      logradouro: empresa.logradouro || "",
+      numero: empresa.numero || "",
+      complemento: empresa.complemento || "",
+      bairro: empresa.bairro || "",
+      cep: empresa.cep || "",
+      municipio: empresa.municipio || "",
+      uf: empresa.uf || "",
+      telefone: empresa.telefone || "",
+      email: empresa.email || "",
+      responsavel: empresa.responsavel || "",
+    });
+    setEditingEmpresaId(empresa.id);
+    setMsg("");
+    setShowEmpresaForm(true);
     setView("empresas");
   }
 
@@ -1633,13 +1731,17 @@ export default function Home() {
       setView("empresas");
       return;
     }
-    setVf({ data: hojeISO(), responsavel: "", observacoes: "" });
+    setVf({ data: hojeISO(), responsavel: "", responsavelIdentificacao: "", observacoes: "" });
     setShowVisitaForm(true);
     setView("visitas");
   }
 
   function salvarVisita() {
     if (!atual || criandoVisita) return;
+    if (!vf.responsavel.trim()) {
+      window.alert("Informe o responsável pela visita antes de criar a inspeção.");
+      return;
+    }
     setCriandoVisita(true);
     const v: Visita = {
       id: crypto.randomUUID(),
@@ -1647,7 +1749,9 @@ export default function Home() {
       data: vf.data || hojeISO(),
       status: "Em andamento",
       responsavel: vf.responsavel.trim(),
+      responsavelIdentificacao: vf.responsavelIdentificacao.trim(),
       observacoes: vf.observacoes.trim(),
+      conclusao: "",
       progresso: 0,
       criadoEm: new Date().toISOString(),
       ambientes: [],
@@ -2339,7 +2443,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.37
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.38
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
@@ -2431,13 +2535,13 @@ export default function Home() {
           <section className="rounded-2xl bg-white p-5 shadow-sm">
             <div className="flex justify-between gap-4">
               <div>
-                <h2 className="text-2xl font-extrabold">Nova empresa</h2>
+                <h2 className="text-2xl font-extrabold">{editingEmpresaId ? "Editar empresa" : "Nova empresa"}</h2>
                 <p className="text-sm text-slate-500">
-                  Digite o CNPJ para buscar os dados automaticamente.
+                  {editingEmpresaId ? "Atualize os dados do cliente, incluindo o responsável que assinará o relatório." : "Digite o CNPJ para buscar os dados automaticamente."}
                 </p>
               </div>
               <button
-                onClick={() => setShowEmpresaForm(false)}
+                onClick={() => { setShowEmpresaForm(false); setEditingEmpresaId(null); }}
                 className="rounded-xl bg-slate-100 px-3 py-2 font-bold"
               >
                 Fechar
@@ -2451,16 +2555,19 @@ export default function Home() {
                 </span>
                 <div className="flex gap-2">
                   <input
-                    className="w-full rounded-xl border p-3"
+                    className="w-full rounded-xl border p-3 disabled:bg-slate-100 disabled:text-slate-500"
                     value={form.cnpj}
+                    disabled={Boolean(editingEmpresaId)}
                     onChange={(e) => setForm({ ...form, cnpj: e.target.value })}
                   />
-                  <button
-                    onClick={buscar}
-                    className="rounded-xl bg-slate-900 px-4 font-bold text-white"
-                  >
-                    {loading ? "..." : "Buscar"}
-                  </button>
+                  {!editingEmpresaId && (
+                    <button
+                      onClick={buscar}
+                      className="rounded-xl bg-slate-900 px-4 font-bold text-white"
+                    >
+                      {loading ? "..." : "Buscar"}
+                    </button>
+                  )}
                 </div>
               </label>
 
@@ -2532,13 +2639,30 @@ export default function Home() {
 
               <label>
                 <span className="mb-1 block text-xs font-bold text-slate-500">
-                  Responsável pela visita
+                  Responsável pela visita *
                 </span>
                 <input
                   className="w-full rounded-xl border p-3"
+                  required
+                  placeholder="Nome do consultor / responsável técnico"
                   value={vf.responsavel}
                   onChange={(e) =>
                     setVf({ ...vf, responsavel: e.target.value })
+                  }
+                />
+              </label>
+
+
+              <label>
+                <span className="mb-1 block text-xs font-bold text-slate-500">
+                  Identificação profissional (opcional)
+                </span>
+                <input
+                  className="w-full rounded-xl border p-3"
+                  placeholder="Ex.: Nutricionista • CRN 2-00000"
+                  value={vf.responsavelIdentificacao}
+                  onChange={(e) =>
+                    setVf({ ...vf, responsavelIdentificacao: e.target.value })
                   }
                 />
               </label>
@@ -4094,6 +4218,9 @@ export default function Home() {
                   <div>
                     <span className="font-extrabold text-slate-500">Responsável pela visita</span>
                     <div>{visitaAtual.responsavel || "Não informado"}</div>
+                    {visitaAtual.responsavelIdentificacao && (
+                      <div className="text-xs text-slate-500">{visitaAtual.responsavelIdentificacao}</div>
+                    )}
                   </div>
                   <div>
                     <span className="font-extrabold text-slate-500">Município / UF</span>
@@ -4436,22 +4563,70 @@ export default function Home() {
                 )}
               </div>
 
+              <div className="no-print mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div className="text-sm font-extrabold text-slate-700">
+                  Identificação do responsável pela inspeção
+                </div>
+                <p className="mt-1 text-xs text-slate-500">
+                  Estes dados são usados na identificação e na assinatura do PDF.
+                </p>
+                <div className="mt-3 grid gap-3 md:grid-cols-2">
+                  <label>
+                    <span className="mb-1 block text-xs font-bold text-slate-500">Nome</span>
+                    <input
+                      className="w-full rounded-xl border border-slate-300 bg-white p-3 text-sm"
+                      value={visitaAtual.responsavel || ""}
+                      placeholder="Nome do consultor / responsável técnico"
+                      onChange={(e) =>
+                        atualizarResponsavelRelatorio(
+                          e.target.value,
+                          visitaAtual.responsavelIdentificacao || ""
+                        )
+                      }
+                    />
+                  </label>
+                  <label>
+                    <span className="mb-1 block text-xs font-bold text-slate-500">Identificação profissional</span>
+                    <input
+                      className="w-full rounded-xl border border-slate-300 bg-white p-3 text-sm"
+                      value={visitaAtual.responsavelIdentificacao || ""}
+                      placeholder="Ex.: Nutricionista • registro profissional"
+                      onChange={(e) =>
+                        atualizarResponsavelRelatorio(
+                          visitaAtual.responsavel || "",
+                          e.target.value
+                        )
+                      }
+                    />
+                  </label>
+                </div>
+              </div>
+
               <div className="mt-5">
                 <label className="no-print block">
                   <span className="mb-2 block text-sm font-extrabold text-slate-700">
                     Conclusão / observações do consultor
                   </span>
                   <textarea
-                    value={visitaAtual.observacoes || ""}
+                    value={visitaAtual.conclusao || ""}
                     onChange={(e) =>
                       atualizarConclusaoRelatorio(e.target.value)
                     }
                     placeholder="Registre aqui a conclusão técnica, orientações gerais, pontos prioritários ou observações finais da visita."
                     className="min-h-32 w-full rounded-xl border border-slate-300 bg-white p-4 text-sm outline-none focus:border-[#2F5597]"
                   />
-                  <span className="mt-2 block text-xs text-slate-500">
-                    O conteúdo é salvo junto da visita e incluído no PDF.
-                  </span>
+                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                    <span className="block text-xs text-slate-500">
+                      O conteúdo é salvo junto da visita e incluído no PDF.
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => atualizarConclusaoRelatorio(gerarConclusaoAutomatica())}
+                      className="rounded-lg bg-blue-50 px-3 py-2 text-xs font-extrabold text-blue-800"
+                    >
+                      ✨ Gerar sugestão automática
+                    </button>
+                  </div>
                 </label>
 
                 <div className="print-only">
@@ -4459,8 +4634,7 @@ export default function Home() {
                     Conclusão / observações do consultor
                   </div>
                   <div className="min-h-20 whitespace-pre-wrap rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-                    {visitaAtual.observacoes?.trim() ||
-                      "Nenhuma conclusão ou observação final registrada."}
+                    {visitaAtual.conclusao?.trim() || gerarConclusaoAutomatica()}
                   </div>
                 </div>
               </div>
@@ -4485,7 +4659,7 @@ export default function Home() {
                       "Consultor / Responsável técnico"}
                   </div>
                   <div className="mt-1 text-center text-[11px] text-slate-500">
-                    Responsável pela inspeção
+                    {visitaAtual.responsavelIdentificacao?.trim() || "Responsável pela inspeção"}
                   </div>
                 </div>
 
@@ -4549,7 +4723,12 @@ export default function Home() {
               </div>
 
               <button
-                onClick={() => setShowEmpresaForm(true)}
+                onClick={() => {
+                  setEditingEmpresaId(null);
+                  setForm({ cnpj: "", nomeFantasia: "", razaoSocial: "", situacao: "", cnae: "", cnaeDescricao: "", tipo: "Outro", logradouro: "", numero: "", complemento: "", bairro: "", cep: "", municipio: "", uf: "", telefone: "", email: "", responsavel: "" });
+                  setMsg("");
+                  setShowEmpresaForm(true);
+                }}
                 className="rounded-xl bg-[#2F5597] px-4 py-3 font-extrabold text-white"
               >
                 + Nova empresa
@@ -4568,7 +4747,10 @@ export default function Home() {
                 >
                   <div className="font-extrabold">{e.nomeFantasia}</div>
                   <div className="text-sm text-slate-500">{e.razaoSocial}</div>
-                  <div className="mt-4 flex gap-2">
+                  {e.responsavel && (
+                    <div className="mt-1 text-xs text-slate-500">Responsável: {e.responsavel}</div>
+                  )}
+                  <div className="mt-4 flex flex-wrap gap-2">
                     <button
                       onClick={() => {
                         setDb((o) => ({ ...o, empresaAtualId: e.id }));
@@ -4579,6 +4761,13 @@ export default function Home() {
                       {db.empresaAtualId === e.id
                         ? "Empresa ativa"
                         : "Selecionar"}
+                    </button>
+
+                    <button
+                      onClick={() => editarEmpresa(e)}
+                      className="rounded-xl bg-slate-100 px-4 py-2 font-bold"
+                    >
+                      Editar
                     </button>
 
                     {db.empresaAtualId === e.id && (

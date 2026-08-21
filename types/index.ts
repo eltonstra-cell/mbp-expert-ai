@@ -50,7 +50,9 @@ export type Visita = {
   data: string;
   status: "Em andamento" | "Concluída";
   responsavel: string;
+  responsavelIdentificacao?: string;
   observacoes: string;
+  conclusao?: string;
   progresso: number;
   criadoEm: string;
   ambientes?: string[];
