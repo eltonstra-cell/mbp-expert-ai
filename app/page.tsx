@@ -362,6 +362,7 @@ export default function Home() {
   const aplicandoNuvemRef = useRef(false);
   const falhasSyncRef = useRef(0);
   const retrySyncTimerRef = useRef<number | null>(null);
+  const salvamentoImediatoRef = useRef(false);
 
   const [form, setForm] = useState({
     cnpj: "",
@@ -506,6 +507,8 @@ export default function Home() {
   }
 
   async function buscarEstadoNuvem(aplicarMesmoSeIgual = false) {
+    if (salvamentoImediatoRef.current) return;
+
     try {
       // Consulta leve: retorna apenas configured + updatedAt.
       const metaResponse = await fetch("/api/state?meta=1", {
@@ -777,7 +780,7 @@ export default function Home() {
 
     saveDB(db);
 
-    if (aplicandoNuvemRef.current) return;
+    if (aplicandoNuvemRef.current || salvamentoImediatoRef.current) return;
 
     const timer = window.setTimeout(async () => {
       try {
@@ -1489,66 +1492,146 @@ export default function Home() {
     }));
   }
 
+  function estadosIguais(a: unknown, b: unknown) {
+    try {
+      return JSON.stringify(a) === JSON.stringify(b);
+    } catch {
+      return false;
+    }
+  }
+
+  function registrarConfirmacaoNuvem(updatedAt?: string | null) {
+    ultimaNuvemVersaoRef.current = updatedAt || null;
+    ultimaNuvemRef.current = updatedAt
+      ? new Date(updatedAt).getTime()
+      : Date.now();
+
+    sincronizacaoOk();
+    setSyncStatus("sincronizado");
+    setSyncAtualizadoEm(
+      updatedAt
+        ? new Date(updatedAt).toLocaleString("pt-BR")
+        : new Date().toLocaleString("pt-BR")
+    );
+  }
+
+  async function confirmarEstadoSalvoNaNuvem(novo: AppDB) {
+    try {
+      const response = await fetch("/api/state", {
+        method: "GET",
+        cache: "no-store",
+      });
+
+      if (!response.ok) return false;
+
+      const cloud = await response.json();
+      if (!cloud?.configured || !cloud?.data) return false;
+
+      if (!estadosIguais(cloud.data, novo)) return false;
+
+      registrarConfirmacaoNuvem(cloud.updatedAt || null);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   async function salvarEstadoImediato(novo: AppDB) {
+    // Finalizar/reabrir são ações críticas. Enquanto esta gravação está em
+    // andamento, pausamos o autosave e a consulta periódica para que eles não
+    // disputem a mesma versão da nuvem.
+    salvamentoImediatoRef.current = true;
     saveDB(novo);
     setDb(novo);
     setSyncStatus("conectando");
 
+    let ultimoErro: unknown = null;
+
     try {
-      const response = await fetch("/api/state", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          data: novo,
-          expectedUpdatedAt: ultimaNuvemVersaoRef.current,
-        }),
-      });
+      for (let tentativa = 1; tentativa <= 3; tentativa += 1) {
+        try {
+          const response = await fetch("/api/state", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              data: novo,
+              expectedUpdatedAt: ultimaNuvemVersaoRef.current,
+            }),
+          });
 
-      if (response.status === 409) {
-        const conflito = await response.json();
+          if (response.status === 409) {
+            const conflito = await response.json();
 
-        if (conflito?.data && typeof conflito.data === "object") {
-          aplicarEstadoDaNuvem(conflito);
-          sincronizacaoOk();
-          setSyncStatus("sincronizado");
-          setSyncAtualizadoEm(
-            conflito.updatedAt
-              ? new Date(conflito.updatedAt).toLocaleString("pt-BR")
-              : ""
+            // Pode ocorrer quando uma resposta anterior foi perdida, mas o
+            // servidor já gravou exatamente esta alteração. Nesse caso não é
+            // conflito real: confirmamos o estado e seguimos normalmente.
+            if (
+              conflito?.data &&
+              typeof conflito.data === "object" &&
+              estadosIguais(conflito.data, novo)
+            ) {
+              registrarConfirmacaoNuvem(conflito.updatedAt || null);
+              return true;
+            }
+
+            if (conflito?.data && typeof conflito.data === "object") {
+              aplicarEstadoDaNuvem(conflito);
+              sincronizacaoOk();
+              setSyncStatus("sincronizado");
+              setSyncAtualizadoEm(
+                conflito.updatedAt
+                  ? new Date(conflito.updatedAt).toLocaleString("pt-BR")
+                  : ""
+              );
+            }
+
+            window.alert(
+              "Outro dispositivo alterou estes dados antes desta ação. A versão mais recente da nuvem foi carregada. Confira a visita e repita a ação."
+            );
+            return false;
+          }
+
+          if (!response.ok) {
+            throw new Error(`Falha ao salvar na nuvem (${response.status})`);
+          }
+
+          const result = await response.json();
+          registrarConfirmacaoNuvem(result.updatedAt || null);
+          return true;
+        } catch (error) {
+          ultimoErro = error;
+          console.warn(
+            `Tentativa ${tentativa} de gravação imediata não confirmada:`,
+            error
           );
+
+          // Se a conexão caiu depois que o servidor recebeu o PUT, a resposta
+          // pode ter se perdido. Antes de chamar isso de erro, consultamos a
+          // nuvem e verificamos se o conteúdo já é exatamente o esperado.
+          if (await confirmarEstadoSalvoNaNuvem(novo)) {
+            return true;
+          }
+
+          if (tentativa < 3) {
+            await new Promise((resolve) =>
+              window.setTimeout(resolve, 800 * tentativa)
+            );
+            setSyncStatus("conectando");
+          }
         }
-
-        window.alert(
-          "Outro dispositivo alterou estes dados antes desta ação. A versão mais recente da nuvem foi carregada. Confira a visita e repita a ação."
-        );
-        return false;
       }
 
-      if (!response.ok) {
-        throw new Error(`Falha ao salvar na nuvem (${response.status})`);
-      }
-
-      const result = await response.json();
-      ultimaNuvemVersaoRef.current = result.updatedAt || null;
-      ultimaNuvemRef.current = result.updatedAt
-        ? new Date(result.updatedAt).getTime()
-        : Date.now();
-
-      sincronizacaoOk();
-      setSyncStatus("sincronizado");
-      setSyncAtualizadoEm(
-        result.updatedAt
-          ? new Date(result.updatedAt).toLocaleString("pt-BR")
-          : new Date().toLocaleString("pt-BR")
+      console.error(
+        "Falha ao salvar alteração na nuvem após novas tentativas:",
+        ultimoErro
       );
-      return true;
-    } catch (error) {
-      console.error("Falha ao salvar alteração na nuvem:", error);
-      setSyncStatus("erro");
+      registrarFalhaSincronizacao();
       window.alert(
-        "A alteração foi salva neste dispositivo, mas não foi possível confirmar a gravação na nuvem. Verifique a conexão antes de sair da página."
+        "A alteração foi salva neste dispositivo e continua pendente de sincronização. O sistema tentou confirmar a gravação na nuvem mais de uma vez, mas ainda não conseguiu. Mantenha esta página aberta e verifique a conexão."
       );
       return false;
+    } finally {
+      salvamentoImediatoRef.current = false;
     }
   }
 
@@ -2443,7 +2526,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.38
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.39
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">

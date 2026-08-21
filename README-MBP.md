@@ -35,3 +35,12 @@ Fundação da versão profissional do sistema.
 - Inspeções concluídas sem conclusão manual recebem sugestão técnica automática no fechamento.
 - Cadastro de empresas pode ser editado após a criação, inclusive o responsável pelo estabelecimento usado na assinatura do relatório.
 - Relatório preserva observações iniciais e usa a conclusão técnica específica para o fechamento.
+
+
+## v2.39 — Sincronização robusta no encerramento
+
+- Evita corrida entre gravação imediata, autosave e consulta periódica ao finalizar/reabrir inspeções.
+- Faz até 3 tentativas antes de considerar uma falha real de sincronização.
+- Após falha de resposta, consulta a nuvem para confirmar se o servidor já recebeu a alteração.
+- Trata como sucesso conflitos em que a nuvem já contém exatamente o estado que acabou de ser salvo.
+- O alerta de falha só aparece depois das tentativas e da verificação do estado remoto.
