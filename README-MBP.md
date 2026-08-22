@@ -1,4 +1,4 @@
-# MBP Expert AI — v2.40
+# MBP Expert AI — v2.41
 
 ## Correção principal
 

@@ -917,6 +917,13 @@ export default function Home() {
     [visitas, db.empresaAtualId]
   );
 
+  const numeroVisitaPorId = useMemo(() => {
+    const ordenadas = [...visitasEmpresaAtual].sort((a, b) =>
+      (a.criadoEm || a.data || "").localeCompare(b.criadoEm || b.data || "")
+    );
+    return new Map(ordenadas.map((visita, indice) => [visita.id, indice + 1]));
+  }, [visitasEmpresaAtual]);
+
   const idsVisitasEmpresaAtual = useMemo(
     () => new Set(visitasEmpresaAtual.map((v) => v.id)),
     [visitasEmpresaAtual]
@@ -2526,7 +2533,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.40
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.41
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
@@ -3960,13 +3967,13 @@ export default function Home() {
 
               <div className="mt-5">
                 <div className="mb-2 flex justify-between text-xs font-bold text-slate-500">
-                  <span>Progresso da visita</span>
-                  <span>{visitaAtual.progresso || 0}%</span>
+                  <span>Progresso do checklist</span>
+                  <span>{percentualChecklist}%</span>
                 </div>
                 <div className="h-3 rounded-full bg-slate-100">
                   <div
                     className="h-full rounded-full bg-[#2F5597]"
-                    style={{ width: `${visitaAtual.progresso || 0}%` }}
+                    style={{ width: `${percentualChecklist}%` }}
                   />
                 </div>
               </div>
@@ -4893,7 +4900,7 @@ export default function Home() {
                 <MetricCard label="Visitas" value={visitasEmpresaAtual.length} />
                 <MetricCard label="Concluídas" value={visitasEmpresaConcluidas} />
                 <MetricCard label="Não conformidades abertas" value={ncsEmpresaAbertas} />
-                <MetricCard label="Não conformidades resolvidas" value={ncsEmpresaResolvidas} />
+                <MetricCard label="NCs resolvidas no histórico" value={ncsEmpresaResolvidas} />
               </div>
 
               {ncsEmpresaForaDoHistorico > 0 && (
@@ -5077,12 +5084,17 @@ export default function Home() {
                     const evidencias = (db.evidencias || []).filter((ev) => ev.visitaId === v.id).length;
 
                     return (
-                      <article key={v.id} className="rounded-2xl bg-white p-5 shadow-sm">
+                      <article
+                        key={v.id}
+                        className={`rounded-2xl bg-white p-5 shadow-sm ${
+                          v.id === visitaAtualId ? "ring-2 ring-[#2F5597] ring-offset-2" : ""
+                        }`}
+                      >
                         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                           <div>
                             <div className="flex flex-wrap items-center gap-2">
                               <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold text-slate-600">
-                                Visita {visitasEmpresaAtual.length - idx}
+                                Visita {numeroVisitaPorId.get(v.id) || visitasEmpresaAtual.length - idx}
                               </span>
                               <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${
                                 v.status === "Concluída"
@@ -5091,6 +5103,11 @@ export default function Home() {
                               }`}>
                                 {v.status}
                               </span>
+                              {v.id === visitaAtualId && (
+                                <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-extrabold text-blue-800">
+                                  Visita selecionada
+                                </span>
+                              )}
                             </div>
                             <h2 className="mt-3 text-xl font-extrabold">{fdata(v.data)}</h2>
                             <p className="mt-1 text-sm text-slate-500">
@@ -5196,12 +5213,24 @@ export default function Home() {
                 return (
                   <article
                     key={v.id}
-                    className="rounded-2xl bg-white p-5 shadow-sm"
+                    className={`rounded-2xl bg-white p-5 shadow-sm transition ${
+                      v.id === visitaAtualId ? "ring-2 ring-[#2F5597] ring-offset-2" : ""
+                    }`}
                   >
                     <div className="flex justify-between gap-3">
                       <div>
-                        <div className="text-xs font-extrabold uppercase text-slate-400">
-                          {fdata(v.data)}
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-extrabold text-slate-600">
+                            Visita {numeroVisitaPorId.get(v.id) || "—"}
+                          </span>
+                          <span className="text-xs font-extrabold uppercase text-slate-400">
+                            {fdata(v.data)}
+                          </span>
+                          {v.id === visitaAtualId && (
+                            <span className="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-extrabold text-blue-800">
+                              Selecionada
+                            </span>
+                          )}
                         </div>
                         <h2 className="mt-1 text-xl font-extrabold">
                           {e?.nomeFantasia}
