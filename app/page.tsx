@@ -745,7 +745,13 @@ export default function Home() {
           }
         } else if (viewSalva && ["inicio", "empresas", "visitas"].includes(viewSalva)) {
           setView(viewSalva);
-          setVisitaAtualId(null);
+          // Mantém a visita selecionada ao atualizar a página quando o usuário
+          // estiver na lista de visitas. Em Início/Empresas a seleção não é exibida.
+          if (viewSalva === "visitas" && visitaSalva) {
+            setVisitaAtualId(visitaSalva.id);
+          } else {
+            setVisitaAtualId(null);
+          }
         }
       }
     } catch {
@@ -2533,7 +2539,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.41
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.42
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">

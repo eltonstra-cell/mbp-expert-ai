@@ -1,21 +1,15 @@
-# MBP Expert AI — v2.41
+# MBP Expert AI — v2.42
 
 ## Correção principal
 
-A sincronização usava `updated_at` como controle de versão. O PostgreSQL/Neon armazena timestamps com precisão de microssegundos, enquanto o valor retornado ao navegador por JSON é serializado com precisão de milissegundos. Na gravação seguinte, a comparação exata podia falhar mesmo sem alteração por outro dispositivo.
+A visita selecionada agora permanece identificada após atualizar a página (F5) quando o usuário estiver na tela **Visitas técnicas**.
 
-Nesta versão, o endpoint de estado:
-
-- grava `updated_at` normalizado para milissegundos;
-- compara a versão recebida também em precisão de milissegundos;
-- mantém o controle otimista de concorrência entre dispositivos;
-- evita falsos conflitos/falhas ao finalizar ou reabrir inspeções.
+Na v2.41, a identificação visual funcionava durante a navegação, mas a restauração da navegação limpava `visitaAtualId` ao recarregar a tela de visitas. A v2.42 mantém o ID salvo no armazenamento local quando a visita ainda existe para a empresa ativa.
 
 ## Teste recomendado
 
-1. aguardar “Nuvem sincronizada”;
-2. reabrir uma inspeção concluída;
-3. aguardar “Nuvem sincronizada”;
-4. finalizar novamente;
-5. confirmar que não aparece o alerta de gravação pendente;
-6. atualizar a página e verificar que o status persistiu.
+1. abrir uma visita;
+2. voltar para **Visitas técnicas** e confirmar o selo **Selecionada**;
+3. pressionar F5;
+4. confirmar que a mesma visita continua destacada e com o selo **Selecionada**;
+5. abrir outra visita e repetir para confirmar a troca da seleção.

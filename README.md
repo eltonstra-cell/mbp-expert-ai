@@ -1,3 +1,3 @@
-# MBP Expert AI v2.41
+# MBP Expert AI v2.42
 
-Correção de precisão de versão na sincronização com Neon/Vercel.
+Persistência da visita selecionada após atualização da página.
