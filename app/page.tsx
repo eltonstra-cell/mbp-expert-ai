@@ -1700,6 +1700,8 @@ export default function Home() {
     };
 
     await salvarEstadoImediato(novo);
+    setVisitaAtualId(null);
+    setView("visitas");
   }
 
   async function reabrirInspecao() {
@@ -2480,6 +2482,9 @@ export default function Home() {
         v.id === id ? { ...v, status: "Concluída", progresso: 100 } : v
       ),
     }));
+    if (visitaAtualId === id) {
+      setVisitaAtualId(null);
+    }
   }
 
   function reabrir(id: string) {
@@ -2539,7 +2544,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.42
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.43
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">

@@ -1,4 +1,11 @@
-# MBP Expert AI — v2.42
+# MBP Expert AI — v2.43
+
+## Ajuste desta versão
+- Ao concluir uma visita, a seleção ativa é limpa automaticamente.
+- Nenhuma outra visita é selecionada por conta própria.
+- A visita concluída mantém todos os dados, relatório, não conformidades e histórico.
+- A regra vale tanto para o encerramento pelo relatório quanto pelo botão **Concluir** na lista de visitas.
+
 
 ## Correção principal
 
