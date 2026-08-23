@@ -96,6 +96,38 @@ export type NaoConformidade = {
   criadoEm: string;
 };
 
+export type ConfiancaAchadoIA = "Baixa" | "Média" | "Alta";
+
+export type ClassificacaoFotoIA =
+  | "Visão geral"
+  | "Detalhe"
+  | "Possível evidência de não conformidade"
+  | "Comprovação de correção"
+  | "Não determinada";
+
+export type AchadoFotoIA = {
+  titulo: string;
+  descricao: string;
+  confianca: ConfiancaAchadoIA;
+  requerConfirmacao: boolean;
+};
+
+export type AnaliseFotoIA = {
+  id: string;
+  status: "Aguardando revisão" | "Confirmada" | "Descartada";
+  modelo: string;
+  geradaEm: string;
+  analisavel: boolean;
+  resumo: string;
+  classificacao: ClassificacaoFotoIA;
+  achados: AchadoFotoIA[];
+  alertasPrivacidade: string[];
+  observacoesLimitacoes: string[];
+  textoRevisado: string;
+  revisadaEm?: string;
+  revisadaPor?: string;
+};
+
 export type Evidencia = {
   id: string;
   empresaId: string;
@@ -108,7 +140,9 @@ export type Evidencia = {
   blobUrl?: string;
   descricao: string;
   ambiente: string;
+  checklistItemId?: string;
   ncId?: string;
+  analisesIA?: AnaliseFotoIA[];
   criadoEm: string;
 };
 

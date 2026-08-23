@@ -1,4 +1,38 @@
-# MBP Expert AI — v2.44
+# MBP Expert AI — v2.45
+
+## Análise assistida de evidências fotográficas por IA
+
+- Fotos podem ser vinculadas a um ambiente, item do checklist e não conformidade já existente.
+- A análise usa somente a imagem armazenada no Blob privado e o contexto técnico vinculado.
+- A IA devolve classificação da foto, resumo, até cinco possíveis achados, nível de confiança, alertas de privacidade e limitações.
+- Toda resposta nasce com o status **Aguardando revisão**.
+- O profissional pode editar e confirmar o texto ou descartar a sugestão.
+- A IA não altera o checklist e não cria nem resolve não conformidades automaticamente.
+- Análises confirmadas aparecem no relatório; sugestões pendentes e descartadas não entram como conclusão técnica.
+- Novas análises não apagam as anteriores: o histórico permanece associado à foto.
+
+## Configuração obrigatória
+
+No Vercel, abra **Settings → Environment Variables** e cadastre:
+
+- `OPENAI_API_KEY`: chave secreta da API da OpenAI;
+- `OPENAI_VISION_MODEL` (opcional): padrão `gpt-5.6-terra`.
+
+Depois de salvar a variável, faça um novo deploy. Nunca coloque a chave em
+arquivos enviados ao GitHub e nunca use um nome iniciado por `NEXT_PUBLIC_`.
+
+## Teste recomendado da v2.45
+
+1. abrir uma visita em andamento e entrar em **Evidências**;
+2. selecionar ambiente e, se aplicável, um item do checklist;
+3. tirar uma foto sem rostos, crachás ou documentos pessoais;
+4. clicar em **Analisar foto com IA** e confirmar a revisão de privacidade;
+5. conferir resumo, achados, confiança e limitações;
+6. editar o texto e clicar em **Confirmar análise revisada**;
+7. abrir o relatório e confirmar que somente o texto revisado aparece;
+8. analisar outra foto e descartar a sugestão, conferindo que ela não aparece como conclusão no relatório.
+
+## Histórico da versão anterior
 
 ## Ajuste desta versão
 - Cada encerramento e reabertura acrescenta um evento permanente ao histórico da visita.

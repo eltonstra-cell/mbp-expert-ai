@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import MetricCard from "@/components/MetricCard";
 import type {
   AppDB,
+  AnaliseFotoIA,
   ChecklistCriticidade,
   ChecklistItem,
   ChecklistStatus,
@@ -13,6 +14,13 @@ import type {
 } from "@/types";
 import { emptyDB, loadDB, saveDB } from "@/lib/storage";
 import { registrarMudancaStatus } from "@/lib/visitAudit";
+import {
+  confirmarSugestaoFotoIA,
+  descartarSugestaoFotoIA,
+  registrarSugestaoFotoIA,
+  ultimaAnaliseConfirmada,
+  type ResultadoFotoIA,
+} from "@/lib/photoAnalysis";
 
 type View = "inicio" | "empresas" | "visitas" | "visita" | "ambientes" | "checklist" | "ncs" | "plano" | "acompanhamento" | "historico" | "evidencias" | "relatorio";
 
@@ -344,8 +352,12 @@ export default function Home() {
   const [gerandoPdf, setGerandoPdf] = useState(false);
   const [evidenciaDescricao, setEvidenciaDescricao] = useState("");
   const [evidenciaAmbiente, setEvidenciaAmbiente] = useState("");
+  const [evidenciaChecklistItemId, setEvidenciaChecklistItemId] = useState("");
   const [evidenciaNcId, setEvidenciaNcId] = useState("");
   const [evidenciaMsg, setEvidenciaMsg] = useState("");
+  const [analiseIAEmAndamentoId, setAnaliseIAEmAndamentoId] = useState<string | null>(null);
+  const [analiseIAMensagens, setAnaliseIAMensagens] = useState<Record<string, string>>({});
+  const [analiseIATextos, setAnaliseIATextos] = useState<Record<string, string>>({});
   const [filtroAcompanhamento, setFiltroAcompanhamento] = useState<
     "Todos" | "Abertas" | "Em tratamento" | "Resolvidas" | "Vencidas"
   >("Todos");
@@ -1051,6 +1063,16 @@ export default function Home() {
   );
   const fotosVisita = evidenciasVisita.filter((ev) => ev.tipo === "Foto").length;
   const audiosVisita = evidenciasVisita.filter((ev) => ev.tipo === "Áudio").length;
+  const analisesIAPendentes = evidenciasVisita.reduce(
+    (total, ev) =>
+      total + (ev.analisesIA || []).filter((analise) => analise.status === "Aguardando revisão").length,
+    0
+  );
+  const analisesIAConfirmadas = evidenciasVisita.reduce(
+    (total, ev) =>
+      total + (ev.analisesIA || []).filter((analise) => analise.status === "Confirmada").length,
+    0
+  );
   const ncsSomenteAbertas = ncsVisita.filter(
     (nc) => nc.status === "Aberta"
   ).length;
@@ -1673,6 +1695,7 @@ export default function Home() {
     const alertas: string[] = [];
     if (ncsSomenteAbertas > 0) alertas.push(`${ncsSomenteAbertas} não conformidade(s) seguirá(ão) aberta(s) para acompanhamento`);
     if (ncsSemAcao > 0) alertas.push(`${ncsSemAcao} não conformidade(s) ainda está(ão) sem ação corretiva definida`);
+    if (analisesIAPendentes > 0) alertas.push(`${analisesIAPendentes} sugestão(ões) de análise fotográfica por IA ainda aguarda(m) confirmação ou descarte`);
     if (!(visitaAtual.conclusao || "").trim()) alertas.push("conclusão / observação final não preenchida — será gerada uma sugestão automática");
 
     const ressalvas = alertas.length
@@ -2084,6 +2107,7 @@ export default function Home() {
     if (!visitaAtual) return;
     setEvidenciaDescricao("");
     setEvidenciaAmbiente((visitaAtual.ambientes || [])[0] || "");
+    setEvidenciaChecklistItemId("");
     setEvidenciaNcId("");
     setEvidenciaMsg("");
     setView("evidencias");
@@ -2207,6 +2231,141 @@ export default function Home() {
     return ev.dataUrl || "";
   }
 
+  function atualizarEvidenciaRegistrada(
+    evidenciaId: string,
+    atualizar: (evidencia: Evidencia) => Evidencia
+  ) {
+    setDb((atual) => {
+      const novo: AppDB = {
+        ...atual,
+        evidencias: (atual.evidencias || []).map((evidencia) =>
+          evidencia.id === evidenciaId ? atualizar(evidencia) : evidencia
+        ),
+      };
+      saveDB(novo);
+      return novo;
+    });
+  }
+
+  function atualizarAnaliseRegistrada(
+    evidenciaId: string,
+    analiseId: string,
+    atualizar: (analise: AnaliseFotoIA) => AnaliseFotoIA
+  ) {
+    atualizarEvidenciaRegistrada(evidenciaId, (evidencia) => ({
+      ...evidencia,
+      analisesIA: (evidencia.analisesIA || []).map((analise) =>
+        analise.id === analiseId ? atualizar(analise) : analise
+      ),
+    }));
+  }
+
+  async function analisarFotoComIA(ev: Evidencia) {
+    if (ev.tipo !== "Foto" || analiseIAEmAndamentoId) return;
+    if (!ev.blobPathname) {
+      setAnaliseIAMensagens((atual) => ({
+        ...atual,
+        [ev.id]: "Esta foto é de uma versão antiga e precisa ser reenviada para análise.",
+      }));
+      return;
+    }
+
+    const privacidadeConfirmada = window.confirm(
+      "Antes de enviar esta foto para análise por IA, confirme que você a revisou e que ela não contém rostos, crachás, documentos ou outros dados pessoais desnecessários.\n\nContinuar com a análise?"
+    );
+    if (!privacidadeConfirmada) return;
+
+    const itemChecklist = (visitaAtual?.checklist || []).find(
+      (item) => item.id === ev.checklistItemId
+    );
+
+    try {
+      setAnaliseIAEmAndamentoId(ev.id);
+      setAnaliseIAMensagens((atual) => ({
+        ...atual,
+        [ev.id]: "A IA está examinando a foto. Aguarde alguns instantes...",
+      }));
+
+      const response = await fetch("/api/evidencias/analisar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pathname: ev.blobPathname,
+          ambiente: ev.ambiente,
+          descricao: ev.descricao,
+          checklistTitulo: itemChecklist?.titulo,
+          checklistCategoria: itemChecklist?.categoria,
+          checklistReferencia: itemChecklist?.referencia,
+          checklistStatus: itemChecklist?.status,
+        }),
+      });
+      const body = await response.json().catch(() => null);
+      if (!response.ok || !body?.resultado) {
+        throw new Error(body?.error || "A análise não pôde ser concluída.");
+      }
+
+      const analise = registrarSugestaoFotoIA(
+        body.resultado as ResultadoFotoIA,
+        String(body.modelo || "modelo de visão")
+      );
+      atualizarEvidenciaRegistrada(ev.id, (evidencia) => ({
+        ...evidencia,
+        analisesIA: [...(evidencia.analisesIA || []), analise],
+      }));
+      setAnaliseIATextos((atual) => ({
+        ...atual,
+        [analise.id]: analise.textoRevisado,
+      }));
+      setAnaliseIAMensagens((atual) => ({
+        ...atual,
+        [ev.id]: "Sugestão gerada. Revise o texto antes de confirmar ou descarte a análise.",
+      }));
+    } catch (error) {
+      setAnaliseIAMensagens((atual) => ({
+        ...atual,
+        [ev.id]: error instanceof Error ? error.message : "Falha ao analisar a foto.",
+      }));
+    } finally {
+      setAnaliseIAEmAndamentoId(null);
+    }
+  }
+
+  function confirmarAnaliseFoto(ev: Evidencia, analise: AnaliseFotoIA) {
+    try {
+      const texto = analiseIATextos[analise.id] ?? analise.textoRevisado;
+      const confirmada = confirmarSugestaoFotoIA(
+        analise,
+        texto,
+        visitaAtual?.responsavel || ""
+      );
+      atualizarAnaliseRegistrada(ev.id, analise.id, () => confirmada);
+      setAnaliseIAMensagens((atual) => ({
+        ...atual,
+        [ev.id]: "Análise confirmada pelo profissional e incluída na rastreabilidade da evidência.",
+      }));
+    } catch (error) {
+      setAnaliseIAMensagens((atual) => ({
+        ...atual,
+        [ev.id]: error instanceof Error ? error.message : "Revise o texto antes de confirmar.",
+      }));
+    }
+  }
+
+  function descartarAnaliseFoto(ev: Evidencia, analise: AnaliseFotoIA) {
+    if (!window.confirm("Descartar esta sugestão da IA? Ela permanecerá registrada no histórico como descartada.")) {
+      return;
+    }
+    const descartada = descartarSugestaoFotoIA(
+      analise,
+      visitaAtual?.responsavel || ""
+    );
+    atualizarAnaliseRegistrada(ev.id, analise.id, () => descartada);
+    setAnaliseIAMensagens((atual) => ({
+      ...atual,
+      [ev.id]: "Sugestão descartada. Nenhum registro técnico foi alterado.",
+    }));
+  }
+
   async function adicionarEvidencia(
     file: File | undefined,
     tipo: "Foto" | "Áudio"
@@ -2256,6 +2415,7 @@ export default function Home() {
         blobUrl: blob.url,
         descricao: evidenciaDescricao.trim(),
         ambiente: evidenciaAmbiente || "",
+        checklistItemId: evidenciaChecklistItemId || undefined,
         ncId: evidenciaNcId || undefined,
         criadoEm: new Date().toISOString(),
       };
@@ -2469,6 +2629,23 @@ export default function Home() {
   }
 
   async function concluir(id: string) {
+    const pendentesIA = (db.evidencias || [])
+      .filter((ev) => ev.visitaId === id)
+      .reduce(
+        (total, ev) =>
+          total + (ev.analisesIA || []).filter((analise) => analise.status === "Aguardando revisão").length,
+        0
+      );
+    if (
+      pendentesIA > 0 &&
+      !window.confirm(
+        `Esta visita possui ${pendentesIA} sugestão(ões) de análise fotográfica por IA ainda sem revisão.\n\n` +
+        "Elas não serão apresentadas como conclusão técnica no relatório. Deseja concluir mesmo assim?"
+      )
+    ) {
+      return;
+    }
+
     const agora = new Date().toISOString();
     const novo: AppDB = {
       ...db,
@@ -2563,7 +2740,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.44
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.45
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
@@ -2972,10 +3149,11 @@ export default function Home() {
                 </button>
               </div>
 
-              <div className="mt-5 grid gap-3 md:grid-cols-3">
+              <div className="mt-5 grid gap-3 md:grid-cols-4">
                 <MetricCard label="Evidências" value={evidenciasVisita.length} />
                 <MetricCard label="Fotos" value={fotosVisita} />
                 <MetricCard label="Áudios" value={audiosVisita} />
+                <MetricCard label="IA para revisar" value={analisesIAPendentes} />
               </div>
             </div>
 
@@ -2992,13 +3170,45 @@ export default function Home() {
                   </span>
                   <select
                     value={evidenciaAmbiente}
-                    onChange={(e) => setEvidenciaAmbiente(e.target.value)}
+                    onChange={(e) => {
+                      setEvidenciaAmbiente(e.target.value);
+                      setEvidenciaChecklistItemId("");
+                    }}
                     className="w-full rounded-xl border bg-white p-3"
                   >
                     <option value="">Sem ambiente específico</option>
                     {(visitaAtual.ambientes || []).map((amb) => (
                       <option key={amb} value={amb}>{amb}</option>
                     ))}
+                  </select>
+                </label>
+
+                <label className="mt-3 block">
+                  <span className="mb-1 block text-xs font-extrabold text-slate-500">
+                    Item do checklist (opcional)
+                  </span>
+                  <select
+                    value={evidenciaChecklistItemId}
+                    onChange={(e) => {
+                      const itemId = e.target.value;
+                      setEvidenciaChecklistItemId(itemId);
+                      const item = checklistAtual.find((registro) => registro.id === itemId);
+                      if (item) {
+                        setEvidenciaAmbiente(item.ambiente);
+                        const ncDoItem = ncsVisita.find((nc) => nc.checklistItemId === item.id);
+                        if (ncDoItem) setEvidenciaNcId(ncDoItem.id);
+                      }
+                    }}
+                    className="w-full rounded-xl border bg-white p-3"
+                  >
+                    <option value="">Nenhum item específico</option>
+                    {checklistAtual
+                      .filter((item) => !evidenciaAmbiente || item.ambiente === evidenciaAmbiente)
+                      .map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.categoria} — {item.titulo}
+                        </option>
+                      ))}
                   </select>
                 </label>
 
@@ -3081,6 +3291,11 @@ export default function Home() {
                   Fotos e áudios novos são armazenados no Blob privado.
                   O Neon guarda apenas os dados e a referência da evidência.
                 </div>
+                <div className="mt-3 rounded-xl bg-violet-50 p-3 text-xs text-violet-900">
+                  A análise por IA é opcional. Antes do envio, retire do enquadramento
+                  rostos, crachás e documentos pessoais desnecessários. Toda sugestão
+                  exige confirmação profissional.
+                </div>
               </div>
 
               <div className="space-y-3">
@@ -3108,6 +3323,12 @@ export default function Home() {
                 ) : (
                   evidenciasVisita.map((ev) => {
                     const ncRelacionada = ncsVisita.find((nc) => nc.id === ev.ncId);
+                    const itemChecklistRelacionado = checklistAtual.find(
+                      (item) => item.id === ev.checklistItemId
+                    );
+                    const analises = ev.analisesIA || [];
+                    const ultimaAnalise = analises.length ? analises[analises.length - 1] : undefined;
+                    const analisando = analiseIAEmAndamentoId === ev.id;
                     return (
                       <article key={ev.id} className="rounded-2xl bg-white p-5 shadow-sm">
                         <div className="flex items-start justify-between gap-3">
@@ -3123,6 +3344,12 @@ export default function Home() {
                                 Vinculada à NC — {ncRelacionada.categoria}
                               </div>
                             )}
+                            {itemChecklistRelacionado && (
+                              <div className="mt-2 rounded-xl bg-blue-50 p-3 text-xs text-blue-900">
+                                <span className="font-extrabold">Item vinculado:</span>{" "}
+                                {itemChecklistRelacionado.categoria} — {itemChecklistRelacionado.titulo}
+                              </div>
+                            )}
                           </div>
                           <button
                             onClick={() => excluirEvidencia(ev.id)}
@@ -3133,11 +3360,144 @@ export default function Home() {
                         </div>
 
                         {ev.tipo === "Foto" ? (
-                          <img
-                            src={urlEvidencia(ev)}
-                            alt={ev.descricao || "Evidência fotográfica"}
-                            className="mt-4 max-h-[520px] w-full rounded-xl border object-contain"
-                          />
+                          <>
+                            <img
+                              src={urlEvidencia(ev)}
+                              alt={ev.descricao || "Evidência fotográfica"}
+                              className="mt-4 max-h-[520px] w-full rounded-xl border object-contain"
+                            />
+
+                            <div className="mt-4 rounded-xl border border-violet-200 bg-violet-50 p-4">
+                              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div>
+                                  <div className="text-xs font-extrabold uppercase text-violet-700">
+                                    Análise assistida por IA
+                                  </div>
+                                  <p className="mt-1 text-xs text-violet-900">
+                                    Sugestão visual; não cria nem altera uma NC automaticamente.
+                                  </p>
+                                </div>
+                                {(!ultimaAnalise || ultimaAnalise.status !== "Aguardando revisão") && (
+                                  <button
+                                    type="button"
+                                    onClick={() => void analisarFotoComIA(ev)}
+                                    disabled={analisando || analiseIAEmAndamentoId !== null}
+                                    className="rounded-xl bg-violet-700 px-4 py-2 text-sm font-extrabold text-white disabled:opacity-50"
+                                  >
+                                    {analisando ? "Analisando..." : analises.length ? "Analisar novamente" : "Analisar foto com IA"}
+                                  </button>
+                                )}
+                              </div>
+
+                              {analiseIAMensagens[ev.id] && (
+                                <div className="mt-3 rounded-lg bg-white p-3 text-xs text-slate-700">
+                                  {analiseIAMensagens[ev.id]}
+                                </div>
+                              )}
+
+                              {ultimaAnalise && (
+                                <div className="mt-4 rounded-xl bg-white p-4">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${
+                                      ultimaAnalise.status === "Confirmada"
+                                        ? "bg-emerald-100 text-emerald-800"
+                                        : ultimaAnalise.status === "Descartada"
+                                        ? "bg-slate-100 text-slate-700"
+                                        : "bg-amber-100 text-amber-900"
+                                    }`}>
+                                      {ultimaAnalise.status}
+                                    </span>
+                                    <span className="rounded-full bg-violet-100 px-3 py-1 text-xs font-bold text-violet-800">
+                                      {ultimaAnalise.classificacao}
+                                    </span>
+                                  </div>
+
+                                  <p className="mt-3 text-sm text-slate-700">{ultimaAnalise.resumo}</p>
+
+                                  {ultimaAnalise.achados.length > 0 && (
+                                    <div className="mt-3 space-y-2">
+                                      {ultimaAnalise.achados.map((achado, indice) => (
+                                        <div key={`${ultimaAnalise.id}-${indice}`} className="rounded-lg border border-slate-200 p-3 text-sm">
+                                          <div className="flex flex-wrap items-center justify-between gap-2">
+                                            <span className="font-extrabold">{achado.titulo}</span>
+                                            <span className="text-xs font-bold text-slate-500">Confiança {achado.confianca.toLowerCase()}</span>
+                                          </div>
+                                          <p className="mt-1 text-slate-600">{achado.descricao}</p>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+
+                                  {ultimaAnalise.alertasPrivacidade.length > 0 && (
+                                    <div className="mt-3 rounded-lg bg-red-50 p-3 text-xs text-red-800">
+                                      <div className="font-extrabold">Atenção à privacidade</div>
+                                      {ultimaAnalise.alertasPrivacidade.join(" • ")}
+                                    </div>
+                                  )}
+
+                                  {ultimaAnalise.observacoesLimitacoes.length > 0 && (
+                                    <div className="mt-3 rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
+                                      <span className="font-extrabold">Limitações:</span>{" "}
+                                      {ultimaAnalise.observacoesLimitacoes.join(" • ")}
+                                    </div>
+                                  )}
+
+                                  {ultimaAnalise.status === "Aguardando revisão" ? (
+                                    <div className="mt-4">
+                                      <label className="block text-xs font-extrabold text-slate-600">
+                                        Texto técnico para revisão profissional
+                                      </label>
+                                      <textarea
+                                        rows={5}
+                                        value={analiseIATextos[ultimaAnalise.id] ?? ultimaAnalise.textoRevisado}
+                                        onChange={(e) =>
+                                          setAnaliseIATextos((atual) => ({
+                                            ...atual,
+                                            [ultimaAnalise.id]: e.target.value,
+                                          }))
+                                        }
+                                        className="mt-2 w-full rounded-xl border p-3 text-sm"
+                                      />
+                                      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                                        <button
+                                          type="button"
+                                          onClick={() => confirmarAnaliseFoto(ev, ultimaAnalise)}
+                                          className="rounded-xl bg-emerald-700 px-4 py-3 text-sm font-extrabold text-white"
+                                        >
+                                          Confirmar análise revisada
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => descartarAnaliseFoto(ev, ultimaAnalise)}
+                                          className="rounded-xl bg-slate-200 px-4 py-3 text-sm font-extrabold text-slate-800"
+                                        >
+                                          Descartar sugestão
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ) : ultimaAnalise.status === "Confirmada" ? (
+                                    <div className="mt-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900">
+                                      <div className="font-extrabold">Texto confirmado pelo profissional</div>
+                                      <div className="mt-1 whitespace-pre-wrap">{ultimaAnalise.textoRevisado}</div>
+                                      <div className="mt-2 text-xs">
+                                        {ultimaAnalise.revisadaPor} • {ultimaAnalise.revisadaEm ? new Date(ultimaAnalise.revisadaEm).toLocaleString("pt-BR") : ""}
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="mt-4 text-xs text-slate-500">
+                                      Sugestão descartada por {ultimaAnalise.revisadaPor || "profissional"}. Ela não integra o registro técnico confirmado.
+                                    </div>
+                                  )}
+
+                                  {analises.length > 1 && (
+                                    <div className="mt-3 text-xs text-slate-400">
+                                      {analises.length} análises preservadas no histórico desta foto.
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </>
                         ) : (
                           <audio controls src={urlEvidencia(ev)} className="mt-4 w-full" />
                         )}
@@ -4547,7 +4907,7 @@ export default function Home() {
                   <h2 className="mt-1 text-xl font-extrabold">Evidências</h2>
                 </div>
                 <div className="text-sm font-bold text-slate-500">
-                  {fotosVisita} foto(s) • {audiosVisita} áudio(s)
+                  {fotosVisita} foto(s) • {audiosVisita} áudio(s) • {analisesIAConfirmadas} análise(s) confirmada(s)
                 </div>
               </div>
 
@@ -4559,6 +4919,8 @@ export default function Home() {
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
                   {evidenciasVisita.map((ev) => {
                     const ncRelacionadaRelatorio = ncsVisita.find((nc) => nc.id === ev.ncId);
+                    const itemChecklistRelatorio = checklistAtual.find((item) => item.id === ev.checklistItemId);
+                    const analiseConfirmada = ultimaAnaliseConfirmada(ev.analisesIA);
                     return (
                     <div
                       key={ev.id}
@@ -4574,6 +4936,25 @@ export default function Home() {
                         {ncRelacionadaRelatorio && (
                           <div className="mt-2 text-xs font-bold text-red-700">
                             Evidência vinculada: {ncRelacionadaRelatorio.titulo}
+                          </div>
+                        )}
+                        {itemChecklistRelatorio && (
+                          <div className="mt-2 text-xs font-bold text-blue-800">
+                            Checklist: {itemChecklistRelatorio.categoria} — {itemChecklistRelatorio.titulo}
+                          </div>
+                        )}
+                        {analiseConfirmada && (
+                          <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-950">
+                            <div className="font-extrabold uppercase text-emerald-800">
+                              Análise assistida confirmada pelo profissional
+                            </div>
+                            <div className="mt-1 whitespace-pre-wrap">
+                              {analiseConfirmada.textoRevisado}
+                            </div>
+                            <div className="mt-2 text-[10px] text-emerald-800">
+                              Revisão: {analiseConfirmada.revisadaPor || "Profissional responsável"}
+                              {analiseConfirmada.revisadaEm ? ` • ${new Date(analiseConfirmada.revisadaEm).toLocaleString("pt-BR")}` : ""}
+                            </div>
                           </div>
                         )}
                         <div className="mt-2 text-[11px] text-slate-400">
