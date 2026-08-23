@@ -42,6 +42,8 @@ export type HistoricoStatusVisita = {
   de: "Em andamento" | "Concluída";
   para: "Em andamento" | "Concluída";
   motivo: string;
+  responsavel?: string;
+  origem?: "Relatório" | "Lista de visitas";
 };
 
 export type Visita = {

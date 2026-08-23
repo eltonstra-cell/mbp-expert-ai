@@ -12,6 +12,7 @@ import type {
   Visita,
 } from "@/types";
 import { emptyDB, loadDB, saveDB } from "@/lib/storage";
+import { registrarMudancaStatus } from "@/lib/visitAudit";
 
 type View = "inicio" | "empresas" | "visitas" | "visita" | "ambientes" | "checklist" | "ncs" | "plano" | "acompanhamento" | "historico" | "evidencias" | "relatorio";
 
@@ -650,7 +651,12 @@ export default function Home() {
       encerradaEm: typeof v.encerradaEm === "string" ? v.encerradaEm : undefined,
       historicoStatus: Array.isArray(v.historicoStatus) ? v.historicoStatus : [],
       responsavel: v.responsavel || "",
+      responsavelIdentificacao:
+        typeof v.responsavelIdentificacao === "string"
+          ? v.responsavelIdentificacao
+          : undefined,
       observacoes: v.observacoes || "",
+      conclusao: typeof v.conclusao === "string" ? v.conclusao : undefined,
       progresso:
         typeof v.progresso === "number"
           ? v.progresso
@@ -1680,20 +1686,14 @@ export default function Home() {
       visitas: db.visitas.map((visita) =>
         visita.id === visitaAtual.id
           ? ({
-              ...visita,
-              status: "Concluída",
+              ...registrarMudancaStatus(
+                visita,
+                "Concluída",
+                "Inspeção finalizada pelo usuário.",
+                "Relatório",
+                agora
+              ),
               conclusao: (visita.conclusao || "").trim() || gerarConclusaoAutomatica(),
-              encerradaEm: agora,
-              historicoStatus: [
-                ...(visita.historicoStatus || []),
-                {
-                  id: crypto.randomUUID(),
-                  criadoEm: agora,
-                  de: visita.status,
-                  para: "Concluída",
-                  motivo: "Inspeção finalizada pelo usuário.",
-                },
-              ],
             } as any)
           : visita
       ),
@@ -1719,20 +1719,13 @@ export default function Home() {
       ...db,
       visitas: db.visitas.map((visita) =>
         visita.id === visitaAtual.id
-          ? ({
-              ...visita,
-              status: "Em andamento",
-              historicoStatus: [
-                ...(visita.historicoStatus || []),
-                {
-                  id: crypto.randomUUID(),
-                  criadoEm: agora,
-                  de: visita.status,
-                  para: "Em andamento",
-                  motivo: "Inspeção reaberta pelo usuário.",
-                },
-              ],
-            } as any)
+          ? registrarMudancaStatus(
+              visita,
+              "Em andamento",
+              "Inspeção reaberta pelo usuário.",
+              "Relatório",
+              agora
+            )
           : visita
       ),
     };
@@ -2475,27 +2468,53 @@ export default function Home() {
     });
   }
 
-  function concluir(id: string) {
-    setDb((o) => ({
-      ...o,
-      visitas: o.visitas.map((v) =>
-        v.id === id ? { ...v, status: "Concluída", progresso: 100 } : v
+  async function concluir(id: string) {
+    const agora = new Date().toISOString();
+    const novo: AppDB = {
+      ...db,
+      visitas: db.visitas.map((v) =>
+        v.id === id
+          ? {
+              ...registrarMudancaStatus(
+                v,
+                "Concluída",
+                "Inspeção finalizada pelo usuário.",
+                "Lista de visitas",
+                agora
+              ),
+              progresso: 100,
+            }
+          : v
       ),
-    }));
+    };
+
+    await salvarEstadoImediato(novo);
     if (visitaAtualId === id) {
       setVisitaAtualId(null);
     }
   }
 
-  function reabrir(id: string) {
-    setDb((o) => ({
-      ...o,
-      visitas: o.visitas.map((v) =>
+  async function reabrir(id: string) {
+    const agora = new Date().toISOString();
+    const novo: AppDB = {
+      ...db,
+      visitas: db.visitas.map((v) =>
         v.id === id
-          ? { ...v, status: "Em andamento", progresso: Math.min(v.progresso || 0, 90) }
+          ? {
+              ...registrarMudancaStatus(
+                v,
+                "Em andamento",
+                "Inspeção reaberta pelo usuário.",
+                "Lista de visitas",
+                agora
+              ),
+              progresso: Math.min(v.progresso || 0, 90),
+            }
           : v
       ),
-    }));
+    };
+
+    await salvarEstadoImediato(novo);
   }
 
   function excluir(id: string) {
@@ -2544,7 +2563,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.43
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.44
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
@@ -4746,10 +4765,37 @@ export default function Home() {
                   <div><strong>Empresa:</strong> {empresaVisita?.cnpj || "CNPJ não informado"} — {empresaVisita?.nomeFantasia || empresaVisita?.razaoSocial || "Empresa"}</div>
                   <div><strong>Visita:</strong> {fdata(visitaAtual.data)} — {visitaAtual.id}</div>
                   <div><strong>Status:</strong> {visitaAtual.status}</div>
-                  <div><strong>Gerado em:</strong> {new Date().toLocaleString("pt-BR")}</div>
+                  <div><strong>Último encerramento:</strong> {visitaAtual.encerradaEm ? new Date(visitaAtual.encerradaEm).toLocaleString("pt-BR") : "Não registrado"}</div>
+                  <div><strong>Relatório gerado em:</strong> {new Date().toLocaleString("pt-BR")}</div>
+                </div>
+                <div className="mt-4 border-t border-slate-200 pt-3">
+                  <div className="font-extrabold text-slate-700">
+                    Histórico permanente de encerramentos e reaberturas
+                  </div>
+                  {(visitaAtual.historicoStatus || []).length > 0 ? (
+                    <ol className="mt-2 space-y-2">
+                      {[...(visitaAtual.historicoStatus || [])]
+                        .sort((a, b) => a.criadoEm.localeCompare(b.criadoEm))
+                        .map((evento, indice) => (
+                          <li key={evento.id} className="rounded-lg bg-slate-50 p-2">
+                            <div className="font-bold text-slate-700">
+                              {indice + 1}. {new Date(evento.criadoEm).toLocaleString("pt-BR")} — {evento.de} → {evento.para}
+                            </div>
+                            <div className="mt-1 text-slate-500">
+                              {evento.motivo} • Responsável: {evento.responsavel || visitaAtual.responsavel || "Não informado"}
+                              {evento.origem ? ` • Origem: ${evento.origem}` : ""}
+                            </div>
+                          </li>
+                        ))}
+                    </ol>
+                  ) : (
+                    <p className="mt-2 text-slate-500">
+                      Nenhuma mudança de status registrada nesta visita. Registros anteriores à v2.44 podem não possuir o histórico retroativo.
+                    </p>
+                  )}
                 </div>
                 <p className="mt-2">
-                  Este documento consolida os registros vinculados à visita. Informações não registradas permanecem identificadas como não informadas ou pendentes.
+                  Este documento consolida os registros vinculados à visita. Cada mudança de status é acrescentada ao histórico sem substituir os eventos anteriores. Informações não registradas permanecem identificadas como não informadas ou pendentes.
                 </p>
               </div>
 

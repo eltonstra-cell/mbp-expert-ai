@@ -1,3 +1,3 @@
-# MBP Expert AI v2.43
+# MBP Expert AI v2.44
 
-Persistência da visita selecionada após atualização da página.
+Rastreabilidade permanente dos encerramentos e reaberturas da inspeção.
