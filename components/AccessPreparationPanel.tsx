@@ -118,7 +118,7 @@ export default function AccessPreparationPanel(props: Props) {
             <h2 className="text-xl font-extrabold">Diretório de pessoas</h2>
             <p className="mt-1 text-sm text-slate-500">Cadastros preparatórios; sem senha e sem acesso liberado.</p>
           </div>
-          <button type="button" onClick={iniciarNovo} className="rounded-xl bg-[#2F5597] px-4 py-3 font-extrabold text-white">+ Preparar usuário</button>
+          <button type="button" onClick={iniciarNovo} className="rounded-xl px-4 py-3 font-extrabold text-white" style={{ backgroundColor: "#2F5597", color: "#ffffff" }}>+ Preparar usuário</button>
         </div>
 
         {formulario && (
