@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 const WORKSPACE_ID = process.env.MBP_WORKSPACE_ID || "principal";
 
 function getSql() {
-  // O novo banco usa NOVO_NEON_URL. DATABASE_URL permanece como reserva
+  // O novo banco usa NOVO_NEON_DATABASE_URL. DATABASE_URL permanece como reserva
   // até a recuperação ser conferida e o banco anterior ser desativado.
   const url = resolveNeonDatabaseUrl(process.env);
   if (!url) return null;
@@ -48,7 +48,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       configured: false,
       data: null,
-      message: "NOVO_NEON_URL ou DATABASE_URL não configurada.",
+      message: "Conexão do Neon não configurada.",
     });
   }
 
@@ -99,7 +99,7 @@ export async function PUT(request: Request) {
     return NextResponse.json(
       {
         configured: false,
-        error: "NOVO_NEON_URL ou DATABASE_URL não configurada.",
+        error: "Conexão do Neon não configurada.",
       },
       { status: 503 }
     );

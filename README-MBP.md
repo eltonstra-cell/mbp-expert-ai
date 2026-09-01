@@ -1,8 +1,8 @@
-# MBP Expert AI — v2.45.4
+# MBP Expert AI — v2.45.5
 
 ## Migração segura para o novo Neon
 
-- `NOVO_NEON_URL` é usada antes de `DATABASE_URL`.
+- `NOVO_NEON_DATABASE_URL` é usada antes de `DATABASE_URL`.
 - A conexão antiga permanece como alternativa enquanto a recuperação é validada.
 - O primeiro envio ao banco vazio usa a proteção contra sobrescrita já existente.
 

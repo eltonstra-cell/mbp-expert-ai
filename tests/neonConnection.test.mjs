@@ -6,10 +6,20 @@ import { resolveNeonDatabaseUrl } from "../lib/neonConnection.ts";
 test("prefere o novo banco Neon quando as duas conexões existem", () => {
   assert.equal(
     resolveNeonDatabaseUrl({
-      NOVO_NEON_URL: "postgres://novo",
+      NOVO_NEON_DATABASE_URL: "postgres://novo",
       DATABASE_URL: "postgres://antigo",
     }),
     "postgres://novo"
+  );
+});
+
+test("aceita a variável Postgres do novo banco como alternativa", () => {
+  assert.equal(
+    resolveNeonDatabaseUrl({
+      NOVO_NEON_POSTGRES_URL: "postgres://novo-postgres",
+      DATABASE_URL: "postgres://antigo",
+    }),
+    "postgres://novo-postgres"
   );
 });
 

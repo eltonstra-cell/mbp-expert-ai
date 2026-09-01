@@ -1,8 +1,8 @@
-# MBP Expert AI v2.45.4
+# MBP Expert AI v2.45.5
 
 ## Migração segura para o novo Neon
 
-- A aplicação usa `NOVO_NEON_URL` como conexão principal.
+- A aplicação usa `NOVO_NEON_DATABASE_URL` como conexão principal.
 - `DATABASE_URL` permanece como alternativa temporária para o banco anterior.
 - Na primeira abertura com a nuvem vazia, os dados existentes no computador são enviados com criação exclusiva, sem substituir uma nuvem já preenchida.
 
