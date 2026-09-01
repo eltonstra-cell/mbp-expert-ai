@@ -31,6 +31,10 @@ import {
   mergeForRecovery,
   type RecoveryCounts,
 } from "@/lib/recovery";
+import {
+  createLocalBackup,
+  localBackupFilename,
+} from "@/lib/localBackup";
 
 type View = "inicio" | "empresas" | "visitas" | "visita" | "ambientes" | "checklist" | "ncs" | "plano" | "acompanhamento" | "historico" | "evidencias" | "relatorio";
 
@@ -396,6 +400,7 @@ export default function Home() {
     cloudUpdatedAt: string | null;
   } | null>(null);
   const [recuperandoDados, setRecuperandoDados] = useState(false);
+  const [protecaoLocalAtiva, setProtecaoLocalAtiva] = useState(false);
 
   const [form, setForm] = useState({
     cnpj: "",
@@ -685,7 +690,10 @@ export default function Home() {
         // Preserva o localStorage, mas bloqueia qualquer gravação automática.
         // Uma falha de leitura nunca pode ser tratada como nuvem vazia.
         syncBloqueadaRef.current = true;
-        registrarFalhaSincronizacao();
+        falhasSyncRef.current = 3;
+        setSyncStatus("erro");
+        setSyncErroVisivel(true);
+        setProtecaoLocalAtiva(true);
       }
 
     const vs = (s.visitas || []).map((v: any) => ({
@@ -967,6 +975,20 @@ export default function Home() {
     await buscarEstadoNuvem(false);
   }
 
+  function baixarBackupLocal() {
+    const agora = new Date();
+    const conteudo = JSON.stringify(createLocalBackup(db, agora.toISOString()), null, 2);
+    const blob = new Blob([conteudo], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = localBackupFilename(agora);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }
+
   async function confirmarRecuperacaoLocal() {
     if (!recuperacaoPendente || recuperandoDados) return;
 
@@ -1005,6 +1027,7 @@ export default function Home() {
       setDb(recuperacaoPendente.merged);
       registrarConfirmacaoNuvem(result.updatedAt || null);
       syncBloqueadaRef.current = false;
+      setProtecaoLocalAtiva(false);
       setRecuperacaoPendente(null);
       window.alert(
         "Registros locais mesclados com a nuvem. Nenhuma empresa, visita, não conformidade ou evidência foi removida."
@@ -2844,7 +2867,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.45.2
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.45.3
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
@@ -2914,6 +2937,26 @@ export default function Home() {
               {recuperandoDados
                 ? "Recuperando..."
                 : "Mesclar registros locais com a nuvem"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {protecaoLocalAtiva && !recuperacaoPendente && (
+        <div className="border-b border-red-300 bg-red-50">
+          <div className="mx-auto max-w-7xl px-4 py-4 text-red-950">
+            <div className="font-extrabold">
+              A nuvem não respondeu. Os dados deste computador foram preservados.
+            </div>
+            <p className="mt-1 text-sm">
+              Nenhum dado local será enviado ou substituído enquanto esta proteção estiver ativa. Baixe agora uma cópia de segurança.
+            </p>
+            <button
+              type="button"
+              onClick={baixarBackupLocal}
+              className="mt-3 rounded-xl bg-red-800 px-4 py-2 font-bold text-white"
+            >
+              Baixar backup local
             </button>
           </div>
         </div>

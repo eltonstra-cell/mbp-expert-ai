@@ -1,4 +1,10 @@
-# MBP Expert AI v2.45.2
+# MBP Expert AI v2.45.3
+
+## Backup local de emergência
+
+- Uma falha inicial da nuvem ativa proteção local e interrompe qualquer gravação automática.
+- O sistema informa corretamente que a sincronização falhou.
+- Um botão permite baixar imediatamente os dados locais em JSON.
 
 ## Recuperação segura entre dispositivos
 

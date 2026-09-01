@@ -1,4 +1,10 @@
-# MBP Expert AI — v2.45.2
+# MBP Expert AI — v2.45.3
+
+## Backup local de emergência
+
+- Falhas na carga inicial não ficam presas em **Conectando**.
+- O navegador bloqueia gravações na nuvem enquanto a leitura não for confirmada.
+- O botão **Baixar backup local** exporta empresas, visitas, NCs e evidências preservadas no dispositivo.
 
 ## Recuperação segura de dados locais
 
