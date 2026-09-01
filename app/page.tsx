@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import MetricCard from "@/components/MetricCard";
+import AccessPreparationPanel from "@/components/AccessPreparationPanel";
 import type {
   AppDB,
   AnaliseFotoIA,
@@ -10,6 +11,7 @@ import type {
   ChecklistStatus,
   Empresa,
   Evidencia,
+  StatusUsuario,
   Visita,
 } from "@/types";
 import { emptyDB, loadDB, saveDB } from "@/lib/storage";
@@ -35,8 +37,15 @@ import {
   createLocalBackup,
   localBackupFilename,
 } from "@/lib/localBackup";
+import { criarRegistroAuditoria } from "@/lib/permissions";
+import {
+  alterarStatusUsuario,
+  atualizarUsuarioPreparacao,
+  criarUsuarioPreparacao,
+  type DadosUsuarioPreparacao,
+} from "@/lib/userManagement";
 
-type View = "inicio" | "empresas" | "visitas" | "visita" | "ambientes" | "checklist" | "ncs" | "plano" | "acompanhamento" | "historico" | "evidencias" | "relatorio";
+type View = "inicio" | "empresas" | "visitas" | "visita" | "ambientes" | "checklist" | "ncs" | "plano" | "acompanhamento" | "historico" | "evidencias" | "relatorio" | "acessos";
 
 const NAV_STORAGE_KEY = "mbp-expert-ai:navegacao:v1";
 const VISIT_VIEWS: View[] = ["visita", "ambientes", "checklist", "ncs", "plano", "acompanhamento", "historico", "evidencias", "relatorio"];
@@ -769,6 +778,14 @@ export default function Home() {
       visitas: vs,
       ncs: ncsSincronizadas,
       evidencias: Array.isArray((s as any).evidencias) ? (s as any).evidencias : [],
+      usuarios: Array.isArray((s as any).usuarios) ? (s as any).usuarios : [],
+      registrosAuditoria: Array.isArray((s as any).registrosAuditoria)
+        ? (s as any).registrosAuditoria
+        : [],
+      configuracaoAcesso:
+        (s as any).configuracaoAcesso && typeof (s as any).configuracaoAcesso === "object"
+          ? (s as any).configuracaoAcesso
+          : emptyDB.configuracaoAcesso,
     };
 
     setDb(dbNormalizado);
@@ -802,7 +819,7 @@ export default function Home() {
             setVisitaAtualId(null);
             setView("visitas");
           }
-        } else if (viewSalva && ["inicio", "empresas", "visitas"].includes(viewSalva)) {
+        } else if (viewSalva && ["inicio", "empresas", "visitas", "acessos"].includes(viewSalva)) {
           setView(viewSalva);
           // Mantém a visita selecionada ao atualizar a página quando o usuário
           // estiver na lista de visitas. Em Início/Empresas a seleção não é exibida.
@@ -2860,6 +2877,81 @@ export default function Home() {
     }
   }
 
+  function salvarUsuarioPreparacao(
+    dados: DadosUsuarioPreparacao,
+    usuarioId?: string
+  ): boolean {
+    try {
+      const agora = new Date().toISOString();
+      const existente = usuarioId
+        ? db.usuarios.find((usuario) => usuario.id === usuarioId)
+        : undefined;
+      if (usuarioId && !existente) throw new Error("Usuário preparado não encontrado.");
+
+      const usuario = existente
+        ? atualizarUsuarioPreparacao(existente, dados, db.usuarios, agora)
+        : criarUsuarioPreparacao(dados, db.usuarios, agora);
+      const registro = criarRegistroAuditoria(
+        {
+          usuarioId: "preparacao-sistema",
+          usuarioNome: "Preparação do sistema",
+          acao: existente ? "usuario.preparacao_atualizada" : "usuario.preparado",
+          entidade: "Usuário",
+          entidadeId: usuario.id,
+          detalhes: `${usuario.nome} • ${usuario.perfil} • convite ainda não enviado.`,
+        },
+        agora
+      );
+      const novo: AppDB = {
+        ...db,
+        usuarios: existente
+          ? db.usuarios.map((item) => item.id === usuario.id ? usuario : item)
+          : [usuario, ...db.usuarios],
+        registrosAuditoria: [...db.registrosAuditoria, registro],
+      };
+      saveDB(novo);
+      setDb(novo);
+      return true;
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Não foi possível preparar o usuário.");
+      return false;
+    }
+  }
+
+  function mudarStatusUsuarioPreparacao(
+    usuarioId: string,
+    status: StatusUsuario
+  ): boolean {
+    try {
+      const usuarioAtual = db.usuarios.find((usuario) => usuario.id === usuarioId);
+      if (!usuarioAtual) throw new Error("Usuário preparado não encontrado.");
+      const agora = new Date().toISOString();
+      const usuario = alterarStatusUsuario(usuarioAtual, status, db.usuarios, agora);
+      const registro = criarRegistroAuditoria(
+        {
+          usuarioId: "preparacao-sistema",
+          usuarioNome: "Preparação do sistema",
+          acao: status === "Suspenso" ? "usuario.preparacao_suspensa" : "usuario.preparacao_restaurada",
+          entidade: "Usuário",
+          entidadeId: usuario.id,
+          detalhes: `${usuario.nome} • status alterado para ${status} sem envio de convite.`,
+        },
+        agora
+      );
+      const novo: AppDB = {
+        ...db,
+        usuarios: db.usuarios.map((item) => item.id === usuario.id ? usuario : item),
+        registrosAuditoria: [...db.registrosAuditoria, registro],
+      };
+      saveDB(novo);
+      setDb(novo);
+      return true;
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Não foi possível alterar este usuário.");
+      return false;
+    }
+  }
+
   return (
     <div className="min-h-screen bg-[#f4f7fb]">
       <header className="bg-[#17365D] text-white">
@@ -2867,7 +2959,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.45.5
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.46-dev
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
@@ -3003,9 +3095,27 @@ export default function Home() {
           >
             Visitas
           </button>
+          <button
+            onClick={() => setView("acessos")}
+            className={`rounded-xl px-4 py-2 font-bold ${
+              view === "acessos"
+                ? "bg-[#17365D] text-white"
+                : "bg-slate-200 text-slate-900"
+            }`}
+          >
+            Acessos
+          </button>
         </nav>
 
-        {showEmpresaForm ? (
+        {view === "acessos" ? (
+          <AccessPreparationPanel
+            usuarios={db.usuarios}
+            empresas={db.empresas}
+            registrosAuditoria={db.registrosAuditoria}
+            onSalvarUsuario={salvarUsuarioPreparacao}
+            onAlterarStatus={mudarStatusUsuarioPreparacao}
+          />
+        ) : showEmpresaForm ? (
           <section className="rounded-2xl bg-white p-5 shadow-sm">
             <div className="flex justify-between gap-4">
               <div>

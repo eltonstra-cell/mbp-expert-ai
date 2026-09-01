@@ -1,6 +1,6 @@
 {
   "name": "mbp-expert-ai",
-  "version": "2.45.5",
+  "version": "2.46.0-dev.1",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -9,13 +9,15 @@
     "start": "next start"
   },
   "dependencies": {
-    "next": "16.2.11",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
+    "@neondatabase/auth": "^0.5.0-beta",
+    "@neondatabase/auth-ui": "^0.3.0-beta",
     "@neondatabase/serverless": "^1.0.1",
     "@vercel/blob": "^2.6.1",
+    "html2canvas-pro": "^1.6.3",
     "jspdf": "^3.0.2",
-    "html2canvas-pro": "^1.6.3"
+    "next": "16.2.11",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.0",

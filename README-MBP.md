@@ -1,4 +1,22 @@
-# MBP Expert AI — v2.45.5
+# MBP Expert AI — v2.46-dev.1
+
+## Controle de acesso em desenvolvimento
+
+- A v2.45.5 estável foi preservada como base, incluindo recuperação segura e sincronização sem consulta a cada 5 segundos.
+- A nova tela **Acessos** prepara Administrador, Consultor/RT e Cliente Gestor, com empresas autorizadas e auditoria.
+- O SDK oficial **Neon Managed Better Auth** já está integrado para login por sessão no servidor.
+- Cadastros do diretório não enviam convites e não liberam acesso automaticamente.
+- A proteção permanece em `ACCESS_CONTROL_MODE=preparation` até o primeiro Administrador ser criado e validado em um Preview.
+- Somente depois do teste deve-se usar `ACCESS_CONTROL_MODE=active`.
+
+### Variáveis da autenticação
+
+- `NOVO_NEON_NEON_AUTH_BASE_URL`: URL criada automaticamente pela integração Vercel do banco novo e usada com prioridade;
+- `NEON_AUTH_BASE_URL`: alternativa para instalações sem o prefixo do banco novo;
+- `NEON_AUTH_COOKIE_SECRET`: segredo aleatório com pelo menos 32 caracteres;
+- `ACCESS_CONTROL_MODE`: `preparation` durante a montagem e `active` após a homologação.
+
+Para gerar o segredo localmente: `openssl rand -base64 32`. Nunca envie esse valor ao GitHub.
 
 ## Migração segura para o novo Neon
 
