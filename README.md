@@ -1,4 +1,11 @@
-# MBP Expert AI v2.45
+# MBP Expert AI v2.45.1
+
+## Sincronização econômica
+
+- Remove a consulta automática ao Neon a cada 5 segundos.
+- Sincroniza ao abrir o sistema, depois de alterações e ao retornar à aba.
+- Evita chamadas duplicadas de foco e visibilidade em sequência.
+- O indicador de nuvem no cabeçalho também funciona como atualização manual.
 
 Análise assistida de evidências fotográficas por IA, sempre sujeita à revisão profissional.
 

@@ -1,4 +1,20 @@
-# MBP Expert AI — v2.45
+# MBP Expert AI — v2.45.1
+
+## Correção do consumo do Neon
+
+- A consulta periódica a cada 5 segundos foi removida.
+- O sistema continua sincronizando ao abrir, ao salvar alterações e ao retornar para a aba.
+- Eventos de foco e visibilidade disparados juntos são deduplicados.
+- O indicador de nuvem pode ser clicado para solicitar uma atualização manual.
+- O banco pode voltar ao estado ocioso quando o sistema não está sendo usado.
+
+## Teste recomendado da v2.45.1
+
+1. abrir o sistema e confirmar **Nuvem sincronizada**;
+2. clicar no indicador de nuvem e conferir a atualização manual;
+3. alterar uma informação não crítica e confirmar a sincronização;
+4. deixar a aba aberta por mais de cinco minutos sem interação;
+5. conferir no Neon se a computação volta a ficar ociosa.
 
 ## Análise assistida de evidências fotográficas por IA
 

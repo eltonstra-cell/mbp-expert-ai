@@ -21,6 +21,10 @@ import {
   ultimaAnaliseConfirmada,
   type ResultadoFotoIA,
 } from "@/lib/photoAnalysis";
+import {
+  shouldSyncOnActivation,
+  SYNC_ACTIVATION_DEDUP_MS,
+} from "@/lib/syncPolicy";
 
 type View = "inicio" | "empresas" | "visitas" | "visita" | "ambientes" | "checklist" | "ncs" | "plano" | "acompanhamento" | "historico" | "evidencias" | "relatorio";
 
@@ -376,6 +380,7 @@ export default function Home() {
   const falhasSyncRef = useRef(0);
   const retrySyncTimerRef = useRef<number | null>(null);
   const salvamentoImediatoRef = useRef(false);
+  const ultimaSincronizacaoAtivacaoRef = useRef(0);
 
   const [form, setForm] = useState({
     cnpj: "",
@@ -415,26 +420,6 @@ export default function Home() {
       if (retrySyncTimerRef.current !== null) {
         window.clearTimeout(retrySyncTimerRef.current);
       }
-    };
-  }, []);
-
-  useEffect(() => {
-    const sincronizarAoVoltar = () => {
-      if (document.visibilityState === "visible") {
-        void buscarEstadoNuvem(false);
-      }
-    };
-
-    const sincronizarAoFocar = () => {
-      void buscarEstadoNuvem(false);
-    };
-
-    document.addEventListener("visibilitychange", sincronizarAoVoltar);
-    window.addEventListener("focus", sincronizarAoFocar);
-
-    return () => {
-      document.removeEventListener("visibilitychange", sincronizarAoVoltar);
-      window.removeEventListener("focus", sincronizarAoFocar);
     };
   }, []);
 
@@ -894,26 +879,34 @@ export default function Home() {
     if (!ready) return;
 
     const atualizar = () => {
-      if (document.visibilityState === "visible") {
-        void buscarEstadoNuvem();
-      }
-    };
+      const agora = Date.now();
+      const deveSincronizar = shouldSyncOnActivation({
+        ready,
+        visible: document.visibilityState === "visible",
+        now: agora,
+        lastSyncAt: ultimaSincronizacaoAtivacaoRef.current,
+        minIntervalMs: SYNC_ACTIVATION_DEDUP_MS,
+      });
 
-    const interval = window.setInterval(() => {
-      if (document.visibilityState === "visible") {
-        void buscarEstadoNuvem();
-      }
-    }, 5000);
+      if (!deveSincronizar) return;
+
+      ultimaSincronizacaoAtivacaoRef.current = agora;
+      void buscarEstadoNuvem(false);
+    };
 
     window.addEventListener("focus", atualizar);
     document.addEventListener("visibilitychange", atualizar);
 
     return () => {
-      window.clearInterval(interval);
       window.removeEventListener("focus", atualizar);
       document.removeEventListener("visibilitychange", atualizar);
     };
   }, [ready]);
+
+  async function atualizarNuvemManualmente() {
+    setSyncStatus("conectando");
+    await buscarEstadoNuvem(false);
+  }
 
   useEffect(() => {
     if (!visitaAtualId) return;
@@ -2740,11 +2733,13 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.45
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.45.1
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
-            <div
+            <button
+              type="button"
+              onClick={() => void atualizarNuvemManualmente()}
               className={`rounded-xl px-3 py-2 text-xs font-bold ${
                 syncStatus === "sincronizado"
                   ? "bg-emerald-100 text-emerald-800"
@@ -2758,8 +2753,8 @@ export default function Home() {
               }`}
               title={
                 syncAtualizadoEm
-                  ? `Última sincronização: ${syncAtualizadoEm}`
-                  : ""
+                  ? `Última sincronização: ${syncAtualizadoEm}. Clique para atualizar.`
+                  : "Clique para atualizar a nuvem."
               }
             >
               {syncStatus === "sincronizado"
@@ -2771,7 +2766,7 @@ export default function Home() {
                 : syncErroVisivel
                 ? "⚠️ Falha na sincronização"
                 : "☁️ Conectando..."}
-            </div>
+            </button>
 
             {atual && (
               <div className="rounded-xl bg-white/10 px-4 py-2">
