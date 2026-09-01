@@ -25,6 +25,12 @@ import {
   shouldSyncOnActivation,
   SYNC_ACTIVATION_DEDUP_MS,
 } from "@/lib/syncPolicy";
+import {
+  hasLocalOnlyRecords,
+  localOnlyCounts,
+  mergeForRecovery,
+  type RecoveryCounts,
+} from "@/lib/recovery";
 
 type View = "inicio" | "empresas" | "visitas" | "visita" | "ambientes" | "checklist" | "ncs" | "plano" | "acompanhamento" | "historico" | "evidencias" | "relatorio";
 
@@ -370,7 +376,7 @@ export default function Home() {
     Record<string, "Aberta" | "Em tratamento" | "Resolvida">
   >({});
   const [syncStatus, setSyncStatus] = useState<
-    "conectando" | "sincronizado" | "local" | "erro"
+    "conectando" | "sincronizado" | "local" | "erro" | "recuperacao"
   >("conectando");
   const [syncErroVisivel, setSyncErroVisivel] = useState(false);
   const [syncAtualizadoEm, setSyncAtualizadoEm] = useState("");
@@ -381,6 +387,15 @@ export default function Home() {
   const retrySyncTimerRef = useRef<number | null>(null);
   const salvamentoImediatoRef = useRef(false);
   const ultimaSincronizacaoAtivacaoRef = useRef(0);
+  const syncBloqueadaRef = useRef(false);
+  const [recuperacaoPendente, setRecuperacaoPendente] = useState<{
+    local: AppDB;
+    cloud: AppDB;
+    merged: AppDB;
+    counts: RecoveryCounts;
+    cloudUpdatedAt: string | null;
+  } | null>(null);
+  const [recuperandoDados, setRecuperandoDados] = useState(false);
 
   const [form, setForm] = useState({
     cnpj: "",
@@ -505,7 +520,7 @@ export default function Home() {
   }
 
   async function buscarEstadoNuvem(aplicarMesmoSeIgual = false) {
-    if (salvamentoImediatoRef.current) return;
+    if (salvamentoImediatoRef.current || syncBloqueadaRef.current) return;
 
     try {
       // Consulta leve: retorna apenas configured + updatedAt.
@@ -513,6 +528,9 @@ export default function Home() {
         method: "GET",
         cache: "no-store",
       });
+      if (!metaResponse.ok) {
+        throw new Error(`Falha ao consultar a nuvem (${metaResponse.status})`);
+      }
       const meta = await metaResponse.json();
 
       if (!meta?.configured) {
@@ -530,6 +548,9 @@ export default function Home() {
           method: "GET",
           cache: "no-store",
         });
+        if (!response.ok) {
+          throw new Error(`Falha ao carregar a nuvem (${response.status})`);
+        }
         const cloud = await response.json();
 
         if (cloud?.data && typeof cloud.data === "object") {
@@ -563,7 +584,8 @@ export default function Home() {
     let cancelado = false;
 
     async function iniciarDados() {
-      let s = loadDB();
+      const local = loadDB();
+      let s = local;
 
       setSyncStatus("conectando");
 
@@ -572,19 +594,43 @@ export default function Home() {
           method: "GET",
           cache: "no-store",
         });
+        if (!response.ok) {
+          throw new Error(`Falha ao carregar a nuvem (${response.status})`);
+        }
         const cloud = await response.json();
 
         if (cloud?.configured) {
           if (cloud.data && typeof cloud.data === "object") {
-            // Nuvem já existente: passa a ser a fonte compartilhada.
-            s = cloud.data as AppDB;
-            saveDB(s);
+            const cloudDb = cloud.data as AppDB;
+            const counts = localOnlyCounts(local, cloudDb);
+
+            if (hasLocalOnlyRecords(counts)) {
+              // Nunca apaga silenciosamente registros que existam somente
+              // neste navegador. Bloqueia a sincronização até o profissional
+              // confirmar a mesclagem segura com a nuvem.
+              const merged = mergeForRecovery(local, cloudDb);
+              s = merged;
+              syncBloqueadaRef.current = true;
+              setRecuperacaoPendente({
+                local,
+                cloud: cloudDb,
+                merged,
+                counts,
+                cloudUpdatedAt: cloud.updatedAt || null,
+              });
+              setSyncStatus("recuperacao");
+              saveDB(merged);
+            } else {
+              // Nuvem já existente e sem perda local: passa a ser a fonte compartilhada.
+              s = cloudDb;
+              saveDB(s);
+              sincronizacaoOk();
+              setSyncStatus("sincronizado");
+            }
             ultimaNuvemRef.current = cloud.updatedAt
               ? new Date(cloud.updatedAt).getTime()
               : 0;
             ultimaNuvemVersaoRef.current = cloud.updatedAt || null;
-            sincronizacaoOk();
-            setSyncStatus("sincronizado");
             setSyncAtualizadoEm(
               cloud.updatedAt
                 ? new Date(cloud.updatedAt).toLocaleString("pt-BR")
@@ -636,7 +682,9 @@ export default function Home() {
           setSyncStatus("local");
         }
       } catch {
-        // Continua funcionando pelo localStorage enquanto tenta reconectar.
+        // Preserva o localStorage, mas bloqueia qualquer gravação automática.
+        // Uma falha de leitura nunca pode ser tratada como nuvem vazia.
+        syncBloqueadaRef.current = true;
         registrarFalhaSincronizacao();
       }
 
@@ -789,7 +837,11 @@ export default function Home() {
 
     saveDB(db);
 
-    if (aplicandoNuvemRef.current || salvamentoImediatoRef.current) return;
+    if (
+      aplicandoNuvemRef.current ||
+      salvamentoImediatoRef.current ||
+      syncBloqueadaRef.current
+    ) return;
 
     const timer = window.setTimeout(async () => {
       try {
@@ -798,6 +850,9 @@ export default function Home() {
           method: "GET",
           cache: "no-store",
         });
+        if (!metaResponse.ok) {
+          throw new Error(`Falha ao consultar a nuvem (${metaResponse.status})`);
+        }
         const meta = await metaResponse.json();
 
         if (!meta?.configured) {
@@ -815,6 +870,9 @@ export default function Home() {
             method: "GET",
             cache: "no-store",
           });
+          if (!cloudResponse.ok) {
+            throw new Error(`Falha ao carregar a nuvem (${cloudResponse.status})`);
+          }
           const cloud = await cloudResponse.json();
 
           if (cloud?.data && typeof cloud.data === "object") {
@@ -904,8 +962,61 @@ export default function Home() {
   }, [ready]);
 
   async function atualizarNuvemManualmente() {
+    if (syncBloqueadaRef.current) return;
     setSyncStatus("conectando");
     await buscarEstadoNuvem(false);
+  }
+
+  async function confirmarRecuperacaoLocal() {
+    if (!recuperacaoPendente || recuperandoDados) return;
+
+    if (!recuperacaoPendente.cloudUpdatedAt) {
+      window.alert(
+        "A versão atual da nuvem não pôde ser confirmada. Mantenha o sistema fechado e tente novamente mais tarde."
+      );
+      return;
+    }
+
+    setRecuperandoDados(true);
+
+    try {
+      const response = await fetch("/api/state", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          data: recuperacaoPendente.merged,
+          expectedUpdatedAt: recuperacaoPendente.cloudUpdatedAt,
+        }),
+      });
+
+      if (response.status === 409) {
+        window.alert(
+          "A nuvem mudou enquanto a recuperação estava aberta. Nenhum dado local foi apagado. Atualize a página para recalcular a mesclagem."
+        );
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(`Falha ao recuperar dados (${response.status})`);
+      }
+
+      const result = await response.json();
+      saveDB(recuperacaoPendente.merged);
+      setDb(recuperacaoPendente.merged);
+      registrarConfirmacaoNuvem(result.updatedAt || null);
+      syncBloqueadaRef.current = false;
+      setRecuperacaoPendente(null);
+      window.alert(
+        "Registros locais mesclados com a nuvem. Nenhuma empresa, visita, não conformidade ou evidência foi removida."
+      );
+    } catch {
+      setSyncStatus("recuperacao");
+      window.alert(
+        "A recuperação ainda não pôde ser gravada. Os dados locais continuam preservados neste computador."
+      );
+    } finally {
+      setRecuperandoDados(false);
+    }
   }
 
   useEffect(() => {
@@ -2733,7 +2844,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.45.1
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.45.2
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
@@ -2747,6 +2858,8 @@ export default function Home() {
                   ? "bg-blue-100 text-blue-800"
                   : syncStatus === "local"
                   ? "bg-amber-100 text-amber-800"
+                  : syncStatus === "recuperacao"
+                  ? "bg-amber-100 text-amber-900"
                   : syncErroVisivel
                   ? "bg-red-100 text-red-800"
                   : "bg-blue-100 text-blue-800"
@@ -2763,6 +2876,8 @@ export default function Home() {
                 ? "☁️ Conectando..."
                 : syncStatus === "local"
                 ? "💻 Somente local"
+                : syncStatus === "recuperacao"
+                ? "🛟 Recuperação necessária"
                 : syncErroVisivel
                 ? "⚠️ Falha na sincronização"
                 : "☁️ Conectando..."}
@@ -2779,6 +2894,30 @@ export default function Home() {
           </div>
         </div>
       </header>
+
+      {recuperacaoPendente && (
+        <div className="border-b border-amber-300 bg-amber-50">
+          <div className="mx-auto max-w-7xl px-4 py-4 text-amber-950">
+            <div className="font-extrabold">
+              Encontramos registros neste computador que não estão na nuvem.
+            </div>
+            <p className="mt-1 text-sm">
+              A sincronização foi bloqueada para evitar perda. Serão recuperados:
+              {` ${recuperacaoPendente.counts.empresas} empresa(s), ${recuperacaoPendente.counts.visitas} visita(s), ${recuperacaoPendente.counts.ncs} não conformidade(s) e ${recuperacaoPendente.counts.evidencias} evidência(s).`}
+            </p>
+            <button
+              type="button"
+              disabled={recuperandoDados}
+              onClick={() => void confirmarRecuperacaoLocal()}
+              className="mt-3 rounded-xl bg-amber-800 px-4 py-2 font-bold text-white disabled:opacity-60"
+            >
+              {recuperandoDados
+                ? "Recuperando..."
+                : "Mesclar registros locais com a nuvem"}
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="mx-auto max-w-7xl px-3 py-4 sm:p-4">
         <nav className="mb-4 flex flex-wrap gap-2">

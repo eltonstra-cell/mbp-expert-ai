@@ -1,4 +1,11 @@
-# MBP Expert AI v2.45.1
+# MBP Expert AI v2.45.2
+
+## Recuperação segura entre dispositivos
+
+- Leituras com erro não são mais exibidas como sincronizadas.
+- Registros existentes somente no navegador são detectados antes de aplicar a nuvem.
+- A sincronização é bloqueada quando houver risco de perda.
+- A recuperação mescla empresas, visitas, NCs e evidências sem excluir registros da nuvem.
 
 ## Sincronização econômica
 

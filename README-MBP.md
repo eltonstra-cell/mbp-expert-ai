@@ -1,4 +1,12 @@
-# MBP Expert AI — v2.45.1
+# MBP Expert AI — v2.45.2
+
+## Recuperação segura de dados locais
+
+- Respostas de erro do Neon não podem mais aparecer como **Nuvem sincronizada**.
+- Se um computador possuir registros ausentes na nuvem, nenhum dos lados é sobrescrito automaticamente.
+- O sistema mostra a quantidade de empresas, visitas, NCs e evidências locais adicionais.
+- A ação de recuperação faz uma união por identificador e preserva registros dos dois lados.
+- Conflitos de versão mantêm a recuperação bloqueada e não apagam a cópia local.
 
 ## Correção do consumo do Neon
 
