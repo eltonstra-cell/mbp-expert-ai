@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import "@neondatabase/auth/ui/css";
 import "./globals.css";
 import Providers from "./providers";
 
