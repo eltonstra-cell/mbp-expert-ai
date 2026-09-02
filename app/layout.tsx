@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import "./globals.css";
 import "@neondatabase/auth/ui/css";
+import "./globals.css";
 import Providers from "./providers";
 
 export const metadata: Metadata = {

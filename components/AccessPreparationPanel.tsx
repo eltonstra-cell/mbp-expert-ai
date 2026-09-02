@@ -118,7 +118,14 @@ export default function AccessPreparationPanel(props: Props) {
             <h2 className="text-xl font-extrabold">Diretório de pessoas</h2>
             <p className="mt-1 text-sm text-slate-500">Cadastros preparatórios; sem senha e sem acesso liberado.</p>
           </div>
-          <button type="button" onClick={iniciarNovo} className="rounded-xl px-4 py-3 font-extrabold text-white" style={{ backgroundColor: "#2F5597", color: "#ffffff" }}>+ Preparar usuário</button>
+          <button
+            type="button"
+            onClick={iniciarNovo}
+            className="inline-flex items-center justify-center rounded-xl px-4 py-3 font-extrabold shadow-sm"
+            style={{ backgroundColor: "#2F5597", border: "1px solid #244578", color: "#ffffff" }}
+          >
+            + Preparar usuário
+          </button>
         </div>
 
         {formulario && (
@@ -142,7 +149,14 @@ export default function AccessPreparationPanel(props: Props) {
               </div>
             )}
             <div className="mt-4 flex gap-2">
-              <button type="button" onClick={salvar} className="rounded-xl bg-[#17365D] px-4 py-3 font-extrabold text-white">Salvar preparação</button>
+              <button
+                type="button"
+                onClick={salvar}
+                className="inline-flex items-center justify-center rounded-xl px-4 py-3 font-extrabold shadow-sm"
+                style={{ backgroundColor: "#17365D", border: "1px solid #102844", color: "#ffffff" }}
+              >
+                Salvar preparação
+              </button>
               <button type="button" onClick={() => setFormulario(null)} className="rounded-xl bg-white px-4 py-3 font-bold">Cancelar</button>
             </div>
           </div>
