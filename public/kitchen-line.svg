@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+  <path opacity=".55" d="M20 254h1160M80 254V120h260v134M360 254V82h300v172M688 254V112h430v142"/>
+  <path opacity=".5" d="M110 210h200v44H110zM390 194h240v60H390zM720 202h160v52H720zM900 180h180v74H900z"/>
+  <path opacity=".45" d="M118 150h78v38h-78zM215 150h82v38h-82zM404 112h210v54H404zM744 138h104v42H744zM922 125h136v34H922z"/>
+  <path opacity=".4" d="M450 82V42h110v40M505 42V15M760 112V62h190v50M855 62V22M1040 112V74h54v38"/>
+  <circle opacity=".55" cx="443" cy="222" r="12"/><circle opacity=".55" cx="480" cy="222" r="12"/><circle opacity=".55" cx="517" cy="222" r="12"/>
+  <path opacity=".5" d="M38 254l56-82M1140 254l34-92M682 254l-20-92"/>
+</svg>

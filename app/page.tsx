@@ -450,6 +450,18 @@ export default function Home() {
   const [saindo, setSaindo] = useState(false);
   const [armazenamentoLocalIndisponivel, setArmazenamentoLocalIndisponivel] =
     useState(false);
+  const [estaOnline, setEstaOnline] = useState(true);
+
+  useEffect(() => {
+    const atualizarConexao = () => setEstaOnline(window.navigator.onLine);
+    atualizarConexao();
+    window.addEventListener("online", atualizarConexao);
+    window.addEventListener("offline", atualizarConexao);
+    return () => {
+      window.removeEventListener("online", atualizarConexao);
+      window.removeEventListener("offline", atualizarConexao);
+    };
+  }, []);
 
   function salvarDBLocal(valor: AppDB) {
     const salvo = saveDB(valor, storageIdentityRef.current);
@@ -1278,6 +1290,19 @@ export default function Home() {
       visitas.filter((v) => v.empresaId === db.empresaAtualId),
     [visitas, db.empresaAtualId]
   );
+
+  const visitaEmAndamentoDestaque = visitas.find(
+    (visita) => visita.status === "Em andamento"
+  );
+  const progressoVisitaDestaque = visitaEmAndamentoDestaque?.checklist?.length
+    ? Math.round(
+        (visitaEmAndamentoDestaque.checklist.filter(
+          (item) => item.status === "Conforme" || item.status === "Não Conforme"
+        ).length /
+          visitaEmAndamentoDestaque.checklist.length) *
+          100
+      )
+    : 0;
 
   const numeroVisitaPorId = useMemo(() => {
     const ordenadas = [...visitasEmpresaAtual].sort((a, b) =>
@@ -3259,19 +3284,21 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-[#f4f7fb]">
-      <header className="bg-[#17365D] text-white">
-        <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <div className="text-xl font-extrabold">MBP Expert AI</div>
-            <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.46-dev
+      <header className="relative overflow-hidden bg-[#0e315b] text-white">
+        <div className="absolute inset-x-0 bottom-0 h-24 bg-[url('/kitchen-line.svg')] bg-cover bg-bottom opacity-15" />
+        <div className="relative mx-auto max-w-7xl px-4 py-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-white/25 bg-white/10 text-xl">✓</div>
+              <div>
+                <div className="text-xl font-extrabold tracking-tight">MBP Expert AI</div>
+                <div className="text-xs text-blue-100">Segurança dos Alimentos</div>
+              </div>
             </div>
-          </div>
-          <div className="flex flex-col gap-2 md:flex-row md:items-center">
             <button
               type="button"
               onClick={() => void atualizarNuvemManualmente()}
-              className={`rounded-xl px-3 py-2 text-xs font-bold ${
+              className={`shrink-0 rounded-full px-3 py-2 text-xs font-extrabold ${
                 syncStatus === "sincronizado"
                   ? "bg-emerald-100 text-emerald-800"
                   : syncStatus === "conectando"
@@ -3280,6 +3307,8 @@ export default function Home() {
                   ? "bg-amber-100 text-amber-800"
                   : syncStatus === "recuperacao"
                   ? "bg-amber-100 text-amber-900"
+                  : syncErroVisivel && !estaOnline
+                  ? "bg-amber-100 text-amber-800"
                   : syncErroVisivel
                   ? "bg-red-100 text-red-800"
                   : "bg-blue-100 text-blue-800"
@@ -3291,41 +3320,37 @@ export default function Home() {
               }
             >
               {syncStatus === "sincronizado"
-                ? "☁️ Nuvem sincronizada"
+                ? "● Sincronizado"
                 : syncStatus === "conectando"
-                ? "☁️ Conectando..."
+                ? "● Conectando"
                 : syncStatus === "local"
-                ? "💻 Somente local"
+                ? "● Somente local"
                 : syncStatus === "recuperacao"
                 ? "🛟 Recuperação necessária"
+                : syncErroVisivel && !estaOnline
+                ? "● Modo offline"
                 : syncErroVisivel
-                ? "⚠️ Falha na sincronização"
-                : "☁️ Conectando..."}
+                ? "⚠️ Nuvem indisponível"
+                : "● Conectando"}
             </button>
+          </div>
 
-            {atual && (
-              <div className="rounded-xl bg-white/10 px-4 py-2">
-              <div className="text-[10px] font-extrabold uppercase text-blue-100">
-                Empresa ativa
-              </div>
-                <div className="font-extrabold">{atual.nomeFantasia}</div>
-              </div>
-            )}
-
+          <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/10 px-3 py-3 backdrop-blur-sm">
+            <div className="min-w-0">
+              <div className="text-[10px] font-extrabold uppercase tracking-wider text-blue-100">Empresa ativa</div>
+              <div className="truncate font-extrabold">{atual?.nomeFantasia || "Selecione uma empresa"}</div>
+            </div>
             {usuarioDaSessao && (
-              <div className="flex items-center gap-3 rounded-xl bg-white/10 px-4 py-2">
+              <div className="flex min-w-0 items-center gap-2 border-l border-white/15 pl-3">
                 <div>
-                  <div className="text-[10px] font-extrabold uppercase text-blue-100">
-                    Usuário conectado
-                  </div>
-                  <div className="text-sm font-extrabold">{usuarioDaSessao.nome}</div>
-                  <div className="text-[11px] text-blue-100">{usuarioDaSessao.perfil}</div>
+                  <div className="max-w-40 truncate text-sm font-extrabold">{usuarioDaSessao.nome}</div>
+                  <div className="text-[10px] text-blue-100">{usuarioDaSessao.perfil}</div>
                 </div>
                 <button
                   type="button"
                   onClick={() => void sairDoSistema()}
                   disabled={saindo}
-                  className="rounded-lg bg-white px-3 py-2 text-xs font-extrabold text-[#17365D] disabled:opacity-60"
+                  className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-xs font-extrabold text-white disabled:opacity-60"
                 >
                   {saindo ? "Saindo..." : "Sair"}
                 </button>
@@ -3360,21 +3385,21 @@ export default function Home() {
       )}
 
       {protecaoLocalAtiva && !recuperacaoPendente && (
-        <div className="border-b border-red-300 bg-red-50">
-          <div className="mx-auto max-w-7xl px-4 py-4 text-red-950">
+        <div className={`border-b ${estaOnline ? "border-red-200 bg-red-50" : "border-blue-200 bg-blue-50"}`}>
+          <div className={`mx-auto max-w-7xl px-4 py-3 ${estaOnline ? "text-red-950" : "text-blue-950"}`}>
             <div className="font-extrabold">
-              A nuvem não respondeu. Os dados deste computador foram preservados.
+              {estaOnline ? "A nuvem não respondeu. Seus dados foram preservados." : "Modo offline ativo"}
             </div>
             <p className="mt-1 text-sm">
-              Nenhum dado local será enviado ou substituído enquanto esta proteção estiver ativa. Baixe agora uma cópia de segurança.
+              {estaOnline
+                ? "Nenhum dado local será substituído enquanto esta proteção estiver ativa."
+                : "Continue trabalhando normalmente. As alterações ficam neste aparelho e serão sincronizadas quando a conexão voltar."}
             </p>
-            <button
-              type="button"
-              onClick={baixarBackupLocal}
-              className="mt-3 rounded-xl bg-red-800 px-4 py-2 font-bold text-white"
-            >
-              Baixar backup local
-            </button>
+            {estaOnline && (
+              <button type="button" onClick={baixarBackupLocal} className="mt-3 rounded-xl bg-red-800 px-4 py-2 font-bold text-white">
+                Baixar backup local
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -3392,8 +3417,8 @@ export default function Home() {
         </div>
       )}
 
-      <div className="mx-auto max-w-7xl px-3 py-4 sm:p-4">
-        <nav className="mb-4 flex flex-wrap gap-2">
+      <div className="mx-auto max-w-7xl px-3 py-4 pb-28 sm:p-4 md:pb-4">
+        <nav className="mb-4 hidden flex-wrap gap-2 md:flex">
           <button
             onClick={() => setView("inicio")}
             className={`rounded-xl px-4 py-2 font-bold ${
@@ -5863,14 +5888,50 @@ export default function Home() {
           </section>
         ) : view === "inicio" ? (
           <div className="space-y-4">
-            <section className="rounded-2xl bg-gradient-to-r from-[#17365D] to-[#2F5597] p-5 text-white shadow-sm">
-              <div className="text-xs font-extrabold uppercase text-blue-100">
-                Painel da consultoria
+            <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+              <div className="relative overflow-hidden bg-[#17365D] px-5 py-5 text-white">
+                <div className="absolute inset-0 bg-[url('/kitchen-line.svg')] bg-cover bg-center opacity-20" />
+                <div className="relative">
+                  <div className="text-xs font-extrabold uppercase tracking-wider text-blue-100">Painel da consultoria</div>
+                  <h1 className="mt-1 text-2xl font-extrabold">
+                    {new Date().getHours() < 12 ? "Bom dia" : new Date().getHours() < 18 ? "Boa tarde" : "Boa noite"}, {usuarioDaSessao?.nome.split(" ")[0] || "profissional"}
+                  </h1>
+                  <p className="mt-1 text-sm text-blue-100">Pronto para mais uma visita?</p>
+                </div>
               </div>
-              <h1 className="mt-2 text-3xl font-extrabold">
-                Operação em campo
-              </h1>
+              <div className="p-4">
+                <button
+                  type="button"
+                  onClick={novaVisita}
+                  disabled={!atual || !permitido("visitas.criar", atual.id)}
+                  className="flex w-full items-center justify-between rounded-2xl bg-[#2F5597] px-5 py-4 text-left font-extrabold text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <span className="flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-full bg-white/15 text-2xl">+</span>Iniciar nova visita</span>
+                  <span aria-hidden="true">→</span>
+                </button>
+              </div>
             </section>
+
+            {visitaEmAndamentoDestaque && (
+              <button
+                type="button"
+                onClick={() => { setVisitaAtualId(visitaEmAndamentoDestaque.id); setView("visita"); }}
+                className="w-full rounded-2xl border border-blue-100 bg-white p-4 text-left shadow-sm"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-xs font-extrabold uppercase tracking-wide text-[#2F5597]">Visita em andamento</div>
+                    <div className="mt-1 font-extrabold text-slate-950">{db.empresas[visitaEmAndamentoDestaque.empresaId]?.nomeFantasia || "Empresa"}</div>
+                    <div className="mt-1 text-xs text-slate-500">{fdata(visitaEmAndamentoDestaque.data)} • {visitaEmAndamentoDestaque.responsavel || "Responsável não informado"}</div>
+                  </div>
+                  <span className="rounded-full bg-blue-50 px-3 py-1 text-sm font-extrabold text-[#2F5597]">{progressoVisitaDestaque}%</span>
+                </div>
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
+                  <div className="h-full rounded-full bg-[#2F5597]" style={{ width: `${progressoVisitaDestaque}%` }} />
+                </div>
+                <div className="mt-3 text-sm font-extrabold text-[#2F5597]">Continuar visita →</div>
+              </button>
+            )}
 
             <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
               <MetricCard
@@ -5886,6 +5947,23 @@ export default function Home() {
                 label="Concluídas"
                 value={visitas.filter((v) => v.status === "Concluída").length}
               />
+            </section>
+            <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-extrabold">Visitas recentes</h2>
+                <button type="button" onClick={() => setView("visitas")} className="text-sm font-extrabold text-[#2F5597]">Ver todas →</button>
+              </div>
+              <div className="mt-3 divide-y divide-slate-100">
+                {visitas.slice(0, 3).map((visita) => (
+                  <button key={visita.id} type="button" onClick={() => { setVisitaAtualId(visita.id); setView("visita"); }} className="flex w-full items-center justify-between gap-3 py-3 text-left">
+                    <div className="min-w-0">
+                      <div className="truncate font-extrabold">{db.empresas[visita.empresaId]?.nomeFantasia || "Empresa"}</div>
+                      <div className="text-xs text-slate-500">{fdata(visita.data)} • {visita.responsavel || "Responsável não informado"}</div>
+                    </div>
+                    <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-extrabold ${visita.status === "Concluída" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>{visita.status}</span>
+                  </button>
+                ))}
+              </div>
             </section>
           </div>
         ) : view === "empresas" ? (
@@ -6392,6 +6470,25 @@ export default function Home() {
           </section>
         )}
       </div>
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_30px_rgba(15,23,42,0.08)] backdrop-blur md:hidden">
+        <div className="mx-auto grid max-w-lg grid-cols-4 gap-1">
+          {([
+            ["inicio", "⌂", "Início"],
+            ["empresas", "▦", "Empresas"],
+            ["visitas", "✓", "Visitas"],
+            ["acessos", "♙", "Acessos"],
+          ] as const).map(([destino, icone, rotulo]) => {
+            if (destino === "acessos" && !permitido("usuarios.gerenciar")) return null;
+            const ativo = destino === "visitas" ? view === "visitas" || VISIT_VIEWS.includes(view) : view === destino;
+            return (
+              <button key={destino} type="button" onClick={() => setView(destino)} className={`flex min-h-14 flex-col items-center justify-center rounded-2xl px-2 text-[11px] font-extrabold ${ativo ? "bg-blue-50 text-[#17365D]" : "text-slate-500"}`}>
+                <span className="text-xl leading-none" aria-hidden="true">{icone}</span>
+                <span className="mt-1">{rotulo}</span>
+              </button>
+            );
+          })}
+        </div>
+      </nav>
     </div>
   );
 }
