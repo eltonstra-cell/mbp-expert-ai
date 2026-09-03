@@ -29,6 +29,7 @@ type Props = {
   registrosAuditoria: RegistroAuditoria[];
   onSalvarUsuario: (dados: DadosUsuarioPreparacao, usuarioId?: string) => boolean;
   onAlterarStatus: (usuarioId: string, status: StatusUsuario) => boolean;
+  onEnviarAcesso: (usuarioId: string) => Promise<boolean>;
 };
 
 type Readiness = {
@@ -40,6 +41,7 @@ type Readiness = {
 export default function AccessPreparationPanel(props: Props) {
   const [formulario, setFormulario] = useState<DadosUsuarioPreparacao | null>(null);
   const [editandoId, setEditandoId] = useState<string>();
+  const [enviandoId, setEnviandoId] = useState<string>();
   const [readiness, setReadiness] = useState<Readiness | null>(null);
   const empresas = useMemo(
     () => Object.values(props.empresas).sort((a, b) =>
@@ -86,13 +88,23 @@ export default function AccessPreparationPanel(props: Props) {
     setEditandoId(undefined);
   }
 
+  async function enviarAcesso(usuarioId: string) {
+    if (enviandoId) return;
+    setEnviandoId(usuarioId);
+    try {
+      await props.onEnviarAcesso(usuarioId);
+    } finally {
+      setEnviandoId(undefined);
+    }
+  }
+
   return (
     <section className="space-y-4">
       <div className="rounded-2xl bg-white p-5 shadow-sm">
         <div className="text-xs font-extrabold uppercase text-[#2F5597]">CORE-050 • v2.46</div>
         <h1 className="mt-1 text-2xl font-extrabold">Usuários e permissões</h1>
         <p className="mt-2 max-w-4xl text-sm text-slate-600">
-          Prepare quem poderá entrar, o perfil de cada pessoa e as empresas autorizadas. Nesta etapa nenhum convite é enviado.
+          Prepare quem poderá entrar, o perfil de cada pessoa e as empresas autorizadas. Depois, envie o acesso para a pessoa definir a senha.
         </p>
         <div className="mt-5 grid gap-3 md:grid-cols-3">
           <Status titulo="Diretório" valor="Preparado" classe="bg-emerald-50 text-emerald-900" />
@@ -116,7 +128,7 @@ export default function AccessPreparationPanel(props: Props) {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h2 className="text-xl font-extrabold">Diretório de pessoas</h2>
-            <p className="mt-1 text-sm text-slate-500">Cadastros preparatórios; sem senha e sem acesso liberado.</p>
+            <p className="mt-1 text-sm text-slate-500">Cada pessoa recebe um acesso individual e define a própria senha.</p>
           </div>
           <button
             type="button"
@@ -174,6 +186,16 @@ export default function AccessPreparationPanel(props: Props) {
                   <div className="mt-2 text-xs font-bold text-slate-600">{usuario.perfil} • {usuario.status}</div>
                 </div>
                 <div className="flex gap-2">
+                  {usuario.status === "Convidado" && (
+                    <button
+                      type="button"
+                      onClick={() => void enviarAcesso(usuario.id)}
+                      disabled={Boolean(enviandoId)}
+                      className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800 disabled:cursor-wait disabled:opacity-60"
+                    >
+                      {enviandoId === usuario.id ? "Enviando..." : "Enviar acesso"}
+                    </button>
+                  )}
                   <button type="button" onClick={() => iniciarEdicao(usuario)} className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-bold">Editar</button>
                   <button type="button" onClick={() => props.onAlterarStatus(usuario.id, usuario.status === "Suspenso" ? "Convidado" : "Suspenso")} className="rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700">{usuario.status === "Suspenso" ? "Restaurar" : "Suspender"}</button>
                 </div>

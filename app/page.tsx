@@ -3152,6 +3152,49 @@ export default function Home() {
     }
   }
 
+  async function enviarAcessoUsuario(usuarioId: string): Promise<boolean> {
+    if (!exigirPermissao("usuarios.gerenciar")) return false;
+    const usuario = db.usuarios.find((item) => item.id === usuarioId);
+    if (!usuario) {
+      window.alert("Usuário preparado não encontrado.");
+      return false;
+    }
+
+    try {
+      const response = await fetch("/api/access/invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ usuarioId }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result?.error || "Não foi possível enviar o acesso.");
+      }
+
+      const agora = new Date().toISOString();
+      const registro = criarRegistroAuditoria(
+        {
+          usuarioId: usuarioDaSessao?.id || "preparacao-sistema",
+          usuarioNome: usuarioDaSessao?.nome || "Administrador",
+          acao: "usuario.acesso_enviado",
+          entidade: "Usuário",
+          entidadeId: usuario.id,
+          detalhes: `${usuario.nome} • e-mail enviado para definição da senha.`,
+        },
+        agora
+      );
+      setDb((atual) => ({
+        ...atual,
+        registrosAuditoria: [...atual.registrosAuditoria, registro],
+      }));
+      window.alert(result.message || "Acesso enviado com sucesso.");
+      return true;
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Não foi possível enviar o acesso.");
+      return false;
+    }
+  }
+
   if (
     ready &&
     sessaoConsultada &&
@@ -3364,6 +3407,7 @@ export default function Home() {
             registrosAuditoria={db.registrosAuditoria}
             onSalvarUsuario={salvarUsuarioPreparacao}
             onAlterarStatus={mudarStatusUsuarioPreparacao}
+            onEnviarAcesso={enviarAcessoUsuario}
           />
         ) : showEmpresaForm && permitido("empresas.editar") ? (
           <section className="rounded-2xl bg-white p-5 shadow-sm">
