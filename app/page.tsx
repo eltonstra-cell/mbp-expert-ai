@@ -15,6 +15,7 @@ import type {
   Visita,
 } from "@/types";
 import { emptyDB, loadDB, saveDB } from "@/lib/storage";
+import { authClient } from "@/lib/auth/client";
 import { registrarMudancaStatus } from "@/lib/visitAudit";
 import {
   confirmarSugestaoFotoIA,
@@ -412,6 +413,12 @@ export default function Home() {
   } | null>(null);
   const [recuperandoDados, setRecuperandoDados] = useState(false);
   const [protecaoLocalAtiva, setProtecaoLocalAtiva] = useState(false);
+  const [sessaoAtual, setSessaoAtual] = useState<{
+    id: string;
+    email: string;
+    name: string;
+  } | null>(null);
+  const [saindo, setSaindo] = useState(false);
 
   const [form, setForm] = useState({
     cnpj: "",
@@ -873,6 +880,12 @@ export default function Home() {
         const sessao = await response.json();
         if (!sessao?.authenticated || !sessao?.user?.id || !sessao?.user?.email) return;
 
+        setSessaoAtual({
+          id: sessao.user.id,
+          email: sessao.user.email,
+          name: sessao.user.name || "",
+        });
+
         setDb((atual) => {
           const agora = new Date().toISOString();
           const resultado = vincularSessaoUsuario(
@@ -913,6 +926,26 @@ export default function Home() {
 
     void vincularSessao();
   }, [ready]);
+
+  async function sairDoSistema() {
+    if (saindo) return;
+    setSaindo(true);
+    try {
+      await authClient.signOut();
+      window.location.replace("/auth/sign-in");
+    } catch {
+      setSaindo(false);
+      window.alert("Não foi possível encerrar a sessão. Tente novamente.");
+    }
+  }
+
+  const usuarioDaSessao = useMemo(() => {
+    if (!sessaoAtual?.email) return null;
+    const email = sessaoAtual.email.trim().toLocaleLowerCase("pt-BR");
+    return db.usuarios.find(
+      (usuario) => usuario.email.trim().toLocaleLowerCase("pt-BR") === email
+    ) || null;
+  }, [db.usuarios, sessaoAtual]);
 
   useEffect(() => {
     if (!ready) return;
@@ -3061,6 +3094,26 @@ export default function Home() {
                 Empresa ativa
               </div>
                 <div className="font-extrabold">{atual.nomeFantasia}</div>
+              </div>
+            )}
+
+            {usuarioDaSessao && (
+              <div className="flex items-center gap-3 rounded-xl bg-white/10 px-4 py-2">
+                <div>
+                  <div className="text-[10px] font-extrabold uppercase text-blue-100">
+                    Usuário conectado
+                  </div>
+                  <div className="text-sm font-extrabold">{usuarioDaSessao.nome}</div>
+                  <div className="text-[11px] text-blue-100">{usuarioDaSessao.perfil}</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void sairDoSistema()}
+                  disabled={saindo}
+                  className="rounded-lg bg-white px-3 py-2 text-xs font-extrabold text-[#17365D] disabled:opacity-60"
+                >
+                  {saindo ? "Saindo..." : "Sair"}
+                </button>
               </div>
             )}
           </div>
