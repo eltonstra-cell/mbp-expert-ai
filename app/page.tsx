@@ -424,6 +424,7 @@ export default function Home() {
     email: string;
     name: string;
   } | null>(null);
+  const [sessaoConsultada, setSessaoConsultada] = useState(false);
   const [saindo, setSaindo] = useState(false);
 
   const [form, setForm] = useState({
@@ -927,6 +928,8 @@ export default function Home() {
         });
       } catch {
         // Em modo de preparação, uma indisponibilidade do Auth não bloqueia o sistema.
+      } finally {
+        setSessaoConsultada(true);
       }
     }
 
@@ -3134,6 +3137,34 @@ export default function Home() {
       window.alert(error instanceof Error ? error.message : "Não foi possível alterar este usuário.");
       return false;
     }
+  }
+
+  if (
+    ready &&
+    sessaoConsultada &&
+    sessaoAtual &&
+    (!usuarioDaSessao || usuarioDaSessao.status !== "Ativo")
+  ) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#f4f7fb] p-4">
+        <div className="w-full max-w-lg rounded-2xl bg-white p-6 text-center shadow-sm">
+          <div className="text-xs font-extrabold uppercase text-[#2F5597]">
+            Acesso não liberado
+          </div>
+          <h1 className="mt-2 text-2xl font-extrabold">Esta conta não pode entrar no sistema</h1>
+          <p className="mt-3 text-sm text-slate-600">
+            Peça ao Administrador para preparar ou reativar este e-mail no diretório de pessoas.
+          </p>
+          <button
+            type="button"
+            onClick={() => void sairDoSistema()}
+            className="mt-5 rounded-xl bg-[#17365D] px-5 py-3 font-extrabold text-white"
+          >
+            Voltar ao login
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (

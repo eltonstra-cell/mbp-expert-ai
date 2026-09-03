@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { resolveNeonDatabaseUrl } from "@/lib/neonConnection";
+import { getNeonAuth } from "@/lib/auth/server";
+import {
+  filtrarEstadoPorUsuario,
+  localizarUsuarioAutenticado,
+  mesclarEstadoPorUsuario,
+} from "@/lib/stateAccess";
+import type { AppDB, UsuarioSistema } from "@/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -41,6 +48,26 @@ async function currentState(sql: any) {
   };
 }
 
+async function usuarioDaRequisicao(
+  data: AppDB | null
+): Promise<{ usuario: UsuarioSistema; authId: string } | null> {
+  if (process.env.ACCESS_CONTROL_MODE !== "active") return null;
+  const auth = getNeonAuth();
+  if (!auth || !data) return null;
+
+  const { data: session, error } = await auth.getSession();
+  const user = session?.user as { id?: unknown; email?: unknown } | undefined;
+  if (error || !user) return null;
+
+  const authId = typeof user.id === "string" ? user.id.trim() : "";
+  const email = typeof user.email === "string" ? user.email.trim() : "";
+  if (!authId || !email) return null;
+
+  const usuario = localizarUsuarioAutenticado(data, authId, email);
+  if (!usuario || usuario.status === "Suspenso") return null;
+  return { usuario, authId };
+}
+
 export async function GET(request: Request) {
   const sql = getSql();
 
@@ -73,10 +100,22 @@ export async function GET(request: Request) {
     }
 
     const atual = await currentState(sql);
+    let data = atual.data as AppDB | null;
+
+    if (process.env.ACCESS_CONTROL_MODE === "active") {
+      const acesso = await usuarioDaRequisicao(data);
+      if (!acesso || !data) {
+        return NextResponse.json(
+          { error: "Usuário sem acesso liberado ao sistema." },
+          { status: 403 }
+        );
+      }
+      data = filtrarEstadoPorUsuario(data, acesso.usuario);
+    }
 
     return NextResponse.json({
       configured: true,
-      data: atual.data,
+      data,
       updatedAt: atual.updatedAt,
     });
   } catch (error) {
@@ -121,7 +160,27 @@ export async function PUT(request: Request) {
     }
 
     await ensureTable(sql);
-    const payload = JSON.stringify(data);
+    const atualAntesDaGravacao = await currentState(sql);
+    let dadosParaGravar = data as AppDB;
+
+    if (process.env.ACCESS_CONTROL_MODE === "active") {
+      const estadoAtual = atualAntesDaGravacao.data as AppDB | null;
+      const acesso = await usuarioDaRequisicao(estadoAtual);
+      if (!acesso || !estadoAtual) {
+        return NextResponse.json(
+          { error: "Usuário sem permissão para salvar dados." },
+          { status: 403 }
+        );
+      }
+      dadosParaGravar = mesclarEstadoPorUsuario(
+        estadoAtual,
+        dadosParaGravar,
+        acesso.usuario,
+        acesso.authId
+      );
+    }
+
+    const payload = JSON.stringify(dadosParaGravar);
 
     // Sem versão esperada, só é permitido criar uma base que ainda não existe.
     if (!expectedUpdatedAt) {
