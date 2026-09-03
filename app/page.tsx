@@ -432,7 +432,7 @@ export default function Home() {
 
   function salvarDBLocal(valor: AppDB) {
     const salvo = saveDB(valor, storageIdentityRef.current);
-    if (!salvo) setArmazenamentoLocalIndisponivel(true);
+    setArmazenamentoLocalIndisponivel(!salvo);
     return salvo;
   }
 

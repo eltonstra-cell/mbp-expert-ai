@@ -50,3 +50,40 @@ test("não derruba o aplicativo quando o armazenamento local rejeita a gravaçã
     else globalThis.localStorage = localStorageAnterior;
   }
 });
+
+test("remove a cópia antiga e tenta novamente quando a cota está cheia", () => {
+  const windowAnterior = globalThis.window;
+  const localStorageAnterior = globalThis.localStorage;
+  const dados = new Map([[STORAGE_KEY, "cópia antiga grande"]]);
+  let primeiraTentativa = true;
+
+  globalThis.window = {};
+  globalThis.localStorage = {
+    setItem(chave, valor) {
+      if (primeiraTentativa) {
+        primeiraTentativa = false;
+        throw new Error("QuotaExceededError");
+      }
+      dados.set(chave, valor);
+    },
+    removeItem(chave) {
+      dados.delete(chave);
+    },
+  };
+
+  try {
+    const identidade = "teste@exemplo.com";
+    assert.equal(saveDB({ empresas: {} }, identidade), true);
+    assert.equal(dados.has(STORAGE_KEY), false);
+    assert.equal(
+      dados.has(scopedStorageKey(STORAGE_KEY, identidade)),
+      true
+    );
+  } finally {
+    if (windowAnterior === undefined) delete globalThis.window;
+    else globalThis.window = windowAnterior;
+
+    if (localStorageAnterior === undefined) delete globalThis.localStorage;
+    else globalThis.localStorage = localStorageAnterior;
+  }
+});
