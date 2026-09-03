@@ -1,18 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { NeonAuthUIProvider } from "@neondatabase/auth/react/ui";
 import { authClient } from "@/lib/auth/client";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
   return (
     <NeonAuthUIProvider
       authClient={authClient}
-      navigate={router.push}
-      replace={router.replace}
-      onSessionChange={() => router.refresh()}
+      navigate={(href) => window.location.assign(href)}
+      replace={(href) => window.location.replace(href)}
       redirectTo="/"
       signUp={false}
       defaultTheme="light"
