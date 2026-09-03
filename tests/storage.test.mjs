@@ -2,11 +2,40 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  clearOfflineSession,
+  loadOfflineSession,
   normalizeStorageIdentity,
+  OFFLINE_SESSION_KEY,
   saveDB,
+  saveOfflineSession,
   scopedStorageKey,
   STORAGE_KEY,
 } from "../lib/storage.ts";
+
+test("preserva e remove a última sessão validada para uso offline", () => {
+  const windowAnterior = globalThis.window;
+  const localStorageAnterior = globalThis.localStorage;
+  const dados = new Map();
+  globalThis.window = {};
+  globalThis.localStorage = {
+    getItem(chave) { return dados.get(chave) ?? null; },
+    setItem(chave, valor) { dados.set(chave, valor); },
+    removeItem(chave) { dados.delete(chave); },
+  };
+  try {
+    const sessao = { id: "1", email: "elton@exemplo.com", name: "Élton" };
+    assert.equal(saveOfflineSession(sessao), true);
+    assert.deepEqual(loadOfflineSession(), sessao);
+    clearOfflineSession();
+    assert.equal(dados.has(OFFLINE_SESSION_KEY), false);
+    assert.equal(loadOfflineSession(), null);
+  } finally {
+    if (windowAnterior === undefined) delete globalThis.window;
+    else globalThis.window = windowAnterior;
+    if (localStorageAnterior === undefined) delete globalThis.localStorage;
+    else globalThis.localStorage = localStorageAnterior;
+  }
+});
 
 test("normaliza a identidade usada no armazenamento local", () => {
   assert.equal(

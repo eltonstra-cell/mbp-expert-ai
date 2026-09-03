@@ -1,0 +1,10 @@
+{
+  "name": "MBP Expert AI",
+  "short_name": "MBP Expert",
+  "description": "Sistema Operacional para Consultoria em Segurança dos Alimentos",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4f7fb",
+  "theme_color": "#17365D",
+  "lang": "pt-BR"
+}

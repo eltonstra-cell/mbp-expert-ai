@@ -1,6 +1,13 @@
 import type { AppDB } from "@/types";
 
 export const STORAGE_KEY = "mbp-expert-ai-v2";
+export const OFFLINE_SESSION_KEY = "mbp-expert-ai:offline-session:v1";
+
+export type OfflineSession = {
+  id: string;
+  email: string;
+  name: string;
+};
 
 export function normalizeStorageIdentity(identity?: string | null): string | null {
   const normalized = identity?.trim().toLocaleLowerCase("pt-BR");
@@ -12,6 +19,42 @@ export function scopedStorageKey(baseKey: string, identity?: string | null): str
   return normalized
     ? `${baseKey}:usuario:${encodeURIComponent(normalized)}`
     : baseKey;
+}
+
+export function saveOfflineSession(session: OfflineSession): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    localStorage.setItem(OFFLINE_SESSION_KEY, JSON.stringify(session));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function loadOfflineSession(): OfflineSession | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(OFFLINE_SESSION_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed?.id || !parsed?.email) return null;
+    return {
+      id: String(parsed.id),
+      email: String(parsed.email),
+      name: typeof parsed.name === "string" ? parsed.name : "",
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function clearOfflineSession(): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(OFFLINE_SESSION_KEY);
+  } catch {
+    // Encerrar a sessão online continua possível mesmo sem armazenamento local.
+  }
 }
 
 export const emptyDB: AppDB = {
