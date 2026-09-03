@@ -2,6 +2,18 @@ import type { AppDB } from "@/types";
 
 export const STORAGE_KEY = "mbp-expert-ai-v2";
 
+export function normalizeStorageIdentity(identity?: string | null): string | null {
+  const normalized = identity?.trim().toLocaleLowerCase("pt-BR");
+  return normalized || null;
+}
+
+export function scopedStorageKey(baseKey: string, identity?: string | null): string {
+  const normalized = normalizeStorageIdentity(identity);
+  return normalized
+    ? `${baseKey}:usuario:${encodeURIComponent(normalized)}`
+    : baseKey;
+}
+
 export const emptyDB: AppDB = {
   empresas: {},
   empresaAtualId: null,
@@ -18,11 +30,11 @@ export const emptyDB: AppDB = {
   },
 };
 
-export function loadDB(): AppDB {
+export function loadDB(identity?: string | null): AppDB {
   if (typeof window === "undefined") return emptyDB;
 
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(scopedStorageKey(STORAGE_KEY, identity));
     if (!raw) return emptyDB;
 
     const parsed = JSON.parse(raw);
@@ -49,8 +61,8 @@ export function loadDB(): AppDB {
   }
 }
 
-export function saveDB(db: AppDB) {
+export function saveDB(db: AppDB, identity?: string | null) {
   if (typeof window !== "undefined") {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+    localStorage.setItem(scopedStorageKey(STORAGE_KEY, identity), JSON.stringify(db));
   }
 }

@@ -11,7 +11,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       navigate={(href) => window.location.assign(href)}
       replace={(href) => window.location.replace(href)}
       redirectTo="/"
-      signUp={true}
+      signUp={false}
       defaultTheme="light"
       Link={({ href, className, children: linkChildren }) => (
         <Link href={href} className={className}>{linkChildren}</Link>

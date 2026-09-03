@@ -15,7 +15,7 @@ import type {
   StatusUsuario,
   Visita,
 } from "@/types";
-import { emptyDB, loadDB, saveDB } from "@/lib/storage";
+import { emptyDB, loadDB, saveDB, scopedStorageKey } from "@/lib/storage";
 import { authClient } from "@/lib/auth/client";
 import { registrarMudancaStatus } from "@/lib/visitAudit";
 import {
@@ -410,6 +410,7 @@ export default function Home() {
   const ultimaSincronizacaoAtivacaoRef = useRef(0);
   const syncBloqueadaRef = useRef(false);
   const sessaoVinculadaRef = useRef(false);
+  const storageIdentityRef = useRef<string | null>(null);
   const [recuperacaoPendente, setRecuperacaoPendente] = useState<{
     local: AppDB;
     cloud: AppDB;
@@ -426,6 +427,14 @@ export default function Home() {
   } | null>(null);
   const [sessaoConsultada, setSessaoConsultada] = useState(false);
   const [saindo, setSaindo] = useState(false);
+
+  function salvarDBLocal(valor: AppDB) {
+    saveDB(valor, storageIdentityRef.current);
+  }
+
+  function chaveNavegacaoLocal() {
+    return scopedStorageKey(NAV_STORAGE_KEY, storageIdentityRef.current);
+  }
 
   const [form, setForm] = useState({
     cnpj: "",
@@ -521,7 +530,7 @@ export default function Home() {
       : 0;
 
     setDb(novo);
-    saveDB(novo);
+    salvarDBLocal(novo);
 
     window.setTimeout(() => {
       aplicandoNuvemRef.current = false;
@@ -614,7 +623,35 @@ export default function Home() {
     let cancelado = false;
 
     async function iniciarDados() {
-      const local = loadDB();
+      // Descobre primeiro quem está conectado. Só então abre o armazenamento
+      // local exclusivo dessa conta, evitando misturar dados entre perfis.
+      let identidadeLocal: string | null = null;
+      try {
+        const responseSessao = await fetch("/api/access/session", {
+          method: "GET",
+          cache: "no-store",
+        });
+        if (responseSessao.ok) {
+          const sessao = await responseSessao.json();
+          if (sessao?.authenticated && sessao?.user?.id && sessao?.user?.email) {
+            identidadeLocal = sessao.user.email;
+            if (!cancelado) {
+              setSessaoAtual({
+                id: sessao.user.id,
+                email: sessao.user.email,
+                name: sessao.user.name || "",
+              });
+            }
+          }
+        }
+      } catch {
+        // O modo de preparação continua podendo funcionar sem autenticação.
+      } finally {
+        storageIdentityRef.current = identidadeLocal;
+        if (!cancelado) setSessaoConsultada(true);
+      }
+
+      const local = loadDB(identidadeLocal);
       let s = local;
 
       setSyncStatus("conectando");
@@ -649,11 +686,11 @@ export default function Home() {
                 cloudUpdatedAt: cloud.updatedAt || null,
               });
               setSyncStatus("recuperacao");
-              saveDB(merged);
+              salvarDBLocal(merged);
             } else {
               // Nuvem já existente e sem perda local: passa a ser a fonte compartilhada.
               s = cloudDb;
-              saveDB(s);
+              salvarDBLocal(s);
               sincronizacaoOk();
               setSyncStatus("sincronizado");
             }
@@ -809,7 +846,7 @@ export default function Home() {
     // Restaura a tela e a visita em que o consultor estava antes de atualizar
     // a página. A navegação é local ao dispositivo; os dados continuam na nuvem.
     try {
-      const rawNav = window.localStorage.getItem(NAV_STORAGE_KEY);
+      const rawNav = window.localStorage.getItem(chaveNavegacaoLocal());
       if (rawNav) {
         const nav = JSON.parse(rawNav) as {
           view?: View;
@@ -865,7 +902,7 @@ export default function Home() {
 
     try {
       window.localStorage.setItem(
-        NAV_STORAGE_KEY,
+        chaveNavegacaoLocal(),
         JSON.stringify({ view, visitaAtualId, ambienteChecklistAtivo })
       );
     } catch {
@@ -874,32 +911,16 @@ export default function Home() {
   }, [view, visitaAtualId, ambienteChecklistAtivo, ready]);
 
   useEffect(() => {
-    if (!ready || sessaoVinculadaRef.current) return;
+    if (!ready || !sessaoAtual || sessaoVinculadaRef.current) return;
     sessaoVinculadaRef.current = true;
 
-    async function vincularSessao() {
-      try {
-        const response = await fetch("/api/access/session", {
-          method: "GET",
-          cache: "no-store",
-        });
-        if (!response.ok) return;
-        const sessao = await response.json();
-        if (!sessao?.authenticated || !sessao?.user?.id || !sessao?.user?.email) return;
-
-        setSessaoAtual({
-          id: sessao.user.id,
-          email: sessao.user.email,
-          name: sessao.user.name || "",
-        });
-
-        setDb((atual) => {
+    setDb((atual) => {
           const agora = new Date().toISOString();
           const resultado = vincularSessaoUsuario(
             {
-              authId: sessao.user.id,
-              email: sessao.user.email,
-              nome: sessao.user.name,
+              authId: sessaoAtual.id,
+              email: sessaoAtual.email,
+              nome: sessaoAtual.name,
             },
             atual.usuarios,
             agora
@@ -926,15 +947,7 @@ export default function Home() {
             registrosAuditoria: [...atual.registrosAuditoria, registro],
           };
         });
-      } catch {
-        // Em modo de preparação, uma indisponibilidade do Auth não bloqueia o sistema.
-      } finally {
-        setSessaoConsultada(true);
-      }
-    }
-
-    void vincularSessao();
-  }, [ready]);
+  }, [ready, sessaoAtual]);
 
   async function sairDoSistema() {
     if (saindo) return;
@@ -979,7 +992,7 @@ export default function Home() {
   useEffect(() => {
     if (!ready) return;
 
-    saveDB(db);
+    salvarDBLocal(db);
 
     if (
       aplicandoNuvemRef.current ||
@@ -1159,7 +1172,7 @@ export default function Home() {
       }
 
       const result = await response.json();
-      saveDB(recuperacaoPendente.merged);
+      salvarDBLocal(recuperacaoPendente.merged);
       setDb(recuperacaoPendente.merged);
       registrarConfirmacaoNuvem(result.updatedAt || null);
       syncBloqueadaRef.current = false;
@@ -1876,7 +1889,7 @@ export default function Home() {
     // andamento, pausamos o autosave e a consulta periódica para que eles não
     // disputem a mesma versão da nuvem.
     salvamentoImediatoRef.current = true;
-    saveDB(novo);
+    salvarDBLocal(novo);
     setDb(novo);
     setSyncStatus("conectando");
 
@@ -2548,7 +2561,7 @@ export default function Home() {
           evidencia.id === evidenciaId ? atualizar(evidencia) : evidencia
         ),
       };
-      saveDB(novo);
+      salvarDBLocal(novo);
       return novo;
     });
   }
@@ -2742,7 +2755,7 @@ export default function Home() {
         };
 
         // Grava imediatamente no armazenamento local antes da sincronização.
-        saveDB(atualizado);
+        salvarDBLocal(atualizado);
         return atualizado;
       });
 
@@ -3095,7 +3108,7 @@ export default function Home() {
           : [usuario, ...db.usuarios],
         registrosAuditoria: [...db.registrosAuditoria, registro],
       };
-      saveDB(novo);
+      salvarDBLocal(novo);
       setDb(novo);
       return true;
     } catch (error) {
@@ -3130,7 +3143,7 @@ export default function Home() {
         usuarios: db.usuarios.map((item) => item.id === usuario.id ? usuario : item),
         registrosAuditoria: [...db.registrosAuditoria, registro],
       };
-      saveDB(novo);
+      salvarDBLocal(novo);
       setDb(novo);
       return true;
     } catch (error) {
