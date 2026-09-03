@@ -427,9 +427,13 @@ export default function Home() {
   } | null>(null);
   const [sessaoConsultada, setSessaoConsultada] = useState(false);
   const [saindo, setSaindo] = useState(false);
+  const [armazenamentoLocalIndisponivel, setArmazenamentoLocalIndisponivel] =
+    useState(false);
 
   function salvarDBLocal(valor: AppDB) {
-    saveDB(valor, storageIdentityRef.current);
+    const salvo = saveDB(valor, storageIdentityRef.current);
+    if (!salvo) setArmazenamentoLocalIndisponivel(true);
+    return salvo;
   }
 
   function chaveNavegacaoLocal() {
@@ -3341,6 +3345,19 @@ export default function Home() {
             >
               Baixar backup local
             </button>
+          </div>
+        </div>
+      )}
+
+      {armazenamentoLocalIndisponivel && (
+        <div className="border-b border-amber-300 bg-amber-50">
+          <div className="mx-auto max-w-7xl px-4 py-3 text-amber-950">
+            <div className="font-extrabold">
+              O armazenamento local deste aparelho está cheio ou indisponível.
+            </div>
+            <p className="mt-1 text-sm">
+              O sistema continua conectado à nuvem, mas o uso offline só ficará disponível depois de limpar os dados antigos deste site no navegador.
+            </p>
           </div>
         </div>
       )}

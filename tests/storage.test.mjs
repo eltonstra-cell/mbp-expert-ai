@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   normalizeStorageIdentity,
+  saveDB,
   scopedStorageKey,
   STORAGE_KEY,
 } from "../lib/storage.ts";
@@ -26,4 +27,26 @@ test("separa o armazenamento de cada conta", () => {
 test("mantém a chave antiga quando ainda não existe sessão", () => {
   assert.equal(scopedStorageKey(STORAGE_KEY, null), STORAGE_KEY);
   assert.equal(scopedStorageKey(STORAGE_KEY, "  "), STORAGE_KEY);
+});
+
+test("não derruba o aplicativo quando o armazenamento local rejeita a gravação", () => {
+  const windowAnterior = globalThis.window;
+  const localStorageAnterior = globalThis.localStorage;
+
+  globalThis.window = {};
+  globalThis.localStorage = {
+    setItem() {
+      throw new Error("QuotaExceededError");
+    },
+  };
+
+  try {
+    assert.equal(saveDB({ empresas: {} }, "teste@exemplo.com"), false);
+  } finally {
+    if (windowAnterior === undefined) delete globalThis.window;
+    else globalThis.window = windowAnterior;
+
+    if (localStorageAnterior === undefined) delete globalThis.localStorage;
+    else globalThis.localStorage = localStorageAnterior;
+  }
 });

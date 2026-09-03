@@ -61,8 +61,17 @@ export function loadDB(identity?: string | null): AppDB {
   }
 }
 
-export function saveDB(db: AppDB, identity?: string | null) {
-  if (typeof window !== "undefined") {
+export function saveDB(db: AppDB, identity?: string | null): boolean {
+  if (typeof window === "undefined") return false;
+
+  try {
     localStorage.setItem(scopedStorageKey(STORAGE_KEY, identity), JSON.stringify(db));
+    return true;
+  } catch {
+    // O Safari pode rejeitar a gravação quando o armazenamento do site está
+    // cheio ou indisponível. Isso nunca deve derrubar o aplicativo: a nuvem
+    // continua sendo a fonte principal e a interface informa que o modo
+    // offline precisa ser regularizado neste aparelho.
+    return false;
   }
 }
