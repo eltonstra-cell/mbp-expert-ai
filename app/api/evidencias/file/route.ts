@@ -1,5 +1,9 @@
 import { get } from "@vercel/blob";
 import { type NextRequest, NextResponse } from "next/server";
+import {
+  autorizaAcaoServidor,
+  obterAcessoServidor,
+} from "@/lib/serverAccess";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,6 +19,21 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    const acesso = await obterAcessoServidor();
+    const evidencia = acesso.autorizado && acesso.data
+      ? acesso.data.evidencias.find((item) => item.blobPathname === pathname)
+      : undefined;
+    if (
+      acesso.aplicado &&
+      (!evidencia ||
+        !autorizaAcaoServidor(acesso, "empresas.ver", evidencia.empresaId))
+    ) {
+      return NextResponse.json(
+        { error: "Você não possui acesso a esta evidência." },
+        { status: 403 }
+      );
+    }
+
     const result = await get(pathname, {
       access: "private",
       ifNoneMatch:

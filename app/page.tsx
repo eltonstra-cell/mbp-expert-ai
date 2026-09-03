@@ -2,17 +2,21 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import MetricCard from "@/components/MetricCard";
+import AccessPreparationPanel from "@/components/AccessPreparationPanel";
 import type {
   AppDB,
+  AcaoPermissao,
   AnaliseFotoIA,
   ChecklistCriticidade,
   ChecklistItem,
   ChecklistStatus,
   Empresa,
   Evidencia,
+  StatusUsuario,
   Visita,
 } from "@/types";
-import { emptyDB, loadDB, saveDB } from "@/lib/storage";
+import { emptyDB, loadDB, saveDB, scopedStorageKey } from "@/lib/storage";
+import { authClient } from "@/lib/auth/client";
 import { registrarMudancaStatus } from "@/lib/visitAudit";
 import {
   confirmarSugestaoFotoIA,
@@ -35,8 +39,21 @@ import {
   createLocalBackup,
   localBackupFilename,
 } from "@/lib/localBackup";
+import {
+  criarRegistroAuditoria,
+  podeAcessarEmpresa,
+  podeExecutar,
+  possuiPermissao,
+} from "@/lib/permissions";
+import {
+  alterarStatusUsuario,
+  atualizarUsuarioPreparacao,
+  criarUsuarioPreparacao,
+  vincularSessaoUsuario,
+  type DadosUsuarioPreparacao,
+} from "@/lib/userManagement";
 
-type View = "inicio" | "empresas" | "visitas" | "visita" | "ambientes" | "checklist" | "ncs" | "plano" | "acompanhamento" | "historico" | "evidencias" | "relatorio";
+type View = "inicio" | "empresas" | "visitas" | "visita" | "ambientes" | "checklist" | "ncs" | "plano" | "acompanhamento" | "historico" | "evidencias" | "relatorio" | "acessos";
 
 const NAV_STORAGE_KEY = "mbp-expert-ai:navegacao:v1";
 const VISIT_VIEWS: View[] = ["visita", "ambientes", "checklist", "ncs", "plano", "acompanhamento", "historico", "evidencias", "relatorio"];
@@ -392,6 +409,8 @@ export default function Home() {
   const salvamentoImediatoRef = useRef(false);
   const ultimaSincronizacaoAtivacaoRef = useRef(0);
   const syncBloqueadaRef = useRef(false);
+  const sessaoVinculadaRef = useRef(false);
+  const storageIdentityRef = useRef<string | null>(null);
   const [recuperacaoPendente, setRecuperacaoPendente] = useState<{
     local: AppDB;
     cloud: AppDB;
@@ -401,6 +420,21 @@ export default function Home() {
   } | null>(null);
   const [recuperandoDados, setRecuperandoDados] = useState(false);
   const [protecaoLocalAtiva, setProtecaoLocalAtiva] = useState(false);
+  const [sessaoAtual, setSessaoAtual] = useState<{
+    id: string;
+    email: string;
+    name: string;
+  } | null>(null);
+  const [sessaoConsultada, setSessaoConsultada] = useState(false);
+  const [saindo, setSaindo] = useState(false);
+
+  function salvarDBLocal(valor: AppDB) {
+    saveDB(valor, storageIdentityRef.current);
+  }
+
+  function chaveNavegacaoLocal() {
+    return scopedStorageKey(NAV_STORAGE_KEY, storageIdentityRef.current);
+  }
 
   const [form, setForm] = useState({
     cnpj: "",
@@ -496,7 +530,7 @@ export default function Home() {
       : 0;
 
     setDb(novo);
-    saveDB(novo);
+    salvarDBLocal(novo);
 
     window.setTimeout(() => {
       aplicandoNuvemRef.current = false;
@@ -589,7 +623,35 @@ export default function Home() {
     let cancelado = false;
 
     async function iniciarDados() {
-      const local = loadDB();
+      // Descobre primeiro quem está conectado. Só então abre o armazenamento
+      // local exclusivo dessa conta, evitando misturar dados entre perfis.
+      let identidadeLocal: string | null = null;
+      try {
+        const responseSessao = await fetch("/api/access/session", {
+          method: "GET",
+          cache: "no-store",
+        });
+        if (responseSessao.ok) {
+          const sessao = await responseSessao.json();
+          if (sessao?.authenticated && sessao?.user?.id && sessao?.user?.email) {
+            identidadeLocal = sessao.user.email;
+            if (!cancelado) {
+              setSessaoAtual({
+                id: sessao.user.id,
+                email: sessao.user.email,
+                name: sessao.user.name || "",
+              });
+            }
+          }
+        }
+      } catch {
+        // O modo de preparação continua podendo funcionar sem autenticação.
+      } finally {
+        storageIdentityRef.current = identidadeLocal;
+        if (!cancelado) setSessaoConsultada(true);
+      }
+
+      const local = loadDB(identidadeLocal);
       let s = local;
 
       setSyncStatus("conectando");
@@ -624,11 +686,11 @@ export default function Home() {
                 cloudUpdatedAt: cloud.updatedAt || null,
               });
               setSyncStatus("recuperacao");
-              saveDB(merged);
+              salvarDBLocal(merged);
             } else {
               // Nuvem já existente e sem perda local: passa a ser a fonte compartilhada.
               s = cloudDb;
-              saveDB(s);
+              salvarDBLocal(s);
               sincronizacaoOk();
               setSyncStatus("sincronizado");
             }
@@ -769,6 +831,14 @@ export default function Home() {
       visitas: vs,
       ncs: ncsSincronizadas,
       evidencias: Array.isArray((s as any).evidencias) ? (s as any).evidencias : [],
+      usuarios: Array.isArray((s as any).usuarios) ? (s as any).usuarios : [],
+      registrosAuditoria: Array.isArray((s as any).registrosAuditoria)
+        ? (s as any).registrosAuditoria
+        : [],
+      configuracaoAcesso:
+        (s as any).configuracaoAcesso && typeof (s as any).configuracaoAcesso === "object"
+          ? (s as any).configuracaoAcesso
+          : emptyDB.configuracaoAcesso,
     };
 
     setDb(dbNormalizado);
@@ -776,7 +846,7 @@ export default function Home() {
     // Restaura a tela e a visita em que o consultor estava antes de atualizar
     // a página. A navegação é local ao dispositivo; os dados continuam na nuvem.
     try {
-      const rawNav = window.localStorage.getItem(NAV_STORAGE_KEY);
+      const rawNav = window.localStorage.getItem(chaveNavegacaoLocal());
       if (rawNav) {
         const nav = JSON.parse(rawNav) as {
           view?: View;
@@ -802,7 +872,7 @@ export default function Home() {
             setVisitaAtualId(null);
             setView("visitas");
           }
-        } else if (viewSalva && ["inicio", "empresas", "visitas"].includes(viewSalva)) {
+        } else if (viewSalva && ["inicio", "empresas", "visitas", "acessos"].includes(viewSalva)) {
           setView(viewSalva);
           // Mantém a visita selecionada ao atualizar a página quando o usuário
           // estiver na lista de visitas. Em Início/Empresas a seleção não é exibida.
@@ -832,7 +902,7 @@ export default function Home() {
 
     try {
       window.localStorage.setItem(
-        NAV_STORAGE_KEY,
+        chaveNavegacaoLocal(),
         JSON.stringify({ view, visitaAtualId, ambienteChecklistAtivo })
       );
     } catch {
@@ -841,9 +911,88 @@ export default function Home() {
   }, [view, visitaAtualId, ambienteChecklistAtivo, ready]);
 
   useEffect(() => {
+    if (!ready || !sessaoAtual || sessaoVinculadaRef.current) return;
+    sessaoVinculadaRef.current = true;
+
+    setDb((atual) => {
+          const agora = new Date().toISOString();
+          const resultado = vincularSessaoUsuario(
+            {
+              authId: sessaoAtual.id,
+              email: sessaoAtual.email,
+              nome: sessaoAtual.name,
+            },
+            atual.usuarios,
+            agora
+          );
+          if (resultado.status !== "Vinculado" || !resultado.alterado) return atual;
+
+          const registro = criarRegistroAuditoria(
+            {
+              usuarioId: resultado.usuario.id,
+              usuarioNome: resultado.usuario.nome,
+              acao: "usuario.sessao_vinculada",
+              entidade: "Usuário",
+              entidadeId: resultado.usuario.id,
+              detalhes: `${resultado.usuario.nome} • ${resultado.usuario.perfil} • conta autenticada vinculada e ativada.`,
+            },
+            agora
+          );
+
+          return {
+            ...atual,
+            usuarios: atual.usuarios.map((usuario) =>
+              usuario.id === resultado.usuario.id ? resultado.usuario : usuario
+            ),
+            registrosAuditoria: [...atual.registrosAuditoria, registro],
+          };
+        });
+  }, [ready, sessaoAtual]);
+
+  async function sairDoSistema() {
+    if (saindo) return;
+    setSaindo(true);
+    try {
+      await authClient.signOut();
+      window.location.replace("/auth/sign-in");
+    } catch {
+      setSaindo(false);
+      window.alert("Não foi possível encerrar a sessão. Tente novamente.");
+    }
+  }
+
+  const usuarioDaSessao = useMemo(() => {
+    if (!sessaoAtual?.email) return null;
+    const email = sessaoAtual.email.trim().toLocaleLowerCase("pt-BR");
+    return db.usuarios.find(
+      (usuario) => usuario.email.trim().toLocaleLowerCase("pt-BR") === email
+    ) || null;
+  }, [db.usuarios, sessaoAtual]);
+
+  function permitido(acao: AcaoPermissao, empresaId?: string): boolean {
+    return podeExecutar(usuarioDaSessao, acao, empresaId);
+  }
+
+  function exigirPermissao(acao: AcaoPermissao, empresaId?: string): boolean {
+    if (permitido(acao, empresaId)) return true;
+    window.alert("Seu perfil não possui permissão para executar esta ação.");
+    return false;
+  }
+
+  useEffect(() => {
+    if (
+      usuarioDaSessao &&
+      view === "acessos" &&
+      !possuiPermissao(usuarioDaSessao, "usuarios.gerenciar")
+    ) {
+      setView("inicio");
+    }
+  }, [usuarioDaSessao, view]);
+
+  useEffect(() => {
     if (!ready) return;
 
-    saveDB(db);
+    salvarDBLocal(db);
 
     if (
       aplicandoNuvemRef.current ||
@@ -1023,7 +1172,7 @@ export default function Home() {
       }
 
       const result = await response.json();
-      saveDB(recuperacaoPendente.merged);
+      salvarDBLocal(recuperacaoPendente.merged);
       setDb(recuperacaoPendente.merged);
       registrarConfirmacaoNuvem(result.updatedAt || null);
       syncBloqueadaRef.current = false;
@@ -1051,15 +1200,43 @@ export default function Home() {
     }
   }, [db.empresaAtualId, db.visitas, visitaAtualId, view]);
 
-  const atual = db.empresaAtualId ? db.empresas[db.empresaAtualId] : undefined;
-  const visitaAtual = visitaAtualId ? db.visitas.find((v) => v.id === visitaAtualId) : undefined;
+  const empresasVisiveis = useMemo(
+    () =>
+      Object.values(db.empresas).filter((empresa) =>
+        podeAcessarEmpresa(usuarioDaSessao, empresa.id)
+      ),
+    [db.empresas, usuarioDaSessao]
+  );
+  const empresaAtualCadastrada = db.empresaAtualId
+    ? db.empresas[db.empresaAtualId]
+    : undefined;
+  const atual =
+    empresaAtualCadastrada &&
+    podeAcessarEmpresa(usuarioDaSessao, empresaAtualCadastrada.id)
+      ? empresaAtualCadastrada
+      : undefined;
+  const visitaAtualCadastrada = visitaAtualId
+    ? db.visitas.find((v) => v.id === visitaAtualId)
+    : undefined;
+  const visitaAtual =
+    visitaAtualCadastrada &&
+    podeAcessarEmpresa(usuarioDaSessao, visitaAtualCadastrada.empresaId)
+      ? visitaAtualCadastrada
+      : undefined;
   const empresaVisita = visitaAtual ? db.empresas[visitaAtual.empresaId] : undefined;
   const visitas = useMemo(
     () =>
-      [...db.visitas].sort((a, b) =>
-        (b.criadoEm || b.data || "").localeCompare(a.criadoEm || a.data || "")
-      ),
-    [db.visitas]
+      db.visitas
+        .filter(
+          (visita) =>
+            podeAcessarEmpresa(usuarioDaSessao, visita.empresaId) &&
+            (podeExecutar(usuarioDaSessao, "visitas.executar", visita.empresaId) ||
+              visita.status === "Concluída")
+        )
+        .sort((a, b) =>
+          (b.criadoEm || b.data || "").localeCompare(a.criadoEm || a.data || "")
+        ),
+    [db.visitas, usuarioDaSessao]
   );
 
   const visitasEmpresaAtual = useMemo(
@@ -1251,6 +1428,7 @@ export default function Home() {
 
   async function baixarPdfRelatorio() {
     if (!visitaAtual || !empresaVisita || gerandoPdf) return;
+    if (!exigirPermissao("relatorios.exportar", visitaAtual.empresaId)) return;
 
     const elemento = document.getElementById("relatorio-visita");
     if (!elemento) return;
@@ -1629,6 +1807,7 @@ export default function Home() {
 
   function atualizarConclusaoRelatorio(valor: string) {
     if (!visitaAtual) return;
+    if (!exigirPermissao("relatorios.aprovar", visitaAtual.empresaId)) return;
 
     setDb((atual) => ({
       ...atual,
@@ -1642,6 +1821,7 @@ export default function Home() {
 
   function atualizarResponsavelRelatorio(nome: string, identificacao?: string) {
     if (!visitaAtual) return;
+    if (!exigirPermissao("relatorios.aprovar", visitaAtual.empresaId)) return;
 
     setDb((atual) => ({
       ...atual,
@@ -1709,7 +1889,7 @@ export default function Home() {
     // andamento, pausamos o autosave e a consulta periódica para que eles não
     // disputem a mesma versão da nuvem.
     salvamentoImediatoRef.current = true;
-    saveDB(novo);
+    salvarDBLocal(novo);
     setDb(novo);
     setSyncStatus("conectando");
 
@@ -1805,6 +1985,7 @@ export default function Home() {
 
   async function finalizarInspecao() {
     if (!visitaAtual) return;
+    if (!exigirPermissao("visitas.concluir", visitaAtual.empresaId)) return;
 
     // Uma inspeção só pode ser marcada como concluída quando todos os itens
     // do checklist dos ambientes selecionados tiverem sido avaliados.
@@ -1856,6 +2037,7 @@ export default function Home() {
 
   async function reabrirInspecao() {
     if (!visitaAtual) return;
+    if (!exigirPermissao("visitas.concluir", visitaAtual.empresaId)) return;
 
     const confirmado = window.confirm(
       "Reabrir esta inspeção?\n\n" +
@@ -1884,6 +2066,7 @@ export default function Home() {
   }
 
   async function buscar() {
+    if (!exigirPermissao("empresas.editar")) return;
     const c = form.cnpj.replace(/\D/g, "");
     if (c.length !== 14) {
       setMsg("Informe um CNPJ com 14 dígitos.");
@@ -1922,6 +2105,7 @@ export default function Home() {
   }
 
   function salvarEmpresa() {
+    if (!exigirPermissao("empresas.editar")) return;
     const id = editingEmpresaId || form.cnpj.replace(/\D/g, "") || crypto.randomUUID();
     const anterior = editingEmpresaId ? db.empresas[editingEmpresaId] : undefined;
     const emp: Empresa = {
@@ -1942,6 +2126,7 @@ export default function Home() {
   }
 
   function editarEmpresa(empresa: Empresa) {
+    if (!exigirPermissao("empresas.editar", empresa.id)) return;
     setForm({
       cnpj: empresa.cnpj || "",
       nomeFantasia: empresa.nomeFantasia || "",
@@ -1968,6 +2153,7 @@ export default function Home() {
   }
 
   function novaVisita() {
+    if (!exigirPermissao("visitas.criar", atual?.id)) return;
     if (!atual) {
       setView("empresas");
       return;
@@ -1979,6 +2165,7 @@ export default function Home() {
 
   function salvarVisita() {
     if (!atual || criandoVisita) return;
+    if (!exigirPermissao("visitas.criar", atual.id)) return;
     if (!vf.responsavel.trim()) {
       window.alert("Informe o responsável pela visita antes de criar a inspeção.");
       return;
@@ -2009,6 +2196,7 @@ export default function Home() {
   function continuar(id: string) {
     const v = db.visitas.find((x) => x.id === id);
     if (!v) return;
+    if (!exigirPermissao("visitas.executar", v.empresaId)) return;
     setDb((o) => ({ ...o, empresaAtualId: v.empresaId }));
     setVisitaAtualId(id);
     setView("visita");
@@ -2016,6 +2204,7 @@ export default function Home() {
 
   function abrirAmbientes() {
     if (!visitaAtual) return;
+    if (!exigirPermissao("visitas.executar", visitaAtual.empresaId)) return;
     setAmbientesSelecionados(visitaAtual.ambientes || []);
     setAmbientePersonalizado("");
     setView("ambientes");
@@ -2038,6 +2227,7 @@ export default function Home() {
 
   function salvarAmbientes() {
     if (!visitaAtual || ambientesSelecionados.length === 0) return;
+    if (!exigirPermissao("visitas.executar", visitaAtual.empresaId)) return;
 
     setDb((o) => ({
       ...o,
@@ -2061,6 +2251,7 @@ export default function Home() {
 
   function abrirChecklist() {
     if (!visitaAtual || !(visitaAtual.ambientes || []).length) return;
+    if (!exigirPermissao("visitas.executar", visitaAtual.empresaId)) return;
 
     const checklistExistente = visitaAtual.checklist || [];
     const possuiRespostas = checklistExistente.some(
@@ -2118,6 +2309,7 @@ export default function Home() {
     patch: Partial<Pick<ChecklistItem, "status" | "observacao">>
   ) {
     if (!visitaAtual) return;
+    if (!exigirPermissao("visitas.executar", visitaAtual.empresaId)) return;
 
     setDb((o) => {
       let itemAtualizado: ChecklistItem | undefined;
@@ -2369,7 +2561,7 @@ export default function Home() {
           evidencia.id === evidenciaId ? atualizar(evidencia) : evidencia
         ),
       };
-      saveDB(novo);
+      salvarDBLocal(novo);
       return novo;
     });
   }
@@ -2389,6 +2581,7 @@ export default function Home() {
 
   async function analisarFotoComIA(ev: Evidencia) {
     if (ev.tipo !== "Foto" || analiseIAEmAndamentoId) return;
+    if (!exigirPermissao("ia.analisar", ev.empresaId)) return;
     if (!ev.blobPathname) {
       setAnaliseIAMensagens((atual) => ({
         ...atual,
@@ -2458,6 +2651,7 @@ export default function Home() {
   }
 
   function confirmarAnaliseFoto(ev: Evidencia, analise: AnaliseFotoIA) {
+    if (!exigirPermissao("ia.analisar", ev.empresaId)) return;
     try {
       const texto = analiseIATextos[analise.id] ?? analise.textoRevisado;
       const confirmada = confirmarSugestaoFotoIA(
@@ -2479,6 +2673,7 @@ export default function Home() {
   }
 
   function descartarAnaliseFoto(ev: Evidencia, analise: AnaliseFotoIA) {
+    if (!exigirPermissao("ia.analisar", ev.empresaId)) return;
     if (!window.confirm("Descartar esta sugestão da IA? Ela permanecerá registrada no histórico como descartada.")) {
       return;
     }
@@ -2498,6 +2693,7 @@ export default function Home() {
     tipo: "Foto" | "Áudio"
   ) {
     if (!file || !visitaAtual) return;
+    if (!exigirPermissao("evidencias.adicionar", visitaAtual.empresaId)) return;
 
     if (tipo === "Áudio" && file.size > 3 * 1024 * 1024) {
       setEvidenciaMsg(
@@ -2559,7 +2755,7 @@ export default function Home() {
         };
 
         // Grava imediatamente no armazenamento local antes da sincronização.
-        saveDB(atualizado);
+        salvarDBLocal(atualizado);
         return atualizado;
       });
 
@@ -2582,6 +2778,7 @@ export default function Home() {
   function excluirEvidencia(id: string) {
     const evidencia = (db.evidencias || []).find((ev) => ev.id === id);
     if (!evidencia) return;
+    if (!exigirPermissao("evidencias.adicionar", evidencia.empresaId)) return;
 
     const ncRelacionada = evidencia.ncId
       ? (db.ncs || []).find((nc) => nc.id === evidencia.ncId)
@@ -2618,6 +2815,11 @@ export default function Home() {
       status?: "Aberta" | "Em tratamento" | "Resolvida";
     }
   ) {
+    const ncAtualPermissao = (db.ncs || []).find((nc) => nc.id === ncId);
+    if (
+      !ncAtualPermissao ||
+      !exigirPermissao("ncs.acompanhar", ncAtualPermissao.empresaId)
+    ) return;
     if (patch.status === "Em tratamento") {
       const ncAtual = (db.ncs || []).find((nc) => nc.id === ncId);
       if (ncAtual) {
@@ -2644,6 +2846,8 @@ export default function Home() {
   }
 
   function registrarAcompanhamento(ncId: string) {
+    const ncPermissao = (db.ncs || []).find((nc) => nc.id === ncId);
+    if (!ncPermissao || !exigirPermissao("ncs.acompanhar", ncPermissao.empresaId)) return;
     const texto = (textoAcompanhamento[ncId] || "").trim();
 
     if (!texto) {
@@ -2756,6 +2960,11 @@ export default function Home() {
   }
 
   async function concluir(id: string) {
+    const visitaPermissao = db.visitas.find((item) => item.id === id);
+    if (
+      !visitaPermissao ||
+      !exigirPermissao("visitas.concluir", visitaPermissao.empresaId)
+    ) return;
     const pendentesIA = (db.evidencias || [])
       .filter((ev) => ev.visitaId === id)
       .reduce(
@@ -2799,6 +3008,11 @@ export default function Home() {
   }
 
   async function reabrir(id: string) {
+    const visitaPermissao = db.visitas.find((item) => item.id === id);
+    if (
+      !visitaPermissao ||
+      !exigirPermissao("visitas.concluir", visitaPermissao.empresaId)
+    ) return;
     const agora = new Date().toISOString();
     const novo: AppDB = {
       ...db,
@@ -2824,6 +3038,7 @@ export default function Home() {
   function excluir(id: string) {
     const visita = db.visitas.find((v) => v.id === id);
     if (!visita) return;
+    if (!exigirPermissao("visitas.concluir", visita.empresaId)) return;
 
     const respostas = (visita.checklist || []).filter(
       (item) => item.status !== "Pendente"
@@ -2860,6 +3075,154 @@ export default function Home() {
     }
   }
 
+  function salvarUsuarioPreparacao(
+    dados: DadosUsuarioPreparacao,
+    usuarioId?: string
+  ): boolean {
+    if (!exigirPermissao("usuarios.gerenciar")) return false;
+    try {
+      const agora = new Date().toISOString();
+      const existente = usuarioId
+        ? db.usuarios.find((usuario) => usuario.id === usuarioId)
+        : undefined;
+      if (usuarioId && !existente) throw new Error("Usuário preparado não encontrado.");
+
+      const usuario = existente
+        ? atualizarUsuarioPreparacao(existente, dados, db.usuarios, agora)
+        : criarUsuarioPreparacao(dados, db.usuarios, agora);
+      const registro = criarRegistroAuditoria(
+        {
+          usuarioId: "preparacao-sistema",
+          usuarioNome: "Preparação do sistema",
+          acao: existente ? "usuario.preparacao_atualizada" : "usuario.preparado",
+          entidade: "Usuário",
+          entidadeId: usuario.id,
+          detalhes: `${usuario.nome} • ${usuario.perfil} • convite ainda não enviado.`,
+        },
+        agora
+      );
+      const novo: AppDB = {
+        ...db,
+        usuarios: existente
+          ? db.usuarios.map((item) => item.id === usuario.id ? usuario : item)
+          : [usuario, ...db.usuarios],
+        registrosAuditoria: [...db.registrosAuditoria, registro],
+      };
+      salvarDBLocal(novo);
+      setDb(novo);
+      return true;
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Não foi possível preparar o usuário.");
+      return false;
+    }
+  }
+
+  function mudarStatusUsuarioPreparacao(
+    usuarioId: string,
+    status: StatusUsuario
+  ): boolean {
+    if (!exigirPermissao("usuarios.gerenciar")) return false;
+    try {
+      const usuarioAtual = db.usuarios.find((usuario) => usuario.id === usuarioId);
+      if (!usuarioAtual) throw new Error("Usuário preparado não encontrado.");
+      const agora = new Date().toISOString();
+      const usuario = alterarStatusUsuario(usuarioAtual, status, db.usuarios, agora);
+      const registro = criarRegistroAuditoria(
+        {
+          usuarioId: "preparacao-sistema",
+          usuarioNome: "Preparação do sistema",
+          acao: status === "Suspenso" ? "usuario.preparacao_suspensa" : "usuario.preparacao_restaurada",
+          entidade: "Usuário",
+          entidadeId: usuario.id,
+          detalhes: `${usuario.nome} • status alterado para ${status} sem envio de convite.`,
+        },
+        agora
+      );
+      const novo: AppDB = {
+        ...db,
+        usuarios: db.usuarios.map((item) => item.id === usuario.id ? usuario : item),
+        registrosAuditoria: [...db.registrosAuditoria, registro],
+      };
+      salvarDBLocal(novo);
+      setDb(novo);
+      return true;
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Não foi possível alterar este usuário.");
+      return false;
+    }
+  }
+
+  async function enviarAcessoUsuario(usuarioId: string): Promise<boolean> {
+    if (!exigirPermissao("usuarios.gerenciar")) return false;
+    const usuario = db.usuarios.find((item) => item.id === usuarioId);
+    if (!usuario) {
+      window.alert("Usuário preparado não encontrado.");
+      return false;
+    }
+
+    try {
+      const response = await fetch("/api/access/invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ usuarioId }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result?.error || "Não foi possível enviar o acesso.");
+      }
+
+      const agora = new Date().toISOString();
+      const registro = criarRegistroAuditoria(
+        {
+          usuarioId: usuarioDaSessao?.id || "preparacao-sistema",
+          usuarioNome: usuarioDaSessao?.nome || "Administrador",
+          acao: "usuario.acesso_enviado",
+          entidade: "Usuário",
+          entidadeId: usuario.id,
+          detalhes: `${usuario.nome} • e-mail enviado para definição da senha.`,
+        },
+        agora
+      );
+      setDb((atual) => ({
+        ...atual,
+        registrosAuditoria: [...atual.registrosAuditoria, registro],
+      }));
+      window.alert(result.message || "Acesso enviado com sucesso.");
+      return true;
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Não foi possível enviar o acesso.");
+      return false;
+    }
+  }
+
+  if (
+    ready &&
+    sessaoConsultada &&
+    sessaoAtual &&
+    (!usuarioDaSessao || usuarioDaSessao.status !== "Ativo")
+  ) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#f4f7fb] p-4">
+        <div className="w-full max-w-lg rounded-2xl bg-white p-6 text-center shadow-sm">
+          <div className="text-xs font-extrabold uppercase text-[#2F5597]">
+            Acesso não liberado
+          </div>
+          <h1 className="mt-2 text-2xl font-extrabold">Esta conta não pode entrar no sistema</h1>
+          <p className="mt-3 text-sm text-slate-600">
+            Peça ao Administrador para preparar ou reativar este e-mail no diretório de pessoas.
+          </p>
+          <button
+            type="button"
+            onClick={() => void sairDoSistema()}
+            className="mt-5 rounded-xl bg-[#17365D] px-5 py-3 font-extrabold text-white"
+          >
+            Voltar ao login
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#f4f7fb]">
       <header className="bg-[#17365D] text-white">
@@ -2867,7 +3230,7 @@ export default function Home() {
           <div>
             <div className="text-xl font-extrabold">MBP Expert AI</div>
             <div className="text-xs text-blue-100">
-              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.45.5
+              Sistema Operacional para Consultoria em Segurança dos Alimentos • v2.46-dev
             </div>
           </div>
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
@@ -2912,6 +3275,26 @@ export default function Home() {
                 Empresa ativa
               </div>
                 <div className="font-extrabold">{atual.nomeFantasia}</div>
+              </div>
+            )}
+
+            {usuarioDaSessao && (
+              <div className="flex items-center gap-3 rounded-xl bg-white/10 px-4 py-2">
+                <div>
+                  <div className="text-[10px] font-extrabold uppercase text-blue-100">
+                    Usuário conectado
+                  </div>
+                  <div className="text-sm font-extrabold">{usuarioDaSessao.nome}</div>
+                  <div className="text-[11px] text-blue-100">{usuarioDaSessao.perfil}</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void sairDoSistema()}
+                  disabled={saindo}
+                  className="rounded-lg bg-white px-3 py-2 text-xs font-extrabold text-[#17365D] disabled:opacity-60"
+                >
+                  {saindo ? "Saindo..." : "Sair"}
+                </button>
               </div>
             )}
           </div>
@@ -3003,9 +3386,30 @@ export default function Home() {
           >
             Visitas
           </button>
+          {permitido("usuarios.gerenciar") && (
+            <button
+              onClick={() => setView("acessos")}
+              className={`rounded-xl px-4 py-2 font-bold ${
+                view === "acessos"
+                  ? "bg-[#17365D] text-white"
+                  : "bg-slate-200 text-slate-900"
+              }`}
+            >
+              Acessos
+            </button>
+          )}
         </nav>
 
-        {showEmpresaForm ? (
+        {view === "acessos" && permitido("usuarios.gerenciar") ? (
+          <AccessPreparationPanel
+            usuarios={db.usuarios}
+            empresas={db.empresas}
+            registrosAuditoria={db.registrosAuditoria}
+            onSalvarUsuario={salvarUsuarioPreparacao}
+            onAlterarStatus={mudarStatusUsuarioPreparacao}
+            onEnviarAcesso={enviarAcessoUsuario}
+          />
+        ) : showEmpresaForm && permitido("empresas.editar") ? (
           <section className="rounded-2xl bg-white p-5 shadow-sm">
             <div className="flex justify-between gap-4">
               <div>
@@ -3334,7 +3738,8 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="grid gap-4 lg:grid-cols-[380px_1fr]">
+            <div className={`grid gap-4 ${permitido("evidencias.adicionar", visitaAtual.empresaId) ? "lg:grid-cols-[380px_1fr]" : "grid-cols-1"}`}>
+              {permitido("evidencias.adicionar", visitaAtual.empresaId) && (
               <div className="rounded-2xl bg-white p-5 shadow-sm">
                 <h2 className="text-xl font-extrabold">Nova evidência</h2>
                 <p className="mt-1 text-sm text-slate-500">
@@ -3474,6 +3879,7 @@ export default function Home() {
                   exige confirmação profissional.
                 </div>
               </div>
+              )}
 
               <div className="space-y-3">
                 <div className="rounded-2xl bg-white p-5 shadow-sm">
@@ -3528,12 +3934,14 @@ export default function Home() {
                               </div>
                             )}
                           </div>
-                          <button
-                            onClick={() => excluirEvidencia(ev.id)}
-                            className="rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700"
-                          >
-                            Excluir
-                          </button>
+                          {permitido("evidencias.adicionar", ev.empresaId) && (
+                            <button
+                              onClick={() => excluirEvidencia(ev.id)}
+                              className="rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700"
+                            >
+                              Excluir
+                            </button>
+                          )}
                         </div>
 
                         {ev.tipo === "Foto" ? (
@@ -3554,7 +3962,7 @@ export default function Home() {
                                     Sugestão visual; não cria nem altera uma NC automaticamente.
                                   </p>
                                 </div>
-                                {(!ultimaAnalise || ultimaAnalise.status !== "Aguardando revisão") && (
+                                {permitido("ia.analisar", ev.empresaId) && (!ultimaAnalise || ultimaAnalise.status !== "Aguardando revisão") && (
                                   <button
                                     type="button"
                                     onClick={() => void analisarFotoComIA(ev)}
@@ -3619,7 +4027,7 @@ export default function Home() {
                                     </div>
                                   )}
 
-                                  {ultimaAnalise.status === "Aguardando revisão" ? (
+                                  {ultimaAnalise.status === "Aguardando revisão" && permitido("ia.analisar", ev.empresaId) ? (
                                     <div className="mt-4">
                                       <label className="block text-xs font-extrabold text-slate-600">
                                         Texto técnico para revisão profissional
@@ -3660,9 +4068,13 @@ export default function Home() {
                                         {ultimaAnalise.revisadaPor} • {ultimaAnalise.revisadaEm ? new Date(ultimaAnalise.revisadaEm).toLocaleString("pt-BR") : ""}
                                       </div>
                                     </div>
-                                  ) : (
+                                  ) : ultimaAnalise.status === "Descartada" ? (
                                     <div className="mt-4 text-xs text-slate-500">
                                       Sugestão descartada por {ultimaAnalise.revisadaPor || "profissional"}. Ela não integra o registro técnico confirmado.
+                                    </div>
+                                  ) : (
+                                    <div className="mt-4 rounded-lg bg-amber-50 p-3 text-xs text-amber-900">
+                                      Esta sugestão aguarda revisão de um Administrador ou Consultor/RT.
                                     </div>
                                   )}
 
@@ -4549,7 +4961,8 @@ export default function Home() {
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <button
                 onClick={abrirAmbientes}
-                className="min-h-[118px] rounded-2xl border-2 border-[#2F5597] bg-white p-4 text-left shadow-sm sm:p-5"
+                disabled={!permitido("visitas.executar", visitaAtual.empresaId)}
+                className="min-h-[118px] rounded-2xl border-2 border-[#2F5597] bg-white p-4 text-left shadow-sm disabled:cursor-not-allowed disabled:opacity-50 sm:p-5"
               >
                 <div className="text-xs font-extrabold uppercase text-[#2F5597]">
                   Etapa 1
@@ -4572,7 +4985,7 @@ export default function Home() {
 
               <button
                 onClick={abrirChecklist}
-                disabled={!(visitaAtual.ambientes || []).length}
+                disabled={!(visitaAtual.ambientes || []).length || !permitido("visitas.executar", visitaAtual.empresaId)}
                 className={`rounded-2xl bg-white p-5 text-left shadow-sm ${
                   (visitaAtual.ambientes || []).length
                     ? "border-2 border-emerald-200"
@@ -4635,6 +5048,7 @@ export default function Home() {
 
               <button
                 onClick={() => setView("ncs")}
+                disabled={!permitido("ncs.acompanhar", visitaAtual.empresaId)}
                 className={`rounded-2xl bg-white p-5 text-left shadow-sm ${ncsVisita.length ? "border-2 border-red-200" : "border border-transparent"}`}
               >
                 <div className="text-xs font-extrabold uppercase text-slate-400">Resultado</div>
@@ -4648,7 +5062,7 @@ export default function Home() {
 
               <button
                 onClick={() => setView("plano")}
-                disabled={ncsVisita.length === 0}
+                disabled={ncsVisita.length === 0 || !permitido("ncs.acompanhar", visitaAtual.empresaId)}
                 className={`rounded-2xl bg-white p-5 text-left shadow-sm ${
                   ncsVisita.length > 0
                     ? "border-2 border-blue-200"
@@ -4681,7 +5095,8 @@ export default function Home() {
               </button>
               <button
                 onClick={() => setView("acompanhamento")}
-                className="min-h-[118px] rounded-2xl bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:p-5"
+                disabled={!permitido("ncs.acompanhar", visitaAtual.empresaId)}
+                className="min-h-[118px] rounded-2xl bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50 sm:p-5"
               >
                 <div className="text-xs font-extrabold uppercase text-emerald-700">Pós-visita</div>
                 <div className="mt-1 text-lg font-extrabold">Acompanhamento</div>
@@ -4690,7 +5105,8 @@ export default function Home() {
 
               <button
                 onClick={() => setView("relatorio")}
-                className="min-h-[118px] rounded-2xl bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:p-5"
+                disabled={!permitido("relatorios.exportar", visitaAtual.empresaId) && !permitido("relatorios.aprovar", visitaAtual.empresaId)}
+                className="min-h-[118px] rounded-2xl bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50 sm:p-5"
               >
                 <div className="text-xs font-extrabold uppercase text-slate-400">
                   Encerramento
@@ -4755,17 +5171,20 @@ export default function Home() {
                       <div className="font-extrabold text-emerald-900">✓ Inspeção finalizada</div>
                       <div className="text-sm text-emerald-800">Esta visita está marcada como Concluída.</div>
                     </div>
-                    <button type="button" onClick={reabrirInspecao} className="rounded-xl bg-white px-4 py-3 text-sm font-extrabold text-emerald-900 shadow-sm">
-                      Reabrir inspeção
-                    </button>
+                    {permitido("visitas.concluir", visitaAtual.empresaId) && (
+                      <button type="button" onClick={reabrirInspecao} className="rounded-xl bg-white px-4 py-3 text-sm font-extrabold text-emerald-900 shadow-sm">
+                        Reabrir inspeção
+                      </button>
+                    )}
                   </div>
-                ) : (
+                ) : permitido("visitas.concluir", visitaAtual.empresaId) ? (
                   <button type="button" onClick={finalizarInspecao} className="w-full rounded-xl bg-emerald-700 px-5 py-4 text-base font-extrabold text-white shadow-md">
                     ✓ Finalizar inspeção
                   </button>
-                )}
+                ) : null}
               </div>
 
+              {permitido("relatorios.exportar", visitaAtual.empresaId) && (
               <div
                 className="print-control mt-5 grid gap-2 md:grid-cols-[1fr_auto]"
                 data-html2canvas-ignore="true"
@@ -4791,6 +5210,7 @@ export default function Home() {
                   O PDF é gerado diretamente. Use “Imprimir” apenas se quiser enviar para uma impressora.
                 </p>
               </div>
+              )}
 
               {pendentesVisita > 0 && (
                 <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
@@ -5241,6 +5661,7 @@ export default function Home() {
                 )}
               </div>
 
+              {permitido("relatorios.aprovar", visitaAtual.empresaId) && (
               <div className="no-print mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
                 <div className="text-sm font-extrabold text-slate-700">
                   Identificação do responsável pela inspeção
@@ -5279,8 +5700,10 @@ export default function Home() {
                   </label>
                 </div>
               </div>
+              )}
 
               <div className="mt-5">
+                {permitido("relatorios.aprovar", visitaAtual.empresaId) && (
                 <label className="no-print block">
                   <span className="mb-2 block text-sm font-extrabold text-slate-700">
                     Conclusão / observações do consultor
@@ -5306,8 +5729,9 @@ export default function Home() {
                     </button>
                   </div>
                 </label>
+                )}
 
-                <div className="print-only">
+                <div className={permitido("relatorios.aprovar", visitaAtual.empresaId) ? "print-only" : "block"}>
                   <div className="mb-2 text-sm font-extrabold text-slate-700">
                     Conclusão / observações do consultor
                   </div>
@@ -5404,16 +5828,16 @@ export default function Home() {
             <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
               <MetricCard
                 label="Empresas"
-                value={Object.keys(db.empresas).length}
+                value={empresasVisiveis.length}
               />
-              <MetricCard label="Visitas" value={db.visitas.length} />
+              <MetricCard label="Visitas" value={visitas.length} />
               <MetricCard
                 label="Em andamento"
-                value={db.visitas.filter((v) => v.status === "Em andamento").length}
+                value={visitas.filter((v) => v.status === "Em andamento").length}
               />
               <MetricCard
                 label="Concluídas"
-                value={db.visitas.filter((v) => v.status === "Concluída").length}
+                value={visitas.filter((v) => v.status === "Concluída").length}
               />
             </section>
           </div>
@@ -5427,21 +5851,23 @@ export default function Home() {
                 </p>
               </div>
 
-              <button
-                onClick={() => {
-                  setEditingEmpresaId(null);
-                  setForm({ cnpj: "", nomeFantasia: "", razaoSocial: "", situacao: "", cnae: "", cnaeDescricao: "", tipo: "Outro", logradouro: "", numero: "", complemento: "", bairro: "", cep: "", municipio: "", uf: "", telefone: "", email: "", responsavel: "" });
-                  setMsg("");
-                  setShowEmpresaForm(true);
-                }}
-                className="rounded-xl bg-[#2F5597] px-4 py-3 font-extrabold text-white"
-              >
-                + Nova empresa
-              </button>
+              {permitido("empresas.editar") && (
+                <button
+                  onClick={() => {
+                    setEditingEmpresaId(null);
+                    setForm({ cnpj: "", nomeFantasia: "", razaoSocial: "", situacao: "", cnae: "", cnaeDescricao: "", tipo: "Outro", logradouro: "", numero: "", complemento: "", bairro: "", cep: "", municipio: "", uf: "", telefone: "", email: "", responsavel: "" });
+                    setMsg("");
+                    setShowEmpresaForm(true);
+                  }}
+                  className="rounded-xl bg-[#2F5597] px-4 py-3 font-extrabold text-white"
+                >
+                  + Nova empresa
+                </button>
+              )}
             </div>
 
             <div className="mt-4 grid gap-3 md:grid-cols-2">
-              {Object.values(db.empresas).map((e) => (
+              {empresasVisiveis.map((e) => (
                 <div
                   key={e.id}
                   className={`rounded-xl border p-4 ${
@@ -5468,14 +5894,16 @@ export default function Home() {
                         : "Selecionar"}
                     </button>
 
-                    <button
-                      onClick={() => editarEmpresa(e)}
-                      className="rounded-xl bg-slate-100 px-4 py-2 font-bold"
-                    >
-                      Editar
-                    </button>
+                    {permitido("empresas.editar", e.id) && (
+                      <button
+                        onClick={() => editarEmpresa(e)}
+                        className="rounded-xl bg-slate-100 px-4 py-2 font-bold"
+                      >
+                        Editar
+                      </button>
+                    )}
 
-                    {db.empresaAtualId === e.id && (
+                    {db.empresaAtualId === e.id && permitido("visitas.criar", e.id) && (
                       <button
                         onClick={novaVisita}
                         className="rounded-xl bg-[#2F5597] px-4 py-2 font-bold text-white"
@@ -5813,7 +6241,7 @@ export default function Home() {
                   </button>
                   <button
                     onClick={novaVisita}
-                    disabled={!atual}
+                    disabled={!atual || !permitido("visitas.criar", atual.id)}
                     className="rounded-xl bg-[#2F5597] px-4 py-3 font-extrabold text-white disabled:opacity-40"
                   >
                     + Nova visita
@@ -5863,34 +6291,52 @@ export default function Home() {
                     <div className="mt-5 flex gap-2">
                       {v.status === "Em andamento" ? (
                         <>
-                          <button
-                            onClick={() => continuar(v.id)}
-                            className="flex-1 rounded-xl bg-[#17365D] px-4 py-2 font-bold text-white"
-                          >
-                            Continuar visita
-                          </button>
-                          <button
-                            onClick={() => concluir(v.id)}
-                            className="rounded-xl bg-emerald-50 px-4 py-2 font-bold text-emerald-700"
-                          >
-                            Concluir
-                          </button>
+                          {permitido("visitas.executar", v.empresaId) && (
+                            <button
+                              onClick={() => continuar(v.id)}
+                              className="flex-1 rounded-xl bg-[#17365D] px-4 py-2 font-bold text-white"
+                            >
+                              Continuar visita
+                            </button>
+                          )}
+                          {permitido("visitas.concluir", v.empresaId) && (
+                            <button
+                              onClick={() => concluir(v.id)}
+                              className="rounded-xl bg-emerald-50 px-4 py-2 font-bold text-emerald-700"
+                            >
+                              Concluir
+                            </button>
+                          )}
                         </>
                       ) : (
-                        <button
-                          onClick={() => reabrir(v.id)}
-                          className="flex-1 rounded-xl bg-slate-100 px-4 py-2 font-bold"
-                        >
-                          Reabrir visita
-                        </button>
+                        permitido("visitas.concluir", v.empresaId) ? (
+                          <button
+                            onClick={() => reabrir(v.id)}
+                            className="flex-1 rounded-xl bg-slate-100 px-4 py-2 font-bold"
+                          >
+                            Reabrir visita
+                          </button>
+                        ) : permitido("relatorios.exportar", v.empresaId) ? (
+                          <button
+                            onClick={() => {
+                              setVisitaAtualId(v.id);
+                              setView("relatorio");
+                            }}
+                            className="flex-1 rounded-xl bg-[#17365D] px-4 py-2 font-bold text-white"
+                          >
+                            Abrir relatório
+                          </button>
+                        ) : null
                       )}
 
-                      <button
-                        onClick={() => excluir(v.id)}
-                        className="rounded-xl bg-red-50 px-4 py-2 font-bold text-red-700"
-                      >
-                        Excluir
-                      </button>
+                      {usuarioDaSessao?.perfil === "Administrador" && (
+                        <button
+                          onClick={() => excluir(v.id)}
+                          className="rounded-xl bg-red-50 px-4 py-2 font-bold text-red-700"
+                        >
+                          Excluir
+                        </button>
+                      )}
                     </div>
                   </article>
                 );

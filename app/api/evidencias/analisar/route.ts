@@ -1,5 +1,9 @@
 import { get } from "@vercel/blob";
 import { NextResponse } from "next/server";
+import {
+  autorizaAcaoServidor,
+  obterAcessoServidor,
+} from "@/lib/serverAccess";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -106,6 +110,21 @@ export async function POST(request: Request) {
     const pathname = contextoSeguro(body?.pathname, 1200);
     if (!pathname) {
       return NextResponse.json({ error: "Foto não informada." }, { status: 400 });
+    }
+
+    const acesso = await obterAcessoServidor();
+    const evidencia = acesso.autorizado && acesso.data
+      ? acesso.data.evidencias.find((item) => item.blobPathname === pathname)
+      : undefined;
+    if (
+      acesso.aplicado &&
+      (!evidencia ||
+        !autorizaAcaoServidor(acesso, "ia.analisar", evidencia.empresaId))
+    ) {
+      return NextResponse.json(
+        { error: "Seu perfil não permite analisar esta foto." },
+        { status: 403 }
+      );
     }
 
     const imageUrl = await carregarImagem(pathname);

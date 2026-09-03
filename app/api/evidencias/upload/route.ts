@@ -1,5 +1,9 @@
 import { put } from "@vercel/blob";
 import { NextResponse } from "next/server";
+import {
+  autorizaAcaoServidor,
+  obterAcessoServidor,
+} from "@/lib/serverAccess";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,6 +16,21 @@ export async function POST(request: Request) {
     const evidenciaId = String(
       form.get("evidenciaId") || crypto.randomUUID()
     );
+
+    const acesso = await obterAcessoServidor();
+    const visita = acesso.autorizado && acesso.data
+      ? acesso.data.visitas.find((item) => item.id === visitaId)
+      : undefined;
+    if (
+      acesso.aplicado &&
+      (!visita ||
+        !autorizaAcaoServidor(acesso, "evidencias.adicionar", visita.empresaId))
+    ) {
+      return NextResponse.json(
+        { error: "Seu perfil não permite adicionar evidências nesta visita." },
+        { status: 403 }
+      );
+    }
 
     if (!(file instanceof File)) {
       return NextResponse.json(

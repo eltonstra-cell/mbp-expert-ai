@@ -146,10 +146,75 @@ export type Evidencia = {
   criadoEm: string;
 };
 
+export type PerfilUsuario =
+  | "Administrador"
+  | "Consultor/RT"
+  | "Cliente Gestor";
+
+export type StatusUsuario = "Convidado" | "Ativo" | "Suspenso";
+
+export type UsuarioSistema = {
+  id: string;
+  authId?: string;
+  nome: string;
+  email: string;
+  perfil: PerfilUsuario;
+  status: StatusUsuario;
+  empresaIds: string[];
+  criadoEm: string;
+  atualizadoEm: string;
+  convidadoEm?: string;
+  ultimoAcessoEm?: string;
+};
+
+export type AcaoPermissao =
+  | "usuarios.gerenciar"
+  | "empresas.ver"
+  | "empresas.editar"
+  | "visitas.criar"
+  | "visitas.executar"
+  | "visitas.concluir"
+  | "relatorios.aprovar"
+  | "relatorios.exportar"
+  | "ncs.acompanhar"
+  | "evidencias.adicionar"
+  | "ia.analisar"
+  | "auditoria.ver";
+
+export type RegistroAuditoria = {
+  id: string;
+  criadoEm: string;
+  usuarioId: string;
+  usuarioNome: string;
+  acao: string;
+  entidade:
+    | "Usuário"
+    | "Empresa"
+    | "Visita"
+    | "Relatório"
+    | "Não conformidade"
+    | "Evidência"
+    | "Sistema";
+  entidadeId?: string;
+  empresaId?: string;
+  visitaId?: string;
+  detalhes: string;
+};
+
+export type ConfiguracaoAcesso = {
+  versao: 1;
+  modo: "Preparação" | "Ativo";
+  autenticacao: "Não configurada" | "Configurada";
+  atualizadoEm: string;
+};
+
 export type AppDB = {
   empresas: Record<string, Empresa>;
   empresaAtualId: string | null;
   visitas: Visita[];
   ncs: NaoConformidade[];
   evidencias: Evidencia[];
+  usuarios: UsuarioSistema[];
+  registrosAuditoria: RegistroAuditoria[];
+  configuracaoAcesso: ConfiguracaoAcesso;
 };
