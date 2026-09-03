@@ -5,6 +5,7 @@ import MetricCard from "@/components/MetricCard";
 import AccessPreparationPanel from "@/components/AccessPreparationPanel";
 import type {
   AppDB,
+  AcaoPermissao,
   AnaliseFotoIA,
   ChecklistCriticidade,
   ChecklistItem,
@@ -38,7 +39,12 @@ import {
   createLocalBackup,
   localBackupFilename,
 } from "@/lib/localBackup";
-import { criarRegistroAuditoria } from "@/lib/permissions";
+import {
+  criarRegistroAuditoria,
+  podeAcessarEmpresa,
+  podeExecutar,
+  possuiPermissao,
+} from "@/lib/permissions";
 import {
   alterarStatusUsuario,
   atualizarUsuarioPreparacao,
@@ -947,6 +953,26 @@ export default function Home() {
     ) || null;
   }, [db.usuarios, sessaoAtual]);
 
+  function permitido(acao: AcaoPermissao, empresaId?: string): boolean {
+    return podeExecutar(usuarioDaSessao, acao, empresaId);
+  }
+
+  function exigirPermissao(acao: AcaoPermissao, empresaId?: string): boolean {
+    if (permitido(acao, empresaId)) return true;
+    window.alert("Seu perfil não possui permissão para executar esta ação.");
+    return false;
+  }
+
+  useEffect(() => {
+    if (
+      usuarioDaSessao &&
+      view === "acessos" &&
+      !possuiPermissao(usuarioDaSessao, "usuarios.gerenciar")
+    ) {
+      setView("inicio");
+    }
+  }, [usuarioDaSessao, view]);
+
   useEffect(() => {
     if (!ready) return;
 
@@ -1158,15 +1184,43 @@ export default function Home() {
     }
   }, [db.empresaAtualId, db.visitas, visitaAtualId, view]);
 
-  const atual = db.empresaAtualId ? db.empresas[db.empresaAtualId] : undefined;
-  const visitaAtual = visitaAtualId ? db.visitas.find((v) => v.id === visitaAtualId) : undefined;
+  const empresasVisiveis = useMemo(
+    () =>
+      Object.values(db.empresas).filter((empresa) =>
+        podeAcessarEmpresa(usuarioDaSessao, empresa.id)
+      ),
+    [db.empresas, usuarioDaSessao]
+  );
+  const empresaAtualCadastrada = db.empresaAtualId
+    ? db.empresas[db.empresaAtualId]
+    : undefined;
+  const atual =
+    empresaAtualCadastrada &&
+    podeAcessarEmpresa(usuarioDaSessao, empresaAtualCadastrada.id)
+      ? empresaAtualCadastrada
+      : undefined;
+  const visitaAtualCadastrada = visitaAtualId
+    ? db.visitas.find((v) => v.id === visitaAtualId)
+    : undefined;
+  const visitaAtual =
+    visitaAtualCadastrada &&
+    podeAcessarEmpresa(usuarioDaSessao, visitaAtualCadastrada.empresaId)
+      ? visitaAtualCadastrada
+      : undefined;
   const empresaVisita = visitaAtual ? db.empresas[visitaAtual.empresaId] : undefined;
   const visitas = useMemo(
     () =>
-      [...db.visitas].sort((a, b) =>
-        (b.criadoEm || b.data || "").localeCompare(a.criadoEm || a.data || "")
-      ),
-    [db.visitas]
+      db.visitas
+        .filter(
+          (visita) =>
+            podeAcessarEmpresa(usuarioDaSessao, visita.empresaId) &&
+            (podeExecutar(usuarioDaSessao, "visitas.executar", visita.empresaId) ||
+              visita.status === "Concluída")
+        )
+        .sort((a, b) =>
+          (b.criadoEm || b.data || "").localeCompare(a.criadoEm || a.data || "")
+        ),
+    [db.visitas, usuarioDaSessao]
   );
 
   const visitasEmpresaAtual = useMemo(
@@ -1358,6 +1412,7 @@ export default function Home() {
 
   async function baixarPdfRelatorio() {
     if (!visitaAtual || !empresaVisita || gerandoPdf) return;
+    if (!exigirPermissao("relatorios.exportar", visitaAtual.empresaId)) return;
 
     const elemento = document.getElementById("relatorio-visita");
     if (!elemento) return;
@@ -1736,6 +1791,7 @@ export default function Home() {
 
   function atualizarConclusaoRelatorio(valor: string) {
     if (!visitaAtual) return;
+    if (!exigirPermissao("relatorios.aprovar", visitaAtual.empresaId)) return;
 
     setDb((atual) => ({
       ...atual,
@@ -1749,6 +1805,7 @@ export default function Home() {
 
   function atualizarResponsavelRelatorio(nome: string, identificacao?: string) {
     if (!visitaAtual) return;
+    if (!exigirPermissao("relatorios.aprovar", visitaAtual.empresaId)) return;
 
     setDb((atual) => ({
       ...atual,
@@ -1912,6 +1969,7 @@ export default function Home() {
 
   async function finalizarInspecao() {
     if (!visitaAtual) return;
+    if (!exigirPermissao("visitas.concluir", visitaAtual.empresaId)) return;
 
     // Uma inspeção só pode ser marcada como concluída quando todos os itens
     // do checklist dos ambientes selecionados tiverem sido avaliados.
@@ -1963,6 +2021,7 @@ export default function Home() {
 
   async function reabrirInspecao() {
     if (!visitaAtual) return;
+    if (!exigirPermissao("visitas.concluir", visitaAtual.empresaId)) return;
 
     const confirmado = window.confirm(
       "Reabrir esta inspeção?\n\n" +
@@ -1991,6 +2050,7 @@ export default function Home() {
   }
 
   async function buscar() {
+    if (!exigirPermissao("empresas.editar")) return;
     const c = form.cnpj.replace(/\D/g, "");
     if (c.length !== 14) {
       setMsg("Informe um CNPJ com 14 dígitos.");
@@ -2029,6 +2089,7 @@ export default function Home() {
   }
 
   function salvarEmpresa() {
+    if (!exigirPermissao("empresas.editar")) return;
     const id = editingEmpresaId || form.cnpj.replace(/\D/g, "") || crypto.randomUUID();
     const anterior = editingEmpresaId ? db.empresas[editingEmpresaId] : undefined;
     const emp: Empresa = {
@@ -2049,6 +2110,7 @@ export default function Home() {
   }
 
   function editarEmpresa(empresa: Empresa) {
+    if (!exigirPermissao("empresas.editar", empresa.id)) return;
     setForm({
       cnpj: empresa.cnpj || "",
       nomeFantasia: empresa.nomeFantasia || "",
@@ -2075,6 +2137,7 @@ export default function Home() {
   }
 
   function novaVisita() {
+    if (!exigirPermissao("visitas.criar", atual?.id)) return;
     if (!atual) {
       setView("empresas");
       return;
@@ -2086,6 +2149,7 @@ export default function Home() {
 
   function salvarVisita() {
     if (!atual || criandoVisita) return;
+    if (!exigirPermissao("visitas.criar", atual.id)) return;
     if (!vf.responsavel.trim()) {
       window.alert("Informe o responsável pela visita antes de criar a inspeção.");
       return;
@@ -2116,6 +2180,7 @@ export default function Home() {
   function continuar(id: string) {
     const v = db.visitas.find((x) => x.id === id);
     if (!v) return;
+    if (!exigirPermissao("visitas.executar", v.empresaId)) return;
     setDb((o) => ({ ...o, empresaAtualId: v.empresaId }));
     setVisitaAtualId(id);
     setView("visita");
@@ -2123,6 +2188,7 @@ export default function Home() {
 
   function abrirAmbientes() {
     if (!visitaAtual) return;
+    if (!exigirPermissao("visitas.executar", visitaAtual.empresaId)) return;
     setAmbientesSelecionados(visitaAtual.ambientes || []);
     setAmbientePersonalizado("");
     setView("ambientes");
@@ -2145,6 +2211,7 @@ export default function Home() {
 
   function salvarAmbientes() {
     if (!visitaAtual || ambientesSelecionados.length === 0) return;
+    if (!exigirPermissao("visitas.executar", visitaAtual.empresaId)) return;
 
     setDb((o) => ({
       ...o,
@@ -2168,6 +2235,7 @@ export default function Home() {
 
   function abrirChecklist() {
     if (!visitaAtual || !(visitaAtual.ambientes || []).length) return;
+    if (!exigirPermissao("visitas.executar", visitaAtual.empresaId)) return;
 
     const checklistExistente = visitaAtual.checklist || [];
     const possuiRespostas = checklistExistente.some(
@@ -2225,6 +2293,7 @@ export default function Home() {
     patch: Partial<Pick<ChecklistItem, "status" | "observacao">>
   ) {
     if (!visitaAtual) return;
+    if (!exigirPermissao("visitas.executar", visitaAtual.empresaId)) return;
 
     setDb((o) => {
       let itemAtualizado: ChecklistItem | undefined;
@@ -2496,6 +2565,7 @@ export default function Home() {
 
   async function analisarFotoComIA(ev: Evidencia) {
     if (ev.tipo !== "Foto" || analiseIAEmAndamentoId) return;
+    if (!exigirPermissao("ia.analisar", ev.empresaId)) return;
     if (!ev.blobPathname) {
       setAnaliseIAMensagens((atual) => ({
         ...atual,
@@ -2565,6 +2635,7 @@ export default function Home() {
   }
 
   function confirmarAnaliseFoto(ev: Evidencia, analise: AnaliseFotoIA) {
+    if (!exigirPermissao("ia.analisar", ev.empresaId)) return;
     try {
       const texto = analiseIATextos[analise.id] ?? analise.textoRevisado;
       const confirmada = confirmarSugestaoFotoIA(
@@ -2586,6 +2657,7 @@ export default function Home() {
   }
 
   function descartarAnaliseFoto(ev: Evidencia, analise: AnaliseFotoIA) {
+    if (!exigirPermissao("ia.analisar", ev.empresaId)) return;
     if (!window.confirm("Descartar esta sugestão da IA? Ela permanecerá registrada no histórico como descartada.")) {
       return;
     }
@@ -2605,6 +2677,7 @@ export default function Home() {
     tipo: "Foto" | "Áudio"
   ) {
     if (!file || !visitaAtual) return;
+    if (!exigirPermissao("evidencias.adicionar", visitaAtual.empresaId)) return;
 
     if (tipo === "Áudio" && file.size > 3 * 1024 * 1024) {
       setEvidenciaMsg(
@@ -2689,6 +2762,7 @@ export default function Home() {
   function excluirEvidencia(id: string) {
     const evidencia = (db.evidencias || []).find((ev) => ev.id === id);
     if (!evidencia) return;
+    if (!exigirPermissao("evidencias.adicionar", evidencia.empresaId)) return;
 
     const ncRelacionada = evidencia.ncId
       ? (db.ncs || []).find((nc) => nc.id === evidencia.ncId)
@@ -2725,6 +2799,11 @@ export default function Home() {
       status?: "Aberta" | "Em tratamento" | "Resolvida";
     }
   ) {
+    const ncAtualPermissao = (db.ncs || []).find((nc) => nc.id === ncId);
+    if (
+      !ncAtualPermissao ||
+      !exigirPermissao("ncs.acompanhar", ncAtualPermissao.empresaId)
+    ) return;
     if (patch.status === "Em tratamento") {
       const ncAtual = (db.ncs || []).find((nc) => nc.id === ncId);
       if (ncAtual) {
@@ -2751,6 +2830,8 @@ export default function Home() {
   }
 
   function registrarAcompanhamento(ncId: string) {
+    const ncPermissao = (db.ncs || []).find((nc) => nc.id === ncId);
+    if (!ncPermissao || !exigirPermissao("ncs.acompanhar", ncPermissao.empresaId)) return;
     const texto = (textoAcompanhamento[ncId] || "").trim();
 
     if (!texto) {
@@ -2863,6 +2944,11 @@ export default function Home() {
   }
 
   async function concluir(id: string) {
+    const visitaPermissao = db.visitas.find((item) => item.id === id);
+    if (
+      !visitaPermissao ||
+      !exigirPermissao("visitas.concluir", visitaPermissao.empresaId)
+    ) return;
     const pendentesIA = (db.evidencias || [])
       .filter((ev) => ev.visitaId === id)
       .reduce(
@@ -2906,6 +2992,11 @@ export default function Home() {
   }
 
   async function reabrir(id: string) {
+    const visitaPermissao = db.visitas.find((item) => item.id === id);
+    if (
+      !visitaPermissao ||
+      !exigirPermissao("visitas.concluir", visitaPermissao.empresaId)
+    ) return;
     const agora = new Date().toISOString();
     const novo: AppDB = {
       ...db,
@@ -2931,6 +3022,7 @@ export default function Home() {
   function excluir(id: string) {
     const visita = db.visitas.find((v) => v.id === id);
     if (!visita) return;
+    if (!exigirPermissao("visitas.concluir", visita.empresaId)) return;
 
     const respostas = (visita.checklist || []).filter(
       (item) => item.status !== "Pendente"
@@ -2971,6 +3063,7 @@ export default function Home() {
     dados: DadosUsuarioPreparacao,
     usuarioId?: string
   ): boolean {
+    if (!exigirPermissao("usuarios.gerenciar")) return false;
     try {
       const agora = new Date().toISOString();
       const existente = usuarioId
@@ -3012,6 +3105,7 @@ export default function Home() {
     usuarioId: string,
     status: StatusUsuario
   ): boolean {
+    if (!exigirPermissao("usuarios.gerenciar")) return false;
     try {
       const usuarioAtual = db.usuarios.find((usuario) => usuario.id === usuarioId);
       if (!usuarioAtual) throw new Error("Usuário preparado não encontrado.");
@@ -3205,19 +3299,21 @@ export default function Home() {
           >
             Visitas
           </button>
-          <button
-            onClick={() => setView("acessos")}
-            className={`rounded-xl px-4 py-2 font-bold ${
-              view === "acessos"
-                ? "bg-[#17365D] text-white"
-                : "bg-slate-200 text-slate-900"
-            }`}
-          >
-            Acessos
-          </button>
+          {permitido("usuarios.gerenciar") && (
+            <button
+              onClick={() => setView("acessos")}
+              className={`rounded-xl px-4 py-2 font-bold ${
+                view === "acessos"
+                  ? "bg-[#17365D] text-white"
+                  : "bg-slate-200 text-slate-900"
+              }`}
+            >
+              Acessos
+            </button>
+          )}
         </nav>
 
-        {view === "acessos" ? (
+        {view === "acessos" && permitido("usuarios.gerenciar") ? (
           <AccessPreparationPanel
             usuarios={db.usuarios}
             empresas={db.empresas}
@@ -3225,7 +3321,7 @@ export default function Home() {
             onSalvarUsuario={salvarUsuarioPreparacao}
             onAlterarStatus={mudarStatusUsuarioPreparacao}
           />
-        ) : showEmpresaForm ? (
+        ) : showEmpresaForm && permitido("empresas.editar") ? (
           <section className="rounded-2xl bg-white p-5 shadow-sm">
             <div className="flex justify-between gap-4">
               <div>
@@ -3554,7 +3650,8 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="grid gap-4 lg:grid-cols-[380px_1fr]">
+            <div className={`grid gap-4 ${permitido("evidencias.adicionar", visitaAtual.empresaId) ? "lg:grid-cols-[380px_1fr]" : "grid-cols-1"}`}>
+              {permitido("evidencias.adicionar", visitaAtual.empresaId) && (
               <div className="rounded-2xl bg-white p-5 shadow-sm">
                 <h2 className="text-xl font-extrabold">Nova evidência</h2>
                 <p className="mt-1 text-sm text-slate-500">
@@ -3694,6 +3791,7 @@ export default function Home() {
                   exige confirmação profissional.
                 </div>
               </div>
+              )}
 
               <div className="space-y-3">
                 <div className="rounded-2xl bg-white p-5 shadow-sm">
@@ -3748,12 +3846,14 @@ export default function Home() {
                               </div>
                             )}
                           </div>
-                          <button
-                            onClick={() => excluirEvidencia(ev.id)}
-                            className="rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700"
-                          >
-                            Excluir
-                          </button>
+                          {permitido("evidencias.adicionar", ev.empresaId) && (
+                            <button
+                              onClick={() => excluirEvidencia(ev.id)}
+                              className="rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700"
+                            >
+                              Excluir
+                            </button>
+                          )}
                         </div>
 
                         {ev.tipo === "Foto" ? (
@@ -3774,7 +3874,7 @@ export default function Home() {
                                     Sugestão visual; não cria nem altera uma NC automaticamente.
                                   </p>
                                 </div>
-                                {(!ultimaAnalise || ultimaAnalise.status !== "Aguardando revisão") && (
+                                {permitido("ia.analisar", ev.empresaId) && (!ultimaAnalise || ultimaAnalise.status !== "Aguardando revisão") && (
                                   <button
                                     type="button"
                                     onClick={() => void analisarFotoComIA(ev)}
@@ -3839,7 +3939,7 @@ export default function Home() {
                                     </div>
                                   )}
 
-                                  {ultimaAnalise.status === "Aguardando revisão" ? (
+                                  {ultimaAnalise.status === "Aguardando revisão" && permitido("ia.analisar", ev.empresaId) ? (
                                     <div className="mt-4">
                                       <label className="block text-xs font-extrabold text-slate-600">
                                         Texto técnico para revisão profissional
@@ -3880,9 +3980,13 @@ export default function Home() {
                                         {ultimaAnalise.revisadaPor} • {ultimaAnalise.revisadaEm ? new Date(ultimaAnalise.revisadaEm).toLocaleString("pt-BR") : ""}
                                       </div>
                                     </div>
-                                  ) : (
+                                  ) : ultimaAnalise.status === "Descartada" ? (
                                     <div className="mt-4 text-xs text-slate-500">
                                       Sugestão descartada por {ultimaAnalise.revisadaPor || "profissional"}. Ela não integra o registro técnico confirmado.
+                                    </div>
+                                  ) : (
+                                    <div className="mt-4 rounded-lg bg-amber-50 p-3 text-xs text-amber-900">
+                                      Esta sugestão aguarda revisão de um Administrador ou Consultor/RT.
                                     </div>
                                   )}
 
@@ -4769,7 +4873,8 @@ export default function Home() {
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <button
                 onClick={abrirAmbientes}
-                className="min-h-[118px] rounded-2xl border-2 border-[#2F5597] bg-white p-4 text-left shadow-sm sm:p-5"
+                disabled={!permitido("visitas.executar", visitaAtual.empresaId)}
+                className="min-h-[118px] rounded-2xl border-2 border-[#2F5597] bg-white p-4 text-left shadow-sm disabled:cursor-not-allowed disabled:opacity-50 sm:p-5"
               >
                 <div className="text-xs font-extrabold uppercase text-[#2F5597]">
                   Etapa 1
@@ -4792,7 +4897,7 @@ export default function Home() {
 
               <button
                 onClick={abrirChecklist}
-                disabled={!(visitaAtual.ambientes || []).length}
+                disabled={!(visitaAtual.ambientes || []).length || !permitido("visitas.executar", visitaAtual.empresaId)}
                 className={`rounded-2xl bg-white p-5 text-left shadow-sm ${
                   (visitaAtual.ambientes || []).length
                     ? "border-2 border-emerald-200"
@@ -4855,6 +4960,7 @@ export default function Home() {
 
               <button
                 onClick={() => setView("ncs")}
+                disabled={!permitido("ncs.acompanhar", visitaAtual.empresaId)}
                 className={`rounded-2xl bg-white p-5 text-left shadow-sm ${ncsVisita.length ? "border-2 border-red-200" : "border border-transparent"}`}
               >
                 <div className="text-xs font-extrabold uppercase text-slate-400">Resultado</div>
@@ -4868,7 +4974,7 @@ export default function Home() {
 
               <button
                 onClick={() => setView("plano")}
-                disabled={ncsVisita.length === 0}
+                disabled={ncsVisita.length === 0 || !permitido("ncs.acompanhar", visitaAtual.empresaId)}
                 className={`rounded-2xl bg-white p-5 text-left shadow-sm ${
                   ncsVisita.length > 0
                     ? "border-2 border-blue-200"
@@ -4901,7 +5007,8 @@ export default function Home() {
               </button>
               <button
                 onClick={() => setView("acompanhamento")}
-                className="min-h-[118px] rounded-2xl bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:p-5"
+                disabled={!permitido("ncs.acompanhar", visitaAtual.empresaId)}
+                className="min-h-[118px] rounded-2xl bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50 sm:p-5"
               >
                 <div className="text-xs font-extrabold uppercase text-emerald-700">Pós-visita</div>
                 <div className="mt-1 text-lg font-extrabold">Acompanhamento</div>
@@ -4910,7 +5017,8 @@ export default function Home() {
 
               <button
                 onClick={() => setView("relatorio")}
-                className="min-h-[118px] rounded-2xl bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:p-5"
+                disabled={!permitido("relatorios.exportar", visitaAtual.empresaId) && !permitido("relatorios.aprovar", visitaAtual.empresaId)}
+                className="min-h-[118px] rounded-2xl bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50 sm:p-5"
               >
                 <div className="text-xs font-extrabold uppercase text-slate-400">
                   Encerramento
@@ -4975,17 +5083,20 @@ export default function Home() {
                       <div className="font-extrabold text-emerald-900">✓ Inspeção finalizada</div>
                       <div className="text-sm text-emerald-800">Esta visita está marcada como Concluída.</div>
                     </div>
-                    <button type="button" onClick={reabrirInspecao} className="rounded-xl bg-white px-4 py-3 text-sm font-extrabold text-emerald-900 shadow-sm">
-                      Reabrir inspeção
-                    </button>
+                    {permitido("visitas.concluir", visitaAtual.empresaId) && (
+                      <button type="button" onClick={reabrirInspecao} className="rounded-xl bg-white px-4 py-3 text-sm font-extrabold text-emerald-900 shadow-sm">
+                        Reabrir inspeção
+                      </button>
+                    )}
                   </div>
-                ) : (
+                ) : permitido("visitas.concluir", visitaAtual.empresaId) ? (
                   <button type="button" onClick={finalizarInspecao} className="w-full rounded-xl bg-emerald-700 px-5 py-4 text-base font-extrabold text-white shadow-md">
                     ✓ Finalizar inspeção
                   </button>
-                )}
+                ) : null}
               </div>
 
+              {permitido("relatorios.exportar", visitaAtual.empresaId) && (
               <div
                 className="print-control mt-5 grid gap-2 md:grid-cols-[1fr_auto]"
                 data-html2canvas-ignore="true"
@@ -5011,6 +5122,7 @@ export default function Home() {
                   O PDF é gerado diretamente. Use “Imprimir” apenas se quiser enviar para uma impressora.
                 </p>
               </div>
+              )}
 
               {pendentesVisita > 0 && (
                 <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
@@ -5461,6 +5573,7 @@ export default function Home() {
                 )}
               </div>
 
+              {permitido("relatorios.aprovar", visitaAtual.empresaId) && (
               <div className="no-print mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
                 <div className="text-sm font-extrabold text-slate-700">
                   Identificação do responsável pela inspeção
@@ -5499,8 +5612,10 @@ export default function Home() {
                   </label>
                 </div>
               </div>
+              )}
 
               <div className="mt-5">
+                {permitido("relatorios.aprovar", visitaAtual.empresaId) && (
                 <label className="no-print block">
                   <span className="mb-2 block text-sm font-extrabold text-slate-700">
                     Conclusão / observações do consultor
@@ -5526,8 +5641,9 @@ export default function Home() {
                     </button>
                   </div>
                 </label>
+                )}
 
-                <div className="print-only">
+                <div className={permitido("relatorios.aprovar", visitaAtual.empresaId) ? "print-only" : "block"}>
                   <div className="mb-2 text-sm font-extrabold text-slate-700">
                     Conclusão / observações do consultor
                   </div>
@@ -5624,16 +5740,16 @@ export default function Home() {
             <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
               <MetricCard
                 label="Empresas"
-                value={Object.keys(db.empresas).length}
+                value={empresasVisiveis.length}
               />
-              <MetricCard label="Visitas" value={db.visitas.length} />
+              <MetricCard label="Visitas" value={visitas.length} />
               <MetricCard
                 label="Em andamento"
-                value={db.visitas.filter((v) => v.status === "Em andamento").length}
+                value={visitas.filter((v) => v.status === "Em andamento").length}
               />
               <MetricCard
                 label="Concluídas"
-                value={db.visitas.filter((v) => v.status === "Concluída").length}
+                value={visitas.filter((v) => v.status === "Concluída").length}
               />
             </section>
           </div>
@@ -5647,21 +5763,23 @@ export default function Home() {
                 </p>
               </div>
 
-              <button
-                onClick={() => {
-                  setEditingEmpresaId(null);
-                  setForm({ cnpj: "", nomeFantasia: "", razaoSocial: "", situacao: "", cnae: "", cnaeDescricao: "", tipo: "Outro", logradouro: "", numero: "", complemento: "", bairro: "", cep: "", municipio: "", uf: "", telefone: "", email: "", responsavel: "" });
-                  setMsg("");
-                  setShowEmpresaForm(true);
-                }}
-                className="rounded-xl bg-[#2F5597] px-4 py-3 font-extrabold text-white"
-              >
-                + Nova empresa
-              </button>
+              {permitido("empresas.editar") && (
+                <button
+                  onClick={() => {
+                    setEditingEmpresaId(null);
+                    setForm({ cnpj: "", nomeFantasia: "", razaoSocial: "", situacao: "", cnae: "", cnaeDescricao: "", tipo: "Outro", logradouro: "", numero: "", complemento: "", bairro: "", cep: "", municipio: "", uf: "", telefone: "", email: "", responsavel: "" });
+                    setMsg("");
+                    setShowEmpresaForm(true);
+                  }}
+                  className="rounded-xl bg-[#2F5597] px-4 py-3 font-extrabold text-white"
+                >
+                  + Nova empresa
+                </button>
+              )}
             </div>
 
             <div className="mt-4 grid gap-3 md:grid-cols-2">
-              {Object.values(db.empresas).map((e) => (
+              {empresasVisiveis.map((e) => (
                 <div
                   key={e.id}
                   className={`rounded-xl border p-4 ${
@@ -5688,14 +5806,16 @@ export default function Home() {
                         : "Selecionar"}
                     </button>
 
-                    <button
-                      onClick={() => editarEmpresa(e)}
-                      className="rounded-xl bg-slate-100 px-4 py-2 font-bold"
-                    >
-                      Editar
-                    </button>
+                    {permitido("empresas.editar", e.id) && (
+                      <button
+                        onClick={() => editarEmpresa(e)}
+                        className="rounded-xl bg-slate-100 px-4 py-2 font-bold"
+                      >
+                        Editar
+                      </button>
+                    )}
 
-                    {db.empresaAtualId === e.id && (
+                    {db.empresaAtualId === e.id && permitido("visitas.criar", e.id) && (
                       <button
                         onClick={novaVisita}
                         className="rounded-xl bg-[#2F5597] px-4 py-2 font-bold text-white"
@@ -6033,7 +6153,7 @@ export default function Home() {
                   </button>
                   <button
                     onClick={novaVisita}
-                    disabled={!atual}
+                    disabled={!atual || !permitido("visitas.criar", atual.id)}
                     className="rounded-xl bg-[#2F5597] px-4 py-3 font-extrabold text-white disabled:opacity-40"
                   >
                     + Nova visita
@@ -6083,34 +6203,52 @@ export default function Home() {
                     <div className="mt-5 flex gap-2">
                       {v.status === "Em andamento" ? (
                         <>
-                          <button
-                            onClick={() => continuar(v.id)}
-                            className="flex-1 rounded-xl bg-[#17365D] px-4 py-2 font-bold text-white"
-                          >
-                            Continuar visita
-                          </button>
-                          <button
-                            onClick={() => concluir(v.id)}
-                            className="rounded-xl bg-emerald-50 px-4 py-2 font-bold text-emerald-700"
-                          >
-                            Concluir
-                          </button>
+                          {permitido("visitas.executar", v.empresaId) && (
+                            <button
+                              onClick={() => continuar(v.id)}
+                              className="flex-1 rounded-xl bg-[#17365D] px-4 py-2 font-bold text-white"
+                            >
+                              Continuar visita
+                            </button>
+                          )}
+                          {permitido("visitas.concluir", v.empresaId) && (
+                            <button
+                              onClick={() => concluir(v.id)}
+                              className="rounded-xl bg-emerald-50 px-4 py-2 font-bold text-emerald-700"
+                            >
+                              Concluir
+                            </button>
+                          )}
                         </>
                       ) : (
-                        <button
-                          onClick={() => reabrir(v.id)}
-                          className="flex-1 rounded-xl bg-slate-100 px-4 py-2 font-bold"
-                        >
-                          Reabrir visita
-                        </button>
+                        permitido("visitas.concluir", v.empresaId) ? (
+                          <button
+                            onClick={() => reabrir(v.id)}
+                            className="flex-1 rounded-xl bg-slate-100 px-4 py-2 font-bold"
+                          >
+                            Reabrir visita
+                          </button>
+                        ) : permitido("relatorios.exportar", v.empresaId) ? (
+                          <button
+                            onClick={() => {
+                              setVisitaAtualId(v.id);
+                              setView("relatorio");
+                            }}
+                            className="flex-1 rounded-xl bg-[#17365D] px-4 py-2 font-bold text-white"
+                          >
+                            Abrir relatório
+                          </button>
+                        ) : null
                       )}
 
-                      <button
-                        onClick={() => excluir(v.id)}
-                        className="rounded-xl bg-red-50 px-4 py-2 font-bold text-red-700"
-                      >
-                        Excluir
-                      </button>
+                      {usuarioDaSessao?.perfil === "Administrador" && (
+                        <button
+                          onClick={() => excluir(v.id)}
+                          className="rounded-xl bg-red-50 px-4 py-2 font-bold text-red-700"
+                        >
+                          Excluir
+                        </button>
+                      )}
                     </div>
                   </article>
                 );
