@@ -64,14 +64,28 @@ export function loadDB(identity?: string | null): AppDB {
 export function saveDB(db: AppDB, identity?: string | null): boolean {
   if (typeof window === "undefined") return false;
 
+  const chaveAtual = scopedStorageKey(STORAGE_KEY, identity);
+  const conteudo = JSON.stringify(db);
+
   try {
-    localStorage.setItem(scopedStorageKey(STORAGE_KEY, identity), JSON.stringify(db));
+    localStorage.setItem(chaveAtual, conteudo);
     return true;
   } catch {
-    // O Safari pode rejeitar a gravação quando o armazenamento do site está
-    // cheio ou indisponível. Isso nunca deve derrubar o aplicativo: a nuvem
-    // continua sendo a fonte principal e a interface informa que o modo
-    // offline precisa ser regularizado neste aparelho.
+    // Depois que o armazenamento passou a ser separado por usuário, a chave
+    // antiga sem identidade deixou de ser lida em sessões autenticadas. No
+    // Safari ela pode continuar ocupando toda a cota do site. Remove somente
+    // essa cópia obsoleta e tenta novamente, sem tocar nas cópias dos usuários.
+    if (normalizeStorageIdentity(identity) && chaveAtual !== STORAGE_KEY) {
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.setItem(chaveAtual, conteudo);
+        return true;
+      } catch {
+        // A nuvem continua sendo a fonte principal. A interface informará que
+        // o modo offline permanece indisponível neste aparelho.
+      }
+    }
+
     return false;
   }
 }
