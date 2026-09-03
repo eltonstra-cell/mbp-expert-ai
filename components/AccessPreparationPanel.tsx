@@ -119,9 +119,15 @@ export default function AccessPreparationPanel(props: Props) {
             classe={readiness?.enforcementActive ? "bg-emerald-50 text-emerald-900" : "bg-blue-50 text-blue-900"}
           />
         </div>
-        <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-950">
-          A proteção só será ativada após criar e testar o primeiro Administrador. Isso evita bloquear o sistema atual por engano.
-        </div>
+        {readiness?.enforcementActive ? (
+          <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-950">
+            Proteção ativa: cada pessoa entra com seu próprio acesso e visualiza somente as empresas e funções autorizadas.
+          </div>
+        ) : (
+          <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-950">
+            A proteção será ativada após criar e testar o primeiro Administrador. Isso evita bloquear o sistema atual por engano.
+          </div>
+        )}
       </div>
 
       <div className="rounded-2xl bg-white p-5 shadow-sm">
