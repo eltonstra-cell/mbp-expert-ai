@@ -15,7 +15,15 @@ import type {
   StatusUsuario,
   Visita,
 } from "@/types";
-import { emptyDB, loadDB, saveDB, scopedStorageKey } from "@/lib/storage";
+import {
+  clearOfflineSession,
+  emptyDB,
+  loadDB,
+  loadOfflineSession,
+  saveDB,
+  saveOfflineSession,
+  scopedStorageKey,
+} from "@/lib/storage";
 import { authClient } from "@/lib/auth/client";
 import { registrarMudancaStatus } from "@/lib/visitAudit";
 import {
@@ -367,6 +375,19 @@ function chaveCriterio(item: {
 }
 
 export default function Home() {
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+    void navigator.serviceWorker
+      .register("/sw.js", { scope: "/" })
+      .then(() => navigator.serviceWorker.ready)
+      .then((registro) => {
+        registro.active?.postMessage({ type: "CACHE_APP_SHELL" });
+      })
+      .catch(() => {
+        // O acesso online continua normal em navegadores sem suporte offline.
+      });
+  }, []);
+
   const [db, setDb] = useState<AppDB>(emptyDB);
   const [ready, setReady] = useState(false);
   const [view, setView] = useState<View>("inicio");
@@ -630,6 +651,7 @@ export default function Home() {
       // Descobre primeiro quem está conectado. Só então abre o armazenamento
       // local exclusivo dessa conta, evitando misturar dados entre perfis.
       let identidadeLocal: string | null = null;
+      let sessaoOffline = loadOfflineSession();
       try {
         const responseSessao = await fetch("/api/access/session", {
           method: "GET",
@@ -639,17 +661,24 @@ export default function Home() {
           const sessao = await responseSessao.json();
           if (sessao?.authenticated && sessao?.user?.id && sessao?.user?.email) {
             identidadeLocal = sessao.user.email;
+            sessaoOffline = {
+              id: sessao.user.id,
+              email: sessao.user.email,
+              name: sessao.user.name || "",
+            };
+            saveOfflineSession(sessaoOffline);
             if (!cancelado) {
-              setSessaoAtual({
-                id: sessao.user.id,
-                email: sessao.user.email,
-                name: sessao.user.name || "",
-              });
+              setSessaoAtual(sessaoOffline);
             }
           }
         }
       } catch {
-        // O modo de preparação continua podendo funcionar sem autenticação.
+        // Sem internet, usa apenas a última sessão que foi validada online
+        // neste aparelho. O botão Sair remove essa autorização local.
+        if (sessaoOffline) {
+          identidadeLocal = sessaoOffline.email;
+          if (!cancelado) setSessaoAtual(sessaoOffline);
+        }
       } finally {
         storageIdentityRef.current = identidadeLocal;
         if (!cancelado) setSessaoConsultada(true);
@@ -958,6 +987,7 @@ export default function Home() {
     setSaindo(true);
     try {
       await authClient.signOut();
+      clearOfflineSession();
       window.location.replace("/auth/sign-in");
     } catch {
       setSaindo(false);

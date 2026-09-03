@@ -5,6 +5,12 @@ import Providers from "./providers";
 export const metadata: Metadata = {
   title: "MBP Expert AI",
   description: "Sistema Operacional para Consultoria em Segurança dos Alimentos",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "MBP Expert AI",
+    statusBarStyle: "default",
+  },
 };
 
 export const viewport: Viewport = {
