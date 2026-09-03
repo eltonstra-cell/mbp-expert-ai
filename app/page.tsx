@@ -42,6 +42,7 @@ import {
   alterarStatusUsuario,
   atualizarUsuarioPreparacao,
   criarUsuarioPreparacao,
+  vincularSessaoUsuario,
   type DadosUsuarioPreparacao,
 } from "@/lib/userManagement";
 
@@ -401,6 +402,7 @@ export default function Home() {
   const salvamentoImediatoRef = useRef(false);
   const ultimaSincronizacaoAtivacaoRef = useRef(0);
   const syncBloqueadaRef = useRef(false);
+  const sessaoVinculadaRef = useRef(false);
   const [recuperacaoPendente, setRecuperacaoPendente] = useState<{
     local: AppDB;
     cloud: AppDB;
@@ -856,6 +858,61 @@ export default function Home() {
       // A navegação continua funcionando mesmo se o armazenamento local falhar.
     }
   }, [view, visitaAtualId, ambienteChecklistAtivo, ready]);
+
+  useEffect(() => {
+    if (!ready || sessaoVinculadaRef.current) return;
+    sessaoVinculadaRef.current = true;
+
+    async function vincularSessao() {
+      try {
+        const response = await fetch("/api/access/session", {
+          method: "GET",
+          cache: "no-store",
+        });
+        if (!response.ok) return;
+        const sessao = await response.json();
+        if (!sessao?.authenticated || !sessao?.user?.id || !sessao?.user?.email) return;
+
+        setDb((atual) => {
+          const agora = new Date().toISOString();
+          const resultado = vincularSessaoUsuario(
+            {
+              authId: sessao.user.id,
+              email: sessao.user.email,
+              nome: sessao.user.name,
+            },
+            atual.usuarios,
+            agora
+          );
+          if (resultado.status !== "Vinculado" || !resultado.alterado) return atual;
+
+          const registro = criarRegistroAuditoria(
+            {
+              usuarioId: resultado.usuario.id,
+              usuarioNome: resultado.usuario.nome,
+              acao: "usuario.sessao_vinculada",
+              entidade: "Usuário",
+              entidadeId: resultado.usuario.id,
+              detalhes: `${resultado.usuario.nome} • ${resultado.usuario.perfil} • conta autenticada vinculada e ativada.`,
+            },
+            agora
+          );
+
+          return {
+            ...atual,
+            usuarios: atual.usuarios.map((usuario) =>
+              usuario.id === resultado.usuario.id ? resultado.usuario : usuario
+            ),
+            registrosAuditoria: [...atual.registrosAuditoria, registro],
+          };
+        });
+      } catch {
+        // Em modo de preparação, uma indisponibilidade do Auth não bloqueia o sistema.
+      }
+    }
+
+    void vincularSessao();
+  }, [ready]);
 
   useEffect(() => {
     if (!ready) return;

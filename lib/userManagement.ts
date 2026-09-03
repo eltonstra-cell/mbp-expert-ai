@@ -7,6 +7,18 @@ export type DadosUsuarioPreparacao = {
   empresaIds: string[];
 };
 
+export type IdentidadeSessao = {
+  authId: string;
+  email: string;
+  nome?: string;
+};
+
+export type ResultadoVinculoSessao =
+  | { status: "Vinculado"; usuario: UsuarioSistema; alterado: boolean }
+  | { status: "Não preparado" }
+  | { status: "Suspenso"; usuario: UsuarioSistema }
+  | { status: "Conflito"; usuario: UsuarioSistema };
+
 export function normalizarEmail(email: string): string {
   return email.trim().toLocaleLowerCase("pt-BR");
 }
@@ -107,5 +119,39 @@ export function alterarStatusUsuario(
       status === "Convidado"
         ? usuario.convidadoEm || atualizadoEm
         : usuario.convidadoEm,
+  };
+}
+
+export function vincularSessaoUsuario(
+  identidade: IdentidadeSessao,
+  existentes: UsuarioSistema[],
+  atualizadoEm = new Date().toISOString()
+): ResultadoVinculoSessao {
+  const authId = identidade.authId.trim();
+  const email = normalizarEmail(identidade.email);
+  if (!authId || !email) return { status: "Não preparado" };
+
+  const usuario = existentes.find(
+    (item) => normalizarEmail(item.email) === email
+  );
+  if (!usuario) return { status: "Não preparado" };
+  if (usuario.status === "Suspenso") return { status: "Suspenso", usuario };
+  if (usuario.authId && usuario.authId !== authId) {
+    return { status: "Conflito", usuario };
+  }
+
+  const alterado = usuario.authId !== authId || usuario.status !== "Ativo";
+  if (!alterado) return { status: "Vinculado", usuario, alterado: false };
+
+  return {
+    status: "Vinculado",
+    alterado: true,
+    usuario: {
+      ...usuario,
+      authId,
+      status: "Ativo",
+      atualizadoEm,
+      ultimoAcessoEm: atualizadoEm,
+    },
   };
 }
