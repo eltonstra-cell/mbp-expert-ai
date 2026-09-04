@@ -374,6 +374,16 @@ function chaveCriterio(item: {
   ].join("::");
 }
 
+type MobileNavIconName = "inicio" | "empresas" | "visitas" | "acessos";
+
+function MobileNavIcon({ name }: { name: MobileNavIconName }) {
+  const common = { width: 22, height: 22, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.9, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, "aria-hidden": true };
+  if (name === "inicio") return <svg {...common}><path d="m3 11 9-7 9 7" /><path d="M5.5 9.5V20h13V9.5" /><path d="M9.5 20v-6h5v6" /></svg>;
+  if (name === "empresas") return <svg {...common}><path d="M3 21h18" /><path d="M5 21V7h9v14" /><path d="M14 11h5v10" /><path d="M8 10h3M8 14h3M8 18h3M17 14h.01M17 18h.01" /></svg>;
+  if (name === "visitas") return <svg {...common}><path d="M9 5h6" /><path d="M9 3h6v4H9z" /><path d="M7 5H5.5A1.5 1.5 0 0 0 4 6.5v13A1.5 1.5 0 0 0 5.5 21h13a1.5 1.5 0 0 0 1.5-1.5v-13A1.5 1.5 0 0 0 18.5 5H17" /><path d="m8 14 2.2 2.2L16 10.5" /></svg>;
+  return <svg {...common}><path d="M12 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" /><path d="M5 21a7 7 0 0 1 14 0" /><path d="M18 4.5h3M19.5 3v3" /></svg>;
+}
+
 export default function Home() {
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
@@ -3285,7 +3295,6 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-[#f4f7fb]">
       <header className="relative overflow-hidden bg-[#0e315b] text-white">
-        <div className="absolute inset-x-0 bottom-0 h-24 bg-[url('/kitchen-line.svg')] bg-cover bg-bottom opacity-15" />
         <div className="relative mx-auto max-w-7xl px-4 py-4">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3">
@@ -3335,22 +3344,22 @@ export default function Home() {
             </button>
           </div>
 
-          <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/10 px-3 py-3 backdrop-blur-sm">
+          <div className="mt-4 rounded-2xl border border-white/10 bg-white/10 px-3 py-3 backdrop-blur-sm">
             <div className="min-w-0">
               <div className="text-[10px] font-extrabold uppercase tracking-wider text-blue-100">Empresa ativa</div>
               <div className="truncate font-extrabold">{atual?.nomeFantasia || "Selecione uma empresa"}</div>
             </div>
             {usuarioDaSessao && (
-              <div className="flex min-w-0 items-center gap-2 border-l border-white/15 pl-3">
-                <div>
-                  <div className="max-w-40 truncate text-sm font-extrabold">{usuarioDaSessao.nome}</div>
+              <div className="mt-3 flex min-w-0 items-center justify-between gap-3 border-t border-white/15 pt-3">
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-extrabold">{usuarioDaSessao.nome}</div>
                   <div className="text-[10px] text-blue-100">{usuarioDaSessao.perfil}</div>
                 </div>
                 <button
                   type="button"
                   onClick={() => void sairDoSistema()}
                   disabled={saindo}
-                  className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-xs font-extrabold text-white disabled:opacity-60"
+                  className="shrink-0 rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-xs font-extrabold text-white disabled:opacity-60"
                 >
                   {saindo ? "Saindo..." : "Sair"}
                 </button>
@@ -5890,7 +5899,7 @@ export default function Home() {
           <div className="space-y-4">
             <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
               <div className="relative overflow-hidden bg-[#17365D] px-5 py-5 text-white">
-                <div className="absolute inset-0 bg-[url('/kitchen-line.svg')] bg-cover bg-center opacity-20" />
+                <div className="absolute inset-y-0 right-0 w-3/4 bg-[url('/kitchen-line.svg')] bg-contain bg-right bg-no-repeat opacity-20" />
                 <div className="relative">
                   <div className="text-xs font-extrabold uppercase tracking-wider text-blue-100">Painel da consultoria</div>
                   <h1 className="mt-1 text-2xl font-extrabold">
@@ -6473,16 +6482,16 @@ export default function Home() {
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_30px_rgba(15,23,42,0.08)] backdrop-blur md:hidden">
         <div className="mx-auto grid max-w-lg grid-cols-4 gap-1">
           {([
-            ["inicio", "⌂", "Início"],
-            ["empresas", "▦", "Empresas"],
-            ["visitas", "✓", "Visitas"],
-            ["acessos", "♙", "Acessos"],
-          ] as const).map(([destino, icone, rotulo]) => {
+            ["inicio", "Início"],
+            ["empresas", "Empresas"],
+            ["visitas", "Visitas"],
+            ["acessos", "Acessos"],
+          ] as const).map(([destino, rotulo]) => {
             if (destino === "acessos" && !permitido("usuarios.gerenciar")) return null;
             const ativo = destino === "visitas" ? view === "visitas" || VISIT_VIEWS.includes(view) : view === destino;
             return (
               <button key={destino} type="button" onClick={() => setView(destino)} className={`flex min-h-14 flex-col items-center justify-center rounded-2xl px-2 text-[11px] font-extrabold ${ativo ? "bg-blue-50 text-[#17365D]" : "text-slate-500"}`}>
-                <span className="text-xl leading-none" aria-hidden="true">{icone}</span>
+                <MobileNavIcon name={destino} />
                 <span className="mt-1">{rotulo}</span>
               </button>
             );
