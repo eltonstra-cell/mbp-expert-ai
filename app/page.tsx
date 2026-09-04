@@ -3295,24 +3295,24 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-[#f4f7fb]">
       <header className="relative overflow-hidden bg-[#0e315b] text-white">
-        <div className="relative mx-auto max-w-7xl px-4 py-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-white/25 bg-white/10">
-                <svg aria-hidden="true" viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <div className="relative mx-auto max-w-7xl px-4 py-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-white/25 bg-white/10">
+                <svg aria-hidden="true" viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M12 2.8 20 6v5.8c0 4.9-3.3 8-8 9.4-4.7-1.4-8-4.5-8-9.4V6l8-3.2Z" />
                   <path d="m8.2 12 2.3 2.3 5.4-5.4" />
                 </svg>
               </div>
-              <div>
-                <div className="text-xl font-extrabold tracking-tight">MBP Expert AI</div>
-                <div className="text-xs text-blue-100">Segurança dos Alimentos</div>
+              <div className="min-w-0">
+                <div className="whitespace-nowrap text-lg font-extrabold tracking-tight sm:text-xl">MBP Expert AI</div>
+                <div className="whitespace-nowrap text-[11px] text-blue-100 sm:text-xs">Segurança dos Alimentos</div>
               </div>
             </div>
             <button
               type="button"
               onClick={() => void atualizarNuvemManualmente()}
-              className={`shrink-0 rounded-full px-3 py-2 text-xs font-extrabold ${
+              className={`shrink-0 rounded-full px-2.5 py-1.5 text-[11px] font-extrabold sm:px-3 sm:text-xs ${
                 syncStatus === "sincronizado"
                   ? "bg-emerald-100 text-emerald-800"
                   : syncStatus === "conectando"
@@ -3334,7 +3334,7 @@ export default function Home() {
               }
             >
               {syncStatus === "sincronizado"
-                ? "☁ Nuvem sincronizada"
+                ? "● Sincronizado"
                 : syncStatus === "conectando"
                 ? "● Conectando"
                 : syncStatus === "local"
@@ -3349,15 +3349,15 @@ export default function Home() {
             </button>
           </div>
 
-          <div className="mt-4 rounded-2xl border border-white/10 bg-white/10 px-3 py-3 backdrop-blur-sm">
+          <div className="mt-3 rounded-2xl border border-white/10 bg-white/10 px-3 py-2.5 backdrop-blur-sm">
             <div className="min-w-0">
               <div className="text-[10px] font-extrabold uppercase tracking-wider text-blue-100">Empresa ativa</div>
-              <div className="truncate font-extrabold">{atual?.nomeFantasia || "Selecione uma empresa"}</div>
+              <div className="truncate text-sm font-extrabold sm:text-base">{atual?.nomeFantasia || "Selecione uma empresa"}</div>
             </div>
             {usuarioDaSessao && (
-              <div className="mt-3 flex min-w-0 items-center justify-between gap-3 border-t border-white/15 pt-3">
+              <div className="mt-2 flex min-w-0 items-center justify-between gap-3 border-t border-white/15 pt-2">
                 <div className="flex min-w-0 items-center gap-3">
-                  <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#4874bd] text-xs font-extrabold text-white">
+                  <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#4874bd] text-[11px] font-extrabold text-white">
                     {usuarioDaSessao.nome.split(" ").filter(Boolean).slice(0, 2).map((parte) => parte[0]).join("").toUpperCase()}
                   </div>
                   <div className="min-w-0">
@@ -3369,7 +3369,7 @@ export default function Home() {
                   type="button"
                   onClick={() => void sairDoSistema()}
                   disabled={saindo}
-                  className="shrink-0 rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-xs font-extrabold text-white disabled:opacity-60"
+                  className="shrink-0 rounded-xl border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-extrabold text-white disabled:opacity-60"
                 >
                   {saindo ? "Saindo..." : "Sair"}
                 </button>
