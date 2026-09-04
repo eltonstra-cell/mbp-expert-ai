@@ -2351,7 +2351,7 @@ export default function Home() {
     setView("visita");
   }
 
-  function abrirChecklist() {
+  function abrirChecklistNoAmbiente(ambienteInicial?: string) {
     if (!visitaAtual || !(visitaAtual.ambientes || []).length) return;
     if (!exigirPermissao("visitas.executar", visitaAtual.empresaId)) return;
 
@@ -2374,9 +2374,18 @@ export default function Home() {
       }));
     }
 
-    setAmbienteChecklistAtivo((visitaAtual.ambientes || [])[0] || null);
+    const ambientesDaVisita = visitaAtual.ambientes || [];
+    setAmbienteChecklistAtivo(
+      ambienteInicial && ambientesDaVisita.includes(ambienteInicial)
+        ? ambienteInicial
+        : ambientesDaVisita[0] || null
+    );
 
     setView("checklist");
+  }
+
+  function abrirChecklist() {
+    abrirChecklistNoAmbiente();
   }
 
   function rolarParaProximoItem(itemIdAtual: string) {
@@ -5090,7 +5099,7 @@ export default function Home() {
                   <button
                     key={resumo.ambiente}
                     type="button"
-                    onClick={abrirChecklist}
+                    onClick={() => abrirChecklistNoAmbiente(resumo.ambiente)}
                     className={`absolute grid h-7 w-7 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border-2 border-white text-[10px] font-extrabold text-white shadow-md ${
                       resumo.status === "Conforme" ? "bg-emerald-500" :
                       resumo.status === "Atenção" ? "bg-amber-500" :
@@ -5109,9 +5118,9 @@ export default function Home() {
                 )}
               </div>
               {resumoAmbientesVisita.length > 0 && (
-                <div className="grid grid-cols-2 gap-x-3 gap-y-2 border-t border-slate-100 px-4 py-3">
+                <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-3 gap-y-2 overflow-hidden border-t border-slate-100 px-4 py-3">
                   {resumoAmbientesVisita.slice(0, 6).map((resumo, indice) => (
-                    <button key={resumo.ambiente} type="button" onClick={abrirChecklist} className="flex min-w-0 items-center gap-2 text-left">
+                    <button key={resumo.ambiente} type="button" onClick={() => abrirChecklistNoAmbiente(resumo.ambiente)} className="flex min-w-0 items-center gap-2 overflow-hidden text-left">
                       <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full text-[8px] font-extrabold text-white ${
                         resumo.status === "Conforme" ? "bg-emerald-500" :
                         resumo.status === "Atenção" ? "bg-amber-500" :
@@ -5126,9 +5135,9 @@ export default function Home() {
                 </div>
               )}
               {resumoAmbientesVisita.length > 6 && (
-                <div className="border-t border-slate-100 px-4 py-2 text-center text-[10px] font-bold text-[#2F5597]">
+                <button type="button" onClick={() => abrirChecklistNoAmbiente(resumoAmbientesVisita[6]?.ambiente)} className="w-full border-t border-slate-100 px-4 py-2 text-center text-[10px] font-bold text-[#2F5597]">
                   Ver mais {resumoAmbientesVisita.length - 6} ambientes no checklist →
-                </div>
+                </button>
               )}
             </div>
 
@@ -5142,7 +5151,7 @@ export default function Home() {
                   <div className="truncate font-extrabold text-slate-950">{proximoAmbienteVisita || ((visitaAtual.ambientes || []).length ? "Revisar a inspeção" : "Definir ambientes")}</div>
                   <button
                     type="button"
-                    onClick={(visitaAtual.ambientes || []).length ? abrirChecklist : abrirAmbientes}
+                    onClick={() => (visitaAtual.ambientes || []).length ? abrirChecklistNoAmbiente(proximoAmbienteVisita) : abrirAmbientes()}
                     disabled={!permitido("visitas.executar", visitaAtual.empresaId)}
                     className="mt-2 w-full rounded-lg bg-[#2F5597] px-3 py-2 text-xs font-extrabold text-white disabled:opacity-50"
                   >
