@@ -1,4 +1,4 @@
-const CACHE_NAME = "mbp-app-shell-v7";
+const CACHE_NAME = "mbp-app-shell-v8";
 const APP_SHELL = "/";
 const STATIC_ASSETS = ["/kitchen-line.svg", "/images/cozinha-inspecao.webp", "/manifest.webmanifest"];
 
