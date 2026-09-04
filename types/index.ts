@@ -108,6 +108,7 @@ export type ClassificacaoFotoIA =
 export type AchadoFotoIA = {
   titulo: string;
   descricao: string;
+  acaoSugerida?: string;
   confianca: ConfiancaAchadoIA;
   requerConfirmacao: boolean;
 };
@@ -118,6 +119,7 @@ export type AnaliseFotoIA = {
   modelo: string;
   geradaEm: string;
   analisavel: boolean;
+  situacao?: "Conforme" | "Atenção" | "Possível não conformidade" | "Não foi possível avaliar";
   resumo: string;
   classificacao: ClassificacaoFotoIA;
   achados: AchadoFotoIA[];

@@ -3,6 +3,7 @@ import type { AnaliseFotoIA } from "@/types";
 export type ResultadoFotoIA = Pick<
   AnaliseFotoIA,
   | "analisavel"
+  | "situacao"
   | "resumo"
   | "classificacao"
   | "achados"
@@ -13,9 +14,12 @@ export type ResultadoFotoIA = Pick<
 export function montarTextoRevisao(resultado: ResultadoFotoIA): string {
   const partes = [
     resultado.resumo.trim(),
-    ...resultado.achados.map((achado) =>
-      `${achado.titulo.trim()}: ${achado.descricao.trim()}`.trim()
-    ),
+    ...resultado.achados.flatMap((achado) => [
+      `${achado.titulo.trim()}: ${achado.descricao.trim()}`.trim(),
+      achado.acaoSugerida?.trim()
+        ? `Ação sugerida: ${achado.acaoSugerida.trim()}`
+        : "",
+    ]),
   ].filter(Boolean);
 
   return Array.from(new Set(partes)).join("\n");

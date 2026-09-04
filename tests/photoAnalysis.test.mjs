@@ -10,12 +10,14 @@ import {
 
 const resultado = {
   analisavel: true,
+  situacao: "Possível não conformidade",
   resumo: "Recipiente observado sem proteção completa.",
   classificacao: "Possível evidência de não conformidade",
   achados: [
     {
       titulo: "Proteção do alimento",
       descricao: "A cobertura parece incompleta na área visível.",
+      acaoSugerida: "Cobrir completamente o recipiente.",
       confianca: "Média",
       requerConfirmacao: true,
     },
@@ -35,6 +37,7 @@ test("registra sugestão como pendente e exige revisão profissional", () => {
   assert.equal(analise.status, "Aguardando revisão");
   assert.equal(analise.id, "analise-1");
   assert.match(analise.textoRevisado, /Proteção do alimento/);
+  assert.match(analise.textoRevisado, /Ação sugerida: Cobrir completamente/);
   assert.equal(analise.revisadaEm, undefined);
 });
 

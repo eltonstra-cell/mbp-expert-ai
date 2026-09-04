@@ -16,6 +16,7 @@ const schemaAnalise = {
   additionalProperties: false,
   required: [
     "analisavel",
+    "situacao",
     "resumo",
     "classificacao",
     "achados",
@@ -24,7 +25,11 @@ const schemaAnalise = {
   ],
   properties: {
     analisavel: { type: "boolean" },
-    resumo: { type: "string" },
+    situacao: {
+      type: "string",
+      enum: ["Conforme", "Atenção", "Possível não conformidade", "Não foi possível avaliar"],
+    },
+    resumo: { type: "string", maxLength: 160 },
     classificacao: {
       type: "string",
       enum: [
@@ -37,21 +42,22 @@ const schemaAnalise = {
     },
     achados: {
       type: "array",
-      maxItems: 5,
+      maxItems: 2,
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["titulo", "descricao", "confianca", "requerConfirmacao"],
+        required: ["titulo", "descricao", "acaoSugerida", "confianca", "requerConfirmacao"],
         properties: {
-          titulo: { type: "string" },
-          descricao: { type: "string" },
+          titulo: { type: "string", maxLength: 60 },
+          descricao: { type: "string", maxLength: 180 },
+          acaoSugerida: { type: "string", maxLength: 180 },
           confianca: { type: "string", enum: ["Baixa", "Média", "Alta"] },
           requerConfirmacao: { type: "boolean" },
         },
       },
     },
-    alertasPrivacidade: { type: "array", items: { type: "string" }, maxItems: 5 },
-    observacoesLimitacoes: { type: "array", items: { type: "string" }, maxItems: 5 },
+    alertasPrivacidade: { type: "array", items: { type: "string", maxLength: 140 }, maxItems: 2 },
+    observacoesLimitacoes: { type: "array", items: { type: "string", maxLength: 140 }, maxItems: 2 },
   },
 } as const;
 
@@ -150,9 +156,13 @@ export async function POST(request: Request) {
         instructions:
           "Você auxilia um nutricionista em inspeções de segurança dos alimentos. " +
           "Analise somente o que é visualmente observável na foto e responda em português do Brasil. " +
+          "Seja extremamente objetivo: use frases curtas, sem introdução, repetição, explicações genéricas ou texto educativo. " +
+          "Retorne no máximo dois achados prioritários. Em resumo, escreva apenas uma conclusão de até 160 caracteres. " +
+          "Para cada achado, descreva o problema visual em uma frase e indique uma ação prática em uma frase. " +
           "Trate todos os achados como sugestões que exigem validação profissional. " +
           "Não afirme temperatura, odor, presença de microrganismos, validade, composição ou conformidade legal quando isso não estiver legível e verificável. " +
           "Não crie uma não conformidade oficial. Se a imagem estiver desfocada, sem relação com o contexto ou insuficiente, marque analisavel como falso e explique a limitação. " +
+          "Quando não houver base visual suficiente, use a situação 'Não foi possível avaliar' e não invente achados. " +
           "Aponte em alertasPrivacidade qualquer rosto, crachá, documento ou dado pessoal aparentemente visível.",
         input: [
           {
