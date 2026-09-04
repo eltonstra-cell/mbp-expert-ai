@@ -4125,48 +4125,65 @@ export default function Home() {
                                     }`}>
                                       {ultimaAnalise.status}
                                     </span>
-                                    <span className="rounded-full bg-violet-100 px-3 py-1 text-xs font-bold text-violet-800">
-                                      {ultimaAnalise.classificacao}
+                                    <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${
+                                      ultimaAnalise.situacao === "Conforme"
+                                        ? "bg-emerald-100 text-emerald-800"
+                                        : ultimaAnalise.situacao === "Atenção"
+                                        ? "bg-amber-100 text-amber-900"
+                                        : ultimaAnalise.situacao === "Possível não conformidade"
+                                        ? "bg-red-100 text-red-800"
+                                        : "bg-slate-100 text-slate-700"
+                                    }`}>
+                                      {ultimaAnalise.situacao || ultimaAnalise.classificacao}
                                     </span>
                                   </div>
 
-                                  <p className="mt-3 text-sm text-slate-700">{ultimaAnalise.resumo}</p>
+                                  <p className="mt-3 font-bold text-slate-800">{ultimaAnalise.resumo}</p>
 
                                   {ultimaAnalise.achados.length > 0 && (
                                     <div className="mt-3 space-y-2">
                                       {ultimaAnalise.achados.map((achado, indice) => (
                                         <div key={`${ultimaAnalise.id}-${indice}`} className="rounded-lg border border-slate-200 p-3 text-sm">
-                                          <div className="flex flex-wrap items-center justify-between gap-2">
-                                            <span className="font-extrabold">{achado.titulo}</span>
-                                            <span className="text-xs font-bold text-slate-500">Confiança {achado.confianca.toLowerCase()}</span>
-                                          </div>
+                                          <span className="font-extrabold">{achado.titulo}</span>
                                           <p className="mt-1 text-slate-600">{achado.descricao}</p>
+                                          {achado.acaoSugerida && (
+                                            <p className="mt-2 text-emerald-800">
+                                              <span className="font-extrabold">Ação:</span> {achado.acaoSugerida}
+                                            </p>
+                                          )}
                                         </div>
                                       ))}
                                     </div>
                                   )}
 
-                                  {ultimaAnalise.alertasPrivacidade.length > 0 && (
-                                    <div className="mt-3 rounded-lg bg-red-50 p-3 text-xs text-red-800">
-                                      <div className="font-extrabold">Atenção à privacidade</div>
-                                      {ultimaAnalise.alertasPrivacidade.join(" • ")}
-                                    </div>
-                                  )}
-
-                                  {ultimaAnalise.observacoesLimitacoes.length > 0 && (
-                                    <div className="mt-3 rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
-                                      <span className="font-extrabold">Limitações:</span>{" "}
-                                      {ultimaAnalise.observacoesLimitacoes.join(" • ")}
-                                    </div>
+                                  {(ultimaAnalise.alertasPrivacidade.length > 0 ||
+                                    ultimaAnalise.observacoesLimitacoes.length > 0) && (
+                                    <details className="mt-3 rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
+                                      <summary className="cursor-pointer font-extrabold text-slate-700">
+                                        Ver detalhes técnicos
+                                      </summary>
+                                      {ultimaAnalise.alertasPrivacidade.length > 0 && (
+                                        <p className="mt-2 text-red-800">
+                                          <span className="font-extrabold">Privacidade:</span>{" "}
+                                          {ultimaAnalise.alertasPrivacidade.join(" • ")}
+                                        </p>
+                                      )}
+                                      {ultimaAnalise.observacoesLimitacoes.length > 0 && (
+                                        <p className="mt-2">
+                                          <span className="font-extrabold">Limitações:</span>{" "}
+                                          {ultimaAnalise.observacoesLimitacoes.join(" • ")}
+                                        </p>
+                                      )}
+                                    </details>
                                   )}
 
                                   {ultimaAnalise.status === "Aguardando revisão" && permitido("ia.analisar", ev.empresaId) ? (
                                     <div className="mt-4">
                                       <label className="block text-xs font-extrabold text-slate-600">
-                                        Texto técnico para revisão profissional
+                                        Revise antes de confirmar
                                       </label>
                                       <textarea
-                                        rows={5}
+                                        rows={3}
                                         value={analiseIATextos[ultimaAnalise.id] ?? ultimaAnalise.textoRevisado}
                                         onChange={(e) =>
                                           setAnaliseIATextos((atual) => ({
@@ -4182,7 +4199,7 @@ export default function Home() {
                                           onClick={() => confirmarAnaliseFoto(ev, ultimaAnalise)}
                                           className="rounded-xl bg-emerald-700 px-4 py-3 text-sm font-extrabold text-white"
                                         >
-                                          Confirmar análise revisada
+                                          Confirmar
                                         </button>
                                         <button
                                           type="button"
