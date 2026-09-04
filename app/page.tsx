@@ -5084,23 +5084,22 @@ export default function Home() {
                   <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-slate-400" />Não verificado</span>
                 </div>
               </div>
-              <div className="relative aspect-[4/3] overflow-hidden bg-slate-50 sm:aspect-[16/9]">
+              <div className="relative aspect-[16/10] overflow-hidden bg-slate-50 sm:aspect-[16/9]">
                 <img src="/images/mapa-inspecao.webp" alt="Mapa ilustrativo dos ambientes da inspeção" className="h-full w-full object-cover" />
                 {resumoAmbientesVisita.slice(0, 6).map((resumo, indice) => (
                   <button
                     key={resumo.ambiente}
                     type="button"
                     onClick={abrirChecklist}
-                    className="absolute flex max-w-[34%] -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded-full bg-white/95 px-2 py-1 text-[8px] font-extrabold text-slate-700 shadow-md backdrop-blur sm:text-[10px]"
-                    style={posicoesMapaInspecao[indice]}
-                    title={`${resumo.ambiente}: ${resumo.status}`}
-                  >
-                    <span className={`h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-white ${
+                    className={`absolute grid h-7 w-7 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border-2 border-white text-[10px] font-extrabold text-white shadow-md ${
                       resumo.status === "Conforme" ? "bg-emerald-500" :
                       resumo.status === "Atenção" ? "bg-amber-500" :
                       resumo.status === "Não conforme" ? "bg-red-500" : "bg-slate-400"
-                    }`} />
-                    <span className="truncate">{resumo.ambiente}</span>
+                    }`}
+                    style={posicoesMapaInspecao[indice]}
+                    title={`${resumo.ambiente}: ${resumo.status}`}
+                  >
+                    {indice + 1}
                   </button>
                 ))}
                 {resumoAmbientesVisita.length === 0 && (
@@ -5109,9 +5108,26 @@ export default function Home() {
                   </button>
                 )}
               </div>
+              {resumoAmbientesVisita.length > 0 && (
+                <div className="grid grid-cols-2 gap-x-3 gap-y-2 border-t border-slate-100 px-4 py-3">
+                  {resumoAmbientesVisita.slice(0, 6).map((resumo, indice) => (
+                    <button key={resumo.ambiente} type="button" onClick={abrirChecklist} className="flex min-w-0 items-center gap-2 text-left">
+                      <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full text-[8px] font-extrabold text-white ${
+                        resumo.status === "Conforme" ? "bg-emerald-500" :
+                        resumo.status === "Atenção" ? "bg-amber-500" :
+                        resumo.status === "Não conforme" ? "bg-red-500" : "bg-slate-400"
+                      }`}>{indice + 1}</span>
+                      <span className="min-w-0">
+                        <span className="block truncate text-[10px] font-extrabold text-slate-700">{resumo.ambiente}</span>
+                        <span className="block text-[8px] text-slate-400">{resumo.status}</span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
               {resumoAmbientesVisita.length > 6 && (
-                <div className="border-t border-slate-100 px-4 py-2 text-center text-[10px] font-bold text-slate-500">
-                  + {resumoAmbientesVisita.length - 6} ambientes disponíveis no checklist
+                <div className="border-t border-slate-100 px-4 py-2 text-center text-[10px] font-bold text-[#2F5597]">
+                  Ver mais {resumoAmbientesVisita.length - 6} ambientes no checklist →
                 </div>
               )}
             </div>
