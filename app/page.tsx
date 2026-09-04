@@ -401,6 +401,7 @@ export default function Home() {
   const [db, setDb] = useState<AppDB>(emptyDB);
   const [ready, setReady] = useState(false);
   const [view, setView] = useState<View>("inicio");
+  const [filtroInicio, setFiltroInicio] = useState<"Em andamento" | "Concluída">("Em andamento");
   const [showEmpresaForm, setShowEmpresaForm] = useState(false);
   const [editingEmpresaId, setEditingEmpresaId] = useState<string | null>(null);
   const [showVisitaForm, setShowVisitaForm] = useState(false);
@@ -1300,6 +1301,12 @@ export default function Home() {
       visitas.filter((v) => v.empresaId === db.empresaAtualId),
     [visitas, db.empresaAtualId]
   );
+
+  const prefixoMesAtual = new Date().toISOString().slice(0, 7);
+  const visitasDoMes = visitas.filter((visita) => visita.data?.startsWith(prefixoMesAtual));
+  const visitasRecentesInicio = visitas
+    .filter((visita) => visita.status === filtroInicio)
+    .slice(0, 3);
 
   const visitaEmAndamentoDestaque = visitas.find(
     (visita) => visita.status === "Em andamento"
@@ -3295,24 +3302,24 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-[#f4f7fb]">
       <header className="relative overflow-hidden bg-[#0e315b] text-white">
-        <div className="relative mx-auto max-w-7xl px-4 py-3">
+        <div className="relative mx-auto max-w-7xl px-4 py-2.5">
           <div className="flex items-center justify-between gap-2">
             <div className="flex min-w-0 items-center gap-2.5">
-              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-white/25 bg-white/10">
-                <svg aria-hidden="true" viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-white/25 bg-white/10">
+                <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M12 2.8 20 6v5.8c0 4.9-3.3 8-8 9.4-4.7-1.4-8-4.5-8-9.4V6l8-3.2Z" />
                   <path d="m8.2 12 2.3 2.3 5.4-5.4" />
                 </svg>
               </div>
               <div className="min-w-0">
-                <div className="whitespace-nowrap text-lg font-extrabold tracking-tight sm:text-xl">MBP Expert AI</div>
-                <div className="whitespace-nowrap text-[11px] text-blue-100 sm:text-xs">Segurança dos Alimentos</div>
+                <div className="whitespace-nowrap text-sm font-extrabold tracking-tight sm:text-base">MBP Expert AI</div>
+                <div className="whitespace-nowrap text-[9px] text-blue-100 sm:text-[11px]">Segurança dos Alimentos</div>
               </div>
             </div>
             <button
               type="button"
               onClick={() => void atualizarNuvemManualmente()}
-              className={`shrink-0 rounded-full px-2.5 py-1.5 text-[11px] font-extrabold sm:px-3 sm:text-xs ${
+              className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-extrabold sm:px-3 sm:text-xs ${
                 syncStatus === "sincronizado"
                   ? "bg-emerald-100 text-emerald-800"
                   : syncStatus === "conectando"
@@ -3349,33 +3356,33 @@ export default function Home() {
             </button>
           </div>
 
-          <div className="mt-3 rounded-2xl border border-white/10 bg-white/10 px-3 py-2.5 backdrop-blur-sm">
-            <div className="min-w-0">
-              <div className="text-[10px] font-extrabold uppercase tracking-wider text-blue-100">Empresa ativa</div>
-              <div className="truncate text-sm font-extrabold sm:text-base">{atual?.nomeFantasia || "Selecione uma empresa"}</div>
-            </div>
-            {usuarioDaSessao && (
-              <div className="mt-2 flex min-w-0 items-center justify-between gap-3 border-t border-white/15 pt-2">
-                <div className="flex min-w-0 items-center gap-3">
-                  <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#4874bd] text-[11px] font-extrabold text-white">
-                    {usuarioDaSessao.nome.split(" ").filter(Boolean).slice(0, 2).map((parte) => parte[0]).join("").toUpperCase()}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-extrabold">{usuarioDaSessao.nome}</div>
-                    <div className="text-[10px] text-blue-100">{usuarioDaSessao.perfil}</div>
-                  </div>
+          {usuarioDaSessao && (
+            <div className="mt-2 flex min-w-0 items-center justify-between gap-3 border-t border-white/15 pt-2">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#4874bd] text-[10px] font-extrabold text-white">
+                  {usuarioDaSessao.nome.split(" ").filter(Boolean).slice(0, 2).map((parte) => parte[0]).join("").toUpperCase()}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => void sairDoSistema()}
-                  disabled={saindo}
-                  className="shrink-0 rounded-xl border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-extrabold text-white disabled:opacity-60"
-                >
-                  {saindo ? "Saindo..." : "Sair"}
-                </button>
+                <div className="min-w-0">
+                  <div className="truncate text-xs font-extrabold sm:text-sm">{atual?.nomeFantasia || "Selecione uma empresa"}</div>
+                  <div className="truncate text-[9px] text-blue-100 sm:text-[10px]">{usuarioDaSessao.nome} • {usuarioDaSessao.perfil}</div>
+                </div>
               </div>
-            )}
-          </div>
+              <button
+                type="button"
+                onClick={() => void sairDoSistema()}
+                disabled={saindo}
+                aria-label="Sair"
+                title="Sair"
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-white/20 bg-white/10 text-white disabled:opacity-60"
+              >
+                <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M10 17l5-5-5-5" />
+                  <path d="M15 12H3" />
+                  <path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4" />
+                </svg>
+              </button>
+            </div>
+          )}
         </div>
       </header>
 
@@ -5906,83 +5913,95 @@ export default function Home() {
             </div>
           </section>
         ) : view === "inicio" ? (
-          <div className="space-y-4">
-            <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-md">
-              <div className="relative min-h-52 overflow-hidden bg-[#17365D] bg-[url('/images/cozinha-inspecao.webp')] bg-cover bg-center text-white">
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0b2a50] via-[#0b2a50]/45 to-black/5" />
-                <div className="absolute inset-x-0 bottom-0 p-5">
-                  <div className="text-xs font-extrabold uppercase tracking-wider text-blue-100">Painel da consultoria</div>
-                  <h1 className="mt-1 text-3xl font-extrabold drop-shadow-sm">
-                    {new Date().getHours() < 12 ? "Bom dia" : new Date().getHours() < 18 ? "Boa tarde" : "Boa noite"}, {usuarioDaSessao?.nome.split(" ")[0] || "profissional"}
-                  </h1>
-                  <p className="mt-1 text-sm text-white/90">Pronto para mais uma visita?</p>
-                </div>
+          <div className="space-y-3">
+            <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <div className="aspect-[16/7] min-h-36 bg-[#17365D] bg-[url('/images/cozinha-inspecao.webp')] bg-cover bg-center" />
+            </section>
+
+            <section className="grid grid-cols-4 gap-2">
+              <div className="rounded-xl border border-slate-100 bg-white px-2 py-3 text-center shadow-sm">
+                <div className="mx-auto grid h-8 w-8 place-items-center rounded-full bg-blue-50 text-sm font-extrabold text-[#2F5597]">▣</div>
+                <div className="mt-1 text-xl font-extrabold text-[#2F5597]">{visitasDoMes.length}</div>
+                <div className="text-[9px] leading-tight text-slate-500">Visitas<br />este mês</div>
               </div>
-              <div className="p-4">
-                <button
-                  type="button"
-                  onClick={novaVisita}
-                  disabled={!atual || !permitido("visitas.criar", atual.id)}
-                  className="flex w-full items-center justify-between rounded-2xl bg-[#2F5597] px-5 py-4 text-left font-extrabold text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <span className="flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-full bg-white/15 text-2xl">+</span>Iniciar nova visita</span>
-                  <span aria-hidden="true">→</span>
-                </button>
+              <div className="rounded-xl border border-slate-100 bg-white px-2 py-3 text-center shadow-sm">
+                <div className="mx-auto grid h-8 w-8 place-items-center rounded-full bg-emerald-50 text-lg font-extrabold text-emerald-700">✓</div>
+                <div className="mt-1 text-xl font-extrabold text-emerald-700">{visitasDoMes.filter((v) => v.status === "Concluída").length}</div>
+                <div className="text-[9px] leading-tight text-slate-500">Concluídas<br />este mês</div>
+              </div>
+              <div className="rounded-xl border border-slate-100 bg-white px-2 py-3 text-center shadow-sm">
+                <div className="mx-auto grid h-8 w-8 place-items-center rounded-full bg-amber-50 text-lg font-extrabold text-amber-600">◷</div>
+                <div className="mt-1 text-xl font-extrabold text-amber-600">{visitas.filter((v) => v.status === "Em andamento").length}</div>
+                <div className="text-[9px] leading-tight text-slate-500">Em andamento<br />agora</div>
+              </div>
+              <div className="rounded-xl border border-slate-100 bg-white px-2 py-3 text-center shadow-sm">
+                <div className="mx-auto grid h-8 w-8 place-items-center rounded-full bg-blue-50 text-[#2F5597]"><MobileNavIcon name="empresas" /></div>
+                <div className="mt-1 text-xl font-extrabold text-[#2F5597]">{empresasVisiveis.length}</div>
+                <div className="text-[9px] leading-tight text-slate-500">Empresas<br />ativas</div>
               </div>
             </section>
 
-            {visitaEmAndamentoDestaque && (
-              <button
-                type="button"
-                onClick={() => { setVisitaAtualId(visitaEmAndamentoDestaque.id); setView("visita"); }}
-                className="w-full rounded-2xl border border-blue-100 bg-white p-4 text-left shadow-sm"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="text-xs font-extrabold uppercase tracking-wide text-[#2F5597]">Visita em andamento</div>
-                    <div className="mt-1 font-extrabold text-slate-950">{db.empresas[visitaEmAndamentoDestaque.empresaId]?.nomeFantasia || "Empresa"}</div>
-                    <div className="mt-1 text-xs text-slate-500">{fdata(visitaEmAndamentoDestaque.data)} • {visitaEmAndamentoDestaque.responsavel || "Responsável não informado"}</div>
-                  </div>
-                  <span className="rounded-full bg-blue-50 px-3 py-1 text-sm font-extrabold text-[#2F5597]">{progressoVisitaDestaque}%</span>
-                </div>
-                <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
-                  <div className="h-full rounded-full bg-[#2F5597]" style={{ width: `${progressoVisitaDestaque}%` }} />
-                </div>
-                <div className="mt-3 text-sm font-extrabold text-[#2F5597]">Continuar visita →</div>
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={novaVisita}
+              disabled={!atual || !permitido("visitas.criar", atual.id)}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#2F5597] px-5 py-3.5 font-extrabold text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <span className="grid h-6 w-6 place-items-center rounded-full border-2 border-white text-lg leading-none">+</span>
+              Iniciar visita
+            </button>
 
-            <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
-              <MetricCard
-                label="Empresas"
-                value={empresasVisiveis.length}
-              />
-              <MetricCard label="Visitas" value={visitas.length} />
-              <MetricCard
-                label="Em andamento"
-                value={visitas.filter((v) => v.status === "Em andamento").length}
-              />
-              <MetricCard
-                label="Concluídas"
-                value={visitas.filter((v) => v.status === "Concluída").length}
-              />
-            </section>
-            <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-extrabold">Visitas recentes</h2>
-                <button type="button" onClick={() => setView("visitas")} className="text-sm font-extrabold text-[#2F5597]">Ver todas →</button>
-              </div>
-              <div className="mt-3 divide-y divide-slate-100">
-                {visitas.slice(0, 3).map((visita) => (
-                  <button key={visita.id} type="button" onClick={() => { setVisitaAtualId(visita.id); setView("visita"); }} className="flex w-full items-center justify-between gap-3 py-3 text-left">
-                    <div className="min-w-0">
-                      <div className="truncate font-extrabold">{db.empresas[visita.empresaId]?.nomeFantasia || "Empresa"}</div>
-                      <div className="text-xs text-slate-500">{fdata(visita.data)} • {visita.responsavel || "Responsável não informado"}</div>
-                    </div>
-                    <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-extrabold ${visita.status === "Concluída" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>{visita.status}</span>
+            <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="font-extrabold text-slate-950">Visitas</h2>
+                <div className="flex rounded-lg bg-slate-50 p-0.5 text-[10px] font-bold">
+                  <button
+                    type="button"
+                    onClick={() => setFiltroInicio("Em andamento")}
+                    className={`rounded-md px-3 py-1.5 ${filtroInicio === "Em andamento" ? "bg-[#2F5597] text-white shadow-sm" : "text-slate-500"}`}
+                  >
+                    Em andamento
                   </button>
-                ))}
+                  <button
+                    type="button"
+                    onClick={() => setFiltroInicio("Concluída")}
+                    className={`rounded-md px-3 py-1.5 ${filtroInicio === "Concluída" ? "bg-[#2F5597] text-white shadow-sm" : "text-slate-500"}`}
+                  >
+                    Concluídas
+                  </button>
+                </div>
               </div>
+
+              <div className="mt-3 rounded-xl border border-slate-100 px-3">
+                <div className="pt-3 text-xs font-extrabold">Visitas recentes</div>
+                <div className="divide-y divide-slate-100">
+                  {visitasRecentesInicio.map((visita) => (
+                    <button
+                      key={visita.id}
+                      type="button"
+                      onClick={() => { setVisitaAtualId(visita.id); setView("visita"); }}
+                      className="flex w-full items-center gap-2 py-3 text-left"
+                    >
+                      <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${visita.status === "Concluída" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-600"}`}>
+                        {visita.status === "Concluída" ? "✓" : "◷"}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-xs font-extrabold text-slate-950">{db.empresas[visita.empresaId]?.nomeFantasia || "Empresa"}</span>
+                        <span className="block truncate text-[9px] text-slate-500">{fdata(visita.data)} • {visita.responsavel || "Responsável não informado"}</span>
+                      </span>
+                      <span className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-bold ${visita.status === "Concluída" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>{visita.status}</span>
+                      <span className="shrink-0 text-[#2F5597]">›</span>
+                    </button>
+                  ))}
+                  {visitasRecentesInicio.length === 0 && (
+                    <div className="py-5 text-center text-xs text-slate-400">Nenhuma visita nesta situação.</div>
+                  )}
+                </div>
+              </div>
+
+              <button type="button" onClick={() => setView("visitas")} className="mt-3 flex w-full items-center justify-between px-1 text-xs font-extrabold text-[#2F5597]">
+                <span>Ver todas as visitas</span><span>›</span>
+              </button>
             </section>
           </div>
         ) : view === "empresas" ? (
