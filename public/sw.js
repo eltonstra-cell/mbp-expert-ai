@@ -1,5 +1,6 @@
 const CACHE_NAME = "mbp-app-shell-v1";
 const APP_SHELL = "/";
+const STATIC_ASSETS = ["/kitchen-line.svg", "/manifest.webmanifest"];
 
 function podeGuardar(url) {
   return url.origin === self.location.origin &&
@@ -18,6 +19,7 @@ async function guardarEstrutura() {
   if (!response.ok) return;
   const html = await response.clone().text();
   await cache.put(APP_SHELL, response);
+  await Promise.allSettled(STATIC_ASSETS.map((asset) => cache.add(asset)));
   const recursos = new Set();
   for (const match of html.matchAll(/(?:src|href)=["']([^"']+)["']/g)) {
     const url = new URL(match[1], self.location.origin);
