@@ -3298,7 +3298,12 @@ export default function Home() {
         <div className="relative mx-auto max-w-7xl px-4 py-4">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-white/25 bg-white/10 text-xl">✓</div>
+              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-white/25 bg-white/10">
+                <svg aria-hidden="true" viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2.8 20 6v5.8c0 4.9-3.3 8-8 9.4-4.7-1.4-8-4.5-8-9.4V6l8-3.2Z" />
+                  <path d="m8.2 12 2.3 2.3 5.4-5.4" />
+                </svg>
+              </div>
               <div>
                 <div className="text-xl font-extrabold tracking-tight">MBP Expert AI</div>
                 <div className="text-xs text-blue-100">Segurança dos Alimentos</div>
@@ -3329,7 +3334,7 @@ export default function Home() {
               }
             >
               {syncStatus === "sincronizado"
-                ? "● Sincronizado"
+                ? "☁ Nuvem sincronizada"
                 : syncStatus === "conectando"
                 ? "● Conectando"
                 : syncStatus === "local"
@@ -3351,9 +3356,14 @@ export default function Home() {
             </div>
             {usuarioDaSessao && (
               <div className="mt-3 flex min-w-0 items-center justify-between gap-3 border-t border-white/15 pt-3">
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-extrabold">{usuarioDaSessao.nome}</div>
-                  <div className="text-[10px] text-blue-100">{usuarioDaSessao.perfil}</div>
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#4874bd] text-xs font-extrabold text-white">
+                    {usuarioDaSessao.nome.split(" ").filter(Boolean).slice(0, 2).map((parte) => parte[0]).join("").toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-extrabold">{usuarioDaSessao.nome}</div>
+                    <div className="text-[10px] text-blue-100">{usuarioDaSessao.perfil}</div>
+                  </div>
                 </div>
                 <button
                   type="button"
@@ -3651,28 +3661,28 @@ export default function Home() {
           </section>
         ) : view === "ambientes" && visitaAtual ? (
           <section className="space-y-4">
-            <div className="rounded-2xl bg-white p-5 shadow-sm">
+            <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-[#17365D] to-[#2F5597] p-5 text-white shadow-md">
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div>
-                  <div className="text-xs font-extrabold uppercase text-[#2F5597]">
+                  <div className="text-xs font-extrabold uppercase tracking-wider text-blue-100">
                     Ambientes
                   </div>
                   <h1 className="mt-1 text-2xl font-extrabold">
                     Defina os setores desta visita
                   </h1>
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm text-blue-100">
                     {empresaVisita?.nomeFantasia} • {fdata(visitaAtual.data)}
                   </p>
                 </div>
                 <button
                   onClick={() => setView("visita")}
-                  className="rounded-xl bg-slate-100 px-4 py-2 font-bold"
+                  className="rounded-xl border border-white/20 bg-white/10 px-4 py-2 font-bold text-white"
                 >
                   Voltar à Central
                 </button>
               </div>
 
-              <div className="mt-5 rounded-xl bg-blue-50 p-4 text-sm text-blue-900">
+              <div className="mt-5 rounded-2xl border border-white/15 bg-white/10 p-4 text-sm text-blue-50">
                 Selecione apenas os ambientes que realmente serão avaliados. O
                 checklist será montado a partir desta seleção.
               </div>
@@ -3792,20 +3802,20 @@ export default function Home() {
           </section>
         ) : view === "evidencias" && visitaAtual ? (
           <section className="space-y-4">
-            <div className="rounded-2xl bg-white p-5 shadow-sm">
+            <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-[#17365D] to-[#2F5597] p-5 text-white shadow-md">
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div>
-                  <div className="text-xs font-extrabold uppercase text-[#2F5597]">
+                  <div className="text-xs font-extrabold uppercase tracking-wider text-blue-100">
                     Evidências da inspeção
                   </div>
                   <h1 className="mt-1 text-2xl font-extrabold">Fotos e áudio</h1>
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm text-blue-100">
                     {empresaVisita?.nomeFantasia} • {fdata(visitaAtual.data)}
                   </p>
                 </div>
                 <button
                   onClick={() => setView("visita")}
-                  className="rounded-xl bg-slate-100 px-4 py-2 font-bold"
+                  className="rounded-xl border border-white/20 bg-white/10 px-4 py-2 font-bold text-white"
                 >
                   Voltar à Central
                 </button>
@@ -4184,20 +4194,20 @@ export default function Home() {
           </section>
         ) : view === "plano" && visitaAtual ? (
           <section className="space-y-4">
-            <div className="rounded-2xl bg-white p-5 shadow-sm">
+            <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-[#17365D] to-[#2F5597] p-5 text-white shadow-md">
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div>
-                  <div className="text-xs font-extrabold uppercase text-[#2F5597]">
+                  <div className="text-xs font-extrabold uppercase tracking-wider text-blue-100">
                     Gestão das correções
                   </div>
                   <h1 className="mt-1 text-2xl font-extrabold">Plano de ação</h1>
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm text-blue-100">
                     {empresaVisita?.nomeFantasia} • {fdata(visitaAtual.data)}
                   </p>
                 </div>
                 <button
                   onClick={() => setView("visita")}
-                  className="rounded-xl bg-slate-100 px-4 py-2 font-bold"
+                  className="rounded-xl border border-white/20 bg-white/10 px-4 py-2 font-bold text-white"
                 >
                   Voltar à Central
                 </button>
@@ -4367,7 +4377,7 @@ export default function Home() {
           </section>
         ) : view === "acompanhamento" && visitaAtual ? (
           <section className="space-y-4">
-            <div className="rounded-2xl bg-white p-5 shadow-sm">
+            <div className="rounded-3xl bg-gradient-to-br from-[#17365D] to-[#2F5597] p-5 text-white shadow-md print:bg-white print:text-slate-900">
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div>
                   <div className="text-xs font-extrabold uppercase text-emerald-700">Pós-visita</div>
@@ -4679,14 +4689,14 @@ export default function Home() {
           </section>
         ) : view === "ncs" && visitaAtual ? (
           <section className="space-y-4">
-            <div className="rounded-2xl bg-white p-5 shadow-sm">
+            <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-[#481a1a] to-[#a33b32] p-5 text-white shadow-md">
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div>
-                  <div className="text-xs font-extrabold uppercase text-red-700">Resultado da inspeção</div>
+                  <div className="text-xs font-extrabold uppercase tracking-wider text-red-100">Resultado da inspeção</div>
                   <h1 className="mt-1 text-2xl font-extrabold">Não conformidades</h1>
-                  <p className="text-sm text-slate-500">{empresaVisita?.nomeFantasia} • {fdata(visitaAtual.data)}</p>
+                  <p className="text-sm text-red-100">{empresaVisita?.nomeFantasia} • {fdata(visitaAtual.data)}</p>
                 </div>
-                <button onClick={() => setView("visita")} className="rounded-xl bg-slate-100 px-4 py-2 font-bold">Voltar à Central</button>
+                <button onClick={() => setView("visita")} className="rounded-xl border border-white/20 bg-white/10 px-4 py-2 font-bold text-white">Voltar à Central</button>
               </div>
               <div className="mt-5 grid gap-3 md:grid-cols-3">
                 <MetricCard label="NCs identificadas" value={ncsVisita.length} />
@@ -4726,23 +4736,23 @@ export default function Home() {
           </section>
         ) : view === "checklist" && visitaAtual ? (
           <section className="space-y-4">
-            <div className="rounded-2xl bg-white p-5 shadow-sm">
+            <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-[#17365D] to-[#2F5597] p-5 text-white shadow-md">
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div>
-                  <div className="text-xs font-extrabold uppercase text-[#2F5597]">
+                  <div className="text-xs font-extrabold uppercase tracking-wider text-blue-100">
                     Checklist técnico
                   </div>
                   <h1 className="mt-1 text-2xl font-extrabold">
                     Avaliação por ambiente
                   </h1>
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm text-blue-100">
                     {empresaVisita?.nomeFantasia} • {fdata(visitaAtual.data)}
                   </p>
                 </div>
 
                 <button
                   onClick={() => setView("visita")}
-                  className="rounded-xl bg-slate-100 px-4 py-2 font-bold"
+                  className="rounded-xl border border-white/20 bg-white/10 px-4 py-2 font-bold text-white"
                 >
                   Voltar à Central
                 </button>
@@ -5000,16 +5010,17 @@ export default function Home() {
           </section>
         ) : view === "visita" && visitaAtual ? (
           <section className="space-y-4">
-            <div className="rounded-2xl bg-white p-4 shadow-sm sm:p-5">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#17365D] to-[#2F5597] p-4 text-white shadow-md sm:p-5">
+              <div className="absolute inset-y-0 right-0 w-2/3 bg-[url('/images/cozinha-inspecao.webp')] bg-cover bg-center opacity-10" />
+              <div className="relative flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                  <div className="text-xs font-extrabold uppercase text-[#2F5597]">
+                  <div className="text-xs font-extrabold uppercase tracking-wider text-blue-100">
                     Central da Visita
                   </div>
                   <h1 className="mt-1 text-2xl font-extrabold">
                     {empresaVisita?.nomeFantasia}
                   </h1>
-                  <div className="mt-1 text-sm text-slate-500">
+                  <div className="mt-1 text-sm text-blue-100">
                     {fdata(visitaAtual.data)}
                     {visitaAtual.responsavel
                       ? ` • ${visitaAtual.responsavel}`
@@ -5019,18 +5030,18 @@ export default function Home() {
 
                 <button
                   onClick={() => setView("visitas")}
-                  className="w-full rounded-xl bg-slate-100 px-4 py-3 font-bold sm:w-auto"
+                  className="w-full rounded-xl border border-white/20 bg-white/10 px-4 py-3 font-bold text-white sm:w-auto"
                 >
                   Voltar
                 </button>
               </div>
 
-              <div className="mt-5">
-                <div className="mb-2 flex justify-between text-xs font-bold text-slate-500">
+              <div className="relative mt-5">
+                <div className="mb-2 flex justify-between text-xs font-bold text-blue-100">
                   <span>Progresso do checklist</span>
                   <span>{percentualChecklist}%</span>
                 </div>
-                <div className="h-3 rounded-full bg-slate-100">
+                <div className="h-3 overflow-hidden rounded-full bg-white/15">
                   <div
                     className="h-full rounded-full bg-[#2F5597]"
                     style={{ width: `${percentualChecklist}%` }}
@@ -5043,7 +5054,7 @@ export default function Home() {
               <button
                 onClick={abrirAmbientes}
                 disabled={!permitido("visitas.executar", visitaAtual.empresaId)}
-                className="min-h-[118px] rounded-2xl border-2 border-[#2F5597] bg-white p-4 text-left shadow-sm disabled:cursor-not-allowed disabled:opacity-50 sm:p-5"
+                className="min-h-[118px] rounded-3xl border-2 border-[#2F5597] bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50 sm:p-5"
               >
                 <div className="text-xs font-extrabold uppercase text-[#2F5597]">
                   Etapa 1
@@ -5067,7 +5078,7 @@ export default function Home() {
               <button
                 onClick={abrirChecklist}
                 disabled={!(visitaAtual.ambientes || []).length || !permitido("visitas.executar", visitaAtual.empresaId)}
-                className={`rounded-2xl bg-white p-5 text-left shadow-sm ${
+                className={`rounded-3xl bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${
                   (visitaAtual.ambientes || []).length
                     ? "border-2 border-emerald-200"
                     : "opacity-60"
@@ -5102,7 +5113,7 @@ export default function Home() {
 
               <button
                 onClick={abrirEvidencias}
-                className={`rounded-2xl bg-white p-5 text-left shadow-sm ${
+                className={`rounded-3xl bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${
                   evidenciasVisita.length > 0
                     ? "border-2 border-violet-200"
                     : "border border-transparent"
@@ -5130,7 +5141,7 @@ export default function Home() {
               <button
                 onClick={() => setView("ncs")}
                 disabled={!permitido("ncs.acompanhar", visitaAtual.empresaId)}
-                className={`rounded-2xl bg-white p-5 text-left shadow-sm ${ncsVisita.length ? "border-2 border-red-200" : "border border-transparent"}`}
+                className={`rounded-3xl bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${ncsVisita.length ? "border-2 border-red-200" : "border border-transparent"}`}
               >
                 <div className="text-xs font-extrabold uppercase text-slate-400">Resultado</div>
                 <div className="mt-2 text-xl font-extrabold">Não conformidades</div>
@@ -5144,7 +5155,7 @@ export default function Home() {
               <button
                 onClick={() => setView("plano")}
                 disabled={ncsVisita.length === 0 || !permitido("ncs.acompanhar", visitaAtual.empresaId)}
-                className={`rounded-2xl bg-white p-5 text-left shadow-sm ${
+                className={`rounded-3xl bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${
                   ncsVisita.length > 0
                     ? "border-2 border-blue-200"
                     : "opacity-60"
@@ -5177,7 +5188,7 @@ export default function Home() {
               <button
                 onClick={() => setView("acompanhamento")}
                 disabled={!permitido("ncs.acompanhar", visitaAtual.empresaId)}
-                className="min-h-[118px] rounded-2xl bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50 sm:p-5"
+                className="min-h-[118px] rounded-3xl bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50 sm:p-5"
               >
                 <div className="text-xs font-extrabold uppercase text-emerald-700">Pós-visita</div>
                 <div className="mt-1 text-lg font-extrabold">Acompanhamento</div>
@@ -5187,7 +5198,7 @@ export default function Home() {
               <button
                 onClick={() => setView("relatorio")}
                 disabled={!permitido("relatorios.exportar", visitaAtual.empresaId) && !permitido("relatorios.aprovar", visitaAtual.empresaId)}
-                className="min-h-[118px] rounded-2xl bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50 sm:p-5"
+                className="min-h-[118px] rounded-3xl bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50 sm:p-5"
               >
                 <div className="text-xs font-extrabold uppercase text-slate-400">
                   Encerramento
@@ -5221,13 +5232,13 @@ export default function Home() {
             <div className="rounded-2xl bg-white p-5 shadow-sm">
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div>
-                  <div className="text-xs font-extrabold uppercase text-[#2F5597]">
+                  <div className="text-xs font-extrabold uppercase tracking-wider text-blue-100 print:text-[#2F5597]">
                     Encerramento da inspeção
                   </div>
                   <h1 className="mt-1 text-2xl font-extrabold">
                     Relatório da visita
                   </h1>
-                  <p className="mt-1 text-sm text-slate-500">
+                  <p className="mt-1 text-sm text-blue-100 print:text-slate-500">
                     Revisão consolidada dos registros realizados em campo.
                   </p>
                   <div className="mt-3">
@@ -5239,7 +5250,7 @@ export default function Home() {
 
                 <button
                   onClick={() => setView("visita")}
-                  className="print-control rounded-xl bg-slate-100 px-4 py-3 font-bold"
+                  className="print-control rounded-xl border border-white/20 bg-white/10 px-4 py-3 font-bold text-white"
                 >
                   Voltar à Central
                 </button>
@@ -5897,15 +5908,15 @@ export default function Home() {
           </section>
         ) : view === "inicio" ? (
           <div className="space-y-4">
-            <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-              <div className="relative overflow-hidden bg-[#17365D] px-5 py-5 text-white">
-                <div className="absolute inset-y-0 right-0 w-3/4 bg-[url('/kitchen-line.svg')] bg-contain bg-right bg-no-repeat opacity-20" />
-                <div className="relative">
+            <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-md">
+              <div className="relative min-h-52 overflow-hidden bg-[#17365D] bg-[url('/images/cozinha-inspecao.webp')] bg-cover bg-center text-white">
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0b2a50] via-[#0b2a50]/45 to-black/5" />
+                <div className="absolute inset-x-0 bottom-0 p-5">
                   <div className="text-xs font-extrabold uppercase tracking-wider text-blue-100">Painel da consultoria</div>
-                  <h1 className="mt-1 text-2xl font-extrabold">
+                  <h1 className="mt-1 text-3xl font-extrabold drop-shadow-sm">
                     {new Date().getHours() < 12 ? "Bom dia" : new Date().getHours() < 18 ? "Boa tarde" : "Boa noite"}, {usuarioDaSessao?.nome.split(" ")[0] || "profissional"}
                   </h1>
-                  <p className="mt-1 text-sm text-blue-100">Pronto para mais uma visita?</p>
+                  <p className="mt-1 text-sm text-white/90">Pronto para mais uma visita?</p>
                 </div>
               </div>
               <div className="p-4">
