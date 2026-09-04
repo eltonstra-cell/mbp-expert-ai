@@ -23,10 +23,18 @@ export async function GET(request: NextRequest) {
     const evidencia = acesso.autorizado && acesso.data
       ? acesso.data.evidencias.find((item) => item.blobPathname === pathname)
       : undefined;
+    // O arquivo pode terminar de subir alguns instantes antes de a evidência
+    // aparecer no estado sincronizado. Nesse intervalo, valida o acesso pela
+    // visita presente no próprio caminho privado do arquivo.
+    const visitaId = pathname.split("/")[1] || "";
+    const visita = acesso.autorizado && acesso.data
+      ? acesso.data.visitas.find((item) => item.id === visitaId)
+      : undefined;
+    const empresaId = evidencia?.empresaId || visita?.empresaId;
     if (
       acesso.aplicado &&
-      (!evidencia ||
-        !autorizaAcaoServidor(acesso, "empresas.ver", evidencia.empresaId))
+      (!empresaId ||
+        !autorizaAcaoServidor(acesso, "empresas.ver", empresaId))
     ) {
       return NextResponse.json(
         { error: "Você não possui acesso a esta evidência." },
