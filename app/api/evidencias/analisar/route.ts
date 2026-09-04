@@ -122,10 +122,15 @@ export async function POST(request: Request) {
     const evidencia = acesso.autorizado && acesso.data
       ? acesso.data.evidencias.find((item) => item.blobPathname === pathname)
       : undefined;
+    const visitaId = pathname.split("/")[1] || "";
+    const visita = acesso.autorizado && acesso.data
+      ? acesso.data.visitas.find((item) => item.id === visitaId)
+      : undefined;
+    const empresaId = evidencia?.empresaId || visita?.empresaId;
     if (
       acesso.aplicado &&
-      (!evidencia ||
-        !autorizaAcaoServidor(acesso, "ia.analisar", evidencia.empresaId))
+      (!empresaId ||
+        !autorizaAcaoServidor(acesso, "ia.analisar", empresaId))
     ) {
       return NextResponse.json(
         { error: "Seu perfil não permite analisar esta foto." },
