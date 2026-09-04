@@ -1,6 +1,6 @@
-const CACHE_NAME = "mbp-app-shell-v8";
+const CACHE_NAME = "mbp-app-shell-v9";
 const APP_SHELL = "/";
-const STATIC_ASSETS = ["/kitchen-line.svg", "/images/cozinha-inspecao.webp", "/manifest.webmanifest"];
+const STATIC_ASSETS = ["/kitchen-line.svg", "/images/cozinha-inspecao.webp", "/images/mapa-inspecao.webp", "/manifest.webmanifest"];
 
 function podeGuardar(url) {
   return url.origin === self.location.origin &&

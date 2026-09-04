@@ -100,6 +100,15 @@ const ambientesPadrao = [
   "Área externa",
 ];
 
+const posicoesMapaInspecao = [
+  { left: "12%", top: "20%" },
+  { left: "53%", top: "16%" },
+  { left: "27%", top: "47%" },
+  { left: "58%", top: "43%" },
+  { left: "69%", top: "67%" },
+  { left: "19%", top: "72%" },
+];
+
 const modelosChecklist: Record<
   string,
   {
@@ -1481,6 +1490,23 @@ export default function Home() {
   const percentualConformidade = itensAvaliadosVisita
     ? Math.round((conformesVisita / itensAvaliadosVisita) * 100)
     : 0;
+  const resumoAmbientesVisita = (visitaAtual?.ambientes || []).map((ambiente) => {
+    const itens = checklistAtual.filter((item) => item.ambiente === ambiente);
+    const respondidosAmbiente = itens.filter((item) => item.status !== "Pendente").length;
+    const temNaoConforme = itens.some((item) => item.status === "Não Conforme");
+    const temPendente = itens.some((item) => item.status === "Pendente");
+    const status = itens.length === 0 || respondidosAmbiente === 0
+      ? "Não verificado"
+      : temNaoConforme
+      ? "Não conforme"
+      : temPendente
+      ? "Atenção"
+      : "Conforme";
+    return { ambiente, itens: itens.length, respondidos: respondidosAmbiente, status };
+  });
+  const proximoAmbienteVisita = resumoAmbientesVisita.find(
+    (ambiente) => ambiente.itens === 0 || ambiente.respondidos < ambiente.itens
+  )?.ambiente;
   const ncsCriticasVisita = ncsVisita.filter(
     (nc) => nc.criticidade === "Crítica"
   ).length;
@@ -5016,7 +5042,7 @@ export default function Home() {
             </div>
           </section>
         ) : view === "visita" && visitaAtual ? (
-          <section className="space-y-4">
+          <section className="space-y-3">
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -5041,189 +5067,118 @@ export default function Home() {
                   ← Voltar
                 </button>
               </div>
+            </div>
 
-              <div className="mt-4">
-                <div className="mb-2 flex justify-between text-xs font-bold text-slate-500">
-                  <span>Progresso do checklist</span>
-                  <span>{percentualChecklist}%</span>
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <div className="flex flex-wrap items-start justify-between gap-2 p-4 pb-3">
+                <div>
+                  <div className="text-sm font-extrabold text-slate-950">Mapa da inspeção</div>
+                  <div className="mt-0.5 text-xs text-slate-500">
+                    {(visitaAtual.ambientes || []).length} ambientes selecionados
+                  </div>
                 </div>
-                <div className="h-2 overflow-hidden rounded-full bg-slate-100">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-[#2F5597] to-[#4b78c2]"
-                    style={{ width: `${percentualChecklist}%` }}
-                  />
+                <div className="flex flex-wrap justify-end gap-x-2 gap-y-1 text-[9px] font-bold text-slate-500">
+                  <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-500" />Conforme</span>
+                  <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-amber-500" />Atenção</span>
+                  <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-red-500" />Não conforme</span>
+                  <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-slate-400" />Não verificado</span>
+                </div>
+              </div>
+              <div className="relative aspect-[4/3] overflow-hidden bg-slate-50 sm:aspect-[16/9]">
+                <img src="/images/mapa-inspecao.webp" alt="Mapa ilustrativo dos ambientes da inspeção" className="h-full w-full object-cover" />
+                {resumoAmbientesVisita.slice(0, 6).map((resumo, indice) => (
+                  <button
+                    key={resumo.ambiente}
+                    type="button"
+                    onClick={abrirChecklist}
+                    className="absolute flex max-w-[34%] -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded-full bg-white/95 px-2 py-1 text-[8px] font-extrabold text-slate-700 shadow-md backdrop-blur sm:text-[10px]"
+                    style={posicoesMapaInspecao[indice]}
+                    title={`${resumo.ambiente}: ${resumo.status}`}
+                  >
+                    <span className={`h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-white ${
+                      resumo.status === "Conforme" ? "bg-emerald-500" :
+                      resumo.status === "Atenção" ? "bg-amber-500" :
+                      resumo.status === "Não conforme" ? "bg-red-500" : "bg-slate-400"
+                    }`} />
+                    <span className="truncate">{resumo.ambiente}</span>
+                  </button>
+                ))}
+                {resumoAmbientesVisita.length === 0 && (
+                  <button type="button" onClick={abrirAmbientes} className="absolute inset-x-4 bottom-4 rounded-xl bg-white/95 px-4 py-3 text-sm font-extrabold text-[#2F5597] shadow-md">
+                    Selecionar ambientes →
+                  </button>
+                )}
+              </div>
+              {resumoAmbientesVisita.length > 6 && (
+                <div className="border-t border-slate-100 px-4 py-2 text-center text-[10px] font-bold text-slate-500">
+                  + {resumoAmbientesVisita.length - 6} ambientes disponíveis no checklist
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm">
+              <div className="flex items-center gap-4">
+                <div className="relative grid h-20 w-20 shrink-0 place-items-center rounded-full" style={{ background: `conic-gradient(#2F5597 ${percentualChecklist * 3.6}deg, #e8eef7 0deg)` }}>
+                  <div className="grid h-14 w-14 place-items-center rounded-full bg-white text-lg font-extrabold text-[#17365D]">{percentualChecklist}%</div>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs font-bold text-slate-500">Próxima etapa</div>
+                  <div className="truncate font-extrabold text-slate-950">{proximoAmbienteVisita || ((visitaAtual.ambientes || []).length ? "Revisar a inspeção" : "Definir ambientes")}</div>
+                  <button
+                    type="button"
+                    onClick={(visitaAtual.ambientes || []).length ? abrirChecklist : abrirAmbientes}
+                    disabled={!permitido("visitas.executar", visitaAtual.empresaId)}
+                    className="mt-2 w-full rounded-lg bg-[#2F5597] px-3 py-2 text-xs font-extrabold text-white disabled:opacity-50"
+                  >
+                    {(visitaAtual.ambientes || []).length ? "Continuar checklist →" : "Selecionar ambientes →"}
+                  </button>
                 </div>
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              <button
-                onClick={abrirAmbientes}
-                disabled={!permitido("visitas.executar", visitaAtual.empresaId)}
-                className="rounded-2xl border border-blue-100 bg-white p-3.5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <div className="text-xs font-extrabold uppercase text-[#2F5597]">
-                  Etapa 1
-                </div>
-                <div className="mt-1 text-base font-extrabold">Ambientes</div>
-                <p className="mt-1 text-xs text-slate-500">
-                  Selecione os setores que serão avaliados nesta visita.
-                </p>
-                <div className="mt-3 flex items-center justify-between gap-2">
-                  <span className="text-sm font-extrabold text-[#2F5597]">
-                    Abrir ambientes →
-                  </span>
-                  {(visitaAtual.ambientes || []).length > 0 && (
-                    <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-extrabold text-emerald-700">
-                      {(visitaAtual.ambientes || []).length} selecionados
-                    </span>
-                  )}
-                </div>
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              <button type="button" onClick={abrirChecklist} className="rounded-2xl border border-emerald-100 bg-white p-4 text-left shadow-sm">
+                <div className="text-xs font-bold text-emerald-700">✓ Conformes</div>
+                <div className="mt-1 text-2xl font-extrabold text-slate-950">{conformesVisita}</div>
+                <div className="text-[10px] text-slate-500">{percentualConformidade}% dos avaliados</div>
               </button>
+              <button type="button" onClick={() => setView("ncs")} disabled={!permitido("ncs.acompanhar", visitaAtual.empresaId)} className="rounded-2xl border border-red-100 bg-white p-4 text-left shadow-sm disabled:opacity-50">
+                <div className="text-xs font-bold text-red-700">× Não conformidades</div>
+                <div className="mt-1 text-2xl font-extrabold text-slate-950">{ncsVisita.length}</div>
+                <div className="text-[10px] text-slate-500">{ncsAbertas} em acompanhamento</div>
+              </button>
+              <button type="button" onClick={abrirEvidencias} className="rounded-2xl border border-blue-100 bg-white p-4 text-left shadow-sm">
+                <div className="text-xs font-bold text-[#2F5597]">▣ Evidências</div>
+                <div className="mt-1 text-2xl font-extrabold text-slate-950">{evidenciasVisita.length}</div>
+                <div className="text-[10px] text-slate-500">{fotosVisita} fotos • {audiosVisita} áudios</div>
+              </button>
+              <button type="button" onClick={abrirChecklist} className="rounded-2xl border border-amber-100 bg-white p-4 text-left shadow-sm">
+                <div className="text-xs font-bold text-amber-700">△ Pendências</div>
+                <div className="mt-1 text-2xl font-extrabold text-slate-950">{pendentesVisita}</div>
+                <div className="text-[10px] text-slate-500">Itens a verificar</div>
+              </button>
+            </div>
 
-              <button
-                onClick={abrirChecklist}
-                disabled={!(visitaAtual.ambientes || []).length || !permitido("visitas.executar", visitaAtual.empresaId)}
-                className={`rounded-2xl border bg-white p-3.5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${
-                  (visitaAtual.ambientes || []).length
-                    ? "border-emerald-200"
-                    : "opacity-60"
-                }`}
-              >
-                <div className="text-xs font-extrabold uppercase text-slate-400">
-                  Etapa 2
-                </div>
-                <div className="mt-1 text-base font-extrabold">Checklist</div>
-                <p className="mt-1 text-xs text-slate-500">
-                  Avaliação guiada por ambiente e critérios técnicos.
-                </p>
-                <div className="mt-3 text-sm">
-                  {(visitaAtual.ambientes || []).length ? (
-                    <div className="flex items-center justify-between">
-                      <span className="font-extrabold text-emerald-700">
-                        Abrir checklist técnico →
-                      </span>
-                      {totalChecklist > 0 && (
-                        <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-extrabold text-blue-700">
-                          {percentualChecklist}%
-                        </span>
-                      )}
-                    </div>
-                  ) : (
-                    <span className="text-xs font-bold text-slate-400">
-                      Defina os ambientes primeiro
-                    </span>
-                  )}
-                </div>
-              </button>
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="text-sm font-extrabold text-slate-950">Ações da visita</div>
+              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <button type="button" onClick={abrirAmbientes} className="rounded-xl bg-blue-50 px-3 py-2.5 text-xs font-extrabold text-[#2F5597]">Ambientes</button>
+                <button type="button" onClick={abrirEvidencias} className="rounded-xl bg-violet-50 px-3 py-2.5 text-xs font-extrabold text-violet-700">Evidências</button>
+                <button type="button" onClick={() => setView("plano")} disabled={!ncsVisita.length || !permitido("ncs.acompanhar", visitaAtual.empresaId)} className="rounded-xl bg-amber-50 px-3 py-2.5 text-xs font-extrabold text-amber-700 disabled:opacity-40">Plano de ação</button>
+                <button type="button" onClick={() => setView("relatorio")} disabled={!permitido("relatorios.exportar", visitaAtual.empresaId) && !permitido("relatorios.aprovar", visitaAtual.empresaId)} className="rounded-xl bg-slate-100 px-3 py-2.5 text-xs font-extrabold text-slate-700 disabled:opacity-40">Relatório</button>
+              </div>
+            </div>
 
-              <button
-                onClick={abrirEvidencias}
-                className={`rounded-2xl bg-white p-3.5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${
-                  evidenciasVisita.length > 0
-                    ? "border border-violet-200"
-                    : "border border-slate-200"
-                }`}
-              >
-                <div className="text-xs font-extrabold uppercase text-slate-400">
-                  Evidências
-                </div>
-                <div className="mt-1 text-base font-extrabold">Fotos e áudio</div>
-                <p className="mt-1 text-xs text-slate-500">
-                  Registros de campo vinculados à visita.
-                </p>
-                <div className="mt-3 flex items-center justify-between gap-2">
-                  <span className="text-sm font-extrabold text-violet-700">
-                    Abrir evidências →
-                  </span>
-                  {evidenciasVisita.length > 0 && (
-                    <span className="rounded-full bg-violet-50 px-3 py-1 text-xs font-extrabold text-violet-700">
-                      {evidenciasVisita.length} registros
-                    </span>
-                  )}
-                </div>
-              </button>
-
-              <button
-                onClick={() => setView("ncs")}
-                disabled={!permitido("ncs.acompanhar", visitaAtual.empresaId)}
-                className={`rounded-2xl border bg-white p-3.5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${ncsVisita.length ? "border-red-200" : "border-slate-200"}`}
-              >
-                <div className="text-xs font-extrabold uppercase text-slate-400">Resultado</div>
-                <div className="mt-1 text-base font-extrabold">Não conformidades</div>
-                <p className="mt-1 text-xs text-slate-500">Pendências, risco, legislação e ação corretiva.</p>
-                <div className="mt-3 flex items-center justify-between gap-2">
-                  <span className="text-sm font-extrabold text-red-700">Abrir não conformidades →</span>
-                  {ncsVisita.length > 0 && <span className="rounded-full bg-red-50 px-3 py-1 text-xs font-extrabold text-red-700">{ncsAbertas} abertas</span>}
-                </div>
-              </button>
-
-              <button
-                onClick={() => setView("plano")}
-                disabled={ncsVisita.length === 0 || !permitido("ncs.acompanhar", visitaAtual.empresaId)}
-                className={`rounded-2xl border bg-white p-3.5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${
-                  ncsVisita.length > 0
-                    ? "border-blue-200"
-                    : "opacity-60"
-                }`}
-              >
-                <div className="text-xs font-extrabold uppercase text-slate-400">
-                  Gestão
-                </div>
-                <div className="mt-1 text-base font-extrabold">Plano de ação</div>
-                <p className="mt-1 text-xs text-slate-500">
-                  Responsáveis, prazos e acompanhamento.
-                </p>
-                <div className="mt-3 text-sm">
-                  {ncsVisita.length > 0 ? (
-                    <div className="flex items-center justify-between">
-                      <span className="font-extrabold text-[#2F5597]">
-                        Abrir plano de ação →
-                      </span>
-                      <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-extrabold text-blue-700">
-                        {acoesDefinidas}/{ncsVisita.length}
-                      </span>
-                    </div>
-                  ) : (
-                    <span className="text-xs font-bold text-slate-400">
-                      Gere uma NC primeiro
-                    </span>
-                  )}
-                </div>
-              </button>
-              <button
-                onClick={() => setView("acompanhamento")}
-                disabled={!permitido("ncs.acompanhar", visitaAtual.empresaId)}
-                className="rounded-2xl border border-slate-200 bg-white p-3.5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <div className="text-xs font-extrabold uppercase text-emerald-700">Pós-visita</div>
-                <div className="mt-1 text-lg font-extrabold">Acompanhamento</div>
-                <p className="mt-1 text-xs text-slate-500">Prazos, responsáveis e andamento das ações corretivas.</p>
-              </button>
-
-              <button
-                onClick={() => setView("relatorio")}
-                disabled={!permitido("relatorios.exportar", visitaAtual.empresaId) && !permitido("relatorios.aprovar", visitaAtual.empresaId)}
-                className="rounded-2xl border border-slate-200 bg-white p-3.5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <div className="text-xs font-extrabold uppercase text-slate-400">
-                  Encerramento
-                </div>
-                <div className="mt-1 text-base font-extrabold">Relatório</div>
-                <p className="mt-1 text-xs text-slate-500">
-                  Revisão consolidada da inspeção e dos registros da visita.
-                </p>
-                <div className="mt-3 flex items-center justify-between gap-2">
-                  <span className="text-sm font-extrabold text-[#2F5597]">
-                    Abrir relatório →
-                  </span>
-                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold text-slate-600">
-                    {totalChecklist > 0
-                      ? `${percentualChecklist}% checklist`
-                      : "Prévia"}
-                  </span>
-                </div>
-              </button>
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div className="text-sm font-extrabold text-slate-950">Atividade da visita</div>
+                <button type="button" onClick={() => setView("acompanhamento")} disabled={!permitido("ncs.acompanhar", visitaAtual.empresaId)} className="text-xs font-extrabold text-[#2F5597] disabled:opacity-40">Acompanhamento →</button>
+              </div>
+              <div className="mt-3 space-y-3 text-xs">
+                <div className="flex gap-3"><span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-emerald-100 font-extrabold text-emerald-700">✓</span><div><div className="font-extrabold">Visita iniciada</div><div className="text-slate-500">{fdata(visitaAtual.data)} • {visitaAtual.responsavel || "Responsável não informado"}</div></div></div>
+                <div className="flex gap-3"><span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-blue-100 font-extrabold text-[#2F5597]">•</span><div><div className="font-extrabold">Checklist em andamento</div><div className="text-slate-500">{respondidos} de {totalChecklist} itens respondidos</div></div></div>
+                <div className="flex gap-3"><span className={`grid h-6 w-6 shrink-0 place-items-center rounded-full font-extrabold ${ncsVisita.length ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-500"}`}>{ncsVisita.length ? "!" : "—"}</span><div><div className="font-extrabold">Não conformidades registradas</div><div className="text-slate-500">{ncsVisita.length} registros • {ncsAbertas} ainda abertos</div></div></div>
+              </div>
             </div>
           </section>
         ) : view === "relatorio" && visitaAtual ? (
