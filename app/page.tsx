@@ -4140,28 +4140,36 @@ export default function Home() {
 
                                   <p className="mt-3 font-bold text-slate-800">{ultimaAnalise.resumo}</p>
 
-                                  {ultimaAnalise.achados.length > 0 && (
-                                    <div className="mt-3 space-y-2">
-                                      {ultimaAnalise.achados.map((achado, indice) => (
-                                        <div key={`${ultimaAnalise.id}-${indice}`} className="rounded-lg border border-slate-200 p-3 text-sm">
-                                          <span className="font-extrabold">{achado.titulo}</span>
-                                          <p className="mt-1 text-slate-600">{achado.descricao}</p>
-                                          {achado.acaoSugerida && (
-                                            <p className="mt-2 text-emerald-800">
-                                              <span className="font-extrabold">Ação:</span> {achado.acaoSugerida}
-                                            </p>
-                                          )}
-                                        </div>
-                                      ))}
-                                    </div>
+                                  {ultimaAnalise.achados[0]?.acaoSugerida && (
+                                    <p className="mt-3 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900">
+                                      <span className="font-extrabold">Ação:</span>{" "}
+                                      {ultimaAnalise.achados[0].acaoSugerida}
+                                    </p>
                                   )}
 
-                                  {(ultimaAnalise.alertasPrivacidade.length > 0 ||
-                                    ultimaAnalise.observacoesLimitacoes.length > 0) && (
+                                  {ultimaAnalise.achados.length > 0 && (
                                     <details className="mt-3 rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
                                       <summary className="cursor-pointer font-extrabold text-slate-700">
                                         Ver detalhes técnicos
                                       </summary>
+                                      <div className="mt-3 space-y-2">
+                                        {ultimaAnalise.achados.map((achado, indice) => (
+                                          <div key={`${ultimaAnalise.id}-${indice}`} className="rounded-lg border border-slate-200 bg-white p-3 text-sm">
+                                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                              <span className="font-extrabold text-slate-800">{achado.titulo}</span>
+                                              <span className="text-[11px] font-bold text-slate-400">
+                                                Confiança {achado.confianca.toLowerCase()}
+                                              </span>
+                                            </div>
+                                            <p className="mt-1">{achado.descricao}</p>
+                                            {achado.acaoSugerida && (
+                                              <p className="mt-2 text-emerald-800">
+                                                <span className="font-extrabold">Ação:</span> {achado.acaoSugerida}
+                                              </p>
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
                                       {ultimaAnalise.alertasPrivacidade.length > 0 && (
                                         <p className="mt-2 text-red-800">
                                           <span className="font-extrabold">Privacidade:</span>{" "}
@@ -4179,20 +4187,22 @@ export default function Home() {
 
                                   {ultimaAnalise.status === "Aguardando revisão" && permitido("ia.analisar", ev.empresaId) ? (
                                     <div className="mt-4">
-                                      <label className="block text-xs font-extrabold text-slate-600">
-                                        Revise antes de confirmar
-                                      </label>
-                                      <textarea
-                                        rows={3}
-                                        value={analiseIATextos[ultimaAnalise.id] ?? ultimaAnalise.textoRevisado}
-                                        onChange={(e) =>
-                                          setAnaliseIATextos((atual) => ({
-                                            ...atual,
-                                            [ultimaAnalise.id]: e.target.value,
-                                          }))
-                                        }
-                                        className="mt-2 w-full rounded-xl border p-3 text-sm"
-                                      />
+                                      <details className="rounded-lg border border-slate-200 p-3">
+                                        <summary className="cursor-pointer text-xs font-extrabold text-slate-600">
+                                          Editar texto antes de confirmar
+                                        </summary>
+                                        <textarea
+                                          rows={3}
+                                          value={analiseIATextos[ultimaAnalise.id] ?? ultimaAnalise.textoRevisado}
+                                          onChange={(e) =>
+                                            setAnaliseIATextos((atual) => ({
+                                              ...atual,
+                                              [ultimaAnalise.id]: e.target.value,
+                                            }))
+                                          }
+                                          className="mt-3 w-full rounded-xl border p-3 text-sm"
+                                        />
+                                      </details>
                                       <div className="mt-3 grid gap-2 sm:grid-cols-2">
                                         <button
                                           type="button"
@@ -4212,11 +4222,16 @@ export default function Home() {
                                     </div>
                                   ) : ultimaAnalise.status === "Confirmada" ? (
                                     <div className="mt-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900">
-                                      <div className="font-extrabold">Texto confirmado pelo profissional</div>
-                                      <div className="mt-1 whitespace-pre-wrap">{ultimaAnalise.textoRevisado}</div>
+                                      <div className="font-extrabold">Análise confirmada pelo profissional</div>
                                       <div className="mt-2 text-xs">
                                         {ultimaAnalise.revisadaPor} • {ultimaAnalise.revisadaEm ? new Date(ultimaAnalise.revisadaEm).toLocaleString("pt-BR") : ""}
                                       </div>
+                                      <details className="mt-2">
+                                        <summary className="cursor-pointer text-xs font-extrabold">
+                                          Ver texto confirmado
+                                        </summary>
+                                        <div className="mt-2 whitespace-pre-wrap">{ultimaAnalise.textoRevisado}</div>
+                                      </details>
                                     </div>
                                   ) : ultimaAnalise.status === "Descartada" ? (
                                     <div className="mt-4 text-xs text-slate-500">
