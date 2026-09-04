@@ -5914,7 +5914,7 @@ export default function Home() {
           </section>
         ) : view === "inicio" ? (
           <div className="space-y-3">
-            <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <section className="-mx-3 -mt-4 overflow-hidden border-y border-slate-200 bg-white shadow-sm md:mx-0 md:mt-0 md:rounded-2xl md:border">
               <div className="aspect-[16/7] min-h-36 bg-[#17365D] bg-[url('/images/cozinha-inspecao.webp')] bg-cover bg-center" />
             </section>
 
