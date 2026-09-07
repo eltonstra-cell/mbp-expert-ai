@@ -19,6 +19,7 @@ export type Empresa = {
   responsavel: string;
   site?: string;
   redeSocial?: string;
+  horarioFuncionamento?: string;
   atividadeDescricao?: string;
   cargoResponsavel?: string;
   consultorNome?: string;
@@ -34,6 +35,7 @@ export type Empresa = {
   responsabilidadesManual?: ResponsabilidadeManual[];
   setoresManual?: string[];
   equipamentosSetores?: EquipamentoSetor[];
+  fluxosOperacionais?: FluxoOperacional[];
   criadoEm: string;
 };
 
@@ -75,6 +77,29 @@ export type EquipamentoSetor = {
   quantidade: number;
   estado: EstadoEquipamento;
   observacao: string;
+};
+
+export type TipoFluxoOperacional =
+  | "Recebimento"
+  | "Armazenamento"
+  | "Manipulação e produção"
+  | "Higienização de FLV"
+  | "Pré-preparo e preparo"
+  | "Porcionamento e fracionamento"
+  | "Congelamento"
+  | "Descongelamento"
+  | "Distribuição"
+  | "Manejo de resíduos"
+  | "Entrada e saída de colaboradores";
+
+export type FluxoOperacional = {
+  id: string;
+  tipo: TipoFluxoOperacional;
+  aplicavel: boolean;
+  setorVinculado: string;
+  descricao: string;
+  responsavel: string;
+  controlesRegistros: string;
 };
 
 export type ChecklistStatus = "Pendente" | "Conforme" | "Não Conforme" | "Não se aplica";

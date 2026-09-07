@@ -1,22 +1,17 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import type {
   EquipamentoSetor,
   EstadoEquipamento,
-  HorarioFuncionamento,
   PapelResponsabilidadeManual,
   ResponsabilidadeManual,
 } from "@/types";
 import {
-  criarHorarioExemploManual,
-  resumirHorarioFuncionamento,
   SETORES_OFICIAIS_MANUAL,
 } from "@/lib/manualBase";
 
 type Props = {
-  horarios: HorarioFuncionamento[];
-  onHorariosChange: (horarios: HorarioFuncionamento[]) => void;
   responsabilidades: ResponsabilidadeManual[];
   onResponsabilidadesChange: (responsabilidades: ResponsabilidadeManual[]) => void;
   setores: string[];
@@ -42,8 +37,6 @@ function SectionTitle({ title, description }: { title: string; description: stri
 }
 
 export default function ManualBaseFields({
-  horarios,
-  onHorariosChange,
   responsabilidades,
   onResponsabilidadesChange,
   setores,
@@ -56,12 +49,7 @@ export default function ManualBaseFields({
   const [quantidadeEquipamento, setQuantidadeEquipamento] = useState("1");
   const [papelAdicional, setPapelAdicional] = useState<PapelResponsabilidadeManual>("Proprietário");
 
-  const resumoHorario = useMemo(() => resumirHorarioFuncionamento(horarios), [horarios]);
   const setoresParaEquipamentos = setores.length ? setores : [...SETORES_OFICIAIS_MANUAL];
-
-  function atualizarHorario(indice: number, patch: Partial<HorarioFuncionamento>) {
-    onHorariosChange(horarios.map((item, atual) => atual === indice ? { ...item, ...patch } : item));
-  }
 
   function toggleSetor(setor: string) {
     const proximos = setores.includes(setor)
@@ -110,33 +98,6 @@ export default function ManualBaseFields({
         <h3 className="mt-1 text-xl font-extrabold text-slate-950">Identificação, setores e responsabilidades</h3>
         <p className="mt-1 text-sm text-slate-500">Esses dados serão reutilizados no Manual, nas visitas e nos relatórios.</p>
       </div>
-
-      <details open className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-        <summary className="cursor-pointer list-none">
-          <SectionTitle title="Horário de funcionamento" description="Cadastre cada dia. Nada será atualizado sem sua confirmação." />
-        </summary>
-        <div className="mt-4 space-y-2">
-          {horarios.map((horario, indice) => (
-            <div key={horario.dia} className="grid items-center gap-2 rounded-xl bg-white p-3 sm:grid-cols-[1fr_auto_110px_110px]">
-              <label className="flex items-center gap-2 text-sm font-bold">
-                <input type="checkbox" checked={horario.aberto} onChange={(event) => atualizarHorario(indice, { aberto: event.target.checked })} />
-                {horario.dia}
-              </label>
-              <span className={`text-xs font-bold ${horario.aberto ? "text-emerald-700" : "text-slate-400"}`}>
-                {horario.aberto ? "Aberto" : "Fechado"}
-              </span>
-              <input aria-label={`Abertura de ${horario.dia}`} type="time" disabled={!horario.aberto} value={horario.abertura} onChange={(event) => atualizarHorario(indice, { abertura: event.target.value })} className="rounded-lg border p-2 disabled:bg-slate-100" />
-              <input aria-label={`Fechamento de ${horario.dia}`} type="time" disabled={!horario.aberto} value={horario.fechamento} onChange={(event) => atualizarHorario(indice, { fechamento: event.target.value })} className="rounded-lg border p-2 disabled:bg-slate-100" />
-            </div>
-          ))}
-        </div>
-        <button type="button" onClick={() => onHorariosChange(criarHorarioExemploManual())} className="mt-3 rounded-xl bg-blue-50 px-4 py-2 text-xs font-extrabold text-[#2F5597]">
-          Usar exemplo do Manual
-        </button>
-        <div className="mt-3 rounded-xl border border-blue-100 bg-blue-50 p-3 text-xs text-slate-700">
-          <strong>Como aparecerá no Manual:</strong> {resumoHorario}
-        </div>
-      </details>
 
       <details open className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
         <summary className="cursor-pointer list-none">
