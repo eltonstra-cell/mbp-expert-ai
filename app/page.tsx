@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import MetricCard from "@/components/MetricCard";
 import AccessPreparationPanel from "@/components/AccessPreparationPanel";
+import ManualBaseFields from "@/components/ManualBaseFields";
 import type {
   AppDB,
   AcaoPermissao,
@@ -11,10 +12,24 @@ import type {
   ChecklistItem,
   ChecklistStatus,
   Empresa,
+  EquipamentoSetor,
   Evidencia,
+  HorarioFuncionamento,
+  ResponsabilidadeManual,
   StatusUsuario,
   Visita,
 } from "@/types";
+import {
+  criarHorarioSemanalVazio,
+  criarResponsabilidadesPadrao,
+  normalizarEquipamentos,
+  normalizarHorarios,
+  normalizarResponsabilidades,
+  normalizarSetorManual,
+  resumirHorarioFuncionamento,
+  SETORES_OFICIAIS_MANUAL,
+} from "@/lib/manualBase";
+import { obterModeloChecklistManual } from "@/lib/manualChecklist";
 import {
   clearOfflineSession,
   emptyDB,
@@ -82,23 +97,56 @@ const labels: Record<string, string> = {
   uf: "UF",
   telefone: "Telefone",
   email: "E-mail",
-  responsavel: "Responsável",
+  responsavel: "Responsável pelo estabelecimento",
+  site: "Site",
+  redeSocial: "Rede social",
+  atividadeDescricao: "Atividades, produção e serviços realizados",
+  cargoResponsavel: "Cargo do responsável pelo estabelecimento",
+  consultorNome: "Nome do Consultor/RT",
+  consultorCpfCnpj: "CPF ou CNPJ do Consultor/RT",
+  consultorEndereco: "Endereço do Consultor/RT",
+  consultorTelefone: "Telefone do Consultor/RT",
+  consultorRegistro: "Profissão e registro no conselho",
+  dataElaboracaoManual: "Data de elaboração do Manual",
+  elaboradoPor: "Manual elaborado por",
+  revisadoPor: "Manual revisado por",
+  aprovadoPor: "Manual aprovado por",
 };
 
-const ambientesPadrao = [
-  "Recebimento",
-  "Armazenamento seco / Estoque",
-  "Câmara refrigerada",
-  "Câmara de congelamento",
-  "Pré-preparo",
-  "Preparo / Cocção",
-  "Distribuição / Exposição",
-  "Higienização de utensílios",
-  "DML / Material de limpeza",
-  "Sanitários / Vestiários",
-  "Área de resíduos",
-  "Área externa",
-];
+const ambientesPadrao = [...SETORES_OFICIAIS_MANUAL];
+
+const formEmpresaVazio = {
+  cnpj: "",
+  nomeFantasia: "",
+  razaoSocial: "",
+  situacao: "",
+  cnae: "",
+  cnaeDescricao: "",
+  tipo: "Outro",
+  logradouro: "",
+  numero: "",
+  complemento: "",
+  bairro: "",
+  cep: "",
+  municipio: "",
+  uf: "",
+  telefone: "",
+  email: "",
+  responsavel: "",
+  site: "",
+  redeSocial: "",
+  atividadeDescricao: "",
+  cargoResponsavel: "",
+  consultorNome: "",
+  consultorCpfCnpj: "",
+  consultorEndereco: "",
+  consultorTelefone: "",
+  consultorRegistro: "",
+  dataElaboracaoManual: "",
+  elaboradoPor: "",
+  revisadoPor: "",
+  aprovadoPor: "",
+};
 
 const posicoesMapaInspecao = [
   { left: "12%", top: "20%" },
@@ -296,13 +344,13 @@ function fdata(d: string) {
 
 function criarChecklist(ambientes: string[]): ChecklistItem[] {
   return ambientes.flatMap((ambiente, ambienteIndex) => {
-    const itens = modelosChecklist[ambiente] || [
-      { categoria: "Estrutura", titulo: "Estrutura em boas condições de conservação" },
-      { categoria: "Higiene", titulo: "Ambiente limpo e organizado" },
-      { categoria: "Processo", titulo: "Fluxo operacional reduz risco de contaminação" },
-      { categoria: "Identificação", titulo: "Materiais e produtos estão identificados adequadamente" },
-      { categoria: "Boas práticas", titulo: "Boas práticas são observadas no ambiente" },
-    ];
+    const setorNormalizado = normalizarSetorManual(ambiente);
+    const setorDoManual = SETORES_OFICIAIS_MANUAL.includes(
+      setorNormalizado as (typeof SETORES_OFICIAIS_MANUAL)[number]
+    );
+    const itens = setorDoManual
+      ? obterModeloChecklistManual(ambiente)
+      : modelosChecklist[ambiente] || obterModeloChecklistManual(ambiente);
 
     return itens.map((item, itemIndex) => ({
       id: `${ambienteIndex}-${itemIndex}-${crypto.randomUUID()}`,
@@ -493,25 +541,15 @@ export default function Home() {
     return scopedStorageKey(NAV_STORAGE_KEY, storageIdentityRef.current);
   }
 
-  const [form, setForm] = useState({
-    cnpj: "",
-    nomeFantasia: "",
-    razaoSocial: "",
-    situacao: "",
-    cnae: "",
-    cnaeDescricao: "",
-    tipo: "Outro",
-    logradouro: "",
-    numero: "",
-    complemento: "",
-    bairro: "",
-    cep: "",
-    municipio: "",
-    uf: "",
-    telefone: "",
-    email: "",
-    responsavel: "",
-  });
+  const [form, setForm] = useState(formEmpresaVazio);
+  const [horariosEmpresa, setHorariosEmpresa] = useState<HorarioFuncionamento[]>(
+    criarHorarioSemanalVazio()
+  );
+  const [responsabilidadesEmpresa, setResponsabilidadesEmpresa] = useState<
+    ResponsabilidadeManual[]
+  >(criarResponsabilidadesPadrao());
+  const [setoresEmpresa, setSetoresEmpresa] = useState<string[]>([]);
+  const [equipamentosEmpresa, setEquipamentosEmpresa] = useState<EquipamentoSetor[]>([]);
 
   useEffect(() => {
     if (syncStatus !== "erro") {
@@ -893,6 +931,24 @@ export default function Home() {
 
     const dbNormalizado: AppDB = {
       ...s,
+      empresas: Object.fromEntries(
+        Object.entries((s as any).empresas || {}).map(([id, empresa]: [string, any]) => [
+          id,
+          {
+            ...empresa,
+            site: typeof empresa.site === "string" ? empresa.site : "",
+            redeSocial: typeof empresa.redeSocial === "string" ? empresa.redeSocial : "",
+            horariosFuncionamento: normalizarHorarios(empresa.horariosFuncionamento),
+            responsabilidadesManual: normalizarResponsabilidades(
+              empresa.responsabilidadesManual
+            ),
+            setoresManual: Array.isArray(empresa.setoresManual)
+              ? empresa.setoresManual.map((setor: string) => normalizarSetorManual(setor))
+              : [],
+            equipamentosSetores: normalizarEquipamentos(empresa.equipamentosSetores),
+          },
+        ])
+      ),
       visitas: vs,
       ncs: ncsSincronizadas,
       evidencias: Array.isArray((s as any).evidencias) ? (s as any).evidencias : [],
@@ -1290,6 +1346,10 @@ export default function Home() {
       ? visitaAtualCadastrada
       : undefined;
   const empresaVisita = visitaAtual ? db.empresas[visitaAtual.empresaId] : undefined;
+  const ambientesSugeridosVisita =
+    empresaVisita?.setoresManual?.length
+      ? empresaVisita.setoresManual
+      : ambientesPadrao;
   const visitas = useMemo(
     () =>
       db.visitas
@@ -2215,6 +2275,10 @@ export default function Home() {
       ...form,
       cnpj: editingEmpresaId ? (anterior?.cnpj || form.cnpj) : form.cnpj,
       nomeFantasia: form.nomeFantasia || form.razaoSocial || "Sem nome",
+      horariosFuncionamento: normalizarHorarios(horariosEmpresa),
+      responsabilidadesManual: normalizarResponsabilidades(responsabilidadesEmpresa),
+      setoresManual: setoresEmpresa,
+      equipamentosSetores: normalizarEquipamentos(equipamentosEmpresa),
       criadoEm: anterior?.criadoEm || new Date().toISOString(),
     };
     setDb((o) => ({
@@ -2247,7 +2311,30 @@ export default function Home() {
       telefone: empresa.telefone || "",
       email: empresa.email || "",
       responsavel: empresa.responsavel || "",
+      site: empresa.site || "",
+      redeSocial: empresa.redeSocial || "",
+      atividadeDescricao: empresa.atividadeDescricao || "",
+      cargoResponsavel: empresa.cargoResponsavel || "",
+      consultorNome: empresa.consultorNome || "",
+      consultorCpfCnpj: empresa.consultorCpfCnpj || "",
+      consultorEndereco: empresa.consultorEndereco || "",
+      consultorTelefone: empresa.consultorTelefone || "",
+      consultorRegistro: empresa.consultorRegistro || "",
+      dataElaboracaoManual: empresa.dataElaboracaoManual || "",
+      elaboradoPor: empresa.elaboradoPor || "",
+      revisadoPor: empresa.revisadoPor || "",
+      aprovadoPor: empresa.aprovadoPor || "",
     });
+    setHorariosEmpresa(normalizarHorarios(empresa.horariosFuncionamento));
+    setResponsabilidadesEmpresa(
+      normalizarResponsabilidades(empresa.responsabilidadesManual)
+    );
+    setSetoresEmpresa(
+      Array.isArray(empresa.setoresManual)
+        ? empresa.setoresManual.map(normalizarSetorManual)
+        : []
+    );
+    setEquipamentosEmpresa(normalizarEquipamentos(empresa.equipamentosSetores));
     setEditingEmpresaId(empresa.id);
     setMsg("");
     setShowEmpresaForm(true);
@@ -2286,7 +2373,7 @@ export default function Home() {
       criadoEm: new Date().toISOString(),
       ambientes: [],
       checklist: [],
-      checklistVersao: 2,
+      checklistVersao: 3,
     };
     setDb((o) => ({ ...o, visitas: [v, ...o.visitas] }));
     setShowVisitaForm(false);
@@ -2307,7 +2394,11 @@ export default function Home() {
   function abrirAmbientes() {
     if (!visitaAtual) return;
     if (!exigirPermissao("visitas.executar", visitaAtual.empresaId)) return;
-    setAmbientesSelecionados(visitaAtual.ambientes || []);
+    setAmbientesSelecionados(
+      visitaAtual.ambientes?.length
+        ? visitaAtual.ambientes
+        : empresaVisita?.setoresManual || []
+    );
     setAmbientePersonalizado("");
     setView("ambientes");
   }
@@ -2360,7 +2451,7 @@ export default function Home() {
       (item) => item.status !== "Pendente" || item.observacao.trim().length > 0
     );
     const precisaAtualizarModelo =
-      (visitaAtual.checklistVersao || 1) < 2 && !possuiRespostas;
+      (visitaAtual.checklistVersao || 1) < 3 && !possuiRespostas;
 
     if (checklistExistente.length === 0 || precisaAtualizarModelo) {
       const novoChecklist = criarChecklist(visitaAtual.ambientes || []);
@@ -2368,7 +2459,7 @@ export default function Home() {
         ...o,
         visitas: o.visitas.map((v) =>
           v.id === visitaAtual.id
-            ? { ...v, checklist: novoChecklist, checklistVersao: 2 }
+            ? { ...v, checklist: novoChecklist, checklistVersao: 3 }
             : v
         ),
       }));
@@ -3548,7 +3639,7 @@ export default function Home() {
               <div>
                 <h2 className="text-2xl font-extrabold">{editingEmpresaId ? "Editar empresa" : "Nova empresa"}</h2>
                 <p className="text-sm text-slate-500">
-                  {editingEmpresaId ? "Atualize os dados do cliente, incluindo o responsável que assinará o relatório." : "Digite o CNPJ para buscar os dados automaticamente."}
+                  {editingEmpresaId ? "Atualize os dados do cliente e a base usada no Manual de Boas Práticas." : "Digite o CNPJ para buscar os dados básicos e depois complete as informações do Manual."}
                 </p>
               </div>
               <button
@@ -3590,6 +3681,7 @@ export default function Home() {
                       {labels[k] || k}
                     </span>
                     <input
+                      type={k === "dataElaboracaoManual" ? "date" : "text"}
                       className="w-full rounded-xl border p-3"
                       value={v}
                       onChange={(e) =>
@@ -3599,6 +3691,17 @@ export default function Home() {
                   </label>
                 ))}
             </div>
+
+            <ManualBaseFields
+              horarios={horariosEmpresa}
+              onHorariosChange={setHorariosEmpresa}
+              responsabilidades={responsabilidadesEmpresa}
+              onResponsabilidadesChange={setResponsabilidadesEmpresa}
+              setores={setoresEmpresa}
+              onSetoresChange={setSetoresEmpresa}
+              equipamentos={equipamentosEmpresa}
+              onEquipamentosChange={setEquipamentosEmpresa}
+            />
 
             {msg && (
               <div className="mt-3 rounded-xl bg-amber-50 p-3 text-sm">
@@ -3747,7 +3850,7 @@ export default function Home() {
                 </div>
 
                 <div className="mt-4 grid gap-3 md:grid-cols-2">
-                  {ambientesPadrao.map((nome) => {
+                  {ambientesSugeridosVisita.map((nome) => {
                     const ativo = ambientesSelecionados.includes(nome);
                     return (
                       <button
@@ -6030,7 +6133,11 @@ export default function Home() {
                 <button
                   onClick={() => {
                     setEditingEmpresaId(null);
-                    setForm({ cnpj: "", nomeFantasia: "", razaoSocial: "", situacao: "", cnae: "", cnaeDescricao: "", tipo: "Outro", logradouro: "", numero: "", complemento: "", bairro: "", cep: "", municipio: "", uf: "", telefone: "", email: "", responsavel: "" });
+                    setForm(formEmpresaVazio);
+                    setHorariosEmpresa(criarHorarioSemanalVazio());
+                    setResponsabilidadesEmpresa(criarResponsabilidadesPadrao());
+                    setSetoresEmpresa([]);
+                    setEquipamentosEmpresa([]);
                     setMsg("");
                     setShowEmpresaForm(true);
                   }}
@@ -6056,6 +6163,15 @@ export default function Home() {
                   {e.responsavel && (
                     <div className="mt-1 text-xs text-slate-500">Responsável: {e.responsavel}</div>
                   )}
+                  <div className="mt-2 text-xs text-slate-500">
+                    <span className="font-bold">Horário:</span>{" "}
+                    {e.horariosFuncionamento?.some((item) => item.aberto)
+                      ? resumirHorarioFuncionamento(e.horariosFuncionamento)
+                      : "Não informado"}
+                  </div>
+                  <div className="mt-1 text-xs text-slate-500">
+                    {(e.setoresManual || []).length} setor(es) • {(e.equipamentosSetores || []).length} equipamento(s) e móvel(is)
+                  </div>
                   <div className="mt-4 flex flex-wrap gap-2">
                     <button
                       onClick={() => {
