@@ -17,7 +17,64 @@ export type Empresa = {
   telefone: string;
   email: string;
   responsavel: string;
+  site?: string;
+  redeSocial?: string;
+  atividadeDescricao?: string;
+  cargoResponsavel?: string;
+  consultorNome?: string;
+  consultorCpfCnpj?: string;
+  consultorEndereco?: string;
+  consultorTelefone?: string;
+  consultorRegistro?: string;
+  dataElaboracaoManual?: string;
+  elaboradoPor?: string;
+  revisadoPor?: string;
+  aprovadoPor?: string;
+  horariosFuncionamento?: HorarioFuncionamento[];
+  responsabilidadesManual?: ResponsabilidadeManual[];
+  setoresManual?: string[];
+  equipamentosSetores?: EquipamentoSetor[];
   criadoEm: string;
+};
+
+export type DiaSemana =
+  | "Segunda-feira"
+  | "Terça-feira"
+  | "Quarta-feira"
+  | "Quinta-feira"
+  | "Sexta-feira"
+  | "Sábado"
+  | "Domingo";
+
+export type HorarioFuncionamento = {
+  dia: DiaSemana;
+  aberto: boolean;
+  abertura: string;
+  fechamento: string;
+};
+
+export type PapelResponsabilidadeManual = "Proprietário" | "Consultor/RT";
+
+export type ResponsabilidadeManual = {
+  id: string;
+  papel: PapelResponsabilidadeManual;
+  descricao: string;
+  ativa: boolean;
+};
+
+export type EstadoEquipamento =
+  | "Não avaliado"
+  | "Adequado"
+  | "Requer atenção"
+  | "Inadequado";
+
+export type EquipamentoSetor = {
+  id: string;
+  setor: string;
+  nome: string;
+  quantidade: number;
+  estado: EstadoEquipamento;
+  observacao: string;
 };
 
 export type ChecklistStatus = "Pendente" | "Conforme" | "Não Conforme" | "Não se aplica";
