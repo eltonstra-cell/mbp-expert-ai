@@ -3,7 +3,6 @@
 import { useState } from "react";
 import type {
   EquipamentoSetor,
-  EstadoEquipamento,
   PapelResponsabilidadeManual,
   ResponsabilidadeManual,
 } from "@/types";
@@ -19,13 +18,6 @@ type Props = {
   equipamentos: EquipamentoSetor[];
   onEquipamentosChange: (equipamentos: EquipamentoSetor[]) => void;
 };
-
-const estadosEquipamento: EstadoEquipamento[] = [
-  "Não avaliado",
-  "Adequado",
-  "Requer atenção",
-  "Inadequado",
-];
 
 function SectionTitle({ title, description }: { title: string; description: string }) {
   return (
@@ -183,17 +175,13 @@ export default function ManualBaseFields({
 
         <div className="mt-4 space-y-2">
           {equipamentos.map((equipamento, indice) => (
-            <div key={equipamento.id} className="grid min-w-0 gap-2 rounded-xl border border-slate-200 bg-white p-3 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_90px_150px_auto]">
+            <div key={equipamento.id} className="grid min-w-0 gap-2 rounded-xl border-2 border-blue-200 bg-blue-50/70 p-3 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_90px_auto]">
               <select value={equipamento.setor} onChange={(event) => onEquipamentosChange(equipamentos.map((item, atual) => atual === indice ? { ...item, setor: event.target.value } : item))} className="min-w-0 w-full rounded-lg border p-2 text-xs">
                 {setoresParaEquipamentos.map((setor) => <option key={setor}>{setor}</option>)}
               </select>
               <input value={equipamento.nome} onChange={(event) => onEquipamentosChange(equipamentos.map((item, atual) => atual === indice ? { ...item, nome: event.target.value } : item))} className="min-w-0 w-full rounded-lg border p-2 text-sm" />
               <input type="number" min="1" value={equipamento.quantidade} onChange={(event) => onEquipamentosChange(equipamentos.map((item, atual) => atual === indice ? { ...item, quantidade: Math.max(1, Number(event.target.value) || 1) } : item))} className="min-w-0 w-full rounded-lg border p-2 text-sm" />
-              <select value={equipamento.estado} onChange={(event) => onEquipamentosChange(equipamentos.map((item, atual) => atual === indice ? { ...item, estado: event.target.value as EstadoEquipamento } : item))} className="min-w-0 w-full rounded-lg border p-2 text-xs">
-                {estadosEquipamento.map((estado) => <option key={estado}>{estado}</option>)}
-              </select>
               <button type="button" onClick={() => onEquipamentosChange(equipamentos.filter((_, atual) => atual !== indice))} className="rounded-lg bg-red-50 px-2 py-1 text-xs font-bold text-red-700">Excluir</button>
-              <input value={equipamento.observacao} onChange={(event) => onEquipamentosChange(equipamentos.map((item, atual) => atual === indice ? { ...item, observacao: event.target.value } : item))} placeholder="Observação opcional" className="min-w-0 w-full rounded-lg border p-2 text-sm md:col-span-5" />
             </div>
           ))}
           {equipamentos.length === 0 && <div className="rounded-xl border border-dashed border-slate-300 p-4 text-center text-sm text-slate-500">Nenhum equipamento ou móvel cadastrado.</div>}
