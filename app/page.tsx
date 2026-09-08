@@ -1414,6 +1414,14 @@ export default function Home() {
         ...(programasChecklistAtivos.length > 0 ? [AMBIENTE_PROGRAMAS_CONTROLE] : []),
       ]
     : [];
+  const gruposRoteiroChecklist = visitaAtual
+    ? [
+        { titulo: "Ambientes da visita", itens: visitaAtual.ambientes || [] },
+        ...(programasChecklistAtivos.length > 0
+          ? [{ titulo: "Verificação geral", itens: [AMBIENTE_PROGRAMAS_CONTROLE] }]
+          : []),
+      ]
+    : [];
   const ambientesSugeridosVisita =
     empresaVisita?.setoresManual?.length
       ? empresaVisita.setoresManual
@@ -5059,38 +5067,41 @@ export default function Home() {
             <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
               <aside className="rounded-2xl bg-white p-4 shadow-sm">
                 <div className="text-sm font-extrabold">Roteiro do checklist</div>
-                <div className="mt-3 space-y-2">
-                  {ambientesChecklistVisita.map((ambiente) => {
-                    const itensAmb = checklistAtual.filter((i) => i.ambiente === ambiente);
-                    const respAmb = itensAmb.filter((i) => i.status !== "Pendente").length;
-                    const ativo = ambienteChecklistAtivo === ambiente;
+                <div className="mt-3 space-y-4">
+                  {gruposRoteiroChecklist.map((grupo) => (
+                    <div key={grupo.titulo}>
+                      <div className="mb-2 text-xs font-extrabold uppercase tracking-wide text-slate-400">
+                        {grupo.titulo}
+                      </div>
+                      <div className="space-y-2">
+                        {grupo.itens.map((ambiente) => {
+                          const itensAmb = checklistAtual.filter((i) => i.ambiente === ambiente);
+                          const respAmb = itensAmb.filter((i) => i.status !== "Pendente").length;
+                          const ativo = ambienteChecklistAtivo === ambiente;
 
-                    return (
-                      <button
-                        key={ambiente}
-                        onClick={() => setAmbienteChecklistAtivo(ambiente)}
-                        className={`w-full rounded-xl p-3 text-left ${
-                          ativo ? "bg-[#17365D] text-white" : "bg-slate-50"
-                        }`}
-                      >
-                        <div className="font-extrabold">{ambiente}</div>
-                        <div
-                          className={`mt-1 text-xs ${
-                            ativo ? "text-blue-100" : "text-slate-500"
-                          }`}
-                        >
-                          <span>{respAmb}/{itensAmb.length} respondidos</span>
-                          {itensAmb.length > 0 && respAmb === itensAmb.length && (
-                            <span className={`ml-2 font-extrabold ${
-                              ativo ? "text-emerald-200" : "text-emerald-700"
-                            }`}>
-                              ✓ Concluído
-                            </span>
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })}
+                          return (
+                            <button
+                              key={ambiente}
+                              onClick={() => setAmbienteChecklistAtivo(ambiente)}
+                              className={`w-full rounded-xl p-3 text-left ${
+                                ativo ? "bg-[#17365D] text-white" : "bg-slate-50"
+                              }`}
+                            >
+                              <div className="font-extrabold">{ambiente}</div>
+                              <div className={`mt-1 text-xs ${ativo ? "text-blue-100" : "text-slate-500"}`}>
+                                <span>{respAmb}/{itensAmb.length} respondidos</span>
+                                {itensAmb.length > 0 && respAmb === itensAmb.length && (
+                                  <span className={`ml-2 font-extrabold ${ativo ? "text-emerald-200" : "text-emerald-700"}`}>
+                                    ✓ Concluído
+                                  </span>
+                                )}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </aside>
 
