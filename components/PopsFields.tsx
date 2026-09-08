@@ -11,11 +11,12 @@ import { SUGESTOES_POPS_MANUAL } from "@/lib/pops";
 type Props = {
   pops: ProcedimentoOperacionalPadronizado[];
   onChange: (pops: ProcedimentoOperacionalPadronizado[]) => void;
+  aberto?: boolean;
 };
 
 const statusDisponiveis: StatusPOP[] = ["Rascunho", "Em revisão", "Aprovado", "Inativo"];
 
-export default function PopsFields({ pops, onChange }: Props) {
+export default function PopsFields({ pops, onChange, aberto = false }: Props) {
   const [titulo, setTitulo] = useState("");
   const [codigo, setCodigo] = useState("");
 
@@ -60,7 +61,7 @@ export default function PopsFields({ pops, onChange }: Props) {
   }
 
   return (
-    <details className="mt-4 min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-4">
+    <details open={aberto} className="mt-4 min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-4">
       <summary className="cursor-pointer list-none">
         <div className="font-extrabold text-slate-950">Procedimentos Operacionais Padronizados — POPs</div>
         <div className="mt-0.5 text-xs text-slate-500">
@@ -93,7 +94,7 @@ export default function PopsFields({ pops, onChange }: Props) {
       </div>
 
       <div className="mt-4 grid min-w-0 gap-2 md:grid-cols-[130px_minmax(0,1fr)_auto]">
-        <input value={codigo} onChange={(event) => setCodigo(event.target.value)} placeholder="Código" className="min-w-0 w-full rounded-xl border bg-white p-3 text-sm" />
+        <input value={codigo} onChange={(event) => setCodigo(event.target.value)} placeholder="Código (opcional)" className="min-w-0 w-full rounded-xl border bg-white p-3 text-sm" />
         <input value={titulo} onChange={(event) => setTitulo(event.target.value)} placeholder="Título do POP" className="min-w-0 w-full rounded-xl border bg-white p-3 text-sm" />
         <button type="button" onClick={adicionar} className="w-full rounded-xl bg-[#2F5597] px-4 py-3 text-sm font-extrabold text-white">Adicionar POP</button>
       </div>
