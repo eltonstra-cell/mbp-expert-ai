@@ -6,6 +6,7 @@ import {
   criarResponsabilidadesPadrao,
   normalizarEquipamentos,
   migrarSetoresLegados,
+  migrarVisitaParaChecklistManual,
   normalizarHorarios,
   normalizarSetorManual,
   resumirHorarioFuncionamento,
@@ -25,6 +26,51 @@ test("migra os sanitários antigos para os setores específicos do Manual", () =
 test("consolida subsetores antigos sem repetir o setor oficial", () => {
   const setores = migrarSetoresLegados(["Copa", "Churrasqueira", "Cozinha / Produção"]);
   assert.deepEqual(setores, ["Cozinha / Produção"]);
+});
+
+test("migra a lista antiga completa usada nas visitas", () => {
+  const setores = migrarSetoresLegados([
+    "01 - Recebimento de matérias-primas, ingredientes, embalagens e materiais de limpeza",
+    "02 - Salão de Atendimento",
+    "03 - Copa",
+    "04 - Churrasqueira",
+    "05 - Cozinha / Produção",
+    "06 - Higienização de Hortifrutigranjeiros",
+    "07 - Higienização de Utensílios e Equipamentos",
+    "08 - Higienização de Espetos",
+    "09 - Higienização de Materiais de Limpeza",
+    "10 - Estoque Seco",
+    "11 - Câmara Fria",
+    "12 - Armazenamento Congelado (Freezers)",
+    "13 - Depósito de Embalagens e Descartáveis",
+    "14 - Depósito de Material de Limpeza (DML)",
+    "15 - Armazenamento Temporário de Resíduos",
+    "16 - Sanitários / Vestiários de Funcionários",
+    "17 - Sanitários de Clientes",
+    "18 - Área Administrativa",
+  ]);
+  assert.deepEqual(
+    setores,
+    SETORES_OFICIAIS_MANUAL.filter((setor) => setor !== "Central de gás")
+  );
+});
+
+test("refaz checklist antigo sem respostas e preserva o respondido", () => {
+  const pendente = migrarVisitaParaChecklistManual({
+    ambientes: ["Sanitários/Vestiários de Funcionários"],
+    checklist: [{ status: "Pendente", observacao: "" }],
+    checklistVersao: 5,
+  });
+  assert.equal(pendente.ambientes.length, 4);
+  assert.deepEqual(pendente.checklist, []);
+  assert.equal(pendente.checklistVersao, 6);
+
+  const respondida = {
+    ambientes: ["Sanitários/Vestiários de Funcionários"],
+    checklist: [{ status: "Conforme", observacao: "" }],
+    checklistVersao: 5,
+  };
+  assert.equal(migrarVisitaParaChecklistManual(respondida), respondida);
 });
 
 test("mantém os 13 setores oficiais descritos no Manual", () => {

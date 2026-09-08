@@ -25,9 +25,9 @@ export type SetorOficialManual = (typeof SETORES_OFICIAIS_MANUAL)[number];
 
 const ALIASES_SETORES: Record<string, SetorOficialManual> = {
   "recebimento": SETORES_OFICIAIS_MANUAL[0],
-  "armazenamento seco / estoque": SETORES_OFICIAIS_MANUAL[1],
-  "dml / material de limpeza": SETORES_OFICIAIS_MANUAL[2],
-  "preparo / cocção": SETORES_OFICIAIS_MANUAL[4],
+  "armazenamento seco/estoque": SETORES_OFICIAIS_MANUAL[1],
+  "dml/material de limpeza": SETORES_OFICIAIS_MANUAL[2],
+  "preparo/cocção": SETORES_OFICIAIS_MANUAL[4],
   "pré-preparo": SETORES_OFICIAIS_MANUAL[4],
   "higienização de utensílios": SETORES_OFICIAIS_MANUAL[5],
   "distribuição / exposição": SETORES_OFICIAIS_MANUAL[6],
@@ -47,6 +47,8 @@ const MIGRACAO_SETORES_LEGADOS: Record<string, string[]> = {
   "armazenamento congelado": [SETORES_OFICIAIS_MANUAL[1]],
   "depósito de embalagens e descartáveis": [SETORES_OFICIAIS_MANUAL[1]],
   "depósito de materiais de limpeza (dml)": [SETORES_OFICIAIS_MANUAL[2]],
+  "depósito de material de limpeza (dml)": [SETORES_OFICIAIS_MANUAL[2]],
+  "higienização de materiais de limpeza": [SETORES_OFICIAIS_MANUAL[2]],
   "armazenamento temporário de resíduos": [],
   "sanitários/vestiários de funcionários": [
     SETORES_OFICIAIS_MANUAL[7],
@@ -68,7 +70,12 @@ const MIGRACAO_SETORES_LEGADOS: Record<string, string[]> = {
 };
 
 function chave(texto: string) {
-  return texto.trim().toLocaleLowerCase("pt-BR");
+  return texto
+    .trim()
+    .replace(/^\d+\s*[-–—.]\s*/, "")
+    .replace(/\s*\/\s*/g, "/")
+    .replace(/\s+/g, " ")
+    .toLocaleLowerCase("pt-BR");
 }
 
 export function normalizarSetorManual(nome: string): string {
@@ -82,7 +89,49 @@ export function migrarSetoresLegados(setores?: string[]): string[] {
     const substitutos = MIGRACAO_SETORES_LEGADOS[chave(setor)];
     return substitutos === undefined ? [normalizarSetorManual(setor)] : substitutos;
   });
-  return [...new Set(migrados.filter(Boolean))];
+  const unicos = [...new Set(migrados.filter(Boolean))];
+  const oficiaisPresentes = SETORES_OFICIAIS_MANUAL.filter((setor) =>
+    unicos.includes(setor)
+  );
+  const personalizados = unicos.filter(
+    (setor) => !SETORES_OFICIAIS_MANUAL.includes(setor as SetorOficialManual)
+  );
+  return [...oficiaisPresentes, ...personalizados];
+}
+
+export function checklistPossuiRespostas(
+  checklist?: Array<{ status?: string; observacao?: string }>
+): boolean {
+  return (checklist || []).some(
+    (item) =>
+      (item.status !== undefined && item.status !== "Pendente") ||
+      (typeof item.observacao === "string" && item.observacao.trim().length > 0)
+  );
+}
+
+export function migrarVisitaParaChecklistManual<
+  T extends {
+    ambientes?: string[];
+    checklist?: Array<{ status?: string; observacao?: string }>;
+    checklistVersao?: number;
+  }
+>(visita: T, versaoAtual = 6): T {
+  if (checklistPossuiRespostas(visita.checklist)) return visita;
+
+  const ambientesAtuais = Array.isArray(visita.ambientes) ? visita.ambientes : [];
+  const ambientesMigrados = migrarSetoresLegados(ambientesAtuais);
+  const ambientesMudaram =
+    JSON.stringify(ambientesMigrados) !== JSON.stringify(ambientesAtuais);
+  const modeloMudou = (visita.checklistVersao || 1) < versaoAtual;
+
+  if (!ambientesMudaram && !modeloMudou) return visita;
+
+  return {
+    ...visita,
+    ambientes: ambientesMigrados,
+    checklist: [],
+    checklistVersao: versaoAtual,
+  };
 }
 
 export const DIAS_SEMANA: DiaSemana[] = [
