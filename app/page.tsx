@@ -44,8 +44,8 @@ import {
 } from "@/lib/manualBase";
 import { obterModeloChecklistManual } from "@/lib/manualChecklist";
 import {
+  adequarFluxosAosSetores,
   criarFluxosOperacionaisPadrao,
-  normalizarFluxosOperacionais,
   obterCriteriosOperacionaisParaSetor,
 } from "@/lib/operationalFlows";
 import {
@@ -104,7 +104,7 @@ import {
 type View = "inicio" | "empresas" | "visitas" | "visita" | "ambientes" | "checklist" | "ncs" | "plano" | "acompanhamento" | "historico" | "evidencias" | "relatorio" | "acessos";
 
 const NAV_STORAGE_KEY = "mbp-expert-ai:navegacao:v1";
-const CHECKLIST_VERSAO_ATUAL = 8;
+const CHECKLIST_VERSAO_ATUAL = 9;
 const VISIT_VIEWS: View[] = ["visita", "ambientes", "checklist", "ncs", "plano", "acompanhamento", "historico", "evidencias", "relatorio"];
 
 const labels: Record<string, string> = {
@@ -1071,7 +1071,10 @@ export default function Home() {
               empresa.modelosQuestionarioAmbientes
             ),
             equipamentosSetores: normalizarEquipamentos(empresa.equipamentosSetores),
-            fluxosOperacionais: normalizarFluxosOperacionais(empresa.fluxosOperacionais),
+            fluxosOperacionais: adequarFluxosAosSetores(
+              empresa.fluxosOperacionais,
+              normalizarListaAmbientesReais(empresa.setoresManual)
+            ),
             programasControleQualidade: normalizarProgramasControle(
               empresa.programasControleQualidade
             ),
@@ -2523,7 +2526,7 @@ export default function Home() {
         anterior?.modelosQuestionarioAmbientes
       ),
       equipamentosSetores: normalizarEquipamentos(equipamentosEmpresa),
-      fluxosOperacionais: normalizarFluxosOperacionais(fluxosEmpresa),
+      fluxosOperacionais: adequarFluxosAosSetores(fluxosEmpresa, setoresEmpresa),
       programasControleQualidade: normalizarProgramasControle(programasEmpresa),
       pops: normalizarPops(popsEmpresa),
       criadoEm: anterior?.criadoEm || new Date().toISOString(),
@@ -2589,7 +2592,10 @@ export default function Home() {
       normalizarListaAmbientesReais(empresa.setoresManual)
     );
     setEquipamentosEmpresa(normalizarEquipamentos(empresa.equipamentosSetores));
-    setFluxosEmpresa(normalizarFluxosOperacionais(empresa.fluxosOperacionais));
+    setFluxosEmpresa(adequarFluxosAosSetores(
+      empresa.fluxosOperacionais,
+      normalizarListaAmbientesReais(empresa.setoresManual)
+    ));
     setProgramasEmpresa(normalizarProgramasControle(empresa.programasControleQualidade));
     setPopsEmpresa(normalizarPops(empresa.pops));
     setEditingEmpresaId(empresa.id);
@@ -5754,25 +5760,29 @@ export default function Home() {
                         Nenhum equipamento ou móvel cadastrado para este ambiente. Você pode incluir o item encontrado abaixo.
                       </div>
                     ) : (
-                      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                        {equipamentosAmbienteAtivo.map((equipamento) => (
-                          <div key={equipamento.id} className="rounded-xl border-2 border-blue-200 bg-blue-50/70 p-4 shadow-sm">
-                            <div className="text-[10px] font-extrabold uppercase tracking-wide text-[#2F5597]">
-                              Equipamento ou móvel
-                            </div>
-                            <div className="mt-1 text-lg font-extrabold text-slate-950">
+                      <div className="mt-4 overflow-hidden rounded-xl border-2 border-blue-200 bg-blue-50/70">
+                        <div className="flex items-center justify-between gap-3 bg-blue-100/80 px-4 py-2 text-[10px] font-extrabold uppercase tracking-wide text-[#2F5597]">
+                          <span>Equipamento ou móvel</span>
+                          <span>Quantidade</span>
+                        </div>
+                        {equipamentosAmbienteAtivo.map((equipamento, indice) => (
+                          <div
+                            key={equipamento.id}
+                            className={`flex items-center justify-between gap-4 px-4 py-3 ${
+                              indice > 0 ? "border-t border-blue-200" : ""
+                            }`}
+                          >
+                            <div className="min-w-0 flex-1 font-extrabold text-slate-950">
                               {equipamento.nome}
                             </div>
-                            <label className="mt-3 block text-xs font-extrabold text-slate-600">
-                              Quantidade
-                              <input
-                                type="number"
-                                min="1"
-                                value={equipamento.quantidade}
-                                onChange={(event) => atualizarQuantidadeEquipamento(equipamento.id, Number(event.target.value))}
-                                className="mt-1 w-28 rounded-xl border border-blue-200 bg-white p-3 text-base font-bold text-slate-900"
-                              />
-                            </label>
+                            <input
+                              type="number"
+                              min="1"
+                              value={equipamento.quantidade}
+                              onChange={(event) => atualizarQuantidadeEquipamento(equipamento.id, Number(event.target.value))}
+                              aria-label={`Quantidade de ${equipamento.nome}`}
+                              className="w-20 shrink-0 rounded-lg border border-blue-200 bg-white px-3 py-2 text-center text-base font-bold text-slate-900"
+                            />
                           </div>
                         ))}
                       </div>
