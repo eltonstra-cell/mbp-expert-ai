@@ -1500,7 +1500,6 @@ export default function Home() {
   const equipamentosAmbienteAtivo = (empresaVisita?.equipamentosSetores || []).filter(
     (equipamento) => equipamento.setor === ambienteChecklistAtivo
   );
-
   // Uma atualização pode restaurar diretamente a tela do checklist depois de
   // migrar os ambientes antigos. Nesse caso, recria as perguntas sem exigir
   // que o usuário saia e entre novamente na visita.
@@ -1695,6 +1694,11 @@ export default function Home() {
   }, [visitasEmpresaAtual, db.ncs]);
 
   const checklistAtual = visitaAtual?.checklist || [];
+  const pendentesAmbienteAtivo = checklistAtual.filter(
+    (item) =>
+      item.ambiente === ambienteChecklistAtivo &&
+      item.status === "Pendente"
+  ).length;
   const respondidos = checklistAtual.filter((i) => i.status !== "Pendente").length;
   const totalChecklist = checklistAtual.length;
   const percentualChecklist = totalChecklist
@@ -2953,6 +2957,12 @@ export default function Home() {
   }
 
   function avancarParaProximoAmbiente() {
+    if (
+      pendentesAmbienteAtivo > 0 &&
+      !window.confirm(
+        `Ainda há ${pendentesAmbienteAtivo} pergunta(s) pendente(s) neste ambiente. Deseja avançar mesmo assim?`
+      )
+    ) return;
     const indiceAtual = ambientesChecklistVisita.findIndex(
       (ambiente) => ambiente === ambienteChecklistAtivo
     );
@@ -5772,7 +5782,7 @@ export default function Home() {
                               indice > 0 ? "border-t border-blue-200" : ""
                             }`}
                           >
-                            <div className="min-w-0 flex-1 font-extrabold text-slate-950">
+                            <div className="min-w-0 flex-1 font-medium text-slate-900">
                               {equipamento.nome}
                             </div>
                             <input
@@ -5788,8 +5798,10 @@ export default function Home() {
                       </div>
                     )}
 
-                    <div className="mt-5 rounded-xl bg-slate-50 p-4">
-                      <div className="text-sm font-extrabold text-slate-800">Adicionar equipamento ou móvel</div>
+                    <details className="mt-5 rounded-xl bg-slate-50 p-4">
+                      <summary className="cursor-pointer select-none text-sm font-extrabold text-[#2F5597]">
+                        + Adicionar equipamento ou móvel
+                      </summary>
                       <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_100px_auto]">
                         <input
                           value={novoEquipamentoVisitaNome}
@@ -5816,14 +5828,16 @@ export default function Home() {
                       <p className="mt-2 text-xs text-slate-500">
                         O item ficará cadastrado neste ambiente e aparecerá nas próximas visitas.
                       </p>
-                    </div>
+                    </details>
 
                     <button
                       type="button"
                       onClick={avancarParaProximoAmbiente}
                       className="mt-5 w-full rounded-xl bg-[#17365D] px-4 py-3 text-sm font-extrabold text-white"
                     >
-                      Concluir ambiente e avançar →
+                      {pendentesAmbienteAtivo > 0
+                        ? `Avançar com ${pendentesAmbienteAtivo} pendente(s) →`
+                        : "Concluir ambiente e avançar →"}
                     </button>
                   </article>
                 )}
