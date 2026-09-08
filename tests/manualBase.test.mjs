@@ -47,7 +47,7 @@ test("migra a lista antiga completa usada nas visitas", () => {
     "15 - Armazenamento Temporário de Resíduos",
     "16 - Sanitários / Vestiários de Funcionários",
     "17 - Sanitários de Clientes",
-    "18 - Área Administrativa",
+    "18 - 18. Área Administrativa",
   ]);
   assert.deepEqual(
     setores,

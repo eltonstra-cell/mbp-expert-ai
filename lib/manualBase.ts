@@ -72,7 +72,7 @@ const MIGRACAO_SETORES_LEGADOS: Record<string, string[]> = {
 function chave(texto: string) {
   return texto
     .trim()
-    .replace(/^\d+\s*[-–—.]\s*/, "")
+    .replace(/^(?:\d+\s*[-–—.]\s*)+/, "")
     .replace(/\s*\/\s*/g, "/")
     .replace(/\s+/g, " ")
     .toLocaleLowerCase("pt-BR");
