@@ -525,6 +525,20 @@ function MobileNavIcon({ name }: { name: MobileNavIconName }) {
   return <svg {...common}><path d="M12 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" /><path d="M5 21a7 7 0 0 1 14 0" /><path d="M18 4.5h3M19.5 3v3" /></svg>;
 }
 
+function CompanySectionIcon({ name }: { name: EmpresaSecao }) {
+  const common = { width: 23, height: 23, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, "aria-hidden": true };
+  if (name === "dados") return <svg {...common}><path d="M4 5h16v14H4z" /><path d="M8 9h4M8 13h8M8 16h6" /></svg>;
+  if (name === "manual") return <svg {...common}><path d="M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3Z" /><path d="M8 17h10M9 8h5M9 11h6" /></svg>;
+  if (name === "ambientes") return <svg {...common}><path d="M3 21h18M5 21V7h9v14M14 11h5v10" /><path d="M8 10h3M8 14h3M17 14h.01M17 18h.01" /></svg>;
+  if (name === "fluxos") return <svg {...common}><path d="M4 6h11M15 6l-2-2M15 6l-2 2M20 12H9M9 12l2-2M9 12l2 2M4 18h11M15 18l-2-2M15 18l-2 2" /></svg>;
+  if (name === "programas") return <svg {...common}><path d="M7 4h10v4H7z" /><path d="M5 6H4v15h16V6h-1" /><path d="m8 14 2 2 5-5" /></svg>;
+  return <svg {...common}><path d="M7 3h8l4 4v14H7z" /><path d="M15 3v5h5M10 12h6M10 16h6" /><path d="M4 7v13" /></svg>;
+}
+
+function quantidadeComNome(quantidade: number, singular: string, plural: string) {
+  return `${quantidade} ${quantidade === 1 ? singular : plural}`;
+}
+
 export default function Home() {
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
@@ -4138,7 +4152,7 @@ export default function Home() {
                     ? "Fluxos operacionais"
                     : empresaSecao === "programas"
                     ? "Programas de Controle"
-                    : "POPs e documentos"}
+                    : "POPs"}
                 </h2>
                 <p className="text-sm text-slate-500">
                   {!editingEmpresaId
@@ -4159,9 +4173,13 @@ export default function Home() {
                   setEditingEmpresaId(null);
                   setEmpresaSecao(null);
                 }}
-                className="h-fit shrink-0 rounded-xl bg-slate-100 px-3 py-2 font-bold"
+                className="h-fit shrink-0 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-600 shadow-sm"
               >
-                {editingEmpresaId && empresaSecao !== null ? "← Central" : "Fechar"}
+                {editingEmpresaId && empresaSecao !== null
+                  ? "← Central"
+                  : editingEmpresaId
+                  ? "← Voltar às empresas"
+                  : "Cancelar"}
               </button>
             </div>
 
@@ -4173,42 +4191,70 @@ export default function Home() {
                   </div>
                 )}
 
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  <button type="button" onClick={() => { setEmpresaSecao("dados"); setMsg(""); }} className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left transition hover:border-blue-300 hover:bg-blue-50">
-                    <div className="flex items-start justify-between gap-3"><span className="grid h-9 w-9 place-items-center rounded-xl bg-blue-100 font-extrabold text-[#2F5597]">01</span><span className="text-xl text-[#2F5597]">→</span></div>
-                    <div className="mt-3 font-extrabold text-slate-950">Dados da empresa</div>
-                    <div className="mt-1 text-xs text-slate-500">Cadastro, endereço, contato, responsável e horário.</div>
-                  </button>
-
-                  <button type="button" onClick={() => { setEmpresaSecao("manual"); setMsg(""); }} className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left transition hover:border-blue-300 hover:bg-blue-50">
-                    <div className="flex items-start justify-between gap-3"><span className="grid h-9 w-9 place-items-center rounded-xl bg-blue-100 font-extrabold text-[#2F5597]">02</span><span className="text-xl text-[#2F5597]">→</span></div>
-                    <div className="mt-3 font-extrabold text-slate-950">Manual e responsabilidades</div>
-                    <div className="mt-1 text-xs text-slate-500">Identificação do Manual • {responsabilidadesEmpresa.filter((item) => item.ativa).length} responsabilidade(s) ativa(s).</div>
-                  </button>
-
-                  <button type="button" onClick={() => { setEmpresaSecao("ambientes"); setMsg(""); }} className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left transition hover:border-blue-300 hover:bg-blue-50">
-                    <div className="flex items-start justify-between gap-3"><span className="grid h-9 w-9 place-items-center rounded-xl bg-blue-100 font-extrabold text-[#2F5597]">03</span><span className="text-xl text-[#2F5597]">→</span></div>
-                    <div className="mt-3 font-extrabold text-slate-950">Ambientes e equipamentos</div>
-                    <div className="mt-1 text-xs text-slate-500">{setoresEmpresa.length} ambiente(s) • {equipamentosEmpresa.length} tipo(s) de equipamento.</div>
-                  </button>
-
-                  <button type="button" onClick={() => { setEmpresaSecao("fluxos"); setMsg(""); }} className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left transition hover:border-blue-300 hover:bg-blue-50">
-                    <div className="flex items-start justify-between gap-3"><span className="grid h-9 w-9 place-items-center rounded-xl bg-blue-100 font-extrabold text-[#2F5597]">04</span><span className="text-xl text-[#2F5597]">→</span></div>
-                    <div className="mt-3 font-extrabold text-slate-950">Fluxos operacionais</div>
-                    <div className="mt-1 text-xs text-slate-500">{fluxosEmpresa.filter((fluxo) => fluxo.aplicavel).length} de {fluxosEmpresa.length} fluxo(s) ativo(s).</div>
-                  </button>
-
-                  <button type="button" onClick={() => { setEmpresaSecao("programas"); setMsg(""); }} className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left transition hover:border-blue-300 hover:bg-blue-50">
-                    <div className="flex items-start justify-between gap-3"><span className="grid h-9 w-9 place-items-center rounded-xl bg-blue-100 font-extrabold text-[#2F5597]">05</span><span className="text-xl text-[#2F5597]">→</span></div>
-                    <div className="mt-3 font-extrabold text-slate-950">Programas de Controle</div>
-                    <div className="mt-1 text-xs text-slate-500">{programasEmpresa.filter((programa) => programa.status === "Implantado" || programa.status === "Em implantação").length} programa(s) ativo(s) ou em implantação.</div>
-                  </button>
-
-                  <button type="button" onClick={() => { setEmpresaSecao("pops"); setMsg(""); }} className="rounded-2xl border-2 border-blue-200 bg-blue-50 p-4 text-left transition hover:border-blue-400">
-                    <div className="flex items-start justify-between gap-3"><span className="grid h-9 w-9 place-items-center rounded-xl bg-[#2F5597] font-extrabold text-white">06</span><span className="text-xl text-[#2F5597]">→</span></div>
-                    <div className="mt-3 font-extrabold text-slate-950">POPs e documentos</div>
-                    <div className="mt-1 text-xs text-slate-500">{popsEmpresa.length} POP(s) cadastrado(s).</div>
-                  </button>
+                <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-blue-50/60 p-3 sm:p-4">
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {([
+                      {
+                        secao: "dados" as EmpresaSecao,
+                        categoria: "Cadastro",
+                        titulo: "Dados da empresa",
+                        resumo: "Endereço, contato, responsável e horário.",
+                        cor: "bg-blue-100 text-blue-700",
+                      },
+                      {
+                        secao: "manual" as EmpresaSecao,
+                        categoria: "Manual",
+                        titulo: "Manual e responsabilidades",
+                        resumo: `${quantidadeComNome(responsabilidadesEmpresa.filter((item) => item.ativa).length, "responsabilidade ativa", "responsabilidades ativas")}.`,
+                        cor: "bg-violet-100 text-violet-700",
+                      },
+                      {
+                        secao: "ambientes" as EmpresaSecao,
+                        categoria: "Estrutura",
+                        titulo: "Ambientes e equipamentos",
+                        resumo: `${quantidadeComNome(setoresEmpresa.length, "ambiente", "ambientes")} • ${quantidadeComNome(equipamentosEmpresa.length, "tipo de equipamento", "tipos de equipamento")}.`,
+                        cor: "bg-cyan-100 text-cyan-700",
+                      },
+                      {
+                        secao: "fluxos" as EmpresaSecao,
+                        categoria: "Operação",
+                        titulo: "Fluxos operacionais",
+                        resumo: `${quantidadeComNome(fluxosEmpresa.filter((fluxo) => fluxo.aplicavel).length, "fluxo ativo", "fluxos ativos")} de ${fluxosEmpresa.length}.`,
+                        cor: "bg-amber-100 text-amber-700",
+                      },
+                      {
+                        secao: "programas" as EmpresaSecao,
+                        categoria: "Qualidade",
+                        titulo: "Programas de Controle",
+                        resumo: `${quantidadeComNome(programasEmpresa.filter((programa) => programa.status === "Implantado" || programa.status === "Em implantação").length, "programa ativo ou em implantação", "programas ativos ou em implantação")}.`,
+                        cor: "bg-indigo-100 text-indigo-700",
+                      },
+                      {
+                        secao: "pops" as EmpresaSecao,
+                        categoria: "Procedimentos",
+                        titulo: "POPs",
+                        resumo: `${quantidadeComNome(popsEmpresa.length, "POP cadastrado", "POPs cadastrados")}.`,
+                        cor: "bg-emerald-100 text-emerald-700",
+                      },
+                    ]).map((item) => (
+                      <button
+                        key={item.secao}
+                        type="button"
+                        onClick={() => { setEmpresaSecao(item.secao); setMsg(""); }}
+                        className="group rounded-2xl border border-slate-200 bg-white p-3.5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-300 sm:p-4"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <span className={`grid h-10 w-10 place-items-center rounded-xl ${item.cor}`}>
+                            <CompanySectionIcon name={item.secao} />
+                          </span>
+                          <span className="grid h-8 w-8 place-items-center rounded-full bg-slate-50 text-lg font-bold text-[#2F5597] transition group-hover:bg-blue-100">→</span>
+                        </div>
+                        <div className="mt-3 text-[10px] font-extrabold uppercase tracking-wider text-[#2F5597]">{item.categoria}</div>
+                        <div className="mt-0.5 font-extrabold text-slate-950">{item.titulo}</div>
+                        <div className="mt-1 text-xs leading-5 text-slate-500">{item.resumo}</div>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             ) : (
