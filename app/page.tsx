@@ -4130,7 +4130,7 @@ export default function Home() {
             onAlterarStatus={mudarStatusUsuarioPreparacao}
             onEnviarAcesso={enviarAcessoUsuario}
           />
-        ) : showEmpresaForm && permitido("empresas.editar") ? (
+        ) : view === "empresas" && showEmpresaForm && permitido("empresas.editar") ? (
           <section className="rounded-2xl bg-white p-5 shadow-sm">
             <div className="flex justify-between gap-4">
               <div>
@@ -4344,7 +4344,7 @@ export default function Home() {
               </>
             )}
           </section>
-        ) : showVisitaForm ? (
+        ) : view === "visitas" && showVisitaForm ? (
           <section className="rounded-2xl bg-white p-5 shadow-sm">
             <div className="flex justify-between gap-4">
               <div>
