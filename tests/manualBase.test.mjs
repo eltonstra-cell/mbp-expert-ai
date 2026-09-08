@@ -33,6 +33,7 @@ test("vincula ambientes reais aos modelos técnicos correspondentes", () => {
   assert.equal(modelos["Câmara Fria"], "Estoque de matérias-primas, ingredientes e embalagens");
   assert.equal(modelos["Sanitários/Vestiários de Funcionários"], "Sanitários/Vestiários de Funcionários");
   assert.equal(obterModeloQuestionarioParaAmbiente("Área Administrativa"), "Área Administrativa");
+  assert.equal(obterModeloQuestionarioParaAmbiente("Padaria artesanal"), "Estrutura geral/personalizada");
 });
 
 test("migração nova pode preservar o nome real do ambiente", () => {
@@ -40,9 +41,9 @@ test("migração nova pode preservar o nome real do ambiente", () => {
     ambientes: ["Copa", "Churrasqueira"],
     checklist: [],
     checklistVersao: 6,
-  }, 7, true);
+  }, 8, true);
   assert.deepEqual(visita.ambientes, ["Copa", "Churrasqueira"]);
-  assert.equal(visita.checklistVersao, 7);
+  assert.equal(visita.checklistVersao, 8);
 });
 
 test("migra os sanitários antigos para os setores específicos do Manual", () => {
@@ -95,7 +96,7 @@ test("refaz checklist antigo sem respostas e preserva o respondido", () => {
   });
   assert.equal(pendente.ambientes.length, 4);
   assert.deepEqual(pendente.checklist, []);
-  assert.equal(pendente.checklistVersao, 7);
+  assert.equal(pendente.checklistVersao, 8);
 
   const respondida = {
     ambientes: ["Sanitários/Vestiários de Funcionários"],

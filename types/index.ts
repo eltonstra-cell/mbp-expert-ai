@@ -82,6 +82,16 @@ export type EquipamentoSetor = {
   observacao: string;
 };
 
+export type AvaliacaoEquipamentoVisita = {
+  id: string;
+  equipamentoId?: string;
+  ambiente: string;
+  nome: string;
+  quantidade: number;
+  estado: EstadoEquipamento;
+  observacao: string;
+};
+
 export type TipoFluxoOperacional =
   | "Recebimento"
   | "Armazenamento"
@@ -174,6 +184,7 @@ export type Visita = {
   criadoEm: string;
   ambientes?: string[];
   modelosQuestionarioAmbientes?: Record<string, string>;
+  avaliacoesEquipamentos?: AvaliacaoEquipamentoVisita[];
   checklist?: ChecklistItem[];
   checklistVersao?: number;
   encerradaEm?: string;

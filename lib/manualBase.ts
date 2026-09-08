@@ -46,6 +46,7 @@ export const AMBIENTES_DETALHADOS_RESTAURANTE = [
 ] as const;
 
 export const MODELOS_COMPLEMENTARES_QUESTIONARIO = [
+  "Estrutura geral/personalizada",
   "Sanitários/Vestiários de Funcionários",
   "Sanitários de Clientes",
   "Armazenamento Temporário de Resíduos",
@@ -132,7 +133,11 @@ export function obterModeloQuestionarioParaAmbiente(nome: string): string {
     (modelo) => chave(modelo) === limpo
   );
   if (complementar) return complementar;
-  return normalizarSetorManual(nome);
+  const normalizado = normalizarSetorManual(nome);
+  return normalizado === nome &&
+    !SETORES_OFICIAIS_MANUAL.includes(normalizado as SetorOficialManual)
+    ? "Estrutura geral/personalizada"
+    : normalizado;
 }
 
 export function criarModelosQuestionarioAmbientes(
@@ -179,7 +184,7 @@ export function migrarVisitaParaChecklistManual<
     checklist?: Array<{ status?: string; observacao?: string }>;
     checklistVersao?: number;
   }
->(visita: T, versaoAtual = 7, preservarNomes = false): T {
+>(visita: T, versaoAtual = 8, preservarNomes = false): T {
   if (checklistPossuiRespostas(visita.checklist)) return visita;
 
   const ambientesAtuais = Array.isArray(visita.ambientes) ? visita.ambientes : [];

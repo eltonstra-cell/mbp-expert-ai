@@ -150,6 +150,7 @@ const modeloPersonalizado = [
 ];
 
 const modelosComplementares: Record<string, ModeloChecklistManual[]> = {
+  "Estrutura geral/personalizada": modeloPersonalizado,
   "Sanitários/Vestiários de Funcionários": [
     ...estruturaComum,
     item("Portas dos boxes", "Portas dos boxes estão íntegras, ajustadas e laváveis"),
