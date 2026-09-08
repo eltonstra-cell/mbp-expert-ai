@@ -6,6 +6,7 @@ import type {
   StatusPOP,
 } from "@/types";
 import { DEFINICOES_PROGRAMAS_CONTROLE } from "@/lib/qualityPrograms";
+import { SUGESTOES_POPS_MANUAL } from "@/lib/pops";
 
 type Props = {
   pops: ProcedimentoOperacionalPadronizado[];
@@ -37,6 +38,23 @@ export default function PopsFields({ pops, onChange }: Props) {
     setCodigo("");
   }
 
+  function adicionarSugestao(sugestao: (typeof SUGESTOES_POPS_MANUAL)[number]) {
+    if (pops.some((pop) => pop.titulo.toLocaleLowerCase("pt-BR") === sugestao.titulo.toLocaleLowerCase("pt-BR"))) return;
+    onChange([
+      ...pops,
+      {
+        id: crypto.randomUUID(),
+        codigo: sugestao.codigo,
+        titulo: sugestao.titulo,
+        versao: "1.0",
+        status: "Rascunho",
+        programaRelacionado: sugestao.programaRelacionado,
+        responsavel: "",
+        proximaRevisao: "",
+      },
+    ]);
+  }
+
   function atualizar(indice: number, alteracao: Partial<ProcedimentoOperacionalPadronizado>) {
     onChange(pops.map((pop, atual) => atual === indice ? { ...pop, ...alteracao } : pop));
   }
@@ -46,9 +64,33 @@ export default function PopsFields({ pops, onChange }: Props) {
       <summary className="cursor-pointer list-none">
         <div className="font-extrabold text-slate-950">Procedimentos Operacionais Padronizados — POPs</div>
         <div className="mt-0.5 text-xs text-slate-500">
-          Cadastre a identificação agora. Os arquivos serão anexados na próxima etapa. {pops.length} POP(s).
+          Cadastre e acompanhe os procedimentos da empresa. {pops.length} POP(s).
         </div>
       </summary>
+
+      <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50 p-3">
+        <div className="text-xs font-extrabold uppercase tracking-wide text-[#2F5597]">
+          Sugestões citadas no Manual
+        </div>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {SUGESTOES_POPS_MANUAL.map((sugestao) => {
+            const adicionado = pops.some(
+              (pop) => pop.titulo.toLocaleLowerCase("pt-BR") === sugestao.titulo.toLocaleLowerCase("pt-BR")
+            );
+            return (
+              <button
+                key={sugestao.titulo}
+                type="button"
+                disabled={adicionado}
+                onClick={() => adicionarSugestao(sugestao)}
+                className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-left text-xs font-bold text-[#17365D] disabled:bg-blue-100 disabled:text-slate-500"
+              >
+                {adicionado ? "✓ " : "+ "}{sugestao.titulo}
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       <div className="mt-4 grid min-w-0 gap-2 md:grid-cols-[130px_minmax(0,1fr)_auto]">
         <input value={codigo} onChange={(event) => setCodigo(event.target.value)} placeholder="Código" className="min-w-0 w-full rounded-xl border bg-white p-3 text-sm" />

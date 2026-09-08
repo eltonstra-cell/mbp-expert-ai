@@ -104,7 +104,7 @@ import {
 type View = "inicio" | "empresas" | "visitas" | "visita" | "ambientes" | "checklist" | "ncs" | "plano" | "acompanhamento" | "historico" | "evidencias" | "relatorio" | "acessos";
 
 const NAV_STORAGE_KEY = "mbp-expert-ai:navegacao:v1";
-const CHECKLIST_VERSAO_ATUAL = 9;
+const CHECKLIST_VERSAO_ATUAL = 10;
 const VISIT_VIEWS: View[] = ["visita", "ambientes", "checklist", "ncs", "plano", "acompanhamento", "historico", "evidencias", "relatorio"];
 
 const labels: Record<string, string> = {
@@ -1479,8 +1479,16 @@ export default function Home() {
       ? visitaAtualCadastrada
       : undefined;
   const empresaVisita = visitaAtual ? db.empresas[visitaAtual.empresaId] : undefined;
+  const programasControleAtivos = normalizarProgramasControle(
+    empresaVisita?.programasControleQualidade
+  ).filter(
+    (programa) => programa.status === "Implantado" || programa.status === "Em implantação"
+  );
   const programasChecklistAtivos = obterCriteriosProgramasControle(
     empresaVisita?.programasControleQualidade
+  );
+  const popsRelatorio = normalizarPops(empresaVisita?.pops).filter(
+    (pop) => pop.status !== "Inativo"
   );
   const ambientesChecklistVisita = visitaAtual
     ? [
@@ -5960,7 +5968,7 @@ export default function Home() {
                       Programas de Controle de Qualidade
                     </div>
                     <div className="mt-1 text-xs text-slate-600">
-                      {respondidosProgramasCentral} de {itensProgramasCentral.length} respondidos • {statusProgramasCentral}
+                      {programasControleAtivos.length} programa(s) • {respondidosProgramasCentral} de {itensProgramasCentral.length} verificações • {statusProgramasCentral}
                     </div>
                   </div>
                   <span className="shrink-0 text-xl font-extrabold text-[#2F5597]">→</span>
@@ -6310,6 +6318,67 @@ export default function Home() {
                   <div className="mt-1 text-2xl font-extrabold">
                     {pendentesVisita}
                   </div>
+                </div>
+              </div>
+            </article>
+
+            <article className="print-block rounded-2xl bg-white p-5 shadow-sm">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <div className="text-xs font-extrabold uppercase text-[#2F5597]">
+                    Capítulo 3
+                  </div>
+                  <h2 className="mt-1 text-xl font-extrabold">Programas de Controle e POPs</h2>
+                </div>
+                <div className="text-sm font-bold text-slate-500">
+                  {programasControleAtivos.length} programa(s) • {popsRelatorio.length} POP(s)
+                </div>
+              </div>
+
+              <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                <div className="rounded-xl border border-slate-200 p-4">
+                  <div className="text-xs font-extrabold uppercase text-slate-500">
+                    Programas ativos ou em implantação
+                  </div>
+                  {programasControleAtivos.length === 0 ? (
+                    <p className="mt-3 text-sm text-slate-500">Nenhum programa ativo informado.</p>
+                  ) : (
+                    <div className="mt-3 space-y-2">
+                      {programasControleAtivos.map((programa) => (
+                        <div key={programa.id} className="rounded-lg bg-slate-50 p-3 text-sm">
+                          <div className="font-bold text-slate-900">{programa.nome}</div>
+                          <div className="mt-0.5 text-xs text-slate-500">
+                            {programa.status}
+                            {programa.responsavel ? ` • Responsável: ${programa.responsavel}` : ""}
+                            {programa.frequencia ? ` • Frequência: ${programa.frequencia}` : ""}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="rounded-xl border border-slate-200 p-4">
+                  <div className="text-xs font-extrabold uppercase text-slate-500">
+                    Procedimentos Operacionais Padronizados
+                  </div>
+                  {popsRelatorio.length === 0 ? (
+                    <p className="mt-3 text-sm text-slate-500">Nenhum POP cadastrado.</p>
+                  ) : (
+                    <div className="mt-3 space-y-2">
+                      {popsRelatorio.map((pop) => (
+                        <div key={pop.id} className="rounded-lg bg-blue-50 p-3 text-sm">
+                          <div className="font-bold text-slate-900">
+                            {pop.codigo ? `${pop.codigo} — ` : ""}{pop.titulo}
+                          </div>
+                          <div className="mt-0.5 text-xs text-slate-500">
+                            {pop.status}{pop.versao ? ` • Versão ${pop.versao}` : ""}
+                            {pop.responsavel ? ` • Responsável: ${pop.responsavel}` : ""}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </article>
