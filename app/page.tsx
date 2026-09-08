@@ -177,13 +177,28 @@ const camposIdentificacaoManual = [
   "revisadoPor", "aprovadoPor",
 ] as const;
 
-const posicoesMapaInspecao = [
-  { left: "12%", top: "20%" },
-  { left: "53%", top: "16%" },
-  { left: "27%", top: "47%" },
-  { left: "58%", top: "43%" },
-  { left: "69%", top: "67%" },
-  { left: "19%", top: "72%" },
+const gruposAmbientesCentral = [
+  {
+    titulo: "Produção, atendimento e armazenamento",
+    setores: [
+      SETORES_OFICIAIS_MANUAL[0],
+      SETORES_OFICIAIS_MANUAL[1],
+      SETORES_OFICIAIS_MANUAL[4],
+      SETORES_OFICIAIS_MANUAL[6],
+    ],
+  },
+  {
+    titulo: "Apoio, higienização e segurança",
+    setores: [
+      SETORES_OFICIAIS_MANUAL[2],
+      SETORES_OFICIAIS_MANUAL[3],
+      SETORES_OFICIAIS_MANUAL[5],
+    ],
+  },
+  {
+    titulo: "Vestiários e sanitários",
+    setores: SETORES_OFICIAIS_MANUAL.slice(7),
+  },
 ];
 
 const modelosChecklist: Record<
@@ -1693,6 +1708,37 @@ export default function Home() {
       : "Conforme";
     return { ambiente, itens: itens.length, respondidos: respondidosAmbiente, status };
   });
+  const ambientesAgrupadosCentral = (() => {
+    const incluidos = new Set<string>();
+    const grupos = gruposAmbientesCentral
+      .map((grupo) => {
+        const ambientes = resumoAmbientesVisita.filter((resumo) =>
+          grupo.setores.includes(resumo.ambiente as (typeof SETORES_OFICIAIS_MANUAL)[number])
+        );
+        ambientes.forEach((resumo) => incluidos.add(resumo.ambiente));
+        return { titulo: grupo.titulo, ambientes };
+      })
+      .filter((grupo) => grupo.ambientes.length > 0);
+    const outros = resumoAmbientesVisita.filter(
+      (resumo) => !incluidos.has(resumo.ambiente)
+    );
+    return outros.length > 0
+      ? [...grupos, { titulo: "Outros ambientes", ambientes: outros }]
+      : grupos;
+  })();
+  const itensProgramasCentral = checklistAtual.filter(
+    (item) => item.ambiente === AMBIENTE_PROGRAMAS_CONTROLE
+  );
+  const respondidosProgramasCentral = itensProgramasCentral.filter(
+    (item) => item.status !== "Pendente"
+  ).length;
+  const statusProgramasCentral = itensProgramasCentral.length === 0 || respondidosProgramasCentral === 0
+    ? "Não verificado"
+    : itensProgramasCentral.some((item) => item.status === "Não Conforme")
+    ? "Não conforme"
+    : itensProgramasCentral.some((item) => item.status === "Pendente")
+    ? "Atenção"
+    : "Conforme";
   const proximoAmbienteVisita = resumoAmbientesVisita.find(
     (ambiente) => ambiente.itens === 0 || ambiente.respondidos < ambiente.itens
   )?.ambiente;
@@ -5462,9 +5508,9 @@ export default function Home() {
             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
               <div className="flex flex-wrap items-start justify-between gap-2 p-4 pb-3">
                 <div>
-                  <div className="text-sm font-extrabold text-slate-950">Mapa da inspeção</div>
+                  <div className="text-sm font-extrabold text-slate-950">Visão geral da inspeção</div>
                   <div className="mt-0.5 text-xs text-slate-500">
-                    {(visitaAtual.ambientes || []).length} ambientes selecionados
+                    {(visitaAtual.ambientes || []).length} ambientes selecionados • toque em um ambiente para abrir
                   </div>
                 </div>
                 <div className="flex flex-wrap justify-end gap-x-2 gap-y-1 text-[9px] font-bold text-slate-500">
@@ -5474,24 +5520,11 @@ export default function Home() {
                   <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-slate-400" />Não verificado</span>
                 </div>
               </div>
-              <div className="relative aspect-[16/10] overflow-hidden bg-slate-50 sm:aspect-[16/9]">
-                <img src="/images/mapa-inspecao.webp" alt="Mapa ilustrativo dos ambientes da inspeção" className="h-full w-full object-cover" />
-                {resumoAmbientesVisita.slice(0, 6).map((resumo, indice) => (
-                  <button
-                    key={resumo.ambiente}
-                    type="button"
-                    onClick={() => abrirChecklistNoAmbiente(resumo.ambiente)}
-                    className={`absolute grid h-7 w-7 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border-2 border-white text-[10px] font-extrabold text-white shadow-md ${
-                      resumo.status === "Conforme" ? "bg-emerald-500" :
-                      resumo.status === "Atenção" ? "bg-amber-500" :
-                      resumo.status === "Não conforme" ? "bg-red-500" : "bg-slate-400"
-                    }`}
-                    style={posicoesMapaInspecao[indice]}
-                    title={`${resumo.ambiente}: ${resumo.status}`}
-                  >
-                    {indice + 1}
-                  </button>
-                ))}
+              <div className="relative aspect-[16/8] overflow-hidden bg-slate-50 sm:aspect-[16/7]">
+                <img src="/images/mapa-inspecao.webp" alt="Ilustração de uma área de produção de alimentos" className="h-full w-full object-cover" />
+                <div className="absolute bottom-3 left-3 rounded-full bg-white/95 px-3 py-1.5 text-[10px] font-extrabold text-slate-600 shadow-sm">
+                  Imagem ilustrativa • não representa a planta real
+                </div>
                 {resumoAmbientesVisita.length === 0 && (
                   <button type="button" onClick={abrirAmbientes} className="absolute inset-x-4 bottom-4 rounded-xl bg-white/95 px-4 py-3 text-sm font-extrabold text-[#2F5597] shadow-md">
                     Selecionar ambientes →
@@ -5499,28 +5532,65 @@ export default function Home() {
                 )}
               </div>
               {resumoAmbientesVisita.length > 0 && (
-                <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-3 gap-y-2 overflow-hidden border-t border-slate-100 px-4 py-3">
-                  {resumoAmbientesVisita.slice(0, 6).map((resumo, indice) => (
-                    <button key={resumo.ambiente} type="button" onClick={() => abrirChecklistNoAmbiente(resumo.ambiente)} className="flex min-w-0 items-center gap-2 overflow-hidden text-left">
-                      <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full text-[8px] font-extrabold text-white ${
-                        resumo.status === "Conforme" ? "bg-emerald-500" :
-                        resumo.status === "Atenção" ? "bg-amber-500" :
-                        resumo.status === "Não conforme" ? "bg-red-500" : "bg-slate-400"
-                      }`}>{indice + 1}</span>
-                      <span className="min-w-0">
-                        <span className="block truncate text-[10px] font-extrabold text-slate-700">{resumo.ambiente}</span>
-                        <span className="block text-[8px] text-slate-400">{resumo.status}</span>
-                      </span>
-                    </button>
+                <div className="space-y-5 border-t border-slate-100 p-4">
+                  {ambientesAgrupadosCentral.map((grupo) => (
+                    <div key={grupo.titulo}>
+                      <div className="mb-2 text-[10px] font-extrabold uppercase tracking-wide text-[#2F5597]">
+                        {grupo.titulo}
+                      </div>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {grupo.ambientes.map((resumo) => (
+                          <button
+                            key={resumo.ambiente}
+                            type="button"
+                            onClick={() => abrirChecklistNoAmbiente(resumo.ambiente)}
+                            className="flex min-w-0 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-left transition hover:border-blue-200 hover:bg-blue-50"
+                          >
+                            <span className={`h-3 w-3 shrink-0 rounded-full ${
+                              resumo.status === "Conforme" ? "bg-emerald-500" :
+                              resumo.status === "Atenção" ? "bg-amber-500" :
+                              resumo.status === "Não conforme" ? "bg-red-500" : "bg-slate-400"
+                            }`} />
+                            <span className="min-w-0 flex-1">
+                              <span className="block text-xs font-extrabold leading-snug text-slate-800">
+                                {resumo.ambiente}
+                              </span>
+                              <span className="mt-1 block text-[10px] text-slate-500">
+                                {resumo.respondidos} de {resumo.itens} respondidos • {resumo.status}
+                              </span>
+                            </span>
+                            <span className="shrink-0 text-sm font-bold text-[#2F5597]">→</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   ))}
                 </div>
               )}
-              {resumoAmbientesVisita.length > 6 && (
-                <button type="button" onClick={() => abrirChecklistNoAmbiente(resumoAmbientesVisita[6]?.ambiente)} className="w-full border-t border-slate-100 px-4 py-2 text-center text-[10px] font-bold text-[#2F5597]">
-                  Ver mais {resumoAmbientesVisita.length - 6} ambientes no checklist →
-                </button>
-              )}
             </div>
+
+            {programasChecklistAtivos.length > 0 && (
+              <button
+                type="button"
+                onClick={() => abrirChecklistNoAmbiente(AMBIENTE_PROGRAMAS_CONTROLE)}
+                className="w-full rounded-2xl border-2 border-blue-200 bg-blue-50 p-4 text-left shadow-sm"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-[10px] font-extrabold uppercase tracking-wider text-[#2F5597]">
+                      Verificação geral • Capítulo 3
+                    </div>
+                    <div className="mt-1 text-base font-extrabold text-[#17365D]">
+                      Programas de Controle de Qualidade
+                    </div>
+                    <div className="mt-1 text-xs text-slate-600">
+                      {respondidosProgramasCentral} de {itensProgramasCentral.length} respondidos • {statusProgramasCentral}
+                    </div>
+                  </div>
+                  <span className="shrink-0 text-xl font-extrabold text-[#2F5597]">→</span>
+                </div>
+              </button>
+            )}
 
             <div className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm">
               <div className="flex items-center gap-4">
@@ -5529,7 +5599,7 @@ export default function Home() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="text-xs font-bold text-slate-500">Próxima etapa</div>
-                  <div className="truncate font-extrabold text-slate-950">{proximoAmbienteVisita || ((visitaAtual.ambientes || []).length ? "Revisar a inspeção" : "Definir ambientes")}</div>
+                  <div className="font-extrabold leading-snug text-slate-950">{proximoAmbienteVisita || ((visitaAtual.ambientes || []).length ? "Revisar a inspeção" : "Definir ambientes")}</div>
                   <button
                     type="button"
                     onClick={() => (visitaAtual.ambientes || []).length ? abrirChecklistNoAmbiente(proximoAmbienteVisita) : abrirAmbientes()}
