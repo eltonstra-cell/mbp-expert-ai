@@ -30,7 +30,9 @@ import {
   normalizarHorarios,
   normalizarResponsabilidades,
   normalizarSetorManual,
+  checklistPossuiRespostas,
   migrarSetoresLegados,
+  migrarVisitaParaChecklistManual,
   resumirHorarioFuncionamento,
   SETORES_OFICIAIS_MANUAL,
 } from "@/lib/manualBase";
@@ -673,7 +675,13 @@ export default function Home() {
   function aplicarEstadoDaNuvem(cloud: any) {
     if (!cloud?.data || typeof cloud.data !== "object") return false;
 
-    const novo = cloud.data as AppDB;
+    const recebido = cloud.data as AppDB;
+    const novo: AppDB = {
+      ...recebido,
+      visitas: Array.isArray(recebido.visitas)
+        ? recebido.visitas.map((visita) => migrarVisitaParaChecklistManual(visita))
+        : [],
+    };
     aplicandoNuvemRef.current = true;
     ultimaNuvemVersaoRef.current = cloud.updatedAt || null;
     ultimaNuvemRef.current = cloud.updatedAt
@@ -949,23 +957,9 @@ export default function Home() {
       checklistVersao: typeof v.checklistVersao === "number" ? v.checklistVersao : 1,
     })) as Visita[];
 
-    const vs = visitasCarregadas.map((visita) => {
-      const possuiRespostas = (visita.checklist || []).some(
-        (item) => item.status !== "Pendente" || item.observacao.trim().length > 0
-      );
-      if (possuiRespostas) return visita;
-      const ambientesMigrados = migrarSetoresLegados(visita.ambientes);
-      const ambientesMudaram =
-        JSON.stringify(ambientesMigrados) !== JSON.stringify(visita.ambientes || []);
-      return ambientesMudaram
-        ? {
-            ...visita,
-            ambientes: ambientesMigrados,
-            checklist: [],
-            checklistVersao: 5,
-          }
-        : visita;
-    });
+    const vs = visitasCarregadas.map((visita) =>
+      migrarVisitaParaChecklistManual(visita)
+    );
 
     // Sincroniza NCs já existentes no checklist com o módulo de Não Conformidades.
     // Isso também migra visitas criadas antes da v2.5.
@@ -2389,12 +2383,10 @@ export default function Home() {
       empresas: { ...o.empresas, [id]: emp },
       visitas: o.visitas.map((visita) => {
         if (visita.empresaId !== id) return visita;
-        const possuiRespostas = (visita.checklist || []).some(
-          (item) => item.status !== "Pendente" || item.observacao.trim().length > 0
-        );
+        const possuiRespostas = checklistPossuiRespostas(visita.checklist);
         return possuiRespostas
           ? visita
-          : { ...visita, checklist: [], checklistVersao: 5 };
+          : { ...visita, checklist: [], checklistVersao: 6 };
       }),
     }));
     setEditingEmpresaId(null);
@@ -2487,7 +2479,7 @@ export default function Home() {
       criadoEm: new Date().toISOString(),
       ambientes: [],
       checklist: [],
-      checklistVersao: 5,
+      checklistVersao: 6,
     };
     setDb((o) => ({ ...o, visitas: [v, ...o.visitas] }));
     setShowVisitaForm(false);
@@ -2497,10 +2489,15 @@ export default function Home() {
   }
 
   function continuar(id: string) {
-    const v = db.visitas.find((x) => x.id === id);
+    const original = db.visitas.find((x) => x.id === id);
+    const v = original ? migrarVisitaParaChecklistManual(original) : undefined;
     if (!v) return;
     if (!exigirPermissao("visitas.executar", v.empresaId)) return;
-    setDb((o) => ({ ...o, empresaAtualId: v.empresaId }));
+    setDb((o) => ({
+      ...o,
+      empresaAtualId: v.empresaId,
+      visitas: o.visitas.map((visita) => visita.id === v.id ? v : visita),
+    }));
     setVisitaAtualId(id);
     setView("visita");
   }
@@ -2526,15 +2523,13 @@ export default function Home() {
       visitas: o.visitas.map((visita) => {
         if (visita.id !== visitaAtual.id) return visita;
         const checklistExistente = visita.checklist || [];
-        const possuiRespostas = checklistExistente.some(
-          (item) => item.status !== "Pendente" || item.observacao.trim().length > 0
-        );
+        const possuiRespostas = checklistPossuiRespostas(checklistExistente);
         if (!possuiRespostas) {
           return {
             ...visita,
             ambientes: proximos,
             checklist: [],
-            checklistVersao: 5,
+            checklistVersao: 6,
             progresso: proximos.length ? Math.max(visita.progresso || 0, 15) : 0,
           };
         }
@@ -2556,7 +2551,7 @@ export default function Home() {
           ...visita,
           ambientes: proximos,
           checklist: [...preservados, ...novos],
-          checklistVersao: 5,
+          checklistVersao: 6,
           progresso: proximos.length ? Math.max(visita.progresso || 0, 15) : 0,
         };
       }),
@@ -2570,7 +2565,7 @@ export default function Home() {
       const possuiRegistro = (visitaAtual?.checklist || []).some(
         (item) =>
           item.ambiente === nome &&
-          (item.status !== "Pendente" || item.observacao.trim().length > 0)
+          checklistPossuiRespostas([item])
       );
       if (
         possuiRegistro &&
@@ -2607,30 +2602,37 @@ export default function Home() {
     if (!visitaAtual || !(visitaAtual.ambientes || []).length) return;
     if (!exigirPermissao("visitas.executar", visitaAtual.empresaId)) return;
 
-    const checklistExistente = visitaAtual.checklist || [];
-    const possuiRespostas = checklistExistente.some(
-      (item) => item.status !== "Pendente" || item.observacao.trim().length > 0
-    );
+    const visitaMigrada = migrarVisitaParaChecklistManual(visitaAtual);
+    const checklistExistente = visitaMigrada.checklist || [];
+    const possuiRespostas = checklistPossuiRespostas(checklistExistente);
     const precisaAtualizarModelo =
-      (visitaAtual.checklistVersao || 1) < 5 && !possuiRespostas;
+      (visitaMigrada.checklistVersao || 1) < 6 && !possuiRespostas;
 
     if (checklistExistente.length === 0 || precisaAtualizarModelo) {
       const novoChecklist = criarChecklist(
-        visitaAtual.ambientes || [],
+        visitaMigrada.ambientes || [],
         empresaVisita?.fluxosOperacionais,
         empresaVisita?.programasControleQualidade
       );
       setDb((o) => ({
         ...o,
         visitas: o.visitas.map((v) =>
-          v.id === visitaAtual.id
-            ? { ...v, checklist: novoChecklist, checklistVersao: 5 }
+          v.id === visitaMigrada.id
+            ? { ...visitaMigrada, checklist: novoChecklist, checklistVersao: 6 }
             : v
         ),
       }));
+    } else if (visitaMigrada !== visitaAtual) {
+      setDb((o) => ({
+        ...o,
+        visitas: o.visitas.map((v) => v.id === visitaMigrada.id ? visitaMigrada : v),
+      }));
     }
 
-    const ambientesDaVisita = ambientesChecklistVisita;
+    const ambientesDaVisita = [
+      ...(visitaMigrada.ambientes || []),
+      ...(programasChecklistAtivos.length > 0 ? [AMBIENTE_PROGRAMAS_CONTROLE] : []),
+    ];
     setAmbienteChecklistAtivo(
       ambienteInicial && ambientesDaVisita.includes(ambienteInicial)
         ? ambienteInicial
