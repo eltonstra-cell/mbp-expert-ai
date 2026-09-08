@@ -11,11 +11,13 @@ import type {
   AppDB,
   AcaoPermissao,
   AnaliseFotoIA,
+  AvaliacaoEquipamentoVisita,
   ChecklistCriticidade,
   ChecklistItem,
   ChecklistStatus,
   Empresa,
   EquipamentoSetor,
+  EstadoEquipamento,
   Evidencia,
   FluxoOperacional,
   ProgramaControleQualidade,
@@ -103,6 +105,7 @@ import {
 type View = "inicio" | "empresas" | "visitas" | "visita" | "ambientes" | "checklist" | "ncs" | "plano" | "acompanhamento" | "historico" | "evidencias" | "relatorio" | "acessos";
 
 const NAV_STORAGE_KEY = "mbp-expert-ai:navegacao:v1";
+const CHECKLIST_VERSAO_ATUAL = 8;
 const VISIT_VIEWS: View[] = ["visita", "ambientes", "checklist", "ncs", "plano", "acompanhamento", "historico", "evidencias", "relatorio"];
 
 const labels: Record<string, string> = {
@@ -184,13 +187,16 @@ const camposIdentificacaoManual = [
 
 const gruposAmbientesCentral = [
   {
-    titulo: "Produção, atendimento e armazenamento",
+    titulo: "Recebimento, produção e atendimento",
     setores: [
       SETORES_OFICIAIS_MANUAL[0],
-      SETORES_OFICIAIS_MANUAL[1],
       SETORES_OFICIAIS_MANUAL[4],
       SETORES_OFICIAIS_MANUAL[6],
     ],
+  },
+  {
+    titulo: "Armazenamento e depósitos",
+    setores: [SETORES_OFICIAIS_MANUAL[1]],
   },
   {
     titulo: "Apoio, higienização e segurança",
@@ -198,6 +204,8 @@ const gruposAmbientesCentral = [
       SETORES_OFICIAIS_MANUAL[2],
       SETORES_OFICIAIS_MANUAL[3],
       SETORES_OFICIAIS_MANUAL[5],
+      "Armazenamento Temporário de Resíduos",
+      "Área Administrativa",
     ],
   },
   {
@@ -408,7 +416,7 @@ function criarChecklist(
       ? obterModeloChecklistManual(ambiente, modeloReferencia)
       : modelosChecklist[ambiente] || obterModeloChecklistManual(ambiente, modeloReferencia);
     const itens = [
-      ...itensEstrutura,
+      ...itensEstrutura.filter((item) => item.categoria !== "Equipamentos e móveis"),
       ...obterCriteriosOperacionaisParaSetor(fluxosOperacionais, setorNormalizado, ambiente),
     ];
 
@@ -545,6 +553,8 @@ export default function Home() {
   const [ambientePersonalizado, setAmbientePersonalizado] = useState("");
   const [statusAmbientes, setStatusAmbientes] = useState("");
   const [ambienteChecklistAtivo, setAmbienteChecklistAtivo] = useState<string | null>(null);
+  const [novoEquipamentoVisitaNome, setNovoEquipamentoVisitaNome] = useState("");
+  const [novoEquipamentoVisitaQuantidade, setNovoEquipamentoVisitaQuantidade] = useState("1");
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
   const [gerandoPdf, setGerandoPdf] = useState(false);
@@ -703,7 +713,7 @@ export default function Home() {
     const novo: AppDB = {
       ...recebido,
       visitas: Array.isArray(recebido.visitas)
-        ? recebido.visitas.map((visita) => migrarVisitaParaChecklistManual(visita, 7, true))
+        ? recebido.visitas.map((visita) => migrarVisitaParaChecklistManual(visita, CHECKLIST_VERSAO_ATUAL, true))
         : [],
     };
     aplicandoNuvemRef.current = true;
@@ -983,10 +993,23 @@ export default function Home() {
         v.modelosQuestionarioAmbientes && typeof v.modelosQuestionarioAmbientes === "object"
           ? v.modelosQuestionarioAmbientes
           : criarModelosQuestionarioAmbientes(v.ambientes),
+      avaliacoesEquipamentos: Array.isArray(v.avaliacoesEquipamentos)
+        ? v.avaliacoesEquipamentos.map((avaliacao: any) => ({
+            id: typeof avaliacao.id === "string" && avaliacao.id ? avaliacao.id : crypto.randomUUID(),
+            equipamentoId: typeof avaliacao.equipamentoId === "string" ? avaliacao.equipamentoId : undefined,
+            ambiente: typeof avaliacao.ambiente === "string" ? avaliacao.ambiente : "",
+            nome: typeof avaliacao.nome === "string" ? avaliacao.nome : "Equipamento",
+            quantidade: Math.max(1, Number(avaliacao.quantidade) || 1),
+            estado: (["Não avaliado", "Adequado", "Requer atenção", "Inadequado"] as EstadoEquipamento[]).includes(avaliacao.estado)
+              ? avaliacao.estado
+              : "Não avaliado",
+            observacao: typeof avaliacao.observacao === "string" ? avaliacao.observacao : "",
+          }))
+        : [],
     })) as Visita[];
 
     const vs = visitasCarregadas.map((visita) =>
-      migrarVisitaParaChecklistManual(visita, 7, true)
+      migrarVisitaParaChecklistManual(visita, CHECKLIST_VERSAO_ATUAL, true)
     );
 
     // Sincroniza NCs já existentes no checklist com o módulo de Não Conformidades.
@@ -1463,6 +1486,46 @@ export default function Home() {
         ...(programasChecklistAtivos.length > 0 ? [AMBIENTE_PROGRAMAS_CONTROLE] : []),
       ]
     : [];
+  const equipamentosDaVisita = (empresaVisita?.equipamentosSetores || []).filter(
+    (equipamento) => (visitaAtual?.ambientes || []).includes(equipamento.setor)
+  );
+  const avaliacoesEquipamentosVisita = visitaAtual?.avaliacoesEquipamentos || [];
+  const equipamentosAvaliadosVisita = avaliacoesEquipamentosVisita.filter(
+    (avaliacao) => avaliacao.estado !== "Não avaliado"
+  ).length;
+  const equipamentosComAlertaVisita = avaliacoesEquipamentosVisita.filter(
+    (avaliacao) => avaliacao.estado === "Requer atenção" || avaliacao.estado === "Inadequado"
+  ).length;
+  const equipamentosRelatorio = [
+    ...equipamentosDaVisita.map((equipamento) => {
+      const avaliacao = avaliacoesEquipamentosVisita.find(
+        (item) => item.equipamentoId === equipamento.id
+      );
+      return {
+        id: equipamento.id,
+        ambiente: equipamento.setor,
+        nome: equipamento.nome,
+        quantidade: avaliacao?.quantidade || equipamento.quantidade,
+        estado: avaliacao?.estado || ("Não avaliado" as EstadoEquipamento),
+        observacao: avaliacao?.observacao || "",
+      };
+    }),
+    ...avaliacoesEquipamentosVisita
+      .filter(
+        (avaliacao) =>
+          !avaliacao.equipamentoId ||
+          !equipamentosDaVisita.some((equipamento) => equipamento.id === avaliacao.equipamentoId)
+      )
+      .map((avaliacao) => ({ ...avaliacao })),
+  ];
+  const equipamentosAmbienteAtivo = (empresaVisita?.equipamentosSetores || []).filter(
+    (equipamento) => equipamento.setor === ambienteChecklistAtivo
+  );
+  const avaliacoesAvulsasAmbienteAtivo = avaliacoesEquipamentosVisita.filter(
+    (avaliacao) =>
+      avaliacao.ambiente === ambienteChecklistAtivo &&
+      !avaliacao.equipamentoId
+  );
 
   // Uma atualização pode restaurar diretamente a tela do checklist depois de
   // migrar os ambientes antigos. Nesse caso, recria as perguntas sem exigir
@@ -1488,7 +1551,7 @@ export default function Home() {
       ...atual,
       visitas: atual.visitas.map((visita) =>
         visita.id === visitaAtual.id
-          ? { ...visita, checklist: novoChecklist, checklistVersao: 7 }
+          ? { ...visita, checklist: novoChecklist, checklistVersao: CHECKLIST_VERSAO_ATUAL }
           : visita
       ),
     }));
@@ -1730,9 +1793,13 @@ export default function Home() {
     const incluidos = new Set<string>();
     const grupos = gruposAmbientesCentral
       .map((grupo) => {
-        const ambientes = resumoAmbientesVisita.filter((resumo) =>
-          grupo.setores.includes(resumo.ambiente as (typeof SETORES_OFICIAIS_MANUAL)[number])
-        );
+        const ambientes = resumoAmbientesVisita.filter((resumo) => {
+          const modeloQuestionario =
+            visitaAtual?.modelosQuestionarioAmbientes?.[resumo.ambiente] ||
+            empresaVisita?.modelosQuestionarioAmbientes?.[resumo.ambiente] ||
+            obterModeloQuestionarioParaAmbiente(resumo.ambiente);
+          return grupo.setores.some((setor) => setor === modeloQuestionario);
+        });
         ambientes.forEach((resumo) => incluidos.add(resumo.ambiente));
         return { titulo: grupo.titulo, ambientes };
       })
@@ -2490,7 +2557,7 @@ export default function Home() {
         const possuiRespostas = checklistPossuiRespostas(visita.checklist);
         return possuiRespostas
           ? visita
-          : { ...visita, checklist: [], checklistVersao: 7 };
+          : { ...visita, checklist: [], checklistVersao: CHECKLIST_VERSAO_ATUAL };
       }),
     }));
     setEditingEmpresaId(null);
@@ -2583,7 +2650,8 @@ export default function Home() {
       criadoEm: new Date().toISOString(),
       ambientes: [],
       checklist: [],
-      checklistVersao: 7,
+      checklistVersao: CHECKLIST_VERSAO_ATUAL,
+      avaliacoesEquipamentos: [],
       modelosQuestionarioAmbientes: {},
     };
     setDb((o) => ({ ...o, visitas: [v, ...o.visitas] }));
@@ -2595,7 +2663,7 @@ export default function Home() {
 
   function continuar(id: string) {
     const original = db.visitas.find((x) => x.id === id);
-    const v = original ? migrarVisitaParaChecklistManual(original, 7, true) : undefined;
+    const v = original ? migrarVisitaParaChecklistManual(original, CHECKLIST_VERSAO_ATUAL, true) : undefined;
     if (!v) return;
     if (!exigirPermissao("visitas.executar", v.empresaId)) return;
     setDb((o) => ({
@@ -2649,7 +2717,7 @@ export default function Home() {
             ambientes: proximos,
             modelosQuestionarioAmbientes: proximosModelos,
             checklist: [],
-            checklistVersao: 7,
+            checklistVersao: CHECKLIST_VERSAO_ATUAL,
             progresso: proximos.length ? Math.max(visita.progresso || 0, 15) : 0,
           };
         }
@@ -2673,7 +2741,7 @@ export default function Home() {
           ambientes: proximos,
           modelosQuestionarioAmbientes: proximosModelos,
           checklist: [...preservados, ...novos],
-          checklistVersao: 7,
+          checklistVersao: CHECKLIST_VERSAO_ATUAL,
           progresso: proximos.length ? Math.max(visita.progresso || 0, 15) : 0,
         };
       }),
@@ -2725,7 +2793,7 @@ export default function Home() {
       ...atual,
       visitas: atual.visitas.map((visita) =>
         visita.id === visitaAtual.id
-          ? { ...visita, modelosQuestionarioAmbientes: proximosModelos, checklist: (visita.checklist || []).filter((item) => item.ambiente !== ambiente), checklistVersao: 7 }
+          ? { ...visita, modelosQuestionarioAmbientes: proximosModelos, checklist: (visita.checklist || []).filter((item) => item.ambiente !== ambiente), checklistVersao: CHECKLIST_VERSAO_ATUAL }
           : visita
       ),
     }));
@@ -2754,7 +2822,7 @@ export default function Home() {
       },
       visitas: atual.visitas.map((visita) =>
         visita.id === visitaAtual.id
-          ? { ...visita, ambientes, modelosQuestionarioAmbientes: modelos, checklist: [], checklistVersao: 7 }
+          ? { ...visita, ambientes, modelosQuestionarioAmbientes: modelos, checklist: [], checklistVersao: CHECKLIST_VERSAO_ATUAL }
           : visita
       ),
     }));
@@ -2775,11 +2843,11 @@ export default function Home() {
     if (!visitaAtual || !(visitaAtual.ambientes || []).length) return;
     if (!exigirPermissao("visitas.executar", visitaAtual.empresaId)) return;
 
-    const visitaMigrada = migrarVisitaParaChecklistManual(visitaAtual, 7, true);
+    const visitaMigrada = migrarVisitaParaChecklistManual(visitaAtual, CHECKLIST_VERSAO_ATUAL, true);
     const checklistExistente = visitaMigrada.checklist || [];
     const possuiRespostas = checklistPossuiRespostas(checklistExistente);
     const precisaAtualizarModelo =
-      (visitaMigrada.checklistVersao || 1) < 7 && !possuiRespostas;
+      (visitaMigrada.checklistVersao || 1) < CHECKLIST_VERSAO_ATUAL && !possuiRespostas;
 
     if (checklistExistente.length === 0 || precisaAtualizarModelo) {
       const novoChecklist = criarChecklist(
@@ -2792,7 +2860,7 @@ export default function Home() {
         ...o,
         visitas: o.visitas.map((v) =>
           v.id === visitaMigrada.id
-            ? { ...visitaMigrada, checklist: novoChecklist, checklistVersao: 7 }
+            ? { ...visitaMigrada, checklist: novoChecklist, checklistVersao: CHECKLIST_VERSAO_ATUAL }
             : v
         ),
       }));
@@ -2845,6 +2913,101 @@ export default function Home() {
         .getElementById(`checklist-item-${proximo.id}`)
         ?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 180);
+  }
+
+  function atualizarAvaliacaoEquipamento(
+    equipamento: EquipamentoSetor | AvaliacaoEquipamentoVisita,
+    alteracoes: Partial<Pick<AvaliacaoEquipamentoVisita, "quantidade" | "estado" | "observacao">>
+  ) {
+    if (!visitaAtual || !ambienteChecklistAtivo) return;
+    const equipamentoId = "setor" in equipamento ? equipamento.id : equipamento.equipamentoId;
+    const avaliacaoExistente = (visitaAtual.avaliacoesEquipamentos || []).find(
+      (avaliacao) =>
+        (equipamentoId && avaliacao.equipamentoId === equipamentoId) ||
+        (!equipamentoId && avaliacao.id === equipamento.id)
+    );
+    const avaliacao: AvaliacaoEquipamentoVisita = {
+      id: avaliacaoExistente?.id || crypto.randomUUID(),
+      equipamentoId,
+      ambiente: ambienteChecklistAtivo,
+      nome: equipamento.nome,
+      quantidade: alteracoes.quantidade ?? avaliacaoExistente?.quantidade ?? equipamento.quantidade,
+      estado: alteracoes.estado ?? avaliacaoExistente?.estado ?? equipamento.estado ?? "Não avaliado",
+      observacao: alteracoes.observacao ?? avaliacaoExistente?.observacao ?? equipamento.observacao ?? "",
+    };
+    setDb((atual) => ({
+      ...atual,
+      visitas: atual.visitas.map((visita) =>
+        visita.id === visitaAtual.id
+          ? {
+              ...visita,
+              avaliacoesEquipamentos: avaliacaoExistente
+                ? (visita.avaliacoesEquipamentos || []).map((item) =>
+                    item.id === avaliacaoExistente.id ? avaliacao : item
+                  )
+                : [...(visita.avaliacoesEquipamentos || []), avaliacao],
+            }
+          : visita
+      ),
+    }));
+  }
+
+  function adicionarEquipamentoEncontradoNaVisita() {
+    const nome = novoEquipamentoVisitaNome.trim();
+    if (!visitaAtual || !empresaVisita || !ambienteChecklistAtivo || !nome) return;
+    const quantidade = Math.max(1, Number(novoEquipamentoVisitaQuantidade) || 1);
+    const equipamentoId = crypto.randomUUID();
+    const avaliacaoId = crypto.randomUUID();
+    const equipamento: EquipamentoSetor = {
+      id: equipamentoId,
+      setor: ambienteChecklistAtivo,
+      nome,
+      quantidade,
+      estado: "Não avaliado",
+      observacao: "",
+    };
+    const avaliacao: AvaliacaoEquipamentoVisita = {
+      id: avaliacaoId,
+      equipamentoId,
+      ambiente: ambienteChecklistAtivo,
+      nome,
+      quantidade,
+      estado: "Não avaliado",
+      observacao: "",
+    };
+    setDb((atual) => ({
+      ...atual,
+      empresas: {
+        ...atual.empresas,
+        [empresaVisita.id]: {
+          ...atual.empresas[empresaVisita.id],
+          equipamentosSetores: [
+            ...(atual.empresas[empresaVisita.id]?.equipamentosSetores || []),
+            equipamento,
+          ],
+        },
+      },
+      visitas: atual.visitas.map((visita) =>
+        visita.id === visitaAtual.id
+          ? {
+              ...visita,
+              avaliacoesEquipamentos: [...(visita.avaliacoesEquipamentos || []), avaliacao],
+            }
+          : visita
+      ),
+    }));
+    setNovoEquipamentoVisitaNome("");
+    setNovoEquipamentoVisitaQuantidade("1");
+  }
+
+  function avancarParaProximoAmbiente() {
+    const indiceAtual = ambientesChecklistVisita.findIndex(
+      (ambiente) => ambiente === ambienteChecklistAtivo
+    );
+    const proximo = ambientesChecklistVisita[indiceAtual + 1];
+    if (proximo) setAmbienteChecklistAtivo(proximo);
+    else setView("visita");
+    window.setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 120);
   }
 
   function atualizarChecklistItem(
@@ -5589,6 +5752,116 @@ export default function Home() {
                     );
                   })}
 
+                {ambienteChecklistAtivo !== AMBIENTE_PROGRAMAS_CONTROLE && (
+                  <article className="rounded-2xl border-2 border-blue-100 bg-white p-5 shadow-sm">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <div className="text-xs font-extrabold uppercase tracking-wide text-[#2F5597]">
+                          Quadro do ambiente
+                        </div>
+                        <h3 className="mt-1 text-xl font-extrabold text-slate-950">
+                          Equipamentos e móveis
+                        </h3>
+                        <p className="mt-1 text-sm text-slate-500">
+                          Confira os itens cadastrados e registre o estado observado nesta visita.
+                        </p>
+                      </div>
+                      <span className="w-fit rounded-full bg-blue-50 px-3 py-1 text-xs font-extrabold text-[#2F5597]">
+                        {equipamentosAmbienteAtivo.length + avaliacoesAvulsasAmbienteAtivo.length} item(ns)
+                      </span>
+                    </div>
+
+                    {equipamentosAmbienteAtivo.length === 0 && avaliacoesAvulsasAmbienteAtivo.length === 0 ? (
+                      <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
+                        Nenhum equipamento ou móvel cadastrado para este ambiente. Você pode incluir o item encontrado abaixo.
+                      </div>
+                    ) : (
+                      <div className="mt-4 space-y-3">
+                        {[
+                          ...equipamentosAmbienteAtivo,
+                          ...avaliacoesAvulsasAmbienteAtivo,
+                        ].map((equipamento) => {
+                          const equipamentoId = "setor" in equipamento ? equipamento.id : equipamento.equipamentoId;
+                          const avaliacao = avaliacoesEquipamentosVisita.find(
+                            (item) =>
+                              (equipamentoId && item.equipamentoId === equipamentoId) ||
+                              (!equipamentoId && item.id === equipamento.id)
+                          );
+                          return (
+                            <div key={`${"setor" in equipamento ? "cad" : "vis"}-${equipamento.id}`} className="rounded-xl border border-slate-200 p-4">
+                              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                                <div className="font-extrabold text-slate-900">{equipamento.nome}</div>
+                                <div className="text-xs font-bold text-slate-500">Quantidade: {avaliacao?.quantidade || equipamento.quantidade}</div>
+                              </div>
+                              <div className="mt-3 grid gap-3 sm:grid-cols-[180px_1fr]">
+                                <label className="text-xs font-bold text-slate-600">
+                                  Estado na visita
+                                  <select
+                                    value={avaliacao?.estado || "Não avaliado"}
+                                    onChange={(event) => atualizarAvaliacaoEquipamento(equipamento, { estado: event.target.value as EstadoEquipamento })}
+                                    className="mt-1 w-full rounded-xl border bg-white p-3 text-sm"
+                                  >
+                                    {(["Não avaliado", "Adequado", "Requer atenção", "Inadequado"] as EstadoEquipamento[]).map((estado) => (
+                                      <option key={estado}>{estado}</option>
+                                    ))}
+                                  </select>
+                                </label>
+                                <label className="text-xs font-bold text-slate-600">
+                                  Observação
+                                  <input
+                                    value={avaliacao?.observacao || ""}
+                                    onChange={(event) => atualizarAvaliacaoEquipamento(equipamento, { observacao: event.target.value })}
+                                    placeholder="Ex.: íntegro, necessita manutenção..."
+                                    className="mt-1 w-full rounded-xl border p-3 text-sm"
+                                  />
+                                </label>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    <div className="mt-5 rounded-xl bg-slate-50 p-4">
+                      <div className="text-sm font-extrabold text-slate-800">Adicionar item encontrado na visita</div>
+                      <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_100px_auto]">
+                        <input
+                          value={novoEquipamentoVisitaNome}
+                          onChange={(event) => setNovoEquipamentoVisitaNome(event.target.value)}
+                          placeholder="Ex.: Refrigerador, bancada, armário"
+                          className="min-w-0 rounded-xl border bg-white p-3 text-sm"
+                        />
+                        <input
+                          type="number"
+                          min="1"
+                          value={novoEquipamentoVisitaQuantidade}
+                          onChange={(event) => setNovoEquipamentoVisitaQuantidade(event.target.value)}
+                          aria-label="Quantidade"
+                          className="rounded-xl border bg-white p-3 text-sm"
+                        />
+                        <button
+                          type="button"
+                          onClick={adicionarEquipamentoEncontradoNaVisita}
+                          className="rounded-xl bg-[#2F5597] px-4 py-3 text-sm font-extrabold text-white"
+                        >
+                          Adicionar
+                        </button>
+                      </div>
+                      <p className="mt-2 text-xs text-slate-500">
+                        O item também ficará cadastrado na empresa para as próximas visitas.
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={avancarParaProximoAmbiente}
+                      className="mt-5 w-full rounded-xl bg-[#17365D] px-4 py-3 text-sm font-extrabold text-white"
+                    >
+                      Concluir ambiente e avançar →
+                    </button>
+                  </article>
+                )}
+
                 <div className="rounded-2xl bg-blue-50 p-4 text-sm text-blue-900">
                   As respostas são salvas automaticamente. Itens marcados como
                   <b> Não Conforme</b> geram uma Não Conformidade vinculada ao critério,
@@ -5711,6 +5984,31 @@ export default function Home() {
                 </div>
               </button>
             )}
+
+            <button
+              type="button"
+              onClick={() => abrirChecklistNoAmbiente(
+                equipamentosDaVisita[0]?.setor || (visitaAtual.ambientes || [])[0]
+              )}
+              disabled={(visitaAtual.ambientes || []).length === 0}
+              className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm disabled:opacity-50"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-[10px] font-extrabold uppercase tracking-wider text-[#2F5597]">
+                    Quadro dos ambientes
+                  </div>
+                  <div className="mt-1 text-base font-extrabold text-slate-900">
+                    Equipamentos e móveis
+                  </div>
+                  <div className="mt-1 text-xs text-slate-600">
+                    {equipamentosDaVisita.length} cadastrado(s) • {equipamentosAvaliadosVisita} avaliado(s)
+                    {equipamentosComAlertaVisita > 0 ? ` • ${equipamentosComAlertaVisita} com atenção` : ""}
+                  </div>
+                </div>
+                <span className="shrink-0 text-xl font-extrabold text-[#2F5597]">→</span>
+              </div>
+            </button>
 
             <div className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm">
               <div className="flex items-center gap-4">
@@ -6032,6 +6330,55 @@ export default function Home() {
                   </div>
                 </div>
               </div>
+            </article>
+
+            <article className="print-block rounded-2xl bg-white p-5 shadow-sm">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <div className="text-xs font-extrabold uppercase text-[#2F5597]">
+                    Quadro dos ambientes
+                  </div>
+                  <h2 className="mt-1 text-xl font-extrabold">Equipamentos e móveis</h2>
+                </div>
+                <div className="text-sm font-bold text-slate-500">
+                  {equipamentosAvaliadosVisita} de {equipamentosRelatorio.length} avaliados
+                </div>
+              </div>
+
+              {equipamentosRelatorio.length === 0 ? (
+                <p className="mt-4 rounded-xl bg-slate-50 p-4 text-sm text-slate-500">
+                  Nenhum equipamento ou móvel foi cadastrado nos ambientes desta visita.
+                </p>
+              ) : (
+                <div className="mt-4 overflow-x-auto rounded-xl border border-slate-200">
+                  <table className="w-full min-w-[680px] border-collapse text-left text-sm">
+                    <thead className="bg-slate-100 text-xs uppercase text-slate-600">
+                      <tr>
+                        <th className="p-3">Ambiente</th>
+                        <th className="p-3">Equipamento ou móvel</th>
+                        <th className="p-3">Qtd.</th>
+                        <th className="p-3">Estado na visita</th>
+                        <th className="p-3">Observação</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {equipamentosRelatorio.map((equipamento) => (
+                        <tr key={equipamento.id} className="border-t border-slate-200 align-top">
+                          <td className="p-3 font-bold">{equipamento.ambiente}</td>
+                          <td className="p-3">{equipamento.nome}</td>
+                          <td className="p-3">{equipamento.quantidade}</td>
+                          <td className={`p-3 font-bold ${
+                            equipamento.estado === "Inadequado" ? "text-red-700" :
+                            equipamento.estado === "Requer atenção" ? "text-amber-700" :
+                            equipamento.estado === "Adequado" ? "text-emerald-700" : "text-slate-500"
+                          }`}>{equipamento.estado}</td>
+                          <td className="p-3 text-slate-600">{equipamento.observacao || "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </article>
 
             <article
