@@ -5,6 +5,7 @@ import MetricCard from "@/components/MetricCard";
 import AccessPreparationPanel from "@/components/AccessPreparationPanel";
 import ManualBaseFields from "@/components/ManualBaseFields";
 import OperationalFlowsFields from "@/components/OperationalFlowsFields";
+import QualityProgramsFields from "@/components/QualityProgramsFields";
 import type {
   AppDB,
   AcaoPermissao,
@@ -16,6 +17,7 @@ import type {
   EquipamentoSetor,
   Evidencia,
   FluxoOperacional,
+  ProgramaControleQualidade,
   ResponsabilidadeManual,
   StatusUsuario,
   Visita,
@@ -35,6 +37,12 @@ import {
   normalizarFluxosOperacionais,
   obterCriteriosOperacionaisParaSetor,
 } from "@/lib/operationalFlows";
+import {
+  AMBIENTE_PROGRAMAS_CONTROLE,
+  criarProgramasControlePadrao,
+  normalizarProgramasControle,
+  obterCriteriosProgramasControle,
+} from "@/lib/qualityPrograms";
 import {
   clearOfflineSession,
   emptyDB,
@@ -359,9 +367,10 @@ function fdata(d: string) {
 
 function criarChecklist(
   ambientes: string[],
-  fluxosOperacionais?: FluxoOperacional[]
+  fluxosOperacionais?: FluxoOperacional[],
+  programasControle?: ProgramaControleQualidade[]
 ): ChecklistItem[] {
-  return ambientes.flatMap((ambiente, ambienteIndex) => {
+  const itensAmbientes = ambientes.flatMap((ambiente, ambienteIndex) => {
     const setorNormalizado = normalizarSetorManual(ambiente);
     const setorDoManual = SETORES_OFICIAIS_MANUAL.includes(
       setorNormalizado as (typeof SETORES_OFICIAIS_MANUAL)[number]
@@ -386,6 +395,22 @@ function criarChecklist(
       orientacao: item.orientacao || "",
     }));
   });
+
+  const itensProgramas = obterCriteriosProgramasControle(programasControle).map(
+    (item, itemIndex) => ({
+      id: `programa-${itemIndex}-${crypto.randomUUID()}`,
+      ambiente: AMBIENTE_PROGRAMAS_CONTROLE,
+      titulo: item.titulo,
+      categoria: item.categoria,
+      status: "Pendente" as ChecklistStatus,
+      observacao: "",
+      criticidade: item.criticidade,
+      referencia: item.referencia,
+      orientacao: item.orientacao,
+    })
+  );
+
+  return [...itensAmbientes, ...itensProgramas];
 }
 
 function situacaoPrazoNC(prazo?: string, status?: string) {
@@ -571,6 +596,9 @@ export default function Home() {
   const [equipamentosEmpresa, setEquipamentosEmpresa] = useState<EquipamentoSetor[]>([]);
   const [fluxosEmpresa, setFluxosEmpresa] = useState<FluxoOperacional[]>(
     criarFluxosOperacionaisPadrao()
+  );
+  const [programasEmpresa, setProgramasEmpresa] = useState<ProgramaControleQualidade[]>(
+    criarProgramasControlePadrao()
   );
 
   useEffect(() => {
@@ -974,6 +1002,9 @@ export default function Home() {
               : [],
             equipamentosSetores: normalizarEquipamentos(empresa.equipamentosSetores),
             fluxosOperacionais: normalizarFluxosOperacionais(empresa.fluxosOperacionais),
+            programasControleQualidade: normalizarProgramasControle(
+              empresa.programasControleQualidade
+            ),
           },
         ])
       ),
@@ -1374,6 +1405,15 @@ export default function Home() {
       ? visitaAtualCadastrada
       : undefined;
   const empresaVisita = visitaAtual ? db.empresas[visitaAtual.empresaId] : undefined;
+  const programasChecklistAtivos = obterCriteriosProgramasControle(
+    empresaVisita?.programasControleQualidade
+  );
+  const ambientesChecklistVisita = visitaAtual
+    ? [
+        ...(visitaAtual.ambientes || []),
+        ...(programasChecklistAtivos.length > 0 ? [AMBIENTE_PROGRAMAS_CONTROLE] : []),
+      ]
+    : [];
   const ambientesSugeridosVisita =
     empresaVisita?.setoresManual?.length
       ? empresaVisita.setoresManual
@@ -2308,6 +2348,7 @@ export default function Home() {
       setoresManual: setoresEmpresa,
       equipamentosSetores: normalizarEquipamentos(equipamentosEmpresa),
       fluxosOperacionais: normalizarFluxosOperacionais(fluxosEmpresa),
+      programasControleQualidade: normalizarProgramasControle(programasEmpresa),
       criadoEm: anterior?.criadoEm || new Date().toISOString(),
     };
     setDb((o) => ({
@@ -2321,7 +2362,7 @@ export default function Home() {
         );
         return possuiRespostas
           ? visita
-          : { ...visita, checklist: [], checklistVersao: 4 };
+          : { ...visita, checklist: [], checklistVersao: 5 };
       }),
     }));
     setEditingEmpresaId(null);
@@ -2376,6 +2417,7 @@ export default function Home() {
     );
     setEquipamentosEmpresa(normalizarEquipamentos(empresa.equipamentosSetores));
     setFluxosEmpresa(normalizarFluxosOperacionais(empresa.fluxosOperacionais));
+    setProgramasEmpresa(normalizarProgramasControle(empresa.programasControleQualidade));
     setEditingEmpresaId(empresa.id);
     setMsg("");
     setShowEmpresaForm(true);
@@ -2414,7 +2456,7 @@ export default function Home() {
       criadoEm: new Date().toISOString(),
       ambientes: [],
       checklist: [],
-      checklistVersao: 4,
+      checklistVersao: 5,
     };
     setDb((o) => ({ ...o, visitas: [v, ...o.visitas] }));
     setShowVisitaForm(false);
@@ -2492,24 +2534,25 @@ export default function Home() {
       (item) => item.status !== "Pendente" || item.observacao.trim().length > 0
     );
     const precisaAtualizarModelo =
-      (visitaAtual.checklistVersao || 1) < 4 && !possuiRespostas;
+      (visitaAtual.checklistVersao || 1) < 5 && !possuiRespostas;
 
     if (checklistExistente.length === 0 || precisaAtualizarModelo) {
       const novoChecklist = criarChecklist(
         visitaAtual.ambientes || [],
-        empresaVisita?.fluxosOperacionais
+        empresaVisita?.fluxosOperacionais,
+        empresaVisita?.programasControleQualidade
       );
       setDb((o) => ({
         ...o,
         visitas: o.visitas.map((v) =>
           v.id === visitaAtual.id
-            ? { ...v, checklist: novoChecklist, checklistVersao: 4 }
+            ? { ...v, checklist: novoChecklist, checklistVersao: 5 }
             : v
         ),
       }));
     }
 
-    const ambientesDaVisita = visitaAtual.ambientes || [];
+    const ambientesDaVisita = ambientesChecklistVisita;
     setAmbienteChecklistAtivo(
       ambienteInicial && ambientesDaVisita.includes(ambienteInicial)
         ? ambienteInicial
@@ -3769,6 +3812,11 @@ export default function Home() {
               onChange={setFluxosEmpresa}
             />
 
+            <QualityProgramsFields
+              programas={programasEmpresa}
+              onChange={setProgramasEmpresa}
+            />
+
             {msg && (
               <div className="mt-3 rounded-xl bg-amber-50 p-3 text-sm">
                 {msg}
@@ -5010,9 +5058,9 @@ export default function Home() {
 
             <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
               <aside className="rounded-2xl bg-white p-4 shadow-sm">
-                <div className="text-sm font-extrabold">Ambientes da visita</div>
+                <div className="text-sm font-extrabold">Roteiro do checklist</div>
                 <div className="mt-3 space-y-2">
-                  {(visitaAtual.ambientes || []).map((ambiente) => {
+                  {ambientesChecklistVisita.map((ambiente) => {
                     const itensAmb = checklistAtual.filter((i) => i.ambiente === ambiente);
                     const respAmb = itensAmb.filter((i) => i.status !== "Pendente").length;
                     const ativo = ambienteChecklistAtivo === ambiente;
@@ -5052,7 +5100,7 @@ export default function Home() {
                   className="scroll-mt-4 rounded-2xl bg-white p-5 shadow-sm"
                 >
                   <div className="text-xs font-extrabold uppercase text-slate-400">
-                    Ambiente atual
+                    Etapa atual
                   </div>
                   <h2 className="mt-1 text-2xl font-extrabold">
                     {ambienteChecklistAtivo}
@@ -6204,6 +6252,7 @@ export default function Home() {
                     setSetoresEmpresa([]);
                     setEquipamentosEmpresa([]);
                     setFluxosEmpresa(criarFluxosOperacionaisPadrao());
+                    setProgramasEmpresa(criarProgramasControlePadrao());
                     setMsg("");
                     setShowEmpresaForm(true);
                   }}
@@ -6241,6 +6290,9 @@ export default function Home() {
                   </div>
                   <div className="mt-1 text-xs text-slate-500">
                     {(e.fluxosOperacionais || []).filter((fluxo) => fluxo.aplicavel).length} fluxo(s) operacional(is)
+                  </div>
+                  <div className="mt-1 text-xs text-slate-500">
+                    {(e.programasControleQualidade || []).filter((programa) => programa.status === "Implantado" || programa.status === "Em implantação").length} programa(s) de controle ativo(s)
                   </div>
                   <div className="mt-4 flex flex-wrap gap-2">
                     <button
