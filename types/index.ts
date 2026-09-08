@@ -37,6 +37,7 @@ export type Empresa = {
   equipamentosSetores?: EquipamentoSetor[];
   fluxosOperacionais?: FluxoOperacional[];
   programasControleQualidade?: ProgramaControleQualidade[];
+  pops?: ProcedimentoOperacionalPadronizado[];
   criadoEm: string;
 };
 
@@ -118,6 +119,19 @@ export type ProgramaControleQualidade = {
   registro: string;
   documentoRelacionado: string;
   observacao: string;
+};
+
+export type StatusPOP = "Rascunho" | "Em revisão" | "Aprovado" | "Inativo";
+
+export type ProcedimentoOperacionalPadronizado = {
+  id: string;
+  codigo: string;
+  titulo: string;
+  versao: string;
+  status: StatusPOP;
+  programaRelacionado: string;
+  responsavel: string;
+  proximaRevisao: string;
 };
 
 export type ChecklistStatus = "Pendente" | "Conforme" | "Não Conforme" | "Não se aplica";
