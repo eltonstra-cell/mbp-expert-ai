@@ -39,6 +39,47 @@ export const DEFINICOES_FLUXOS_OPERACIONAIS: DefinicaoFluxoOperacional[] = [
   { tipo: "Entrada e saída de colaboradores", setorPadrao: VESTIARIO, orientacao: "Acesso, uniforme, mãos e objetos pessoais." },
 ];
 
+function chaveAmbiente(valor: string) {
+  return valor
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+const preferenciasAmbientePorFluxo: Record<TipoFluxoOperacional, string[]> = {
+  Recebimento: ["recebimento de mercadorias", "recebimento"],
+  Armazenamento: ["estoque seco", "estoque de materias primas", "estoque"],
+  "Manipulação e produção": ["cozinha", "producao"],
+  "Higienização de FLV": ["higienizacao de hortifrutigranjeiros", "hortifrut"],
+  "Pré-preparo e preparo": ["cozinha", "producao"],
+  "Porcionamento e fracionamento": ["cozinha", "producao"],
+  Congelamento: ["armazenamento congelado", "freezer", "camara fria"],
+  Descongelamento: ["cozinha", "producao"],
+  Distribuição: ["salao de atendimento", "refeitorio", "salao de consumacao"],
+  "Manejo de resíduos": ["armazenamento temporario de residuos", "residuos"],
+  "Entrada e saída de colaboradores": ["sanitarios vestiarios de funcionarios", "vestiario"],
+};
+
+export function obterSetorSugeridoParaFluxo(
+  tipo: TipoFluxoOperacional,
+  setores: string[],
+  setorAtual?: string
+) {
+  if (setorAtual && setores.includes(setorAtual)) return setorAtual;
+  const setoresComChave = setores.map((setor) => ({ setor, chave: chaveAmbiente(setor) }));
+  for (const preferencia of preferenciasAmbientePorFluxo[tipo]) {
+    const chavePreferencia = chaveAmbiente(preferencia);
+    const encontrado = setoresComChave.find(
+      (item) => item.chave === chavePreferencia || item.chave.includes(chavePreferencia)
+    );
+    if (encontrado) return encontrado.setor;
+  }
+  const padrao = DEFINICOES_FLUXOS_OPERACIONAIS.find((item) => item.tipo === tipo)?.setorPadrao;
+  return setores.find((setor) => setor === padrao) || setores[0] || padrao || "";
+}
+
 const criterios: Record<TipoFluxoOperacional, Array<[string, string, ChecklistCriticidade]>> = {
   Recebimento: [
     ["Conferência", "Produtos, embalagens, validade e condições de transporte são conferidos no recebimento", "Crítica"],
@@ -126,6 +167,25 @@ export function normalizarFluxosOperacionais(fluxos?: FluxoOperacional[]) {
         }
       : padrao;
   });
+}
+
+export function adequarFluxosAosSetores(
+  fluxos: FluxoOperacional[] | undefined,
+  setores: string[] | undefined
+) {
+  const setoresValidos = Array.isArray(setores) ? setores : [];
+  return normalizarFluxosOperacionais(fluxos).map((fluxo) =>
+    fluxo.aplicavel && !setoresValidos.includes(fluxo.setorVinculado)
+      ? {
+          ...fluxo,
+          setorVinculado: obterSetorSugeridoParaFluxo(
+            fluxo.tipo,
+            setoresValidos,
+            fluxo.setorVinculado
+          ),
+        }
+      : fluxo
+  );
 }
 
 export function obterCriteriosOperacionaisParaSetor(

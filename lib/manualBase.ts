@@ -184,7 +184,7 @@ export function migrarVisitaParaChecklistManual<
     checklist?: Array<{ status?: string; observacao?: string }>;
     checklistVersao?: number;
   }
->(visita: T, versaoAtual = 8, preservarNomes = false): T {
+>(visita: T, versaoAtual = 9, preservarNomes = false): T {
   if (checklistPossuiRespostas(visita.checklist)) return visita;
 
   const ambientesAtuais = Array.isArray(visita.ambientes) ? visita.ambientes : [];

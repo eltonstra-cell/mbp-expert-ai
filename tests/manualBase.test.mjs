@@ -41,9 +41,9 @@ test("migração nova pode preservar o nome real do ambiente", () => {
     ambientes: ["Copa", "Churrasqueira"],
     checklist: [],
     checklistVersao: 6,
-  }, 8, true);
+  }, 9, true);
   assert.deepEqual(visita.ambientes, ["Copa", "Churrasqueira"]);
-  assert.equal(visita.checklistVersao, 8);
+  assert.equal(visita.checklistVersao, 9);
 });
 
 test("migra os sanitários antigos para os setores específicos do Manual", () => {
@@ -96,7 +96,7 @@ test("refaz checklist antigo sem respostas e preserva o respondido", () => {
   });
   assert.equal(pendente.ambientes.length, 4);
   assert.deepEqual(pendente.checklist, []);
-  assert.equal(pendente.checklistVersao, 8);
+  assert.equal(pendente.checklistVersao, 9);
 
   const respondida = {
     ambientes: ["Sanitários/Vestiários de Funcionários"],

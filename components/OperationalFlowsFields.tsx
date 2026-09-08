@@ -1,7 +1,11 @@
 "use client";
 
+import { useEffect } from "react";
 import type { FluxoOperacional } from "@/types";
-import { DEFINICOES_FLUXOS_OPERACIONAIS } from "@/lib/operationalFlows";
+import {
+  DEFINICOES_FLUXOS_OPERACIONAIS,
+  obterSetorSugeridoParaFluxo,
+} from "@/lib/operationalFlows";
 
 type Props = {
   fluxos: FluxoOperacional[];
@@ -10,6 +14,25 @@ type Props = {
 };
 
 export default function OperationalFlowsFields({ fluxos, setores, onChange }: Props) {
+  useEffect(() => {
+    let alterou = false;
+    const corrigidos = fluxos.map((fluxo) => {
+      if (!fluxo.aplicavel || setores.includes(fluxo.setorVinculado)) return fluxo;
+      const setorSugerido = obterSetorSugeridoParaFluxo(
+        fluxo.tipo,
+        setores,
+        fluxo.setorVinculado
+      );
+      if (!setorSugerido || setorSugerido === fluxo.setorVinculado) return fluxo;
+      alterou = true;
+      return {
+        ...fluxo,
+        setorVinculado: setorSugerido,
+      };
+    });
+    if (alterou) onChange(corrigidos);
+  }, [fluxos, setores, onChange]);
+
   function atualizar(indice: number, alteracao: Partial<FluxoOperacional>) {
     onChange(fluxos.map((fluxo, atual) => atual === indice ? { ...fluxo, ...alteracao } : fluxo));
   }
@@ -38,7 +61,7 @@ export default function OperationalFlowsFields({ fluxos, setores, onChange }: Pr
                     aplicavel: event.target.checked,
                     setorVinculado:
                       event.target.checked && setores.length > 0 && !setores.includes(fluxo.setorVinculado)
-                        ? setores[0]
+                        ? obterSetorSugeridoParaFluxo(fluxo.tipo, setores, fluxo.setorVinculado)
                         : fluxo.setorVinculado,
                   })}
                 />
