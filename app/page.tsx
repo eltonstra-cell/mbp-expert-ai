@@ -102,6 +102,7 @@ import {
 } from "@/lib/userManagement";
 
 type View = "inicio" | "empresas" | "visitas" | "visita" | "ambientes" | "checklist" | "ncs" | "plano" | "acompanhamento" | "historico" | "evidencias" | "relatorio" | "acessos";
+type EmpresaSecao = "dados" | "manual" | "ambientes" | "fluxos" | "programas" | "pops";
 
 const NAV_STORAGE_KEY = "mbp-expert-ai:navegacao:v1";
 const CHECKLIST_VERSAO_ATUAL = 10;
@@ -544,6 +545,7 @@ export default function Home() {
   const [filtroInicio, setFiltroInicio] = useState<"Em andamento" | "Concluída">("Em andamento");
   const [showEmpresaForm, setShowEmpresaForm] = useState(false);
   const [editingEmpresaId, setEditingEmpresaId] = useState<string | null>(null);
+  const [empresaSecao, setEmpresaSecao] = useState<EmpresaSecao | null>(null);
   const [showVisitaForm, setShowVisitaForm] = useState(false);
   const [visitaAtualId, setVisitaAtualId] = useState<string | null>(null);
   const [criandoVisita, setCriandoVisita] = useState(false);
@@ -2559,8 +2561,10 @@ export default function Home() {
           : { ...visita, checklist: [], checklistVersao: CHECKLIST_VERSAO_ATUAL };
       }),
     }));
-    setEditingEmpresaId(null);
-    setShowEmpresaForm(false);
+    setEditingEmpresaId(id);
+    setEmpresaSecao(null);
+    setShowEmpresaForm(true);
+    setMsg("Alterações salvas com sucesso.");
     setView("empresas");
   }
 
@@ -2615,6 +2619,7 @@ export default function Home() {
     setProgramasEmpresa(normalizarProgramasControle(empresa.programasControleQualidade));
     setPopsEmpresa(normalizarPops(empresa.pops));
     setEditingEmpresaId(empresa.id);
+    setEmpresaSecao(null);
     setMsg("");
     setShowEmpresaForm(true);
     setView("empresas");
@@ -4115,43 +4120,119 @@ export default function Home() {
           <section className="rounded-2xl bg-white p-5 shadow-sm">
             <div className="flex justify-between gap-4">
               <div>
-                <h2 className="text-2xl font-extrabold">{editingEmpresaId ? "Editar empresa" : "Nova empresa"}</h2>
+                <div className="text-xs font-extrabold uppercase tracking-wide text-[#2F5597]">
+                  {editingEmpresaId ? "Gestão da empresa" : "Cadastro"}
+                </div>
+                <h2 className="mt-1 text-2xl font-extrabold">
+                  {!editingEmpresaId
+                    ? "Nova empresa"
+                    : empresaSecao === null
+                    ? "Central da Empresa"
+                    : empresaSecao === "dados"
+                    ? "Dados da empresa"
+                    : empresaSecao === "manual"
+                    ? "Manual e responsabilidades"
+                    : empresaSecao === "ambientes"
+                    ? "Ambientes e equipamentos"
+                    : empresaSecao === "fluxos"
+                    ? "Fluxos operacionais"
+                    : empresaSecao === "programas"
+                    ? "Programas de Controle"
+                    : "POPs e documentos"}
+                </h2>
                 <p className="text-sm text-slate-500">
-                  {editingEmpresaId ? "Atualize os dados do cliente e a base usada no Manual de Boas Práticas." : "Digite o CNPJ para buscar os dados básicos e depois complete as informações do Manual."}
+                  {!editingEmpresaId
+                    ? "Digite o CNPJ, confira os dados básicos e salve para abrir a Central da Empresa."
+                    : empresaSecao === null
+                    ? `${form.nomeFantasia || "Empresa"} • escolha somente a área que deseja consultar ou alterar.`
+                    : form.nomeFantasia || "Empresa"}
                 </p>
               </div>
               <button
-                onClick={() => { setShowEmpresaForm(false); setEditingEmpresaId(null); }}
-                className="rounded-xl bg-slate-100 px-3 py-2 font-bold"
+                onClick={() => {
+                  if (editingEmpresaId && empresaSecao !== null) {
+                    setEmpresaSecao(null);
+                    setMsg("");
+                    return;
+                  }
+                  setShowEmpresaForm(false);
+                  setEditingEmpresaId(null);
+                  setEmpresaSecao(null);
+                }}
+                className="h-fit shrink-0 rounded-xl bg-slate-100 px-3 py-2 font-bold"
               >
-                Fechar
+                {editingEmpresaId && empresaSecao !== null ? "← Central" : "Fechar"}
               </button>
             </div>
 
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
-              <label>
-                <span className="mb-1 block text-xs font-bold text-slate-500">
-                  CNPJ
-                </span>
-                <div className="flex gap-2">
-                  <input
-                    className="w-full rounded-xl border p-3 disabled:bg-slate-100 disabled:text-slate-500"
-                    value={form.cnpj}
-                    disabled={Boolean(editingEmpresaId)}
-                    onChange={(e) => setForm({ ...form, cnpj: e.target.value })}
-                  />
-                  {!editingEmpresaId && (
-                    <button
-                      onClick={buscar}
-                      className="rounded-xl bg-slate-900 px-4 font-bold text-white"
-                    >
-                      {loading ? "..." : "Buscar"}
-                    </button>
-                  )}
-                </div>
-              </label>
+            {editingEmpresaId && empresaSecao === null ? (
+              <div className="mt-5">
+                {msg && (
+                  <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-bold text-emerald-800">
+                    {msg}
+                  </div>
+                )}
 
-              {camposEmpresaPrincipais.map((k) => (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  <button type="button" onClick={() => { setEmpresaSecao("dados"); setMsg(""); }} className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left transition hover:border-blue-300 hover:bg-blue-50">
+                    <div className="flex items-start justify-between gap-3"><span className="grid h-9 w-9 place-items-center rounded-xl bg-blue-100 font-extrabold text-[#2F5597]">01</span><span className="text-xl text-[#2F5597]">→</span></div>
+                    <div className="mt-3 font-extrabold text-slate-950">Dados da empresa</div>
+                    <div className="mt-1 text-xs text-slate-500">Cadastro, endereço, contato, responsável e horário.</div>
+                  </button>
+
+                  <button type="button" onClick={() => { setEmpresaSecao("manual"); setMsg(""); }} className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left transition hover:border-blue-300 hover:bg-blue-50">
+                    <div className="flex items-start justify-between gap-3"><span className="grid h-9 w-9 place-items-center rounded-xl bg-blue-100 font-extrabold text-[#2F5597]">02</span><span className="text-xl text-[#2F5597]">→</span></div>
+                    <div className="mt-3 font-extrabold text-slate-950">Manual e responsabilidades</div>
+                    <div className="mt-1 text-xs text-slate-500">Identificação do Manual • {responsabilidadesEmpresa.filter((item) => item.ativa).length} responsabilidade(s) ativa(s).</div>
+                  </button>
+
+                  <button type="button" onClick={() => { setEmpresaSecao("ambientes"); setMsg(""); }} className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left transition hover:border-blue-300 hover:bg-blue-50">
+                    <div className="flex items-start justify-between gap-3"><span className="grid h-9 w-9 place-items-center rounded-xl bg-blue-100 font-extrabold text-[#2F5597]">03</span><span className="text-xl text-[#2F5597]">→</span></div>
+                    <div className="mt-3 font-extrabold text-slate-950">Ambientes e equipamentos</div>
+                    <div className="mt-1 text-xs text-slate-500">{setoresEmpresa.length} ambiente(s) • {equipamentosEmpresa.length} tipo(s) de equipamento.</div>
+                  </button>
+
+                  <button type="button" onClick={() => { setEmpresaSecao("fluxos"); setMsg(""); }} className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left transition hover:border-blue-300 hover:bg-blue-50">
+                    <div className="flex items-start justify-between gap-3"><span className="grid h-9 w-9 place-items-center rounded-xl bg-blue-100 font-extrabold text-[#2F5597]">04</span><span className="text-xl text-[#2F5597]">→</span></div>
+                    <div className="mt-3 font-extrabold text-slate-950">Fluxos operacionais</div>
+                    <div className="mt-1 text-xs text-slate-500">{fluxosEmpresa.filter((fluxo) => fluxo.aplicavel).length} de {fluxosEmpresa.length} fluxo(s) ativo(s).</div>
+                  </button>
+
+                  <button type="button" onClick={() => { setEmpresaSecao("programas"); setMsg(""); }} className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left transition hover:border-blue-300 hover:bg-blue-50">
+                    <div className="flex items-start justify-between gap-3"><span className="grid h-9 w-9 place-items-center rounded-xl bg-blue-100 font-extrabold text-[#2F5597]">05</span><span className="text-xl text-[#2F5597]">→</span></div>
+                    <div className="mt-3 font-extrabold text-slate-950">Programas de Controle</div>
+                    <div className="mt-1 text-xs text-slate-500">{programasEmpresa.filter((programa) => programa.status === "Implantado" || programa.status === "Em implantação").length} programa(s) ativo(s) ou em implantação.</div>
+                  </button>
+
+                  <button type="button" onClick={() => { setEmpresaSecao("pops"); setMsg(""); }} className="rounded-2xl border-2 border-blue-200 bg-blue-50 p-4 text-left transition hover:border-blue-400">
+                    <div className="flex items-start justify-between gap-3"><span className="grid h-9 w-9 place-items-center rounded-xl bg-[#2F5597] font-extrabold text-white">06</span><span className="text-xl text-[#2F5597]">→</span></div>
+                    <div className="mt-3 font-extrabold text-slate-950">POPs e documentos</div>
+                    <div className="mt-1 text-xs text-slate-500">{popsEmpresa.length} POP(s) cadastrado(s).</div>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                {(!editingEmpresaId || empresaSecao === "dados") && (
+                  <div className="mt-4 grid gap-3 md:grid-cols-2">
+                    <label>
+                      <span className="mb-1 block text-xs font-bold text-slate-500">CNPJ</span>
+                      <div className="flex gap-2">
+                        <input
+                          className="w-full rounded-xl border p-3 disabled:bg-slate-100 disabled:text-slate-500"
+                          value={form.cnpj}
+                          disabled={Boolean(editingEmpresaId)}
+                          onChange={(e) => setForm({ ...form, cnpj: e.target.value })}
+                        />
+                        {!editingEmpresaId && (
+                          <button onClick={buscar} className="rounded-xl bg-slate-900 px-4 font-bold text-white">
+                            {loading ? "..." : "Buscar"}
+                          </button>
+                        )}
+                      </div>
+                    </label>
+
+                    {camposEmpresaPrincipais.map((k) => (
                   <label key={k}>
                     <span className="mb-1 block text-xs font-bold text-slate-500">
                       {labels[k] || k}
@@ -4165,63 +4246,57 @@ export default function Home() {
                       }
                     />
                   </label>
-                ))}
-            </div>
+                    ))}
+                  </div>
+                )}
 
-            <details className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <summary className="cursor-pointer list-none">
-                <div className="font-extrabold text-slate-950">Identificação complementar do Manual</div>
-                <div className="mt-0.5 text-xs text-slate-500">Preencha agora ou complete depois.</div>
-              </summary>
-              <div className="mt-4 grid gap-3 md:grid-cols-2">
-                {camposIdentificacaoManual.map((k) => (
-                  <label key={k}>
-                    <span className="mb-1 block text-xs font-bold text-slate-500">{labels[k]}</span>
-                    <input
-                      type={k === "dataElaboracaoManual" ? "date" : "text"}
-                      className="w-full rounded-xl border bg-white p-3"
-                      value={form[k]}
-                      onChange={(e) => setForm({ ...form, [k]: e.target.value })}
-                    />
-                  </label>
-                ))}
-              </div>
-            </details>
+                {editingEmpresaId && empresaSecao === "manual" && (
+                  <div className="mt-4 space-y-4">
+                    <details open className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <summary className="cursor-pointer list-none">
+                        <div className="font-extrabold text-slate-950">Identificação complementar do Manual</div>
+                        <div className="mt-0.5 text-xs text-slate-500">Dados técnicos, elaboração, revisão e aprovação.</div>
+                      </summary>
+                      <div className="mt-4 grid gap-3 md:grid-cols-2">
+                        {camposIdentificacaoManual.map((k) => (
+                          <label key={k}>
+                            <span className="mb-1 block text-xs font-bold text-slate-500">{labels[k]}</span>
+                            <input type={k === "dataElaboracaoManual" ? "date" : "text"} className="w-full rounded-xl border bg-white p-3" value={form[k]} onChange={(e) => setForm({ ...form, [k]: e.target.value })} />
+                          </label>
+                        ))}
+                      </div>
+                    </details>
+                    <ManualBaseFields responsabilidades={responsabilidadesEmpresa} onResponsabilidadesChange={setResponsabilidadesEmpresa} setores={setoresEmpresa} onSetoresChange={setSetoresEmpresa} equipamentos={equipamentosEmpresa} onEquipamentosChange={setEquipamentosEmpresa} modo="responsabilidades" />
+                  </div>
+                )}
 
-            <ManualBaseFields
-              responsabilidades={responsabilidadesEmpresa}
-              onResponsabilidadesChange={setResponsabilidadesEmpresa}
-              setores={setoresEmpresa}
-              onSetoresChange={setSetoresEmpresa}
-              equipamentos={equipamentosEmpresa}
-              onEquipamentosChange={setEquipamentosEmpresa}
-            />
+                {editingEmpresaId && empresaSecao === "ambientes" && (
+                  <div className="mt-4">
+                    <ManualBaseFields responsabilidades={responsabilidadesEmpresa} onResponsabilidadesChange={setResponsabilidadesEmpresa} setores={setoresEmpresa} onSetoresChange={setSetoresEmpresa} equipamentos={equipamentosEmpresa} onEquipamentosChange={setEquipamentosEmpresa} modo="ambientes" />
+                  </div>
+                )}
 
-            <OperationalFlowsFields
-              fluxos={fluxosEmpresa}
-              setores={setoresEmpresa}
-              onChange={setFluxosEmpresa}
-            />
+                {editingEmpresaId && empresaSecao === "fluxos" && (
+                  <OperationalFlowsFields fluxos={fluxosEmpresa} setores={setoresEmpresa} onChange={setFluxosEmpresa} aberto />
+                )}
 
-            <QualityProgramsFields
-              programas={programasEmpresa}
-              onChange={setProgramasEmpresa}
-            />
+                {editingEmpresaId && empresaSecao === "programas" && (
+                  <QualityProgramsFields programas={programasEmpresa} onChange={setProgramasEmpresa} aberto />
+                )}
 
-            <PopsFields pops={popsEmpresa} onChange={setPopsEmpresa} />
+                {editingEmpresaId && empresaSecao === "pops" && (
+                  <PopsFields pops={popsEmpresa} onChange={setPopsEmpresa} aberto />
+                )}
 
-            {msg && (
-              <div className="mt-3 rounded-xl bg-amber-50 p-3 text-sm">
-                {msg}
-              </div>
+                {msg && <div className="mt-3 rounded-xl bg-amber-50 p-3 text-sm">{msg}</div>}
+
+                <div className="sticky bottom-20 z-20 mt-4 rounded-2xl border border-blue-100 bg-white/95 p-2 shadow-lg backdrop-blur md:bottom-4">
+                  <button onClick={salvarEmpresa} className="w-full rounded-xl bg-[#2F5597] p-3 font-extrabold text-white">
+                    {editingEmpresaId ? "Salvar e voltar à Central" : "Salvar e abrir a Central"}
+                  </button>
+                </div>
+              </>
             )}
-
-            <button
-              onClick={salvarEmpresa}
-              className="mt-4 w-full rounded-xl bg-[#2F5597] p-3 font-extrabold text-white"
-            >
-              Salvar empresa
-            </button>
           </section>
         ) : showVisitaForm ? (
           <section className="rounded-2xl bg-white p-5 shadow-sm">
@@ -6966,6 +7041,7 @@ export default function Home() {
                     setFluxosEmpresa(criarFluxosOperacionaisPadrao());
                     setProgramasEmpresa(criarProgramasControlePadrao());
                     setPopsEmpresa([]);
+                    setEmpresaSecao("dados");
                     setMsg("");
                     setShowEmpresaForm(true);
                   }}
@@ -7028,7 +7104,7 @@ export default function Home() {
                         onClick={() => editarEmpresa(e)}
                         className="rounded-xl bg-slate-100 px-4 py-2 font-bold"
                       >
-                        Editar
+                        Gerenciar
                       </button>
                     )}
 

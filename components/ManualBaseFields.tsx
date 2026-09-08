@@ -17,6 +17,7 @@ type Props = {
   onSetoresChange: (setores: string[]) => void;
   equipamentos: EquipamentoSetor[];
   onEquipamentosChange: (equipamentos: EquipamentoSetor[]) => void;
+  modo?: "completo" | "responsabilidades" | "ambientes";
 };
 
 function SectionTitle({ title, description }: { title: string; description: string }) {
@@ -35,6 +36,7 @@ export default function ManualBaseFields({
   onSetoresChange,
   equipamentos,
   onEquipamentosChange,
+  modo = "completo",
 }: Props) {
   const [setorEquipamento, setSetorEquipamento] = useState(setores[0] || SETORES_OFICIAIS_MANUAL[0]);
   const [nomeEquipamento, setNomeEquipamento] = useState("");
@@ -43,6 +45,8 @@ export default function ManualBaseFields({
   const [novoAmbiente, setNovoAmbiente] = useState("");
 
   const setoresParaEquipamentos = setores.length ? setores : [...SETORES_OFICIAIS_MANUAL];
+  const mostrarAmbientes = modo === "completo" || modo === "ambientes";
+  const mostrarResponsabilidades = modo === "completo" || modo === "responsabilidades";
 
   function toggleSetor(setor: string) {
     const proximos = setores.includes(setor)
@@ -92,14 +96,14 @@ export default function ManualBaseFields({
   }
 
   return (
-    <div className="mt-6 space-y-4 border-t border-slate-200 pt-5">
-      <div>
+    <div className={modo === "completo" ? "mt-6 space-y-4 border-t border-slate-200 pt-5" : "space-y-4"}>
+      {modo === "completo" && <div>
         <div className="text-xs font-extrabold uppercase tracking-wide text-[#2F5597]">Base do Manual de Boas Práticas</div>
         <h3 className="mt-1 text-xl font-extrabold text-slate-950">Identificação, setores e responsabilidades</h3>
         <p className="mt-1 text-sm text-slate-500">Esses dados serão reutilizados no Manual, nas visitas e nos relatórios.</p>
-      </div>
+      </div>}
 
-      <details open className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+      {mostrarAmbientes && <details open className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
         <summary className="cursor-pointer list-none">
           <SectionTitle title="Setores do estabelecimento" description="Selecione somente os setores que realmente existem nesta empresa." />
         </summary>
@@ -129,9 +133,9 @@ export default function ManualBaseFields({
           <button type="button" onClick={adicionarAmbienteReal} className="rounded-xl bg-[#17365D] px-4 py-3 text-sm font-extrabold text-white">Adicionar ambiente</button>
         </div>
         <div className="mt-3 text-xs font-bold text-slate-500">{setores.length} setor(es) selecionado(s)</div>
-      </details>
+      </details>}
 
-      <details className="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-4">
+      {mostrarResponsabilidades && <details open={modo === "responsabilidades"} className="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-4">
         <summary className="cursor-pointer list-none">
           <SectionTitle title="Responsabilidades" description="Textos base do Manual. Desative ou ajuste conforme o contrato e a realidade do cliente." />
         </summary>
@@ -158,9 +162,9 @@ export default function ManualBaseFields({
           </select>
           <button type="button" onClick={adicionarResponsabilidade} className="rounded-xl bg-blue-50 px-4 py-2 text-sm font-extrabold text-[#2F5597]">+ Adicionar responsabilidade</button>
         </div>
-      </details>
+      </details>}
 
-      <details className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+      {mostrarAmbientes && <details open className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
         <summary className="cursor-pointer list-none">
           <SectionTitle title="Quadro de equipamentos e móveis" description="Cadastre os itens vinculados a cada setor do estabelecimento." />
         </summary>
@@ -186,7 +190,7 @@ export default function ManualBaseFields({
           ))}
           {equipamentos.length === 0 && <div className="rounded-xl border border-dashed border-slate-300 p-4 text-center text-sm text-slate-500">Nenhum equipamento ou móvel cadastrado.</div>}
         </div>
-      </details>
+      </details>}
     </div>
   );
 }

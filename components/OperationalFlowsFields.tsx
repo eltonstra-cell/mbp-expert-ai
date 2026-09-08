@@ -11,9 +11,10 @@ type Props = {
   fluxos: FluxoOperacional[];
   setores: string[];
   onChange: (fluxos: FluxoOperacional[]) => void;
+  aberto?: boolean;
 };
 
-export default function OperationalFlowsFields({ fluxos, setores, onChange }: Props) {
+export default function OperationalFlowsFields({ fluxos, setores, onChange, aberto = false }: Props) {
   useEffect(() => {
     let alterou = false;
     const corrigidos = fluxos.map((fluxo) => {
@@ -40,7 +41,7 @@ export default function OperationalFlowsFields({ fluxos, setores, onChange }: Pr
   const ativos = fluxos.filter((fluxo) => fluxo.aplicavel).length;
 
   return (
-    <details className="mt-4 min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-4">
+    <details open={aberto} className="mt-4 min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-4">
       <summary className="cursor-pointer list-none">
         <div className="font-extrabold text-slate-950">Capítulo 2 — Fluxos operacionais</div>
         <div className="mt-0.5 text-xs text-slate-500">

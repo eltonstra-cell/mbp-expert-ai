@@ -9,6 +9,7 @@ import { DEFINICOES_PROGRAMAS_CONTROLE } from "@/lib/qualityPrograms";
 type Props = {
   programas: ProgramaControleQualidade[];
   onChange: (programas: ProgramaControleQualidade[]) => void;
+  aberto?: boolean;
 };
 
 const statusDisponiveis: StatusProgramaControle[] = [
@@ -18,7 +19,7 @@ const statusDisponiveis: StatusProgramaControle[] = [
   "Não se aplica",
 ];
 
-export default function QualityProgramsFields({ programas, onChange }: Props) {
+export default function QualityProgramsFields({ programas, onChange, aberto = false }: Props) {
   function atualizar(indice: number, alteracao: Partial<ProgramaControleQualidade>) {
     onChange(programas.map((programa, atual) =>
       atual === indice ? { ...programa, ...alteracao } : programa
@@ -30,7 +31,7 @@ export default function QualityProgramsFields({ programas, onChange }: Props) {
   ).length;
 
   return (
-    <details className="mt-4 min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-4">
+    <details open={aberto} className="mt-4 min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-4">
       <summary className="cursor-pointer list-none">
         <div className="font-extrabold text-slate-950">Capítulo 3 — Programas de Controle de Qualidade</div>
         <div className="mt-0.5 text-xs text-slate-500">
