@@ -33,6 +33,40 @@ const ALIASES_SETORES: Record<string, SetorOficialManual> = {
   "distribuição / exposição": SETORES_OFICIAIS_MANUAL[6],
 };
 
+const MIGRACAO_SETORES_LEGADOS: Record<string, string[]> = {
+  "salão de atendimento": [SETORES_OFICIAIS_MANUAL[6]],
+  "copa": [SETORES_OFICIAIS_MANUAL[4]],
+  "churrasqueira": [SETORES_OFICIAIS_MANUAL[4]],
+  "higienização de hortifrutigranjeiros": [SETORES_OFICIAIS_MANUAL[4]],
+  "higienização de utensílios e equipamentos": [SETORES_OFICIAIS_MANUAL[5]],
+  "higienização de equipamentos": [SETORES_OFICIAIS_MANUAL[5]],
+  "higienização de espetos": [SETORES_OFICIAIS_MANUAL[5]],
+  "estoque seco": [SETORES_OFICIAIS_MANUAL[1]],
+  "câmara fria": [SETORES_OFICIAIS_MANUAL[1]],
+  "armazenamento congelado (freezers)": [SETORES_OFICIAIS_MANUAL[1]],
+  "armazenamento congelado": [SETORES_OFICIAIS_MANUAL[1]],
+  "depósito de embalagens e descartáveis": [SETORES_OFICIAIS_MANUAL[1]],
+  "depósito de materiais de limpeza (dml)": [SETORES_OFICIAIS_MANUAL[2]],
+  "armazenamento temporário de resíduos": [],
+  "sanitários/vestiários de funcionários": [
+    SETORES_OFICIAIS_MANUAL[7],
+    SETORES_OFICIAIS_MANUAL[8],
+    SETORES_OFICIAIS_MANUAL[9],
+    SETORES_OFICIAIS_MANUAL[10],
+  ],
+  "sanitários/vestiário de funcionários": [
+    SETORES_OFICIAIS_MANUAL[7],
+    SETORES_OFICIAIS_MANUAL[8],
+    SETORES_OFICIAIS_MANUAL[9],
+    SETORES_OFICIAIS_MANUAL[10],
+  ],
+  "sanitários de clientes": [
+    SETORES_OFICIAIS_MANUAL[11],
+    SETORES_OFICIAIS_MANUAL[12],
+  ],
+  "área administrativa": [],
+};
+
 function chave(texto: string) {
   return texto.trim().toLocaleLowerCase("pt-BR");
 }
@@ -40,6 +74,15 @@ function chave(texto: string) {
 export function normalizarSetorManual(nome: string): string {
   const oficial = SETORES_OFICIAIS_MANUAL.find((setor) => chave(setor) === chave(nome));
   return oficial || ALIASES_SETORES[chave(nome)] || nome;
+}
+
+export function migrarSetoresLegados(setores?: string[]): string[] {
+  if (!Array.isArray(setores)) return [];
+  const migrados = setores.flatMap((setor) => {
+    const substitutos = MIGRACAO_SETORES_LEGADOS[chave(setor)];
+    return substitutos === undefined ? [normalizarSetorManual(setor)] : substitutos;
+  });
+  return [...new Set(migrados.filter(Boolean))];
 }
 
 export const DIAS_SEMANA: DiaSemana[] = [

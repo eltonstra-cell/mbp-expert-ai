@@ -5,11 +5,27 @@ import {
   criarHorarioExemploManual,
   criarResponsabilidadesPadrao,
   normalizarEquipamentos,
+  migrarSetoresLegados,
   normalizarHorarios,
   normalizarSetorManual,
   resumirHorarioFuncionamento,
   SETORES_OFICIAIS_MANUAL,
 } from "../lib/manualBase.ts";
+
+test("migra os sanitários antigos para os setores específicos do Manual", () => {
+  const setores = migrarSetoresLegados([
+    "Sanitários/Vestiários de Funcionários",
+    "Sanitários de Clientes",
+  ]);
+  assert.equal(setores.length, 6);
+  assert.equal(setores.includes("Banheiro feminino de colaborador"), true);
+  assert.equal(setores.includes("Banheiro masculino de clientes"), true);
+});
+
+test("consolida subsetores antigos sem repetir o setor oficial", () => {
+  const setores = migrarSetoresLegados(["Copa", "Churrasqueira", "Cozinha / Produção"]);
+  assert.deepEqual(setores, ["Cozinha / Produção"]);
+});
 
 test("mantém os 13 setores oficiais descritos no Manual", () => {
   assert.equal(SETORES_OFICIAIS_MANUAL.length, 13);

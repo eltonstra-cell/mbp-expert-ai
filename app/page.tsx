@@ -6,6 +6,7 @@ import AccessPreparationPanel from "@/components/AccessPreparationPanel";
 import ManualBaseFields from "@/components/ManualBaseFields";
 import OperationalFlowsFields from "@/components/OperationalFlowsFields";
 import QualityProgramsFields from "@/components/QualityProgramsFields";
+import PopsFields from "@/components/PopsFields";
 import type {
   AppDB,
   AcaoPermissao,
@@ -18,6 +19,7 @@ import type {
   Evidencia,
   FluxoOperacional,
   ProgramaControleQualidade,
+  ProcedimentoOperacionalPadronizado,
   ResponsabilidadeManual,
   StatusUsuario,
   Visita,
@@ -28,6 +30,7 @@ import {
   normalizarHorarios,
   normalizarResponsabilidades,
   normalizarSetorManual,
+  migrarSetoresLegados,
   resumirHorarioFuncionamento,
   SETORES_OFICIAIS_MANUAL,
 } from "@/lib/manualBase";
@@ -43,6 +46,7 @@ import {
   normalizarProgramasControle,
   obterCriteriosProgramasControle,
 } from "@/lib/qualityPrograms";
+import { normalizarPops } from "@/lib/pops";
 import {
   clearOfflineSession,
   emptyDB,
@@ -513,6 +517,7 @@ export default function Home() {
   const [criandoVisita, setCriandoVisita] = useState(false);
   const [ambientesSelecionados, setAmbientesSelecionados] = useState<string[]>([]);
   const [ambientePersonalizado, setAmbientePersonalizado] = useState("");
+  const [statusAmbientes, setStatusAmbientes] = useState("");
   const [ambienteChecklistAtivo, setAmbienteChecklistAtivo] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
@@ -600,6 +605,7 @@ export default function Home() {
   const [programasEmpresa, setProgramasEmpresa] = useState<ProgramaControleQualidade[]>(
     criarProgramasControlePadrao()
   );
+  const [popsEmpresa, setPopsEmpresa] = useState<ProcedimentoOperacionalPadronizado[]>([]);
 
   useEffect(() => {
     if (syncStatus !== "erro") {
@@ -911,7 +917,7 @@ export default function Home() {
         setProtecaoLocalAtiva(true);
       }
 
-    const vs = (s.visitas || []).map((v: any) => ({
+    const visitasCarregadas = (s.visitas || []).map((v: any) => ({
       id: v.id,
       empresaId: v.empresaId,
       data: v.data || hojeISO(),
@@ -942,6 +948,24 @@ export default function Home() {
       checklist: Array.isArray(v.checklist) ? v.checklist : [],
       checklistVersao: typeof v.checklistVersao === "number" ? v.checklistVersao : 1,
     })) as Visita[];
+
+    const vs = visitasCarregadas.map((visita) => {
+      const possuiRespostas = (visita.checklist || []).some(
+        (item) => item.status !== "Pendente" || item.observacao.trim().length > 0
+      );
+      if (possuiRespostas) return visita;
+      const ambientesMigrados = migrarSetoresLegados(visita.ambientes);
+      const ambientesMudaram =
+        JSON.stringify(ambientesMigrados) !== JSON.stringify(visita.ambientes || []);
+      return ambientesMudaram
+        ? {
+            ...visita,
+            ambientes: ambientesMigrados,
+            checklist: [],
+            checklistVersao: 5,
+          }
+        : visita;
+    });
 
     // Sincroniza NCs já existentes no checklist com o módulo de Não Conformidades.
     // Isso também migra visitas criadas antes da v2.5.
@@ -997,14 +1021,13 @@ export default function Home() {
             responsabilidadesManual: normalizarResponsabilidades(
               empresa.responsabilidadesManual
             ),
-            setoresManual: Array.isArray(empresa.setoresManual)
-              ? empresa.setoresManual.map((setor: string) => normalizarSetorManual(setor))
-              : [],
+            setoresManual: migrarSetoresLegados(empresa.setoresManual),
             equipamentosSetores: normalizarEquipamentos(empresa.equipamentosSetores),
             fluxosOperacionais: normalizarFluxosOperacionais(empresa.fluxosOperacionais),
             programasControleQualidade: normalizarProgramasControle(
               empresa.programasControleQualidade
             ),
+            pops: normalizarPops(empresa.pops),
           },
         ])
       ),
@@ -2357,6 +2380,7 @@ export default function Home() {
       equipamentosSetores: normalizarEquipamentos(equipamentosEmpresa),
       fluxosOperacionais: normalizarFluxosOperacionais(fluxosEmpresa),
       programasControleQualidade: normalizarProgramasControle(programasEmpresa),
+      pops: normalizarPops(popsEmpresa),
       criadoEm: anterior?.criadoEm || new Date().toISOString(),
     };
     setDb((o) => ({
@@ -2419,13 +2443,12 @@ export default function Home() {
       normalizarResponsabilidades(empresa.responsabilidadesManual)
     );
     setSetoresEmpresa(
-      Array.isArray(empresa.setoresManual)
-        ? empresa.setoresManual.map(normalizarSetorManual)
-        : []
+      migrarSetoresLegados(empresa.setoresManual)
     );
     setEquipamentosEmpresa(normalizarEquipamentos(empresa.equipamentosSetores));
     setFluxosEmpresa(normalizarFluxosOperacionais(empresa.fluxosOperacionais));
     setProgramasEmpresa(normalizarProgramasControle(empresa.programasControleQualidade));
+    setPopsEmpresa(normalizarPops(empresa.pops));
     setEditingEmpresaId(empresa.id);
     setMsg("");
     setShowEmpresaForm(true);
@@ -2491,12 +2514,73 @@ export default function Home() {
         : empresaVisita?.setoresManual || []
     );
     setAmbientePersonalizado("");
+    setStatusAmbientes("");
     setView("ambientes");
   }
 
+  function atualizarAmbientesDaVisita(proximos: string[]) {
+    if (!visitaAtual) return;
+    setAmbientesSelecionados(proximos);
+    setDb((o) => ({
+      ...o,
+      visitas: o.visitas.map((visita) => {
+        if (visita.id !== visitaAtual.id) return visita;
+        const checklistExistente = visita.checklist || [];
+        const possuiRespostas = checklistExistente.some(
+          (item) => item.status !== "Pendente" || item.observacao.trim().length > 0
+        );
+        if (!possuiRespostas) {
+          return {
+            ...visita,
+            ambientes: proximos,
+            checklist: [],
+            checklistVersao: 5,
+            progresso: proximos.length ? Math.max(visita.progresso || 0, 15) : 0,
+          };
+        }
+
+        const adicionados = proximos.filter(
+          (ambiente) => !(visita.ambientes || []).includes(ambiente)
+        );
+        const preservados = checklistExistente.filter(
+          (item) =>
+            item.ambiente === AMBIENTE_PROGRAMAS_CONTROLE ||
+            proximos.includes(item.ambiente)
+        );
+        const novos = criarChecklist(
+          adicionados,
+          empresaVisita?.fluxosOperacionais,
+          undefined
+        );
+        return {
+          ...visita,
+          ambientes: proximos,
+          checklist: [...preservados, ...novos],
+          checklistVersao: 5,
+          progresso: proximos.length ? Math.max(visita.progresso || 0, 15) : 0,
+        };
+      }),
+    }));
+    setStatusAmbientes("Ambientes atualizados");
+  }
+
   function toggleAmbiente(nome: string) {
-    setAmbientesSelecionados((atual) =>
-      atual.includes(nome) ? atual.filter((x) => x !== nome) : [...atual, nome]
+    const removendo = ambientesSelecionados.includes(nome);
+    if (removendo) {
+      const possuiRegistro = (visitaAtual?.checklist || []).some(
+        (item) =>
+          item.ambiente === nome &&
+          (item.status !== "Pendente" || item.observacao.trim().length > 0)
+      );
+      if (
+        possuiRegistro &&
+        !window.confirm(`O ambiente “${nome}” possui respostas. Remover mesmo assim?`)
+      ) return;
+    }
+    atualizarAmbientesDaVisita(
+      removendo
+        ? ambientesSelecionados.filter((item) => item !== nome)
+        : [...ambientesSelecionados, nome]
     );
   }
 
@@ -2504,32 +2588,18 @@ export default function Home() {
     const nome = ambientePersonalizado.trim();
     if (!nome) return;
     if (!ambientesSelecionados.includes(nome)) {
-      setAmbientesSelecionados((a) => [...a, nome]);
+      atualizarAmbientesDaVisita([...ambientesSelecionados, nome]);
     }
     setAmbientePersonalizado("");
   }
 
   function salvarAmbientes() {
-    if (!visitaAtual || ambientesSelecionados.length === 0) return;
-    if (!exigirPermissao("visitas.executar", visitaAtual.empresaId)) return;
-
-    setDb((o) => ({
-      ...o,
-      visitas: o.visitas.map((v) => {
-        if (v.id !== visitaAtual.id) return v;
-
-        const ambientesMudaram =
-          JSON.stringify(v.ambientes || []) !== JSON.stringify(ambientesSelecionados);
-
-        return {
-          ...v,
-          ambientes: ambientesSelecionados,
-          checklist: ambientesMudaram ? [] : v.checklist || [],
-          progresso: Math.max(v.progresso || 0, 15),
-        };
-      }),
-    }));
-
+    if (
+      visitaAtual &&
+      JSON.stringify(visitaAtual.ambientes || []) !== JSON.stringify(ambientesSelecionados)
+    ) {
+      atualizarAmbientesDaVisita(ambientesSelecionados);
+    }
     setView("visita");
   }
 
@@ -3825,6 +3895,8 @@ export default function Home() {
               onChange={setProgramasEmpresa}
             />
 
+            <PopsFields pops={popsEmpresa} onChange={setPopsEmpresa} />
+
             {msg && (
               <div className="mt-3 rounded-xl bg-amber-50 p-3 text-sm">
                 {msg}
@@ -4017,8 +4089,8 @@ export default function Home() {
               <div className="rounded-2xl bg-white p-5 shadow-sm">
                 <div className="flex items-center justify-between">
                   <h2 className="text-xl font-extrabold">Roteiro da visita</h2>
-                  <span className="text-xs font-bold text-slate-400">
-                    ordem atual
+                  <span className={`text-xs font-bold ${statusAmbientes ? "text-emerald-700" : "text-slate-400"}`}>
+                    {statusAmbientes || "salvamento automático"}
                   </span>
                 </div>
 
@@ -4052,17 +4124,9 @@ export default function Home() {
 
                 <button
                   onClick={salvarAmbientes}
-                  disabled={ambientesSelecionados.length === 0}
-                  className="mt-5 w-full rounded-xl bg-[#2F5597] p-3 font-extrabold text-white disabled:opacity-40"
+                  className="mt-5 w-full rounded-xl bg-[#2F5597] p-3 font-extrabold text-white"
                 >
-                  Salvar ambientes
-                </button>
-
-                <button
-                  onClick={() => setView("visita")}
-                  className="mt-2 w-full rounded-xl bg-slate-100 p-3 font-bold"
-                >
-                  Voltar à Central da Visita
+                  Concluir e voltar à Central
                 </button>
               </div>
             </div>
@@ -5069,8 +5133,15 @@ export default function Home() {
                 <div className="text-sm font-extrabold">Roteiro do checklist</div>
                 <div className="mt-3 space-y-4">
                   {gruposRoteiroChecklist.map((grupo) => (
-                    <div key={grupo.titulo}>
-                      <div className="mb-2 text-xs font-extrabold uppercase tracking-wide text-slate-400">
+                    <div
+                      key={grupo.titulo}
+                      className={grupo.titulo === "Verificação geral" ? "border-t-2 border-blue-100 pt-4" : ""}
+                    >
+                      <div className={`mb-2 font-extrabold uppercase tracking-wide ${
+                        grupo.titulo === "Verificação geral"
+                          ? "text-sm text-[#2F5597]"
+                          : "text-xs text-slate-400"
+                      }`}>
                         {grupo.titulo}
                       </div>
                       <div className="space-y-2">
@@ -5078,16 +5149,28 @@ export default function Home() {
                           const itensAmb = checklistAtual.filter((i) => i.ambiente === ambiente);
                           const respAmb = itensAmb.filter((i) => i.status !== "Pendente").length;
                           const ativo = ambienteChecklistAtivo === ambiente;
+                          const verificacaoGeral = ambiente === AMBIENTE_PROGRAMAS_CONTROLE;
 
                           return (
                             <button
                               key={ambiente}
                               onClick={() => setAmbienteChecklistAtivo(ambiente)}
                               className={`w-full rounded-xl p-3 text-left ${
-                                ativo ? "bg-[#17365D] text-white" : "bg-slate-50"
+                                ativo
+                                  ? "bg-[#17365D] text-white"
+                                  : verificacaoGeral
+                                  ? "border-2 border-blue-200 bg-blue-50 text-[#17365D]"
+                                  : "bg-slate-50"
                               }`}
                             >
-                              <div className="font-extrabold">{ambiente}</div>
+                              <div className={verificacaoGeral ? "text-base font-extrabold" : "font-extrabold"}>
+                                {verificacaoGeral ? "▣ Programas de Controle de Qualidade" : ambiente}
+                              </div>
+                              {verificacaoGeral && (
+                                <div className={`mt-1 text-xs ${ativo ? "text-blue-100" : "text-slate-600"}`}>
+                                  Documentos, registros, responsáveis e frequências
+                                </div>
+                              )}
                               <div className={`mt-1 text-xs ${ativo ? "text-blue-100" : "text-slate-500"}`}>
                                 <span>{respAmb}/{itensAmb.length} respondidos</span>
                                 {itensAmb.length > 0 && respAmb === itensAmb.length && (
@@ -6264,6 +6347,7 @@ export default function Home() {
                     setEquipamentosEmpresa([]);
                     setFluxosEmpresa(criarFluxosOperacionaisPadrao());
                     setProgramasEmpresa(criarProgramasControlePadrao());
+                    setPopsEmpresa([]);
                     setMsg("");
                     setShowEmpresaForm(true);
                   }}
@@ -6304,6 +6388,9 @@ export default function Home() {
                   </div>
                   <div className="mt-1 text-xs text-slate-500">
                     {(e.programasControleQualidade || []).filter((programa) => programa.status === "Implantado" || programa.status === "Em implantação").length} programa(s) de controle ativo(s)
+                  </div>
+                  <div className="mt-1 text-xs text-slate-500">
+                    {(e.pops || []).length} POP(s) cadastrado(s)
                   </div>
                   <div className="mt-4 flex flex-wrap gap-2">
                     <button
