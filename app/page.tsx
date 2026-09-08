@@ -1491,6 +1491,10 @@ export default function Home() {
   const equipamentosDaVisita = (empresaVisita?.equipamentosSetores || []).filter(
     (equipamento) => (visitaAtual?.ambientes || []).includes(equipamento.setor)
   );
+  const totalUnidadesEquipamentos = equipamentosDaVisita.reduce(
+    (total, equipamento) => total + Math.max(1, Number(equipamento.quantidade) || 1),
+    0
+  );
   const equipamentosRelatorio = equipamentosDaVisita.map((equipamento) => ({
     id: equipamento.id,
     ambiente: equipamento.setor,
@@ -5747,42 +5751,37 @@ export default function Home() {
                   })}
 
                 {ambienteChecklistAtivo !== AMBIENTE_PROGRAMAS_CONTROLE && (
-                  <article className="rounded-2xl border-2 border-blue-100 bg-white p-5 shadow-sm">
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                      <div>
-                        <div className="text-xs font-extrabold uppercase tracking-wide text-[#2F5597]">
-                          Quadro do ambiente
-                        </div>
-                        <h3 className="mt-1 text-xl font-extrabold text-slate-950">
-                          Equipamentos e móveis
-                        </h3>
-                        <p className="mt-1 text-sm text-slate-500">
-                          Relação dos equipamentos e móveis existentes neste ambiente, conforme o Manual.
-                        </p>
+                  <article className="rounded-2xl border-2 border-blue-100 bg-white p-4 shadow-sm">
+                    <div>
+                      <div className="text-[10px] font-extrabold uppercase tracking-wide text-[#2F5597]">
+                        Quadro do ambiente
                       </div>
-                      <span className="w-fit rounded-full bg-blue-50 px-3 py-1 text-xs font-extrabold text-[#2F5597]">
-                        {equipamentosAmbienteAtivo.length} item(ns)
-                      </span>
+                      <h3 className="mt-0.5 text-lg font-extrabold text-slate-950">
+                        Equipamentos e móveis
+                      </h3>
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        Itens existentes neste ambiente, conforme o Manual.
+                      </p>
                     </div>
 
                     {equipamentosAmbienteAtivo.length === 0 ? (
-                      <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
+                      <div className="mt-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-500">
                         Nenhum equipamento ou móvel cadastrado para este ambiente. Você pode incluir o item encontrado abaixo.
                       </div>
                     ) : (
-                      <div className="mt-4 overflow-hidden rounded-xl border-2 border-blue-200 bg-blue-50/70">
-                        <div className="flex items-center justify-between gap-3 bg-blue-100/80 px-4 py-2 text-[10px] font-extrabold uppercase tracking-wide text-[#2F5597]">
+                      <div className="mt-3 overflow-hidden rounded-xl border-2 border-blue-200 bg-blue-50/70">
+                        <div className="flex items-center justify-between gap-3 bg-blue-100/80 px-3 py-1.5 text-[9px] font-extrabold uppercase tracking-wide text-[#2F5597]">
                           <span>Equipamento ou móvel</span>
-                          <span>Quantidade</span>
+                          <span>Qtd.</span>
                         </div>
                         {equipamentosAmbienteAtivo.map((equipamento, indice) => (
                           <div
                             key={equipamento.id}
-                            className={`flex items-center justify-between gap-4 px-4 py-3 ${
+                            className={`flex items-center justify-between gap-3 px-3 py-2 ${
                               indice > 0 ? "border-t border-blue-200" : ""
                             }`}
                           >
-                            <div className="min-w-0 flex-1 font-medium text-slate-900">
+                            <div className="min-w-0 flex-1 text-sm font-normal text-slate-900">
                               {equipamento.nome}
                             </div>
                             <input
@@ -5791,15 +5790,15 @@ export default function Home() {
                               value={equipamento.quantidade}
                               onChange={(event) => atualizarQuantidadeEquipamento(equipamento.id, Number(event.target.value))}
                               aria-label={`Quantidade de ${equipamento.nome}`}
-                              className="w-20 shrink-0 rounded-lg border border-blue-200 bg-white px-3 py-2 text-center text-base font-bold text-slate-900"
+                              className="w-16 shrink-0 rounded-lg border border-blue-200 bg-white px-2 py-1.5 text-center text-sm font-semibold text-slate-900"
                             />
                           </div>
                         ))}
                       </div>
                     )}
 
-                    <details className="mt-5 rounded-xl bg-slate-50 p-4">
-                      <summary className="cursor-pointer select-none text-sm font-extrabold text-[#2F5597]">
+                    <details className="mt-3 rounded-xl bg-slate-50 p-3">
+                      <summary className="cursor-pointer select-none text-xs font-extrabold text-[#2F5597]">
                         + Adicionar equipamento ou móvel
                       </summary>
                       <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_100px_auto]">
@@ -5833,7 +5832,7 @@ export default function Home() {
                     <button
                       type="button"
                       onClick={avancarParaProximoAmbiente}
-                      className="mt-5 w-full rounded-xl bg-[#17365D] px-4 py-3 text-sm font-extrabold text-white"
+                      className="mt-3 w-full rounded-xl bg-[#17365D] px-4 py-2.5 text-sm font-extrabold text-white"
                     >
                       {pendentesAmbienteAtivo > 0
                         ? `Avançar com ${pendentesAmbienteAtivo} pendente(s) →`
@@ -5986,7 +5985,7 @@ export default function Home() {
                     Equipamentos e móveis
                   </div>
                   <div className="mt-1 text-xs text-slate-600">
-                    {equipamentosDaVisita.length} equipamento(s) e móvel(is) cadastrado(s) nos ambientes
+                    {equipamentosDaVisita.length} tipo(s) cadastrado(s) • {totalUnidadesEquipamentos} unidade(s)
                   </div>
                 </div>
                 <span className="shrink-0 text-xl font-extrabold text-[#2F5597]">→</span>
@@ -6324,7 +6323,7 @@ export default function Home() {
                   <h2 className="mt-1 text-xl font-extrabold">Equipamentos e móveis</h2>
                 </div>
                 <div className="text-sm font-bold text-slate-500">
-                  {equipamentosRelatorio.length} item(ns) cadastrado(s)
+                  {equipamentosRelatorio.length} tipo(s) • {totalUnidadesEquipamentos} unidade(s)
                 </div>
               </div>
 
