@@ -17,7 +17,7 @@ export default function OperationalFlowsFields({ fluxos, setores, onChange }: Pr
   const ativos = fluxos.filter((fluxo) => fluxo.aplicavel).length;
 
   return (
-    <details className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+    <details className="mt-4 min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-4">
       <summary className="cursor-pointer list-none">
         <div className="font-extrabold text-slate-950">Capítulo 2 — Fluxos operacionais</div>
         <div className="mt-0.5 text-xs text-slate-500">
@@ -49,25 +49,25 @@ export default function OperationalFlowsFields({ fluxos, setores, onChange }: Pr
               </label>
 
               {fluxo.aplicavel && (
-                <div className="mt-3 grid gap-2 md:grid-cols-2">
+                <div className="mt-3 grid min-w-0 gap-2 md:grid-cols-2">
                   <label className="text-xs font-bold text-slate-600">
                     Setor onde ocorre
-                    <select value={fluxo.setorVinculado} onChange={(event) => atualizar(indice, { setorVinculado: event.target.value })} className="mt-1 w-full rounded-lg border bg-white p-2 text-sm font-normal">
+                    <select value={fluxo.setorVinculado} onChange={(event) => atualizar(indice, { setorVinculado: event.target.value })} className="mt-1 min-w-0 w-full rounded-lg border bg-white p-2 text-sm font-normal">
                       {setores.length === 0 && <option value={fluxo.setorVinculado}>{fluxo.setorVinculado}</option>}
                       {setores.map((setor) => <option key={setor} value={setor}>{setor}</option>)}
                     </select>
                   </label>
                   <label className="text-xs font-bold text-slate-600">
                     Responsável
-                    <input value={fluxo.responsavel} onChange={(event) => atualizar(indice, { responsavel: event.target.value })} placeholder="Nome ou função" className="mt-1 w-full rounded-lg border bg-white p-2 text-sm font-normal" />
+                    <input value={fluxo.responsavel} onChange={(event) => atualizar(indice, { responsavel: event.target.value })} placeholder="Nome ou função" className="mt-1 min-w-0 w-full rounded-lg border bg-white p-2 text-sm font-normal" />
                   </label>
                   <label className="text-xs font-bold text-slate-600 md:col-span-2">
                     Como acontece nesta empresa?
-                    <textarea rows={2} value={fluxo.descricao} onChange={(event) => atualizar(indice, { descricao: event.target.value })} placeholder="Descrição curta do fluxo" className="mt-1 w-full rounded-lg border bg-white p-2 text-sm font-normal" />
+                    <textarea rows={2} value={fluxo.descricao} onChange={(event) => atualizar(indice, { descricao: event.target.value })} placeholder="Descrição curta do fluxo" className="mt-1 min-w-0 w-full rounded-lg border bg-white p-2 text-sm font-normal" />
                   </label>
                   <label className="text-xs font-bold text-slate-600 md:col-span-2">
                     Controles e registros usados
-                    <input value={fluxo.controlesRegistros} onChange={(event) => atualizar(indice, { controlesRegistros: event.target.value })} placeholder="Ex.: planilha de temperatura e recebimento" className="mt-1 w-full rounded-lg border bg-white p-2 text-sm font-normal" />
+                    <input value={fluxo.controlesRegistros} onChange={(event) => atualizar(indice, { controlesRegistros: event.target.value })} placeholder="Ex.: planilha de temperatura e recebimento" className="mt-1 min-w-0 w-full rounded-lg border bg-white p-2 text-sm font-normal" />
                   </label>
                 </div>
               )}

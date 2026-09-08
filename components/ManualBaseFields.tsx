@@ -114,7 +114,7 @@ export default function ManualBaseFields({
         <div className="mt-3 text-xs font-bold text-slate-500">{setores.length} setor(es) selecionado(s)</div>
       </details>
 
-      <details className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+      <details className="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-4">
         <summary className="cursor-pointer list-none">
           <SectionTitle title="Responsabilidades" description="Textos base do Manual. Desative ou ajuste conforme o contrato e a realidade do cliente." />
         </summary>
@@ -147,28 +147,28 @@ export default function ManualBaseFields({
         <summary className="cursor-pointer list-none">
           <SectionTitle title="Quadro de equipamentos e móveis" description="Cadastre os itens vinculados a cada setor do estabelecimento." />
         </summary>
-        <div className="mt-4 grid gap-2 md:grid-cols-[1.4fr_1fr_100px_auto]">
-          <select value={setorEquipamento} onChange={(event) => setSetorEquipamento(event.target.value)} className="rounded-xl border bg-white p-3 text-sm">
+        <div className="mt-4 grid min-w-0 gap-2 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_100px_auto]">
+          <select value={setorEquipamento} onChange={(event) => setSetorEquipamento(event.target.value)} className="min-w-0 w-full rounded-xl border bg-white p-3 text-sm">
             {setoresParaEquipamentos.map((setor) => <option key={setor}>{setor}</option>)}
           </select>
-          <input value={nomeEquipamento} onChange={(event) => setNomeEquipamento(event.target.value)} placeholder="Ex.: Refrigerador" className="rounded-xl border p-3 text-sm" />
-          <input type="number" min="1" value={quantidadeEquipamento} onChange={(event) => setQuantidadeEquipamento(event.target.value)} className="rounded-xl border p-3 text-sm" aria-label="Quantidade" />
-          <button type="button" onClick={adicionarEquipamento} className="rounded-xl bg-[#2F5597] px-4 py-3 text-sm font-extrabold text-white">Adicionar</button>
+          <input value={nomeEquipamento} onChange={(event) => setNomeEquipamento(event.target.value)} placeholder="Ex.: Refrigerador" className="min-w-0 w-full rounded-xl border p-3 text-sm" />
+          <input type="number" min="1" value={quantidadeEquipamento} onChange={(event) => setQuantidadeEquipamento(event.target.value)} className="min-w-0 w-full rounded-xl border p-3 text-sm" aria-label="Quantidade" />
+          <button type="button" onClick={adicionarEquipamento} className="w-full rounded-xl bg-[#2F5597] px-4 py-3 text-sm font-extrabold text-white">Adicionar</button>
         </div>
 
         <div className="mt-4 space-y-2">
           {equipamentos.map((equipamento, indice) => (
-            <div key={equipamento.id} className="grid gap-2 rounded-xl border border-slate-200 bg-white p-3 md:grid-cols-[1.3fr_1fr_90px_150px_auto]">
-              <select value={equipamento.setor} onChange={(event) => onEquipamentosChange(equipamentos.map((item, atual) => atual === indice ? { ...item, setor: event.target.value } : item))} className="rounded-lg border p-2 text-xs">
+            <div key={equipamento.id} className="grid min-w-0 gap-2 rounded-xl border border-slate-200 bg-white p-3 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_90px_150px_auto]">
+              <select value={equipamento.setor} onChange={(event) => onEquipamentosChange(equipamentos.map((item, atual) => atual === indice ? { ...item, setor: event.target.value } : item))} className="min-w-0 w-full rounded-lg border p-2 text-xs">
                 {setoresParaEquipamentos.map((setor) => <option key={setor}>{setor}</option>)}
               </select>
-              <input value={equipamento.nome} onChange={(event) => onEquipamentosChange(equipamentos.map((item, atual) => atual === indice ? { ...item, nome: event.target.value } : item))} className="rounded-lg border p-2 text-sm" />
-              <input type="number" min="1" value={equipamento.quantidade} onChange={(event) => onEquipamentosChange(equipamentos.map((item, atual) => atual === indice ? { ...item, quantidade: Math.max(1, Number(event.target.value) || 1) } : item))} className="rounded-lg border p-2 text-sm" />
-              <select value={equipamento.estado} onChange={(event) => onEquipamentosChange(equipamentos.map((item, atual) => atual === indice ? { ...item, estado: event.target.value as EstadoEquipamento } : item))} className="rounded-lg border p-2 text-xs">
+              <input value={equipamento.nome} onChange={(event) => onEquipamentosChange(equipamentos.map((item, atual) => atual === indice ? { ...item, nome: event.target.value } : item))} className="min-w-0 w-full rounded-lg border p-2 text-sm" />
+              <input type="number" min="1" value={equipamento.quantidade} onChange={(event) => onEquipamentosChange(equipamentos.map((item, atual) => atual === indice ? { ...item, quantidade: Math.max(1, Number(event.target.value) || 1) } : item))} className="min-w-0 w-full rounded-lg border p-2 text-sm" />
+              <select value={equipamento.estado} onChange={(event) => onEquipamentosChange(equipamentos.map((item, atual) => atual === indice ? { ...item, estado: event.target.value as EstadoEquipamento } : item))} className="min-w-0 w-full rounded-lg border p-2 text-xs">
                 {estadosEquipamento.map((estado) => <option key={estado}>{estado}</option>)}
               </select>
               <button type="button" onClick={() => onEquipamentosChange(equipamentos.filter((_, atual) => atual !== indice))} className="rounded-lg bg-red-50 px-2 py-1 text-xs font-bold text-red-700">Excluir</button>
-              <input value={equipamento.observacao} onChange={(event) => onEquipamentosChange(equipamentos.map((item, atual) => atual === indice ? { ...item, observacao: event.target.value } : item))} placeholder="Observação opcional" className="rounded-lg border p-2 text-sm md:col-span-5" />
+              <input value={equipamento.observacao} onChange={(event) => onEquipamentosChange(equipamentos.map((item, atual) => atual === indice ? { ...item, observacao: event.target.value } : item))} placeholder="Observação opcional" className="min-w-0 w-full rounded-lg border p-2 text-sm md:col-span-5" />
             </div>
           ))}
           {equipamentos.length === 0 && <div className="rounded-xl border border-dashed border-slate-300 p-4 text-center text-sm text-slate-500">Nenhum equipamento ou móvel cadastrado.</div>}
