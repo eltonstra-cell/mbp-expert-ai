@@ -32,6 +32,7 @@ test("checklist inclui apenas programas implantados ou em implantação", () => 
   programas[2] = { ...programas[2], status: "Não se aplica" };
 
   const criterios = obterCriteriosProgramasControle(programas);
-  assert.equal(criterios.length, 2);
+  assert.equal(criterios.length, 4);
   assert.equal(criterios.every((item) => item.referencia.includes("Capítulo 3")), true);
+  assert.equal(criterios.some((item) => item.titulo.includes("fornecedores são avaliados")), true);
 });

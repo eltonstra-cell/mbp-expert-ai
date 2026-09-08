@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { normalizarPops } from "../lib/pops.ts";
+import { normalizarPops, SUGESTOES_POPS_MANUAL } from "../lib/pops.ts";
+
+test("oferece os POPs mencionados expressamente no Manual", () => {
+  assert.equal(SUGESTOES_POPS_MANUAL.length, 3);
+  assert.equal(SUGESTOES_POPS_MANUAL.some((pop) => pop.titulo.includes("potabilidade")), true);
+  assert.equal(SUGESTOES_POPS_MANUAL.some((pop) => pop.titulo.includes("temperatura")), true);
+});
 
 test("descarta registros vazios e preserva o vínculo do POP", () => {
   const pops = normalizarPops([
