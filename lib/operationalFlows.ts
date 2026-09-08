@@ -130,10 +130,14 @@ export function normalizarFluxosOperacionais(fluxos?: FluxoOperacional[]) {
 
 export function obterCriteriosOperacionaisParaSetor(
   fluxos: FluxoOperacional[] | undefined,
-  setor: string
+  setor: string,
+  ambienteReal?: string
 ): CriterioFluxoOperacional[] {
   return normalizarFluxosOperacionais(fluxos)
-    .filter((fluxo) => fluxo.aplicavel && fluxo.setorVinculado === setor)
+    .filter((fluxo) =>
+      fluxo.aplicavel &&
+      (fluxo.setorVinculado === setor || fluxo.setorVinculado === ambienteReal)
+    )
     .flatMap((fluxo) =>
       criterios[fluxo.tipo].map(([categoria, titulo, criticidade]) => ({
         categoria: `Operação — ${categoria}`,

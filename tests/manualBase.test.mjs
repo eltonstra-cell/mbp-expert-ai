@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  AMBIENTES_DETALHADOS_RESTAURANTE,
+  criarModelosQuestionarioAmbientes,
   criarHorarioExemploManual,
   criarResponsabilidadesPadrao,
   normalizarEquipamentos,
@@ -9,9 +11,39 @@ import {
   migrarVisitaParaChecklistManual,
   normalizarHorarios,
   normalizarSetorManual,
+  obterModeloQuestionarioParaAmbiente,
   resumirHorarioFuncionamento,
   SETORES_OFICIAIS_MANUAL,
 } from "../lib/manualBase.ts";
+
+test("preserva os 19 nomes reais do roteiro detalhado do restaurante", () => {
+  assert.equal(AMBIENTES_DETALHADOS_RESTAURANTE.length, 19);
+  assert.equal(AMBIENTES_DETALHADOS_RESTAURANTE[0], "Recebimento de Mercadorias");
+  assert.equal(AMBIENTES_DETALHADOS_RESTAURANTE[18], "Central de Gás");
+});
+
+test("vincula ambientes reais aos modelos técnicos correspondentes", () => {
+  const modelos = criarModelosQuestionarioAmbientes([
+    "Copa",
+    "Câmara Fria",
+    "Sanitários/Vestiários de Funcionários",
+    "Área Administrativa",
+  ]);
+  assert.equal(modelos.Copa, "Cozinha / Produção");
+  assert.equal(modelos["Câmara Fria"], "Estoque de matérias-primas, ingredientes e embalagens");
+  assert.equal(modelos["Sanitários/Vestiários de Funcionários"], "Sanitários/Vestiários de Funcionários");
+  assert.equal(obterModeloQuestionarioParaAmbiente("Área Administrativa"), "Área Administrativa");
+});
+
+test("migração nova pode preservar o nome real do ambiente", () => {
+  const visita = migrarVisitaParaChecklistManual({
+    ambientes: ["Copa", "Churrasqueira"],
+    checklist: [],
+    checklistVersao: 6,
+  }, 7, true);
+  assert.deepEqual(visita.ambientes, ["Copa", "Churrasqueira"]);
+  assert.equal(visita.checklistVersao, 7);
+});
 
 test("migra os sanitários antigos para os setores específicos do Manual", () => {
   const setores = migrarSetoresLegados([
@@ -63,7 +95,7 @@ test("refaz checklist antigo sem respostas e preserva o respondido", () => {
   });
   assert.equal(pendente.ambientes.length, 4);
   assert.deepEqual(pendente.checklist, []);
-  assert.equal(pendente.checklistVersao, 6);
+  assert.equal(pendente.checklistVersao, 7);
 
   const respondida = {
     ambientes: ["Sanitários/Vestiários de Funcionários"],
@@ -119,6 +151,6 @@ test("normaliza equipamentos antigos e preserva o vínculo ao setor", () => {
       observacao: "",
     },
   ]);
-  assert.equal(equipamentos[0].setor, SETORES_OFICIAIS_MANUAL[0]);
+  assert.equal(equipamentos[0].setor, "Recebimento");
   assert.equal(equipamentos[0].quantidade, 1);
 });

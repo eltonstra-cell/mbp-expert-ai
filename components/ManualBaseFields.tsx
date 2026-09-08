@@ -48,6 +48,7 @@ export default function ManualBaseFields({
   const [nomeEquipamento, setNomeEquipamento] = useState("");
   const [quantidadeEquipamento, setQuantidadeEquipamento] = useState("1");
   const [papelAdicional, setPapelAdicional] = useState<PapelResponsabilidadeManual>("Proprietário");
+  const [novoAmbiente, setNovoAmbiente] = useState("");
 
   const setoresParaEquipamentos = setores.length ? setores : [...SETORES_OFICIAIS_MANUAL];
 
@@ -77,6 +78,13 @@ export default function ManualBaseFields({
     ]);
     setNomeEquipamento("");
     setQuantidadeEquipamento("1");
+  }
+
+  function adicionarAmbienteReal() {
+    const nome = novoAmbiente.trim();
+    if (!nome || setores.includes(nome)) return;
+    onSetoresChange([...setores, nome]);
+    setNovoAmbiente("");
   }
 
   function adicionarResponsabilidade() {
@@ -110,6 +118,23 @@ export default function ManualBaseFields({
               <span className="font-bold">{setor}</span>
             </label>
           ))}
+        </div>
+        {setores.filter((setor) => !SETORES_OFICIAIS_MANUAL.includes(setor as (typeof SETORES_OFICIAIS_MANUAL)[number])).length > 0 && (
+          <div className="mt-4 space-y-2">
+            <div className="text-xs font-extrabold uppercase tracking-wide text-[#2F5597]">Ambientes com nomes próprios da empresa</div>
+            {setores
+              .filter((setor) => !SETORES_OFICIAIS_MANUAL.includes(setor as (typeof SETORES_OFICIAIS_MANUAL)[number]))
+              .map((setor) => (
+                <div key={setor} className="flex items-center justify-between gap-3 rounded-xl border border-blue-100 bg-white p-3 text-sm">
+                  <span className="font-bold">{setor}</span>
+                  <button type="button" onClick={() => onSetoresChange(setores.filter((item) => item !== setor))} className="rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700">Remover</button>
+                </div>
+              ))}
+          </div>
+        )}
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+          <input value={novoAmbiente} onChange={(event) => setNovoAmbiente(event.target.value)} placeholder="Nome real do ambiente, ex.: Churrasqueira" className="min-w-0 flex-1 rounded-xl border bg-white p-3 text-sm" />
+          <button type="button" onClick={adicionarAmbienteReal} className="rounded-xl bg-[#17365D] px-4 py-3 text-sm font-extrabold text-white">Adicionar ambiente</button>
         </div>
         <div className="mt-3 text-xs font-bold text-slate-500">{setores.length} setor(es) selecionado(s)</div>
       </details>
