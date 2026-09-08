@@ -1431,6 +1431,42 @@ export default function Home() {
         ...(programasChecklistAtivos.length > 0 ? [AMBIENTE_PROGRAMAS_CONTROLE] : []),
       ]
     : [];
+
+  // Uma atualização pode restaurar diretamente a tela do checklist depois de
+  // migrar os ambientes antigos. Nesse caso, recria as perguntas sem exigir
+  // que o usuário saia e entre novamente na visita.
+  useEffect(() => {
+    if (
+      !ready ||
+      view !== "checklist" ||
+      !visitaAtual ||
+      (visitaAtual.checklist || []).length > 0 ||
+      (visitaAtual.ambientes || []).length === 0
+    ) return;
+
+    const novoChecklist = criarChecklist(
+      visitaAtual.ambientes || [],
+      empresaVisita?.fluxosOperacionais,
+      empresaVisita?.programasControleQualidade
+    );
+    if (novoChecklist.length === 0) return;
+
+    setDb((atual) => ({
+      ...atual,
+      visitas: atual.visitas.map((visita) =>
+        visita.id === visitaAtual.id
+          ? { ...visita, checklist: novoChecklist, checklistVersao: 6 }
+          : visita
+      ),
+    }));
+  }, [
+    ready,
+    view,
+    visitaAtual,
+    empresaVisita?.fluxosOperacionais,
+    empresaVisita?.programasControleQualidade,
+  ]);
+
   const gruposRoteiroChecklist = visitaAtual
     ? [
         { titulo: "Ambientes da visita", itens: visitaAtual.ambientes || [] },
