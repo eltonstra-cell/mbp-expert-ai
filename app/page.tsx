@@ -11,7 +11,6 @@ import type {
   AppDB,
   AcaoPermissao,
   AnaliseFotoIA,
-  AvaliacaoEquipamentoVisita,
   ChecklistCriticidade,
   ChecklistItem,
   ChecklistStatus,
@@ -1489,42 +1488,14 @@ export default function Home() {
   const equipamentosDaVisita = (empresaVisita?.equipamentosSetores || []).filter(
     (equipamento) => (visitaAtual?.ambientes || []).includes(equipamento.setor)
   );
-  const avaliacoesEquipamentosVisita = visitaAtual?.avaliacoesEquipamentos || [];
-  const equipamentosAvaliadosVisita = avaliacoesEquipamentosVisita.filter(
-    (avaliacao) => avaliacao.estado !== "Não avaliado"
-  ).length;
-  const equipamentosComAlertaVisita = avaliacoesEquipamentosVisita.filter(
-    (avaliacao) => avaliacao.estado === "Requer atenção" || avaliacao.estado === "Inadequado"
-  ).length;
-  const equipamentosRelatorio = [
-    ...equipamentosDaVisita.map((equipamento) => {
-      const avaliacao = avaliacoesEquipamentosVisita.find(
-        (item) => item.equipamentoId === equipamento.id
-      );
-      return {
-        id: equipamento.id,
-        ambiente: equipamento.setor,
-        nome: equipamento.nome,
-        quantidade: avaliacao?.quantidade || equipamento.quantidade,
-        estado: avaliacao?.estado || ("Não avaliado" as EstadoEquipamento),
-        observacao: avaliacao?.observacao || "",
-      };
-    }),
-    ...avaliacoesEquipamentosVisita
-      .filter(
-        (avaliacao) =>
-          !avaliacao.equipamentoId ||
-          !equipamentosDaVisita.some((equipamento) => equipamento.id === avaliacao.equipamentoId)
-      )
-      .map((avaliacao) => ({ ...avaliacao })),
-  ];
+  const equipamentosRelatorio = equipamentosDaVisita.map((equipamento) => ({
+    id: equipamento.id,
+    ambiente: equipamento.setor,
+    nome: equipamento.nome,
+    quantidade: equipamento.quantidade,
+  }));
   const equipamentosAmbienteAtivo = (empresaVisita?.equipamentosSetores || []).filter(
     (equipamento) => equipamento.setor === ambienteChecklistAtivo
-  );
-  const avaliacoesAvulsasAmbienteAtivo = avaliacoesEquipamentosVisita.filter(
-    (avaliacao) =>
-      avaliacao.ambiente === ambienteChecklistAtivo &&
-      !avaliacao.equipamentoId
   );
 
   // Uma atualização pode restaurar diretamente a tela do checklist depois de
@@ -1565,7 +1536,7 @@ export default function Home() {
 
   const gruposRoteiroChecklist = visitaAtual
     ? [
-        { titulo: "Ambientes da visita", itens: visitaAtual.ambientes || [] },
+        { titulo: "Capítulos 1 e 2 • Ambientes da visita", itens: visitaAtual.ambientes || [] },
         ...(programasChecklistAtivos.length > 0
           ? [{ titulo: "Verificação geral", itens: [AMBIENTE_PROGRAMAS_CONTROLE] }]
           : []),
@@ -1778,6 +1749,9 @@ export default function Home() {
   const resumoAmbientesVisita = (visitaAtual?.ambientes || []).map((ambiente) => {
     const itens = checklistAtual.filter((item) => item.ambiente === ambiente);
     const respondidosAmbiente = itens.filter((item) => item.status !== "Pendente").length;
+    const equipamentosAmbiente = (empresaVisita?.equipamentosSetores || []).filter(
+      (equipamento) => equipamento.setor === ambiente
+    );
     const temNaoConforme = itens.some((item) => item.status === "Não Conforme");
     const temPendente = itens.some((item) => item.status === "Pendente");
     const status = itens.length === 0 || respondidosAmbiente === 0
@@ -1787,7 +1761,13 @@ export default function Home() {
       : temPendente
       ? "Atenção"
       : "Conforme";
-    return { ambiente, itens: itens.length, respondidos: respondidosAmbiente, status };
+    return {
+      ambiente,
+      itens: itens.length,
+      respondidos: respondidosAmbiente,
+      equipamentos: equipamentosAmbiente.length,
+      status,
+    };
   });
   const ambientesAgrupadosCentral = (() => {
     const incluidos = new Set<string>();
@@ -2915,40 +2895,24 @@ export default function Home() {
     }, 180);
   }
 
-  function atualizarAvaliacaoEquipamento(
-    equipamento: EquipamentoSetor | AvaliacaoEquipamentoVisita,
-    alteracoes: Partial<Pick<AvaliacaoEquipamentoVisita, "quantidade" | "estado" | "observacao">>
-  ) {
-    if (!visitaAtual || !ambienteChecklistAtivo) return;
-    const equipamentoId = "setor" in equipamento ? equipamento.id : equipamento.equipamentoId;
-    const avaliacaoExistente = (visitaAtual.avaliacoesEquipamentos || []).find(
-      (avaliacao) =>
-        (equipamentoId && avaliacao.equipamentoId === equipamentoId) ||
-        (!equipamentoId && avaliacao.id === equipamento.id)
-    );
-    const avaliacao: AvaliacaoEquipamentoVisita = {
-      id: avaliacaoExistente?.id || crypto.randomUUID(),
-      equipamentoId,
-      ambiente: ambienteChecklistAtivo,
-      nome: equipamento.nome,
-      quantidade: alteracoes.quantidade ?? avaliacaoExistente?.quantidade ?? equipamento.quantidade,
-      estado: alteracoes.estado ?? avaliacaoExistente?.estado ?? equipamento.estado ?? "Não avaliado",
-      observacao: alteracoes.observacao ?? avaliacaoExistente?.observacao ?? equipamento.observacao ?? "",
-    };
+  function atualizarQuantidadeEquipamento(equipamentoId: string, quantidade: number) {
+    if (!visitaAtual || !empresaVisita) return;
+    if (!exigirPermissao("visitas.executar", visitaAtual.empresaId)) return;
+    const quantidadeNormalizada = Math.max(1, Number(quantidade) || 1);
     setDb((atual) => ({
       ...atual,
-      visitas: atual.visitas.map((visita) =>
-        visita.id === visitaAtual.id
-          ? {
-              ...visita,
-              avaliacoesEquipamentos: avaliacaoExistente
-                ? (visita.avaliacoesEquipamentos || []).map((item) =>
-                    item.id === avaliacaoExistente.id ? avaliacao : item
-                  )
-                : [...(visita.avaliacoesEquipamentos || []), avaliacao],
-            }
-          : visita
-      ),
+      empresas: {
+        ...atual.empresas,
+        [empresaVisita.id]: {
+          ...atual.empresas[empresaVisita.id],
+          equipamentosSetores: (atual.empresas[empresaVisita.id]?.equipamentosSetores || []).map(
+            (equipamento) =>
+              equipamento.id === equipamentoId
+                ? { ...equipamento, quantidade: quantidadeNormalizada }
+                : equipamento
+          ),
+        },
+      },
     }));
   }
 
@@ -2957,19 +2921,9 @@ export default function Home() {
     if (!visitaAtual || !empresaVisita || !ambienteChecklistAtivo || !nome) return;
     const quantidade = Math.max(1, Number(novoEquipamentoVisitaQuantidade) || 1);
     const equipamentoId = crypto.randomUUID();
-    const avaliacaoId = crypto.randomUUID();
     const equipamento: EquipamentoSetor = {
       id: equipamentoId,
       setor: ambienteChecklistAtivo,
-      nome,
-      quantidade,
-      estado: "Não avaliado",
-      observacao: "",
-    };
-    const avaliacao: AvaliacaoEquipamentoVisita = {
-      id: avaliacaoId,
-      equipamentoId,
-      ambiente: ambienteChecklistAtivo,
       nome,
       quantidade,
       estado: "Não avaliado",
@@ -2987,14 +2941,6 @@ export default function Home() {
           ],
         },
       },
-      visitas: atual.visitas.map((visita) =>
-        visita.id === visitaAtual.id
-          ? {
-              ...visita,
-              avaliacoesEquipamentos: [...(visita.avaliacoesEquipamentos || []), avaliacao],
-            }
-          : visita
-      ),
     }));
     setNovoEquipamentoVisitaNome("");
     setNovoEquipamentoVisitaQuantidade("1");
@@ -5569,11 +5515,29 @@ export default function Home() {
                   <p className="text-sm text-slate-500">
                     Marque Conforme, Não Conforme ou Não se aplica e registre observações quando necessário.
                   </p>
+                  {ambienteChecklistAtivo !== AMBIENTE_PROGRAMAS_CONTROLE && (
+                    <div className="mt-3 flex flex-wrap gap-2 text-xs font-extrabold">
+                      <span className="rounded-full bg-blue-50 px-3 py-1.5 text-[#2F5597]">
+                        Capítulo 1 • Estrutura física
+                      </span>
+                      {checklistAtual.some(
+                        (item) =>
+                          item.ambiente === ambienteChecklistAtivo &&
+                          item.referencia?.includes("Capítulo 2")
+                      ) && (
+                        <span className="rounded-full bg-violet-50 px-3 py-1.5 text-violet-700">
+                          Capítulo 2 • Fluxos operacionais
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {checklistAtual
                   .filter((i) => i.ambiente === ambienteChecklistAtivo)
                   .map((item, idx) => {
+                    const criterioCapitulo2 = item.referencia?.includes("Capítulo 2");
+                    const criterioCapitulo3 = item.referencia?.includes("Capítulo 3");
                     const ncDoItem = (db.ncs || []).find(
                       (nc) =>
                         nc.visitaId === visitaAtual.id &&
@@ -5589,13 +5553,27 @@ export default function Home() {
                           ? "border-2 border-red-200"
                           : item.status === "Conforme"
                           ? "border border-emerald-200"
+                          : criterioCapitulo2
+                          ? "border-2 border-violet-200"
+                          : criterioCapitulo3
+                          ? "border-2 border-blue-200"
                           : "border border-transparent"
                       }`}
                     >
                       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                         <div>
-                          <div className="text-xs font-extrabold uppercase tracking-wide text-slate-400">
-                            Item {idx + 1} • {item.categoria}
+                          <div className={`text-xs font-extrabold uppercase tracking-wide ${
+                            criterioCapitulo2
+                              ? "text-violet-700"
+                              : criterioCapitulo3
+                              ? "text-[#2F5597]"
+                              : "text-slate-400"
+                          }`}>
+                            {criterioCapitulo2
+                              ? `Capítulo 2 • ${item.categoria.replace("Operação — ", "")}`
+                              : criterioCapitulo3
+                              ? `Capítulo 3 • ${item.categoria}`
+                              : `Capítulo 1 • Item ${idx + 1} • ${item.categoria}`}
                           </div>
                           <h3 className="mt-1 text-lg font-extrabold">
                             {item.titulo}
@@ -5763,67 +5741,45 @@ export default function Home() {
                           Equipamentos e móveis
                         </h3>
                         <p className="mt-1 text-sm text-slate-500">
-                          Confira os itens cadastrados e registre o estado observado nesta visita.
+                          Relação dos equipamentos e móveis existentes neste ambiente, conforme o Manual.
                         </p>
                       </div>
                       <span className="w-fit rounded-full bg-blue-50 px-3 py-1 text-xs font-extrabold text-[#2F5597]">
-                        {equipamentosAmbienteAtivo.length + avaliacoesAvulsasAmbienteAtivo.length} item(ns)
+                        {equipamentosAmbienteAtivo.length} item(ns)
                       </span>
                     </div>
 
-                    {equipamentosAmbienteAtivo.length === 0 && avaliacoesAvulsasAmbienteAtivo.length === 0 ? (
+                    {equipamentosAmbienteAtivo.length === 0 ? (
                       <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
                         Nenhum equipamento ou móvel cadastrado para este ambiente. Você pode incluir o item encontrado abaixo.
                       </div>
                     ) : (
-                      <div className="mt-4 space-y-3">
-                        {[
-                          ...equipamentosAmbienteAtivo,
-                          ...avaliacoesAvulsasAmbienteAtivo,
-                        ].map((equipamento) => {
-                          const equipamentoId = "setor" in equipamento ? equipamento.id : equipamento.equipamentoId;
-                          const avaliacao = avaliacoesEquipamentosVisita.find(
-                            (item) =>
-                              (equipamentoId && item.equipamentoId === equipamentoId) ||
-                              (!equipamentoId && item.id === equipamento.id)
-                          );
-                          return (
-                            <div key={`${"setor" in equipamento ? "cad" : "vis"}-${equipamento.id}`} className="rounded-xl border border-slate-200 p-4">
-                              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                                <div className="font-extrabold text-slate-900">{equipamento.nome}</div>
-                                <div className="text-xs font-bold text-slate-500">Quantidade: {avaliacao?.quantidade || equipamento.quantidade}</div>
-                              </div>
-                              <div className="mt-3 grid gap-3 sm:grid-cols-[180px_1fr]">
-                                <label className="text-xs font-bold text-slate-600">
-                                  Estado na visita
-                                  <select
-                                    value={avaliacao?.estado || "Não avaliado"}
-                                    onChange={(event) => atualizarAvaliacaoEquipamento(equipamento, { estado: event.target.value as EstadoEquipamento })}
-                                    className="mt-1 w-full rounded-xl border bg-white p-3 text-sm"
-                                  >
-                                    {(["Não avaliado", "Adequado", "Requer atenção", "Inadequado"] as EstadoEquipamento[]).map((estado) => (
-                                      <option key={estado}>{estado}</option>
-                                    ))}
-                                  </select>
-                                </label>
-                                <label className="text-xs font-bold text-slate-600">
-                                  Observação
-                                  <input
-                                    value={avaliacao?.observacao || ""}
-                                    onChange={(event) => atualizarAvaliacaoEquipamento(equipamento, { observacao: event.target.value })}
-                                    placeholder="Ex.: íntegro, necessita manutenção..."
-                                    className="mt-1 w-full rounded-xl border p-3 text-sm"
-                                  />
-                                </label>
-                              </div>
+                      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                        {equipamentosAmbienteAtivo.map((equipamento) => (
+                          <div key={equipamento.id} className="rounded-xl border-2 border-blue-200 bg-blue-50/70 p-4 shadow-sm">
+                            <div className="text-[10px] font-extrabold uppercase tracking-wide text-[#2F5597]">
+                              Equipamento ou móvel
                             </div>
-                          );
-                        })}
+                            <div className="mt-1 text-lg font-extrabold text-slate-950">
+                              {equipamento.nome}
+                            </div>
+                            <label className="mt-3 block text-xs font-extrabold text-slate-600">
+                              Quantidade
+                              <input
+                                type="number"
+                                min="1"
+                                value={equipamento.quantidade}
+                                onChange={(event) => atualizarQuantidadeEquipamento(equipamento.id, Number(event.target.value))}
+                                className="mt-1 w-28 rounded-xl border border-blue-200 bg-white p-3 text-base font-bold text-slate-900"
+                              />
+                            </label>
+                          </div>
+                        ))}
                       </div>
                     )}
 
                     <div className="mt-5 rounded-xl bg-slate-50 p-4">
-                      <div className="text-sm font-extrabold text-slate-800">Adicionar item encontrado na visita</div>
+                      <div className="text-sm font-extrabold text-slate-800">Adicionar equipamento ou móvel</div>
                       <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_100px_auto]">
                         <input
                           value={novoEquipamentoVisitaNome}
@@ -5848,7 +5804,7 @@ export default function Home() {
                         </button>
                       </div>
                       <p className="mt-2 text-xs text-slate-500">
-                        O item também ficará cadastrado na empresa para as próximas visitas.
+                        O item ficará cadastrado neste ambiente e aparecerá nas próximas visitas.
                       </p>
                     </div>
 
@@ -5949,7 +5905,11 @@ export default function Home() {
                                 {resumo.ambiente}
                               </span>
                               <span className="mt-1 block text-[10px] text-slate-500">
-                                {resumo.respondidos} de {resumo.itens} respondidos • {resumo.status}
+                                {resumo.respondidos} de {resumo.itens} perguntas
+                                {resumo.equipamentos > 0
+                                  ? ` • ${resumo.equipamentos} equipamento(s)`
+                                  : ""}
+                                {` • ${resumo.status}`}
                               </span>
                             </span>
                             <span className="shrink-0 text-sm font-bold text-[#2F5597]">→</span>
@@ -6002,8 +5962,7 @@ export default function Home() {
                     Equipamentos e móveis
                   </div>
                   <div className="mt-1 text-xs text-slate-600">
-                    {equipamentosDaVisita.length} cadastrado(s) • {equipamentosAvaliadosVisita} avaliado(s)
-                    {equipamentosComAlertaVisita > 0 ? ` • ${equipamentosComAlertaVisita} com atenção` : ""}
+                    {equipamentosDaVisita.length} equipamento(s) e móvel(is) cadastrado(s) nos ambientes
                   </div>
                 </div>
                 <span className="shrink-0 text-xl font-extrabold text-[#2F5597]">→</span>
@@ -6341,7 +6300,7 @@ export default function Home() {
                   <h2 className="mt-1 text-xl font-extrabold">Equipamentos e móveis</h2>
                 </div>
                 <div className="text-sm font-bold text-slate-500">
-                  {equipamentosAvaliadosVisita} de {equipamentosRelatorio.length} avaliados
+                  {equipamentosRelatorio.length} item(ns) cadastrado(s)
                 </div>
               </div>
 
@@ -6356,9 +6315,7 @@ export default function Home() {
                       <tr>
                         <th className="p-3">Ambiente</th>
                         <th className="p-3">Equipamento ou móvel</th>
-                        <th className="p-3">Qtd.</th>
-                        <th className="p-3">Estado na visita</th>
-                        <th className="p-3">Observação</th>
+                        <th className="p-3">Quantidade</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -6366,13 +6323,7 @@ export default function Home() {
                         <tr key={equipamento.id} className="border-t border-slate-200 align-top">
                           <td className="p-3 font-bold">{equipamento.ambiente}</td>
                           <td className="p-3">{equipamento.nome}</td>
-                          <td className="p-3">{equipamento.quantidade}</td>
-                          <td className={`p-3 font-bold ${
-                            equipamento.estado === "Inadequado" ? "text-red-700" :
-                            equipamento.estado === "Requer atenção" ? "text-amber-700" :
-                            equipamento.estado === "Adequado" ? "text-emerald-700" : "text-slate-500"
-                          }`}>{equipamento.estado}</td>
-                          <td className="p-3 text-slate-600">{equipamento.observacao || "—"}</td>
+                          <td className="p-3 font-bold">{equipamento.quantidade}</td>
                         </tr>
                       ))}
                     </tbody>
