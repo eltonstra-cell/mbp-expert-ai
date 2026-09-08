@@ -149,6 +149,42 @@ const modeloPersonalizado = [
   item("Equipamentos e móveis", "Equipamentos e móveis foram cadastrados e avaliados"),
 ];
 
-export function obterModeloChecklistManual(ambiente: string) {
-  return modelos[normalizarSetorManual(ambiente)] || modeloPersonalizado;
+const modelosComplementares: Record<string, ModeloChecklistManual[]> = {
+  "Sanitários/Vestiários de Funcionários": [
+    ...estruturaComum,
+    item("Portas dos boxes", "Portas dos boxes estão íntegras, ajustadas e laváveis"),
+    lavatorioMaos,
+    item("Vasos sanitários", "Vasos sanitários estão íntegros, limpos, funcionando e possuem assentos com tampas", "Verifique descarga, vazamentos e conservação.", "Crítica"),
+    item("Armários", "Há armários íntegros e organizados para separar uniformes e pertences pessoais"),
+    item("Comunicação com produção", "Sanitários e vestiários não se comunicam diretamente com áreas de preparo ou armazenamento", "Avalie acessos, antecâmaras e barreiras.", "Crítica"),
+    item("Equipamentos e móveis", "Armários, bancos e acessórios sanitários estão cadastrados e conservados"),
+  ],
+  "Sanitários de Clientes": [
+    ...estruturaComum,
+    item("Portas dos boxes", "Portas dos boxes estão íntegras, ajustadas e laváveis"),
+    lavatorioMaos,
+    item("Vasos sanitários", "Vasos sanitários estão íntegros, limpos, funcionando e possuem assentos com tampas", "Verifique descarga, vazamentos e conservação.", "Crítica"),
+    item("Comunicação com produção", "Sanitários não se comunicam diretamente com áreas de preparo ou armazenamento", "Avalie acessos e barreiras.", "Crítica"),
+    item("Equipamentos e móveis", "Equipamentos e acessórios sanitários estão cadastrados e conservados"),
+  ],
+  "Armazenamento Temporário de Resíduos": [
+    item("Finalidade", "A área é destinada ao armazenamento temporário de resíduos e está organizada para essa finalidade"),
+    item("Piso e ralos", "Piso e ralos estão íntegros, laváveis e sem acúmulo de líquidos"),
+    item("Paredes e teto", "Paredes e teto estão conservados, laváveis e sem infiltrações"),
+    item("Proteção", "A área impede o acesso de pragas e evita contaminação de alimentos e áreas limpas", "Observe portas, telas, recipientes e distância das áreas de produção.", "Crítica"),
+    item("Recipientes", "Resíduos estão em recipientes íntegros, identificados, laváveis e com fechamento adequado", "Verifique vazamentos, excesso de resíduos e frequência de retirada.", "Crítica"),
+    item("Higiene", "O local está limpo, sem odores excessivos e sem resíduos espalhados"),
+  ],
+  "Área Administrativa": [
+    ...estruturaComum,
+    item("Separação", "A área administrativa está separada das atividades de manipulação e não oferece risco de contaminação"),
+    item("Equipamentos e móveis", "Móveis e equipamentos estão cadastrados, organizados e conservados"),
+  ],
+};
+
+export function obterModeloChecklistManual(ambiente: string, modeloReferencia?: string) {
+  const referencia = modeloReferencia || ambiente;
+  return modelosComplementares[referencia] ||
+    modelos[normalizarSetorManual(referencia)] ||
+    modeloPersonalizado;
 }

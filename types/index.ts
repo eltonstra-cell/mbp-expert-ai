@@ -34,6 +34,7 @@ export type Empresa = {
   horariosFuncionamento?: HorarioFuncionamento[];
   responsabilidadesManual?: ResponsabilidadeManual[];
   setoresManual?: string[];
+  modelosQuestionarioAmbientes?: Record<string, string>;
   equipamentosSetores?: EquipamentoSetor[];
   fluxosOperacionais?: FluxoOperacional[];
   programasControleQualidade?: ProgramaControleQualidade[];
@@ -172,6 +173,7 @@ export type Visita = {
   progresso: number;
   criadoEm: string;
   ambientes?: string[];
+  modelosQuestionarioAmbientes?: Record<string, string>;
   checklist?: ChecklistItem[];
   checklistVersao?: number;
   encerradaEm?: string;

@@ -23,6 +23,40 @@ export const SETORES_OFICIAIS_MANUAL = [
 
 export type SetorOficialManual = (typeof SETORES_OFICIAIS_MANUAL)[number];
 
+export const AMBIENTES_DETALHADOS_RESTAURANTE = [
+  "Recebimento de Mercadorias",
+  "Salão de Atendimento",
+  "Copa",
+  "Churrasqueira",
+  "Cozinha",
+  "Higienização de Hortifrutigranjeiros",
+  "Higienização de Utensílios e Equipamentos",
+  "Higienização de Espetos",
+  "Higienização de Materiais de Limpeza",
+  "Estoque Seco",
+  "Câmara Fria",
+  "Armazenamento Congelado (Freezers)",
+  "Depósito de Embalagens e Descartáveis",
+  "Depósito de Material de Limpeza (DML)",
+  "Armazenamento Temporário de Resíduos",
+  "Sanitários/Vestiários de Funcionários",
+  "Sanitários de Clientes",
+  "Área Administrativa",
+  "Central de Gás",
+] as const;
+
+export const MODELOS_COMPLEMENTARES_QUESTIONARIO = [
+  "Sanitários/Vestiários de Funcionários",
+  "Sanitários de Clientes",
+  "Armazenamento Temporário de Resíduos",
+  "Área Administrativa",
+] as const;
+
+export const OPCOES_MODELO_QUESTIONARIO = [
+  ...SETORES_OFICIAIS_MANUAL,
+  ...MODELOS_COMPLEMENTARES_QUESTIONARIO,
+] as const;
+
 const ALIASES_SETORES: Record<string, SetorOficialManual> = {
   "recebimento": SETORES_OFICIAIS_MANUAL[0],
   "armazenamento seco/estoque": SETORES_OFICIAIS_MANUAL[1],
@@ -34,9 +68,11 @@ const ALIASES_SETORES: Record<string, SetorOficialManual> = {
 };
 
 const MIGRACAO_SETORES_LEGADOS: Record<string, string[]> = {
+  "recebimento de mercadorias": [SETORES_OFICIAIS_MANUAL[0]],
   "salão de atendimento": [SETORES_OFICIAIS_MANUAL[6]],
   "copa": [SETORES_OFICIAIS_MANUAL[4]],
   "churrasqueira": [SETORES_OFICIAIS_MANUAL[4]],
+  "cozinha": [SETORES_OFICIAIS_MANUAL[4]],
   "higienização de hortifrutigranjeiros": [SETORES_OFICIAIS_MANUAL[4]],
   "higienização de utensílios e equipamentos": [SETORES_OFICIAIS_MANUAL[5]],
   "higienização de equipamentos": [SETORES_OFICIAIS_MANUAL[5]],
@@ -80,7 +116,35 @@ function chave(texto: string) {
 
 export function normalizarSetorManual(nome: string): string {
   const oficial = SETORES_OFICIAIS_MANUAL.find((setor) => chave(setor) === chave(nome));
-  return oficial || ALIASES_SETORES[chave(nome)] || nome;
+  const migrado = MIGRACAO_SETORES_LEGADOS[chave(nome)];
+  return oficial || ALIASES_SETORES[chave(nome)] ||
+    (migrado?.length === 1 ? migrado[0] : nome);
+}
+
+export function normalizarListaAmbientesReais(ambientes?: string[]): string[] {
+  if (!Array.isArray(ambientes)) return [];
+  return [...new Set(ambientes.map((nome) => nome.trim()).filter(Boolean))];
+}
+
+export function obterModeloQuestionarioParaAmbiente(nome: string): string {
+  const limpo = chave(nome);
+  const complementar = MODELOS_COMPLEMENTARES_QUESTIONARIO.find(
+    (modelo) => chave(modelo) === limpo
+  );
+  if (complementar) return complementar;
+  return normalizarSetorManual(nome);
+}
+
+export function criarModelosQuestionarioAmbientes(
+  ambientes?: string[],
+  existentes?: Record<string, string>
+): Record<string, string> {
+  return Object.fromEntries(
+    normalizarListaAmbientesReais(ambientes).map((ambiente) => [
+      ambiente,
+      existentes?.[ambiente] || obterModeloQuestionarioParaAmbiente(ambiente),
+    ])
+  );
 }
 
 export function migrarSetoresLegados(setores?: string[]): string[] {
@@ -115,11 +179,13 @@ export function migrarVisitaParaChecklistManual<
     checklist?: Array<{ status?: string; observacao?: string }>;
     checklistVersao?: number;
   }
->(visita: T, versaoAtual = 6): T {
+>(visita: T, versaoAtual = 7, preservarNomes = false): T {
   if (checklistPossuiRespostas(visita.checklist)) return visita;
 
   const ambientesAtuais = Array.isArray(visita.ambientes) ? visita.ambientes : [];
-  const ambientesMigrados = migrarSetoresLegados(ambientesAtuais);
+  const ambientesMigrados = preservarNomes
+    ? normalizarListaAmbientesReais(ambientesAtuais)
+    : migrarSetoresLegados(ambientesAtuais);
   const ambientesMudaram =
     JSON.stringify(ambientesMigrados) !== JSON.stringify(ambientesAtuais);
   const modeloMudou = (visita.checklistVersao || 1) < versaoAtual;
@@ -265,7 +331,7 @@ export function normalizarEquipamentos(equipamentos?: EquipamentoSetor[]) {
     .filter((item) => item && item.nome)
     .map((item, indice) => ({
       id: item.id || `equipamento-${indice + 1}`,
-      setor: normalizarSetorManual(item.setor || ""),
+      setor: (item.setor || "").trim(),
       nome: item.nome,
       quantidade: Math.max(1, Number(item.quantidade) || 1),
       estado: item.estado || "Não avaliado",

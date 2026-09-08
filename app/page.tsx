@@ -26,13 +26,18 @@ import type {
 } from "@/types";
 import {
   criarResponsabilidadesPadrao,
+  AMBIENTES_DETALHADOS_RESTAURANTE,
+  criarModelosQuestionarioAmbientes,
   normalizarEquipamentos,
   normalizarHorarios,
+  normalizarListaAmbientesReais,
   normalizarResponsabilidades,
   normalizarSetorManual,
   checklistPossuiRespostas,
   migrarSetoresLegados,
   migrarVisitaParaChecklistManual,
+  obterModeloQuestionarioParaAmbiente,
+  OPCOES_MODELO_QUESTIONARIO,
   resumirHorarioFuncionamento,
   SETORES_OFICIAIS_MANUAL,
 } from "@/lib/manualBase";
@@ -389,19 +394,22 @@ function fdata(d: string) {
 function criarChecklist(
   ambientes: string[],
   fluxosOperacionais?: FluxoOperacional[],
-  programasControle?: ProgramaControleQualidade[]
+  programasControle?: ProgramaControleQualidade[],
+  modelosQuestionario?: Record<string, string>
 ): ChecklistItem[] {
   const itensAmbientes = ambientes.flatMap((ambiente, ambienteIndex) => {
-    const setorNormalizado = normalizarSetorManual(ambiente);
+    const modeloReferencia = modelosQuestionario?.[ambiente] ||
+      obterModeloQuestionarioParaAmbiente(ambiente);
+    const setorNormalizado = normalizarSetorManual(modeloReferencia);
     const setorDoManual = SETORES_OFICIAIS_MANUAL.includes(
       setorNormalizado as (typeof SETORES_OFICIAIS_MANUAL)[number]
     );
     const itensEstrutura = setorDoManual
-      ? obterModeloChecklistManual(ambiente)
-      : modelosChecklist[ambiente] || obterModeloChecklistManual(ambiente);
+      ? obterModeloChecklistManual(ambiente, modeloReferencia)
+      : modelosChecklist[ambiente] || obterModeloChecklistManual(ambiente, modeloReferencia);
     const itens = [
       ...itensEstrutura,
-      ...obterCriteriosOperacionaisParaSetor(fluxosOperacionais, setorNormalizado),
+      ...obterCriteriosOperacionaisParaSetor(fluxosOperacionais, setorNormalizado, ambiente),
     ];
 
     return itens.map((item, itemIndex) => ({
@@ -533,6 +541,7 @@ export default function Home() {
   const [visitaAtualId, setVisitaAtualId] = useState<string | null>(null);
   const [criandoVisita, setCriandoVisita] = useState(false);
   const [ambientesSelecionados, setAmbientesSelecionados] = useState<string[]>([]);
+  const [modelosAmbientesSelecionados, setModelosAmbientesSelecionados] = useState<Record<string, string>>({});
   const [ambientePersonalizado, setAmbientePersonalizado] = useState("");
   const [statusAmbientes, setStatusAmbientes] = useState("");
   const [ambienteChecklistAtivo, setAmbienteChecklistAtivo] = useState<string | null>(null);
@@ -694,7 +703,7 @@ export default function Home() {
     const novo: AppDB = {
       ...recebido,
       visitas: Array.isArray(recebido.visitas)
-        ? recebido.visitas.map((visita) => migrarVisitaParaChecklistManual(visita))
+        ? recebido.visitas.map((visita) => migrarVisitaParaChecklistManual(visita, 7, true))
         : [],
     };
     aplicandoNuvemRef.current = true;
@@ -970,10 +979,14 @@ export default function Home() {
         : [],
       checklist: Array.isArray(v.checklist) ? v.checklist : [],
       checklistVersao: typeof v.checklistVersao === "number" ? v.checklistVersao : 1,
+      modelosQuestionarioAmbientes:
+        v.modelosQuestionarioAmbientes && typeof v.modelosQuestionarioAmbientes === "object"
+          ? v.modelosQuestionarioAmbientes
+          : criarModelosQuestionarioAmbientes(v.ambientes),
     })) as Visita[];
 
     const vs = visitasCarregadas.map((visita) =>
-      migrarVisitaParaChecklistManual(visita)
+      migrarVisitaParaChecklistManual(visita, 7, true)
     );
 
     // Sincroniza NCs já existentes no checklist com o módulo de Não Conformidades.
@@ -1030,7 +1043,11 @@ export default function Home() {
             responsabilidadesManual: normalizarResponsabilidades(
               empresa.responsabilidadesManual
             ),
-            setoresManual: migrarSetoresLegados(empresa.setoresManual),
+            setoresManual: normalizarListaAmbientesReais(empresa.setoresManual),
+            modelosQuestionarioAmbientes: criarModelosQuestionarioAmbientes(
+              empresa.setoresManual,
+              empresa.modelosQuestionarioAmbientes
+            ),
             equipamentosSetores: normalizarEquipamentos(empresa.equipamentosSetores),
             fluxosOperacionais: normalizarFluxosOperacionais(empresa.fluxosOperacionais),
             programasControleQualidade: normalizarProgramasControle(
@@ -1462,7 +1479,8 @@ export default function Home() {
     const novoChecklist = criarChecklist(
       visitaAtual.ambientes || [],
       empresaVisita?.fluxosOperacionais,
-      empresaVisita?.programasControleQualidade
+      empresaVisita?.programasControleQualidade,
+      visitaAtual.modelosQuestionarioAmbientes || empresaVisita?.modelosQuestionarioAmbientes
     );
     if (novoChecklist.length === 0) return;
 
@@ -1470,7 +1488,7 @@ export default function Home() {
       ...atual,
       visitas: atual.visitas.map((visita) =>
         visita.id === visitaAtual.id
-          ? { ...visita, checklist: novoChecklist, checklistVersao: 6 }
+          ? { ...visita, checklist: novoChecklist, checklistVersao: 7 }
           : visita
       ),
     }));
@@ -2453,6 +2471,10 @@ export default function Home() {
       horariosFuncionamento: anterior?.horariosFuncionamento,
       responsabilidadesManual: normalizarResponsabilidades(responsabilidadesEmpresa),
       setoresManual: setoresEmpresa,
+      modelosQuestionarioAmbientes: criarModelosQuestionarioAmbientes(
+        setoresEmpresa,
+        anterior?.modelosQuestionarioAmbientes
+      ),
       equipamentosSetores: normalizarEquipamentos(equipamentosEmpresa),
       fluxosOperacionais: normalizarFluxosOperacionais(fluxosEmpresa),
       programasControleQualidade: normalizarProgramasControle(programasEmpresa),
@@ -2468,7 +2490,7 @@ export default function Home() {
         const possuiRespostas = checklistPossuiRespostas(visita.checklist);
         return possuiRespostas
           ? visita
-          : { ...visita, checklist: [], checklistVersao: 6 };
+          : { ...visita, checklist: [], checklistVersao: 7 };
       }),
     }));
     setEditingEmpresaId(null);
@@ -2517,7 +2539,7 @@ export default function Home() {
       normalizarResponsabilidades(empresa.responsabilidadesManual)
     );
     setSetoresEmpresa(
-      migrarSetoresLegados(empresa.setoresManual)
+      normalizarListaAmbientesReais(empresa.setoresManual)
     );
     setEquipamentosEmpresa(normalizarEquipamentos(empresa.equipamentosSetores));
     setFluxosEmpresa(normalizarFluxosOperacionais(empresa.fluxosOperacionais));
@@ -2561,7 +2583,8 @@ export default function Home() {
       criadoEm: new Date().toISOString(),
       ambientes: [],
       checklist: [],
-      checklistVersao: 6,
+      checklistVersao: 7,
+      modelosQuestionarioAmbientes: {},
     };
     setDb((o) => ({ ...o, visitas: [v, ...o.visitas] }));
     setShowVisitaForm(false);
@@ -2572,7 +2595,7 @@ export default function Home() {
 
   function continuar(id: string) {
     const original = db.visitas.find((x) => x.id === id);
-    const v = original ? migrarVisitaParaChecklistManual(original) : undefined;
+    const v = original ? migrarVisitaParaChecklistManual(original, 7, true) : undefined;
     if (!v) return;
     if (!exigirPermissao("visitas.executar", v.empresaId)) return;
     setDb((o) => ({
@@ -2592,14 +2615,28 @@ export default function Home() {
         ? visitaAtual.ambientes
         : empresaVisita?.setoresManual || []
     );
+    const ambientesIniciais = visitaAtual.ambientes?.length
+      ? visitaAtual.ambientes
+      : empresaVisita?.setoresManual || [];
+    setModelosAmbientesSelecionados(
+      criarModelosQuestionarioAmbientes(
+        ambientesIniciais,
+        visitaAtual.modelosQuestionarioAmbientes || empresaVisita?.modelosQuestionarioAmbientes
+      )
+    );
     setAmbientePersonalizado("");
     setStatusAmbientes("");
     setView("ambientes");
   }
 
-  function atualizarAmbientesDaVisita(proximos: string[]) {
+  function atualizarAmbientesDaVisita(
+    proximos: string[],
+    modelos = modelosAmbientesSelecionados
+  ) {
     if (!visitaAtual) return;
+    const proximosModelos = criarModelosQuestionarioAmbientes(proximos, modelos);
     setAmbientesSelecionados(proximos);
+    setModelosAmbientesSelecionados(proximosModelos);
     setDb((o) => ({
       ...o,
       visitas: o.visitas.map((visita) => {
@@ -2610,8 +2647,9 @@ export default function Home() {
           return {
             ...visita,
             ambientes: proximos,
+            modelosQuestionarioAmbientes: proximosModelos,
             checklist: [],
-            checklistVersao: 6,
+            checklistVersao: 7,
             progresso: proximos.length ? Math.max(visita.progresso || 0, 15) : 0,
           };
         }
@@ -2627,13 +2665,15 @@ export default function Home() {
         const novos = criarChecklist(
           adicionados,
           empresaVisita?.fluxosOperacionais,
-          undefined
+          undefined,
+          proximosModelos
         );
         return {
           ...visita,
           ambientes: proximos,
+          modelosQuestionarioAmbientes: proximosModelos,
           checklist: [...preservados, ...novos],
-          checklistVersao: 6,
+          checklistVersao: 7,
           progresso: proximos.length ? Math.max(visita.progresso || 0, 15) : 0,
         };
       }),
@@ -2670,6 +2710,57 @@ export default function Home() {
     setAmbientePersonalizado("");
   }
 
+  function atualizarModeloQuestionarioAmbiente(ambiente: string, modelo: string) {
+    if (!visitaAtual) return;
+    const proximosModelos = { ...modelosAmbientesSelecionados, [ambiente]: modelo };
+    const possuiRespostas = checklistPossuiRespostas(
+      (visitaAtual.checklist || []).filter((item) => item.ambiente === ambiente)
+    );
+    if (possuiRespostas) {
+      window.alert("Este ambiente já possui respostas. O modelo não pode ser trocado sem preservar a avaliação realizada.");
+      return;
+    }
+    setModelosAmbientesSelecionados(proximosModelos);
+    setDb((atual) => ({
+      ...atual,
+      visitas: atual.visitas.map((visita) =>
+        visita.id === visitaAtual.id
+          ? { ...visita, modelosQuestionarioAmbientes: proximosModelos, checklist: (visita.checklist || []).filter((item) => item.ambiente !== ambiente), checklistVersao: 7 }
+          : visita
+      ),
+    }));
+    setStatusAmbientes("Modelo atualizado");
+  }
+
+  function aplicarModeloDetalhadoRestaurante() {
+    if (!visitaAtual || !empresaVisita) return;
+    if (checklistPossuiRespostas(visitaAtual.checklist)) {
+      window.alert("Esta visita já possui respostas. Crie uma nova visita para aplicar a lista detalhada sem perder registros.");
+      return;
+    }
+    const ambientes = [...AMBIENTES_DETALHADOS_RESTAURANTE];
+    const modelos = criarModelosQuestionarioAmbientes(ambientes);
+    setAmbientesSelecionados(ambientes);
+    setModelosAmbientesSelecionados(modelos);
+    setDb((atual) => ({
+      ...atual,
+      empresas: {
+        ...atual.empresas,
+        [empresaVisita.id]: {
+          ...atual.empresas[empresaVisita.id],
+          setoresManual: ambientes,
+          modelosQuestionarioAmbientes: modelos,
+        },
+      },
+      visitas: atual.visitas.map((visita) =>
+        visita.id === visitaAtual.id
+          ? { ...visita, ambientes, modelosQuestionarioAmbientes: modelos, checklist: [], checklistVersao: 7 }
+          : visita
+      ),
+    }));
+    setStatusAmbientes("Lista detalhada aplicada");
+  }
+
   function salvarAmbientes() {
     if (
       visitaAtual &&
@@ -2684,23 +2775,24 @@ export default function Home() {
     if (!visitaAtual || !(visitaAtual.ambientes || []).length) return;
     if (!exigirPermissao("visitas.executar", visitaAtual.empresaId)) return;
 
-    const visitaMigrada = migrarVisitaParaChecklistManual(visitaAtual);
+    const visitaMigrada = migrarVisitaParaChecklistManual(visitaAtual, 7, true);
     const checklistExistente = visitaMigrada.checklist || [];
     const possuiRespostas = checklistPossuiRespostas(checklistExistente);
     const precisaAtualizarModelo =
-      (visitaMigrada.checklistVersao || 1) < 6 && !possuiRespostas;
+      (visitaMigrada.checklistVersao || 1) < 7 && !possuiRespostas;
 
     if (checklistExistente.length === 0 || precisaAtualizarModelo) {
       const novoChecklist = criarChecklist(
         visitaMigrada.ambientes || [],
         empresaVisita?.fluxosOperacionais,
-        empresaVisita?.programasControleQualidade
+        empresaVisita?.programasControleQualidade,
+        visitaMigrada.modelosQuestionarioAmbientes || empresaVisita?.modelosQuestionarioAmbientes
       );
       setDb((o) => ({
         ...o,
         visitas: o.visitas.map((v) =>
           v.id === visitaMigrada.id
-            ? { ...visitaMigrada, checklist: novoChecklist, checklistVersao: 6 }
+            ? { ...visitaMigrada, checklist: novoChecklist, checklistVersao: 7 }
             : v
         ),
       }));
@@ -4147,6 +4239,20 @@ export default function Home() {
                   })}
                 </div>
 
+                <div className="mt-5 rounded-xl border border-blue-200 bg-blue-50 p-4">
+                  <div className="font-extrabold text-[#17365D]">Lista detalhada do restaurante</div>
+                  <p className="mt-1 text-xs text-slate-600">
+                    Aplica os 18 ambientes enviados pela empresa e inclui a Central de Gás como item 19. Os nomes reais são preservados e cada um recebe o questionário correspondente.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={aplicarModeloDetalhadoRestaurante}
+                    className="mt-3 w-full rounded-xl bg-[#2F5597] px-4 py-3 text-sm font-extrabold text-white"
+                  >
+                    Aplicar lista detalhada de 19 ambientes
+                  </button>
+                </div>
+
                 <div className="mt-6 border-t pt-5">
                   <h3 className="font-extrabold">
                     Adicionar ambiente personalizado
@@ -4187,20 +4293,34 @@ export default function Home() {
                     ambientesSelecionados.map((nome, idx) => (
                       <div
                         key={nome}
-                        className="flex items-center justify-between rounded-xl bg-slate-50 p-3"
+                        className="rounded-xl bg-slate-50 p-3"
                       >
-                        <div>
-                          <div className="text-xs font-extrabold text-slate-400">
-                            {String(idx + 1).padStart(2, "0")}
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="text-xs font-extrabold text-slate-400">
+                              {String(idx + 1).padStart(2, "0")}
+                            </div>
+                            <div className="font-extrabold leading-snug">{nome}</div>
                           </div>
-                          <div className="font-extrabold">{nome}</div>
+                          <button
+                            onClick={() => toggleAmbiente(nome)}
+                            className="shrink-0 rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700"
+                          >
+                            Remover
+                          </button>
                         </div>
-                        <button
-                          onClick={() => toggleAmbiente(nome)}
-                          className="rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700"
+                        <label className="mt-3 block text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                          Questionário baseado em
+                        </label>
+                        <select
+                          value={modelosAmbientesSelecionados[nome] || obterModeloQuestionarioParaAmbiente(nome)}
+                          onChange={(event) => atualizarModeloQuestionarioAmbiente(nome, event.target.value)}
+                          className="mt-1 min-w-0 w-full rounded-lg border border-slate-200 bg-white p-2 text-xs"
                         >
-                          Remover
-                        </button>
+                          {OPCOES_MODELO_QUESTIONARIO.map((modelo) => (
+                            <option key={modelo} value={modelo}>{modelo}</option>
+                          ))}
+                        </select>
                       </div>
                     ))
                   )}
