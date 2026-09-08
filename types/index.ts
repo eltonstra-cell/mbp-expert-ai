@@ -36,6 +36,7 @@ export type Empresa = {
   setoresManual?: string[];
   equipamentosSetores?: EquipamentoSetor[];
   fluxosOperacionais?: FluxoOperacional[];
+  programasControleQualidade?: ProgramaControleQualidade[];
   criadoEm: string;
 };
 
@@ -100,6 +101,23 @@ export type FluxoOperacional = {
   descricao: string;
   responsavel: string;
   controlesRegistros: string;
+};
+
+export type StatusProgramaControle =
+  | "Não iniciado"
+  | "Em implantação"
+  | "Implantado"
+  | "Não se aplica";
+
+export type ProgramaControleQualidade = {
+  id: string;
+  nome: string;
+  status: StatusProgramaControle;
+  responsavel: string;
+  frequencia: string;
+  registro: string;
+  documentoRelacionado: string;
+  observacao: string;
 };
 
 export type ChecklistStatus = "Pendente" | "Conforme" | "Não Conforme" | "Não se aplica";
