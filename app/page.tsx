@@ -5596,7 +5596,12 @@ export default function Home() {
                 {ncsVisita.map((nc, idx) => (
                   <details
                     key={nc.id}
-                    defaultOpen={(planoNcAbertaId || ncsVisita[0]?.id) === nc.id}
+                    open={planoNcAbertaId === nc.id ? true : undefined}
+                    onToggle={(event) => {
+                      if (event.currentTarget.open && planoNcAbertaId === nc.id) {
+                        setPlanoNcAbertaId("");
+                      }
+                    }}
                     className={`plan-action-card ${nc.status === "Resolvida" ? "is-resolved" : ""}`}
                   >
                     <summary className="plan-action-summary">
