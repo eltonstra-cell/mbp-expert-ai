@@ -6084,49 +6084,62 @@ export default function Home() {
             )}
           </section>
         ) : view === "checklist" && visitaAtual ? (
-          <section className="space-y-4">
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                <div>
-                  <div className="text-xs font-extrabold uppercase tracking-wider text-[#2F5597]">
+          <section className="checklist-screen space-y-3">
+            <div className="checklist-page-head">
+              <div className="flex min-w-0 items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#164ee8]">
                     Checklist técnico
                   </div>
-                  <h1 className="mt-1 text-2xl font-extrabold">
+                  <h1 className="mt-1 text-xl font-medium text-[#061b4f] sm:text-2xl">
                     Avaliação por ambiente
                   </h1>
-                  <p className="text-sm text-slate-500">
+                  <p className="mt-0.5 truncate text-xs text-slate-500 sm:text-sm">
                     {empresaVisita?.nomeFantasia} • {fdata(visitaAtual.data)}
                   </p>
                 </div>
 
                 <button
                   onClick={() => setView("visita")}
-                  className="rounded-xl bg-slate-100 px-3 py-2 text-sm font-bold text-slate-700"
+                  aria-label="Voltar à Central da visita"
+                  className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-slate-200 bg-white text-lg text-[#061b4f] shadow-sm sm:flex sm:h-auto sm:w-fit sm:px-4 sm:py-2 sm:text-sm"
                 >
-                  Voltar à Central
+                  <span className="sm:hidden">←</span><span className="hidden sm:inline">← Central da visita</span>
                 </button>
               </div>
 
-              <div className="mt-5 grid gap-3 md:grid-cols-3">
-                <MetricCard label="Itens" value={totalChecklist} />
-                <MetricCard label="Respondidos" value={respondidos} />
-                <MetricCard label="Progresso checklist" value={`${percentualChecklist}%`} />
+              <div className="checklist-progress-summary">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-3 text-xs text-slate-500">
+                    <span><strong className="font-semibold text-[#061b4f]">{respondidos}</strong> de {totalChecklist} itens respondidos</span>
+                    <strong className="font-semibold text-[#164ee8]">{percentualChecklist}%</strong>
+                  </div>
+                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                    <div className="h-full rounded-full bg-gradient-to-r from-[#45d8ed] to-[#164ee8] transition-all" style={{ width: `${percentualChecklist}%` }} />
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
-              <aside className="rounded-2xl bg-white p-4 shadow-sm">
-                <div className="text-sm font-extrabold">Roteiro do checklist</div>
+            <div className="checklist-layout">
+              <aside className="checklist-route-panel">
+                <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                  <div>
+                    <div className="text-sm font-semibold text-[#061b4f]">Ambientes</div>
+                    <div className="mt-0.5 text-xs text-slate-500">Escolha onde deseja avaliar</div>
+                  </div>
+                  <span className="rounded-full bg-[#edf2ff] px-2.5 py-1 text-xs font-semibold text-[#164ee8]">{gruposRoteiroChecklist.reduce((total, grupo) => total + grupo.itens.length, 0)}</span>
+                </div>
                 <div className="mt-3 space-y-4">
                   {gruposRoteiroChecklist.map((grupo) => (
                     <div
                       key={grupo.titulo}
                       className={grupo.titulo === "Verificação geral" ? "border-t-2 border-blue-100 pt-4" : ""}
                     >
-                      <div className={`mb-2 font-extrabold uppercase tracking-wide ${
+                      <div className={`mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] ${
                         grupo.titulo === "Verificação geral"
-                          ? "text-sm text-[#2F5597]"
-                          : "text-xs text-slate-400"
+                          ? "text-[#164ee8]"
+                          : "text-slate-400"
                       }`}>
                         {grupo.titulo}
                       </div>
@@ -6141,30 +6154,27 @@ export default function Home() {
                             <button
                               key={ambiente}
                               onClick={() => setAmbienteChecklistAtivo(ambiente)}
-                              className={`w-full rounded-xl p-3 text-left ${
+                              className={`checklist-route-item ${
                                 ativo
-                                  ? "bg-[#17365D] text-white"
+                                  ? "is-active"
                                   : verificacaoGeral
-                                  ? "border-2 border-blue-200 bg-blue-50 text-[#17365D]"
-                                  : "bg-slate-50"
+                                  ? "is-general"
+                                  : ""
                               }`}
                             >
-                              <div className={verificacaoGeral ? "text-base font-extrabold" : "font-extrabold"}>
-                                {verificacaoGeral ? "▣ Programas de Controle de Qualidade" : ambiente}
+                              <div className="flex items-start justify-between gap-2">
+                                <span className="min-w-0 text-sm font-medium leading-snug">
+                                  {verificacaoGeral ? "Programas de Controle" : ambiente}
+                                </span>
+                                <span className={`shrink-0 text-[11px] font-semibold ${ativo ? "text-blue-100" : respAmb === itensAmb.length && itensAmb.length > 0 ? "text-emerald-600" : "text-slate-400"}`}>
+                                  {respAmb}/{itensAmb.length}
+                                </span>
                               </div>
                               {verificacaoGeral && (
-                                <div className={`mt-1 text-xs ${ativo ? "text-blue-100" : "text-slate-600"}`}>
-                                  Documentos, registros, responsáveis e frequências
+                                <div className={`mt-1 text-[11px] ${ativo ? "text-blue-100" : "text-slate-500"}`}>
+                                  Documentos e registros
                                 </div>
                               )}
-                              <div className={`mt-1 text-xs ${ativo ? "text-blue-100" : "text-slate-500"}`}>
-                                <span>{respAmb}/{itensAmb.length} respondidos</span>
-                                {itensAmb.length > 0 && respAmb === itensAmb.length && (
-                                  <span className={`ml-2 font-extrabold ${ativo ? "text-emerald-200" : "text-emerald-700"}`}>
-                                    ✓ Concluído
-                                  </span>
-                                )}
-                              </div>
                             </button>
                           );
                         })}
@@ -6174,65 +6184,44 @@ export default function Home() {
                 </div>
               </aside>
 
-              <div className="space-y-3">
-                <div
-                  id="checklist-ambiente-topo"
-                  className="scroll-mt-4 rounded-2xl bg-white p-5 shadow-sm"
-                >
-                  <div className="text-xs font-extrabold uppercase text-slate-400">
-                    Etapa atual
-                  </div>
-                  <h2 className="mt-1 text-2xl font-extrabold">
-                    {ambienteChecklistAtivo}
-                  </h2>
-                  <p className="text-sm text-slate-500">
-                    Marque Conforme, Não Conforme ou Não se aplica e registre observações quando necessário.
-                  </p>
-                  {ambienteChecklistAtivo !== AMBIENTE_PROGRAMAS_CONTROLE && (
-                    <div className="mt-3 flex flex-wrap gap-2 text-xs font-extrabold">
-                      <span className="rounded-full bg-blue-50 px-3 py-1.5 text-[#2F5597]">
-                        Capítulo 1 • Estrutura física
-                      </span>
-                      {checklistAtual.some(
-                        (item) =>
-                          item.ambiente === ambienteChecklistAtivo &&
-                          item.referencia?.includes("Capítulo 2")
-                      ) && (
-                        <span className="rounded-full bg-violet-50 px-3 py-1.5 text-violet-700">
-                          Capítulo 2 • Fluxos operacionais
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                <div className="sticky top-2 z-20 rounded-2xl border border-blue-200 bg-white/95 p-3 shadow-lg backdrop-blur">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <div className="text-[11px] font-extrabold uppercase tracking-wide text-[#2F5597]">
-                        Modo visita rápida
-                      </div>
-                      <div className="mt-0.5 text-sm font-bold text-slate-700">
-                        {pendentesAmbienteAtivo} pendente{pendentesAmbienteAtivo === 1 ? "" : "s"} neste ambiente
+              <div className="min-w-0 space-y-2.5">
+                <div id="checklist-ambiente-topo" className="checklist-workbar scroll-mt-3">
+                  <div className="checklist-workbar-main">
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#164ee8]">Ambiente atual</div>
+                      <h2 className="mt-0.5 truncate text-lg font-medium text-[#061b4f] sm:text-xl">{ambienteChecklistAtivo}</h2>
+                      <div className="mt-1 text-xs text-slate-500">
+                        {itensAmbienteChecklistAtivo.length - pendentesAmbienteAtivo} de {itensAmbienteChecklistAtivo.length} respondidos • <span className="font-semibold text-amber-600">{pendentesAmbienteAtivo} pendente{pendentesAmbienteAtivo === 1 ? "" : "s"}</span>
                       </div>
                     </div>
                     <button
                       type="button"
                       onClick={irParaProximaPendencia}
-                      className="rounded-xl bg-[#17365D] px-4 py-2.5 text-sm font-extrabold text-white"
+                      disabled={totalChecklist === respondidos}
+                      className="shrink-0 whitespace-nowrap rounded-full bg-[#164ee8] px-4 py-2.5 text-sm font-medium text-white shadow-[0_7px_16px_rgba(22,78,232,.18)] disabled:opacity-40"
                     >
-                      Próxima pendência →
+                      <span className="sm:hidden">Próxima →</span><span className="hidden sm:inline">Próxima pendência →</span>
                     </button>
                   </div>
-                  <div className="mt-3 grid grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1">
+                  <div className="checklist-mobile-environment">
+                    <label htmlFor="checklist-environment" className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">Trocar ambiente</label>
+                    <select id="checklist-environment" value={ambienteChecklistAtivo || ""} onChange={(event) => setAmbienteChecklistAtivo(event.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-[#061b4f]">
+                      {gruposRoteiroChecklist.map((grupo) => (
+                        <optgroup key={grupo.titulo} label={grupo.titulo}>
+                          {grupo.itens.map((ambiente) => <option key={ambiente} value={ambiente}>{ambiente}</option>)}
+                        </optgroup>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="checklist-filter-tabs">
                     {(["Todos", "Pendentes", "Não conformes"] as FiltroChecklistRapido[]).map((filtro) => (
                       <button
                         key={filtro}
                         type="button"
                         onClick={() => setFiltroChecklistRapido(filtro)}
-                        className={`rounded-lg px-2 py-2 text-xs font-extrabold ${
+                        className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
                           filtroChecklistRapido === filtro
-                            ? "bg-white text-[#17365D] shadow-sm"
+                            ? "bg-[#e7eeff] text-[#164ee8]"
                             : "text-slate-500"
                         }`}
                       >
@@ -6271,21 +6260,21 @@ export default function Home() {
                       key={item.id}
                       id={`checklist-item-${item.id}`}
                       onFocusCapture={() => setUltimoItemChecklistId(item.id)}
-                      className={`scroll-mt-4 rounded-2xl bg-white p-5 shadow-sm ${
+                      className={`checklist-item-card scroll-mt-28 ${
                         item.status === "Não Conforme"
-                          ? "border-2 border-red-200"
+                          ? "is-nonconforming"
                           : item.status === "Conforme"
-                          ? "border border-emerald-200"
+                          ? "is-conforming"
                           : criterioCapitulo2
-                          ? "border-2 border-violet-200"
+                          ? "is-chapter-two"
                           : criterioCapitulo3
-                          ? "border-2 border-blue-200"
-                          : "border border-transparent"
+                          ? "is-chapter-three"
+                          : ""
                       }`}
                     >
-                      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                        <div>
-                          <div className={`text-xs font-extrabold uppercase tracking-wide ${
+                      <div className="checklist-item-heading">
+                        <div className="min-w-0">
+                          <div className={`text-[10px] font-semibold uppercase tracking-[0.1em] ${
                             criterioCapitulo2
                               ? "text-violet-700"
                               : criterioCapitulo3
@@ -6298,13 +6287,13 @@ export default function Home() {
                               ? `Capítulo 3 • ${item.categoria}`
                               : `Capítulo 1 • Item ${idx + 1} • ${item.categoria}`}
                           </div>
-                          <h3 className="mt-1 text-lg font-extrabold">
+                          <h3 className="mt-1 text-base font-medium leading-snug text-[#061b4f] sm:text-[17px]">
                             {item.titulo}
                           </h3>
-                          <div className="mt-2 flex flex-wrap gap-2">
+                          <div className="mt-2 flex flex-wrap gap-1.5">
                             {item.criticidade && (
                               <span
-                                className={`rounded-full px-2.5 py-1 text-[11px] font-extrabold ${
+                                className={`rounded-full px-2 py-1 text-[10px] font-medium ${
                                   item.criticidade === "Crítica"
                                     ? "bg-red-50 text-red-700"
                                     : item.criticidade === "Importante"
@@ -6316,20 +6305,20 @@ export default function Home() {
                               </span>
                             )}
                             {item.referencia && (
-                              <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-700">
+                              <span className="rounded-full bg-[#f1f5ff] px-2 py-1 text-[10px] font-medium text-[#315da8]">
                                 {item.referencia}
                               </span>
                             )}
                           </div>
                           {item.orientacao && (
-                            <p className="mt-2 text-sm text-slate-500">
+                            <p className="mt-2 text-sm leading-relaxed text-slate-500">
                               {item.orientacao}
                             </p>
                           )}
                         </div>
 
                         <div
-                          className={`rounded-full px-3 py-1 text-xs font-extrabold ${
+                          className={`checklist-status-pill ${
                             item.status === "Conforme"
                               ? "bg-emerald-50 text-emerald-700"
                               : item.status === "Não Conforme" && ncDoItem?.status === "Resolvida"
@@ -6347,7 +6336,7 @@ export default function Home() {
                         </div>
                       </div>
 
-                      <div className="mt-4 grid grid-cols-3 gap-2">
+                      <div className="checklist-answer-grid">
                         {(["Conforme", "Não Conforme", "Não se aplica"] as ChecklistStatus[]).map(
                           (status) => (
                             <button
@@ -6367,17 +6356,18 @@ export default function Home() {
                                   rolarParaProximoItem(item.id);
                                 }
                               }}
-                              className={`rounded-xl px-3 py-3 text-sm font-extrabold ${
+                              className={`checklist-answer ${item.status === status ? "is-selected " : ""}${
                                 item.status === status
                                   ? status === "Conforme"
-                                    ? "bg-emerald-600 text-white"
+                                    ? "is-yes"
                                     : status === "Não Conforme"
-                                    ? "bg-red-600 text-white"
-                                    : "bg-slate-700 text-white"
-                                  : "bg-slate-100 text-slate-700"
+                                    ? "is-no"
+                                    : "is-na"
+                                  : ""
                               }`}
                             >
-                              {status}
+                              <span aria-hidden="true" className="checklist-answer-icon">{status === "Conforme" ? "✓" : status === "Não Conforme" ? "×" : "–"}</span>
+                              <span>{status}</span>
                             </button>
                           )
                         )}
@@ -6410,8 +6400,8 @@ export default function Home() {
                           )}
                         </label>
                       ) : (
-                        <details className="mt-3 rounded-xl border border-slate-200 bg-slate-50/60">
-                          <summary className="cursor-pointer select-none px-3 py-2 text-xs font-bold text-slate-500">
+                        <details className="checklist-note mt-2.5">
+                          <summary className="cursor-pointer select-none px-3 py-2 text-xs font-medium text-slate-500">
                             + Observação opcional
                           </summary>
                           <div className="px-3 pb-3">
@@ -6601,8 +6591,8 @@ export default function Home() {
               <h2 className="mb-2 text-base font-medium text-[#061b4f]">Áreas da visita</h2>
               <div className="visit-area-grid grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 <button type="button" onClick={abrirAmbientes} className="visit-area-card group flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-blue-200 hover:bg-blue-50/30"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-cyan-50 text-cyan-700"><CompanySectionIcon name="ambientes" /></span><span className="min-w-0 flex-1"><span className="block text-sm font-medium text-[#061b4f]">Ambientes da visita</span><span className="mt-0.5 block truncate text-xs text-slate-500">{(visitaAtual.ambientes || []).length} selecionados</span></span><span className="text-sm text-[#164ee8]">›</span></button>
-                <button type="button" onClick={abrirEvidencias} className="visit-area-card flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-blue-200 hover:bg-blue-50/30"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-violet-50 text-violet-700"><VisitAreaIcon name="evidencias" /></span><span className="min-w-0 flex-1"><span className="block text-sm font-medium text-[#061b4f]">Evidências</span><span className="mt-0.5 block truncate text-xs text-slate-500">Fotos, áudios e registros</span></span><span className="text-sm text-[#164ee8]">›</span></button>
-                <button type="button" onClick={() => setView("plano")} disabled={!ncsVisita.length || !permitido("ncs.acompanhar", visitaAtual.empresaId)} className="visit-area-card flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-blue-200 hover:bg-blue-50/30 disabled:opacity-40"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-amber-50 text-amber-700"><VisitAreaIcon name="plano" /></span><span className="min-w-0 flex-1"><span className="block text-sm font-medium text-[#061b4f]">Plano de ação</span><span className="mt-0.5 block truncate text-xs text-slate-500">Tratamento dos achados</span></span><span className="text-sm text-[#164ee8]">›</span></button>
+                <button type="button" onClick={abrirEvidencias} className="visit-area-card flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-blue-200 hover:bg-blue-50/30"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-violet-50 text-violet-700"><VisitAreaIcon name="evidencias" /></span><span className="min-w-0 flex-1"><span className="block text-sm font-medium text-[#061b4f]">Evidências</span><span className="mt-0.5 block truncate text-xs text-slate-500"><span className="sm:hidden">{evidenciasVisita.length} registros</span><span className="hidden sm:inline">Fotos, áudios e registros</span></span></span><span className="text-sm text-[#164ee8]">›</span></button>
+                <button type="button" onClick={() => setView("plano")} disabled={!ncsVisita.length || !permitido("ncs.acompanhar", visitaAtual.empresaId)} className="visit-area-card flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-blue-200 hover:bg-blue-50/30 disabled:opacity-40"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-amber-50 text-amber-700"><VisitAreaIcon name="plano" /></span><span className="min-w-0 flex-1"><span className="block text-sm font-medium text-[#061b4f]">Plano de ação</span><span className="mt-0.5 block truncate text-xs text-slate-500"><span className="sm:hidden">{ncsVisita.length} achados</span><span className="hidden sm:inline">Tratamento dos achados</span></span></span><span className="text-sm text-[#164ee8]">›</span></button>
                 <button type="button" onClick={() => setView("relatorio")} disabled={!permitido("relatorios.exportar", visitaAtual.empresaId) && !permitido("relatorios.aprovar", visitaAtual.empresaId)} className="visit-area-card flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-blue-200 hover:bg-blue-50/30 disabled:opacity-40"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-blue-50 text-[#164ee8]"><VisitAreaIcon name="relatorio" /></span><span className="min-w-0 flex-1"><span className="block text-sm font-medium text-[#061b4f]">Relatório</span><span className="mt-0.5 block truncate text-xs text-slate-500">Resumo e exportação</span></span><span className="text-sm text-[#164ee8]">›</span></button>
                 <button type="button" onClick={() => abrirChecklistNoAmbiente(equipamentosDaVisita[0]?.setor || (visitaAtual.ambientes || [])[0])} disabled={(visitaAtual.ambientes || []).length === 0} className="visit-area-card flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-blue-200 hover:bg-blue-50/30 disabled:opacity-40"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-emerald-50 text-emerald-700"><VisitAreaIcon name="equipamentos" /></span><span className="min-w-0 flex-1"><span className="block text-sm font-medium text-[#061b4f]">Equipamentos e móveis</span><span className="mt-0.5 block truncate text-xs text-slate-500">{equipamentosDaVisita.length} tipos • {totalUnidadesEquipamentos} unidades</span></span><span className="text-sm text-[#164ee8]">›</span></button>
                 {programasChecklistAtivos.length > 0 && <button type="button" onClick={() => abrirChecklistNoAmbiente(AMBIENTE_PROGRAMAS_CONTROLE)} className="visit-area-card flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-blue-200 hover:bg-blue-50/30"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-indigo-50 text-indigo-700"><VisitAreaIcon name="programas" /></span><span className="min-w-0 flex-1"><span className="block text-sm font-medium text-[#061b4f]">Programas de Controle</span><span className="mt-0.5 block truncate text-xs text-slate-500">{respondidosProgramasCentral} de {itensProgramasCentral.length} • {statusProgramasCentral}</span></span><span className="text-sm text-[#164ee8]">›</span></button>}
@@ -6618,7 +6608,7 @@ export default function Home() {
               </div>
             </details>
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div className="flex items-center justify-between gap-3"><div><div className="font-medium text-[#061b4f]">Atividade da visita</div><div className="mt-1 text-xs text-slate-500">{respondidos} itens respondidos • {ncsVisita.length} não conformidades</div></div><button type="button" onClick={() => setView("acompanhamento")} disabled={!permitido("ncs.acompanhar", visitaAtual.empresaId)} className="rounded-full bg-[#edf2ff] px-3.5 py-2 text-xs font-medium text-[#164ee8] disabled:opacity-40">Acompanhar →</button></div></div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div className="flex items-center justify-between gap-3"><div><div className="font-medium text-[#061b4f]">Atividade da visita</div><div className="mt-1 text-xs text-slate-500">{respondidos} itens respondidos • {ncsVisita.length} não conformidades</div></div><button type="button" onClick={() => setView("acompanhamento")} disabled={!permitido("ncs.acompanhar", visitaAtual.empresaId)} className="shrink-0 whitespace-nowrap rounded-full bg-[#edf2ff] px-3 py-2 text-xs font-medium text-[#164ee8] disabled:opacity-40">Acompanhar →</button></div></div>
             </div>
           </section>
         ) : view === "relatorio" && visitaAtual ? (
