@@ -4292,6 +4292,68 @@ export default function Home() {
         </aside>
       )}
 
+      {menuContextualAberto && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          <button
+            type="button"
+            aria-label="Fechar menu"
+            onClick={() => setMenuContextualAberto(false)}
+            className="absolute inset-0 bg-[#061b4f]/45 backdrop-blur-[2px]"
+          />
+          <aside className="absolute inset-x-0 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] max-h-[72dvh] overflow-y-auto rounded-t-[26px] bg-white text-slate-700 shadow-[0_-18px_55px_rgba(6,27,79,0.22)]">
+            <div className="sticky top-0 z-10 border-b border-slate-100 bg-white/95 px-5 pb-3 pt-3 backdrop-blur">
+              <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-slate-200" />
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#164ee8]">Navegação</div>
+                  <div className="mt-0.5 text-lg font-semibold text-[#061b4f]">
+                    {view === "inicio" ? "Início" : view === "empresas" ? "Empresas" : "Visitas"}
+                  </div>
+                </div>
+                <button type="button" onClick={() => setMenuContextualAberto(false)} aria-label="Fechar menu" className="grid h-9 w-9 place-items-center rounded-full bg-slate-100 text-lg text-slate-500">×</button>
+              </div>
+            </div>
+
+            <div className="space-y-1 p-3 pb-5" onClick={(event) => { if ((event.target as HTMLElement).closest("button")) setMenuContextualAberto(false); }}>
+              {view === "inicio" && (
+                <>
+                  <button type="button" onClick={() => setView("inicio")} className="flex w-full items-center gap-3 rounded-xl bg-[#e9efff] px-4 py-3 text-left text-sm font-semibold text-[#164ee8]"><span>⌂</span><span>Visão geral</span></button>
+                  {visitaEmAndamentoDestaque && <button type="button" onClick={() => continuar(visitaEmAndamentoDestaque.id, true)} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm hover:bg-slate-50"><span>→</span><span>Continuar inspeção</span></button>}
+                  <button type="button" onClick={() => setView("visitas")} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm hover:bg-slate-50"><span>▣</span><span>Todas as visitas</span></button>
+                  <button type="button" onClick={() => setView("empresas")} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm hover:bg-slate-50"><span>□</span><span>Empresas</span></button>
+                </>
+              )}
+
+              {view === "empresas" && (
+                <>
+                  <button type="button" onClick={() => { setShowEmpresaForm(false); setEditingEmpresaId(null); setEmpresaSecao(null); }} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm ${!showEmpresaForm ? "bg-[#e9efff] font-semibold text-[#164ee8]" : "hover:bg-slate-50"}`}><span>▤</span><span>Lista de empresas</span></button>
+                  {atual && permitido("empresas.editar", atual.id) && (
+                    <>
+                      <div className="px-4 pb-1 pt-4 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Empresa ativa</div>
+                      <button type="button" onClick={() => editarEmpresa(atual)} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm ${showEmpresaForm && empresaSecao === null ? "bg-[#e9efff] font-semibold text-[#164ee8]" : "hover:bg-slate-50"}`}><span>◎</span><span>Central da Empresa</span></button>
+                      {([ ["dados", "Dados da empresa"], ["manual", "Manual e responsabilidades"], ["ambientes", "Ambientes e equipamentos"], ["fluxos", "Fluxos operacionais"], ["programas", "Programas de Controle"], ["pops", "POPs e documentos"] ] as const).map(([secao, rotulo]) => <button key={secao} type="button" onClick={() => abrirSecaoEmpresaPeloMenu(secao)} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm ${showEmpresaForm && empresaSecao === secao ? "bg-[#e9efff] font-semibold text-[#164ee8]" : "hover:bg-slate-50"}`}><span className="text-slate-400">›</span><span>{rotulo}</span></button>)}
+                    </>
+                  )}
+                </>
+              )}
+
+              {(view === "visitas" || VISIT_VIEWS.includes(view)) && (
+                <>
+                  <button type="button" onClick={() => setView("visitas")} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm ${view === "visitas" ? "bg-[#e9efff] font-semibold text-[#164ee8]" : "hover:bg-slate-50"}`}><span>▤</span><span>Todas as visitas</span></button>
+                  {atual && permitido("visitas.criar", atual.id) && <button type="button" onClick={novaVisita} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm hover:bg-slate-50"><span>＋</span><span>Nova visita</span></button>}
+                  {visitaAtual && (
+                    <>
+                      <div className="px-4 pb-1 pt-4 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Visita selecionada</div>
+                      {([ ["visita", "Central da Visita"], ["ambientes", "Ambientes"], ["checklist", "Checklist"], ["evidencias", "Evidências"], ["ncs", "Não conformidades"], ["plano", "Plano de ação"], ["acompanhamento", "Acompanhamento"], ["relatorio", "Relatório"] ] as const).map(([destino, rotulo]) => <button key={destino} type="button" onClick={() => destino === "ambientes" ? abrirAmbientes() : destino === "checklist" ? abrirChecklist() : destino === "evidencias" ? abrirEvidencias() : setView(destino)} disabled={(destino === "ncs" || destino === "plano" || destino === "acompanhamento") && !permitido("ncs.acompanhar", visitaAtual.empresaId)} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm disabled:opacity-40 ${view === destino ? "bg-[#e9efff] font-semibold text-[#164ee8]" : "hover:bg-slate-50"}`}><span className="text-slate-400">›</span><span>{rotulo}</span></button>)}
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          </aside>
+        </div>
+      )}
+
       <header className="relative overflow-hidden bg-gradient-to-r from-[#061b4f] to-[#164ee8] text-white md:hidden">
         <div className="relative mx-auto max-w-7xl px-4 py-2.5">
           <div className="flex items-center justify-between gap-2">
@@ -6480,18 +6542,18 @@ export default function Home() {
               <button onClick={() => setView("visitas")} className="w-fit shrink-0 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-[#061b4f] shadow-sm sm:px-4 sm:py-2.5 sm:text-sm"><span className="sm:hidden">← Voltar</span><span className="hidden sm:inline">← Todas as visitas</span></button>
             </div>
 
-            <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-[#061b4f] via-[#0b2d72] to-[#164ee8] p-4 text-white shadow-[0_14px_35px_rgba(6,27,79,0.16)] sm:p-5 lg:rounded-[28px] lg:p-7 lg:shadow-[0_22px_60px_rgba(6,27,79,0.22)]">
-              <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center lg:gap-6">
+            <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-[#061b4f] via-[#0b2d72] to-[#164ee8] p-3.5 text-white shadow-[0_14px_35px_rgba(6,27,79,0.16)] sm:p-5 lg:rounded-[28px] lg:p-7 lg:shadow-[0_22px_60px_rgba(6,27,79,0.22)]">
+              <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-center lg:gap-6">
                 <div>
                   <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-blue-200 sm:text-[11px]">O que fazer agora</div>
-                  <h2 className="mt-1.5 text-lg font-semibold sm:mt-2 sm:text-2xl">{proximoAmbienteVisita || ((visitaAtual.ambientes || []).length ? "Revisar a inspeção" : "Definir os ambientes da visita")}</h2>
+                  <h2 className="mt-1 text-base font-semibold sm:mt-2 sm:text-2xl">{proximoAmbienteVisita || ((visitaAtual.ambientes || []).length ? "Revisar a inspeção" : "Definir os ambientes da visita")}</h2>
                   <p className="mt-2 hidden max-w-2xl text-sm leading-6 text-blue-100 sm:block">Continue exatamente do ponto em que parou. As respostas são salvas automaticamente durante a inspeção.</p>
-                  <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/15 sm:mt-5 sm:h-2">
+                  <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-white/15 sm:mt-5 sm:h-2">
                     <div className="h-full rounded-full bg-[#67e8f9] transition-all" style={{ width: `${percentualChecklist}%` }} />
                   </div>
                   <div className="mt-1.5 flex items-center justify-between text-[11px] font-semibold text-blue-100 sm:mt-2 sm:text-xs"><span>{respondidos} de {totalChecklist} itens respondidos</span><span>{percentualChecklist}%</span></div>
                 </div>
-                <button type="button" onClick={() => (visitaAtual.ambientes || []).length ? abrirChecklist() : abrirAmbientes()} disabled={!permitido("visitas.executar", visitaAtual.empresaId)} className="w-full rounded-xl bg-white px-4 py-3 text-sm font-semibold text-[#0b2d72] shadow-lg transition hover:bg-blue-50 disabled:opacity-50 sm:rounded-2xl sm:px-6 sm:py-4 sm:text-base lg:w-auto">
+                <button type="button" onClick={() => (visitaAtual.ambientes || []).length ? abrirChecklist() : abrirAmbientes()} disabled={!permitido("visitas.executar", visitaAtual.empresaId)} className="w-full rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-[#0b2d72] shadow-lg transition hover:bg-blue-50 disabled:opacity-50 sm:rounded-2xl sm:px-6 sm:py-4 sm:text-base lg:w-auto">
                   {(visitaAtual.ambientes || []).length ? "Continuar inspeção →" : "Selecionar ambientes →"}
                 </button>
               </div>
@@ -8034,7 +8096,7 @@ export default function Home() {
             if (destino === "acessos" && !permitido("usuarios.gerenciar")) return null;
             const ativo = destino === "visitas" ? view === "visitas" || VISIT_VIEWS.includes(view) : view === destino;
             return (
-              <button key={destino} type="button" onClick={() => navegarPrincipal(destino)} className={`flex min-h-14 flex-col items-center justify-center rounded-2xl px-2 text-[11px] font-extrabold ${ativo ? "bg-[#e9efff] text-[#164ee8]" : "text-slate-500"}`}>
+              <button key={destino} type="button" onClick={() => { if (ativo && destino !== "acessos") { setMenuContextualAberto(true); return; } navegarPrincipal(destino); setMenuContextualAberto(destino !== "acessos"); }} className={`flex min-h-14 flex-col items-center justify-center rounded-2xl px-2 text-[11px] font-semibold ${ativo ? "bg-[#e9efff] text-[#164ee8]" : "text-slate-500"}`}>
                 <MobileNavIcon name={destino} />
                 <span className="mt-1">{rotulo}</span>
               </button>
