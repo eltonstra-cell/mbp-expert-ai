@@ -1682,14 +1682,14 @@ export default function Home() {
       visitas.filter((v) => v.empresaId === db.empresaAtualId),
     [visitas, db.empresaAtualId]
   );
-  const visitasEmpresaFiltradas = useMemo(
+  const visitasFiltradas = useMemo(
     () =>
       filtroListaVisitas === "Todas"
-        ? visitasEmpresaAtual
-        : visitasEmpresaAtual.filter(
+        ? visitas
+        : visitas.filter(
             (visita) => visita.status === filtroListaVisitas
           ),
-    [visitasEmpresaAtual, filtroListaVisitas]
+    [visitas, filtroListaVisitas]
   );
 
   const prefixoMesAtual = new Date().toISOString().slice(0, 7);
@@ -1712,11 +1712,25 @@ export default function Home() {
     : 0;
 
   const numeroVisitaPorId = useMemo(() => {
-    const ordenadas = [...visitasEmpresaAtual].sort((a, b) =>
-      (a.criadoEm || a.data || "").localeCompare(b.criadoEm || b.data || "")
-    );
-    return new Map(ordenadas.map((visita, indice) => [visita.id, indice + 1]));
-  }, [visitasEmpresaAtual]);
+    const numeros = new Map<string, number>();
+    const porEmpresa = new Map<string, Visita[]>();
+    visitas.forEach((visita) => {
+      porEmpresa.set(visita.empresaId, [
+        ...(porEmpresa.get(visita.empresaId) || []),
+        visita,
+      ]);
+    });
+    porEmpresa.forEach((visitasDaEmpresa) => {
+      visitasDaEmpresa
+        .sort((a, b) =>
+          (a.criadoEm || a.data || "").localeCompare(
+            b.criadoEm || b.data || ""
+          )
+        )
+        .forEach((visita, indice) => numeros.set(visita.id, indice + 1));
+    });
+    return numeros;
+  }, [visitas]);
 
   const idsVisitasEmpresaAtual = useMemo(
     () => new Set(visitasEmpresaAtual.map((v) => v.id)),
@@ -7878,6 +7892,9 @@ export default function Home() {
                   <h1 className="mt-1 text-2xl font-extrabold">
                     Visitas técnicas
                   </h1>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Visão geral de todas as empresas • empresa ativa: {atual?.nomeFantasia || "nenhuma"}
+                  </p>
                 </div>
 
                 <div className="flex flex-wrap gap-2">
@@ -7917,7 +7934,7 @@ export default function Home() {
             </div>
 
             <div className="grid gap-4 lg:grid-cols-2">
-              {visitasEmpresaFiltradas.map((v) => {
+              {visitasFiltradas.map((v) => {
                 const e = db.empresas[v.empresaId];
                 return (
                   <article
@@ -7985,6 +8002,7 @@ export default function Home() {
                         ) : permitido("relatorios.exportar", v.empresaId) ? (
                           <button
                             onClick={() => {
+                              setDb((estado) => ({ ...estado, empresaAtualId: v.empresaId }));
                               setVisitaAtualId(v.id);
                               setView("relatorio");
                             }}
@@ -8007,7 +8025,7 @@ export default function Home() {
                   </article>
                 );
               })}
-              {visitasEmpresaFiltradas.length === 0 && (
+              {visitasFiltradas.length === 0 && (
                 <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500 lg:col-span-2">
                   Nenhuma visita nesta situação.
                 </div>
