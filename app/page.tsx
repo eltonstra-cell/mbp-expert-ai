@@ -100,9 +100,11 @@ import {
   vincularSessaoUsuario,
   type DadosUsuarioPreparacao,
 } from "@/lib/userManagement";
+import { resumoConfiguracaoEmpresa } from "@/lib/companyReadiness";
 
 type View = "inicio" | "empresas" | "visitas" | "visita" | "ambientes" | "checklist" | "ncs" | "plano" | "acompanhamento" | "historico" | "evidencias" | "relatorio" | "acessos";
 type EmpresaSecao = "dados" | "manual" | "ambientes" | "fluxos" | "programas" | "pops";
+type FiltroChecklistRapido = "Todos" | "Pendentes" | "Não conformes";
 
 const NAV_STORAGE_KEY = "mbp-expert-ai:navegacao:v1";
 const CHECKLIST_VERSAO_ATUAL = 10;
@@ -539,6 +541,18 @@ function quantidadeComNome(quantidade: number, singular: string, plural: string)
   return `${quantidade} ${quantidade === 1 ? singular : plural}`;
 }
 
+function assinaturaEdicaoEmpresa(valor: {
+  form: typeof formEmpresaVazio;
+  responsabilidades: ResponsabilidadeManual[];
+  setores: string[];
+  equipamentos: EquipamentoSetor[];
+  fluxos: FluxoOperacional[];
+  programas: ProgramaControleQualidade[];
+  pops: ProcedimentoOperacionalPadronizado[];
+}) {
+  return JSON.stringify(valor);
+}
+
 export default function Home() {
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
@@ -557,6 +571,8 @@ export default function Home() {
   const [ready, setReady] = useState(false);
   const [view, setView] = useState<View>("inicio");
   const [filtroInicio, setFiltroInicio] = useState<"Em andamento" | "Concluída">("Em andamento");
+  const [buscaEmpresas, setBuscaEmpresas] = useState("");
+  const [filtroListaVisitas, setFiltroListaVisitas] = useState<"Todas" | "Em andamento" | "Concluída">("Todas");
   const [showEmpresaForm, setShowEmpresaForm] = useState(false);
   const [editingEmpresaId, setEditingEmpresaId] = useState<string | null>(null);
   const [empresaSecao, setEmpresaSecao] = useState<EmpresaSecao | null>(null);
@@ -568,6 +584,8 @@ export default function Home() {
   const [ambientePersonalizado, setAmbientePersonalizado] = useState("");
   const [statusAmbientes, setStatusAmbientes] = useState("");
   const [ambienteChecklistAtivo, setAmbienteChecklistAtivo] = useState<string | null>(null);
+  const [filtroChecklistRapido, setFiltroChecklistRapido] = useState<FiltroChecklistRapido>("Todos");
+  const [ultimoItemChecklistId, setUltimoItemChecklistId] = useState<string | null>(null);
   const [novoEquipamentoVisitaNome, setNovoEquipamentoVisitaNome] = useState("");
   const [novoEquipamentoVisitaQuantidade, setNovoEquipamentoVisitaQuantidade] = useState("1");
   const [msg, setMsg] = useState("");
@@ -657,9 +675,34 @@ export default function Home() {
     criarProgramasControlePadrao()
   );
   const [popsEmpresa, setPopsEmpresa] = useState<ProcedimentoOperacionalPadronizado[]>([]);
+  const [assinaturaEmpresaSalva, setAssinaturaEmpresaSalva] = useState("");
+  const assinaturaEmpresaAtual = assinaturaEdicaoEmpresa({
+    form,
+    responsabilidades: responsabilidadesEmpresa,
+    setores: setoresEmpresa,
+    equipamentos: equipamentosEmpresa,
+    fluxos: fluxosEmpresa,
+    programas: programasEmpresa,
+    pops: popsEmpresa,
+  });
+  const empresaTemAlteracoes =
+    showEmpresaForm &&
+    empresaSecao !== null &&
+    Boolean(assinaturaEmpresaSalva) &&
+    assinaturaEmpresaAtual !== assinaturaEmpresaSalva;
   const popsComRevisaoVencida = popsEmpresa.filter(
     (pop) => situacaoRevisaoPOP(pop).label === "Revisão vencida"
   ).length;
+
+  useEffect(() => {
+    if (!empresaTemAlteracoes) return;
+    const avisarSaida = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", avisarSaida);
+    return () => window.removeEventListener("beforeunload", avisarSaida);
+  }, [empresaTemAlteracoes]);
 
   useEffect(() => {
     if (syncStatus !== "erro") {
@@ -1125,6 +1168,7 @@ export default function Home() {
           view?: View;
           visitaAtualId?: string | null;
           ambienteChecklistAtivo?: string | null;
+          ultimoItemChecklistId?: string | null;
         };
         const viewSalva = nav.view;
         const visitaSalva = nav.visitaAtualId
@@ -1137,9 +1181,20 @@ export default function Home() {
             setView(viewSalva);
             if (
               nav.ambienteChecklistAtivo &&
-              (visitaSalva.ambientes || []).includes(nav.ambienteChecklistAtivo)
+              [
+                ...(visitaSalva.ambientes || []),
+                AMBIENTE_PROGRAMAS_CONTROLE,
+              ].includes(nav.ambienteChecklistAtivo)
             ) {
               setAmbienteChecklistAtivo(nav.ambienteChecklistAtivo);
+            }
+            if (
+              nav.ultimoItemChecklistId &&
+              (visitaSalva.checklist || []).some(
+                (item) => item.id === nav.ultimoItemChecklistId
+              )
+            ) {
+              setUltimoItemChecklistId(nav.ultimoItemChecklistId);
             }
           } else {
             setVisitaAtualId(null);
@@ -1176,12 +1231,27 @@ export default function Home() {
     try {
       window.localStorage.setItem(
         chaveNavegacaoLocal(),
-        JSON.stringify({ view, visitaAtualId, ambienteChecklistAtivo })
+        JSON.stringify({
+          view,
+          visitaAtualId,
+          ambienteChecklistAtivo,
+          ultimoItemChecklistId,
+        })
       );
     } catch {
       // A navegação continua funcionando mesmo se o armazenamento local falhar.
     }
-  }, [view, visitaAtualId, ambienteChecklistAtivo, ready]);
+  }, [view, visitaAtualId, ambienteChecklistAtivo, ultimoItemChecklistId, ready]);
+
+  useEffect(() => {
+    if (view !== "checklist" || !ultimoItemChecklistId) return;
+    const timer = window.setTimeout(() => {
+      document
+        .getElementById(`checklist-item-${ultimoItemChecklistId}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 260);
+    return () => window.clearTimeout(timer);
+  }, [view, ambienteChecklistAtivo, ultimoItemChecklistId]);
 
   useEffect(() => {
     if (!ready || !sessaoAtual || sessaoVinculadaRef.current) return;
@@ -1481,6 +1551,14 @@ export default function Home() {
       ),
     [db.empresas, usuarioDaSessao]
   );
+  const empresasFiltradas = useMemo(() => {
+    const termo = buscaEmpresas.trim().toLocaleLowerCase("pt-BR");
+    if (!termo) return empresasVisiveis;
+    return empresasVisiveis.filter((empresa) =>
+      [empresa.nomeFantasia, empresa.razaoSocial, empresa.cnpj, empresa.municipio]
+        .some((valor) => valor?.toLocaleLowerCase("pt-BR").includes(termo))
+    );
+  }, [empresasVisiveis, buscaEmpresas]);
   const empresaAtualCadastrada = db.empresaAtualId
     ? db.empresas[db.empresaAtualId]
     : undefined;
@@ -1489,6 +1567,11 @@ export default function Home() {
     podeAcessarEmpresa(usuarioDaSessao, empresaAtualCadastrada.id)
       ? empresaAtualCadastrada
       : undefined;
+  const configuracaoEmpresaAtual = resumoConfiguracaoEmpresa(atual);
+  const empresaGerenciada = editingEmpresaId
+    ? db.empresas[editingEmpresaId]
+    : atual;
+  const configuracaoEmpresaGerenciada = resumoConfiguracaoEmpresa(empresaGerenciada);
   const visitaAtualCadastrada = visitaAtualId
     ? db.visitas.find((v) => v.id === visitaAtualId)
     : undefined;
@@ -1599,6 +1682,15 @@ export default function Home() {
       visitas.filter((v) => v.empresaId === db.empresaAtualId),
     [visitas, db.empresaAtualId]
   );
+  const visitasEmpresaFiltradas = useMemo(
+    () =>
+      filtroListaVisitas === "Todas"
+        ? visitasEmpresaAtual
+        : visitasEmpresaAtual.filter(
+            (visita) => visita.status === filtroListaVisitas
+          ),
+    [visitasEmpresaAtual, filtroListaVisitas]
+  );
 
   const prefixoMesAtual = new Date().toISOString().slice(0, 7);
   const visitasDoMes = visitas.filter((visita) => visita.data?.startsWith(prefixoMesAtual));
@@ -1612,7 +1704,7 @@ export default function Home() {
   const progressoVisitaDestaque = visitaEmAndamentoDestaque?.checklist?.length
     ? Math.round(
         (visitaEmAndamentoDestaque.checklist.filter(
-          (item) => item.status === "Conforme" || item.status === "Não Conforme"
+          (item) => item.status !== "Pendente"
         ).length /
           visitaEmAndamentoDestaque.checklist.length) *
           100
@@ -1735,6 +1827,14 @@ export default function Home() {
   const percentualChecklist = totalChecklist
     ? Math.round((respondidos / totalChecklist) * 100)
     : 0;
+  const itensAmbienteChecklistAtivo = checklistAtual.filter(
+    (item) => item.ambiente === ambienteChecklistAtivo
+  );
+  const itensChecklistVisiveis = itensAmbienteChecklistAtivo.filter((item) => {
+    if (filtroChecklistRapido === "Pendentes") return item.status === "Pendente";
+    if (filtroChecklistRapido === "Não conformes") return item.status === "Não Conforme";
+    return true;
+  });
   const ncsVisita = (db.ncs || []).filter((nc) => nc.visitaId === visitaAtual?.id && !nc.inativaNoChecklist);
   const ncsAbertas = ncsVisita.filter((nc) => nc.status !== "Resolvida").length;
   const acoesDefinidas = ncsVisita.filter(
@@ -2578,6 +2678,7 @@ export default function Home() {
           : { ...visita, checklist: [], checklistVersao: CHECKLIST_VERSAO_ATUAL };
       }),
     }));
+    setAssinaturaEmpresaSalva(assinaturaEmpresaAtual);
     setEditingEmpresaId(id);
     setEmpresaSecao(null);
     setShowEmpresaForm(true);
@@ -2587,7 +2688,7 @@ export default function Home() {
 
   function editarEmpresa(empresa: Empresa) {
     if (!exigirPermissao("empresas.editar", empresa.id)) return;
-    setForm({
+    const formCarregado = {
       cnpj: empresa.cnpj || "",
       nomeFantasia: empresa.nomeFantasia || "",
       razaoSocial: empresa.razaoSocial || "",
@@ -2621,20 +2722,36 @@ export default function Home() {
       elaboradoPor: empresa.elaboradoPor || "",
       revisadoPor: empresa.revisadoPor || "",
       aprovadoPor: empresa.aprovadoPor || "",
-    });
-    setResponsabilidadesEmpresa(
-      normalizarResponsabilidades(empresa.responsabilidadesManual)
+    };
+    const responsabilidadesCarregadas = normalizarResponsabilidades(
+      empresa.responsabilidadesManual
     );
-    setSetoresEmpresa(
-      normalizarListaAmbientesReais(empresa.setoresManual)
-    );
-    setEquipamentosEmpresa(normalizarEquipamentos(empresa.equipamentosSetores));
-    setFluxosEmpresa(adequarFluxosAosSetores(
+    const setoresCarregados = normalizarListaAmbientesReais(empresa.setoresManual);
+    const equipamentosCarregados = normalizarEquipamentos(empresa.equipamentosSetores);
+    const fluxosCarregados = adequarFluxosAosSetores(
       empresa.fluxosOperacionais,
-      normalizarListaAmbientesReais(empresa.setoresManual)
-    ));
-    setProgramasEmpresa(normalizarProgramasControle(empresa.programasControleQualidade));
-    setPopsEmpresa(normalizarPops(empresa.pops));
+      setoresCarregados
+    );
+    const programasCarregados = normalizarProgramasControle(
+      empresa.programasControleQualidade
+    );
+    const popsCarregados = normalizarPops(empresa.pops);
+    setForm(formCarregado);
+    setResponsabilidadesEmpresa(responsabilidadesCarregadas);
+    setSetoresEmpresa(setoresCarregados);
+    setEquipamentosEmpresa(equipamentosCarregados);
+    setFluxosEmpresa(fluxosCarregados);
+    setProgramasEmpresa(programasCarregados);
+    setPopsEmpresa(popsCarregados);
+    setAssinaturaEmpresaSalva(assinaturaEdicaoEmpresa({
+      form: formCarregado,
+      responsabilidades: responsabilidadesCarregadas,
+      setores: setoresCarregados,
+      equipamentos: equipamentosCarregados,
+      fluxos: fluxosCarregados,
+      programas: programasCarregados,
+      pops: popsCarregados,
+    }));
     setEditingEmpresaId(empresa.id);
     setEmpresaSecao(null);
     setMsg("");
@@ -2899,25 +3016,66 @@ export default function Home() {
       ...(visitaMigrada.ambientes || []),
       ...(programasChecklistAtivos.length > 0 ? [AMBIENTE_PROGRAMAS_CONTROLE] : []),
     ];
-    setAmbienteChecklistAtivo(
+    const itemRetomada = checklistExistente.find(
+      (item) => item.id === ultimoItemChecklistId
+    );
+    const ambienteDestino =
       ambienteInicial && ambientesDaVisita.includes(ambienteInicial)
         ? ambienteInicial
-        : ambientesDaVisita[0] || null
-    );
+        : itemRetomada && ambientesDaVisita.includes(itemRetomada.ambiente)
+        ? itemRetomada.ambiente
+        : ambientesDaVisita[0] || null;
+    setAmbienteChecklistAtivo(ambienteDestino);
+    setFiltroChecklistRapido("Todos");
 
     setView("checklist");
   }
 
   function abrirChecklist() {
+    const primeiraPendente = (visitaAtual?.checklist || []).find(
+      (item) => item.status === "Pendente"
+    );
+    if (primeiraPendente) {
+      setUltimoItemChecklistId(primeiraPendente.id);
+      abrirChecklistNoAmbiente(primeiraPendente.ambiente);
+      setFiltroChecklistRapido("Pendentes");
+      return;
+    }
     abrirChecklistNoAmbiente();
+  }
+
+  function irParaProximaPendencia() {
+    if (!visitaAtual) return;
+    const checklist = visitaAtual.checklist || [];
+    const pendentes = checklist.filter(
+      (item) => item.status === "Pendente"
+    );
+    if (pendentes.length === 0) {
+      window.alert("Não há perguntas pendentes nesta visita.");
+      return;
+    }
+
+    const indiceAtual = ultimoItemChecklistId
+      ? checklist.findIndex((item) => item.id === ultimoItemChecklistId)
+      : -1;
+    const proxima =
+      (indiceAtual >= 0
+        ? checklist.slice(indiceAtual + 1).find((item) => item.status === "Pendente")
+        : undefined) || pendentes[0];
+    setFiltroChecklistRapido("Pendentes");
+    setAmbienteChecklistAtivo(proxima.ambiente);
+    setUltimoItemChecklistId(proxima.id);
   }
 
   function rolarParaProximoItem(itemIdAtual: string) {
     if (!visitaAtual) return;
 
-    const itensDoAmbiente = (visitaAtual.checklist || []).filter(
-      (item) => item.ambiente === ambienteChecklistAtivo
-    );
+    const itensDoAmbiente = (visitaAtual.checklist || []).filter((item) => {
+      if (item.ambiente !== ambienteChecklistAtivo) return false;
+      if (filtroChecklistRapido === "Pendentes") return item.status === "Pendente";
+      if (filtroChecklistRapido === "Não conformes") return item.status === "Não Conforme";
+      return true;
+    });
     const indiceAtual = itensDoAmbiente.findIndex((item) => item.id === itemIdAtual);
 
     if (indiceAtual < 0) return;
@@ -2932,6 +3090,7 @@ export default function Home() {
       return;
     }
 
+    setUltimoItemChecklistId(proximo.id);
     window.setTimeout(() => {
       document
         .getElementById(`checklist-item-${proximo.id}`)
@@ -3897,6 +4056,23 @@ export default function Home() {
     }
   }
 
+  function confirmarSaidaDaEdicao() {
+    if (!empresaTemAlteracoes) return true;
+    return window.confirm(
+      "Há alterações ainda não salvas nesta área. Deseja sair e descartá-las?"
+    );
+  }
+
+  function navegarPrincipal(destino: View) {
+    if (!confirmarSaidaDaEdicao()) return;
+    if (showEmpresaForm) {
+      setShowEmpresaForm(false);
+      setEditingEmpresaId(null);
+      setEmpresaSecao(null);
+    }
+    setView(destino);
+  }
+
   if (
     ready &&
     sessaoConsultada &&
@@ -4072,7 +4248,7 @@ export default function Home() {
       <div className="mx-auto max-w-7xl px-3 py-4 pb-28 sm:p-4 md:pb-4">
         <nav className="mb-4 hidden flex-wrap gap-2 md:flex">
           <button
-            onClick={() => setView("inicio")}
+            onClick={() => navegarPrincipal("inicio")}
             className={`rounded-xl px-4 py-2 font-bold ${
               view === "inicio"
                 ? "bg-[#17365D] text-white"
@@ -4082,7 +4258,7 @@ export default function Home() {
             Início
           </button>
           <button
-            onClick={() => setView("empresas")}
+            onClick={() => navegarPrincipal("empresas")}
             className={`rounded-xl px-4 py-2 font-bold ${
               view === "empresas"
                 ? "bg-[#17365D] text-white"
@@ -4092,7 +4268,7 @@ export default function Home() {
             Empresas
           </button>
           <button
-            onClick={() => setView("visitas")}
+            onClick={() => navegarPrincipal("visitas")}
             className={`rounded-xl px-4 py-2 font-bold ${
               view === "visitas" ||
               view === "visita" ||
@@ -4112,7 +4288,7 @@ export default function Home() {
           </button>
           {permitido("usuarios.gerenciar") && (
             <button
-              onClick={() => setView("acessos")}
+              onClick={() => navegarPrincipal("acessos")}
               className={`rounded-xl px-4 py-2 font-bold ${
                 view === "acessos"
                   ? "bg-[#17365D] text-white"
@@ -4168,10 +4344,12 @@ export default function Home() {
               <button
                 onClick={() => {
                   if (editingEmpresaId && empresaSecao !== null) {
+                    if (!confirmarSaidaDaEdicao()) return;
                     setEmpresaSecao(null);
                     setMsg("");
                     return;
                   }
+                  if (!confirmarSaidaDaEdicao()) return;
                   setShowEmpresaForm(false);
                   setEditingEmpresaId(null);
                   setEmpresaSecao(null);
@@ -4193,6 +4371,37 @@ export default function Home() {
                     {msg}
                   </div>
                 )}
+
+                <div className="mb-4 rounded-2xl border border-blue-100 bg-blue-50/70 p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <div className="text-[11px] font-extrabold uppercase tracking-wider text-[#2F5597]">
+                        Preparação da empresa
+                      </div>
+                      <div className="mt-1 font-extrabold text-slate-950">
+                        {configuracaoEmpresaGerenciada.prontaParaVisita
+                          ? "Dados essenciais prontos para iniciar visitas"
+                          : "Complete os dados essenciais antes da primeira visita"}
+                      </div>
+                      <div className="mt-1 text-xs text-slate-600">
+                        {configuracaoEmpresaGerenciada.concluidas} de {configuracaoEmpresaGerenciada.total} áreas configuradas. As áreas técnicas podem ser concluídas gradualmente.
+                      </div>
+                    </div>
+                    <span className={`w-fit shrink-0 rounded-full px-3 py-1.5 text-xs font-extrabold ${
+                      configuracaoEmpresaGerenciada.prontaParaVisita
+                        ? "bg-emerald-100 text-emerald-800"
+                        : "bg-amber-100 text-amber-800"
+                    }`}>
+                      {configuracaoEmpresaGerenciada.percentual}% configurada
+                    </span>
+                  </div>
+                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-white">
+                    <div
+                      className="h-full rounded-full bg-[#2F5597] transition-all"
+                      style={{ width: `${configuracaoEmpresaGerenciada.percentual}%` }}
+                    />
+                  </div>
+                </div>
 
                 <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-blue-50/60 p-3 sm:p-4">
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -4257,6 +4466,17 @@ export default function Home() {
                         <div className="mt-3 text-[10px] font-extrabold uppercase tracking-wider text-[#2F5597]">{item.categoria}</div>
                         <div className="mt-0.5 font-extrabold text-slate-950">{item.titulo}</div>
                         <div className="mt-1 text-xs leading-5 text-slate-500">{item.resumo}</div>
+                        <div className={`mt-3 text-[11px] font-extrabold ${
+                          configuracaoEmpresaGerenciada.etapas.find((etapa) => etapa.id === item.secao)?.concluida
+                            ? "text-emerald-700"
+                            : "text-amber-700"
+                        }`}>
+                          {configuracaoEmpresaGerenciada.etapas.find((etapa) => etapa.id === item.secao)?.concluida
+                            ? "✓ Configurado"
+                            : item.secao === "dados" || item.secao === "ambientes"
+                            ? "Essencial • completar"
+                            : "Pode ser concluído depois"}
+                        </div>
                       </button>
                     ))}
                   </div>
@@ -4264,6 +4484,26 @@ export default function Home() {
               </div>
             ) : (
               <>
+                {editingEmpresaId && empresaSecao !== null && (
+                  <details className="mt-4 rounded-xl border border-blue-100 bg-blue-50/70 p-3">
+                    <summary className="cursor-pointer text-sm font-extrabold text-[#2F5597]">
+                      Para que serve esta área?
+                    </summary>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                      {empresaSecao === "dados"
+                        ? "Reúne a identificação, os contatos e o funcionamento do estabelecimento. Esses dados aparecem nas visitas e nos relatórios."
+                        : empresaSecao === "manual"
+                        ? "Registra quem elabora, revisa, aprova e executa as responsabilidades previstas no Manual de Boas Práticas."
+                        : empresaSecao === "ambientes"
+                        ? "Define os locais que poderão ser selecionados em uma visita e os equipamentos existentes em cada ambiente."
+                        : empresaSecao === "fluxos"
+                        ? "Informa como as atividades acontecem na prática. Os fluxos marcados como aplicáveis acrescentam verificações ao checklist."
+                        : empresaSecao === "programas"
+                        ? "Acompanha os controles permanentes de qualidade, sua implantação, responsáveis, registros e documentos relacionados."
+                        : "Organiza os procedimentos escritos da empresa, indicando situação, responsável, versão e próxima revisão."}
+                    </p>
+                  </details>
+                )}
                 {(!editingEmpresaId || empresaSecao === "dados") && (
                   <div className="mt-4 grid gap-3 md:grid-cols-2">
                     <label>
@@ -4342,6 +4582,13 @@ export default function Home() {
                 {msg && <div className="mt-3 rounded-xl bg-amber-50 p-3 text-sm">{msg}</div>}
 
                 <div className="sticky bottom-20 z-20 mt-4 rounded-2xl border border-blue-100 bg-white/95 p-2 shadow-lg backdrop-blur md:bottom-4">
+                  {editingEmpresaId && (
+                    <div className={`mb-2 px-1 text-xs font-bold ${empresaTemAlteracoes ? "text-amber-700" : "text-emerald-700"}`}>
+                      {empresaTemAlteracoes
+                        ? "● Alterações ainda não salvas"
+                        : "✓ Todas as alterações desta área estão salvas"}
+                    </div>
+                  )}
                   <button onClick={salvarEmpresa} className="w-full rounded-xl bg-[#2F5597] p-3 font-extrabold text-white">
                     {editingEmpresaId ? "Salvar e voltar à Central" : "Salvar e abrir a Central"}
                   </button>
@@ -5687,9 +5934,58 @@ export default function Home() {
                   )}
                 </div>
 
-                {checklistAtual
-                  .filter((i) => i.ambiente === ambienteChecklistAtivo)
-                  .map((item, idx) => {
+                <div className="sticky top-2 z-20 rounded-2xl border border-blue-200 bg-white/95 p-3 shadow-lg backdrop-blur">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <div className="text-[11px] font-extrabold uppercase tracking-wide text-[#2F5597]">
+                        Modo visita rápida
+                      </div>
+                      <div className="mt-0.5 text-sm font-bold text-slate-700">
+                        {pendentesAmbienteAtivo} pendente{pendentesAmbienteAtivo === 1 ? "" : "s"} neste ambiente
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={irParaProximaPendencia}
+                      className="rounded-xl bg-[#17365D] px-4 py-2.5 text-sm font-extrabold text-white"
+                    >
+                      Próxima pendência →
+                    </button>
+                  </div>
+                  <div className="mt-3 grid grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1">
+                    {(["Todos", "Pendentes", "Não conformes"] as FiltroChecklistRapido[]).map((filtro) => (
+                      <button
+                        key={filtro}
+                        type="button"
+                        onClick={() => setFiltroChecklistRapido(filtro)}
+                        className={`rounded-lg px-2 py-2 text-xs font-extrabold ${
+                          filtroChecklistRapido === filtro
+                            ? "bg-white text-[#17365D] shadow-sm"
+                            : "text-slate-500"
+                        }`}
+                      >
+                        {filtro}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {itensChecklistVisiveis.length === 0 && (
+                  <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-center">
+                    <div className="font-extrabold text-slate-800">
+                      Nenhum item neste filtro
+                    </div>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Escolha “Todos” ou avance para a próxima pendência da visita.
+                    </p>
+                  </div>
+                )}
+
+                {itensChecklistVisiveis
+                  .map((item) => {
+                    const idx = itensAmbienteChecklistAtivo.findIndex(
+                      (itemOriginal) => itemOriginal.id === item.id
+                    );
                     const criterioCapitulo2 = item.referencia?.includes("Capítulo 2");
                     const criterioCapitulo3 = item.referencia?.includes("Capítulo 3");
                     const ncDoItem = (db.ncs || []).find(
@@ -5702,6 +5998,7 @@ export default function Home() {
                     <article
                       key={item.id}
                       id={`checklist-item-${item.id}`}
+                      onFocusCapture={() => setUltimoItemChecklistId(item.id)}
                       className={`scroll-mt-4 rounded-2xl bg-white p-5 shadow-sm ${
                         item.status === "Não Conforme"
                           ? "border-2 border-red-200"
@@ -6136,7 +6433,7 @@ export default function Home() {
                   <div className="font-extrabold leading-snug text-slate-950">{proximoAmbienteVisita || ((visitaAtual.ambientes || []).length ? "Revisar a inspeção" : "Definir ambientes")}</div>
                   <button
                     type="button"
-                    onClick={() => (visitaAtual.ambientes || []).length ? abrirChecklistNoAmbiente(proximoAmbienteVisita) : abrirAmbientes()}
+                    onClick={() => (visitaAtual.ambientes || []).length ? abrirChecklist() : abrirAmbientes()}
                     disabled={!permitido("visitas.executar", visitaAtual.empresaId)}
                     className="mt-2 w-full rounded-lg bg-[#2F5597] px-3 py-2 text-xs font-extrabold text-white disabled:opacity-50"
                   >
@@ -6985,38 +7282,107 @@ export default function Home() {
               <div className="aspect-[16/7] min-h-36 bg-[#17365D] bg-[url('/images/cozinha-inspecao.webp')] bg-cover bg-center" />
             </section>
 
+            <section className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm">
+              <div className="text-[11px] font-extrabold uppercase tracking-wider text-[#2F5597]">
+                O que fazer agora
+              </div>
+              {visitaEmAndamentoDestaque ? (
+                <div className="mt-3 rounded-xl bg-[#17365D] p-4 text-white">
+                  <div className="text-xs font-bold text-blue-100">Visita em andamento</div>
+                  <div className="mt-1 text-lg font-extrabold">
+                    {db.empresas[visitaEmAndamentoDestaque.empresaId]?.nomeFantasia || "Empresa"}
+                  </div>
+                  <div className="mt-1 text-xs text-blue-100">
+                    {progressoVisitaDestaque}% concluída • {fdata(visitaEmAndamentoDestaque.data)}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDb((estado) => ({ ...estado, empresaAtualId: visitaEmAndamentoDestaque.empresaId }));
+                      setVisitaAtualId(visitaEmAndamentoDestaque.id);
+                      setView("visita");
+                    }}
+                    className="mt-3 w-full rounded-lg bg-white px-4 py-2.5 text-sm font-extrabold text-[#17365D]"
+                  >
+                    Continuar visita →
+                  </button>
+                </div>
+              ) : (
+                <div className="mt-3 rounded-xl bg-blue-50 p-4">
+                  <div className="font-extrabold text-slate-950">Nenhuma visita em andamento</div>
+                  <p className="mt-1 text-xs text-slate-600">
+                    {atual
+                      ? `A próxima visita será criada para ${atual.nomeFantasia}.`
+                      : "Selecione uma empresa para começar."}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={atual ? novaVisita : () => setView("empresas")}
+                    className="mt-3 w-full rounded-lg bg-[#2F5597] px-4 py-2.5 text-sm font-extrabold text-white"
+                  >
+                    {atual ? "Iniciar nova visita →" : "Selecionar empresa →"}
+                  </button>
+                </div>
+              )}
+
+              {atual && (
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={() => editarEmpresa(atual)}
+                    className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-left"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-extrabold text-slate-900">Preparação da empresa</span>
+                      <span className="text-xs font-extrabold text-[#2F5597]">{configuracaoEmpresaAtual.percentual}%</span>
+                    </div>
+                    <div className="mt-1 text-xs text-slate-500">
+                      {configuracaoEmpresaAtual.prontaParaVisita
+                        ? "Dados essenciais prontos"
+                        : `Próximo: ${configuracaoEmpresaAtual.proximaEtapa?.titulo || "completar cadastro"}`}
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setView("visitas")}
+                    className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-left"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-extrabold text-slate-900">Pendências técnicas</span>
+                      <span className={`text-xs font-extrabold ${ncsEmpresaAbertas ? "text-red-700" : "text-emerald-700"}`}>
+                        {ncsEmpresaAbertas}
+                      </span>
+                    </div>
+                    <div className="mt-1 text-xs text-slate-500">
+                      {ncsEmpresaAbertas ? "Não conformidades em acompanhamento" : "Nenhuma não conformidade aberta"}
+                    </div>
+                  </button>
+                </div>
+              )}
+            </section>
+
             <section className="grid grid-cols-4 gap-2">
               <div className="rounded-xl border border-slate-100 bg-white px-2 py-3 text-center shadow-sm">
                 <div className="mx-auto grid h-8 w-8 place-items-center rounded-full bg-blue-50 text-sm font-extrabold text-[#2F5597]">▣</div>
                 <div className="mt-1 text-xl font-extrabold text-[#2F5597]">{visitasDoMes.length}</div>
-                <div className="text-[9px] leading-tight text-slate-500">Visitas<br />este mês</div>
+                <div className="text-[11px] leading-tight text-slate-500">Visitas<br />este mês</div>
               </div>
               <div className="rounded-xl border border-slate-100 bg-white px-2 py-3 text-center shadow-sm">
                 <div className="mx-auto grid h-8 w-8 place-items-center rounded-full bg-emerald-50 text-lg font-extrabold text-emerald-700">✓</div>
                 <div className="mt-1 text-xl font-extrabold text-emerald-700">{visitasDoMes.filter((v) => v.status === "Concluída").length}</div>
-                <div className="text-[9px] leading-tight text-slate-500">Concluídas<br />este mês</div>
+                <div className="text-[11px] leading-tight text-slate-500">Concluídas<br />este mês</div>
               </div>
               <div className="rounded-xl border border-slate-100 bg-white px-2 py-3 text-center shadow-sm">
                 <div className="mx-auto grid h-8 w-8 place-items-center rounded-full bg-amber-50 text-lg font-extrabold text-amber-600">◷</div>
                 <div className="mt-1 text-xl font-extrabold text-amber-600">{visitas.filter((v) => v.status === "Em andamento").length}</div>
-                <div className="text-[9px] leading-tight text-slate-500">Em andamento<br />agora</div>
+                <div className="text-[11px] leading-tight text-slate-500">Em andamento<br />agora</div>
               </div>
               <div className="rounded-xl border border-slate-100 bg-white px-2 py-3 text-center shadow-sm">
                 <div className="mx-auto grid h-8 w-8 place-items-center rounded-full bg-blue-50 text-[#2F5597]"><MobileNavIcon name="empresas" /></div>
                 <div className="mt-1 text-xl font-extrabold text-[#2F5597]">{empresasVisiveis.length}</div>
-                <div className="text-[9px] leading-tight text-slate-500">Empresas<br />ativas</div>
+                <div className="text-[11px] leading-tight text-slate-500">Empresas<br />ativas</div>
               </div>
             </section>
-
-            <button
-              type="button"
-              onClick={novaVisita}
-              disabled={!atual || !permitido("visitas.criar", atual.id)}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#2F5597] px-5 py-3.5 font-extrabold text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <span className="grid h-6 w-6 place-items-center rounded-full border-2 border-white text-lg leading-none">+</span>
-              Iniciar visita
-            </button>
 
             <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
               <div className="flex items-center justify-between gap-3">
@@ -7054,9 +7420,9 @@ export default function Home() {
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-xs font-extrabold text-slate-950">{db.empresas[visita.empresaId]?.nomeFantasia || "Empresa"}</span>
-                        <span className="block truncate text-[9px] text-slate-500">{fdata(visita.data)} • {visita.responsavel || "Responsável não informado"}</span>
+                        <span className="block truncate text-[11px] text-slate-500">{fdata(visita.data)} • {visita.responsavel || "Responsável não informado"}</span>
                       </span>
-                      <span className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-bold ${visita.status === "Concluída" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>{visita.status}</span>
+                      <span className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-bold ${visita.status === "Concluída" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>{visita.status}</span>
                       <span className="shrink-0 text-[#2F5597]">›</span>
                     </button>
                   ))}
@@ -7084,14 +7450,26 @@ export default function Home() {
               {permitido("empresas.editar") && (
                 <button
                   onClick={() => {
+                    const responsabilidadesIniciais = criarResponsabilidadesPadrao();
+                    const fluxosIniciais = criarFluxosOperacionaisPadrao();
+                    const programasIniciais = criarProgramasControlePadrao();
                     setEditingEmpresaId(null);
                     setForm(formEmpresaVazio);
-                    setResponsabilidadesEmpresa(criarResponsabilidadesPadrao());
+                    setResponsabilidadesEmpresa(responsabilidadesIniciais);
                     setSetoresEmpresa([]);
                     setEquipamentosEmpresa([]);
-                    setFluxosEmpresa(criarFluxosOperacionaisPadrao());
-                    setProgramasEmpresa(criarProgramasControlePadrao());
+                    setFluxosEmpresa(fluxosIniciais);
+                    setProgramasEmpresa(programasIniciais);
                     setPopsEmpresa([]);
+                    setAssinaturaEmpresaSalva(assinaturaEdicaoEmpresa({
+                      form: formEmpresaVazio,
+                      responsabilidades: responsabilidadesIniciais,
+                      setores: [],
+                      equipamentos: [],
+                      fluxos: fluxosIniciais,
+                      programas: programasIniciais,
+                      pops: [],
+                    }));
                     setEmpresaSecao("dados");
                     setMsg("");
                     setShowEmpresaForm(true);
@@ -7103,8 +7481,18 @@ export default function Home() {
               )}
             </div>
 
+            <label className="mt-4 block">
+              <span className="sr-only">Buscar empresa</span>
+              <input
+                value={buscaEmpresas}
+                onChange={(event) => setBuscaEmpresas(event.target.value)}
+                placeholder="Buscar por nome, CNPJ ou município"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm outline-none focus:border-blue-300 focus:bg-white"
+              />
+            </label>
+
             <div className="mt-4 grid gap-3 md:grid-cols-2">
-              {empresasVisiveis.map((e) => (
+              {empresasFiltradas.map((e) => (
                 <div
                   key={e.id}
                   className={`rounded-xl border p-4 ${
@@ -7170,6 +7558,11 @@ export default function Home() {
                   </div>
                 </div>
               ))}
+              {empresasFiltradas.length === 0 && (
+                <div className="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500 md:col-span-2">
+                  Nenhuma empresa encontrada com esse termo.
+                </div>
+              )}
             </div>
           </section>
         ) : view === "historico" && atual ? (
@@ -7506,8 +7899,25 @@ export default function Home() {
               </div>
             </div>
 
+            <div className="flex flex-wrap gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
+              {(["Todas", "Em andamento", "Concluída"] as const).map((filtro) => (
+                <button
+                  key={filtro}
+                  type="button"
+                  onClick={() => setFiltroListaVisitas(filtro)}
+                  className={`flex-1 rounded-xl px-3 py-2.5 text-sm font-extrabold ${
+                    filtroListaVisitas === filtro
+                      ? "bg-[#17365D] text-white"
+                      : "bg-slate-50 text-slate-600"
+                  }`}
+                >
+                  {filtro === "Todas" ? "Todas" : filtro === "Concluída" ? "Concluídas" : "Em andamento"}
+                </button>
+              ))}
+            </div>
+
             <div className="grid gap-4 lg:grid-cols-2">
-              {visitasEmpresaAtual.map((v) => {
+              {visitasEmpresaFiltradas.map((v) => {
                 const e = db.empresas[v.empresaId];
                 return (
                   <article
@@ -7597,6 +8007,11 @@ export default function Home() {
                   </article>
                 );
               })}
+              {visitasEmpresaFiltradas.length === 0 && (
+                <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500 lg:col-span-2">
+                  Nenhuma visita nesta situação.
+                </div>
+              )}
             </div>
           </section>
         )}
@@ -7612,7 +8027,7 @@ export default function Home() {
             if (destino === "acessos" && !permitido("usuarios.gerenciar")) return null;
             const ativo = destino === "visitas" ? view === "visitas" || VISIT_VIEWS.includes(view) : view === destino;
             return (
-              <button key={destino} type="button" onClick={() => setView(destino)} className={`flex min-h-14 flex-col items-center justify-center rounded-2xl px-2 text-[11px] font-extrabold ${ativo ? "bg-blue-50 text-[#17365D]" : "text-slate-500"}`}>
+              <button key={destino} type="button" onClick={() => navegarPrincipal(destino)} className={`flex min-h-14 flex-col items-center justify-center rounded-2xl px-2 text-[11px] font-extrabold ${ativo ? "bg-blue-50 text-[#17365D]" : "text-slate-500"}`}>
                 <MobileNavIcon name={destino} />
                 <span className="mt-1">{rotulo}</span>
               </button>
