@@ -502,30 +502,40 @@
   .nc-status{padding:.22rem .48rem;font-size:.61rem}
   .nc-chips>span{font-size:.64rem}
   .nc-follow-button{margin-top:.75rem;border-top:1px solid #edf1f6;padding-top:.72rem}
-  .plan-center{margin:-.1rem}
-  .plan-center,.plan-page-head,.plan-action-list,.plan-action-card,.plan-action-content,.plan-form-grid{overflow-x:hidden}
+  /* Plano de ação: mantém todo o conteúdo preso à largura do celular */
+  .plan-center{width:100%;max-width:100%;min-width:0;margin:0;overflow-x:clip}
+  .plan-center,.plan-page-head,.plan-title-row,.plan-action-list,.plan-action-card,.plan-action-summary,.plan-action-content,.plan-editor-toolbar,.plan-form-grid,.plan-followup-details,.plan-editor-footer,.plan-field{width:100%;max-width:100%;min-width:0;box-sizing:border-box}
+  .plan-page-head,.plan-action-card,.plan-action-content,.plan-form-grid,.plan-followup-details{overflow-x:hidden}
   .plan-page-head{border-radius:1rem;padding:.85rem}
-  .plan-summary-grid{margin-top:.8rem}
-  .plan-summary-grid>div{padding:.62rem .25rem;text-align:center}
+  .plan-summary-grid{width:100%;max-width:100%;min-width:0;margin-top:.8rem}
+  .plan-summary-grid>div{min-width:0;padding:.62rem .2rem;text-align:center}
   .plan-summary-grid>div>div:first-child{font-size:.56rem;line-height:1.2}
   .plan-summary-grid>div>div:nth-child(2){font-size:1rem}
-  .plan-action-summary{padding:.8rem}
-  .plan-action-eyebrow{font-size:.61rem;line-height:1.35}
-  .plan-action-title{font-size:.9rem}
-  .plan-action-meta{gap:.4rem .6rem;font-size:.66rem}
+  .plan-action-list{gap:.7rem}
+  .plan-action-summary{align-items:flex-start;padding:.8rem}
+  .plan-action-summary>div{min-width:0}
+  .plan-action-eyebrow{max-width:100%;overflow-wrap:anywhere;font-size:.61rem;line-height:1.35}
+  .plan-action-title{max-width:100%;overflow-wrap:anywhere;font-size:.9rem}
+  .plan-action-meta{max-width:100%;gap:.4rem .6rem;font-size:.66rem}
+  .plan-action-meta>span{min-width:0;overflow-wrap:anywhere}
+  .plan-chevron{width:1.85rem;height:1.85rem}
   .plan-action-content{padding:.8rem}
   .plan-editor-toolbar{align-items:flex-start;flex-direction:column;gap:.65rem}
-  .plan-status-select{width:100%;justify-content:space-between}
-  .plan-status-select select{min-width:8.5rem}
+  .plan-chips{max-width:100%}
+  .plan-chips>span{max-width:100%;overflow-wrap:anywhere}
+  .plan-status-select{width:100%;min-width:0;justify-content:space-between;gap:.65rem}
+  .plan-status-select select{width:auto;max-width:62%;min-width:0}
   .plan-form-grid{grid-template-columns:minmax(0,1fr);gap:.65rem}
   .plan-action-field{grid-column:auto;grid-row:auto}
   .plan-followup-details{grid-column:auto}
-  .plan-field input,.plan-field textarea{font-size:.78rem}
+  .plan-field input,.plan-field textarea{width:100%;max-width:100%;min-width:0;font-size:.78rem}
   .plan-action-field textarea{height:auto;min-height:4.3rem}
-  .plan-followup-details>summary{padding:.65rem;font-size:.69rem}
-  .plan-followup-details>summary span:last-child{font-size:.61rem}
+  .plan-followup-details>summary{min-width:0;flex-wrap:wrap;padding:.65rem;font-size:.69rem}
+  .plan-followup-details>summary span{min-width:0;overflow-wrap:anywhere}
+  .plan-followup-details>summary span:last-child{margin-left:auto;font-size:.61rem;text-align:right}
   .plan-editor-footer{align-items:stretch;flex-direction:column;gap:.55rem}
-  .plan-editor-footer button{width:100%;padding:.7rem}
+  .plan-editor-footer>span{min-width:0;overflow-wrap:anywhere}
+  .plan-editor-footer button{width:100%;max-width:100%;padding:.7rem}
 }
 
 /* ===== Central da visita compacta no celular ===== */

@@ -5596,12 +5596,7 @@ export default function Home() {
                 {ncsVisita.map((nc, idx) => (
                   <details
                     key={nc.id}
-                    open={(planoNcAbertaId || ncsVisita[0]?.id) === nc.id}
-                    onToggle={(event) => {
-                      const abertaId = planoNcAbertaId || ncsVisita[0]?.id;
-                      if (event.currentTarget.open && abertaId !== nc.id) setPlanoNcAbertaId(nc.id);
-                      if (!event.currentTarget.open && abertaId === nc.id) setPlanoNcAbertaId("__fechado__");
-                    }}
+                    defaultOpen={(planoNcAbertaId || ncsVisita[0]?.id) === nc.id}
                     className={`plan-action-card ${nc.status === "Resolvida" ? "is-resolved" : ""}`}
                   >
                     <summary className="plan-action-summary">
@@ -5722,7 +5717,6 @@ export default function Home() {
                           disabled={!nc.acaoCorretiva?.trim()}
                           onClick={() => {
                             atualizarNC(nc.id, { status: "Em tratamento" });
-                            setPlanoNcAbertaId("__fechado__");
                           }}
                         >
                           {nc.acaoCorretiva?.trim() ? "Salvar e iniciar tratamento →" : "Defina a ação corretiva"}
