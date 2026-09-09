@@ -603,6 +603,7 @@ export default function Home() {
   const [filtroInicio, setFiltroInicio] = useState<"Em andamento" | "Concluída">("Em andamento");
   const [buscaEmpresas, setBuscaEmpresas] = useState("");
   const [filtroListaVisitas, setFiltroListaVisitas] = useState<"Todas" | "Em andamento" | "Concluída">("Todas");
+  const [filtroNcs, setFiltroNcs] = useState<"Todas" | "Abertas" | "Resolvidas">("Todas");
   const [showEmpresaForm, setShowEmpresaForm] = useState(false);
   const [editingEmpresaId, setEditingEmpresaId] = useState<string | null>(null);
   const [empresaSecao, setEmpresaSecao] = useState<EmpresaSecao | null>(null);
@@ -1881,6 +1882,11 @@ export default function Home() {
   });
   const ncsVisita = (db.ncs || []).filter((nc) => nc.visitaId === visitaAtual?.id && !nc.inativaNoChecklist);
   const ncsAbertas = ncsVisita.filter((nc) => nc.status !== "Resolvida").length;
+  const ncsVisiveis = ncsVisita.filter((nc) => {
+    if (filtroNcs === "Todas") return true;
+    if (filtroNcs === "Abertas") return nc.status !== "Resolvida";
+    return nc.status === "Resolvida";
+  });
   const acoesDefinidas = ncsVisita.filter(
     (nc: any) => (nc.acaoCorretiva || "").trim().length > 0
   ).length;
@@ -6037,49 +6043,84 @@ export default function Home() {
             )}
           </section>
         ) : view === "ncs" && visitaAtual ? (
-          <section className="space-y-4">
-            <div className="rounded-2xl border border-red-100 bg-white p-4 shadow-sm">
-              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                <div>
-                  <div className="text-xs font-extrabold uppercase tracking-wider text-red-700">Resultado da inspeção</div>
-                  <h1 className="mt-1 text-2xl font-extrabold">Não conformidades</h1>
-                  <p className="text-sm text-slate-500">{empresaVisita?.nomeFantasia} • {fdata(visitaAtual.data)}</p>
+          <section className="nc-center space-y-3">
+            <div className="nc-page-head">
+              <div className="nc-title-row">
+                <div className="min-w-0">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.15em] text-red-600">Resultado da inspeção</div>
+                  <h1 className="mt-1 text-xl font-medium text-[#061b4f] sm:text-2xl">Não conformidades</h1>
+                  <p className="mt-0.5 truncate text-xs text-slate-500 sm:text-sm">{empresaVisita?.nomeFantasia} • {fdata(visitaAtual.data)}</p>
                 </div>
-                <button onClick={() => setView("visita")} className="rounded-xl bg-slate-100 px-3 py-2 text-sm font-bold text-slate-700">Voltar à Central</button>
+                <button onClick={() => setView("visita")} aria-label="Voltar à Central da visita" className="nc-back-button">
+                  <span className="sm:hidden">←</span><span className="hidden sm:inline">← Central da visita</span>
+                </button>
               </div>
-              <div className="mt-5 grid gap-3 md:grid-cols-3">
-                <MetricCard label="NCs identificadas" value={ncsVisita.length} />
-                <MetricCard label="Abertas" value={ncsAbertas} />
-                <MetricCard label="Resolvidas" value={ncsVisita.filter((nc) => nc.status === "Resolvida").length} />
+
+              <div className="nc-summary" aria-label="Resumo das não conformidades">
+                <div><span>Total</span><strong>{ncsVisita.length}</strong></div>
+                <div><span>Abertas</span><strong className="text-red-600">{ncsAbertas}</strong></div>
+                <div><span>Resolvidas</span><strong className="text-emerald-700">{ncsVisita.filter((nc) => nc.status === "Resolvida").length}</strong></div>
               </div>
+
+              {ncsVisita.length > 0 && (
+                <div className="nc-filter-tabs" aria-label="Filtrar não conformidades">
+                  {(["Todas", "Abertas", "Resolvidas"] as const).map((filtro) => (
+                    <button key={filtro} type="button" onClick={() => setFiltroNcs(filtro)} className={filtroNcs === filtro ? "is-active" : ""}>
+                      {filtro}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {ncsVisita.length === 0 ? (
-              <div className="rounded-2xl bg-white p-8 text-center shadow-sm">
-                <div className="text-xl font-extrabold">Nenhuma não conformidade registrada</div>
-                <p className="mt-2 text-sm text-slate-500">Itens marcados como Não Conforme no checklist aparecerão aqui automaticamente.</p>
-                <button onClick={abrirChecklist} className="mt-5 rounded-xl bg-[#2F5597] px-5 py-3 font-extrabold text-white">Abrir checklist</button>
+              <div className="nc-empty-state">
+                <div className="text-lg font-medium text-[#061b4f]">Nenhuma não conformidade registrada</div>
+                <p className="mt-1 text-sm text-slate-500">Itens marcados como Não Conforme no checklist aparecerão aqui automaticamente.</p>
+                <button onClick={abrirChecklist}>Abrir checklist →</button>
+              </div>
+            ) : ncsVisiveis.length === 0 ? (
+              <div className="nc-empty-state">
+                <div className="text-lg font-medium text-[#061b4f]">Nenhum resultado neste filtro</div>
+                <button onClick={() => setFiltroNcs("Todas")}>Ver todas</button>
               </div>
             ) : (
-              <div className="space-y-3">
-                {ncsVisita.map((nc, idx) => (
-                  <article key={nc.id} className="rounded-2xl border-2 border-red-100 bg-white p-5 shadow-sm">
-                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                      <div>
-                        <div className="text-xs font-extrabold uppercase tracking-wide text-slate-400">NC {String(idx + 1).padStart(2, "0")} • {nc.ambiente} • {nc.categoria}</div>
-                        <h2 className="mt-1 text-xl font-extrabold">{nc.titulo}</h2>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          <span className={`rounded-full px-2.5 py-1 text-[11px] font-extrabold ${nc.criticidade === "Crítica" ? "bg-red-50 text-red-700" : nc.criticidade === "Importante" ? "bg-amber-50 text-amber-700" : "bg-slate-100 text-slate-600"}`}>{nc.criticidade}</span>
-                          {nc.referencia && <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-700">{nc.referencia}</span>}
+              <div className="nc-card-grid">
+                {ncsVisiveis.map((nc) => {
+                  const numeroOriginal = ncsVisita.findIndex((item) => item.id === nc.id) + 1;
+                  const resolvida = nc.status === "Resolvida";
+                  return (
+                    <article key={nc.id} className={`nc-card ${resolvida ? "is-resolved" : "is-open"}`}>
+                      <div className="nc-card-topline">
+                        <div className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400">
+                          NC {String(numeroOriginal).padStart(2, "0")} · {nc.ambiente} · {nc.categoria}
                         </div>
+                        <span className={`nc-status ${resolvida ? "is-resolved" : nc.status === "Em tratamento" ? "is-progress" : "is-open"}`}>{nc.status}</span>
                       </div>
-                      <span className="rounded-full bg-red-50 px-3 py-1 text-xs font-extrabold text-red-700">{nc.status}</span>
-                    </div>
-                    {nc.observacao && <div className="mt-4 rounded-xl bg-red-50 p-4"><div className="text-xs font-extrabold uppercase text-red-700">Constatação em campo</div><p className="mt-1 text-sm text-red-900">{nc.observacao}</p></div>}
-                    {nc.orientacao && <div className="mt-3 rounded-xl bg-slate-50 p-4"><div className="text-xs font-extrabold uppercase text-slate-500">Orientação técnica</div><p className="mt-1 text-sm text-slate-700">{nc.orientacao}</p></div>}
-                    <div className="mt-4 text-xs text-slate-400">Gerada automaticamente a partir do checklist técnico.</div>
-                  </article>
-                ))}
+
+                      <h2>{nc.titulo}</h2>
+
+                      <div className="nc-chips">
+                        <span className={nc.criticidade === "Crítica" ? "is-critical" : nc.criticidade === "Importante" ? "is-important" : "is-routine"}>{nc.criticidade}</span>
+                        {nc.referencia && <span className="is-reference">{nc.referencia}</span>}
+                      </div>
+
+                      {(nc.observacao || nc.orientacao) && (
+                        <details className="nc-details">
+                          <summary>Ver detalhes técnicos <span>⌄</span></summary>
+                          <div>
+                            {nc.observacao && <p><strong>Constatação:</strong> {nc.observacao}</p>}
+                            {nc.orientacao && <p><strong>Orientação:</strong> {nc.orientacao}</p>}
+                          </div>
+                        </details>
+                      )}
+
+                      <button type="button" onClick={() => setView("plano")} className="nc-follow-button">
+                        {resolvida ? "Consultar tratamento" : "Acompanhar correção"} <span>→</span>
+                      </button>
+                    </article>
+                  );
+                })}
               </div>
             )}
           </section>
@@ -6553,7 +6594,7 @@ export default function Home() {
                       className="mt-3 w-full rounded-xl bg-[#17365D] px-4 py-2.5 text-sm font-extrabold text-white"
                     >
                       {pendentesAmbienteAtivo > 0
-                        ? `Avançar com ${pendentesAmbienteAtivo} pendente(s) →`
+                        ? `Avançar com ${pendentesAmbienteAtivo} ${pendentesAmbienteAtivo === 1 ? "pendência" : "pendências"} →`
                         : "Concluir ambiente e avançar →"}
                     </button>
                   </article>
