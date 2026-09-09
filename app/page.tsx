@@ -571,6 +571,14 @@ export default function Home() {
   const [ready, setReady] = useState(false);
   const [view, setView] = useState<View>("inicio");
   const [menuContextualAberto, setMenuContextualAberto] = useState(false);
+  useEffect(() => {
+    if (!menuContextualAberto) return;
+    const fecharComEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMenuContextualAberto(false);
+    };
+    window.addEventListener("keydown", fecharComEscape);
+    return () => window.removeEventListener("keydown", fecharComEscape);
+  }, [menuContextualAberto]);
   const [filtroInicio, setFiltroInicio] = useState<"Em andamento" | "Concluída">("Em andamento");
   const [buscaEmpresas, setBuscaEmpresas] = useState("");
   const [filtroListaVisitas, setFiltroListaVisitas] = useState<"Todas" | "Em andamento" | "Concluída">("Todas");
@@ -2817,18 +2825,55 @@ export default function Home() {
     setTimeout(() => setCriandoVisita(false), 500);
   }
 
-  function continuar(id: string) {
+  function continuar(id: string, retomarChecklist = false) {
     const original = db.visitas.find((x) => x.id === id);
     const v = original ? migrarVisitaParaChecklistManual(original, CHECKLIST_VERSAO_ATUAL, true) : undefined;
     if (!v) return;
     if (!exigirPermissao("visitas.executar", v.empresaId)) return;
+    const empresaDaVisita = db.empresas[v.empresaId];
+
+    if (retomarChecklist && !(v.ambientes || []).length) {
+      const ambientesIniciais = empresaDaVisita?.setoresManual || [];
+      setDb((o) => ({
+        ...o,
+        empresaAtualId: v.empresaId,
+        visitas: o.visitas.map((visita) => visita.id === v.id ? v : visita),
+      }));
+      setVisitaAtualId(id);
+      setAmbientesSelecionados(ambientesIniciais);
+      setModelosAmbientesSelecionados(criarModelosQuestionarioAmbientes(ambientesIniciais, empresaDaVisita?.modelosQuestionarioAmbientes));
+      setView("ambientes");
+      return;
+    }
+
+    let visitaDestino = v;
+    if (retomarChecklist) {
+      const checklistExistente = v.checklist || [];
+      const possuiRespostas = checklistPossuiRespostas(checklistExistente);
+      const precisaAtualizarModelo = (v.checklistVersao || 1) < CHECKLIST_VERSAO_ATUAL && !possuiRespostas;
+      const checklistDestino = checklistExistente.length === 0 || precisaAtualizarModelo
+        ? criarChecklist(
+            v.ambientes || [],
+            empresaDaVisita?.fluxosOperacionais,
+            empresaDaVisita?.programasControleQualidade,
+            v.modelosQuestionarioAmbientes || empresaDaVisita?.modelosQuestionarioAmbientes
+          )
+        : checklistExistente;
+      visitaDestino = { ...v, checklist: checklistDestino, checklistVersao: CHECKLIST_VERSAO_ATUAL };
+      const primeiraPendente = checklistDestino.find((item) => item.status === "Pendente");
+      const itemRetomada = checklistDestino.find((item) => item.id === ultimoItemChecklistId);
+      const itemDestino = primeiraPendente || itemRetomada || checklistDestino[0];
+      setUltimoItemChecklistId(itemDestino?.id || null);
+      setAmbienteChecklistAtivo(itemDestino?.ambiente || (v.ambientes || [])[0] || null);
+      setFiltroChecklistRapido(primeiraPendente ? "Pendentes" : "Todos");
+    }
     setDb((o) => ({
       ...o,
-      empresaAtualId: v.empresaId,
-      visitas: o.visitas.map((visita) => visita.id === v.id ? v : visita),
+      empresaAtualId: visitaDestino.empresaId,
+      visitas: o.visitas.map((visita) => visita.id === visitaDestino.id ? visitaDestino : visita),
     }));
     setVisitaAtualId(id);
-    setView("visita");
+    setView(retomarChecklist ? "checklist" : "visita");
   }
 
   function abrirAmbientes() {
@@ -4195,6 +4240,7 @@ export default function Home() {
         </div>
       </aside>
 
+      {menuContextualAberto && <button type="button" aria-label="Fechar submenu" onClick={() => setMenuContextualAberto(false)} className="fixed inset-0 z-30 hidden cursor-default bg-slate-950/[0.03] md:block" />}
       {menuContextualAberto && (
         <aside className="fixed inset-y-0 left-64 z-40 hidden w-72 overflow-y-auto border-r border-slate-200 bg-white text-slate-700 shadow-[18px_0_45px_rgba(15,23,42,0.12)] md:block">
           <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white/95 px-5 py-5 backdrop-blur">
@@ -4207,11 +4253,11 @@ export default function Home() {
             <button type="button" onClick={() => setMenuContextualAberto(false)} aria-label="Fechar submenu" className="grid h-9 w-9 place-items-center rounded-full bg-slate-100 text-lg text-slate-500">×</button>
           </div>
 
-          <div className="space-y-1 p-4">
+          <div className="space-y-1 p-4" onClick={(event) => { if ((event.target as HTMLElement).closest("button")) setMenuContextualAberto(false); }}>
             {view === "inicio" && (
               <>
                 <button type="button" onClick={() => setView("inicio")} className="flex w-full items-center gap-3 rounded-xl bg-[#e9efff] px-4 py-3 text-left font-semibold text-[#164ee8]"><span>⌂</span><span>Visão geral</span></button>
-                {visitaEmAndamentoDestaque && <button type="button" onClick={() => { setDb((estado) => ({ ...estado, empresaAtualId: visitaEmAndamentoDestaque.empresaId })); setVisitaAtualId(visitaEmAndamentoDestaque.id); setView("visita"); }} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm hover:bg-slate-50"><span>→</span><span>Continuar visita</span></button>}
+                {visitaEmAndamentoDestaque && <button type="button" onClick={() => continuar(visitaEmAndamentoDestaque.id, true)} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm hover:bg-slate-50"><span>→</span><span>Continuar inspeção</span></button>}
                 <button type="button" onClick={() => setView("visitas")} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm hover:bg-slate-50"><span>▣</span><span>Todas as visitas</span></button>
                 <button type="button" onClick={() => setView("empresas")} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm hover:bg-slate-50"><span>□</span><span>Empresas</span></button>
               </>
