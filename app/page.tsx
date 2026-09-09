@@ -537,6 +537,27 @@ function CompanySectionIcon({ name }: { name: EmpresaSecao }) {
   return <svg {...common}><path d="M7 3h8l4 4v14H7z" /><path d="M15 3v5h5M10 12h6M10 16h6" /><path d="M4 7v13" /></svg>;
 }
 
+type VisitAreaIconName = "evidencias" | "plano" | "relatorio" | "equipamentos" | "programas";
+
+function VisitAreaIcon({ name }: { name: VisitAreaIconName }) {
+  const common = { width: 20, height: 20, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.7, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, "aria-hidden": true };
+  if (name === "evidencias") return <svg {...common}><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m7 15 3-3 2.5 2.5 2-2L19 17" /><circle cx="16.5" cy="9" r="1.5" /></svg>;
+  if (name === "plano") return <svg {...common}><path d="M7 4h10v3H7z" /><path d="M5 6h14v15H5z" /><path d="m8 14 2.2 2.2L16 10.5" /></svg>;
+  if (name === "relatorio") return <svg {...common}><path d="M6 3h9l4 4v14H6z" /><path d="M15 3v5h5M9 12h6M9 16h6" /></svg>;
+  if (name === "equipamentos") return <svg {...common}><rect x="4" y="4" width="16" height="16" rx="2" /><path d="M8 8h8M8 12h5M8 16h7" /></svg>;
+  return <svg {...common}><path d="M7 3h10v4H7z" /><path d="M5 5v16h14V5" /><path d="m8 14 2 2 5-5" /></svg>;
+}
+
+function nomeEmFormatoNatural(nome?: string) {
+  if (!nome || nome !== nome.toUpperCase()) return nome;
+  const conectores = new Set(["da", "das", "de", "do", "dos", "e"]);
+  return nome.toLocaleLowerCase("pt-BR").split(" ").map((palavra, indice) =>
+    indice > 0 && conectores.has(palavra)
+      ? palavra
+      : palavra.charAt(0).toLocaleUpperCase("pt-BR") + palavra.slice(1)
+  ).join(" ");
+}
+
 function quantidadeComNome(quantidade: number, singular: string, plural: string) {
   return `${quantidade} ${quantidade === 1 ? singular : plural}`;
 }
@@ -4195,7 +4216,7 @@ export default function Home() {
         {usuarioDaSessao && (
           <div className="mx-4 mt-4 rounded-2xl border border-white/10 bg-white/[0.07] p-3.5">
             <div className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-blue-200">Empresa ativa</div>
-            <div className="mt-1 truncate text-sm font-extrabold">{atual?.nomeFantasia || "Selecione uma empresa"}</div>
+            <div className="mt-1 truncate text-sm font-semibold">{atual?.nomeFantasia || "Selecione uma empresa"}</div>
             <div className="mt-1 truncate text-[10px] text-blue-100/80">{usuarioDaSessao.nome} • {usuarioDaSessao.perfil}</div>
           </div>
         )}
@@ -4217,7 +4238,7 @@ export default function Home() {
                   navegarPrincipal(destino);
                   setMenuContextualAberto(destino !== "acessos");
                 }}
-                className={`flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-left text-sm font-bold transition ${ativo ? "bg-white text-[#061b4f] shadow-lg" : "text-blue-100 hover:bg-white/10 hover:text-white"}`}
+                className={`flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-left text-sm font-medium transition ${ativo ? "bg-white text-[#061b4f] shadow-lg" : "text-blue-100 hover:bg-white/10 hover:text-white"}`}
               >
                 <span className={`grid h-8 w-8 place-items-center rounded-lg ${ativo ? "bg-[#e9efff] text-[#164ee8]" : "bg-white/10"}`}>
                   <MobileNavIcon name={destino} />
@@ -4230,11 +4251,11 @@ export default function Home() {
         </nav>
 
         <div className="space-y-3 border-t border-white/10 p-4">
-          <button type="button" onClick={() => void atualizarNuvemManualmente()} className="flex w-full items-center gap-2 rounded-xl bg-white/[0.07] px-3 py-2.5 text-left text-xs font-bold text-blue-100">
+          <button type="button" onClick={() => void atualizarNuvemManualmente()} className="flex w-full items-center gap-2 rounded-xl bg-white/[0.07] px-3 py-2.5 text-left text-xs font-medium text-blue-100">
             <span className={`h-2 w-2 rounded-full ${syncStatus === "sincronizado" ? "bg-emerald-400" : syncStatus === "erro" ? "bg-red-400" : "bg-amber-300"}`} />
             {syncStatus === "sincronizado" ? "Dados sincronizados" : syncStatus === "conectando" ? "Sincronizando dados" : "Verificar sincronização"}
           </button>
-          <button type="button" onClick={() => void sairDoSistema()} disabled={saindo} className="w-full rounded-xl px-3 py-2 text-left text-xs font-bold text-blue-200 transition hover:bg-white/10 hover:text-white disabled:opacity-60">
+          <button type="button" onClick={() => void sairDoSistema()} disabled={saindo} className="w-full rounded-xl px-3 py-2 text-left text-xs font-medium text-blue-200 transition hover:bg-white/10 hover:text-white disabled:opacity-60">
             Sair do sistema
           </button>
         </div>
@@ -6536,21 +6557,21 @@ export default function Home() {
             <div className="flex items-center justify-between gap-3 border-b border-slate-200 pb-3 lg:items-end lg:pb-4">
               <div className="min-w-0 flex-1">
                 <div className="text-[10px] font-medium text-slate-400"><span className="text-[#164ee8]">Visitas</span><span className="mx-1.5">›</span>Central da visita</div>
-                <h1 className="mt-1 truncate text-xl font-medium tracking-tight text-[#061b4f] sm:text-[28px]">{empresaVisita?.nomeFantasia}</h1>
+                <h1 className="mt-1 truncate text-xl font-medium tracking-tight text-[#061b4f] sm:text-2xl">{nomeEmFormatoNatural(empresaVisita?.nomeFantasia)}</h1>
                 <div className="mt-0.5 truncate text-xs font-normal text-slate-500 sm:text-sm">{fdata(visitaAtual.data)} • {visitaAtual.responsavel || "Responsável não informado"}</div>
               </div>
               <button onClick={() => setView("visitas")} className="w-fit shrink-0 rounded-full border border-slate-200 bg-white px-3.5 py-2 text-xs font-medium text-[#061b4f] shadow-sm transition hover:border-blue-200 hover:text-[#164ee8] sm:px-4 sm:text-sm"><span className="sm:hidden">← Voltar</span><span className="hidden sm:inline">← Todas as visitas</span></button>
             </div>
 
             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_8px_28px_rgba(6,27,79,0.06)]">
-              <div className="grid gap-3 p-4 sm:p-5 lg:grid-cols-[minmax(250px,.8fr)_minmax(320px,1.2fr)_auto] lg:items-center lg:gap-7">
+              <div className="grid gap-3 p-3.5 sm:p-4 lg:grid-cols-[minmax(250px,.8fr)_minmax(320px,1.2fr)_auto] lg:items-center lg:gap-7">
                 <div className="min-w-0">
                   <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#164ee8]">Próxima etapa</div>
                   <h2 className="mt-1 truncate text-base font-medium text-[#061b4f] sm:text-lg">{proximoAmbienteVisita || ((visitaAtual.ambientes || []).length ? "Revisar a inspeção" : "Definir os ambientes da visita")}</h2>
                   <p className="mt-1 hidden text-xs text-slate-500 sm:block">Retome exatamente do ponto em que parou.</p>
                 </div>
                 <div>
-                  <div className="flex items-center justify-between text-xs text-slate-500"><span>{respondidos} de {totalChecklist} respondidos</span><span className="font-semibold text-[#164ee8]">{percentualChecklist}%</span></div>
+                <div className="flex items-center justify-between text-[13px] text-slate-500"><span>{respondidos} de {totalChecklist} respondidos</span><span className="font-semibold text-[#164ee8]">{percentualChecklist}%</span></div>
                   <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
                     <div className="h-full rounded-full bg-gradient-to-r from-[#45d8ed] to-[#164ee8] transition-all" style={{ width: `${percentualChecklist}%` }} />
                   </div>
@@ -6563,40 +6584,42 @@ export default function Home() {
 
             <div className="grid grid-cols-2 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_6px_20px_rgba(6,27,79,0.04)] lg:grid-cols-4">
               <button type="button" onClick={abrirChecklist} className="border-b border-r border-slate-100 p-3 text-left transition hover:bg-slate-50 sm:p-4 lg:border-b-0">
-                <div className="text-[9px] font-semibold uppercase tracking-wide text-emerald-700 sm:text-[10px]">Conformes</div><div className="mt-0.5 text-xl font-medium text-[#061b4f]">{conformesVisita}</div><div className="text-[11px] font-normal text-slate-500">{percentualConformidade}% dos avaliados</div>
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700">Conformes</div><div className="mt-0.5 text-xl font-medium text-[#061b4f]">{conformesVisita}</div><div className="text-xs font-normal text-slate-500">{percentualConformidade}% dos avaliados</div>
               </button>
               <button type="button" onClick={() => setView("ncs")} disabled={!permitido("ncs.acompanhar", visitaAtual.empresaId)} className="border-b border-slate-100 p-3 text-left transition hover:bg-slate-50 disabled:opacity-50 sm:p-4 lg:border-b-0 lg:border-r">
-                <div className="text-[9px] font-semibold uppercase tracking-wide text-red-600 sm:text-[10px]">Não conformidades</div><div className="mt-0.5 text-xl font-medium text-[#061b4f]">{ncsVisita.length}</div><div className="text-[11px] font-normal text-slate-500">{ncsAbertas} em acompanhamento</div>
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-red-600">Não conformidades</div><div className="mt-0.5 text-xl font-medium text-[#061b4f]">{ncsVisita.length}</div><div className="text-xs font-normal text-slate-500">{ncsAbertas} em acompanhamento</div>
               </button>
               <button type="button" onClick={abrirEvidencias} className="border-r border-slate-100 p-3 text-left transition hover:bg-slate-50 sm:p-4">
-                <div className="text-[9px] font-semibold uppercase tracking-wide text-[#164ee8] sm:text-[10px]">Evidências</div><div className="mt-0.5 text-xl font-medium text-[#061b4f]">{evidenciasVisita.length}</div><div className="text-[11px] font-normal text-slate-500">{fotosVisita} fotos • {audiosVisita} áudios</div>
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-[#164ee8]">Evidências</div><div className="mt-0.5 text-xl font-medium text-[#061b4f]">{evidenciasVisita.length}</div><div className="text-xs font-normal text-slate-500">{fotosVisita} fotos • {audiosVisita} áudios</div>
               </button>
               <button type="button" onClick={abrirChecklist} className="p-3 text-left transition hover:bg-slate-50 sm:p-4">
-                <div className="text-[9px] font-semibold uppercase tracking-wide text-amber-600 sm:text-[10px]">Pendências</div><div className="mt-0.5 text-xl font-medium text-[#061b4f]">{pendentesVisita}</div><div className="text-[11px] font-normal text-slate-500">Itens não verificados</div>
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-amber-600">Pendências</div><div className="mt-0.5 text-xl font-medium text-[#061b4f]">{pendentesVisita}</div><div className="text-xs font-normal text-slate-500">Itens não verificados</div>
               </button>
             </div>
 
             <div>
-              <div className="mb-2 flex items-end justify-between gap-3"><div><div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#164ee8]">Áreas da visita</div><h2 className="mt-0.5 text-lg font-medium text-[#061b4f]">Acesso rápido</h2></div></div>
+              <h2 className="mb-2 text-base font-medium text-[#061b4f]">Áreas da visita</h2>
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                <button type="button" onClick={abrirAmbientes} className="group flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-blue-200 hover:bg-blue-50/30"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-cyan-50 text-cyan-700"><CompanySectionIcon name="ambientes" /></span><span className="min-w-0 flex-1"><span className="block text-sm font-medium text-[#061b4f]">Ambientes da visita</span><span className="mt-0.5 block truncate text-[11px] text-slate-500">{(visitaAtual.ambientes || []).length} selecionados</span></span><span className="text-sm text-[#164ee8]">›</span></button>
-                <button type="button" onClick={abrirEvidencias} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-blue-200 hover:bg-blue-50/30"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-violet-50 text-sm font-semibold text-violet-700">▣</span><span className="min-w-0 flex-1"><span className="block text-sm font-medium text-[#061b4f]">Evidências</span><span className="mt-0.5 block truncate text-[11px] text-slate-500">Fotos, áudios e registros</span></span><span className="text-sm text-[#164ee8]">›</span></button>
-                <button type="button" onClick={() => setView("plano")} disabled={!ncsVisita.length || !permitido("ncs.acompanhar", visitaAtual.empresaId)} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-blue-200 hover:bg-blue-50/30 disabled:opacity-40"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-amber-50 text-sm font-semibold text-amber-700">✓</span><span className="min-w-0 flex-1"><span className="block text-sm font-medium text-[#061b4f]">Plano de ação</span><span className="mt-0.5 block truncate text-[11px] text-slate-500">Tratamento dos achados</span></span><span className="text-sm text-[#164ee8]">›</span></button>
-                <button type="button" onClick={() => setView("relatorio")} disabled={!permitido("relatorios.exportar", visitaAtual.empresaId) && !permitido("relatorios.aprovar", visitaAtual.empresaId)} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-blue-200 hover:bg-blue-50/30 disabled:opacity-40"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-blue-50 text-sm font-semibold text-[#164ee8]">▤</span><span className="min-w-0 flex-1"><span className="block text-sm font-medium text-[#061b4f]">Relatório</span><span className="mt-0.5 block truncate text-[11px] text-slate-500">Resumo e exportação</span></span><span className="text-sm text-[#164ee8]">›</span></button>
-                <button type="button" onClick={() => abrirChecklistNoAmbiente(equipamentosDaVisita[0]?.setor || (visitaAtual.ambientes || [])[0])} disabled={(visitaAtual.ambientes || []).length === 0} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-blue-200 hover:bg-blue-50/30 disabled:opacity-40"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-emerald-50 text-sm font-semibold text-emerald-700">□</span><span className="min-w-0 flex-1"><span className="block text-sm font-medium text-[#061b4f]">Equipamentos e móveis</span><span className="mt-0.5 block truncate text-[11px] text-slate-500">{equipamentosDaVisita.length} tipos • {totalUnidadesEquipamentos} unidades</span></span><span className="text-sm text-[#164ee8]">›</span></button>
-                {programasChecklistAtivos.length > 0 && <button type="button" onClick={() => abrirChecklistNoAmbiente(AMBIENTE_PROGRAMAS_CONTROLE)} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-blue-200 hover:bg-blue-50/30"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-indigo-50 text-xs font-semibold text-indigo-700">PC</span><span className="min-w-0 flex-1"><span className="block text-sm font-medium text-[#061b4f]">Programas de Controle</span><span className="mt-0.5 block truncate text-[11px] text-slate-500">{respondidosProgramasCentral} de {itensProgramasCentral.length} • {statusProgramasCentral}</span></span><span className="text-sm text-[#164ee8]">›</span></button>}
+                <button type="button" onClick={abrirAmbientes} className="group flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-blue-200 hover:bg-blue-50/30"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-cyan-50 text-cyan-700"><CompanySectionIcon name="ambientes" /></span><span className="min-w-0 flex-1"><span className="block text-sm font-medium text-[#061b4f]">Ambientes da visita</span><span className="mt-0.5 block truncate text-xs text-slate-500">{(visitaAtual.ambientes || []).length} selecionados</span></span><span className="text-sm text-[#164ee8]">›</span></button>
+                <button type="button" onClick={abrirEvidencias} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-blue-200 hover:bg-blue-50/30"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-violet-50 text-violet-700"><VisitAreaIcon name="evidencias" /></span><span className="min-w-0 flex-1"><span className="block text-sm font-medium text-[#061b4f]">Evidências</span><span className="mt-0.5 block truncate text-xs text-slate-500">Fotos, áudios e registros</span></span><span className="text-sm text-[#164ee8]">›</span></button>
+                <button type="button" onClick={() => setView("plano")} disabled={!ncsVisita.length || !permitido("ncs.acompanhar", visitaAtual.empresaId)} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-blue-200 hover:bg-blue-50/30 disabled:opacity-40"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-amber-50 text-amber-700"><VisitAreaIcon name="plano" /></span><span className="min-w-0 flex-1"><span className="block text-sm font-medium text-[#061b4f]">Plano de ação</span><span className="mt-0.5 block truncate text-xs text-slate-500">Tratamento dos achados</span></span><span className="text-sm text-[#164ee8]">›</span></button>
+                <button type="button" onClick={() => setView("relatorio")} disabled={!permitido("relatorios.exportar", visitaAtual.empresaId) && !permitido("relatorios.aprovar", visitaAtual.empresaId)} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-blue-200 hover:bg-blue-50/30 disabled:opacity-40"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-blue-50 text-[#164ee8]"><VisitAreaIcon name="relatorio" /></span><span className="min-w-0 flex-1"><span className="block text-sm font-medium text-[#061b4f]">Relatório</span><span className="mt-0.5 block truncate text-xs text-slate-500">Resumo e exportação</span></span><span className="text-sm text-[#164ee8]">›</span></button>
+                <button type="button" onClick={() => abrirChecklistNoAmbiente(equipamentosDaVisita[0]?.setor || (visitaAtual.ambientes || [])[0])} disabled={(visitaAtual.ambientes || []).length === 0} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-blue-200 hover:bg-blue-50/30 disabled:opacity-40"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-emerald-50 text-emerald-700"><VisitAreaIcon name="equipamentos" /></span><span className="min-w-0 flex-1"><span className="block text-sm font-medium text-[#061b4f]">Equipamentos e móveis</span><span className="mt-0.5 block truncate text-xs text-slate-500">{equipamentosDaVisita.length} tipos • {totalUnidadesEquipamentos} unidades</span></span><span className="text-sm text-[#164ee8]">›</span></button>
+                {programasChecklistAtivos.length > 0 && <button type="button" onClick={() => abrirChecklistNoAmbiente(AMBIENTE_PROGRAMAS_CONTROLE)} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-blue-200 hover:bg-blue-50/30"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-indigo-50 text-indigo-700"><VisitAreaIcon name="programas" /></span><span className="min-w-0 flex-1"><span className="block text-sm font-medium text-[#061b4f]">Programas de Controle</span><span className="mt-0.5 block truncate text-xs text-slate-500">{respondidosProgramasCentral} de {itensProgramasCentral.length} • {statusProgramasCentral}</span></span><span className="text-sm text-[#164ee8]">›</span></button>}
               </div>
             </div>
 
+            <div className="grid items-start gap-3 lg:grid-cols-2">
             <details className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-4 sm:p-5"><div><div className="font-extrabold text-[#061b4f]">Mapa e situação dos ambientes</div><div className="mt-1 text-xs text-slate-500">Abra quando quiser consultar todos os ambientes e seus estados</div></div><span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#edf2ff] font-extrabold text-[#164ee8] transition group-open:rotate-90">→</span></summary>
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-4"><div><div className="font-medium text-[#061b4f]">Mapa e situação dos ambientes</div><div className="mt-1 text-xs text-slate-500">Consulte os ambientes e seus estados</div></div><span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#edf2ff] font-medium text-[#164ee8] transition group-open:rotate-90">→</span></summary>
               <div className="border-t border-slate-100">
                 <div className="relative hidden aspect-[16/5] overflow-hidden bg-slate-50 sm:block"><img src="/images/mapa-inspecao.webp" alt="Ilustração de uma área de produção de alimentos" className="h-full w-full object-cover" /><div className="absolute bottom-3 left-3 rounded-full bg-white/95 px-3 py-1.5 text-[10px] font-bold text-slate-500 shadow-sm">Imagem ilustrativa</div></div>
                 {resumoAmbientesVisita.length === 0 ? <div className="p-5"><button type="button" onClick={abrirAmbientes} className="w-full rounded-xl bg-[#164ee8] px-4 py-3 text-sm font-extrabold text-white">Selecionar ambientes →</button></div> : <div className="space-y-5 p-4 sm:p-5">{ambientesAgrupadosCentral.map((grupo) => <div key={grupo.titulo}><div className="mb-2 text-[10px] font-extrabold uppercase tracking-wide text-[#164ee8]">{grupo.titulo}</div><div className="grid gap-2 sm:grid-cols-2">{grupo.ambientes.map((resumo) => <button key={resumo.ambiente} type="button" onClick={() => abrirChecklistNoAmbiente(resumo.ambiente)} className="flex min-w-0 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-left transition hover:border-blue-200 hover:bg-blue-50"><span className={`h-3 w-3 shrink-0 rounded-full ${resumo.status === "Conforme" ? "bg-emerald-500" : resumo.status === "Atenção" ? "bg-amber-500" : resumo.status === "Não conforme" ? "bg-red-500" : "bg-slate-400"}`} /><span className="min-w-0 flex-1"><span className="block text-sm font-bold text-slate-800">{resumo.ambiente}</span><span className="mt-0.5 block text-[10px] text-slate-500">{resumo.respondidos} de {resumo.itens} perguntas • {resumo.status}</span></span><span className="text-[#164ee8]">→</span></button>)}</div></div>)}</div>}
               </div>
             </details>
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5"><div className="flex items-center justify-between"><div><div className="font-extrabold text-[#061b4f]">Atividade da visita</div><div className="mt-1 text-xs text-slate-500">{respondidos} itens respondidos • {ncsVisita.length} não conformidades</div></div><button type="button" onClick={() => setView("acompanhamento")} disabled={!permitido("ncs.acompanhar", visitaAtual.empresaId)} className="rounded-xl bg-[#edf2ff] px-3 py-2 text-xs font-extrabold text-[#164ee8] disabled:opacity-40">Acompanhar →</button></div></div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div className="flex items-center justify-between gap-3"><div><div className="font-medium text-[#061b4f]">Atividade da visita</div><div className="mt-1 text-xs text-slate-500">{respondidos} itens respondidos • {ncsVisita.length} não conformidades</div></div><button type="button" onClick={() => setView("acompanhamento")} disabled={!permitido("ncs.acompanhar", visitaAtual.empresaId)} className="rounded-full bg-[#edf2ff] px-3.5 py-2 text-xs font-medium text-[#164ee8] disabled:opacity-40">Acompanhar →</button></div></div>
+            </div>
           </section>
         ) : view === "relatorio" && visitaAtual ? (
           <section id="relatorio-visita" className="report-print space-y-4">
