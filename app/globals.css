@@ -1,4 +1,4 @@
-@import "tailwindcss";*{box-sizing:border-box}body{margin:0;background:#f6f7fb;color:#111827;font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}button,input,select,textarea{font:inherit}button{cursor:pointer}
+@import "tailwindcss";*{box-sizing:border-box}body{margin:0;background:#f6f7fb;color:#111827;font-family:"Aptos","Segoe UI Variable",Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;font-weight:400}button,input,select,textarea{font:inherit}button{cursor:pointer}h1,h2,h3{letter-spacing:-.025em}.font-extrabold{font-weight:700}.font-bold{font-weight:600}
 @media print {
   @page { size: A4; margin: 12mm; }
   body { background: white !important; }

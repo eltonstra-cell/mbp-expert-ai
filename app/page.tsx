@@ -570,6 +570,7 @@ export default function Home() {
   const [db, setDb] = useState<AppDB>(emptyDB);
   const [ready, setReady] = useState(false);
   const [view, setView] = useState<View>("inicio");
+  const [menuContextualAberto, setMenuContextualAberto] = useState(false);
   const [filtroInicio, setFiltroInicio] = useState<"Em andamento" | "Concluída">("Em andamento");
   const [buscaEmpresas, setBuscaEmpresas] = useState("");
   const [filtroListaVisitas, setFiltroListaVisitas] = useState<"Todas" | "Em andamento" | "Concluída">("Todas");
@@ -4087,6 +4088,19 @@ export default function Home() {
     setView(destino);
   }
 
+  function abrirSecaoEmpresaPeloMenu(secao: EmpresaSecao) {
+    if (!atual || !permitido("empresas.editar", atual.id)) return;
+    if (showEmpresaForm && editingEmpresaId === atual.id) {
+      if (!confirmarSaidaDaEdicao()) return;
+      setEmpresaSecao(secao);
+      setMsg("");
+      setView("empresas");
+      return;
+    }
+    editarEmpresa(atual);
+    setEmpresaSecao(secao);
+  }
+
   if (
     ready &&
     sessaoConsultada &&
@@ -4141,7 +4155,7 @@ export default function Home() {
           </div>
         )}
 
-        <nav className="mt-5 flex-1 space-y-1.5 px-3">
+        <nav className="mt-5 flex-1 space-y-1.5 overflow-y-auto px-3 pb-4">
           {([
             ["inicio", "Início"],
             ["empresas", "Empresas"],
@@ -4154,13 +4168,17 @@ export default function Home() {
               <button
                 key={destino}
                 type="button"
-                onClick={() => navegarPrincipal(destino)}
+                onClick={() => {
+                  navegarPrincipal(destino);
+                  setMenuContextualAberto(destino !== "acessos");
+                }}
                 className={`flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-left text-sm font-bold transition ${ativo ? "bg-white text-[#061b4f] shadow-lg" : "text-blue-100 hover:bg-white/10 hover:text-white"}`}
               >
                 <span className={`grid h-8 w-8 place-items-center rounded-lg ${ativo ? "bg-[#e9efff] text-[#164ee8]" : "bg-white/10"}`}>
                   <MobileNavIcon name={destino} />
                 </span>
                 <span>{rotulo}</span>
+                {destino !== "acessos" && <span className="ml-auto text-xs opacity-60">›</span>}
               </button>
             );
           })}
@@ -4176,6 +4194,57 @@ export default function Home() {
           </button>
         </div>
       </aside>
+
+      {menuContextualAberto && (
+        <aside className="fixed inset-y-0 left-64 z-40 hidden w-72 overflow-y-auto border-r border-slate-200 bg-white text-slate-700 shadow-[18px_0_45px_rgba(15,23,42,0.12)] md:block">
+          <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white/95 px-5 py-5 backdrop-blur">
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#164ee8]">Navegação</div>
+              <div className="mt-1 text-xl font-semibold text-[#061b4f]">
+                {view === "inicio" ? "Início" : view === "empresas" ? "Empresas" : "Visitas"}
+              </div>
+            </div>
+            <button type="button" onClick={() => setMenuContextualAberto(false)} aria-label="Fechar submenu" className="grid h-9 w-9 place-items-center rounded-full bg-slate-100 text-lg text-slate-500">×</button>
+          </div>
+
+          <div className="space-y-1 p-4">
+            {view === "inicio" && (
+              <>
+                <button type="button" onClick={() => setView("inicio")} className="flex w-full items-center gap-3 rounded-xl bg-[#e9efff] px-4 py-3 text-left font-semibold text-[#164ee8]"><span>⌂</span><span>Visão geral</span></button>
+                {visitaEmAndamentoDestaque && <button type="button" onClick={() => { setDb((estado) => ({ ...estado, empresaAtualId: visitaEmAndamentoDestaque.empresaId })); setVisitaAtualId(visitaEmAndamentoDestaque.id); setView("visita"); }} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm hover:bg-slate-50"><span>→</span><span>Continuar visita</span></button>}
+                <button type="button" onClick={() => setView("visitas")} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm hover:bg-slate-50"><span>▣</span><span>Todas as visitas</span></button>
+                <button type="button" onClick={() => setView("empresas")} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm hover:bg-slate-50"><span>□</span><span>Empresas</span></button>
+              </>
+            )}
+
+            {view === "empresas" && (
+              <>
+                <button type="button" onClick={() => { setShowEmpresaForm(false); setEditingEmpresaId(null); setEmpresaSecao(null); }} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm ${!showEmpresaForm ? "bg-[#e9efff] font-semibold text-[#164ee8]" : "hover:bg-slate-50"}`}><span>▤</span><span>Lista de empresas</span></button>
+                {atual && permitido("empresas.editar", atual.id) && (
+                  <>
+                    <div className="px-4 pb-1 pt-5 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Empresa ativa</div>
+                    <button type="button" onClick={() => editarEmpresa(atual)} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm ${showEmpresaForm && empresaSecao === null ? "bg-[#e9efff] font-semibold text-[#164ee8]" : "hover:bg-slate-50"}`}><span>◎</span><span>Central da Empresa</span></button>
+                    {([ ["dados", "Dados da empresa"], ["manual", "Manual e responsabilidades"], ["ambientes", "Ambientes e equipamentos"], ["fluxos", "Fluxos operacionais"], ["programas", "Programas de Controle"], ["pops", "POPs e documentos"] ] as const).map(([secao, rotulo]) => <button key={secao} type="button" onClick={() => abrirSecaoEmpresaPeloMenu(secao)} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm ${showEmpresaForm && empresaSecao === secao ? "bg-[#e9efff] font-semibold text-[#164ee8]" : "hover:bg-slate-50"}`}><span className="text-slate-400">›</span><span>{rotulo}</span></button>)}
+                  </>
+                )}
+              </>
+            )}
+
+            {(view === "visitas" || VISIT_VIEWS.includes(view)) && (
+              <>
+                <button type="button" onClick={() => setView("visitas")} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm ${view === "visitas" ? "bg-[#e9efff] font-semibold text-[#164ee8]" : "hover:bg-slate-50"}`}><span>▤</span><span>Todas as visitas</span></button>
+                {atual && permitido("visitas.criar", atual.id) && <button type="button" onClick={novaVisita} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm hover:bg-slate-50"><span>＋</span><span>Nova visita</span></button>}
+                {visitaAtual && (
+                  <>
+                    <div className="px-4 pb-1 pt-5 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Visita selecionada</div>
+                    {([ ["visita", "Central da Visita"], ["ambientes", "Ambientes"], ["checklist", "Checklist"], ["evidencias", "Evidências"], ["ncs", "Não conformidades"], ["plano", "Plano de ação"], ["acompanhamento", "Acompanhamento"], ["relatorio", "Relatório"] ] as const).map(([destino, rotulo]) => <button key={destino} type="button" onClick={() => destino === "ambientes" ? abrirAmbientes() : destino === "checklist" ? abrirChecklist() : destino === "evidencias" ? abrirEvidencias() : setView(destino)} disabled={(destino === "ncs" || destino === "plano" || destino === "acompanhamento") && !permitido("ncs.acompanhar", visitaAtual.empresaId)} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm disabled:opacity-40 ${view === destino ? "bg-[#e9efff] font-semibold text-[#164ee8]" : "hover:bg-slate-50"}`}><span className="text-slate-400">›</span><span>{rotulo}</span></button>)}
+                  </>
+                )}
+              </>
+            )}
+          </div>
+        </aside>
+      )}
 
       <header className="relative overflow-hidden bg-gradient-to-r from-[#061b4f] to-[#164ee8] text-white md:hidden">
         <div className="relative mx-auto max-w-7xl px-4 py-2.5">
@@ -6355,45 +6424,45 @@ export default function Home() {
             </div>
           </section>
         ) : view === "visita" && visitaAtual ? (
-          <section className="space-y-5">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-              <div className="min-w-0">
-                <div className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-[#164ee8]">Central da visita</div>
-                <h1 className="mt-1 truncate text-2xl font-extrabold tracking-tight text-[#061b4f] sm:text-3xl">{empresaVisita?.nomeFantasia}</h1>
-                <div className="mt-1 text-sm text-slate-500">{fdata(visitaAtual.data)} • {visitaAtual.responsavel || "Responsável não informado"}</div>
+          <section className="space-y-3 lg:space-y-5">
+            <div className="flex items-center justify-between gap-3 lg:items-end">
+              <div className="min-w-0 flex-1">
+                <div className="text-[9px] font-bold uppercase tracking-[0.16em] text-[#164ee8] sm:text-[11px]">Central da visita</div>
+                <h1 className="mt-1 truncate text-xl font-semibold tracking-tight text-[#061b4f] sm:text-3xl">{empresaVisita?.nomeFantasia}</h1>
+                <div className="mt-0.5 truncate text-xs text-slate-500 sm:mt-1 sm:text-sm">{fdata(visitaAtual.data)} • {visitaAtual.responsavel || "Responsável não informado"}</div>
               </div>
-              <button onClick={() => setView("visitas")} className="w-fit shrink-0 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-[#061b4f] shadow-sm">← Todas as visitas</button>
+              <button onClick={() => setView("visitas")} className="w-fit shrink-0 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-[#061b4f] shadow-sm sm:px-4 sm:py-2.5 sm:text-sm"><span className="sm:hidden">← Voltar</span><span className="hidden sm:inline">← Todas as visitas</span></button>
             </div>
 
-            <div className="overflow-hidden rounded-[28px] bg-gradient-to-br from-[#061b4f] via-[#0b2d72] to-[#164ee8] p-5 text-white shadow-[0_22px_60px_rgba(6,27,79,0.22)] sm:p-7">
-              <div className="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-center">
+            <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-[#061b4f] via-[#0b2d72] to-[#164ee8] p-4 text-white shadow-[0_14px_35px_rgba(6,27,79,0.16)] sm:p-5 lg:rounded-[28px] lg:p-7 lg:shadow-[0_22px_60px_rgba(6,27,79,0.22)]">
+              <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center lg:gap-6">
                 <div>
-                  <div className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-blue-200">O que fazer agora</div>
-                  <h2 className="mt-2 text-xl font-extrabold sm:text-2xl">{proximoAmbienteVisita || ((visitaAtual.ambientes || []).length ? "Revisar a inspeção" : "Definir os ambientes da visita")}</h2>
-                  <p className="mt-2 max-w-2xl text-sm leading-6 text-blue-100">Continue exatamente do ponto em que parou. As respostas são salvas automaticamente durante a inspeção.</p>
-                  <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/15">
+                  <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-blue-200 sm:text-[11px]">O que fazer agora</div>
+                  <h2 className="mt-1.5 text-lg font-semibold sm:mt-2 sm:text-2xl">{proximoAmbienteVisita || ((visitaAtual.ambientes || []).length ? "Revisar a inspeção" : "Definir os ambientes da visita")}</h2>
+                  <p className="mt-2 hidden max-w-2xl text-sm leading-6 text-blue-100 sm:block">Continue exatamente do ponto em que parou. As respostas são salvas automaticamente durante a inspeção.</p>
+                  <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/15 sm:mt-5 sm:h-2">
                     <div className="h-full rounded-full bg-[#67e8f9] transition-all" style={{ width: `${percentualChecklist}%` }} />
                   </div>
-                  <div className="mt-2 flex items-center justify-between text-xs font-bold text-blue-100"><span>{respondidos} de {totalChecklist} itens respondidos</span><span>{percentualChecklist}%</span></div>
+                  <div className="mt-1.5 flex items-center justify-between text-[11px] font-semibold text-blue-100 sm:mt-2 sm:text-xs"><span>{respondidos} de {totalChecklist} itens respondidos</span><span>{percentualChecklist}%</span></div>
                 </div>
-                <button type="button" onClick={() => (visitaAtual.ambientes || []).length ? abrirChecklist() : abrirAmbientes()} disabled={!permitido("visitas.executar", visitaAtual.empresaId)} className="w-full rounded-2xl bg-white px-6 py-4 font-extrabold text-[#0b2d72] shadow-lg transition hover:bg-blue-50 disabled:opacity-50 lg:w-auto">
+                <button type="button" onClick={() => (visitaAtual.ambientes || []).length ? abrirChecklist() : abrirAmbientes()} disabled={!permitido("visitas.executar", visitaAtual.empresaId)} className="w-full rounded-xl bg-white px-4 py-3 text-sm font-semibold text-[#0b2d72] shadow-lg transition hover:bg-blue-50 disabled:opacity-50 sm:rounded-2xl sm:px-6 sm:py-4 sm:text-base lg:w-auto">
                   {(visitaAtual.ambientes || []).length ? "Continuar inspeção →" : "Selecionar ambientes →"}
                 </button>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <button type="button" onClick={abrirChecklist} className="rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-                <div className="text-[10px] font-extrabold uppercase tracking-wide text-emerald-700">Conformes</div><div className="mt-1 text-2xl font-extrabold text-[#061b4f]">{conformesVisita}</div><div className="text-xs text-slate-500">{percentualConformidade}% dos avaliados</div>
+            <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
+              <button type="button" onClick={abrirChecklist} className="rounded-xl border border-slate-200 bg-white p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:rounded-2xl sm:p-4">
+                <div className="text-[9px] font-bold uppercase tracking-wide text-emerald-700 sm:text-[10px]">Conformes</div><div className="mt-1 text-xl font-semibold text-[#061b4f] sm:text-2xl">{conformesVisita}</div><div className="text-[11px] text-slate-500 sm:text-xs">{percentualConformidade}% dos avaliados</div>
               </button>
-              <button type="button" onClick={() => setView("ncs")} disabled={!permitido("ncs.acompanhar", visitaAtual.empresaId)} className="rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md disabled:opacity-50">
-                <div className="text-[10px] font-extrabold uppercase tracking-wide text-red-600">Não conformidades</div><div className="mt-1 text-2xl font-extrabold text-[#061b4f]">{ncsVisita.length}</div><div className="text-xs text-slate-500">{ncsAbertas} em acompanhamento</div>
+              <button type="button" onClick={() => setView("ncs")} disabled={!permitido("ncs.acompanhar", visitaAtual.empresaId)} className="rounded-xl border border-slate-200 bg-white p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md disabled:opacity-50 sm:rounded-2xl sm:p-4">
+                <div className="text-[9px] font-bold uppercase tracking-wide text-red-600 sm:text-[10px]">Não conformidades</div><div className="mt-1 text-xl font-semibold text-[#061b4f] sm:text-2xl">{ncsVisita.length}</div><div className="text-[11px] text-slate-500 sm:text-xs">{ncsAbertas} em acompanhamento</div>
               </button>
-              <button type="button" onClick={abrirEvidencias} className="rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-                <div className="text-[10px] font-extrabold uppercase tracking-wide text-[#164ee8]">Evidências</div><div className="mt-1 text-2xl font-extrabold text-[#061b4f]">{evidenciasVisita.length}</div><div className="text-xs text-slate-500">{fotosVisita} fotos • {audiosVisita} áudios</div>
+              <button type="button" onClick={abrirEvidencias} className="rounded-xl border border-slate-200 bg-white p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:rounded-2xl sm:p-4">
+                <div className="text-[9px] font-bold uppercase tracking-wide text-[#164ee8] sm:text-[10px]">Evidências</div><div className="mt-1 text-xl font-semibold text-[#061b4f] sm:text-2xl">{evidenciasVisita.length}</div><div className="text-[11px] text-slate-500 sm:text-xs">{fotosVisita} fotos • {audiosVisita} áudios</div>
               </button>
-              <button type="button" onClick={abrirChecklist} className="rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-                <div className="text-[10px] font-extrabold uppercase tracking-wide text-amber-600">Pendências</div><div className="mt-1 text-2xl font-extrabold text-[#061b4f]">{pendentesVisita}</div><div className="text-xs text-slate-500">Itens ainda não verificados</div>
+              <button type="button" onClick={abrirChecklist} className="rounded-xl border border-slate-200 bg-white p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:rounded-2xl sm:p-4">
+                <div className="text-[9px] font-bold uppercase tracking-wide text-amber-600 sm:text-[10px]">Pendências</div><div className="mt-1 text-xl font-semibold text-[#061b4f] sm:text-2xl">{pendentesVisita}</div><div className="text-[11px] text-slate-500 sm:text-xs">Itens ainda não verificados</div>
               </button>
             </div>
 
