@@ -6,7 +6,7 @@ import type {
   StatusPOP,
 } from "@/types";
 import { DEFINICOES_PROGRAMAS_CONTROLE } from "@/lib/qualityPrograms";
-import { SUGESTOES_POPS_MANUAL } from "@/lib/pops";
+import { SUGESTOES_POPS_MANUAL, situacaoRevisaoPOP } from "@/lib/pops";
 
 type Props = {
   pops: ProcedimentoOperacionalPadronizado[];
@@ -19,9 +19,21 @@ const statusDisponiveis: StatusPOP[] = ["Rascunho", "Em revisão", "Aprovado", "
 export default function PopsFields({ pops, onChange, aberto = false }: Props) {
   const [titulo, setTitulo] = useState("");
   const [codigo, setCodigo] = useState("");
+  const [aviso, setAviso] = useState("");
+
+  const aprovados = pops.filter((pop) => pop.status === "Aprovado").length;
+  const emPreparacao = pops.filter((pop) => pop.status === "Rascunho" || pop.status === "Em revisão").length;
+  const revisoesVencidas = pops.filter((pop) => situacaoRevisaoPOP(pop).label === "Revisão vencida").length;
 
   function adicionar() {
-    if (!titulo.trim()) return;
+    if (!titulo.trim()) {
+      setAviso("Informe o título do POP.");
+      return;
+    }
+    if (codigo.trim() && pops.some((pop) => pop.codigo.trim().toLocaleLowerCase("pt-BR") === codigo.trim().toLocaleLowerCase("pt-BR"))) {
+      setAviso("Este código já está sendo utilizado em outro POP.");
+      return;
+    }
     onChange([
       ...pops,
       {
@@ -37,15 +49,19 @@ export default function PopsFields({ pops, onChange, aberto = false }: Props) {
     ]);
     setTitulo("");
     setCodigo("");
+    setAviso("");
   }
 
   function adicionarSugestao(sugestao: (typeof SUGESTOES_POPS_MANUAL)[number]) {
     if (pops.some((pop) => pop.titulo.toLocaleLowerCase("pt-BR") === sugestao.titulo.toLocaleLowerCase("pt-BR"))) return;
+    const codigoDisponivel = pops.some(
+      (pop) => pop.codigo.trim().toLocaleLowerCase("pt-BR") === sugestao.codigo.toLocaleLowerCase("pt-BR")
+    ) ? "" : sugestao.codigo;
     onChange([
       ...pops,
       {
         id: crypto.randomUUID(),
-        codigo: sugestao.codigo,
+        codigo: codigoDisponivel,
         titulo: sugestao.titulo,
         versao: "1.0",
         status: "Rascunho",
@@ -54,6 +70,7 @@ export default function PopsFields({ pops, onChange, aberto = false }: Props) {
         proximaRevisao: "",
       },
     ]);
+    setAviso(codigoDisponivel ? "" : "Sugestão adicionada sem código porque essa numeração já estava em uso.");
   }
 
   function atualizar(indice: number, alteracao: Partial<ProcedimentoOperacionalPadronizado>) {
@@ -65,9 +82,26 @@ export default function PopsFields({ pops, onChange, aberto = false }: Props) {
       <summary className="cursor-pointer list-none">
         <div className="font-extrabold text-slate-950">Procedimentos Operacionais Padronizados — POPs</div>
         <div className="mt-0.5 text-xs text-slate-500">
-          Cadastre e acompanhe os procedimentos da empresa. {pops.length} POP(s).
+          Cadastre, acompanhe a aprovação e controle as datas de revisão.
         </div>
       </summary>
+
+      {pops.length > 0 && (
+        <div className="mt-4 grid grid-cols-3 gap-2">
+          <div className="rounded-xl bg-emerald-50 p-3">
+            <div className="text-[10px] font-extrabold uppercase text-emerald-700">Aprovados</div>
+            <div className="mt-1 text-xl font-extrabold text-emerald-900">{aprovados}</div>
+          </div>
+          <div className="rounded-xl bg-blue-50 p-3">
+            <div className="text-[10px] font-extrabold uppercase text-blue-700">Em preparação</div>
+            <div className="mt-1 text-xl font-extrabold text-blue-900">{emPreparacao}</div>
+          </div>
+          <div className={`rounded-xl p-3 ${revisoesVencidas > 0 ? "bg-red-50" : "bg-slate-100"}`}>
+            <div className={`text-[10px] font-extrabold uppercase ${revisoesVencidas > 0 ? "text-red-700" : "text-slate-600"}`}>Revisão vencida</div>
+            <div className={`mt-1 text-xl font-extrabold ${revisoesVencidas > 0 ? "text-red-900" : "text-slate-800"}`}>{revisoesVencidas}</div>
+          </div>
+        </div>
+      )}
 
       <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50 p-3">
         <div className="text-xs font-extrabold uppercase tracking-wide text-[#2F5597]">
@@ -99,14 +133,25 @@ export default function PopsFields({ pops, onChange, aberto = false }: Props) {
         <button type="button" onClick={adicionar} className="w-full rounded-xl bg-[#2F5597] px-4 py-3 text-sm font-extrabold text-white">Adicionar POP</button>
       </div>
 
+      {aviso && <div className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">{aviso}</div>}
+
       <div className="mt-4 space-y-3">
-        {pops.map((pop, indice) => (
+        {pops.map((pop, indice) => {
+          const situacao = situacaoRevisaoPOP(pop);
+          return (
           <details key={pop.id} className="min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white p-3">
             <summary className="cursor-pointer list-none">
-              <div className="font-extrabold text-slate-900">
-                {pop.codigo ? `${pop.codigo} — ` : ""}{pop.titulo || "POP sem título"}
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
+                  <div className="font-extrabold text-slate-900">
+                    {pop.codigo ? `${pop.codigo} — ` : ""}{pop.titulo || "POP sem título"}
+                  </div>
+                  <div className="mt-1 text-xs text-slate-500">{pop.status} • versão {pop.versao || "não informada"}</div>
+                </div>
+                <span className={`w-fit shrink-0 rounded-full px-3 py-1 text-[10px] font-extrabold ${situacao.classe}`}>
+                  {situacao.label}
+                </span>
               </div>
-              <div className="mt-1 text-xs text-slate-500">{pop.status} • versão {pop.versao || "não informada"}</div>
             </summary>
             <div className="mt-3 grid min-w-0 gap-2 border-t border-slate-100 pt-3 md:grid-cols-2">
               <input value={pop.codigo} onChange={(event) => atualizar(indice, { codigo: event.target.value })} placeholder="Código" className="min-w-0 w-full rounded-lg border p-2 text-sm" />
@@ -127,7 +172,8 @@ export default function PopsFields({ pops, onChange, aberto = false }: Props) {
               <button type="button" onClick={() => onChange(pops.filter((_, atual) => atual !== indice))} className="self-end rounded-lg bg-red-50 px-3 py-2 text-sm font-bold text-red-700">Excluir POP</button>
             </div>
           </details>
-        ))}
+          );
+        })}
         {pops.length === 0 && (
           <div className="rounded-xl border border-dashed border-slate-300 p-4 text-center text-sm text-slate-500">
             Nenhum POP cadastrado.

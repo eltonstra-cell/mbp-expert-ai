@@ -54,7 +54,7 @@ import {
   normalizarProgramasControle,
   obterCriteriosProgramasControle,
 } from "@/lib/qualityPrograms";
-import { normalizarPops } from "@/lib/pops";
+import { normalizarPops, situacaoRevisaoPOP } from "@/lib/pops";
 import {
   clearOfflineSession,
   emptyDB,
@@ -657,6 +657,9 @@ export default function Home() {
     criarProgramasControlePadrao()
   );
   const [popsEmpresa, setPopsEmpresa] = useState<ProcedimentoOperacionalPadronizado[]>([]);
+  const popsComRevisaoVencida = popsEmpresa.filter(
+    (pop) => situacaoRevisaoPOP(pop).label === "Revisão vencida"
+  ).length;
 
   useEffect(() => {
     if (syncStatus !== "erro") {
@@ -4233,7 +4236,9 @@ export default function Home() {
                         secao: "pops" as EmpresaSecao,
                         categoria: "Procedimentos",
                         titulo: "POPs",
-                        resumo: `${quantidadeComNome(popsEmpresa.length, "POP cadastrado", "POPs cadastrados")}.`,
+                        resumo: popsComRevisaoVencida > 0
+                          ? `${quantidadeComNome(popsEmpresa.length, "POP cadastrado", "POPs cadastrados")} • ${quantidadeComNome(popsComRevisaoVencida, "revisão vencida", "revisões vencidas")}.`
+                          : `${quantidadeComNome(popsEmpresa.length, "POP cadastrado", "POPs cadastrados")} • nenhuma revisão vencida.`,
                         cor: "bg-emerald-100 text-emerald-700",
                       },
                     ]).map((item) => (
