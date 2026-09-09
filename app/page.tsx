@@ -6203,17 +6203,39 @@ export default function Home() {
                       <span className="sm:hidden">Próxima →</span><span className="hidden sm:inline">Próxima pendência →</span>
                     </button>
                   </div>
-                  <div className="checklist-mobile-environment">
-                    <label htmlFor="checklist-environment" className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">Trocar ambiente</label>
-                    <select id="checklist-environment" value={ambienteChecklistAtivo || ""} onChange={(event) => setAmbienteChecklistAtivo(event.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-[#061b4f]">
-                      {gruposRoteiroChecklist.map((grupo) => (
-                        <optgroup key={grupo.titulo} label={grupo.titulo}>
-                          {grupo.itens.map((ambiente) => <option key={ambiente} value={ambiente}>{ambiente}</option>)}
-                        </optgroup>
+                  <details className="checklist-mobile-tools">
+                    <summary>
+                      <span>Ambiente e filtros</span>
+                      <span aria-hidden="true">⌄</span>
+                    </summary>
+                    <div className="checklist-mobile-environment">
+                      <label htmlFor="checklist-environment" className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">Trocar ambiente</label>
+                      <select id="checklist-environment" value={ambienteChecklistAtivo || ""} onChange={(event) => setAmbienteChecklistAtivo(event.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-[#061b4f]">
+                        {gruposRoteiroChecklist.map((grupo) => (
+                          <optgroup key={grupo.titulo} label={grupo.titulo}>
+                            {grupo.itens.map((ambiente) => <option key={ambiente} value={ambiente}>{ambiente}</option>)}
+                          </optgroup>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="checklist-filter-tabs">
+                      {(["Todos", "Pendentes", "Não conformes"] as FiltroChecklistRapido[]).map((filtro) => (
+                        <button
+                          key={filtro}
+                          type="button"
+                          onClick={() => setFiltroChecklistRapido(filtro)}
+                          className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                            filtroChecklistRapido === filtro
+                              ? "bg-[#e7eeff] text-[#164ee8]"
+                              : "text-slate-500"
+                          }`}
+                        >
+                          {filtro}
+                        </button>
                       ))}
-                    </select>
-                  </div>
-                  <div className="checklist-filter-tabs">
+                    </div>
+                  </details>
+                  <div className="checklist-desktop-filters">
                     {(["Todos", "Pendentes", "Não conformes"] as FiltroChecklistRapido[]).map((filtro) => (
                       <button
                         key={filtro}
@@ -6444,18 +6466,18 @@ export default function Home() {
                   })}
 
                 {ambienteChecklistAtivo !== AMBIENTE_PROGRAMAS_CONTROLE && (
-                  <article className="rounded-2xl border-2 border-blue-100 bg-white p-4 shadow-sm">
-                    <div>
-                      <div className="text-[10px] font-extrabold uppercase tracking-wide text-[#2F5597]">
-                        Quadro do ambiente
-                      </div>
-                      <h3 className="mt-0.5 text-lg font-extrabold text-slate-950">
-                        Equipamentos e móveis
-                      </h3>
-                      <p className="mt-0.5 text-xs text-slate-500">
-                        Itens existentes neste ambiente, conforme o Manual.
-                      </p>
-                    </div>
+                  <article className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
+                    <details className="checklist-equipment-card">
+                      <summary className="checklist-equipment-summary">
+                        <div className="min-w-0">
+                          <div className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#315da8]">Quadro do ambiente</div>
+                          <h3 className="mt-0.5 text-base font-medium text-[#061b4f] sm:text-lg">Equipamentos e móveis</h3>
+                          <p className="mt-0.5 text-xs text-slate-500">{equipamentosAmbienteAtivo.length} {equipamentosAmbienteAtivo.length === 1 ? "item cadastrado" : "itens cadastrados"}</p>
+                        </div>
+                        <span className="checklist-equipment-toggle" aria-hidden="true">⌄</span>
+                      </summary>
+
+                      <div className="checklist-equipment-content">
 
                     {equipamentosAmbienteAtivo.length === 0 ? (
                       <div className="mt-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-500">
@@ -6520,6 +6542,9 @@ export default function Home() {
                       <p className="mt-2 text-xs text-slate-500">
                         O item ficará cadastrado neste ambiente e aparecerá nas próximas visitas.
                       </p>
+                    </details>
+
+                      </div>
                     </details>
 
                     <button
