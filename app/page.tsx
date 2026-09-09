@@ -7209,9 +7209,9 @@ export default function Home() {
           </section>
         ) : view === "inicio" ? (
           <div className="space-y-4">
-            <section className="grid gap-4 lg:grid-cols-[minmax(0,1.08fr)_minmax(360px,0.92fr)]">
-              <div className="flex min-h-[320px] flex-col overflow-hidden rounded-[28px] bg-gradient-to-br from-[#061b4f] via-[#0b2d72] to-[#164ee8] p-5 text-white shadow-[0_22px_60px_rgba(6,27,79,0.20)] sm:p-7">
-                <div>
+            <section className="grid gap-3 lg:grid-cols-[minmax(0,1.08fr)_minmax(360px,0.92fr)] lg:gap-4">
+              <div className="flex flex-col overflow-hidden rounded-2xl bg-gradient-to-br from-[#061b4f] via-[#0b2d72] to-[#164ee8] p-4 text-white shadow-[0_16px_40px_rgba(6,27,79,0.16)] lg:min-h-[320px] lg:rounded-[28px] lg:p-7 lg:shadow-[0_22px_60px_rgba(6,27,79,0.20)]">
+                <div className="hidden lg:block">
                   <div className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-blue-200">Visão geral</div>
                   <h1 className="mt-2 text-2xl font-extrabold tracking-tight sm:text-3xl">
                     Olá, {usuarioDaSessao?.nome.split(" ").filter(Boolean)[0] || "bem-vindo"}
@@ -7219,31 +7219,31 @@ export default function Home() {
                   <p className="mt-2 text-sm text-blue-100">Acompanhe sua operação e continue de onde parou.</p>
                 </div>
 
-                <div className="mt-6 flex-1 rounded-2xl border border-white/15 bg-white/[0.09] p-4 backdrop-blur-sm sm:p-5">
+                <div className="flex-1 lg:mt-6 lg:rounded-2xl lg:border lg:border-white/15 lg:bg-white/[0.09] lg:p-5 lg:backdrop-blur-sm">
                   <div className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-cyan-200">O que fazer agora</div>
                   {visitaEmAndamentoDestaque ? (
                     <div className="mt-2">
                       <div className="text-xs font-bold text-blue-100">Visita em andamento</div>
-                      <div className="mt-1 text-xl font-extrabold">{db.empresas[visitaEmAndamentoDestaque.empresaId]?.nomeFantasia || "Empresa"}</div>
+                      <div className="mt-1 text-lg font-extrabold lg:text-xl">{db.empresas[visitaEmAndamentoDestaque.empresaId]?.nomeFantasia || "Empresa"}</div>
                       <div className="mt-1 text-xs text-blue-100">{progressoVisitaDestaque}% concluída • {fdata(visitaEmAndamentoDestaque.data)}</div>
-                      <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/15"><div className="h-full rounded-full bg-cyan-300" style={{ width: `${progressoVisitaDestaque}%` }} /></div>
-                      <button type="button" onClick={() => { setDb((estado) => ({ ...estado, empresaAtualId: visitaEmAndamentoDestaque.empresaId })); setVisitaAtualId(visitaEmAndamentoDestaque.id); setView("visita"); }} className="mt-4 w-full rounded-xl bg-white px-4 py-3 text-sm font-extrabold text-[#0b2d72] shadow-lg transition hover:bg-blue-50">Continuar visita →</button>
+                      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/15 lg:mt-4"><div className="h-full rounded-full bg-cyan-300" style={{ width: `${progressoVisitaDestaque}%` }} /></div>
+                      <button type="button" onClick={() => { setDb((estado) => ({ ...estado, empresaAtualId: visitaEmAndamentoDestaque.empresaId })); setVisitaAtualId(visitaEmAndamentoDestaque.id); setView("visita"); }} className="mt-3 w-full rounded-xl bg-white px-4 py-2.5 text-sm font-extrabold text-[#0b2d72] shadow-lg transition hover:bg-blue-50 lg:mt-4 lg:py-3">Continuar visita →</button>
                     </div>
                   ) : (
                     <div className="mt-2">
                       <div className="text-lg font-extrabold">Nenhuma visita em andamento</div>
                       <p className="mt-1 text-xs text-blue-100">{atual ? `A próxima visita será criada para ${atual.nomeFantasia}.` : "Selecione uma empresa para começar."}</p>
-                      <button type="button" onClick={atual ? novaVisita : () => setView("empresas")} className="mt-4 w-full rounded-xl bg-white px-4 py-3 text-sm font-extrabold text-[#0b2d72]">{atual ? "Iniciar nova visita →" : "Selecionar empresa →"}</button>
+                      <button type="button" onClick={atual ? novaVisita : () => setView("empresas")} className="mt-3 w-full rounded-xl bg-white px-4 py-2.5 text-sm font-extrabold text-[#0b2d72] lg:mt-4 lg:py-3">{atual ? "Iniciar nova visita →" : "Selecionar empresa →"}</button>
                     </div>
                   )}
                 </div>
               </div>
 
-              <div className="relative min-h-[190px] overflow-hidden rounded-[28px] bg-[#061b4f] bg-[url('/images/cozinha-inspecao.webp')] bg-cover bg-center shadow-sm lg:min-h-[320px]">
+              <div className="relative min-h-[145px] overflow-hidden rounded-2xl bg-[#061b4f] bg-[url('/images/cozinha-inspecao.webp')] bg-cover bg-center shadow-sm lg:min-h-[320px] lg:rounded-[28px]">
                 <div className="absolute inset-0 bg-gradient-to-t from-[#061b4f]/80 via-transparent to-transparent" />
-                <div className="absolute inset-x-0 bottom-0 p-5 text-white sm:p-6">
+                <div className="absolute inset-x-0 bottom-0 p-4 text-white lg:p-6">
                   <div className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-cyan-200">MBP Expert AI</div>
-                  <div className="mt-1 max-w-md text-lg font-extrabold leading-snug">Inspeções mais claras, rápidas e organizadas.</div>
+                  <div className="mt-1 max-w-md text-sm font-extrabold leading-snug lg:text-lg">Inspeções mais claras, rápidas e organizadas.</div>
                 </div>
               </div>
             </section>
