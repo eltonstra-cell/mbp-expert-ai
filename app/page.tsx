@@ -4517,7 +4517,7 @@ export default function Home() {
         </div>
       )}
 
-      <div className="mx-auto max-w-[1500px] px-3 py-4 pb-28 sm:p-5 md:ml-64 md:pb-6 lg:p-7">
+      <div className="mx-auto min-w-0 max-w-[1500px] overflow-x-hidden px-3 py-4 pb-28 sm:p-5 md:ml-64 md:overflow-visible md:pb-6 lg:p-7">
         <nav className="hidden">
           <button
             onClick={() => navegarPrincipal("inicio")}
@@ -7973,10 +7973,10 @@ export default function Home() {
             )}
           </section>
         ) : (
-          <section className="space-y-4">
-            <div className="rounded-2xl bg-white p-5 shadow-sm">
-              <div className="flex justify-between gap-4">
-                <div>
+          <section className="visits-list-page space-y-3 sm:space-y-4">
+            <div className="visits-list-header rounded-2xl bg-white p-4 shadow-sm sm:p-5">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
                   <div className="text-xs font-extrabold uppercase text-[#2F5597]">
                     Módulo Visitas
                   </div>
@@ -7988,13 +7988,13 @@ export default function Home() {
                   </p>
                 </div>
 
-                <div className="flex flex-wrap gap-2">
+                <div className="grid shrink-0 grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                   <button
                     onClick={() => setView("historico")}
                     disabled={!atual}
                     className="rounded-xl bg-slate-100 px-4 py-3 font-extrabold text-[#17365D] disabled:opacity-40"
                   >
-                    Histórico da empresa
+                    <span className="sm:hidden">Histórico</span><span className="hidden sm:inline">Histórico da empresa</span>
                   </button>
                   <button
                     onClick={novaVisita}
@@ -8007,13 +8007,13 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
+            <div className="visits-filter-bar grid grid-cols-3 gap-1.5 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm sm:gap-2 sm:p-2">
               {(["Todas", "Em andamento", "Concluída"] as const).map((filtro) => (
                 <button
                   key={filtro}
                   type="button"
                   onClick={() => setFiltroListaVisitas(filtro)}
-                  className={`flex-1 rounded-xl px-3 py-2.5 text-sm font-extrabold ${
+                  className={`min-w-0 rounded-xl px-1.5 py-2.5 text-xs font-semibold sm:px-3 sm:text-sm ${
                     filtroListaVisitas === filtro
                       ? "bg-[#17365D] text-white"
                       : "bg-slate-50 text-slate-600"
@@ -8030,7 +8030,7 @@ export default function Home() {
                 return (
                   <article
                     key={v.id}
-                    className={`rounded-2xl border bg-white p-4 shadow-sm transition ${
+                    className={`visits-list-card min-w-0 rounded-2xl border bg-white p-4 shadow-sm transition ${
                       v.id === visitaAtualId ? "border-blue-200" : "border-slate-200"
                     }`}
                   >
@@ -8062,13 +8062,13 @@ export default function Home() {
                       </span>
                     </div>
 
-                    <div className="mt-4 flex gap-2 text-sm">
+                    <div className="visits-card-actions mt-4 grid grid-cols-2 gap-2 text-sm sm:flex">
                       {v.status === "Em andamento" ? (
                         <>
                           {permitido("visitas.executar", v.empresaId) && (
                             <button
                               onClick={() => continuar(v.id)}
-                              className="flex-1 rounded-xl bg-[#17365D] px-4 py-2 font-bold text-white"
+                              className="visits-primary-action rounded-xl bg-[#17365D] px-4 py-2.5 font-semibold text-white sm:flex-1"
                             >
                               Continuar visita
                             </button>
@@ -8076,7 +8076,7 @@ export default function Home() {
                           {permitido("visitas.concluir", v.empresaId) && (
                             <button
                               onClick={() => concluir(v.id)}
-                              className="rounded-xl bg-emerald-50 px-4 py-2 font-bold text-emerald-700"
+                              className="rounded-xl bg-emerald-50 px-3 py-2.5 font-semibold text-emerald-700 sm:px-4"
                             >
                               Concluir
                             </button>
@@ -8086,7 +8086,7 @@ export default function Home() {
                         permitido("visitas.concluir", v.empresaId) ? (
                           <button
                             onClick={() => reabrir(v.id)}
-                            className="flex-1 rounded-xl bg-slate-100 px-4 py-2 font-bold"
+                            className="rounded-xl bg-slate-100 px-4 py-2.5 font-semibold sm:flex-1"
                           >
                             Reabrir visita
                           </button>
@@ -8097,7 +8097,7 @@ export default function Home() {
                               setVisitaAtualId(v.id);
                               setView("relatorio");
                             }}
-                            className="flex-1 rounded-xl bg-[#17365D] px-4 py-2 font-bold text-white"
+                            className="rounded-xl bg-[#17365D] px-4 py-2.5 font-semibold text-white sm:flex-1"
                           >
                             Abrir relatório
                           </button>
@@ -8107,7 +8107,7 @@ export default function Home() {
                       {usuarioDaSessao?.perfil === "Administrador" && (
                         <button
                           onClick={() => excluir(v.id)}
-                          className="rounded-xl bg-red-50 px-4 py-2 font-bold text-red-700"
+                          className="rounded-xl bg-red-50 px-3 py-2.5 font-semibold text-red-700 sm:px-4"
                         >
                           Excluir
                         </button>
