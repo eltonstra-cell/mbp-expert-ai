@@ -604,6 +604,7 @@ export default function Home() {
   const [buscaEmpresas, setBuscaEmpresas] = useState("");
   const [filtroListaVisitas, setFiltroListaVisitas] = useState<"Todas" | "Em andamento" | "Concluída">("Todas");
   const [filtroNcs, setFiltroNcs] = useState<"Todas" | "Abertas" | "Resolvidas">("Todas");
+  const [planoNcAbertaId, setPlanoNcAbertaId] = useState<string>("");
   const [showEmpresaForm, setShowEmpresaForm] = useState(false);
   const [editingEmpresaId, setEditingEmpresaId] = useState<string | null>(null);
   const [empresaSecao, setEmpresaSecao] = useState<EmpresaSecao | null>(null);
@@ -5548,27 +5549,28 @@ export default function Home() {
             </div>
           </section>
         ) : view === "plano" && visitaAtual ? (
-          <section className="space-y-4">
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                <div>
-                  <div className="text-xs font-extrabold uppercase tracking-wider text-[#2F5597]">
+          <section className="plan-center space-y-3">
+            <div className="plan-page-head">
+              <div className="plan-title-row">
+                <div className="min-w-0">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[#315da8]">
                     Gestão das correções
                   </div>
-                  <h1 className="mt-1 text-2xl font-extrabold">Plano de ação</h1>
-                  <p className="text-sm text-slate-500">
+                  <h1 className="mt-1 text-xl font-medium text-[#061b4f] sm:text-2xl">Plano de ação</h1>
+                  <p className="mt-0.5 truncate text-xs text-slate-500 sm:text-sm">
                     {empresaVisita?.nomeFantasia} • {fdata(visitaAtual.data)}
                   </p>
                 </div>
                 <button
                   onClick={() => setView("visita")}
-                  className="rounded-xl bg-slate-100 px-3 py-2 text-sm font-bold text-slate-700"
+                  aria-label="Voltar à Central da visita"
+                  className="plan-back-button"
                 >
-                  Voltar à Central
+                  <span className="sm:hidden">←</span><span className="hidden sm:inline">← Central da visita</span>
                 </button>
               </div>
 
-              <div className="mt-5 grid gap-3 md:grid-cols-4">
+              <div className="plan-summary-grid">
                 <MetricCard label="Não conformidades" value={ncsVisita.length} />
                 <MetricCard label="Ações definidas" value={acoesDefinidas} />
                 <MetricCard label="Em aberto" value={ncsAbertas} />
@@ -5590,57 +5592,55 @@ export default function Home() {
                 </button>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="plan-action-list">
                 {ncsVisita.map((nc, idx) => (
-                  <article
+                  <details
                     key={nc.id}
-                    className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+                    open={(planoNcAbertaId || ncsVisita[0]?.id) === nc.id}
+                    onToggle={(event) => {
+                      const abertaId = planoNcAbertaId || ncsVisita[0]?.id;
+                      if (event.currentTarget.open && abertaId !== nc.id) setPlanoNcAbertaId(nc.id);
+                      if (!event.currentTarget.open && abertaId === nc.id) setPlanoNcAbertaId("__fechado__");
+                    }}
+                    className={`plan-action-card ${nc.status === "Resolvida" ? "is-resolved" : ""}`}
                   >
-                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                      <div>
-                        <div className="text-xs font-extrabold uppercase tracking-wide text-slate-400">
+                    <summary className="plan-action-summary">
+                      <div className="min-w-0 flex-1">
+                        <div className="plan-action-eyebrow">
                           Ação {String(idx + 1).padStart(2, "0")} • {nc.ambiente} • {nc.categoria}
                         </div>
-                        <h2 className="mt-1 text-xl font-extrabold">{nc.titulo}</h2>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          <span
-                            className={`rounded-full px-2.5 py-1 text-[11px] font-extrabold ${
-                              nc.criticidade === "Crítica"
-                                ? "bg-red-50 text-red-700"
-                                : nc.criticidade === "Importante"
-                                ? "bg-amber-50 text-amber-700"
-                                : "bg-slate-100 text-slate-600"
-                            }`}
-                          >
-                            {nc.criticidade}
-                          </span>
-                          {nc.referencia && (
-                            <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-700">
-                              {nc.referencia}
-                            </span>
-                          )}
+                        <h2 className="plan-action-title">{nc.titulo}</h2>
+                        <div className="plan-action-meta">
+                          <span className={`plan-status ${nc.status === "Resolvida" ? "is-resolved" : nc.status === "Em tratamento" ? "is-progress" : "is-open"}`}>{nc.status}</span>
+                          <span>{nc.responsavelAcao || "Responsável não definido"}</span>
+                          <span>{nc.prazo ? `Prazo ${fdata(nc.prazo)}` : "Sem prazo"}</span>
                         </div>
                       </div>
+                      <span className="plan-chevron" aria-hidden="true">⌄</span>
+                    </summary>
 
-                      {nc.status === "Resolvida" ? (
-                        <div className="rounded-xl bg-emerald-100 px-3 py-2 text-sm font-extrabold text-emerald-800">
-                          Resolvida • edição protegida
+                    <div className="plan-action-content">
+                      <div className="plan-editor-toolbar">
+                        <div className="plan-chips">
+                          <span className={nc.criticidade === "Crítica" ? "is-critical" : nc.criticidade === "Importante" ? "is-important" : "is-routine"}>{nc.criticidade}</span>
+                          {nc.referencia && <span className="is-reference">{nc.referencia}</span>}
                         </div>
-                      ) : (
-                        <select
+                        {nc.status === "Resolvida" ? (
+                          <span className="plan-protected">Resolvida · edição protegida</span>
+                        ) : (
+                          <label className="plan-status-select"><span>Status</span><select
                           value={nc.status}
                           onChange={(e) =>
                             atualizarNC(nc.id, {
                               status: e.target.value as "Aberta" | "Em tratamento",
                             })
                           }
-                          className="rounded-xl border bg-white px-3 py-2 text-sm font-extrabold"
                         >
                           <option value="Aberta">Aberta</option>
                           <option value="Em tratamento">Em tratamento</option>
-                        </select>
-                      )}
-                    </div>
+                          </select></label>
+                        )}
+                      </div>
 
                     {nc.observacao && (
                       <div className="mt-4 rounded-xl bg-red-50 p-4">
@@ -5651,9 +5651,9 @@ export default function Home() {
                       </div>
                     )}
 
-                    <div className="mt-4 grid gap-4 md:grid-cols-2">
-                      <label className="md:col-span-2">
-                        <span className="mb-1 block text-xs font-extrabold text-slate-500">
+                    <div className="plan-form-grid">
+                      <label className="plan-field plan-action-field">
+                        <span>
                           Ação corretiva
                         </span>
                         <textarea
@@ -5664,12 +5664,11 @@ export default function Home() {
                             atualizarNC(nc.id, { acaoCorretiva: e.target.value })
                           }
                           placeholder="Descreva o que deverá ser feito para corrigir a não conformidade..."
-                          className="w-full rounded-xl border p-3"
                         />
                       </label>
 
-                      <label>
-                        <span className="mb-1 block text-xs font-extrabold text-slate-500">
+                      <label className="plan-field">
+                        <span>
                           Responsável
                         </span>
                         <input
@@ -5679,12 +5678,11 @@ export default function Home() {
                             atualizarNC(nc.id, { responsavelAcao: e.target.value })
                           }
                           placeholder="Nome do responsável pela correção"
-                          className="w-full rounded-xl border p-3"
                         />
                       </label>
 
-                      <label>
-                        <span className="mb-1 block text-xs font-extrabold text-slate-500">
+                      <label className="plan-field">
+                        <span>
                           Prazo
                         </span>
                         <input
@@ -5694,12 +5692,11 @@ export default function Home() {
                           onChange={(e) =>
                             atualizarNC(nc.id, { prazo: e.target.value })
                           }
-                          className="w-full rounded-xl border p-3"
                         />
                       </label>
 
-                      <label className="md:col-span-2">
-                        <span className="mb-1 block text-xs font-extrabold text-slate-500">
+                      <label className="plan-field plan-followup-field">
+                        <span>
                           Acompanhamento / verificação
                         </span>
                         <textarea
@@ -5710,22 +5707,21 @@ export default function Home() {
                             atualizarNC(nc.id, { acompanhamento: e.target.value })
                           }
                           placeholder="Registre retorno, evidência de correção ou observações do acompanhamento..."
-                          className="w-full rounded-xl border p-3"
                         />
                       </label>
                     </div>
 
                     {nc.status === "Resolvida" ? (
-                      <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900">
-                        Registro protegido. Para reabrir ou alterar uma Não Conformidade resolvida,
-                        use o módulo Acompanhamento e registre uma nova atualização no histórico.
+                      <div className="plan-save-note is-protected">
+                        Registro protegido. Reaberturas são feitas no acompanhamento.
                       </div>
                     ) : (
-                      <div className="mt-4 rounded-xl bg-slate-50 p-3 text-xs text-slate-500">
-                        As alterações são salvas automaticamente.
+                      <div className="plan-save-note">
+                        ✓ Alterações salvas automaticamente
                       </div>
                     )}
-                  </article>
+                    </div>
+                  </details>
                 ))}
               </div>
             )}
@@ -5808,7 +5804,7 @@ export default function Home() {
                           <h2 className="mt-3 text-lg font-extrabold">{nc.titulo}</h2>
                           <p className="mt-1 text-sm text-slate-500">{nc.ambiente} • {nc.categoria}</p>
                         </div>
-                        <button onClick={() => setView("plano")} className="rounded-xl bg-[#2F5597] px-4 py-2 text-sm font-extrabold text-white">Editar plano</button>
+                        <button onClick={() => { setPlanoNcAbertaId(nc.id); setView("plano"); }} className="rounded-xl bg-[#2F5597] px-4 py-2 text-sm font-extrabold text-white">Editar plano</button>
                       </div>
                       <div className="mt-4 grid gap-3 md:grid-cols-3">
                         <div className="rounded-xl bg-slate-50 p-3"><div className="text-xs font-extrabold uppercase text-slate-500">Responsável</div><div className="mt-1 font-bold">{nc.responsavelAcao || "Não definido"}</div></div>
@@ -6115,7 +6111,7 @@ export default function Home() {
                         </details>
                       )}
 
-                      <button type="button" onClick={() => setView("plano")} className="nc-follow-button">
+                      <button type="button" onClick={() => { setPlanoNcAbertaId(nc.id); setView("plano"); }} className="nc-follow-button">
                         {resolvida ? "Consultar tratamento" : "Acompanhar correção"} <span>→</span>
                       </button>
                     </article>
