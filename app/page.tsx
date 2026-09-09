@@ -7208,116 +7208,74 @@ export default function Home() {
             </div>
           </section>
         ) : view === "inicio" ? (
-          <div className="space-y-3">
-            <section className="-mx-3 -mt-4 overflow-hidden border-y border-slate-200 bg-white shadow-sm md:mx-0 md:mt-0 md:rounded-2xl md:border">
-              <div className="aspect-[16/7] min-h-36 bg-[#17365D] bg-[url('/images/cozinha-inspecao.webp')] bg-cover bg-center" />
-            </section>
-
-            <section className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm">
-              <div className="text-[11px] font-extrabold uppercase tracking-wider text-[#2F5597]">
-                O que fazer agora
-              </div>
-              {visitaEmAndamentoDestaque ? (
-                <div className="mt-3 rounded-xl bg-[#17365D] p-4 text-white">
-                  <div className="text-xs font-bold text-blue-100">Visita em andamento</div>
-                  <div className="mt-1 text-lg font-extrabold">
-                    {db.empresas[visitaEmAndamentoDestaque.empresaId]?.nomeFantasia || "Empresa"}
-                  </div>
-                  <div className="mt-1 text-xs text-blue-100">
-                    {progressoVisitaDestaque}% concluída • {fdata(visitaEmAndamentoDestaque.data)}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDb((estado) => ({ ...estado, empresaAtualId: visitaEmAndamentoDestaque.empresaId }));
-                      setVisitaAtualId(visitaEmAndamentoDestaque.id);
-                      setView("visita");
-                    }}
-                    className="mt-3 w-full rounded-lg bg-white px-4 py-2.5 text-sm font-extrabold text-[#17365D]"
-                  >
-                    Continuar visita →
-                  </button>
+          <div className="space-y-4">
+            <section className="grid gap-4 lg:grid-cols-[minmax(0,1.08fr)_minmax(360px,0.92fr)]">
+              <div className="flex min-h-[320px] flex-col overflow-hidden rounded-[28px] bg-gradient-to-br from-[#061b4f] via-[#0b2d72] to-[#164ee8] p-5 text-white shadow-[0_22px_60px_rgba(6,27,79,0.20)] sm:p-7">
+                <div>
+                  <div className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-blue-200">Visão geral</div>
+                  <h1 className="mt-2 text-2xl font-extrabold tracking-tight sm:text-3xl">
+                    Olá, {usuarioDaSessao?.nome.split(" ").filter(Boolean)[0] || "bem-vindo"}
+                  </h1>
+                  <p className="mt-2 text-sm text-blue-100">Acompanhe sua operação e continue de onde parou.</p>
                 </div>
-              ) : (
-                <div className="mt-3 rounded-xl bg-blue-50 p-4">
-                  <div className="font-extrabold text-slate-950">Nenhuma visita em andamento</div>
-                  <p className="mt-1 text-xs text-slate-600">
-                    {atual
-                      ? `A próxima visita será criada para ${atual.nomeFantasia}.`
-                      : "Selecione uma empresa para começar."}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={atual ? novaVisita : () => setView("empresas")}
-                    className="mt-3 w-full rounded-lg bg-[#2F5597] px-4 py-2.5 text-sm font-extrabold text-white"
-                  >
-                    {atual ? "Iniciar nova visita →" : "Selecionar empresa →"}
-                  </button>
-                </div>
-              )}
 
-              {atual && (
-                <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                  <button
-                    type="button"
-                    onClick={() => editarEmpresa(atual)}
-                    className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-left"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm font-extrabold text-slate-900">Preparação da empresa</span>
-                      <span className="text-xs font-extrabold text-[#2F5597]">{configuracaoEmpresaAtual.percentual}%</span>
+                <div className="mt-6 flex-1 rounded-2xl border border-white/15 bg-white/[0.09] p-4 backdrop-blur-sm sm:p-5">
+                  <div className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-cyan-200">O que fazer agora</div>
+                  {visitaEmAndamentoDestaque ? (
+                    <div className="mt-2">
+                      <div className="text-xs font-bold text-blue-100">Visita em andamento</div>
+                      <div className="mt-1 text-xl font-extrabold">{db.empresas[visitaEmAndamentoDestaque.empresaId]?.nomeFantasia || "Empresa"}</div>
+                      <div className="mt-1 text-xs text-blue-100">{progressoVisitaDestaque}% concluída • {fdata(visitaEmAndamentoDestaque.data)}</div>
+                      <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/15"><div className="h-full rounded-full bg-cyan-300" style={{ width: `${progressoVisitaDestaque}%` }} /></div>
+                      <button type="button" onClick={() => { setDb((estado) => ({ ...estado, empresaAtualId: visitaEmAndamentoDestaque.empresaId })); setVisitaAtualId(visitaEmAndamentoDestaque.id); setView("visita"); }} className="mt-4 w-full rounded-xl bg-white px-4 py-3 text-sm font-extrabold text-[#0b2d72] shadow-lg transition hover:bg-blue-50">Continuar visita →</button>
                     </div>
-                    <div className="mt-1 text-xs text-slate-500">
-                      {configuracaoEmpresaAtual.prontaParaVisita
-                        ? "Dados essenciais prontos"
-                        : `Próximo: ${configuracaoEmpresaAtual.proximaEtapa?.titulo || "completar cadastro"}`}
+                  ) : (
+                    <div className="mt-2">
+                      <div className="text-lg font-extrabold">Nenhuma visita em andamento</div>
+                      <p className="mt-1 text-xs text-blue-100">{atual ? `A próxima visita será criada para ${atual.nomeFantasia}.` : "Selecione uma empresa para começar."}</p>
+                      <button type="button" onClick={atual ? novaVisita : () => setView("empresas")} className="mt-4 w-full rounded-xl bg-white px-4 py-3 text-sm font-extrabold text-[#0b2d72]">{atual ? "Iniciar nova visita →" : "Selecionar empresa →"}</button>
                     </div>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setView("visitas")}
-                    className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-left"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm font-extrabold text-slate-900">Pendências técnicas</span>
-                      <span className={`text-xs font-extrabold ${ncsEmpresaAbertas ? "text-red-700" : "text-emerald-700"}`}>
-                        {ncsEmpresaAbertas}
-                      </span>
-                    </div>
-                    <div className="mt-1 text-xs text-slate-500">
-                      {ncsEmpresaAbertas ? "Não conformidades em acompanhamento" : "Nenhuma não conformidade aberta"}
-                    </div>
-                  </button>
+                  )}
                 </div>
-              )}
-            </section>
+              </div>
 
-            <section className="grid grid-cols-4 gap-2">
-              <div className="rounded-xl border border-slate-100 bg-white px-2 py-3 text-center shadow-sm">
-                <div className="mx-auto grid h-8 w-8 place-items-center rounded-full bg-blue-50 text-sm font-extrabold text-[#2F5597]">▣</div>
-                <div className="mt-1 text-xl font-extrabold text-[#2F5597]">{visitasDoMes.length}</div>
-                <div className="text-[11px] leading-tight text-slate-500">Visitas<br />este mês</div>
-              </div>
-              <div className="rounded-xl border border-slate-100 bg-white px-2 py-3 text-center shadow-sm">
-                <div className="mx-auto grid h-8 w-8 place-items-center rounded-full bg-emerald-50 text-lg font-extrabold text-emerald-700">✓</div>
-                <div className="mt-1 text-xl font-extrabold text-emerald-700">{visitasDoMes.filter((v) => v.status === "Concluída").length}</div>
-                <div className="text-[11px] leading-tight text-slate-500">Concluídas<br />este mês</div>
-              </div>
-              <div className="rounded-xl border border-slate-100 bg-white px-2 py-3 text-center shadow-sm">
-                <div className="mx-auto grid h-8 w-8 place-items-center rounded-full bg-amber-50 text-lg font-extrabold text-amber-600">◷</div>
-                <div className="mt-1 text-xl font-extrabold text-amber-600">{visitas.filter((v) => v.status === "Em andamento").length}</div>
-                <div className="text-[11px] leading-tight text-slate-500">Em andamento<br />agora</div>
-              </div>
-              <div className="rounded-xl border border-slate-100 bg-white px-2 py-3 text-center shadow-sm">
-                <div className="mx-auto grid h-8 w-8 place-items-center rounded-full bg-blue-50 text-[#2F5597]"><MobileNavIcon name="empresas" /></div>
-                <div className="mt-1 text-xl font-extrabold text-[#2F5597]">{empresasVisiveis.length}</div>
-                <div className="text-[11px] leading-tight text-slate-500">Empresas<br />ativas</div>
+              <div className="relative min-h-[190px] overflow-hidden rounded-[28px] bg-[#061b4f] bg-[url('/images/cozinha-inspecao.webp')] bg-cover bg-center shadow-sm lg:min-h-[320px]">
+                <div className="absolute inset-0 bg-gradient-to-t from-[#061b4f]/80 via-transparent to-transparent" />
+                <div className="absolute inset-x-0 bottom-0 p-5 text-white sm:p-6">
+                  <div className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-cyan-200">MBP Expert AI</div>
+                  <div className="mt-1 max-w-md text-lg font-extrabold leading-snug">Inspeções mais claras, rápidas e organizadas.</div>
+                </div>
               </div>
             </section>
 
-            <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+            {atual && (
+              <section className="grid gap-3 sm:grid-cols-2">
+                <button type="button" onClick={() => editarEmpresa(atual)} className="rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-blue-200 hover:shadow-md">
+                  <div className="flex items-center justify-between gap-3"><div><div className="text-[10px] font-extrabold uppercase tracking-wide text-[#164ee8]">Preparação da empresa</div><div className="mt-1 font-extrabold text-[#061b4f]">{configuracaoEmpresaAtual.prontaParaVisita ? "Dados essenciais prontos" : `Próximo: ${configuracaoEmpresaAtual.proximaEtapa?.titulo || "completar cadastro"}`}</div></div><span className="rounded-full bg-[#e9efff] px-3 py-1.5 text-xs font-extrabold text-[#164ee8]">{configuracaoEmpresaAtual.percentual}%</span></div>
+                </button>
+                <button type="button" onClick={() => setView("visitas")} className="rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-blue-200 hover:shadow-md">
+                  <div className="flex items-center justify-between gap-3"><div><div className="text-[10px] font-extrabold uppercase tracking-wide text-[#164ee8]">Pendências técnicas</div><div className="mt-1 font-extrabold text-[#061b4f]">{ncsEmpresaAbertas ? "Não conformidades em acompanhamento" : "Nenhuma não conformidade aberta"}</div></div><span className={`rounded-full px-3 py-1.5 text-xs font-extrabold ${ncsEmpresaAbertas ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-700"}`}>{ncsEmpresaAbertas}</span></div>
+                </button>
+              </section>
+            )}
+
+            <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              {[
+                { valor: visitasDoMes.length, rotulo: "Visitas este mês", cor: "bg-blue-50 text-[#164ee8]", icone: "▣" },
+                { valor: visitasDoMes.filter((v) => v.status === "Concluída").length, rotulo: "Concluídas este mês", cor: "bg-emerald-50 text-emerald-700", icone: "✓" },
+                { valor: visitas.filter((v) => v.status === "Em andamento").length, rotulo: "Em andamento agora", cor: "bg-amber-50 text-amber-700", icone: "◷" },
+                { valor: empresasVisiveis.length, rotulo: "Empresas ativas", cor: "bg-violet-50 text-violet-700", icone: "□" },
+              ].map((indicador) => (
+                <div key={indicador.rotulo} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl text-base font-extrabold ${indicador.cor}`}>{indicador.icone}</div>
+                  <div><div className="text-xl font-extrabold leading-none text-[#061b4f]">{indicador.valor}</div><div className="mt-1 text-xs text-slate-500">{indicador.rotulo}</div></div>
+                </div>
+              ))}
+            </section>
+
+            <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
               <div className="flex items-center justify-between gap-3">
-                <h2 className="font-extrabold text-slate-950">Visitas</h2>
+                <div><div className="text-[10px] font-extrabold uppercase tracking-wide text-[#164ee8]">Acompanhamento</div><h2 className="mt-1 text-lg font-extrabold text-[#061b4f]">Visitas recentes</h2></div>
                 <div className="flex rounded-lg bg-slate-50 p-0.5 text-[10px] font-bold">
                   <button
                     type="button"
@@ -7336,15 +7294,14 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="mt-3 rounded-xl border border-slate-100 px-3">
-                <div className="pt-3 text-xs font-extrabold">Visitas recentes</div>
+              <div className="mt-4 rounded-xl border border-slate-100 px-3">
                 <div className="divide-y divide-slate-100">
                   {visitasRecentesInicio.map((visita) => (
                     <button
                       key={visita.id}
                       type="button"
                       onClick={() => { setVisitaAtualId(visita.id); setView("visita"); }}
-                      className="flex w-full items-center gap-2 py-3 text-left"
+                      className="flex w-full items-center gap-3 py-3 text-left transition hover:bg-slate-50"
                     >
                       <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${visita.status === "Concluída" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-600"}`}>
                         {visita.status === "Concluída" ? "✓" : "◷"}
@@ -7363,7 +7320,7 @@ export default function Home() {
                 </div>
               </div>
 
-              <button type="button" onClick={() => setView("visitas")} className="mt-3 flex w-full items-center justify-between px-1 text-xs font-extrabold text-[#2F5597]">
+              <button type="button" onClick={() => setView("visitas")} className="mt-3 flex w-full items-center justify-between rounded-xl bg-[#edf2ff] px-3 py-2.5 text-xs font-extrabold text-[#164ee8]">
                 <span>Ver todas as visitas</span><span>›</span>
               </button>
             </section>
