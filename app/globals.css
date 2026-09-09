@@ -404,7 +404,9 @@
 .plan-summary-grid>div>div:first-child{font-size:.68rem;font-weight:600;letter-spacing:0;color:#64748b}
 .plan-summary-grid>div>div:nth-child(2){margin-top:.1rem;color:#061b4f;font-size:1.05rem;font-weight:650}
 .plan-action-list{display:grid;gap:.65rem}
-.plan-action-card{overflow:hidden;border:1px solid #dfe5ee;border-left:3px solid #164ee8;border-radius:1rem;background:#fff;box-shadow:0 5px 18px rgba(6,27,79,.04)}
+.plan-center,.plan-page-head,.plan-action-list,.plan-action-card{width:100%;max-width:100%;min-width:0}
+.plan-action-card{overflow:hidden;border:1px solid #dfe5ee;border-radius:1rem;background:#fff;box-shadow:0 5px 18px rgba(6,27,79,.04)}
+.plan-action-card[open]{border-color:#cbd9f3;box-shadow:0 8px 24px rgba(6,27,79,.065)}
 .plan-action-card.is-resolved{border-left-color:#10b981}
 .plan-action-card>summary::-webkit-details-marker{display:none}
 .plan-action-summary{display:flex;align-items:flex-start;gap:.85rem;padding:.9rem 1rem;cursor:pointer;list-style:none}
@@ -418,7 +420,7 @@
 .plan-status.is-resolved{background:#e9fbf4;color:#047857}
 .plan-chevron{display:grid;width:2rem;height:2rem;flex:0 0 auto;place-items:center;border-radius:50%;background:#edf2ff;color:#164ee8;transition:transform .18s ease}
 .plan-action-card[open] .plan-chevron{transform:rotate(180deg)}
-.plan-action-content{border-top:1px solid #edf1f6;padding:1rem}
+.plan-action-content{min-width:0;border-top:1px solid #edf1f6;padding:1rem}
 .plan-editor-toolbar{display:flex;align-items:end;justify-content:space-between;gap:1rem}
 .plan-chips{display:flex;flex-wrap:wrap;gap:.4rem}
 .plan-chips>span{border-radius:999px;padding:.3rem .6rem;font-size:.68rem;font-weight:600}
@@ -430,13 +432,23 @@
 .plan-status-select{display:flex;align-items:center;gap:.5rem;color:#64748b;font-size:.72rem;font-weight:600}
 .plan-status-select select{min-width:9rem;border:1px solid #d9e1ec;border-radius:.65rem;background:#fff;padding:.55rem .7rem;color:#061b4f;font-size:.78rem}
 .plan-action-content>.mt-4{margin-top:.75rem}
-.plan-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem;margin-top:.85rem}
+.plan-form-grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(16rem,.75fr);gap:.75rem;margin-top:.85rem}
 .plan-field{display:block;min-width:0;color:#526786;font-size:.72rem;font-weight:600}
 .plan-field>span{display:block;margin-bottom:.35rem}
-.plan-field input,.plan-field textarea{width:100%;border:1px solid #d9e1ec;border-radius:.7rem;background:#fff;padding:.65rem .75rem;color:#061b4f;font-size:.8rem;font-weight:400;line-height:1.4;outline:none;transition:.15s ease}
+.plan-field input,.plan-field textarea{width:100%;max-width:100%;min-width:0;border:1px solid #d9e1ec;border-radius:.7rem;background:#fff;padding:.65rem .75rem;color:#061b4f;font-size:.8rem;font-weight:400;line-height:1.4;outline:none;transition:.15s ease}
 .plan-field input:focus,.plan-field textarea:focus{border-color:#7ca1ff;box-shadow:0 0 0 3px rgba(22,78,232,.09)}
 .plan-field textarea{resize:vertical}
-.plan-action-field,.plan-followup-field{grid-column:1/-1}
+.plan-action-field{grid-column:1;grid-row:1/3}
+.plan-action-field textarea{height:100%;min-height:6.15rem}
+.plan-followup-details{grid-column:1/-1;overflow:hidden;border:1px solid #dfe5ee;border-radius:.7rem;background:#fbfcfe}
+.plan-followup-details>summary{display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding:.7rem .75rem;cursor:pointer;list-style:none;color:#315da8;font-size:.72rem;font-weight:600}
+.plan-followup-details>summary::-webkit-details-marker{display:none}
+.plan-followup-details>summary span:last-child{color:#94a3b8;font-size:.66rem;font-weight:500}
+.plan-followup-details[open]>summary{border-bottom:1px solid #e7ebf2}
+.plan-followup-details>label{padding:.7rem}
+.plan-editor-footer{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-top:.75rem;border-top:1px solid #edf1f6;padding-top:.75rem;color:#64748b;font-size:.68rem}
+.plan-editor-footer button{border-radius:999px;background:#164ee8;padding:.6rem .9rem;color:#fff;font-size:.72rem;font-weight:600;box-shadow:0 5px 12px rgba(22,78,232,.15)}
+.plan-editor-footer button:disabled{background:#e8edf5;color:#94a3b8;box-shadow:none}
 .plan-save-note{margin-top:.75rem;border-radius:.65rem;background:#f5f8fd;padding:.55rem .7rem;color:#64748b;font-size:.68rem}
 .plan-save-note.is-protected{background:#ecfdf5;color:#047857}
 .plan-empty-state{border:1px solid #e2e8f0;border-radius:1rem;background:#fff;padding:2rem;text-align:center;box-shadow:0 5px 18px rgba(6,27,79,.04)}
@@ -491,6 +503,7 @@
   .nc-chips>span{font-size:.64rem}
   .nc-follow-button{margin-top:.75rem;border-top:1px solid #edf1f6;padding-top:.72rem}
   .plan-center{margin:-.1rem}
+  .plan-center,.plan-page-head,.plan-action-list,.plan-action-card,.plan-action-content,.plan-form-grid{overflow-x:hidden}
   .plan-page-head{border-radius:1rem;padding:.85rem}
   .plan-summary-grid{margin-top:.8rem}
   .plan-summary-grid>div{padding:.62rem .25rem;text-align:center}
@@ -504,10 +517,15 @@
   .plan-editor-toolbar{align-items:flex-start;flex-direction:column;gap:.65rem}
   .plan-status-select{width:100%;justify-content:space-between}
   .plan-status-select select{min-width:8.5rem}
-  .plan-form-grid{grid-template-columns:1fr;gap:.65rem}
-  .plan-action-field,.plan-followup-field{grid-column:auto}
+  .plan-form-grid{grid-template-columns:minmax(0,1fr);gap:.65rem}
+  .plan-action-field{grid-column:auto;grid-row:auto}
+  .plan-followup-details{grid-column:auto}
   .plan-field input,.plan-field textarea{font-size:.78rem}
-  .plan-field textarea{min-height:4.3rem}
+  .plan-action-field textarea{height:auto;min-height:4.3rem}
+  .plan-followup-details>summary{padding:.65rem;font-size:.69rem}
+  .plan-followup-details>summary span:last-child{font-size:.61rem}
+  .plan-editor-footer{align-items:stretch;flex-direction:column;gap:.55rem}
+  .plan-editor-footer button{width:100%;padding:.7rem}
 }
 
 /* ===== Central da visita compacta no celular ===== */

@@ -5695,30 +5695,47 @@ export default function Home() {
                         />
                       </label>
 
-                      <label className="plan-field plan-followup-field">
-                        <span>
-                          Acompanhamento / verificação
-                        </span>
-                        <textarea
-                          rows={2}
-                          value={(nc as any).acompanhamento || ""}
-                          disabled={nc.status === "Resolvida"}
-                          onChange={(e) =>
-                            atualizarNC(nc.id, { acompanhamento: e.target.value })
-                          }
-                          placeholder="Registre retorno, evidência de correção ou observações do acompanhamento..."
-                        />
-                      </label>
+                      <details className="plan-followup-details">
+                        <summary>
+                          <span>Acompanhamento / verificação</span>
+                          <span>{nc.acompanhamento?.trim() ? "Registro preenchido" : "Adicionar depois"} · ⌄</span>
+                        </summary>
+                        <label className="plan-field">
+                          <textarea
+                            rows={2}
+                            value={(nc as any).acompanhamento || ""}
+                            disabled={nc.status === "Resolvida"}
+                            onChange={(e) =>
+                              atualizarNC(nc.id, { acompanhamento: e.target.value })
+                            }
+                            placeholder="Registre retorno, evidência de correção ou observações..."
+                          />
+                        </label>
+                      </details>
                     </div>
+
+                    {nc.status !== "Resolvida" && (
+                      <div className="plan-editor-footer">
+                        <span>O conteúdo é salvo enquanto você digita.</span>
+                        <button
+                          type="button"
+                          disabled={!nc.acaoCorretiva?.trim()}
+                          onClick={() => {
+                            atualizarNC(nc.id, { status: "Em tratamento" });
+                            setPlanoNcAbertaId("__fechado__");
+                          }}
+                        >
+                          {nc.acaoCorretiva?.trim() ? "Salvar e iniciar tratamento →" : "Defina a ação corretiva"}
+                        </button>
+                      </div>
+                    )}
 
                     {nc.status === "Resolvida" ? (
                       <div className="plan-save-note is-protected">
                         Registro protegido. Reaberturas são feitas no acompanhamento.
                       </div>
                     ) : (
-                      <div className="plan-save-note">
-                        ✓ Alterações salvas automaticamente
-                      </div>
+                      <div className="plan-save-note">✓ Salvamento automático ativo</div>
                     )}
                     </div>
                   </details>
