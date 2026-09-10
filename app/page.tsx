@@ -3538,6 +3538,82 @@ export default function Home() {
     window.setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 120);
   }
 
+  function limparRespostaChecklist(itemId: string) {
+    if (!visitaAtual) return;
+    const item = (visitaAtual.checklist || []).find((registro) => registro.id === itemId);
+    if (!item || item.status === "Pendente") return;
+
+    const confirmou = window.confirm(
+      `Deseja limpar a resposta deste item?\n\nO item voltará para Pendente. A resposta e a observação atual serão removidas.`
+    );
+    if (!confirmou) return;
+
+    atualizarChecklistItem(itemId, { status: "Pendente", observacao: "" });
+  }
+
+  function zerarAmbienteChecklist() {
+    if (!visitaAtual || !ambienteChecklistAtivo) return;
+    if (!exigirPermissao("visitas.executar", visitaAtual.empresaId)) return;
+
+    const itensDoAmbiente = (visitaAtual.checklist || []).filter(
+      (item) => item.ambiente === ambienteChecklistAtivo
+    );
+    const respondidos = itensDoAmbiente.filter((item) => item.status !== "Pendente");
+
+    if (!respondidos.length) {
+      window.alert("Este ambiente já está zerado.");
+      return;
+    }
+
+    const confirmou = window.confirm(
+      `Zerar o ambiente “${ambienteChecklistAtivo}”?\n\n` +
+      `${respondidos.length} resposta(s) voltarão para Pendente. ` +
+      `As respostas e observações desses itens serão removidas.\n\n` +
+      `Esta ação não apaga a visita nem as evidências já registradas.`
+    );
+    if (!confirmou) return;
+
+    const ids = new Set(itensDoAmbiente.map((item) => item.id));
+
+    setDb((atual) => {
+      const visitas = atual.visitas.map((visita) => {
+        if (visita.id !== visitaAtual.id) return visita;
+
+        const checklist = (visita.checklist || []).map((item) => {
+          if (!ids.has(item.id)) return item;
+
+          return {
+            ...item,
+            status: "Pendente" as ChecklistStatus,
+            observacao: "",
+            observacaoNCMemoria: "",
+          } as ChecklistItem;
+        });
+
+        const totalRespondidos = checklist.filter((item) => item.status !== "Pendente").length;
+        const pct = checklist.length ? Math.round((totalRespondidos / checklist.length) * 100) : 0;
+        const progresso = Math.max(15, Math.min(55, 15 + Math.round(pct * 0.4)));
+
+        return { ...visita, checklist, progresso };
+      });
+
+      const ncs = (atual.ncs || []).map((nc) =>
+        nc.visitaId === visitaAtual.id && ids.has(nc.checklistItemId || "")
+          ? { ...nc, inativaNoChecklist: true }
+          : nc
+      );
+
+      return { ...atual, visitas, ncs };
+    });
+
+    setFiltroChecklistRapido("Todos");
+    setUltimoItemChecklistId("");
+    window.setTimeout(
+      () => document.getElementById("checklist-ambiente-topo")?.scrollIntoView({ behavior: "smooth", block: "start" }),
+      80
+    );
+  }
+
   function atualizarChecklistItem(
     itemId: string,
     patch: Partial<Pick<ChecklistItem, "status" | "observacao">>
@@ -6885,14 +6961,28 @@ export default function Home() {
                         {itensAmbienteChecklistAtivo.length - pendentesAmbienteAtivo} de {itensAmbienteChecklistAtivo.length} respondidos • <span className="font-semibold text-amber-600">{pendentesAmbienteAtivo} pendente{pendentesAmbienteAtivo === 1 ? "" : "s"}</span>
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={irParaProximaPendencia}
-                      disabled={totalChecklist === respondidos}
-                      className="shrink-0 whitespace-nowrap rounded-full bg-[#164ee8] px-4 py-2.5 text-sm font-medium text-white shadow-[0_7px_16px_rgba(22,78,232,.18)] disabled:opacity-40"
-                    >
-                      <span className="sm:hidden">Próxima →</span><span className="hidden sm:inline">Próxima pendência →</span>
-                    </button>
+                    <div className="checklist-workbar-actions">
+                      {itensAmbienteChecklistAtivo.some((item) => item.status !== "Pendente") && (
+                        <button
+                          type="button"
+                          onClick={zerarAmbienteChecklist}
+                          className="checklist-reset-environment"
+                          title="Limpar todas as respostas deste ambiente"
+                        >
+                          <span aria-hidden="true">↺</span>
+                          <span className="hidden sm:inline">Zerar ambiente</span>
+                          <span className="sm:hidden">Zerar</span>
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={irParaProximaPendencia}
+                        disabled={totalChecklist === respondidos}
+                        className="shrink-0 whitespace-nowrap rounded-full bg-[#164ee8] px-4 py-2.5 text-sm font-medium text-white shadow-[0_7px_16px_rgba(22,78,232,.18)] disabled:opacity-40"
+                      >
+                        <span className="sm:hidden">Próxima →</span><span className="hidden sm:inline">Próxima pendência →</span>
+                      </button>
+                    </div>
                   </div>
                   <details className="checklist-mobile-tools">
                     <summary>
@@ -7085,6 +7175,18 @@ export default function Home() {
                           )
                         )}
                       </div>
+                      {item.status !== "Pendente" && (
+                        <div className="checklist-clear-row">
+                          <button
+                            type="button"
+                            onClick={() => limparRespostaChecklist(item.id)}
+                            className="checklist-clear-answer"
+                          >
+                            <span aria-hidden="true">↺</span>
+                            Limpar resposta
+                          </button>
+                        </div>
+                      )}
 
                       {item.status === "Não Conforme" ? (
                         <label className="mt-4 block">
