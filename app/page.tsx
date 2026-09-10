@@ -517,14 +517,40 @@ function chaveCriterio(item: {
   ].join("::");
 }
 
-type MobileNavIconName = "inicio" | "empresas" | "visitas" | "acessos";
+type MobileNavIconName = "inicio" | "empresas" | "visitas" | "acessos" | "mais";
 
 function MobileNavIcon({ name }: { name: MobileNavIconName }) {
   const common = { width: 22, height: 22, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.9, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, "aria-hidden": true };
   if (name === "inicio") return <svg {...common}><path d="m3 11 9-7 9 7" /><path d="M5.5 9.5V20h13V9.5" /><path d="M9.5 20v-6h5v6" /></svg>;
   if (name === "empresas") return <svg {...common}><path d="M3 21h18" /><path d="M5 21V7h9v14" /><path d="M14 11h5v10" /><path d="M8 10h3M8 14h3M8 18h3M17 14h.01M17 18h.01" /></svg>;
   if (name === "visitas") return <svg {...common}><path d="M9 5h6" /><path d="M9 3h6v4H9z" /><path d="M7 5H5.5A1.5 1.5 0 0 0 4 6.5v13A1.5 1.5 0 0 0 5.5 21h13a1.5 1.5 0 0 0 1.5-1.5v-13A1.5 1.5 0 0 0 18.5 5H17" /><path d="m8 14 2.2 2.2L16 10.5" /></svg>;
+  if (name === "mais") return <svg {...common}><circle cx="6.5" cy="12" r="1.2" fill="currentColor" stroke="none" /><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none" /><circle cx="17.5" cy="12" r="1.2" fill="currentColor" stroke="none" /></svg>;
   return <svg {...common}><path d="M12 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" /><path d="M5 21a7 7 0 0 1 14 0" /><path d="M18 4.5h3M19.5 3v3" /></svg>;
+}
+
+function VoiceFieldButton({
+  campoId,
+  ativo,
+  onIniciar,
+}: {
+  campoId: string;
+  ativo: boolean;
+  onIniciar: (campoId: string) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onIniciar(campoId)}
+      aria-label={ativo ? "Ouvindo" : "Ditado por voz"}
+      title={ativo ? "Ouvindo..." : "Falar para preencher este campo"}
+      className={`mbp-voice-button ${ativo ? "is-listening" : ""}`}
+    >
+      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="9" y="3" width="6" height="11" rx="3" />
+        <path d="M6 10a6 6 0 0 0 12 0M12 16v5M9 21h6" />
+      </svg>
+    </button>
+  );
 }
 
 function CompanySectionIcon({ name }: { name: EmpresaSecao }) {
@@ -596,6 +622,9 @@ export default function Home() {
   const [painelTamanhoTextoAberto, setPainelTamanhoTextoAberto] = useState(false);
   const [tamanhoTexto, setTamanhoTexto] = useState(100);
   const [tamanhoTextoRascunho, setTamanhoTextoRascunho] = useState(100);
+  const [campoVozAtivo, setCampoVozAtivo] = useState<string | null>(null);
+  const reconhecimentoVozRef = useRef<any>(null);
+
 
   useEffect(() => {
     const salvo = Number(window.localStorage.getItem("mbp-expert-ai:tamanho-texto") || "100");
@@ -615,6 +644,76 @@ export default function Home() {
     window.addEventListener("keydown", fecharComEscape);
     return () => window.removeEventListener("keydown", fecharComEscape);
   }, [menuMaisAberto, painelTamanhoTextoAberto]);
+
+  function preencherCampoPorId(campoId: string, texto: string) {
+    const el = document.getElementById(campoId) as HTMLInputElement | HTMLTextAreaElement | null;
+    if (!el) return;
+    const atual = el.value || "";
+    const separador = atual.trim() ? " " : "";
+    const novoValor = `${atual}${separador}${texto}`.trimStart();
+    const setter = Object.getOwnPropertyDescriptor(
+      Object.getPrototypeOf(el),
+      "value"
+    )?.set;
+    setter?.call(el, novoValor);
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+    el.dispatchEvent(new Event("change", { bubbles: true }));
+    el.focus();
+  }
+
+  function iniciarDitado(campoId: string) {
+    try {
+      const w = window as any;
+      const SpeechRecognition = w.SpeechRecognition || w.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        window.alert("O ditado por voz não está disponível neste navegador. Você ainda pode usar o microfone do teclado do celular.");
+        return;
+      }
+
+      reconhecimentoVozRef.current?.abort?.();
+
+      const reconhecimento = new SpeechRecognition();
+      reconhecimento.lang = "pt-BR";
+      reconhecimento.interimResults = true;
+      reconhecimento.continuous = false;
+
+      let textoFinal = "";
+      setCampoVozAtivo(campoId);
+      reconhecimentoVozRef.current = reconhecimento;
+
+      reconhecimento.onresult = (event: any) => {
+        let parcial = "";
+        for (let i = event.resultIndex; i < event.results.length; i += 1) {
+          const transcricao = event.results[i][0]?.transcript || "";
+          if (event.results[i].isFinal) textoFinal += transcricao;
+          else parcial += transcricao;
+        }
+        const texto = (textoFinal || parcial).trim();
+        if (texto) {
+          const el = document.getElementById(campoId) as HTMLInputElement | HTMLTextAreaElement | null;
+          if (el) el.dataset.mbpVoicePreview = texto;
+        }
+      };
+
+      reconhecimento.onerror = () => {
+        setCampoVozAtivo(null);
+      };
+
+      reconhecimento.onend = () => {
+        const el = document.getElementById(campoId) as HTMLInputElement | HTMLTextAreaElement | null;
+        const texto = (textoFinal || el?.dataset.mbpVoicePreview || "").trim();
+        if (texto) preencherCampoPorId(campoId, texto);
+        if (el) delete el.dataset.mbpVoicePreview;
+        setCampoVozAtivo(null);
+        reconhecimentoVozRef.current = null;
+      };
+
+      reconhecimento.start();
+    } catch {
+      setCampoVozAtivo(null);
+      window.alert("Não foi possível iniciar o ditado por voz neste momento.");
+    }
+  }
 
   function aplicarTamanhoTexto(valor: number) {
     setTamanhoTexto(valor);
@@ -8344,17 +8443,49 @@ export default function Home() {
         )}
       </div>
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_30px_rgba(15,23,42,0.08)] backdrop-blur md:hidden">
-        <div className="mx-auto grid max-w-lg grid-cols-4 gap-1">
+        <div
+          className="mx-auto grid max-w-lg gap-1"
+          style={{ gridTemplateColumns: `repeat(${permitido("usuarios.gerenciar") ? 5 : 4}, minmax(0, 1fr))` }}
+        >
           {([
             ["inicio", "Início"],
             ["empresas", "Empresas"],
             ["visitas", "Visitas"],
-            ["acessos", "Acessos"],
+            ...(permitido("usuarios.gerenciar") ? ([["acessos", "Acessos"]] as const) : []),
+            ["mais", "Mais"],
           ] as const).map(([destino, rotulo]) => {
-            if (destino === "acessos" && !permitido("usuarios.gerenciar")) return null;
-            const ativo = destino === "visitas" ? view === "visitas" || VISIT_VIEWS.includes(view) : view === destino;
+            const ativo =
+              destino === "visitas"
+                ? view === "visitas" || VISIT_VIEWS.includes(view)
+                : destino === "mais"
+                ? menuMaisAberto || painelTamanhoTextoAberto
+                : view === destino;
+
             return (
-              <button key={destino} type="button" onClick={() => { if (ativo && destino !== "acessos") { setMenuContextualAberto(true); return; } navegarPrincipal(destino); setMenuContextualAberto(destino !== "acessos"); }} className={`flex min-h-14 flex-col items-center justify-center rounded-2xl px-2 text-[11px] font-semibold ${ativo ? "bg-[#e9efff] text-[#164ee8]" : "text-slate-500"}`}>
+              <button
+                key={destino}
+                type="button"
+                onClick={() => {
+                  if (destino === "mais") {
+                    setMenuContextualAberto(false);
+                    setMenuMaisAberto(true);
+                    return;
+                  }
+
+                  if (ativo && destino !== "acessos") {
+                    setMenuMaisAberto(false);
+                    setMenuContextualAberto(true);
+                    return;
+                  }
+
+                  setMenuMaisAberto(false);
+                  navegarPrincipal(destino);
+                  setMenuContextualAberto(destino !== "acessos");
+                }}
+                className={`flex min-h-14 flex-col items-center justify-center rounded-2xl px-1.5 text-[11px] font-semibold ${
+                  ativo ? "bg-[#e9efff] text-[#164ee8]" : "text-slate-500"
+                }`}
+              >
                 <MobileNavIcon name={destino} />
                 <span className="mt-1">{rotulo}</span>
               </button>

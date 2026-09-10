@@ -652,3 +652,79 @@
   .plan-followup-details>summary{font-size:.78rem}
   .plan-editor-footer{font-size:.76rem}
 }
+
+
+/* ===== Ajuste da barra inferior mobile com aba "Mais" ===== */
+@media(max-width:767px){
+  .mobile-app-header + * {}
+}
+
+
+/* ===== Ditado por voz nos campos ===== */
+.mbp-voice-field{
+  position:relative;
+}
+.mbp-voice-field textarea,
+.mbp-voice-field input{
+  padding-right:3.1rem !important;
+}
+.mbp-voice-button{
+  position:absolute;
+  right:.6rem;
+  bottom:.6rem;
+  display:grid;
+  place-items:center;
+  width:2.15rem;
+  height:2.15rem;
+  border-radius:999px;
+  border:1px solid #dbe3ef;
+  background:#fff;
+  color:#164ee8;
+  box-shadow:0 3px 10px rgba(15,23,42,.08);
+  z-index:2;
+}
+.mbp-voice-button svg{
+  width:1.05rem;
+  height:1.05rem;
+}
+.mbp-voice-button.is-listening{
+  background:#164ee8;
+  color:#fff;
+  animation:mbpVoicePulse 1.1s ease-in-out infinite;
+}
+@keyframes mbpVoicePulse{
+  0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(22,78,232,.25)}
+  50%{transform:scale(1.06);box-shadow:0 0 0 7px rgba(22,78,232,0)}
+}
+
+/* ===== Menu Mais: atalhos realmente usados ===== */
+.mbp-more-secondary{
+  display:flex;
+  justify-content:center;
+  gap:.5rem;
+  padding:.15rem 1rem 1rem;
+}
+.mbp-more-secondary button{
+  border:0;
+  background:transparent;
+  color:#64748b;
+  font-size:.82rem;
+  padding:.45rem .7rem;
+}
+@media(max-width:767px){
+  .mbp-more-grid{
+    grid-template-columns:repeat(4,minmax(0,1fr)) !important;
+    gap:.55rem !important;
+  }
+  .mbp-more-item{
+    min-height:4.7rem !important;
+    padding:.6rem .25rem !important;
+    gap:.35rem !important;
+    font-size:.72rem !important;
+  }
+  .mbp-more-item-icon{
+    width:2.15rem !important;
+    height:2.15rem !important;
+    font-size:1rem !important;
+  }
+}
