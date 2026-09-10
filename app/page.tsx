@@ -102,7 +102,7 @@ import {
 } from "@/lib/userManagement";
 import { resumoConfiguracaoEmpresa } from "@/lib/companyReadiness";
 
-type View = "inicio" | "empresas" | "visitas" | "visita" | "ambientes" | "checklist" | "ncs" | "plano" | "acompanhamento" | "historico" | "evidencias" | "relatorio" | "acessos";
+type View = "inicio" | "ajuda" | "empresas" | "visitas" | "visita" | "ambientes" | "checklist" | "ncs" | "plano" | "acompanhamento" | "historico" | "evidencias" | "relatorio" | "acessos";
 type EmpresaSecao = "dados" | "manual" | "ambientes" | "fluxos" | "programas" | "pops";
 type FiltroChecklistRapido = "Todos" | "Pendentes" | "Não conformes";
 
@@ -1509,7 +1509,7 @@ export default function Home() {
             setVisitaAtualId(null);
             setView("visitas");
           }
-        } else if (viewSalva && ["inicio", "empresas", "visitas", "acessos"].includes(viewSalva)) {
+        } else if (viewSalva && ["inicio", "ajuda", "empresas", "visitas", "acessos"].includes(viewSalva)) {
           setView(viewSalva);
           // Mantém a visita selecionada ao atualizar a página quando o usuário
           // estiver na lista de visitas. Em Início/Empresas a seleção não é exibida.
@@ -3702,9 +3702,11 @@ export default function Home() {
   }
 
   function abrirAjudaRapida() {
-    window.alert(
-      "Ajuda rápida do MBP Expert AI\n\n• Checklist: execute a inspeção.\n• Evidências: registre fotos e anexos.\n• Não conformidades: acompanhe pendências.\n• Plano de ação: registre ações e prazos.\n• Relatórios: visualize ou exporte a visita.\n• POPs: acesse os procedimentos da empresa ativa."
-    );
+    setMenuMaisAberto(false);
+    setMenuAtalhosAberto(false);
+    setMenuContextualAberto(false);
+    setView("ajuda");
+    window.setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 40);
   }
 
   function abrirEvidencias() {
@@ -4572,7 +4574,7 @@ export default function Home() {
             ["acessos", "Acessos"],
           ] as const).map(([destino, rotulo]) => {
             if (destino === "acessos" && !permitido("usuarios.gerenciar")) return null;
-            const ativo = destino === "visitas" ? view === "visitas" || VISIT_VIEWS.includes(view) : view === destino;
+            const ativo = destino === "visitas" ? view === "visitas" || VISIT_VIEWS.includes(view) : destino === "inicio" ? view === "inicio" || view === "ajuda" : view === destino;
             return (
               <button
                 key={destino}
@@ -4611,18 +4613,19 @@ export default function Home() {
             <div>
               <div className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#164ee8]">Navegação</div>
               <div className="mt-1 text-xl font-semibold text-[#061b4f]">
-                {view === "inicio" ? "Início" : view === "empresas" ? "Empresas" : "Visitas"}
+                {view === "inicio" || view === "ajuda" ? "Início" : view === "empresas" ? "Empresas" : "Visitas"}
               </div>
             </div>
             <button type="button" onClick={() => setMenuContextualAberto(false)} aria-label="Fechar submenu" className="grid h-9 w-9 place-items-center rounded-full bg-slate-100 text-lg text-slate-500">×</button>
           </div>
 
           <div className="space-y-1 p-4" onClick={(event) => { if ((event.target as HTMLElement).closest("button")) setMenuContextualAberto(false); }}>
-            {view === "inicio" && (
+            {(view === "inicio" || view === "ajuda") && (
               <>
                 <button type="button" onClick={() => setView("inicio")} className="flex w-full items-center gap-3 rounded-xl bg-[#e9efff] px-4 py-3 text-left font-semibold text-[#164ee8]"><span>⌂</span><span>Visão geral</span></button>
                 {visitaEmAndamentoDestaque && <button type="button" onClick={() => continuar(visitaEmAndamentoDestaque.id, true)} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm hover:bg-slate-50"><span>→</span><span>Continuar inspeção</span></button>}
                 <button type="button" onClick={() => setView("visitas")} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm hover:bg-slate-50"><span>▣</span><span>Todas as visitas</span></button>
+                <button type="button" onClick={abrirAjudaRapida} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm ${view === "ajuda" ? "bg-[#e9efff] font-semibold text-[#164ee8]" : "hover:bg-slate-50"}`}><span>?</span><span>Ajuda e guias</span></button>
 
                 <div className="px-4 pb-1 pt-5 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Atalhos de campo</div>
                 <button type="button" onClick={() => abrirAtalhoDaVisita("checklist")} className="pc-home-shortcut"><span>✓</span><span>Checklist</span></button>
@@ -4678,7 +4681,7 @@ export default function Home() {
                 <div>
                   <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#164ee8]">Navegação</div>
                   <div className="mt-0.5 text-lg font-semibold text-[#061b4f]">
-                    {view === "inicio" ? "Início" : view === "empresas" ? "Empresas" : "Visitas"}
+                    {view === "inicio" || view === "ajuda" ? "Início" : view === "empresas" ? "Empresas" : "Visitas"}
                   </div>
                 </div>
                 <button type="button" onClick={() => setMenuContextualAberto(false)} aria-label="Fechar menu" className="grid h-9 w-9 place-items-center rounded-full bg-slate-100 text-lg text-slate-500">×</button>
@@ -4686,11 +4689,12 @@ export default function Home() {
             </div>
 
             <div className="space-y-1 p-3 pb-5" onClick={(event) => { if ((event.target as HTMLElement).closest("button")) setMenuContextualAberto(false); }}>
-              {view === "inicio" && (
+              {(view === "inicio" || view === "ajuda") && (
                 <>
                   <button type="button" onClick={() => setView("inicio")} className="flex w-full items-center gap-3 rounded-xl bg-[#e9efff] px-4 py-3 text-left text-sm font-semibold text-[#164ee8]"><span>⌂</span><span>Visão geral</span></button>
                   {visitaEmAndamentoDestaque && <button type="button" onClick={() => continuar(visitaEmAndamentoDestaque.id, true)} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm hover:bg-slate-50"><span>→</span><span>Continuar inspeção</span></button>}
                   <button type="button" onClick={() => setView("visitas")} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm hover:bg-slate-50"><span>▣</span><span>Todas as visitas</span></button>
+                  <button type="button" onClick={abrirAjudaRapida} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm ${view === "ajuda" ? "bg-[#e9efff] font-semibold text-[#164ee8]" : "hover:bg-slate-50"}`}><span>?</span><span>Ajuda e guias</span></button>
                   <button type="button" onClick={() => setView("empresas")} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm hover:bg-slate-50"><span>□</span><span>Empresas</span></button>
                 </>
               )}
@@ -8135,6 +8139,140 @@ export default function Home() {
               </p>
             </div>
           </section>
+        ) : view === "ajuda" ? (
+          <section className="help-page space-y-4">
+            <div className="help-hero">
+              <div>
+                <div className="help-kicker">AJUDA • GUIAS DO SISTEMA</div>
+                <h1>Como usar o MBP Expert AI</h1>
+                <p>Respostas rápidas para o trabalho em campo e acesso ao manual completo quando precisar de mais detalhes.</p>
+              </div>
+              <button type="button" onClick={() => setView("inicio")} className="help-back-button">← Voltar ao Início</button>
+            </div>
+
+            <div className="help-grid">
+              <article className="help-card">
+                <div className="help-card-icon is-blue">✓</div>
+                <div>
+                  <h2>Fluxo rápido da visita</h2>
+                  <ol className="help-steps">
+                    <li><span>1</span>Selecione a empresa.</li>
+                    <li><span>2</span>Abra ou inicie uma visita.</li>
+                    <li><span>3</span>Escolha o ambiente e responda o checklist.</li>
+                    <li><span>4</span>Registre observações, evidências e NCs.</li>
+                    <li><span>5</span>Acompanhe o plano de ação e revise o relatório.</li>
+                  </ol>
+                </div>
+              </article>
+
+              <article className="help-card">
+                <div className="help-card-icon is-green">●</div>
+                <div>
+                  <h2>Entenda as cores</h2>
+                  <div className="help-color-list">
+                    <div><span className="help-color-dot is-green" /><strong>Verde</strong><small>Conforme, concluído ou sem pendência ativa.</small></div>
+                    <div><span className="help-color-dot is-red" /><strong>Rosa / vermelho</strong><small>Existe pelo menos uma não conformidade ou ponto que exige atenção.</small></div>
+                    <div><span className="help-color-dot is-amber" /><strong>Amarelo / laranja</strong><small>Em andamento, atenção ou etapa intermediária.</small></div>
+                    <div><span className="help-color-dot is-gray" /><strong>Cinza</strong><small>Pendente, neutro ou ainda não avaliado.</small></div>
+                  </div>
+                </div>
+              </article>
+            </div>
+
+            <article className="help-card help-highlight">
+              <div className="help-card-icon is-red">!</div>
+              <div>
+                <h2>Por que o ambiente ficou rosa?</h2>
+                <p>Isso não é erro. O ambiente fica rosa/vermelho quando existe pelo menos um item marcado como <strong>Não Conforme</strong>. Abra o setor para localizar o item que precisa de atenção.</p>
+                <div className="help-example"><strong>Exemplo:</strong> se “Copa” tiver um item Não Conforme, a lateral mostra o setor em rosa. Quando todos os itens estiverem avaliados e não houver NC ativa, o setor aparece em verde.</div>
+              </div>
+            </article>
+
+            <div className="help-grid">
+              <article className="help-card">
+                <div className="help-card-icon is-purple">≡</div>
+                <div>
+                  <h2>Por que alguns itens “somem”?</h2>
+                  <p>Na maioria das vezes, eles não foram apagados. Um filtro está ocultando o que não corresponde à seleção atual.</p>
+                  <ul className="help-bullets">
+                    <li><strong>Todos:</strong> mostra todos os itens.</li>
+                    <li><strong>Pendentes:</strong> esconde os que já foram respondidos.</li>
+                    <li><strong>Não conformes:</strong> mostra somente os itens com problema.</li>
+                  </ul>
+                </div>
+              </article>
+
+              <article className="help-card">
+                <div className="help-card-icon is-cyan">🎙</div>
+                <div>
+                  <h2>Voz e IA</h2>
+                  <p><strong>Falar:</strong> toque, dite e depois toque em Parar. O áudio é convertido em texto.</p>
+                  <p className="mt-2"><strong>IA:</strong> depois de escrever ou ditar, use IA para corrigir gramática, organizar a frase e deixá-la mais técnica e objetiva.</p>
+                  <div className="help-note">A IA melhora a redação, mas o usuário deve revisar o texto antes de salvar.</div>
+                </div>
+              </article>
+            </div>
+
+            <article className="help-card">
+              <div className="help-card-icon is-amber">↻</div>
+              <div>
+                <h2>Offline e sincronização</h2>
+                <p>Sem internet, os registros compatíveis com o modo offline permanecem no aparelho. Quando a conexão volta, o sistema sincroniza com a nuvem.</p>
+                <div className="help-note is-amber">Transcrição de voz, melhoria de texto com IA e análise de fotos por IA precisam de internet.</div>
+              </div>
+            </article>
+
+            <div>
+              <div className="help-section-title">O que significa quando...</div>
+              <div className="help-faq">
+                <details open>
+                  <summary>O ambiente ficou rosa/vermelho</summary>
+                  <p>Há pelo menos uma não conformidade naquele ambiente. Abra o setor e confira os itens marcados como Não Conforme.</p>
+                </details>
+                <details>
+                  <summary>O ambiente ficou verde</summary>
+                  <p>Os itens daquele ambiente foram avaliados e não há não conformidade ativa.</p>
+                </details>
+                <details>
+                  <summary>Um item desapareceu da tela</summary>
+                  <p>Confira o filtro. Volte para “Todos” para visualizar novamente os itens ocultos.</p>
+                </details>
+                <details>
+                  <summary>Não consigo editar um registro</summary>
+                  <p>A visita pode estar concluída, o item pode estar resolvido ou o perfil do usuário pode não ter permissão para editar.</p>
+                </details>
+                <details>
+                  <summary>Apareceu “Somente local” ou modo offline</summary>
+                  <p>O aparelho está sem comunicação com a nuvem. Continue o trabalho normalmente e sincronize quando a conexão voltar.</p>
+                </details>
+                <details>
+                  <summary>O microfone não transcreveu</summary>
+                  <p>Verifique a internet e a permissão do microfone. Fale por alguns segundos e toque em Parar para enviar o áudio à transcrição.</p>
+                </details>
+                <details>
+                  <summary>A IA não respondeu</summary>
+                  <p>Pode haver falta de internet ou indisponibilidade temporária do serviço. O registro manual continua funcionando.</p>
+                </details>
+              </div>
+            </div>
+
+            <div className="help-documents">
+              <div>
+                <div className="help-section-title">Guias completos</div>
+                <p>Abra o material em PDF quando quiser consultar o passo a passo com mais detalhes.</p>
+              </div>
+              <div className="help-document-actions">
+                <a href="/guias/guia-rapido-mbp-expert-ai.pdf" target="_blank" rel="noreferrer" className="help-doc-button is-primary">
+                  <span>⚡</span>
+                  <span><strong>Guia rápido</strong><small>Consulta prática para o dia a dia</small></span>
+                </a>
+                <a href="/guias/manual-completo-mbp-expert-ai.pdf" target="_blank" rel="noreferrer" className="help-doc-button">
+                  <span>📘</span>
+                  <span><strong>Manual completo</strong><small>Explicação detalhada do sistema</small></span>
+                </a>
+              </div>
+            </div>
+          </section>
         ) : view === "inicio" ? (
           <div className="space-y-4">
             <section className="grid gap-3 lg:grid-cols-[minmax(0,1.08fr)_minmax(360px,0.92fr)] lg:gap-4">
@@ -8848,7 +8986,7 @@ export default function Home() {
             ["empresas", "Empresas"],
             ["visitas", "Visitas"],
           ] as const).map(([destino, rotulo]) => {
-            const ativo = destino === "visitas" ? view === "visitas" || VISIT_VIEWS.includes(view) : view === destino;
+            const ativo = destino === "visitas" ? view === "visitas" || VISIT_VIEWS.includes(view) : destino === "inicio" ? view === "inicio" || view === "ajuda" : view === destino;
             return (
               <button key={destino} type="button" onClick={() => { setMenuAtalhosAberto(false); if (ativo) { setMenuContextualAberto(true); return; } navegarPrincipal(destino); setMenuContextualAberto(true); }} className={`mobile-bottom-nav-item flex min-h-14 flex-col items-center justify-center rounded-2xl px-1 text-[9px] font-semibold ${ativo ? "bg-[#e9efff] text-[#164ee8]" : "text-slate-500"}`}>
                 <MobileNavIcon name={destino} />
