@@ -537,25 +537,45 @@ function juntarTextoDitado(atual: string, novo: string) {
 function VoiceDictationButton({
   ativo,
   onIniciar,
+  melhorando = false,
+  onMelhorar,
 }: {
   ativo: boolean;
   onIniciar: () => void;
+  melhorando?: boolean;
+  onMelhorar?: () => void;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onIniciar}
-      className={`mbp-voice-button ${ativo ? "is-listening" : ""}`}
-      aria-label={ativo ? "Parar gravação" : "Falar para preencher este campo"}
-      title={ativo ? "Toque para encerrar e transcrever" : "Ditado por voz"}
-    >
-      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="9" y="3" width="6" height="11" rx="3" />
-        <path d="M6 10a6 6 0 0 0 12 0" />
-        <path d="M12 16v5M9 21h6" />
-      </svg>
-      <span className="mbp-voice-label">{ativo ? "Parar" : "Falar"}</span>
-    </button>
+    <div className="mbp-field-tools">
+      {onMelhorar && (
+        <button
+          type="button"
+          onClick={onMelhorar}
+          disabled={melhorando || ativo}
+          className={`mbp-ai-text-button ${melhorando ? "is-working" : ""}`}
+          aria-label="Melhorar texto com IA"
+          title="Deixar o texto mais claro, técnico e objetivo"
+        >
+          <span aria-hidden="true">✦</span>
+          <span>{melhorando ? "Ajustando" : "IA"}</span>
+        </button>
+      )}
+      <button
+        type="button"
+        onClick={onIniciar}
+        disabled={melhorando}
+        className={`mbp-voice-button ${ativo ? "is-listening" : ""}`}
+        aria-label={ativo ? "Parar gravação" : "Falar para preencher este campo"}
+        title={ativo ? "Toque para encerrar e transcrever" : "Ditado por voz"}
+      >
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="9" y="3" width="6" height="11" rx="3" />
+          <path d="M6 10a6 6 0 0 0 12 0" />
+          <path d="M12 16v5M9 21h6" />
+        </svg>
+        <span className="mbp-voice-label">{ativo ? "Parar" : "Falar"}</span>
+      </button>
+    </div>
   );
 }
 
@@ -630,6 +650,7 @@ export default function Home() {
   const [tamanhoTexto, setTamanhoTexto] = useState(100);
   const [tamanhoTextoRascunho, setTamanhoTextoRascunho] = useState(100);
   const [campoVozAtivo, setCampoVozAtivo] = useState<string | null>(null);
+  const [campoIaAtivo, setCampoIaAtivo] = useState<string | null>(null);
   const gravadorVozRef = useRef<MediaRecorder | null>(null);
   const streamVozRef = useRef<MediaStream | null>(null);
   const timerVozRef = useRef<number | null>(null);
@@ -653,6 +674,45 @@ export default function Home() {
     window.addEventListener("keydown", fecharComEscape);
     return () => window.removeEventListener("keydown", fecharComEscape);
   }, [menuMaisAberto, menuAtalhosAberto, painelTamanhoTextoAberto]);
+
+  async function melhorarTextoComIa(
+    chave: string,
+    textoAtual: string,
+    aoMelhorar: (texto: string) => void,
+    contexto?: string
+  ) {
+    const texto = (textoAtual || "").trim();
+    if (!texto) {
+      window.alert("Primeiro escreva ou dite algum texto para a IA melhorar.");
+      return;
+    }
+    if (!navigator.onLine) {
+      window.alert("A melhoria de texto com IA precisa de internet.");
+      return;
+    }
+    if (campoIaAtivo) return;
+
+    try {
+      setCampoIaAtivo(chave);
+      const response = await fetch("/api/texto/melhorar", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ texto, contexto: contexto || "" }),
+      });
+      const body = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(body?.error || "Não foi possível melhorar o texto agora.");
+      }
+      const melhorado = typeof body?.text === "string" ? body.text.trim() : "";
+      if (!melhorado) throw new Error("A IA não retornou um texto utilizável.");
+      aoMelhorar(melhorado);
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Não foi possível melhorar o texto agora.");
+    } finally {
+      setCampoIaAtivo(null);
+    }
+  }
 
   async function iniciarDitado(chave: string, aoTranscrever: (texto: string) => void) {
     // Segundo toque no mesmo microfone encerra a gravação e inicia a transcrição.
@@ -5442,7 +5502,9 @@ export default function Home() {
                   />
                   <VoiceDictationButton
                     ativo={campoVozAtivo === "visita-observacoes"}
+                    melhorando={campoIaAtivo === "visita-observacoes"}
                     onIniciar={() => iniciarDitado("visita-observacoes", (texto) => setVf((atual) => ({ ...atual, observacoes: juntarTextoDitado(atual.observacoes, texto) })))}
+                    onMelhorar={() => melhorarTextoComIa("visita-observacoes", vf.observacoes, (texto) => setVf((atual) => ({ ...atual, observacoes: texto })), "Observações iniciais de uma visita técnica de Boas Práticas em serviços de alimentação.")}
                   />
                 </div>
               </label>
@@ -5734,7 +5796,9 @@ export default function Home() {
                     />
                     <VoiceDictationButton
                       ativo={campoVozAtivo === "evidencia-descricao"}
+                      melhorando={campoIaAtivo === "evidencia-descricao"}
                       onIniciar={() => iniciarDitado("evidencia-descricao", (texto) => setEvidenciaDescricao((atual) => juntarTextoDitado(atual, texto)))}
+                      onMelhorar={() => melhorarTextoComIa("evidencia-descricao", evidenciaDescricao, setEvidenciaDescricao, "Descrição curta de uma evidência registrada durante inspeção de Boas Práticas.")}
                     />
                   </div>
                 </label>
@@ -5986,10 +6050,17 @@ export default function Home() {
                                           />
                                           <VoiceDictationButton
                                             ativo={campoVozAtivo === `analise-${ultimaAnalise.id}`}
+                                            melhorando={campoIaAtivo === `analise-${ultimaAnalise.id}`}
                                             onIniciar={() => iniciarDitado(`analise-${ultimaAnalise.id}`, (texto) => setAnaliseIATextos((atual) => ({
                                               ...atual,
                                               [ultimaAnalise.id]: juntarTextoDitado(atual[ultimaAnalise.id] ?? ultimaAnalise.textoRevisado, texto),
                                             })))}
+                                            onMelhorar={() => melhorarTextoComIa(
+                                              `analise-${ultimaAnalise.id}`,
+                                              analiseIATextos[ultimaAnalise.id] ?? ultimaAnalise.textoRevisado,
+                                              (texto) => setAnaliseIATextos((atual) => ({ ...atual, [ultimaAnalise.id]: texto })),
+                                              "Texto técnico de análise de evidência fotográfica em segurança dos alimentos."
+                                            )}
                                           />
                                         </div>
                                       </details>
@@ -6177,7 +6248,9 @@ export default function Home() {
                           {nc.status !== "Resolvida" && (
                             <VoiceDictationButton
                               ativo={campoVozAtivo === `acao-${nc.id}`}
+                              melhorando={campoIaAtivo === `acao-${nc.id}`}
                               onIniciar={() => iniciarDitado(`acao-${nc.id}`, (texto) => atualizarNC(nc.id, { acaoCorretiva: juntarTextoDitado((nc as any).acaoCorretiva || "", texto) }))}
+                              onMelhorar={() => melhorarTextoComIa(`acao-${nc.id}`, (nc as any).acaoCorretiva || "", (texto) => atualizarNC(nc.id, { acaoCorretiva: texto }), "Ação corretiva para uma não conformidade em Boas Práticas. Escreva como ação prática e executável.")}
                             />
                           )}
                         </div>
@@ -6230,7 +6303,9 @@ export default function Home() {
                             {nc.status !== "Resolvida" && (
                               <VoiceDictationButton
                                 ativo={campoVozAtivo === `acompanhamento-${nc.id}`}
+                                melhorando={campoIaAtivo === `acompanhamento-${nc.id}`}
                                 onIniciar={() => iniciarDitado(`acompanhamento-${nc.id}`, (texto) => atualizarNC(nc.id, { acompanhamento: juntarTextoDitado((nc as any).acompanhamento || "", texto) }))}
+                                onMelhorar={() => melhorarTextoComIa(`acompanhamento-${nc.id}`, (nc as any).acompanhamento || "", (texto) => atualizarNC(nc.id, { acompanhamento: texto }), "Registro de acompanhamento de uma ação corretiva em Boas Práticas.")}
                               />
                             )}
                           </div>
@@ -6498,7 +6573,9 @@ export default function Home() {
                             />
                             <VoiceDictationButton
                               ativo={campoVozAtivo === `atualizacao-${nc.id}`}
+                              melhorando={campoIaAtivo === `atualizacao-${nc.id}`}
                               onIniciar={() => iniciarDitado(`atualizacao-${nc.id}`, (texto) => setTextoAcompanhamento((o) => ({ ...o, [nc.id]: juntarTextoDitado(o[nc.id] || "", texto) })))}
+                              onMelhorar={() => melhorarTextoComIa(`atualizacao-${nc.id}`, textoAcompanhamento[nc.id] || "", (texto) => setTextoAcompanhamento((o) => ({ ...o, [nc.id]: texto })), "Atualização objetiva sobre andamento ou conclusão de uma correção em inspeção de Boas Práticas.")}
                             />
                           </div>
                           <div className="space-y-2">
@@ -7024,7 +7101,9 @@ export default function Home() {
                             />
                             <VoiceDictationButton
                               ativo={campoVozAtivo === `checklist-nc-${item.id}`}
+                              melhorando={campoIaAtivo === `checklist-nc-${item.id}`}
                               onIniciar={() => iniciarDitado(`checklist-nc-${item.id}`, (texto) => atualizarChecklistItem(item.id, { observacao: juntarTextoDitado(item.observacao, texto) }))}
+                              onMelhorar={() => melhorarTextoComIa(`checklist-nc-${item.id}`, item.observacao, (texto) => atualizarChecklistItem(item.id, { observacao: texto }), "Descrição objetiva de uma não conformidade observada durante checklist de Boas Práticas.")}
                             />
                           </div>
                           {item.observacao.trim() && (
@@ -7057,7 +7136,9 @@ export default function Home() {
                               />
                               <VoiceDictationButton
                                 ativo={campoVozAtivo === `checklist-obs-${item.id}`}
+                                melhorando={campoIaAtivo === `checklist-obs-${item.id}`}
                                 onIniciar={() => iniciarDitado(`checklist-obs-${item.id}`, (texto) => atualizarChecklistItem(item.id, { observacao: juntarTextoDitado(item.observacao, texto) }))}
+                                onMelhorar={() => melhorarTextoComIa(`checklist-obs-${item.id}`, item.observacao, (texto) => atualizarChecklistItem(item.id, { observacao: texto }), "Observação técnica de checklist de Boas Práticas.")}
                               />
                             </div>
                           </div>
@@ -7951,7 +8032,9 @@ export default function Home() {
                     />
                     <VoiceDictationButton
                       ativo={campoVozAtivo === `relatorio-${visitaAtual.id}`}
+                      melhorando={campoIaAtivo === `relatorio-${visitaAtual.id}`}
                       onIniciar={() => iniciarDitado(`relatorio-${visitaAtual.id}`, (texto) => atualizarConclusaoRelatorio(juntarTextoDitado(visitaAtual.conclusao || "", texto)))}
+                      onMelhorar={() => melhorarTextoComIa(`relatorio-${visitaAtual.id}`, visitaAtual.conclusao || "", atualizarConclusaoRelatorio, "Conclusão técnica de uma visita de Boas Práticas. Mantenha linguagem profissional, clara e objetiva.")}
                     />
                   </div>
                   <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
