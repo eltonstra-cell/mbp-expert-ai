@@ -705,3 +705,46 @@
 @media(min-width:768px){
   .mbp-voice-button{height:30px}
 }
+
+
+/* ===== Refinamento mobile: menu, ambientes e status ===== */
+@media(max-width:767px){
+  /* Menu Mais: ícones e textos ~15% maiores, mantendo o painel compacto. */
+  .mbp-shortcuts-heading h2{font-size:25px}
+  .mbp-shortcuts-heading p{font-size:12.5px}
+  .mbp-shortcut-card{grid-template-columns:44px minmax(0,1fr) 13px;gap:8px;min-height:70px;padding:8px}
+  .mbp-shortcut-icon{width:44px;height:44px;border-radius:13px;font-size:21px}
+  .mbp-shortcut-copy strong{font-size:14.4px;line-height:1.12}
+  .mbp-shortcut-copy small{font-size:10.9px;line-height:1.18}
+  .mbp-shortcut-arrow{font-size:22px}
+  .mbp-shortcuts-footer-item span{font-size:17px}
+  .mbp-shortcuts-footer-item strong{font-size:12.5px}
+
+  /* Tela Ambientes: evita corte lateral mesmo com fonte em 120/130%. */
+  .ambientes-screen{width:100%;max-width:100%;min-width:0;overflow-x:hidden}
+  .ambientes-screen>*{min-width:0;max-width:100%}
+  .ambientes-screen .grid,.ambientes-screen .rounded-2xl{min-width:0;max-width:100%}
+  .ambientes-list-head,.ambientes-route-head{align-items:flex-start;flex-direction:column}
+  .ambientes-list-head>div,.ambientes-route-head>h2{min-width:0;max-width:100%}
+  .ambientes-list-head>div:last-child,.ambientes-route-head>span{align-self:flex-start;max-width:100%;white-space:normal;overflow-wrap:anywhere}
+  .ambiente-choice{width:100%;max-width:100%;overflow:hidden}
+  .ambiente-choice>span:first-child{overflow-wrap:anywhere;word-break:break-word}
+  .ambientes-custom-row{flex-direction:column}
+  .ambientes-custom-row input,.ambientes-custom-row button{width:100%;max-width:100%;min-width:0}
+}
+
+/* Status da avaliação por ambiente novamente bem visível. */
+.checklist-item-card.is-conforming{border-color:#bbf7d0;border-left-color:#10b981;background:#f0fdf4}
+.checklist-item-card.is-nonconforming{border-color:#fecaca;border-left-color:#ef4444;background:#fef2f2}
+.checklist-answer.is-selected.is-yes{border-color:#059669!important;background:#059669!important;color:#fff!important}
+.checklist-answer.is-selected.is-no{border-color:#dc2626!important;background:#dc2626!important;color:#fff!important}
+.checklist-route-item.is-conforming{border-color:#86efac;background:#f0fdf4;color:#14532d}
+.checklist-route-item.is-nonconforming{border-color:#fca5a5;background:#fef2f2;color:#7f1d1d}
+.checklist-route-item.is-active.is-conforming,.checklist-route-item.is-active.is-nonconforming{box-shadow:0 0 0 2px #164ee8,0 7px 15px rgba(22,78,232,.12)}
+.checklist-current-status{display:inline-flex;align-items:center;border-radius:999px;padding:.18rem .48rem;font-size:.62rem;font-weight:800;line-height:1.1}
+.checklist-current-status.is-conforming{background:#dcfce7;color:#047857}
+.checklist-current-status.is-nonconforming{background:#fee2e2;color:#b91c1c}
+.checklist-current-status.is-pending{background:#fef3c7;color:#b45309}
+
+/* Ditado: botão deixa claro quando o segundo toque encerra a gravação. */
+.mbp-voice-button.is-listening{min-width:74px}
