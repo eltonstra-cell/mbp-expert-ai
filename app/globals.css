@@ -748,3 +748,161 @@
 
 /* Ditado: botão deixa claro quando o segundo toque encerra a gravação. */
 .mbp-voice-button.is-listening{min-width:74px}
+
+
+/* ===== Refinamento consolidado 10/09: navegação, visitas, ambientes e status ===== */
+
+/* Submenu Início no PC: atalhos úteis sem repetir Empresas. */
+.pc-home-shortcut{
+  display:flex;
+  width:100%;
+  align-items:center;
+  gap:.75rem;
+  border-radius:.75rem;
+  padding:.72rem 1rem;
+  text-align:left;
+  font-size:.84rem;
+  color:#334155;
+  transition:.15s ease;
+}
+.pc-home-shortcut:hover{background:#f8fafc;color:#164ee8}
+.pc-home-shortcut>span:first-child{
+  display:grid;
+  width:1.8rem;
+  height:1.8rem;
+  flex:none;
+  place-items:center;
+  border-radius:.55rem;
+  background:#eef4ff;
+  color:#164ee8;
+  font-weight:800;
+}
+
+/* Visitas no PC: mais leve, organizada e funcional. */
+.visits-list-header{
+  border:1px solid #e2e8f0;
+  box-shadow:0 8px 26px rgba(6,27,79,.045);
+}
+.visits-summary-chips span{
+  display:inline-flex;
+  align-items:center;
+  gap:.28rem;
+  border:1px solid #e2e8f0;
+  border-radius:999px;
+  background:#f8fafc;
+  padding:.28rem .62rem;
+  font-size:.72rem;
+  color:#64748b;
+}
+.visits-summary-chips strong{font-size:.78rem;color:#061b4f}
+.visits-summary-chips .is-progress{border-color:#fde7b0;background:#fffbeb;color:#a16207}
+.visits-summary-chips .is-done{border-color:#ccefdc;background:#f0fdf4;color:#047857}
+.visits-filter-bar{box-shadow:0 6px 18px rgba(6,27,79,.035)}
+.visits-list-card{
+  border-radius:1rem;
+  box-shadow:0 5px 18px rgba(6,27,79,.045);
+}
+.visits-list-card:hover{
+  border-color:#c7d7f6;
+  box-shadow:0 10px 28px rgba(6,27,79,.075);
+  transform:translateY(-1px);
+}
+@media(min-width:768px){
+  .visits-list-page{max-width:100%}
+  .visits-list-card{padding:1rem 1.05rem}
+  .visits-list-card h2{font-size:1rem}
+  .visits-card-actions{
+    display:flex!important;
+    align-items:center;
+    justify-content:flex-end;
+    gap:.45rem;
+    margin-top:.8rem!important;
+  }
+  .visits-card-actions button{
+    flex:0 0 auto!important;
+    min-height:2.2rem;
+    padding:.5rem .78rem!important;
+    border-radius:.7rem!important;
+    font-size:.78rem!important;
+  }
+  .visits-card-actions .visits-primary-action{
+    min-width:9.5rem;
+    background:#17365D;
+  }
+}
+
+/* Avaliação por ambiente: cor com significado explícito, sem ambiguidade. */
+.checklist-route-item{
+  border-left-width:4px;
+}
+.checklist-route-item.is-nonconforming{
+  border-color:#ef4444;
+  background:#fff7f7;
+  color:#7f1d1d;
+}
+.checklist-route-item.is-conforming{
+  border-color:#10b981;
+  background:#f3fdf7;
+  color:#14532d;
+}
+.checklist-route-item.is-active{
+  box-shadow:0 0 0 2px rgba(22,78,232,.32),0 7px 15px rgba(22,78,232,.11)!important;
+}
+.checklist-route-status{
+  display:inline-flex;
+  margin-top:.35rem;
+  align-items:center;
+  border-radius:999px;
+  padding:.16rem .45rem;
+  font-size:.58rem;
+  font-weight:800;
+  line-height:1.1;
+}
+.checklist-route-status.is-nonconforming{background:#fee2e2;color:#b91c1c}
+.checklist-route-status.is-conforming{background:#dcfce7;color:#047857}
+.checklist-route-status.is-progress{background:#fef3c7;color:#a16207}
+.checklist-route-status.is-pending{background:#e2e8f0;color:#64748b}
+
+/* Barra inferior: nomes ~10% menores e mais espaço visual entre as quatro abas. */
+@media(max-width:767px){
+  .mobile-bottom-nav-item{
+    font-size:9px!important;
+    letter-spacing:-.01em;
+  }
+  .mobile-bottom-nav-item svg{
+    width:20px;
+    height:20px;
+  }
+  .mbp-bottom-more-dots{
+    font-size:16px;
+    letter-spacing:1.5px;
+  }
+
+  /* Ambientes: proteção extra contra corte horizontal, inclusive com zoom de 130%. */
+  html,body{max-width:100%;overflow-x:hidden}
+  .ambientes-screen{
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    overflow-x:clip!important;
+    contain:inline-size;
+  }
+  .ambientes-screen>div,
+  .ambientes-screen section,
+  .ambientes-screen .grid{
+    width:100%;
+    max-width:100%;
+    min-width:0!important;
+  }
+  .ambientes-screen .grid{
+    grid-template-columns:minmax(0,1fr)!important;
+  }
+  .ambientes-screen button,
+  .ambientes-screen input,
+  .ambientes-screen select{
+    max-width:100%;
+    min-width:0;
+  }
+  .ambientes-top-row>div:first-child{min-width:0}
+  .ambientes-top-row h1,.ambientes-top-row p{overflow-wrap:anywhere}
+}

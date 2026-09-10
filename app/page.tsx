@@ -657,7 +657,15 @@ export default function Home() {
   async function iniciarDitado(chave: string, aoTranscrever: (texto: string) => void) {
     // Segundo toque no mesmo microfone encerra a gravação e inicia a transcrição.
     if (campoVozAtivo === chave && gravadorVozRef.current?.state === "recording") {
-      gravadorVozRef.current.stop();
+      const gravadorAtual = gravadorVozRef.current;
+      try {
+        gravadorAtual.requestData();
+      } catch {
+        // Alguns navegadores não exigem requestData antes de parar.
+      }
+      window.setTimeout(() => {
+        if (gravadorAtual.state === "recording") gravadorAtual.stop();
+      }, 120);
       return;
     }
 
@@ -753,6 +761,7 @@ export default function Home() {
 
           const response = await fetch("/api/audio/transcrever", {
             method: "POST",
+            credentials: "same-origin",
             body: form,
           });
           const body = await response.json().catch(() => null);
@@ -771,7 +780,9 @@ export default function Home() {
         }
       };
 
-      gravador.start();
+      // O intervalo força o Safari/iOS a entregar blocos de áudio durante a gravação,
+      // evitando gravações vazias quando o usuário encerra rapidamente.
+      gravador.start(250);
       // Evita gravações esquecidas abertas em campo.
       timerVozRef.current = window.setTimeout(() => {
         if (gravador.state === "recording") gravador.stop();
@@ -4552,7 +4563,14 @@ export default function Home() {
                 <button type="button" onClick={() => setView("inicio")} className="flex w-full items-center gap-3 rounded-xl bg-[#e9efff] px-4 py-3 text-left font-semibold text-[#164ee8]"><span>⌂</span><span>Visão geral</span></button>
                 {visitaEmAndamentoDestaque && <button type="button" onClick={() => continuar(visitaEmAndamentoDestaque.id, true)} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm hover:bg-slate-50"><span>→</span><span>Continuar inspeção</span></button>}
                 <button type="button" onClick={() => setView("visitas")} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm hover:bg-slate-50"><span>▣</span><span>Todas as visitas</span></button>
-                <button type="button" onClick={() => setView("empresas")} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm hover:bg-slate-50"><span>□</span><span>Empresas</span></button>
+
+                <div className="px-4 pb-1 pt-5 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Atalhos de campo</div>
+                <button type="button" onClick={() => abrirAtalhoDaVisita("checklist")} className="pc-home-shortcut"><span>✓</span><span>Checklist</span></button>
+                <button type="button" onClick={() => abrirAtalhoDaVisita("evidencias")} className="pc-home-shortcut"><span>▣</span><span>Evidências</span></button>
+                <button type="button" onClick={() => abrirAtalhoDaVisita("ncs")} className="pc-home-shortcut"><span>!</span><span>Não conformidades</span></button>
+                <button type="button" onClick={() => abrirAtalhoDaVisita("plano")} className="pc-home-shortcut"><span>▤</span><span>Plano de ação</span></button>
+                <button type="button" onClick={() => abrirAtalhoDaVisita("relatorio")} className="pc-home-shortcut"><span>▥</span><span>Relatório</span></button>
+                <button type="button" onClick={abrirPopsPeloAtalho} className="pc-home-shortcut"><span>≡</span><span>POPs</span></button>
               </>
             )}
 
@@ -6716,6 +6734,13 @@ export default function Home() {
                           const ambienteConforme = itensAmb.length > 0 && respAmb === itensAmb.length && !temNaoConforme;
                           const ativo = ambienteChecklistAtivo === ambiente;
                           const verificacaoGeral = ambiente === AMBIENTE_PROGRAMAS_CONTROLE;
+                          const statusAmbienteRota = temNaoConforme
+                            ? "Não conforme"
+                            : ambienteConforme
+                            ? "Conforme"
+                            : respAmb > 0
+                            ? "Em avaliação"
+                            : "Pendente";
 
                           return (
                             <button
@@ -6735,10 +6760,23 @@ export default function Home() {
                                 <span className="min-w-0 text-sm font-medium leading-snug">
                                   {verificacaoGeral ? "Programas de Controle" : ambiente}
                                 </span>
-                                <span className={`shrink-0 text-[11px] font-semibold ${ativo ? "text-blue-100" : respAmb === itensAmb.length && itensAmb.length > 0 ? "text-emerald-600" : "text-slate-400"}`}>
+                                <span className="shrink-0 text-[11px] font-semibold text-slate-500">
                                   {respAmb}/{itensAmb.length}
                                 </span>
                               </div>
+                              {!verificacaoGeral && (
+                                <div className={`checklist-route-status ${
+                                  temNaoConforme
+                                    ? "is-nonconforming"
+                                    : ambienteConforme
+                                    ? "is-conforming"
+                                    : respAmb > 0
+                                    ? "is-progress"
+                                    : "is-pending"
+                                }`}>
+                                  {statusAmbienteRota}
+                                </div>
+                              )}
                               {verificacaoGeral && (
                                 <div className={`mt-1 text-[11px] ${ativo ? "text-blue-100" : "text-slate-500"}`}>
                                   Documentos e registros
@@ -8576,6 +8614,11 @@ export default function Home() {
                   <p className="mt-1 text-sm text-slate-500">
                     Visão geral de todas as empresas • empresa ativa: {atual?.nomeFantasia || "nenhuma"}
                   </p>
+                  <div className="visits-summary-chips mt-3 flex flex-wrap gap-2">
+                    <span><strong>{visitas.length}</strong> visitas</span>
+                    <span className="is-progress"><strong>{visitas.filter((item) => item.status === "Em andamento").length}</strong> em andamento</span>
+                    <span className="is-done"><strong>{visitas.filter((item) => item.status === "Concluída").length}</strong> concluídas</span>
+                  </div>
                 </div>
 
                 <div className="grid shrink-0 grid-cols-2 gap-2 sm:flex sm:flex-wrap">
@@ -8724,7 +8767,7 @@ export default function Home() {
           ] as const).map(([destino, rotulo]) => {
             const ativo = destino === "visitas" ? view === "visitas" || VISIT_VIEWS.includes(view) : view === destino;
             return (
-              <button key={destino} type="button" onClick={() => { setMenuAtalhosAberto(false); if (ativo) { setMenuContextualAberto(true); return; } navegarPrincipal(destino); setMenuContextualAberto(true); }} className={`flex min-h-14 flex-col items-center justify-center rounded-2xl px-1 text-[10px] font-semibold ${ativo ? "bg-[#e9efff] text-[#164ee8]" : "text-slate-500"}`}>
+              <button key={destino} type="button" onClick={() => { setMenuAtalhosAberto(false); if (ativo) { setMenuContextualAberto(true); return; } navegarPrincipal(destino); setMenuContextualAberto(true); }} className={`mobile-bottom-nav-item flex min-h-14 flex-col items-center justify-center rounded-2xl px-1 text-[9px] font-semibold ${ativo ? "bg-[#e9efff] text-[#164ee8]" : "text-slate-500"}`}>
                 <MobileNavIcon name={destino} />
                 <span className="mt-1">{rotulo}</span>
               </button>
@@ -8737,7 +8780,7 @@ export default function Home() {
               setMenuMaisAberto(false);
               setMenuAtalhosAberto(true);
             }}
-            className={`flex min-h-14 flex-col items-center justify-center rounded-2xl px-1 text-[10px] font-semibold ${menuAtalhosAberto ? "bg-[#e9efff] text-[#164ee8]" : "text-slate-500"}`}
+            className={`mobile-bottom-nav-item flex min-h-14 flex-col items-center justify-center rounded-2xl px-1 text-[9px] font-semibold ${menuAtalhosAberto ? "bg-[#e9efff] text-[#164ee8]" : "text-slate-500"}`}
             aria-label="Mais opções"
           >
             <span className="mbp-bottom-more-dots" aria-hidden="true">•••</span>
