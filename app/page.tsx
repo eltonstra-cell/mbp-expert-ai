@@ -546,15 +546,15 @@ function VoiceDictationButton({
       type="button"
       onClick={onIniciar}
       className={`mbp-voice-button ${ativo ? "is-listening" : ""}`}
-      aria-label={ativo ? "Ouvindo" : "Falar para preencher este campo"}
-      title={ativo ? "Ouvindo..." : "Ditado por voz"}
+      aria-label={ativo ? "Parar gravação" : "Falar para preencher este campo"}
+      title={ativo ? "Toque para encerrar e transcrever" : "Ditado por voz"}
     >
       <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
         <rect x="9" y="3" width="6" height="11" rx="3" />
         <path d="M6 10a6 6 0 0 0 12 0" />
         <path d="M12 16v5M9 21h6" />
       </svg>
-      <span className="mbp-voice-label">{ativo ? "Ouvindo" : "Falar"}</span>
+      <span className="mbp-voice-label">{ativo ? "Parar" : "Falar"}</span>
     </button>
   );
 }
@@ -630,7 +630,9 @@ export default function Home() {
   const [tamanhoTexto, setTamanhoTexto] = useState(100);
   const [tamanhoTextoRascunho, setTamanhoTextoRascunho] = useState(100);
   const [campoVozAtivo, setCampoVozAtivo] = useState<string | null>(null);
-  const reconhecimentoVozRef = useRef<any>(null);
+  const gravadorVozRef = useRef<MediaRecorder | null>(null);
+  const streamVozRef = useRef<MediaStream | null>(null);
+  const timerVozRef = useRef<number | null>(null);
 
   useEffect(() => {
     const salvo = Number(window.localStorage.getItem("mbp-expert-ai:tamanho-texto") || "100");
@@ -652,55 +654,139 @@ export default function Home() {
     return () => window.removeEventListener("keydown", fecharComEscape);
   }, [menuMaisAberto, menuAtalhosAberto, painelTamanhoTextoAberto]);
 
-  function iniciarDitado(chave: string, aoTranscrever: (texto: string) => void) {
-    try {
-      const navegador = window as any;
-      const Reconhecimento = navegador.SpeechRecognition || navegador.webkitSpeechRecognition;
+  async function iniciarDitado(chave: string, aoTranscrever: (texto: string) => void) {
+    // Segundo toque no mesmo microfone encerra a gravação e inicia a transcrição.
+    if (campoVozAtivo === chave && gravadorVozRef.current?.state === "recording") {
+      gravadorVozRef.current.stop();
+      return;
+    }
 
-      if (!Reconhecimento) {
-        window.alert(
-          "O reconhecimento de voz direto não está disponível neste navegador. No iPhone, toque no campo e use também o microfone do teclado para ditar."
-        );
-        return;
+    if (!navigator.onLine) {
+      window.alert("O ditado por voz precisa de internet para transformar a fala em texto.");
+      return;
+    }
+
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      window.alert("Este aparelho não liberou a gravação pelo navegador. Verifique a permissão do microfone nas configurações do Safari/app.");
+      return;
+    }
+
+    try {
+      if (gravadorVozRef.current?.state === "recording") {
+        gravadorVozRef.current.stop();
       }
 
-      reconhecimentoVozRef.current?.abort?.();
-      const reconhecimento = new Reconhecimento();
-      reconhecimento.lang = "pt-BR";
-      reconhecimento.interimResults = false;
-      reconhecimento.continuous = false;
-      reconhecimento.maxAlternatives = 1;
+      if (timerVozRef.current) {
+        window.clearTimeout(timerVozRef.current);
+        timerVozRef.current = null;
+      }
 
-      let textoFinal = "";
+      streamVozRef.current?.getTracks().forEach((track) => track.stop());
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true },
+      });
+      streamVozRef.current = stream;
+
+      const tiposPreferidos = [
+        "audio/mp4",
+        "audio/webm;codecs=opus",
+        "audio/webm",
+        "audio/ogg;codecs=opus",
+      ];
+      const mimeType = tiposPreferidos.find((tipo) => MediaRecorder.isTypeSupported(tipo));
+
+      let gravador: MediaRecorder;
+      try {
+        gravador = new MediaRecorder(
+          stream,
+          mimeType ? { mimeType, audioBitsPerSecond: 32000 } : { audioBitsPerSecond: 32000 }
+        );
+      } catch {
+        gravador = new MediaRecorder(stream);
+      }
+
+      const partes: BlobPart[] = [];
+      gravadorVozRef.current = gravador;
       setCampoVozAtivo(chave);
-      reconhecimentoVozRef.current = reconhecimento;
 
-      reconhecimento.onresult = (event: any) => {
-        for (let i = event.resultIndex; i < event.results.length; i += 1) {
-          if (event.results[i].isFinal) {
-            textoFinal += `${event.results[i][0]?.transcript || ""} `;
-          }
-        }
+      gravador.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) partes.push(event.data);
       };
 
-      reconhecimento.onerror = (event: any) => {
-        if (event?.error && event.error !== "aborted" && event.error !== "no-speech") {
-          window.alert("Não foi possível reconhecer a fala. Tente novamente ou use o microfone do teclado.");
-        }
-      };
-
-      reconhecimento.onend = () => {
-        const texto = textoFinal.trim();
-        if (texto) aoTranscrever(texto);
+      gravador.onerror = () => {
         setCampoVozAtivo(null);
-        reconhecimentoVozRef.current = null;
+        stream.getTracks().forEach((track) => track.stop());
+        streamVozRef.current = null;
+        gravadorVozRef.current = null;
+        window.alert("Não foi possível gravar o áudio. Verifique a permissão do microfone e tente novamente.");
       };
 
-      reconhecimento.start();
-    } catch {
+      gravador.onstop = async () => {
+        if (timerVozRef.current) {
+          window.clearTimeout(timerVozRef.current);
+          timerVozRef.current = null;
+        }
+
+        stream.getTracks().forEach((track) => track.stop());
+        streamVozRef.current = null;
+        gravadorVozRef.current = null;
+        setCampoVozAtivo(null);
+
+        const tipoAudio = gravador.mimeType || mimeType || "audio/mp4";
+        const audio = new Blob(partes, { type: tipoAudio });
+        if (!audio.size) {
+          window.alert("Não detectei áudio. Toque em Falar, dite o texto e toque novamente para encerrar.");
+          return;
+        }
+
+        try {
+          const extensao = tipoAudio.includes("webm")
+            ? "webm"
+            : tipoAudio.includes("ogg")
+            ? "ogg"
+            : tipoAudio.includes("wav")
+            ? "wav"
+            : "m4a";
+          const form = new FormData();
+          form.append("audio", audio, `ditado.${extensao}`);
+
+          const response = await fetch("/api/audio/transcrever", {
+            method: "POST",
+            body: form,
+          });
+          const body = await response.json().catch(() => null);
+          if (!response.ok) {
+            throw new Error(body?.error || "Não foi possível transcrever o áudio.");
+          }
+
+          const texto = typeof body?.text === "string" ? body.text.trim() : "";
+          if (!texto) {
+            window.alert("Não consegui identificar fala nesse áudio. Tente novamente falando mais próximo do aparelho.");
+            return;
+          }
+          aoTranscrever(texto);
+        } catch (error) {
+          window.alert(error instanceof Error ? error.message : "Não foi possível transcrever o áudio.");
+        }
+      };
+
+      gravador.start();
+      // Evita gravações esquecidas abertas em campo.
+      timerVozRef.current = window.setTimeout(() => {
+        if (gravador.state === "recording") gravador.stop();
+      }, 45000);
+    } catch (error: any) {
       setCampoVozAtivo(null);
-      reconhecimentoVozRef.current = null;
-      window.alert("Não foi possível iniciar o ditado por voz neste momento.");
+      streamVozRef.current?.getTracks().forEach((track) => track.stop());
+      streamVozRef.current = null;
+      gravadorVozRef.current = null;
+
+      if (error?.name === "NotAllowedError" || error?.name === "PermissionDeniedError") {
+        window.alert("O acesso ao microfone foi bloqueado. Libere o microfone para este app/site nas configurações do iPhone e tente novamente.");
+      } else {
+        window.alert("Não foi possível iniciar o microfone neste momento.");
+      }
     }
   }
 
@@ -1996,6 +2082,14 @@ export default function Home() {
   const itensAmbienteChecklistAtivo = checklistAtual.filter(
     (item) => item.ambiente === ambienteChecklistAtivo
   );
+  const naoConformesAmbienteAtivo = itensAmbienteChecklistAtivo.filter(
+    (item) => item.status === "Não Conforme"
+  ).length;
+  const situacaoAmbienteAtivo = naoConformesAmbienteAtivo > 0
+    ? "Não conforme"
+    : itensAmbienteChecklistAtivo.length > 0 && pendentesAmbienteAtivo === 0
+    ? "Conforme"
+    : "Em andamento";
   const itensChecklistVisiveis = itensAmbienteChecklistAtivo.filter((item) => {
     if (filtroChecklistRapido === "Pendentes") return item.status === "Pendente";
     if (filtroChecklistRapido === "Não conformes") return item.status === "Não Conforme";
@@ -5345,9 +5439,9 @@ export default function Home() {
             </button>
           </section>
         ) : view === "ambientes" && visitaAtual ? (
-          <section className="space-y-4">
+          <section className="ambientes-screen space-y-4">
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+              <div className="ambientes-top-row flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div>
                   <div className="text-xs font-extrabold uppercase tracking-wider text-[#2F5597]">
                     Ambientes
@@ -5375,7 +5469,7 @@ export default function Home() {
 
             <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
               <div className="rounded-2xl bg-white p-5 shadow-sm">
-                <div className="flex items-center justify-between gap-3">
+                <div className="ambientes-list-head flex items-center justify-between gap-3">
                   <div>
                     <h2 className="text-xl font-extrabold">
                       Ambientes sugeridos
@@ -5396,14 +5490,14 @@ export default function Home() {
                       <button
                         key={nome}
                         onClick={() => toggleAmbiente(nome)}
-                        className={`flex items-center justify-between rounded-xl border p-4 text-left font-extrabold transition ${
+                        className={`ambiente-choice flex min-w-0 items-center justify-between rounded-xl border p-4 text-left font-extrabold transition ${
                           ativo
                             ? "border-[#2F5597] bg-blue-50 text-[#17365D]"
                             : "border-slate-200 bg-white"
                         }`}
                       >
-                        <span>{nome}</span>
-                        <span>{ativo ? "✓" : "+"}</span>
+                        <span className="min-w-0 flex-1 break-words pr-2">{nome}</span>
+                        <span className="shrink-0">{ativo ? "✓" : "+"}</span>
                       </button>
                     );
                   })}
@@ -5427,7 +5521,7 @@ export default function Home() {
                   <h3 className="font-extrabold">
                     Adicionar ambiente personalizado
                   </h3>
-                  <div className="mt-2 flex gap-2">
+                  <div className="ambientes-custom-row mt-2 flex gap-2">
                     <input
                       className="w-full rounded-xl border p-3"
                       placeholder="Ex.: Padaria, Açougue, Sushi bar..."
@@ -5447,7 +5541,7 @@ export default function Home() {
               </div>
 
               <div className="rounded-2xl bg-white p-5 shadow-sm">
-                <div className="flex items-center justify-between">
+                <div className="ambientes-route-head flex items-center justify-between gap-2">
                   <h2 className="text-xl font-extrabold">Roteiro da visita</h2>
                   <span className={`text-xs font-bold ${statusAmbientes ? "text-emerald-700" : "text-slate-400"}`}>
                     {statusAmbientes || "salvamento automático"}
@@ -6618,6 +6712,8 @@ export default function Home() {
                         {grupo.itens.map((ambiente) => {
                           const itensAmb = checklistAtual.filter((i) => i.ambiente === ambiente);
                           const respAmb = itensAmb.filter((i) => i.status !== "Pendente").length;
+                          const temNaoConforme = itensAmb.some((i) => i.status === "Não Conforme");
+                          const ambienteConforme = itensAmb.length > 0 && respAmb === itensAmb.length && !temNaoConforme;
                           const ativo = ambienteChecklistAtivo === ambiente;
                           const verificacaoGeral = ambiente === AMBIENTE_PROGRAMAS_CONTROLE;
 
@@ -6626,12 +6722,14 @@ export default function Home() {
                               key={ambiente}
                               onClick={() => setAmbienteChecklistAtivo(ambiente)}
                               className={`checklist-route-item ${
-                                ativo
-                                  ? "is-active"
+                                temNaoConforme
+                                  ? "is-nonconforming"
+                                  : ambienteConforme
+                                  ? "is-conforming"
                                   : verificacaoGeral
                                   ? "is-general"
                                   : ""
-                              }`}
+                              } ${ativo ? "is-active" : ""}`}
                             >
                               <div className="flex items-start justify-between gap-2">
                                 <span className="min-w-0 text-sm font-medium leading-snug">
@@ -6659,8 +6757,11 @@ export default function Home() {
                 <div id="checklist-ambiente-topo" className="checklist-workbar scroll-mt-3">
                   <div className="checklist-workbar-main">
                     <div className="min-w-0 flex-1">
-                      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#164ee8]">Ambiente atual</div>
-                      <h2 className="mt-0.5 truncate text-lg font-medium text-[#061b4f] sm:text-xl">{ambienteChecklistAtivo}</h2>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#164ee8]">Ambiente atual</div>
+                        <span className={`checklist-current-status ${situacaoAmbienteAtivo === "Conforme" ? "is-conforming" : situacaoAmbienteAtivo === "Não conforme" ? "is-nonconforming" : "is-pending"}`}>{situacaoAmbienteAtivo}</span>
+                      </div>
+                      <h2 className="mt-0.5 break-words text-lg font-medium text-[#061b4f] sm:text-xl">{ambienteChecklistAtivo}</h2>
                       <div className="mt-1 text-xs text-slate-500">
                         {itensAmbienteChecklistAtivo.length - pendentesAmbienteAtivo} de {itensAmbienteChecklistAtivo.length} respondidos • <span className="font-semibold text-amber-600">{pendentesAmbienteAtivo} pendente{pendentesAmbienteAtivo === 1 ? "" : "s"}</span>
                       </div>
@@ -8623,7 +8724,7 @@ export default function Home() {
           ] as const).map(([destino, rotulo]) => {
             const ativo = destino === "visitas" ? view === "visitas" || VISIT_VIEWS.includes(view) : view === destino;
             return (
-              <button key={destino} type="button" onClick={() => { setMenuAtalhosAberto(false); if (ativo) { setMenuContextualAberto(true); return; } navegarPrincipal(destino); setMenuContextualAberto(true); }} className={`flex min-h-14 flex-col items-center justify-center rounded-2xl px-2 text-[11px] font-semibold ${ativo ? "bg-[#e9efff] text-[#164ee8]" : "text-slate-500"}`}>
+              <button key={destino} type="button" onClick={() => { setMenuAtalhosAberto(false); if (ativo) { setMenuContextualAberto(true); return; } navegarPrincipal(destino); setMenuContextualAberto(true); }} className={`flex min-h-14 flex-col items-center justify-center rounded-2xl px-1 text-[10px] font-semibold ${ativo ? "bg-[#e9efff] text-[#164ee8]" : "text-slate-500"}`}>
                 <MobileNavIcon name={destino} />
                 <span className="mt-1">{rotulo}</span>
               </button>
@@ -8636,7 +8737,7 @@ export default function Home() {
               setMenuMaisAberto(false);
               setMenuAtalhosAberto(true);
             }}
-            className={`flex min-h-14 flex-col items-center justify-center rounded-2xl px-2 text-[11px] font-semibold ${menuAtalhosAberto ? "bg-[#e9efff] text-[#164ee8]" : "text-slate-500"}`}
+            className={`flex min-h-14 flex-col items-center justify-center rounded-2xl px-1 text-[10px] font-semibold ${menuAtalhosAberto ? "bg-[#e9efff] text-[#164ee8]" : "text-slate-500"}`}
             aria-label="Mais opções"
           >
             <span className="mbp-bottom-more-dots" aria-hidden="true">•••</span>
