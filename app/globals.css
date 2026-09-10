@@ -956,7 +956,7 @@
 @media(max-width:767px){
   /* Recupera um pouco do tamanho sem voltar ao aspecto apertado anterior. */
   .mobile-bottom-nav-item{
-    font-size:10px!important;
+    font-size:11px!important;
   }
   .mobile-bottom-nav-item svg{
     width:22px!important;
