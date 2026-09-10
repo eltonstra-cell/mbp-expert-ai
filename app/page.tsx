@@ -517,38 +517,44 @@ function chaveCriterio(item: {
   ].join("::");
 }
 
-type MobileNavIconName = "inicio" | "empresas" | "visitas" | "acessos" | "mais";
+type MobileNavIconName = "inicio" | "empresas" | "visitas" | "acessos";
 
 function MobileNavIcon({ name }: { name: MobileNavIconName }) {
   const common = { width: 22, height: 22, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.9, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, "aria-hidden": true };
   if (name === "inicio") return <svg {...common}><path d="m3 11 9-7 9 7" /><path d="M5.5 9.5V20h13V9.5" /><path d="M9.5 20v-6h5v6" /></svg>;
   if (name === "empresas") return <svg {...common}><path d="M3 21h18" /><path d="M5 21V7h9v14" /><path d="M14 11h5v10" /><path d="M8 10h3M8 14h3M8 18h3M17 14h.01M17 18h.01" /></svg>;
   if (name === "visitas") return <svg {...common}><path d="M9 5h6" /><path d="M9 3h6v4H9z" /><path d="M7 5H5.5A1.5 1.5 0 0 0 4 6.5v13A1.5 1.5 0 0 0 5.5 21h13a1.5 1.5 0 0 0 1.5-1.5v-13A1.5 1.5 0 0 0 18.5 5H17" /><path d="m8 14 2.2 2.2L16 10.5" /></svg>;
-  if (name === "mais") return <svg {...common}><circle cx="6.5" cy="12" r="1.2" fill="currentColor" stroke="none" /><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none" /><circle cx="17.5" cy="12" r="1.2" fill="currentColor" stroke="none" /></svg>;
   return <svg {...common}><path d="M12 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" /><path d="M5 21a7 7 0 0 1 14 0" /><path d="M18 4.5h3M19.5 3v3" /></svg>;
 }
 
-function VoiceFieldButton({
-  campoId,
+function juntarTextoDitado(atual: string, novo: string) {
+  const base = (atual || "").trimEnd();
+  const trecho = (novo || "").trim();
+  if (!trecho) return atual || "";
+  return base ? `${base} ${trecho}` : trecho;
+}
+
+function VoiceDictationButton({
   ativo,
   onIniciar,
 }: {
-  campoId: string;
   ativo: boolean;
-  onIniciar: (campoId: string) => void;
+  onIniciar: () => void;
 }) {
   return (
     <button
       type="button"
-      onClick={() => onIniciar(campoId)}
-      aria-label={ativo ? "Ouvindo" : "Ditado por voz"}
-      title={ativo ? "Ouvindo..." : "Falar para preencher este campo"}
+      onClick={onIniciar}
       className={`mbp-voice-button ${ativo ? "is-listening" : ""}`}
+      aria-label={ativo ? "Ouvindo" : "Falar para preencher este campo"}
+      title={ativo ? "Ouvindo..." : "Ditado por voz"}
     >
       <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
         <rect x="9" y="3" width="6" height="11" rx="3" />
-        <path d="M6 10a6 6 0 0 0 12 0M12 16v5M9 21h6" />
+        <path d="M6 10a6 6 0 0 0 12 0" />
+        <path d="M12 16v5M9 21h6" />
       </svg>
+      <span className="mbp-voice-label">{ativo ? "Ouvindo" : "Falar"}</span>
     </button>
   );
 }
@@ -619,12 +625,12 @@ export default function Home() {
   const [view, setView] = useState<View>("inicio");
   const [menuContextualAberto, setMenuContextualAberto] = useState(false);
   const [menuMaisAberto, setMenuMaisAberto] = useState(false);
+  const [menuAtalhosAberto, setMenuAtalhosAberto] = useState(false);
   const [painelTamanhoTextoAberto, setPainelTamanhoTextoAberto] = useState(false);
   const [tamanhoTexto, setTamanhoTexto] = useState(100);
   const [tamanhoTextoRascunho, setTamanhoTextoRascunho] = useState(100);
   const [campoVozAtivo, setCampoVozAtivo] = useState<string | null>(null);
   const reconhecimentoVozRef = useRef<any>(null);
-
 
   useEffect(() => {
     const salvo = Number(window.localStorage.getItem("mbp-expert-ai:tamanho-texto") || "100");
@@ -635,75 +641,57 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (!menuMaisAberto && !painelTamanhoTextoAberto) return;
+    if (!menuMaisAberto && !menuAtalhosAberto && !painelTamanhoTextoAberto) return;
     const fecharComEscape = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       if (painelTamanhoTextoAberto) setPainelTamanhoTextoAberto(false);
+      else if (menuAtalhosAberto) setMenuAtalhosAberto(false);
       else setMenuMaisAberto(false);
     };
     window.addEventListener("keydown", fecharComEscape);
     return () => window.removeEventListener("keydown", fecharComEscape);
-  }, [menuMaisAberto, painelTamanhoTextoAberto]);
+  }, [menuMaisAberto, menuAtalhosAberto, painelTamanhoTextoAberto]);
 
-  function preencherCampoPorId(campoId: string, texto: string) {
-    const el = document.getElementById(campoId) as HTMLInputElement | HTMLTextAreaElement | null;
-    if (!el) return;
-    const atual = el.value || "";
-    const separador = atual.trim() ? " " : "";
-    const novoValor = `${atual}${separador}${texto}`.trimStart();
-    const setter = Object.getOwnPropertyDescriptor(
-      Object.getPrototypeOf(el),
-      "value"
-    )?.set;
-    setter?.call(el, novoValor);
-    el.dispatchEvent(new Event("input", { bubbles: true }));
-    el.dispatchEvent(new Event("change", { bubbles: true }));
-    el.focus();
-  }
-
-  function iniciarDitado(campoId: string) {
+  function iniciarDitado(chave: string, aoTranscrever: (texto: string) => void) {
     try {
-      const w = window as any;
-      const SpeechRecognition = w.SpeechRecognition || w.webkitSpeechRecognition;
-      if (!SpeechRecognition) {
-        window.alert("O ditado por voz não está disponível neste navegador. Você ainda pode usar o microfone do teclado do celular.");
+      const navegador = window as any;
+      const Reconhecimento = navegador.SpeechRecognition || navegador.webkitSpeechRecognition;
+
+      if (!Reconhecimento) {
+        window.alert(
+          "O reconhecimento de voz direto não está disponível neste navegador. No iPhone, toque no campo e use também o microfone do teclado para ditar."
+        );
         return;
       }
 
       reconhecimentoVozRef.current?.abort?.();
-
-      const reconhecimento = new SpeechRecognition();
+      const reconhecimento = new Reconhecimento();
       reconhecimento.lang = "pt-BR";
-      reconhecimento.interimResults = true;
+      reconhecimento.interimResults = false;
       reconhecimento.continuous = false;
+      reconhecimento.maxAlternatives = 1;
 
       let textoFinal = "";
-      setCampoVozAtivo(campoId);
+      setCampoVozAtivo(chave);
       reconhecimentoVozRef.current = reconhecimento;
 
       reconhecimento.onresult = (event: any) => {
-        let parcial = "";
         for (let i = event.resultIndex; i < event.results.length; i += 1) {
-          const transcricao = event.results[i][0]?.transcript || "";
-          if (event.results[i].isFinal) textoFinal += transcricao;
-          else parcial += transcricao;
-        }
-        const texto = (textoFinal || parcial).trim();
-        if (texto) {
-          const el = document.getElementById(campoId) as HTMLInputElement | HTMLTextAreaElement | null;
-          if (el) el.dataset.mbpVoicePreview = texto;
+          if (event.results[i].isFinal) {
+            textoFinal += `${event.results[i][0]?.transcript || ""} `;
+          }
         }
       };
 
-      reconhecimento.onerror = () => {
-        setCampoVozAtivo(null);
+      reconhecimento.onerror = (event: any) => {
+        if (event?.error && event.error !== "aborted" && event.error !== "no-speech") {
+          window.alert("Não foi possível reconhecer a fala. Tente novamente ou use o microfone do teclado.");
+        }
       };
 
       reconhecimento.onend = () => {
-        const el = document.getElementById(campoId) as HTMLInputElement | HTMLTextAreaElement | null;
-        const texto = (textoFinal || el?.dataset.mbpVoicePreview || "").trim();
-        if (texto) preencherCampoPorId(campoId, texto);
-        if (el) delete el.dataset.mbpVoicePreview;
+        const texto = textoFinal.trim();
+        if (texto) aoTranscrever(texto);
         setCampoVozAtivo(null);
         reconhecimentoVozRef.current = null;
       };
@@ -711,6 +699,7 @@ export default function Home() {
       reconhecimento.start();
     } catch {
       setCampoVozAtivo(null);
+      reconhecimentoVozRef.current = null;
       window.alert("Não foi possível iniciar o ditado por voz neste momento.");
     }
   }
@@ -3502,6 +3491,57 @@ export default function Home() {
     });
   }
 
+  function abrirAtalhoDaVisita(destino: "checklist" | "evidencias" | "ncs" | "plano" | "relatorio") {
+    const alvo = visitaAtual || visitaEmAndamentoDestaque;
+    setMenuAtalhosAberto(false);
+
+    if (!alvo) {
+      setView("visitas");
+      return;
+    }
+
+    if (destino === "checklist") {
+      continuar(alvo.id, true);
+      return;
+    }
+
+    if ((destino === "ncs" || destino === "plano") && !exigirPermissao("ncs.acompanhar", alvo.empresaId)) {
+      return;
+    }
+
+    if (destino === "relatorio" && !exigirPermissao("relatorios.exportar", alvo.empresaId)) {
+      return;
+    }
+
+    setDb((estado) => ({ ...estado, empresaAtualId: alvo.empresaId }));
+    setVisitaAtualId(alvo.id);
+
+    if (destino === "evidencias") {
+      setEvidenciaDescricao("");
+      setEvidenciaAmbiente((alvo.ambientes || [])[0] || "");
+      setEvidenciaChecklistItemId("");
+      setEvidenciaNcId("");
+      setEvidenciaMsg("");
+    }
+
+    setView(destino);
+  }
+
+  function abrirPopsPeloAtalho() {
+    setMenuAtalhosAberto(false);
+    if (!atual) {
+      setView("empresas");
+      return;
+    }
+    abrirSecaoEmpresaPeloMenu("pops");
+  }
+
+  function abrirAjudaRapida() {
+    window.alert(
+      "Ajuda rápida do MBP Expert AI\n\n• Checklist: execute a inspeção.\n• Evidências: registre fotos e anexos.\n• Não conformidades: acompanhe pendências.\n• Plano de ação: registre ações e prazos.\n• Relatórios: visualize ou exporte a visita.\n• POPs: acesse os procedimentos da empresa ativa."
+    );
+  }
+
   function abrirEvidencias() {
     if (!visitaAtual) return;
     setEvidenciaDescricao("");
@@ -4681,6 +4721,77 @@ export default function Home() {
         </div>
       )}
 
+      {menuAtalhosAberto && (
+        <div className="mbp-sheet-layer mbp-shortcuts-layer md:hidden" role="presentation">
+          <button
+            type="button"
+            className="mbp-sheet-backdrop"
+            aria-label="Fechar atalhos"
+            onClick={() => setMenuAtalhosAberto(false)}
+          />
+          <section className="mbp-shortcuts-sheet" role="dialog" aria-modal="true" aria-label="Mais opções">
+            <div className="mbp-sheet-handle" aria-hidden="true" />
+            <div className="mbp-shortcuts-heading">
+              <div>
+                <h2>Mais opções</h2>
+                <p>Acesso rápido às principais funções</p>
+              </div>
+              <button type="button" aria-label="Fechar" onClick={() => setMenuAtalhosAberto(false)}>×</button>
+            </div>
+
+            <div className="mbp-shortcuts-grid">
+              <button type="button" onClick={() => abrirAtalhoDaVisita("checklist")} className="mbp-shortcut-card">
+                <span className="mbp-shortcut-icon is-purple">✓</span>
+                <span className="mbp-shortcut-copy"><strong>Checklist</strong><small>Modelos e itens</small></span>
+                <span className="mbp-shortcut-arrow">›</span>
+              </button>
+
+              <button type="button" onClick={() => abrirAtalhoDaVisita("evidencias")} className="mbp-shortcut-card">
+                <span className="mbp-shortcut-icon is-blue">▣</span>
+                <span className="mbp-shortcut-copy"><strong>Evidências</strong><small>Fotos e anexos</small></span>
+                <span className="mbp-shortcut-arrow">›</span>
+              </button>
+
+              <button type="button" onClick={() => abrirAtalhoDaVisita("ncs")} className="mbp-shortcut-card">
+                <span className="mbp-shortcut-icon is-orange">!</span>
+                <span className="mbp-shortcut-copy"><strong>Não conformidades</strong><small>Registrar e acompanhar</small></span>
+                <span className="mbp-shortcut-arrow">›</span>
+              </button>
+
+              <button type="button" onClick={() => abrirAtalhoDaVisita("plano")} className="mbp-shortcut-card">
+                <span className="mbp-shortcut-icon is-green">▤</span>
+                <span className="mbp-shortcut-copy"><strong>Plano de ação</strong><small>Ações e prazos</small></span>
+                <span className="mbp-shortcut-arrow">›</span>
+              </button>
+
+              <button type="button" onClick={() => abrirAtalhoDaVisita("relatorio")} className="mbp-shortcut-card">
+                <span className="mbp-shortcut-icon is-amber">▥</span>
+                <span className="mbp-shortcut-copy"><strong>Relatórios</strong><small>Visualizar e exportar</small></span>
+                <span className="mbp-shortcut-arrow">›</span>
+              </button>
+
+              <button type="button" onClick={abrirAjudaRapida} className="mbp-shortcut-card">
+                <span className="mbp-shortcut-icon is-help">?</span>
+                <span className="mbp-shortcut-copy"><strong>Ajuda</strong><small>Dúvidas rápidas</small></span>
+                <span className="mbp-shortcut-arrow">›</span>
+              </button>
+            </div>
+
+            <div className="mbp-shortcuts-footer">
+              <button type="button" onClick={abrirPopsPeloAtalho} className="mbp-shortcuts-footer-item">
+                <span>▤</span><strong>POPs</strong>
+              </button>
+              <button type="button" onClick={() => window.alert("MBP Expert AI\nSegurança dos Alimentos")} className="mbp-shortcuts-footer-item">
+                <span>ⓘ</span><strong>Sobre</strong>
+              </button>
+              <button type="button" disabled={saindo} onClick={() => { setMenuAtalhosAberto(false); void sairDoSistema(); }} className="mbp-shortcuts-footer-item is-danger">
+                <span>↪</span><strong>Sair</strong>
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
       {painelTamanhoTextoAberto && (
         <div className="mbp-sheet-layer md:hidden" role="presentation">
           <button
@@ -5208,14 +5319,20 @@ export default function Home() {
                 <span className="mb-1 block text-xs font-bold text-slate-500">
                   Observações iniciais
                 </span>
-                <textarea
-                  rows={4}
-                  className="w-full rounded-xl border p-3"
-                  value={vf.observacoes}
-                  onChange={(e) =>
-                    setVf({ ...vf, observacoes: e.target.value })
-                  }
-                />
+                <div className="mbp-voice-wrap">
+                  <textarea
+                    rows={4}
+                    className="w-full rounded-xl border p-3"
+                    value={vf.observacoes}
+                    onChange={(e) =>
+                      setVf({ ...vf, observacoes: e.target.value })
+                    }
+                  />
+                  <VoiceDictationButton
+                    ativo={campoVozAtivo === "visita-observacoes"}
+                    onIniciar={() => iniciarDitado("visita-observacoes", (texto) => setVf((atual) => ({ ...atual, observacoes: juntarTextoDitado(atual.observacoes, texto) })))}
+                  />
+                </div>
               </label>
             </div>
 
@@ -5495,13 +5612,19 @@ export default function Home() {
                   <span className="mb-1 block text-xs font-extrabold text-slate-500">
                     Descrição
                   </span>
-                  <textarea
-                    rows={3}
-                    value={evidenciaDescricao}
-                    onChange={(e) => setEvidenciaDescricao(e.target.value)}
-                    placeholder="Ex.: embalagem avariada identificada no recebimento..."
-                    className="w-full rounded-xl border p-3"
-                  />
+                  <div className="mbp-voice-wrap">
+                    <textarea
+                      rows={3}
+                      value={evidenciaDescricao}
+                      onChange={(e) => setEvidenciaDescricao(e.target.value)}
+                      placeholder="Ex.: embalagem avariada identificada no recebimento..."
+                      className="w-full rounded-xl border p-3"
+                    />
+                    <VoiceDictationButton
+                      ativo={campoVozAtivo === "evidencia-descricao"}
+                      onIniciar={() => iniciarDitado("evidencia-descricao", (texto) => setEvidenciaDescricao((atual) => juntarTextoDitado(atual, texto)))}
+                    />
+                  </div>
                 </label>
 
                 <div className="mt-5 grid gap-3">
@@ -5737,17 +5860,26 @@ export default function Home() {
                                         <summary className="cursor-pointer text-xs font-extrabold text-slate-600">
                                           Editar texto antes de confirmar
                                         </summary>
-                                        <textarea
-                                          rows={3}
-                                          value={analiseIATextos[ultimaAnalise.id] ?? ultimaAnalise.textoRevisado}
-                                          onChange={(e) =>
-                                            setAnaliseIATextos((atual) => ({
+                                        <div className="mbp-voice-wrap mt-3">
+                                          <textarea
+                                            rows={3}
+                                            value={analiseIATextos[ultimaAnalise.id] ?? ultimaAnalise.textoRevisado}
+                                            onChange={(e) =>
+                                              setAnaliseIATextos((atual) => ({
+                                                ...atual,
+                                                [ultimaAnalise.id]: e.target.value,
+                                              }))
+                                            }
+                                            className="w-full rounded-xl border p-3 text-sm"
+                                          />
+                                          <VoiceDictationButton
+                                            ativo={campoVozAtivo === `analise-${ultimaAnalise.id}`}
+                                            onIniciar={() => iniciarDitado(`analise-${ultimaAnalise.id}`, (texto) => setAnaliseIATextos((atual) => ({
                                               ...atual,
-                                              [ultimaAnalise.id]: e.target.value,
-                                            }))
-                                          }
-                                          className="mt-3 w-full rounded-xl border p-3 text-sm"
-                                        />
+                                              [ultimaAnalise.id]: juntarTextoDitado(atual[ultimaAnalise.id] ?? ultimaAnalise.textoRevisado, texto),
+                                            })))}
+                                          />
+                                        </div>
                                       </details>
                                       <div className="mt-3 grid gap-2 sm:grid-cols-2">
                                         <button
@@ -5920,15 +6052,23 @@ export default function Home() {
                         <span>
                           Ação corretiva
                         </span>
-                        <textarea
-                          rows={3}
-                          value={(nc as any).acaoCorretiva || ""}
-                          disabled={nc.status === "Resolvida"}
-                          onChange={(e) =>
-                            atualizarNC(nc.id, { acaoCorretiva: e.target.value })
-                          }
-                          placeholder="Descreva o que deverá ser feito para corrigir a não conformidade..."
-                        />
+                        <div className="mbp-voice-wrap">
+                          <textarea
+                            rows={3}
+                            value={(nc as any).acaoCorretiva || ""}
+                            disabled={nc.status === "Resolvida"}
+                            onChange={(e) =>
+                              atualizarNC(nc.id, { acaoCorretiva: e.target.value })
+                            }
+                            placeholder="Descreva o que deverá ser feito para corrigir a não conformidade..."
+                          />
+                          {nc.status !== "Resolvida" && (
+                            <VoiceDictationButton
+                              ativo={campoVozAtivo === `acao-${nc.id}`}
+                              onIniciar={() => iniciarDitado(`acao-${nc.id}`, (texto) => atualizarNC(nc.id, { acaoCorretiva: juntarTextoDitado((nc as any).acaoCorretiva || "", texto) }))}
+                            />
+                          )}
+                        </div>
                       </label>
 
                       <label className="plan-field">
@@ -5965,15 +6105,23 @@ export default function Home() {
                           <span>{nc.acompanhamento?.trim() ? "Registro preenchido" : "Adicionar depois"} · ⌄</span>
                         </summary>
                         <label className="plan-field">
-                          <textarea
-                            rows={2}
-                            value={(nc as any).acompanhamento || ""}
-                            disabled={nc.status === "Resolvida"}
-                            onChange={(e) =>
-                              atualizarNC(nc.id, { acompanhamento: e.target.value })
-                            }
-                            placeholder="Registre retorno, evidência de correção ou observações..."
-                          />
+                          <div className="mbp-voice-wrap">
+                            <textarea
+                              rows={2}
+                              value={(nc as any).acompanhamento || ""}
+                              disabled={nc.status === "Resolvida"}
+                              onChange={(e) =>
+                                atualizarNC(nc.id, { acompanhamento: e.target.value })
+                              }
+                              placeholder="Registre retorno, evidência de correção ou observações..."
+                            />
+                            {nc.status !== "Resolvida" && (
+                              <VoiceDictationButton
+                                ativo={campoVozAtivo === `acompanhamento-${nc.id}`}
+                                onIniciar={() => iniciarDitado(`acompanhamento-${nc.id}`, (texto) => atualizarNC(nc.id, { acompanhamento: juntarTextoDitado((nc as any).acompanhamento || "", texto) }))}
+                              />
+                            )}
+                          </div>
                         </label>
                       </details>
                     </div>
@@ -6223,18 +6371,24 @@ export default function Home() {
                           {nc.status === "Resolvida" ? "Registrar nova atualização / reabrir" : "Registrar atualização"}
                         </div>
                         <div className="mt-3 grid gap-3 md:grid-cols-[1fr_190px]">
-                          <textarea
-                            rows={3}
-                            className="w-full rounded-xl border bg-white p-3 text-sm"
-                            placeholder="Ex.: piso comprado; aguardando instalação; correção concluída..."
-                            value={textoAcompanhamento[nc.id] || ""}
-                            onChange={(e) =>
-                              setTextoAcompanhamento((o) => ({
-                                ...o,
-                                [nc.id]: e.target.value,
-                              }))
-                            }
-                          />
+                          <div className="mbp-voice-wrap">
+                            <textarea
+                              rows={3}
+                              className="w-full rounded-xl border bg-white p-3 text-sm"
+                              placeholder="Ex.: piso comprado; aguardando instalação; correção concluída..."
+                              value={textoAcompanhamento[nc.id] || ""}
+                              onChange={(e) =>
+                                setTextoAcompanhamento((o) => ({
+                                  ...o,
+                                  [nc.id]: e.target.value,
+                                }))
+                              }
+                            />
+                            <VoiceDictationButton
+                              ativo={campoVozAtivo === `atualizacao-${nc.id}`}
+                              onIniciar={() => iniciarDitado(`atualizacao-${nc.id}`, (texto) => setTextoAcompanhamento((o) => ({ ...o, [nc.id]: juntarTextoDitado(o[nc.id] || "", texto) })))}
+                            />
+                          </div>
                           <div className="space-y-2">
                             <select
                               className="w-full rounded-xl border bg-white p-3 text-sm font-bold"
@@ -6717,17 +6871,23 @@ export default function Home() {
                           <span className="mb-1 block text-xs font-bold text-red-700">
                             Descrição da não conformidade
                           </span>
-                          <textarea
-                            rows={3}
-                            className="w-full rounded-xl border border-red-200 p-3"
-                            placeholder="Descreva a não conformidade observada..."
-                            value={item.observacao}
-                            onChange={(e) =>
-                              atualizarChecklistItem(item.id, {
-                                observacao: e.target.value,
-                              })
-                            }
-                          />
+                          <div className="mbp-voice-wrap">
+                            <textarea
+                              rows={3}
+                              className="w-full rounded-xl border border-red-200 p-3"
+                              placeholder="Descreva a não conformidade observada..."
+                              value={item.observacao}
+                              onChange={(e) =>
+                                atualizarChecklistItem(item.id, {
+                                  observacao: e.target.value,
+                                })
+                              }
+                            />
+                            <VoiceDictationButton
+                              ativo={campoVozAtivo === `checklist-nc-${item.id}`}
+                              onIniciar={() => iniciarDitado(`checklist-nc-${item.id}`, (texto) => atualizarChecklistItem(item.id, { observacao: juntarTextoDitado(item.observacao, texto) }))}
+                            />
+                          </div>
                           {item.observacao.trim() && (
                             <button
                               type="button"
@@ -6744,17 +6904,23 @@ export default function Home() {
                             + Observação opcional
                           </summary>
                           <div className="px-3 pb-3">
-                            <textarea
-                              rows={2}
-                              className="w-full rounded-xl border p-3"
-                              placeholder="Observação opcional"
-                              value={item.observacao}
-                              onChange={(e) =>
-                                atualizarChecklistItem(item.id, {
-                                  observacao: e.target.value,
-                                })
-                              }
-                            />
+                            <div className="mbp-voice-wrap">
+                              <textarea
+                                rows={2}
+                                className="w-full rounded-xl border p-3"
+                                placeholder="Observação opcional"
+                                value={item.observacao}
+                                onChange={(e) =>
+                                  atualizarChecklistItem(item.id, {
+                                    observacao: e.target.value,
+                                  })
+                                }
+                              />
+                              <VoiceDictationButton
+                                ativo={campoVozAtivo === `checklist-obs-${item.id}`}
+                                onIniciar={() => iniciarDitado(`checklist-obs-${item.id}`, (texto) => atualizarChecklistItem(item.id, { observacao: juntarTextoDitado(item.observacao, texto) }))}
+                              />
+                            </div>
                           </div>
                         </details>
                       )}
@@ -7635,14 +7801,20 @@ export default function Home() {
                   <span className="mb-2 block text-sm font-extrabold text-slate-700">
                     Conclusão / observações do consultor
                   </span>
-                  <textarea
-                    value={visitaAtual.conclusao || ""}
-                    onChange={(e) =>
-                      atualizarConclusaoRelatorio(e.target.value)
-                    }
-                    placeholder="Registre aqui a conclusão técnica, orientações gerais, pontos prioritários ou observações finais da visita."
-                    className="min-h-32 w-full rounded-xl border border-slate-300 bg-white p-4 text-sm outline-none focus:border-[#2F5597]"
-                  />
+                  <div className="mbp-voice-wrap">
+                    <textarea
+                      value={visitaAtual.conclusao || ""}
+                      onChange={(e) =>
+                        atualizarConclusaoRelatorio(e.target.value)
+                      }
+                      placeholder="Registre aqui a conclusão técnica, orientações gerais, pontos prioritários ou observações finais da visita."
+                      className="min-h-32 w-full rounded-xl border border-slate-300 bg-white p-4 text-sm outline-none focus:border-[#2F5597]"
+                    />
+                    <VoiceDictationButton
+                      ativo={campoVozAtivo === `relatorio-${visitaAtual.id}`}
+                      onIniciar={() => iniciarDitado(`relatorio-${visitaAtual.id}`, (texto) => atualizarConclusaoRelatorio(juntarTextoDitado(visitaAtual.conclusao || "", texto)))}
+                    />
+                  </div>
                   <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
                     <span className="block text-xs text-slate-500">
                       O conteúdo é salvo junto da visita e incluído no PDF.
@@ -8443,54 +8615,33 @@ export default function Home() {
         )}
       </div>
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_30px_rgba(15,23,42,0.08)] backdrop-blur md:hidden">
-        <div
-          className="mx-auto grid max-w-lg gap-1"
-          style={{ gridTemplateColumns: `repeat(${permitido("usuarios.gerenciar") ? 5 : 4}, minmax(0, 1fr))` }}
-        >
+        <div className="mx-auto grid max-w-lg grid-cols-4 gap-1">
           {([
             ["inicio", "Início"],
             ["empresas", "Empresas"],
             ["visitas", "Visitas"],
-            ...(permitido("usuarios.gerenciar") ? ([["acessos", "Acessos"]] as const) : []),
-            ["mais", "Mais"],
           ] as const).map(([destino, rotulo]) => {
-            const ativo =
-              destino === "visitas"
-                ? view === "visitas" || VISIT_VIEWS.includes(view)
-                : destino === "mais"
-                ? menuMaisAberto || painelTamanhoTextoAberto
-                : view === destino;
-
+            const ativo = destino === "visitas" ? view === "visitas" || VISIT_VIEWS.includes(view) : view === destino;
             return (
-              <button
-                key={destino}
-                type="button"
-                onClick={() => {
-                  if (destino === "mais") {
-                    setMenuContextualAberto(false);
-                    setMenuMaisAberto(true);
-                    return;
-                  }
-
-                  if (ativo && destino !== "acessos") {
-                    setMenuMaisAberto(false);
-                    setMenuContextualAberto(true);
-                    return;
-                  }
-
-                  setMenuMaisAberto(false);
-                  navegarPrincipal(destino);
-                  setMenuContextualAberto(destino !== "acessos");
-                }}
-                className={`flex min-h-14 flex-col items-center justify-center rounded-2xl px-1.5 text-[11px] font-semibold ${
-                  ativo ? "bg-[#e9efff] text-[#164ee8]" : "text-slate-500"
-                }`}
-              >
+              <button key={destino} type="button" onClick={() => { setMenuAtalhosAberto(false); if (ativo) { setMenuContextualAberto(true); return; } navegarPrincipal(destino); setMenuContextualAberto(true); }} className={`flex min-h-14 flex-col items-center justify-center rounded-2xl px-2 text-[11px] font-semibold ${ativo ? "bg-[#e9efff] text-[#164ee8]" : "text-slate-500"}`}>
                 <MobileNavIcon name={destino} />
                 <span className="mt-1">{rotulo}</span>
               </button>
             );
           })}
+          <button
+            type="button"
+            onClick={() => {
+              setMenuContextualAberto(false);
+              setMenuMaisAberto(false);
+              setMenuAtalhosAberto(true);
+            }}
+            className={`flex min-h-14 flex-col items-center justify-center rounded-2xl px-2 text-[11px] font-semibold ${menuAtalhosAberto ? "bg-[#e9efff] text-[#164ee8]" : "text-slate-500"}`}
+            aria-label="Mais opções"
+          >
+            <span className="mbp-bottom-more-dots" aria-hidden="true">•••</span>
+            <span className="mt-1">Mais</span>
+          </button>
         </div>
       </nav>
     </div>
