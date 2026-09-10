@@ -584,3 +584,71 @@
     right: 0.6rem;
   }
 }
+
+
+/* ===== Menu "Mais" mobile + tamanho do texto ===== */
+:root{--mbp-text-scale:1}
+
+@media(max-width:767px){
+  html{font-size:calc(17px * var(--mbp-text-scale,1))}
+  .mobile-app-header [class*="text-[9px]"]{font-size:.7rem!important}
+  .mobile-app-header [class*="text-[10px]"]{font-size:.72rem!important}
+  .mobile-app-header [class*="text-[11px]"]{font-size:.75rem!important}
+}
+
+.mbp-sheet-layer{position:fixed;inset:0;z-index:120}
+.mbp-sheet-backdrop{position:absolute;inset:0;width:100%;height:100%;border:0;background:rgba(6,27,79,.52);backdrop-filter:blur(2px)}
+.mbp-bottom-sheet{position:absolute;left:0;right:0;bottom:0;max-height:min(78svh,46rem);overflow:auto;border-radius:1.55rem 1.55rem 0 0;background:#fff;padding:.55rem 1rem max(1rem,env(safe-area-inset-bottom));color:#061b4f;box-shadow:0 -18px 50px rgba(6,27,79,.20)}
+.mbp-sheet-handle{width:3rem;height:.28rem;margin:.05rem auto .7rem;border-radius:999px;background:#cbd5e1}
+.mbp-sheet-title-row{display:grid;grid-template-columns:2.6rem minmax(0,1fr) 2.6rem;align-items:center;gap:.5rem}
+.mbp-sheet-title-row h2{grid-column:2;margin:0;text-align:center;font-size:1.2rem;font-weight:700;letter-spacing:-.025em}
+.mbp-sheet-title-row>h2:first-child{grid-column:1/3;text-align:left}
+.mbp-sheet-close{display:grid;width:2.55rem;height:2.55rem;place-items:center;border:0;border-radius:999px;background:#eef3ff;color:#164ee8;font-size:1.35rem;line-height:1}
+.mbp-sheet-title-row>h2:first-child+.mbp-sheet-close{grid-column:3}
+.mbp-more-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem;margin-top:1rem}
+.mbp-more-item{display:flex;min-height:7.4rem;min-width:0;flex-direction:column;align-items:center;justify-content:center;gap:.25rem;border:1px solid #e2e8f0;border-radius:1.15rem;background:#fbfcff;padding:.8rem .55rem;text-align:center;color:#061b4f}
+.mbp-more-item.is-primary{border-color:#bfd1ff;background:#f1f5ff;color:#164ee8}
+.mbp-more-item.is-danger{border-color:#fecaca;background:#fff7f7;color:#dc2626}
+.mbp-more-item:disabled{opacity:.55}
+.mbp-more-icon{display:grid;width:3rem;height:3rem;place-items:center;border-radius:1rem;background:#edf2ff;font-size:1.35rem;font-weight:700;line-height:1}
+.mbp-more-item.is-danger .mbp-more-icon{background:#fee2e2}
+.mbp-more-item strong{font-size:.85rem;font-weight:700;line-height:1.2}
+.mbp-more-item small{font-size:.68rem;line-height:1.25;color:#64748b}
+.mbp-sheet-cancel{width:100%;min-height:3.15rem;margin-top:1rem;border:0;border-radius:999px;background:#eef2f7;color:#061b4f;font-size:1rem;font-weight:700}
+.mbp-text-sheet{padding-bottom:max(1.1rem,env(safe-area-inset-bottom))}
+.mbp-text-sheet-intro{margin:.85rem .15rem .8rem;color:#526786;font-size:.82rem;line-height:1.45}
+.mbp-text-options{overflow:hidden;border:1px solid #dbe4f2;border-radius:1rem;background:#fff}
+.mbp-text-option{display:grid;width:100%;grid-template-columns:2rem 3.8rem minmax(0,1fr) 1.5rem;align-items:center;gap:.45rem;border:0;border-bottom:1px solid #e7ebf2;background:#fff;padding:.8rem .85rem;text-align:left;color:#061b4f}
+.mbp-text-option:last-child{border-bottom:0}
+.mbp-text-option.is-selected{background:#edf3ff;color:#164ee8}
+.mbp-text-a{text-align:center;font-weight:700}
+.mbp-text-option strong{font-size:.9rem}
+.mbp-text-option>span:nth-child(3){min-width:0;font-size:.8rem;color:#526786}
+.mbp-text-option.is-selected>span:nth-child(3){color:#164ee8}
+.mbp-text-check{text-align:right;font-size:1.05rem;font-weight:800}
+.mbp-text-preview{margin-top:.85rem;border:1px solid #dbe4f2;border-radius:1rem;background:#f8fafc;padding:.9rem 1rem}
+.mbp-text-preview>span{display:block;font-size:.72em;color:#526786}
+.mbp-text-preview p{margin:.35rem 0 0;font-weight:600;line-height:1.45;color:#061b4f}
+.mbp-text-apply,.mbp-text-reset{width:100%;min-height:3rem;border:0;border-radius:.9rem;font-weight:700}
+.mbp-text-apply{margin-top:.85rem;background:#164ee8;color:#fff}
+.mbp-text-reset{margin-top:.55rem;background:#eef2f7;color:#061b4f}
+
+/* Melhora a leitura-base nas telas que estavam pequenas no celular. */
+@media(max-width:639px){
+  .nc-summary span{font-size:.7rem}
+  .nc-card h2{font-size:1rem;line-height:1.4}
+  .nc-status{font-size:.7rem}
+  .nc-chips>span{font-size:.72rem}
+  .nc-follow-button{font-size:.82rem}
+  .plan-summary-grid>div>div:first-child{font-size:.64rem}
+  .plan-summary-grid>div>div:nth-child(2){font-size:1.05rem}
+  .plan-action-eyebrow{font-size:.7rem}
+  .plan-action-title{font-size:1rem;line-height:1.42}
+  .plan-action-meta{font-size:.75rem}
+  .plan-status{font-size:.72rem}
+  .plan-chips>span{font-size:.74rem}
+  .plan-field{font-size:.8rem}
+  .plan-field input,.plan-field textarea{font-size:.9rem}
+  .plan-followup-details>summary{font-size:.78rem}
+  .plan-editor-footer{font-size:.76rem}
+}

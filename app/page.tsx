@@ -592,6 +592,38 @@ export default function Home() {
   const [ready, setReady] = useState(false);
   const [view, setView] = useState<View>("inicio");
   const [menuContextualAberto, setMenuContextualAberto] = useState(false);
+  const [menuMaisAberto, setMenuMaisAberto] = useState(false);
+  const [painelTamanhoTextoAberto, setPainelTamanhoTextoAberto] = useState(false);
+  const [tamanhoTexto, setTamanhoTexto] = useState(100);
+  const [tamanhoTextoRascunho, setTamanhoTextoRascunho] = useState(100);
+
+  useEffect(() => {
+    const salvo = Number(window.localStorage.getItem("mbp-expert-ai:tamanho-texto") || "100");
+    const valor = [90, 100, 110, 120, 130].includes(salvo) ? salvo : 100;
+    setTamanhoTexto(valor);
+    setTamanhoTextoRascunho(valor);
+    document.documentElement.style.setProperty("--mbp-text-scale", String(valor / 100));
+  }, []);
+
+  useEffect(() => {
+    if (!menuMaisAberto && !painelTamanhoTextoAberto) return;
+    const fecharComEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      if (painelTamanhoTextoAberto) setPainelTamanhoTextoAberto(false);
+      else setMenuMaisAberto(false);
+    };
+    window.addEventListener("keydown", fecharComEscape);
+    return () => window.removeEventListener("keydown", fecharComEscape);
+  }, [menuMaisAberto, painelTamanhoTextoAberto]);
+
+  function aplicarTamanhoTexto(valor: number) {
+    setTamanhoTexto(valor);
+    setTamanhoTextoRascunho(valor);
+    window.localStorage.setItem("mbp-expert-ai:tamanho-texto", String(valor));
+    document.documentElement.style.setProperty("--mbp-text-scale", String(valor / 100));
+    setPainelTamanhoTextoAberto(false);
+    setMenuMaisAberto(false);
+  }
   useEffect(() => {
     if (!menuContextualAberto) return;
     const fecharComEscape = (event: KeyboardEvent) => {
@@ -4397,10 +4429,11 @@ export default function Home() {
                 <div className="hidden whitespace-nowrap text-[9px] text-blue-100 sm:block sm:text-[11px]">Segurança dos Alimentos</div>
               </div>
             </div>
-            <button
+            <div className="flex shrink-0 items-center gap-1.5">
+              <button
               type="button"
               onClick={() => void atualizarNuvemManualmente()}
-              className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-semibold sm:px-3 sm:text-xs ${
+              className={`rounded-full px-2.5 py-1.5 text-[11px] font-semibold sm:px-3 sm:text-xs ${
                 syncStatus === "sincronizado"
                   ? "bg-emerald-100 text-emerald-800"
                   : syncStatus === "conectando"
@@ -4434,7 +4467,17 @@ export default function Home() {
                 : syncErroVisivel
                 ? "⚠️ Nuvem indisponível"
                 : "● Conectando"}
-            </button>
+              </button>
+              <button
+                type="button"
+                onClick={() => setMenuMaisAberto(true)}
+                aria-label="Mais opções"
+                title="Mais opções"
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-white/15 bg-white/10 text-lg font-bold leading-none text-white"
+              >
+                <span aria-hidden="true" className="-mt-1">•••</span>
+              </button>
+            </div>
           </div>
 
           {usuarioDaSessao && (
@@ -4466,6 +4509,128 @@ export default function Home() {
           )}
         </div>
       </header>
+
+      {menuMaisAberto && (
+        <div className="mbp-sheet-layer md:hidden" role="presentation">
+          <button
+            type="button"
+            className="mbp-sheet-backdrop"
+            aria-label="Fechar menu"
+            onClick={() => setMenuMaisAberto(false)}
+          />
+          <section className="mbp-bottom-sheet" role="dialog" aria-modal="true" aria-label="Mais opções">
+            <div className="mbp-sheet-handle" aria-hidden="true" />
+            <div className="mbp-sheet-title-row">
+              <h2>Mais opções</h2>
+              <button type="button" className="mbp-sheet-close" aria-label="Fechar" onClick={() => setMenuMaisAberto(false)}>×</button>
+            </div>
+
+            <div className="mbp-more-grid">
+              <button
+                type="button"
+                className="mbp-more-item is-primary"
+                onClick={() => {
+                  setTamanhoTextoRascunho(tamanhoTexto);
+                  setPainelTamanhoTextoAberto(true);
+                }}
+              >
+                <span className="mbp-more-icon" aria-hidden="true">AA</span>
+                <strong>Tamanho do texto</strong>
+                <small>{tamanhoTexto}%</small>
+              </button>
+
+              <button
+                type="button"
+                className="mbp-more-item"
+                onClick={() => {
+                  setMenuMaisAberto(false);
+                  void atualizarNuvemManualmente();
+                }}
+              >
+                <span className="mbp-more-icon" aria-hidden="true">↻</span>
+                <strong>Sincronizar</strong>
+                <small>Atualizar dados</small>
+              </button>
+
+              <button
+                type="button"
+                className="mbp-more-item"
+                onClick={() => window.alert("MBP Expert AI\nSegurança dos Alimentos")}
+              >
+                <span className="mbp-more-icon" aria-hidden="true">i</span>
+                <strong>Sobre</strong>
+                <small>Informações do app</small>
+              </button>
+
+              <button
+                type="button"
+                className="mbp-more-item is-danger"
+                disabled={saindo}
+                onClick={() => {
+                  setMenuMaisAberto(false);
+                  void sairDoSistema();
+                }}
+              >
+                <span className="mbp-more-icon" aria-hidden="true">↪</span>
+                <strong>Sair</strong>
+                <small>Encerrar sessão</small>
+              </button>
+            </div>
+
+            <button type="button" className="mbp-sheet-cancel" onClick={() => setMenuMaisAberto(false)}>Cancelar</button>
+          </section>
+        </div>
+      )}
+
+      {painelTamanhoTextoAberto && (
+        <div className="mbp-sheet-layer md:hidden" role="presentation">
+          <button
+            type="button"
+            className="mbp-sheet-backdrop"
+            aria-label="Voltar"
+            onClick={() => setPainelTamanhoTextoAberto(false)}
+          />
+          <section className="mbp-bottom-sheet mbp-text-sheet" role="dialog" aria-modal="true" aria-label="Tamanho do texto">
+            <div className="mbp-sheet-handle" aria-hidden="true" />
+            <div className="mbp-sheet-title-row">
+              <button type="button" className="mbp-sheet-close" aria-label="Voltar" onClick={() => setPainelTamanhoTextoAberto(false)}>←</button>
+              <h2>Tamanho do texto</h2>
+              <button type="button" className="mbp-sheet-close" aria-label="Fechar" onClick={() => { setPainelTamanhoTextoAberto(false); setMenuMaisAberto(false); }}>×</button>
+            </div>
+            <p className="mbp-text-sheet-intro">Escolha o tamanho mais confortável. A preferência fica salva neste aparelho.</p>
+
+            <div className="mbp-text-options">
+              {[
+                [90, "Menor"],
+                [100, "Padrão"],
+                [110, "Um pouco maior"],
+                [120, "Maior"],
+                [130, "Muito maior"],
+              ].map(([valor, rotulo]) => (
+                <button
+                  key={valor}
+                  type="button"
+                  onClick={() => setTamanhoTextoRascunho(Number(valor))}
+                  className={`mbp-text-option ${tamanhoTextoRascunho === Number(valor) ? "is-selected" : ""}`}
+                >
+                  <span className="mbp-text-a" style={{ fontSize: `${0.8 + (Number(valor) - 90) * 0.006}rem` }}>A</span>
+                  <strong>{valor}%</strong>
+                  <span>{rotulo}</span>
+                  <span className="mbp-text-check" aria-hidden="true">{tamanhoTextoRascunho === Number(valor) ? "✓" : ""}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="mbp-text-preview" style={{ fontSize: `${tamanhoTextoRascunho / 100}rem` }}>
+              <span>Prévia de visualização</span>
+              <p>Este é um exemplo de como o texto ficará no aplicativo.</p>
+            </div>
+
+            <button type="button" className="mbp-text-apply" onClick={() => aplicarTamanhoTexto(tamanhoTextoRascunho)}>Aplicar</button>
+            <button type="button" className="mbp-text-reset" onClick={() => setTamanhoTextoRascunho(100)}>Restaurar padrão</button>
+          </section>
+        </div>
+      )}
 
       {recuperacaoPendente && (
         <div className="border-b border-amber-300 bg-amber-50 md:ml-64">
