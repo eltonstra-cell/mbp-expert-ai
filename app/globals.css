@@ -1151,3 +1151,25 @@
     font-size:.72rem;
   }
 }
+
+
+/* ===== Equipamentos dentro da visita: observação, voz e IA ===== */
+.equipment-visit-note{
+  margin-top:.45rem;
+  border-top:1px solid rgba(147,197,253,.35);
+  padding-top:.35rem;
+}
+.equipment-visit-note summary{
+  cursor:pointer;
+  list-style:none;
+  font-size:.68rem;
+  font-weight:700;
+  color:#2F5597;
+}
+.equipment-visit-note summary::-webkit-details-marker{display:none}
+.equipment-visit-note[open] summary{color:#164ee8}
+
+@media(max-width:767px){
+  .equipment-visit-row{padding:.65rem .7rem}
+  .equipment-visit-note summary{font-size:.72rem}
+}

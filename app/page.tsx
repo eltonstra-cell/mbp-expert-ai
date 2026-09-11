@@ -7,6 +7,7 @@ import ManualBaseFields from "@/components/ManualBaseFields";
 import OperationalFlowsFields from "@/components/OperationalFlowsFields";
 import QualityProgramsFields from "@/components/QualityProgramsFields";
 import PopsFields from "@/components/PopsFields";
+import FieldVoiceTools from "@/components/FieldVoiceTools";
 import type {
   AppDB,
   AcaoPermissao,
@@ -3485,6 +3486,26 @@ export default function Home() {
             (equipamento) =>
               equipamento.id === equipamentoId
                 ? { ...equipamento, quantidade: quantidadeNormalizada }
+                : equipamento
+          ),
+        },
+      },
+    }));
+  }
+
+  function atualizarObservacaoEquipamento(equipamentoId: string, observacao: string) {
+    if (!visitaAtual || !empresaVisita) return;
+    if (!exigirPermissao("visitas.executar", visitaAtual.empresaId)) return;
+    setDb((atual) => ({
+      ...atual,
+      empresas: {
+        ...atual.empresas,
+        [empresaVisita.id]: {
+          ...atual.empresas[empresaVisita.id],
+          equipamentosSetores: (atual.empresas[empresaVisita.id]?.equipamentosSetores || []).map(
+            (equipamento) =>
+              equipamento.id === equipamentoId
+                ? { ...equipamento, observacao }
                 : equipamento
           ),
         },
@@ -7301,21 +7322,40 @@ export default function Home() {
                         {equipamentosAmbienteAtivo.map((equipamento, indice) => (
                           <div
                             key={equipamento.id}
-                            className={`flex items-center justify-between gap-3 px-3 py-2 ${
+                            className={`equipment-visit-row px-3 py-2 ${
                               indice > 0 ? "border-t border-blue-200" : ""
                             }`}
                           >
-                            <div className="min-w-0 flex-1 text-sm font-normal text-slate-900">
-                              {equipamento.nome}
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="min-w-0 flex-1 text-sm font-normal text-slate-900">
+                                {equipamento.nome}
+                              </div>
+                              <input
+                                type="number"
+                                min="1"
+                                value={equipamento.quantidade}
+                                onChange={(event) => atualizarQuantidadeEquipamento(equipamento.id, Number(event.target.value))}
+                                aria-label={`Quantidade de ${equipamento.nome}`}
+                                className="w-16 shrink-0 rounded-lg border border-blue-200 bg-white px-2 py-1.5 text-center text-sm font-semibold text-slate-900"
+                              />
                             </div>
-                            <input
-                              type="number"
-                              min="1"
-                              value={equipamento.quantidade}
-                              onChange={(event) => atualizarQuantidadeEquipamento(equipamento.id, Number(event.target.value))}
-                              aria-label={`Quantidade de ${equipamento.nome}`}
-                              className="w-16 shrink-0 rounded-lg border border-blue-200 bg-white px-2 py-1.5 text-center text-sm font-semibold text-slate-900"
-                            />
+
+                            <details className="equipment-visit-note">
+                              <summary>+ Observação do equipamento</summary>
+                              <textarea
+                                rows={2}
+                                value={equipamento.observacao || ""}
+                                onChange={(event) => atualizarObservacaoEquipamento(equipamento.id, event.target.value)}
+                                placeholder="Ex.: borracha danificada, excesso de gelo, manutenção necessária..."
+                                className="mt-2 min-w-0 w-full rounded-lg border border-blue-100 bg-white p-2 text-sm"
+                              />
+                              <FieldVoiceTools
+                                fieldKey={`visita-equipamento-${equipamento.id}`}
+                                value={equipamento.observacao || ""}
+                                onChange={(texto) => atualizarObservacaoEquipamento(equipamento.id, texto)}
+                                contexto={`Observação técnica sobre o equipamento "${equipamento.nome}" no ambiente "${ambienteChecklistAtivo}". Preserve os fatos e deixe o texto claro e objetivo.`}
+                              />
+                            </details>
                           </div>
                         ))}
                       </div>
@@ -7326,12 +7366,21 @@ export default function Home() {
                         + Adicionar equipamento ou móvel
                       </summary>
                       <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_100px_auto]">
-                        <input
-                          value={novoEquipamentoVisitaNome}
-                          onChange={(event) => setNovoEquipamentoVisitaNome(event.target.value)}
-                          placeholder="Ex.: Refrigerador, bancada, armário"
-                          className="min-w-0 rounded-xl border bg-white p-3 text-sm"
-                        />
+                        <div className="min-w-0">
+                          <input
+                            value={novoEquipamentoVisitaNome}
+                            onChange={(event) => setNovoEquipamentoVisitaNome(event.target.value)}
+                            placeholder="Ex.: Refrigerador, bancada, armário"
+                            className="min-w-0 w-full rounded-xl border bg-white p-3 text-sm"
+                          />
+                          <FieldVoiceTools
+                            fieldKey="visita-novo-equipamento"
+                            value={novoEquipamentoVisitaNome}
+                            onChange={setNovoEquipamentoVisitaNome}
+                            contexto="Nome curto de um equipamento ou móvel encontrado durante uma visita técnica."
+                            somenteVoz
+                          />
+                        </div>
                         <input
                           type="number"
                           min="1"
