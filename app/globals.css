@@ -1099,3 +1099,55 @@
     font-size:.72rem;
   }
 }
+
+
+/* ===== Assistente de voz e IA em campos adicionais ===== */
+.field-assist-tools{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:.35rem;
+  margin-top:.4rem;
+}
+.field-assist-tools button{
+  display:inline-flex;
+  min-height:30px;
+  align-items:center;
+  justify-content:center;
+  gap:.3rem;
+  border-radius:999px;
+  padding:.3rem .62rem;
+  font-size:.68rem;
+  font-weight:750;
+  transition:.15s ease;
+}
+.field-assist-ai{
+  border:1px solid #cbd5e1;
+  background:#f8fbff;
+  color:#164ee8;
+}
+.field-assist-ai:hover{background:#eef4ff}
+.field-assist-ai.is-working{opacity:.7}
+.field-assist-voice{
+  border:1px solid #cbd5e1;
+  background:#fff;
+  color:#334155;
+}
+.field-assist-voice:hover{border-color:#a9b9d3;background:#f8fafc}
+.field-assist-voice svg{width:14px;height:14px}
+.field-assist-voice.is-recording{
+  border-color:#ef4444;
+  background:#fff1f2;
+  color:#b91c1c;
+  box-shadow:0 0 0 3px rgba(239,68,68,.08);
+}
+.field-assist-tools button:disabled{cursor:default;opacity:.5}
+
+@media(max-width:767px){
+  .field-assist-tools{justify-content:flex-start}
+  .field-assist-tools button{
+    min-height:34px;
+    padding:.38rem .72rem;
+    font-size:.72rem;
+  }
+}

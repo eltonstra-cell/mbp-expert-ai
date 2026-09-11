@@ -6,6 +6,7 @@ import {
   DEFINICOES_FLUXOS_OPERACIONAIS,
   obterSetorSugeridoParaFluxo,
 } from "@/lib/operationalFlows";
+import FieldVoiceTools from "@/components/FieldVoiceTools";
 
 type Props = {
   fluxos: FluxoOperacional[];
@@ -19,17 +20,10 @@ export default function OperationalFlowsFields({ fluxos, setores, onChange, aber
     let alterou = false;
     const corrigidos = fluxos.map((fluxo) => {
       if (!fluxo.aplicavel || setores.includes(fluxo.setorVinculado)) return fluxo;
-      const setorSugerido = obterSetorSugeridoParaFluxo(
-        fluxo.tipo,
-        setores,
-        fluxo.setorVinculado
-      );
+      const setorSugerido = obterSetorSugeridoParaFluxo(fluxo.tipo, setores, fluxo.setorVinculado);
       if (!setorSugerido || setorSugerido === fluxo.setorVinculado) return fluxo;
       alterou = true;
-      return {
-        ...fluxo,
-        setorVinculado: setorSugerido,
-      };
+      return { ...fluxo, setorVinculado: setorSugerido };
     });
     if (alterou) onChange(corrigidos);
   }, [fluxos, setores, onChange]);
@@ -44,9 +38,7 @@ export default function OperationalFlowsFields({ fluxos, setores, onChange, aber
     <details open={aberto} className="mt-4 min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-4">
       <summary className="cursor-pointer list-none">
         <div className="font-extrabold text-slate-950">Capítulo 2 — Fluxos operacionais</div>
-        <div className="mt-0.5 text-xs text-slate-500">
-          Ative somente os fluxos que existem. {ativos} de {fluxos.length} selecionado(s).
-        </div>
+        <div className="mt-0.5 text-xs text-slate-500">Ative somente os fluxos que existem. {ativos} de {fluxos.length} selecionado(s).</div>
       </summary>
 
       <div className="mt-4 space-y-3">
@@ -81,18 +73,33 @@ export default function OperationalFlowsFields({ fluxos, setores, onChange, aber
                       {setores.map((setor) => <option key={setor} value={setor}>{setor}</option>)}
                     </select>
                   </label>
+
                   <label className="text-xs font-bold text-slate-600">
                     Responsável
                     <input value={fluxo.responsavel} onChange={(event) => atualizar(indice, { responsavel: event.target.value })} placeholder="Nome ou função" className="mt-1 min-w-0 w-full rounded-lg border bg-white p-2 text-sm font-normal" />
                   </label>
-                  <label className="text-xs font-bold text-slate-600 md:col-span-2">
+
+                  <div className="text-xs font-bold text-slate-600 md:col-span-2">
                     Como acontece nesta empresa?
                     <textarea rows={2} value={fluxo.descricao} onChange={(event) => atualizar(indice, { descricao: event.target.value })} placeholder="Descrição curta do fluxo" className="mt-1 min-w-0 w-full rounded-lg border bg-white p-2 text-sm font-normal" />
-                  </label>
-                  <label className="text-xs font-bold text-slate-600 md:col-span-2">
+                    <FieldVoiceTools
+                      fieldKey={`fluxo-descricao-${fluxo.id}`}
+                      value={fluxo.descricao}
+                      onChange={(texto) => atualizar(indice, { descricao: texto })}
+                      contexto={`Descrição do fluxo operacional "${fluxo.tipo}" em um estabelecimento de alimentos. Preserve exatamente o processo informado.`}
+                    />
+                  </div>
+
+                  <div className="text-xs font-bold text-slate-600 md:col-span-2">
                     Controles e registros usados
                     <input value={fluxo.controlesRegistros} onChange={(event) => atualizar(indice, { controlesRegistros: event.target.value })} placeholder="Ex.: planilha de temperatura e recebimento" className="mt-1 min-w-0 w-full rounded-lg border bg-white p-2 text-sm font-normal" />
-                  </label>
+                    <FieldVoiceTools
+                      fieldKey={`fluxo-controles-${fluxo.id}`}
+                      value={fluxo.controlesRegistros}
+                      onChange={(texto) => atualizar(indice, { controlesRegistros: texto })}
+                      contexto={`Controles e registros usados no fluxo operacional "${fluxo.tipo}".`}
+                    />
+                  </div>
                 </div>
               )}
             </div>
