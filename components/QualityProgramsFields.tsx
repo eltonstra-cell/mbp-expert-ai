@@ -5,6 +5,7 @@ import type {
   StatusProgramaControle,
 } from "@/types";
 import { DEFINICOES_PROGRAMAS_CONTROLE } from "@/lib/qualityPrograms";
+import FieldVoiceTools from "@/components/FieldVoiceTools";
 
 type Props = {
   programas: ProgramaControleQualidade[];
@@ -67,9 +68,28 @@ export default function QualityProgramsFields({ programas, onChange, aberto = fa
                 <div className="mt-3 grid min-w-0 gap-2 border-t border-slate-100 pt-3 md:grid-cols-2">
                   <input value={programa.responsavel} onChange={(event) => atualizar(indice, { responsavel: event.target.value })} placeholder="Responsável" className="min-w-0 w-full rounded-lg border p-2 text-sm" />
                   <input value={programa.frequencia} onChange={(event) => atualizar(indice, { frequencia: event.target.value })} placeholder="Frequência: ex. mensal" className="min-w-0 w-full rounded-lg border p-2 text-sm" />
-                  <input value={programa.registro} onChange={(event) => atualizar(indice, { registro: event.target.value })} placeholder="Registro ou planilha utilizada" className="min-w-0 w-full rounded-lg border p-2 text-sm" />
+
+                  <div className="min-w-0">
+                    <input value={programa.registro} onChange={(event) => atualizar(indice, { registro: event.target.value })} placeholder="Registro ou planilha utilizada" className="min-w-0 w-full rounded-lg border p-2 text-sm" />
+                    <FieldVoiceTools
+                      fieldKey={`programa-registro-${programa.id}`}
+                      value={programa.registro}
+                      onChange={(texto) => atualizar(indice, { registro: texto })}
+                      contexto={`Registro ou planilha utilizada no programa de controle "${programa.nome}".`}
+                    />
+                  </div>
+
                   <input value={programa.documentoRelacionado} onChange={(event) => atualizar(indice, { documentoRelacionado: event.target.value })} placeholder="POP ou documento relacionado" className="min-w-0 w-full rounded-lg border p-2 text-sm" />
-                  <input value={programa.observacao} onChange={(event) => atualizar(indice, { observacao: event.target.value })} placeholder="Observação breve (opcional)" className="min-w-0 w-full rounded-lg border p-2 text-sm md:col-span-2" />
+
+                  <div className="min-w-0 md:col-span-2">
+                    <input value={programa.observacao} onChange={(event) => atualizar(indice, { observacao: event.target.value })} placeholder="Observação breve (opcional)" className="min-w-0 w-full rounded-lg border p-2 text-sm" />
+                    <FieldVoiceTools
+                      fieldKey={`programa-observacao-${programa.id}`}
+                      value={programa.observacao}
+                      onChange={(texto) => atualizar(indice, { observacao: texto })}
+                      contexto={`Observação técnica sobre o programa de controle "${programa.nome}". Seja objetivo e preserve os fatos informados.`}
+                    />
+                  </div>
                 </div>
               )}
             </details>
