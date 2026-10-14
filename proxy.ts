@@ -1,8 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { isAccessControlActive } from "@/lib/accessMode";
 import { getNeonAuth } from "@/lib/auth/server";
 
 export async function proxy(request: NextRequest) {
-  if (process.env.ACCESS_CONTROL_MODE !== "active") return NextResponse.next();
+  if (!isAccessControlActive(process.env)) return NextResponse.next();
   const auth = getNeonAuth();
   if (!auth) return NextResponse.redirect(new URL("/auth/sign-in", request.url));
   return auth.middleware({ loginUrl: "/auth/sign-in" })(request);

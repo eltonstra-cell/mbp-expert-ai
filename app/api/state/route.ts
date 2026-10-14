@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isAccessControlActive } from "@/lib/accessMode";
 import { neon } from "@neondatabase/serverless";
 import { resolveNeonDatabaseUrl } from "@/lib/neonConnection";
 import { getNeonAuth } from "@/lib/auth/server";
@@ -15,8 +16,7 @@ export const dynamic = "force-dynamic";
 const WORKSPACE_ID = process.env.MBP_WORKSPACE_ID || "principal";
 
 function getSql() {
-  // O novo banco usa NOVO_NEON_DATABASE_URL. DATABASE_URL permanece como reserva
-  // até a recuperação ser conferida e o banco anterior ser desativado.
+  // Resolução e falha segura em lib/neonConnection.ts (NOVO_NEON_* antes de DATABASE_URL).
   const url = resolveNeonDatabaseUrl(process.env);
   if (!url) return null;
   return neon(url);
@@ -51,7 +51,7 @@ async function currentState(sql: any) {
 async function usuarioDaRequisicao(
   data: AppDB | null
 ): Promise<{ usuario: UsuarioSistema; authId: string } | null> {
-  if (process.env.ACCESS_CONTROL_MODE !== "active") return null;
+  if (!isAccessControlActive(process.env)) return null;
   const auth = getNeonAuth();
   if (!auth || !data) return null;
 
@@ -102,7 +102,7 @@ export async function GET(request: Request) {
     const atual = await currentState(sql);
     let data = atual.data as AppDB | null;
 
-    if (process.env.ACCESS_CONTROL_MODE === "active") {
+    if (isAccessControlActive(process.env)) {
       const acesso = await usuarioDaRequisicao(data);
       if (!acesso || !data) {
         return NextResponse.json(
@@ -163,7 +163,7 @@ export async function PUT(request: Request) {
     const atualAntesDaGravacao = await currentState(sql);
     let dadosParaGravar = data as AppDB;
 
-    if (process.env.ACCESS_CONTROL_MODE === "active") {
+    if (isAccessControlActive(process.env)) {
       const estadoAtual = atualAntesDaGravacao.data as AppDB | null;
       const acesso = await usuarioDaRequisicao(estadoAtual);
       if (!acesso || !estadoAtual) {

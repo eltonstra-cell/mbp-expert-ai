@@ -1,4 +1,5 @@
 import { createNeonAuth, type NeonAuth } from "@neondatabase/auth/next/server";
+import { isAccessControlActive } from "@/lib/accessMode";
 
 let authInstance: NeonAuth | null | undefined;
 
@@ -10,7 +11,7 @@ export function authEnvironmentStatus() {
   const cookieSecret = process.env.NEON_AUTH_COOKIE_SECRET?.trim() || "";
   return {
     configured: Boolean(baseUrl) && cookieSecret.length >= 32,
-    enforcementActive: process.env.ACCESS_CONTROL_MODE === "active",
+    enforcementActive: isAccessControlActive(process.env),
   };
 }
 

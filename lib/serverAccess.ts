@@ -1,4 +1,5 @@
 import { neon } from "@neondatabase/serverless";
+import { isAccessControlActive } from "@/lib/accessMode";
 import { getNeonAuth } from "@/lib/auth/server";
 import { resolveNeonDatabaseUrl } from "@/lib/neonConnection";
 import { podeExecutar } from "@/lib/permissions";
@@ -13,7 +14,7 @@ export type AcessoServidor =
   | { aplicado: true; autorizado: true; data: AppDB; usuario: UsuarioSistema };
 
 export async function obterAcessoServidor(): Promise<AcessoServidor> {
-  if (process.env.ACCESS_CONTROL_MODE !== "active") {
+  if (!isAccessControlActive(process.env)) {
     return { aplicado: false, autorizado: true, data: null, usuario: null };
   }
 
