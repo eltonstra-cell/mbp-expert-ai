@@ -88,3 +88,13 @@ export function criarRegistroAuditoria(
 ): RegistroAuditoria {
   return { id, criadoEm, ...entrada, detalhes: entrada.detalhes.trim() };
 }
+
+// Ditado por voz e "melhorar texto" só aparecem para quem pode usar IA. Sem
+// usuário identificado no diretório (modo local/preparação), os botões ficam
+// visíveis e a decisão fica com o servidor, que exige `ia.analisar` quando o
+// controle de acesso está ativo.
+export function deveExibirRecursosDeIa(
+  usuario: UsuarioSistema | null | undefined
+): boolean {
+  return !usuario || possuiPermissao(usuario, "ia.analisar");
+}

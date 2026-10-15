@@ -8,6 +8,11 @@ import {
   localizarUsuarioAutenticado,
   mesclarEstadoPorUsuario,
 } from "@/lib/stateAccess";
+import {
+  estadoExcedeLimite,
+  resolverLimiteEstado,
+  validarFormaDoEstado,
+} from "@/lib/stateValidation";
 import type { AppDB, UsuarioSistema } from "@/types";
 
 export const runtime = "nodejs";
@@ -161,7 +166,13 @@ export async function PUT(request: Request) {
   }
 
   try {
-    const body = await request.json();
+    const corpoBruto = await request.text();
+    let body: any;
+    try {
+      body = JSON.parse(corpoBruto);
+    } catch {
+      return NextResponse.json({ error: "Corpo da requisição inválido." }, { status: 400 });
+    }
     const data = body?.data;
     const expectedUpdatedAt =
       typeof body?.expectedUpdatedAt === "string"
@@ -187,6 +198,28 @@ export async function PUT(request: Request) {
           { error: "Usuário sem permissão para salvar dados." },
           { status: 403 }
         );
+      }
+      if (acesso.usuario.perfil !== "Administrador") {
+        if (
+          estadoExcedeLimite(
+            Buffer.byteLength(corpoBruto, "utf8"),
+            resolverLimiteEstado(process.env)
+          )
+        ) {
+          return NextResponse.json(
+            { error: "O estado enviado excede o tamanho permitido." },
+            { status: 413 }
+          );
+        }
+        const forma = validarFormaDoEstado(data);
+        if (!forma.ok) {
+          return NextResponse.json(
+            { error: "Estado inválido.", detalhe: forma.motivo },
+            { status: 400 }
+          );
+        }
+        // Chaves de topo desconhecidas são descartadas; o restante é gravado.
+        dadosParaGravar = forma.estado as unknown as AppDB;
       }
       dadosParaGravar = mesclarEstadoPorUsuario(
         estadoAtual,

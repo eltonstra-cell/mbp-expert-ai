@@ -8,6 +8,7 @@ import OperationalFlowsFields from "@/components/OperationalFlowsFields";
 import QualityProgramsFields from "@/components/QualityProgramsFields";
 import PopsFields from "@/components/PopsFields";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
+import { IaPermitidaContext, useIaPermitida } from "@/components/IaPermissionContext";
 import type {
   AppDB,
   AcaoPermissao,
@@ -91,6 +92,7 @@ import {
 import {
   criarRegistroAuditoria,
   podeAcessarEmpresa,
+  deveExibirRecursosDeIa,
   podeExecutar,
   possuiPermissao,
 } from "@/lib/permissions";
@@ -546,6 +548,9 @@ function VoiceDictationButton({
   melhorando?: boolean;
   onMelhorar?: () => void;
 }) {
+  const iaPermitida = useIaPermitida();
+  if (!iaPermitida) return null;
+
   return (
     <div className="mbp-field-tools">
       {onMelhorar && (
@@ -4638,6 +4643,7 @@ export default function Home() {
   }
 
   return (
+    <IaPermitidaContext.Provider value={deveExibirRecursosDeIa(usuarioDaSessao)}>
     <div className="min-h-screen bg-[#f6f7fb]">
       <aside className="fixed inset-y-0 left-0 z-50 hidden w-64 flex-col bg-[#061b4f] text-white shadow-[18px_0_50px_rgba(6,27,79,0.10)] md:flex">
         <div className="border-b border-white/10 px-5 py-6">
@@ -9161,5 +9167,6 @@ export default function Home() {
         </div>
       </nav>
     </div>
+    </IaPermitidaContext.Provider>
   );
 }

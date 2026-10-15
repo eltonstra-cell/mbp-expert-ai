@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useIaPermitida } from "@/components/IaPermissionContext";
 
 type Props = {
   fieldKey: string;
@@ -36,6 +37,7 @@ export default function FieldVoiceTools({
   contexto = "",
   somenteVoz = false,
 }: Props) {
+  const iaPermitida = useIaPermitida();
   const [gravando, setGravando] = useState(false);
   const [transcrevendo, setTranscrevendo] = useState(false);
   const [melhorando, setMelhorando] = useState(false);
@@ -150,6 +152,8 @@ export default function FieldVoiceTools({
       setMelhorando(false);
     }
   }
+
+  if (!iaPermitida) return null;
 
   return (
     <div className="field-assist-tools">

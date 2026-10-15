@@ -97,6 +97,7 @@ export function filtrarEstadoPorUsuario(
 }
 
 function mesclarPorEscopo<T extends { id: string; empresaId: string }>(
+  colecao: string,
   atuais: T[],
   recebidos: T[],
   empresaIds: Set<string>,
@@ -110,8 +111,20 @@ function mesclarPorEscopo<T extends { id: string; empresaId: string }>(
     [...foraDoEscopo, ...dentroAtual].map((item) => [item.id, item])
   );
 
+  // Um registro recebido não pode tomar o lugar (mesmo id) de um registro
+  // existente de outra empresa fora do escopo: o existente é mantido.
+  const empresaPorIdForaDoEscopo = new Map(
+    foraDoEscopo.map((item) => [item.id, item.empresaId])
+  );
   recebidos
     .filter((item) => empresaIds.has(item.empresaId))
+    .filter((item) => {
+      if (!empresaPorIdForaDoEscopo.has(item.id)) return true;
+      console.warn(
+        `Colisão de id ignorada em ${colecao}: id=${item.id} empresaExistente=${empresaPorIdForaDoEscopo.get(item.id)} empresaRecebida=${item.empresaId}`
+      );
+      return false;
+    })
     .forEach((item) => mapa.set(item.id, item));
 
   return [...mapa.values()];
@@ -151,7 +164,7 @@ export function mesclarEstadoPorUsuario(
   }
 
   if (possuiPermissao(efetivo, "visitas.executar")) {
-    visitas = mesclarPorEscopo(atual.visitas, recebido.visitas, empresaIds, false);
+    visitas = mesclarPorEscopo("visitas", atual.visitas, recebido.visitas, empresaIds, false);
   }
 
   if (possuiPermissao(efetivo, "ncs.acompanhar")) {
@@ -172,12 +185,13 @@ export function mesclarEstadoPorUsuario(
         };
       });
     } else {
-      ncs = mesclarPorEscopo(atual.ncs, recebido.ncs, empresaIds, false);
+      ncs = mesclarPorEscopo("ncs", atual.ncs, recebido.ncs, empresaIds, false);
     }
   }
 
   if (possuiPermissao(efetivo, "evidencias.adicionar")) {
     evidencias = mesclarPorEscopo(
+      "evidencias",
       atual.evidencias,
       recebido.evidencias,
       empresaIds,
