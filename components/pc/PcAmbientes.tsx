@@ -13,6 +13,9 @@ type Props = {
   onPersonalizado: (valor: string) => void;
   statusSalvo: string;
   onToggle: (nome: string) => void;
+  ocultos: { ambiente: string; respostas: number }[];
+  onMostrar: (nome: string) => void;
+  onExcluirOculto: (nome: string) => void;
   onDetalhado: () => void;
   onAdicionar: () => void;
   onModelo: (nome: string, modelo: string) => void;
@@ -34,6 +37,9 @@ export default function PcAmbientes({
   onPersonalizado,
   statusSalvo,
   onToggle,
+  ocultos,
+  onMostrar,
+  onExcluirOculto,
   onDetalhado,
   onAdicionar,
   onModelo,
@@ -43,6 +49,7 @@ export default function PcAmbientes({
   const [verTodosSugeridos, setVerTodosSugeridos] = useState(false);
   const [verTodosRoteiro, setVerTodosRoteiro] = useState(false);
   const [tocado, setTocado] = useState(false);
+  const [verOcultos, setVerOcultos] = useState(false);
 
   const mostrarSugeridos = verTodosSugeridos ? sugeridos : sugeridos.slice(0, LIMITE_SUGERIDOS);
   const mostrarRoteiro = verTodosRoteiro ? selecionados : selecionados.slice(0, LIMITE_ROTEIRO);
@@ -137,6 +144,30 @@ export default function PcAmbientes({
               <button type="button" className="pc-link-btn" onClick={() => setVerTodosRoteiro((aberto) => !aberto)}>
                 {verTodosRoteiro ? "Mostrar menos ←" : `Ver os outros ${selecionados.length - LIMITE_ROTEIRO} ambientes →`}
               </button>
+            )}
+            {ocultos.length > 0 && (
+              <div className="pc-hidden">
+                <button type="button" className="pc-link-btn" aria-expanded={verOcultos} onClick={() => setVerOcultos((aberto) => !aberto)}>
+                  Ocultos ({ocultos.length}) {verOcultos ? "⌄" : "›"}
+                </button>
+                {verOcultos &&
+                  ocultos.map((oculto) => (
+                    <div key={oculto.ambiente} className="pc-hidden-row">
+                      <span className="pc-hidden-name">
+                        {oculto.ambiente}
+                        <span className="ui-row-sub">
+                          {oculto.respostas} {oculto.respostas === 1 ? "resposta guardada" : "respostas guardadas"}
+                        </span>
+                      </span>
+                      <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => onMostrar(oculto.ambiente)}>
+                        Mostrar de novo
+                      </button>
+                      <button type="button" className="ui-btn ui-btn--soft-nc ui-btn--small" onClick={() => onExcluirOculto(oculto.ambiente)}>
+                        Excluir definitivamente
+                      </button>
+                    </div>
+                  ))}
+              </div>
             )}
           </div>
         </div>

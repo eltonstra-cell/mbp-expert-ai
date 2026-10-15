@@ -247,43 +247,6 @@ export default function AppNavigation({
         <nav className="pc-side-nav" aria-label="Navegação principal">
           {lateral.topo.map((item) => linkLateral(item, false))}
 
-          {visita && lateral.etapas.length > 0 && (
-            <>
-              <div className="pc-side-sep" role="separator" />
-              <section className="pc-vgroup" aria-label={visita.rotulo}>
-                <button
-                  type="button"
-                  className="pc-vgroup-head"
-                  aria-expanded={grupoVisitaAberto}
-                  onClick={() => setGrupoVisitaAberto((aberto) => !aberto)}
-                >
-                  <span className="pc-vgroup-text">
-                    <span className="pc-vgroup-label">{visita.rotulo}</span>
-                    <span className="pc-vgroup-title">
-                      {visita.empresa} · {visita.percentual}%
-                    </span>
-                  </span>
-                  <span className="pc-chev" aria-hidden="true">{grupoVisitaAberto ? "⌄" : "›"}</span>
-                </button>
-                <div
-                  className="pc-vbar"
-                  role="img"
-                  aria-label={`${visita.conformes} conformes, ${visita.naoConformes} não conformes, ${visita.naoSeAplica} não se aplica, ${visita.pendentes} pendentes`}
-                >
-                  {([
-                    [visita.conformes, "var(--ok)"],
-                    [visita.naoConformes, "var(--nc)"],
-                    [visita.naoSeAplica, "var(--na)"],
-                  ] as const).map(([qtd, cor], indice) =>
-                    qtd > 0 ? <span key={indice} style={{ flexGrow: qtd / total, background: cor }} /> : null
-                  )}
-                  <span style={{ flexGrow: visita.pendentes / total }} className="pc-vbar-rest" />
-                </div>
-                {grupoVisitaAberto && <div className="pc-vsteps">{lateral.etapas.map((item) => linkLateral(item, true))}</div>}
-              </section>
-            </>
-          )}
-
           {(lateral.apoio.length > 0 || lateral.admin.length > 0) && <div className="pc-side-sep" role="separator" />}
           {lateral.apoio.map((item) => linkLateral(item, false))}
           {lateral.admin.length > 0 && (

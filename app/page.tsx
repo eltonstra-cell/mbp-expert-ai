@@ -6,6 +6,17 @@ import AccessPreparationPanel from "@/components/AccessPreparationPanel";
 import AppNavigation, { type CartaoVisita, type ContagemEtapa } from "@/components/AppNavigation";
 import AppTopbar from "@/components/AppTopbar";
 import PcInicio from "@/components/pc/PcInicio";
+import VisitTrail from "@/components/pc/VisitTrail";
+import RegistrarAgoraModal from "@/components/pc/RegistrarAgoraModal";
+import PcCorrecoes from "@/components/pc/PcCorrecoes";
+import PcPopsVisita from "@/components/pc/PcPopsVisita";
+import PcRelatorio, { type SecaoRelatorio } from "@/components/pc/PcRelatorio";
+import PcAjuda from "@/components/pc/PcAjuda";
+import { passoDaView, percentualDaVisita, type PassoVisita } from "@/lib/visitTrail";
+import { conferenciaDoRelatorio } from "@/lib/reportCheck";
+import { ocultarAmbiente, mostrarAmbiente, excluirAmbienteOculto, resumoOcultos } from "@/lib/hiddenEnvs";
+import { reincidenciaDaNc } from "@/lib/actionPlan";
+import { adicionarSugestaoPop, criarRascunhosFaltantes, popsDaVisita } from "@/lib/pops";
 import UpdateNotice from "@/components/UpdateNotice";
 import PcAcompanhamento from "@/components/pc/PcAcompanhamento";
 import PcPlano from "@/components/pc/PcPlano";
@@ -130,13 +141,13 @@ import {
 } from "@/lib/userManagement";
 import { resumoConfiguracaoEmpresa } from "@/lib/companyReadiness";
 
-type View = "inicio" | "ajuda" | "empresas" | "visitas" | "visita" | "ambientes" | "checklist" | "ncs" | "plano" | "acompanhamento" | "historico" | "evidencias" | "relatorio" | "acessos";
+type View = "inicio" | "ajuda" | "empresas" | "visitas" | "visita" | "ambientes" | "checklist" | "ncs" | "plano" | "acompanhamento" | "historico" | "evidencias" | "relatorio" | "acessos" | "correcoes" | "popsvisita";
 type EmpresaSecao = "dados" | "manual" | "ambientes" | "fluxos" | "programas" | "pops";
 type FiltroChecklistRapido = "Todos" | "Pendentes" | "Não conformes";
 
 const NAV_STORAGE_KEY = "mbp-expert-ai:navegacao:v1";
 const CHECKLIST_VERSAO_ATUAL = 10;
-const VISIT_VIEWS: View[] = ["visita", "ambientes", "checklist", "ncs", "plano", "acompanhamento", "historico", "evidencias", "relatorio"];
+const VISIT_VIEWS: View[] = ["visita", "ambientes", "checklist", "ncs", "plano", "acompanhamento", "historico", "evidencias", "relatorio", "correcoes", "popsvisita"];
 
 const labels: Record<string, string> = {
   nomeFantasia: "Nome fantasia",
@@ -672,6 +683,9 @@ export default function Home() {
   const [campoIaAtivo, setCampoIaAtivo] = useState<string | null>(null);
   const registrarInputRef = useRef<HTMLInputElement | null>(null);
   const criandoVisitaRef = useRef(false);
+  const [registrarAberto, setRegistrarAberto] = useState(false);
+  const [secoesRelatorio, setSecoesRelatorio] = useState<Record<SecaoRelatorio, boolean>>({ resumo: true, ambientes: true, ncs: true, evidencias: true, pops: true });
+  const [emissaoParcial, setEmissaoParcial] = useState(false);
   const ehPC = useIsPc();
   const [caixaAberta, setCaixaAberta] = useState(false);
   const [caixaComVoz, setCaixaComVoz] = useState(false);
@@ -1396,6 +1410,7 @@ export default function Home() {
             .filter(Boolean)
         : [],
       checklist: Array.isArray(v.checklist) ? v.checklist : [],
+      ambientesOcultos: Array.isArray(v.ambientesOcultos) ? v.ambientesOcultos : [],
       checklistVersao: typeof v.checklistVersao === "number" ? v.checklistVersao : 1,
       modelosQuestionarioAmbientes:
         v.modelosQuestionarioAmbientes && typeof v.modelosQuestionarioAmbientes === "object"
@@ -1928,6 +1943,11 @@ export default function Home() {
       ? visitaAtualCadastrada
       : undefined;
   const empresaVisita = visitaAtual ? db.empresas[visitaAtual.empresaId] : undefined;
+  useEffect(() => {
+    // PC: Não conformidades, Plano e Acompanhamento viraram "Correções"; fora do PC essas telas novas não existem.
+    if (ehPC && (view === "ncs" || view === "plano" || view === "acompanhamento")) setView("correcoes");
+    if (!ehPC && (view === "correcoes" || view === "popsvisita")) setView("visita");
+  }, [ehPC, view]);
   useEffect(() => {
     // PC: a nova evidência já nasce vinculada ao último item tocado (mesma regra do Registrar).
     if (!ehPC || view !== "evidencias" || !visitaAtual || evidenciaChecklistItemId || !ultimoItemChecklistId) return;
@@ -3978,7 +3998,8 @@ export default function Home() {
         irParaMenu(acao.key);
         return;
       case "registrar":
-        registrarRapido(false);
+        if (ehPC) setRegistrarAberto(true);
+        else registrarRapido(false);
         return;
       case "continuar":
         if (visitaEmAndamentoDestaque) continuar(visitaEmAndamentoDestaque.id, true);
@@ -4004,6 +4025,119 @@ export default function Home() {
           document.getElementById("checklist-item-" + acao.id)?.scrollIntoView({ block: "start" });
         }, 250);
         return;
+    }
+  }
+
+  function irParaPasso(passo: PassoVisita) {
+    switch (passo) {
+      case "central":
+        setView("visita");
+        return;
+      case "checklist":
+        abrirChecklist();
+        return;
+      case "evidencias":
+        abrirEvidencias();
+        return;
+      case "correcoes":
+        setPlanoNcAbertaId("");
+        setView("correcoes");
+        return;
+      case "pops":
+        setView("popsvisita");
+        return;
+      case "relatorio":
+        setView("relatorio");
+        return;
+    }
+  }
+
+  function criarPopsSugeridos(codigo?: string) {
+    if (!visitaAtual) return;
+    const empresaId = visitaAtual.empresaId;
+    if (!exigirPermissao("empresas.editar", empresaId)) return;
+    setDb((o) => {
+      const empresa = o.empresas[empresaId];
+      if (!empresa) return o;
+      const pops = empresa.pops || [];
+      const linhas = popsDaVisita(
+        (o.ncs || []).filter((nc) => nc.visitaId === visitaAtual.id && !nc.inativaNoChecklist).map((nc, i) => ({ numero: i + 1, categoria: nc.categoria })),
+        pops
+      ).linhas.filter((linha) => !codigo || linha.sugestao.codigo === codigo);
+      const resultado = criarRascunhosFaltantes(pops, linhas, () => crypto.randomUUID());
+      if (resultado.criados === 0) return o;
+      return { ...o, empresas: { ...o.empresas, [empresaId]: { ...empresa, pops: resultado.pops } } };
+    });
+  }
+
+  function ocultarAmbienteDaVisita(nome: string) {
+    if (!visitaAtual) return;
+    setAmbientesSelecionados((atual) => atual.filter((item) => item !== nome));
+    setDb((o) => {
+      const visita = o.visitas.find((registro) => registro.id === visitaAtual.id);
+      if (!visita) return o;
+      const resultado = ocultarAmbiente(visita, o.ncs || [], nome, new Date().toISOString());
+      return { ...o, visitas: o.visitas.map((registro) => (registro.id === visita.id ? resultado.visita : registro)), ncs: resultado.ncs };
+    });
+    setStatusAmbientes(`“${nome}” ficou oculto; as respostas foram mantidas`);
+  }
+
+  function mostrarAmbienteDaVisita(nome: string) {
+    if (!visitaAtual) return;
+    setAmbientesSelecionados((atual) => (atual.includes(nome) ? atual : [...atual, nome]));
+    setDb((o) => {
+      const visita = o.visitas.find((registro) => registro.id === visitaAtual.id);
+      if (!visita) return o;
+      const resultado = mostrarAmbiente(visita, o.ncs || [], nome);
+      return { ...o, visitas: o.visitas.map((registro) => (registro.id === visita.id ? resultado.visita : registro)), ncs: resultado.ncs };
+    });
+    setStatusAmbientes(`“${nome}” voltou para a visita`);
+  }
+
+  function excluirAmbienteOcultoDaVisita(nome: string) {
+    if (!visitaAtual) return;
+    const guardado = (visitaAtual.ambientesOcultos || []).find((registro) => registro.ambiente === nome);
+    if (!guardado) return;
+    const respostas = resumoOcultos(visitaAtual).find((registro) => registro.ambiente === nome)?.respostas || 0;
+    if (!window.confirm(`Excluir definitivamente “${nome}”? ${respostas} ${respostas === 1 ? "resposta será perdida" : "respostas serão perdidas"} e não poderão ser recuperadas.`)) return;
+    setDb((o) => {
+      const visita = o.visitas.find((registro) => registro.id === visitaAtual.id);
+      if (!visita) return o;
+      const resultado = excluirAmbienteOculto(visita, nome);
+      return { ...o, visitas: o.visitas.map((registro) => (registro.id === visita.id ? resultado.visita : registro)) };
+    });
+    setStatusAmbientes(`“${nome}” foi excluído definitivamente`);
+  }
+
+  // PC: desmarcar um ambiente com respostas OCULTA (não apaga); marcar um ambiente oculto o traz de volta.
+  function alternarAmbientePc(nome: string) {
+    if (!visitaAtual) return;
+    if ((visitaAtual.ambientesOcultos || []).some((registro) => registro.ambiente === nome)) {
+      mostrarAmbienteDaVisita(nome);
+      return;
+    }
+    if (ambientesSelecionados.includes(nome)) {
+      const temRespostas = (visitaAtual.checklist || []).some((item) => item.ambiente === nome && checklistPossuiRespostas([item]));
+      if (temRespostas) {
+        ocultarAmbienteDaVisita(nome);
+        return;
+      }
+    }
+    toggleAmbiente(nome);
+  }
+
+  async function emitirRelatorioPc(modo: "previa" | "parcial" | "oficial") {
+    if (!visitaAtual) return;
+    if (modo === "oficial" && !exigirPermissao("relatorios.aprovar", visitaAtual.empresaId)) return;
+    if (!exigirPermissao("relatorios.exportar", visitaAtual.empresaId)) return;
+    if (modo === "parcial") {
+      setEmissaoParcial(true);
+      await new Promise((resolver) => window.setTimeout(resolver, 80));
+    }
+    try {
+      await baixarPdfRelatorio();
+    } finally {
+      setEmissaoParcial(false);
     }
   }
 
@@ -4045,7 +4179,8 @@ export default function Home() {
         abrirPopsPeloAtalho();
         return;
       case "registrar":
-        registrarRapido(true);
+        if (ehPC) setRegistrarAberto(true);
+        else registrarRapido(true);
         return;
     }
   }
@@ -4325,16 +4460,18 @@ export default function Home() {
   async function adicionarEvidencia(
     file: File | undefined,
     tipo: "Foto" | "Áudio",
-    vinculo?: { ambiente: string; checklistItemId: string; ncId: string }
-  ) {
-    if (!file || !visitaAtual) return;
-    if (!exigirPermissao("evidencias.adicionar", visitaAtual.empresaId)) return;
+    vinculo?: { ambiente: string; checklistItemId: string; ncId: string },
+    opcoes?: { visita?: Visita; descricao?: string }
+  ): Promise<boolean> {
+    const alvoVisita = opcoes?.visita || visitaAtual;
+    if (!file || !alvoVisita) return false;
+    if (!exigirPermissao("evidencias.adicionar", alvoVisita.empresaId)) return false;
 
     if (tipo === "Áudio" && file.size > 3 * 1024 * 1024) {
       setEvidenciaMsg(
         "O áudio está muito grande para esta versão. Use um arquivo de até 3 MB."
       );
-      return;
+      return false;
     }
 
     try {
@@ -4358,20 +4495,20 @@ export default function Home() {
       const blob = await enviarArquivoParaBlob(
         conteudo,
         nomeArquivo,
-        visitaAtual.id,
+        alvoVisita.id,
         evidenciaId
       );
 
       const ev: Evidencia = {
         id: evidenciaId,
-        empresaId: visitaAtual.empresaId,
-        visitaId: visitaAtual.id,
+        empresaId: alvoVisita.empresaId,
+        visitaId: alvoVisita.id,
         tipo,
         nomeArquivo,
         mimeType,
         blobPathname: blob.pathname,
         blobUrl: blob.url,
-        descricao: evidenciaDescricao.trim(),
+        descricao: (opcoes?.descricao ?? evidenciaDescricao).trim(),
         ambiente: (vinculo ? vinculo.ambiente : evidenciaAmbiente) || "",
         checklistItemId: (vinculo ? vinculo.checklistItemId : evidenciaChecklistItemId) || undefined,
         ncId: (vinculo ? vinculo.ncId : evidenciaNcId) || undefined,
@@ -4383,7 +4520,7 @@ export default function Home() {
           ...o,
           evidencias: [ev, ...(o.evidencias || [])],
           visitas: o.visitas.map((v) =>
-            v.id === visitaAtual.id
+            v.id === alvoVisita.id
               ? { ...v, progresso: Math.max(v.progresso || 0, 60) }
               : v
           ),
@@ -4400,6 +4537,7 @@ export default function Home() {
           ? "Foto enviada ao armazenamento e registrada. Sincronizando dados..."
           : "Áudio enviado ao armazenamento e registrado. Sincronizando dados..."
       );
+      return true;
     } catch (error) {
       console.error("Falha ao adicionar evidência:", error);
       setEvidenciaMsg(
@@ -4407,6 +4545,7 @@ export default function Home() {
           ? "A foto foi capturada, mas não pôde ser processada. Tente novamente."
           : "Não foi possível adicionar este áudio."
       );
+      return false;
     }
   }
 
@@ -4458,10 +4597,11 @@ export default function Home() {
     if (patch.status === "Em tratamento") {
       const ncAtual = (db.ncs || []).find((nc) => nc.id === ncId);
       if (ncAtual) {
+        const fusao = { ...ncAtual, ...patch };
         const faltantes = [
-          !ncAtual.acaoCorretiva?.trim() ? "Ação corretiva" : "",
-          !ncAtual.responsavelAcao?.trim() ? "Responsável" : "",
-          !ncAtual.prazo?.trim() ? "Prazo" : "",
+          !fusao.acaoCorretiva?.trim() ? "Ação corretiva" : "",
+          !fusao.responsavelAcao?.trim() ? "Responsável" : "",
+          !fusao.prazo?.trim() ? "Prazo" : "",
         ].filter(Boolean);
         if (faltantes.length) {
           window.alert(
@@ -4480,10 +4620,10 @@ export default function Home() {
     }));
   }
 
-  function registrarAcompanhamento(ncId: string) {
+  function registrarAcompanhamento(ncId: string, textoOverride?: string, statusOverride?: "Aberta" | "Em tratamento" | "Resolvida") {
     const ncPermissao = (db.ncs || []).find((nc) => nc.id === ncId);
     if (!ncPermissao || !exigirPermissao("ncs.acompanhar", ncPermissao.empresaId)) return;
-    const texto = (textoAcompanhamento[ncId] || "").trim();
+    const texto = (textoOverride ?? textoAcompanhamento[ncId] ?? "").trim();
 
     if (!texto) {
       window.alert("Digite uma atualização antes de registrar.");
@@ -4493,7 +4633,7 @@ export default function Home() {
     const ncAtual = (db.ncs || []).find((nc) => nc.id === ncId);
     if (!ncAtual) return;
 
-    const statusFinal = statusAcompanhamento[ncId] || ncAtual.status;
+    const statusFinal = statusOverride || statusAcompanhamento[ncId] || ncAtual.status;
     const evidenciasDaNc = (db.evidencias || []).filter((ev) => ev.ncId === ncId);
 
     if (statusFinal === "Em tratamento") {
@@ -5001,10 +5141,38 @@ export default function Home() {
     const pareceCnpj = /^[\d.\/\-\s]+$/.test(fantasia);
     return nomeEmFormatoNatural(pareceCnpj || !fantasia ? empresa.razaoSocial || fantasia : fantasia) || "Empresa";
   };
+  const resumoPopsVisita = popsDaVisita(
+    ncsVisita.map((nc, indice) => ({ numero: indice + 1, categoria: nc.categoria })),
+    empresaVisita?.pops || []
+  );
+  const dadosTrilha = {
+    respondidos,
+    total: totalChecklist,
+    evidencias: evidenciasVisita.length,
+    correcoesAbertas: ncsAbertas,
+    popsPendentes: resumoPopsVisita.pendentes,
+  };
+  const passoAtualDaTrilha = passoDaView(view);
+  const percentualVisitaTrilha = percentualDaVisita(respondidos, totalChecklist);
+  const classesSecoesRelatorio = (Object.keys(secoesRelatorio) as SecaoRelatorio[])
+    .filter((chave) => !secoesRelatorio[chave])
+    .map((chave) => `rep-off-${chave}`)
+    .join(" ");
   const chaveDaTela: NavKey | null =
     view === "empresas" && showEmpresaForm && empresaSecao === "pops" ? "pops" : chaveAtiva(view);
   const itemDaTela = chaveDaTela ? itemDoMenu(chaveDaTela) : undefined;
-  const rotuloDaTela = view === "historico" ? "Histórico" : chaveDaTela === "central" ? "Central" : itemDaTela?.rotulo || "";
+  const rotuloDaTela =
+    view === "historico"
+      ? "Histórico"
+      : view === "correcoes"
+        ? "Correções"
+        : view === "popsvisita"
+          ? "POPs da visita"
+          : chaveDaTela === "central"
+            ? "Central"
+            : itemDaTela?.rotulo || "";
+  // No PC o menu não lista as etapas da visita: dentro dela, o item ativo é "Visitas".
+  const chaveMenuAtivo: NavKey | null = ehPC && (VISIT_VIEWS.includes(view) || view === "ambientes") ? "visitas" : chaveDaTela;
   const caminhoTopo = dentroDaVisita
     ? ["Visitas", cartaoVisita?.empresa || "Empresa", rotuloDaTela || "Central"]
     : [rotuloDaTela || "Início"];
@@ -5016,9 +5184,42 @@ export default function Home() {
     <IaPermitidaContext.Provider value={deveExibirRecursosDeIa(usuarioDaSessao)}>
     <div className="min-h-screen bg-[var(--bg)]">
       <UpdateNotice />
+      {registrarAberto && ehPC && (() => {
+        const abertas = (db.visitas || []).filter(
+          (visita) => visita.status !== "Concluída" && permitido("evidencias.adicionar", visita.empresaId) && permitido("visitas.executar", visita.empresaId)
+        );
+        const visitas = abertas.map((visita) => ({
+          id: visita.id,
+          rotulo: `${nomeParaExibir(db.empresas[visita.empresaId])} · visita de ${fdata(visita.data)}`,
+          itens: (visita.checklist || []).map((item) => ({ id: item.id, rotulo: item.titulo, ambiente: item.ambiente })),
+        }));
+        const inicial = visitas.find((visita) => visita.id === visitaAtual?.id) || visitas[0];
+        const itemInicial = inicial?.itens.some((item) => item.id === ultimoItemChecklistId) ? ultimoItemChecklistId || "" : "";
+        return (
+          <RegistrarAgoraModal
+            visitas={visitas}
+            visitaInicialId={inicial?.id || ""}
+            itemInicialId={itemInicial}
+            onFechar={() => setRegistrarAberto(false)}
+            onIrVisitas={() => { setRegistrarAberto(false); navegarPrincipal("visitas"); }}
+            onSalvar={async ({ visitaId, arquivo, tipo, descricao, item }) => {
+              const alvo = db.visitas.find((visita) => visita.id === visitaId);
+              if (!alvo) throw new Error("visita não encontrada");
+              const nc = item ? (db.ncs || []).find((registro) => registro.visitaId === alvo.id && registro.checklistItemId === item.id && !registro.inativaNoChecklist) : undefined;
+              const ok = await adicionarEvidencia(
+                arquivo,
+                tipo,
+                { ambiente: item?.ambiente || "", checklistItemId: item?.id || "", ncId: nc?.id || "" },
+                { visita: alvo, descricao }
+              );
+              if (!ok) throw new Error("falha ao salvar");
+            }}
+          />
+        );
+      })()}
       <AppNavigation
         contexto={contextoMenu}
-        ativa={chaveDaTela}
+        ativa={chaveMenuAtivo}
         onSelecionar={irParaMenu}
         ncsAbertas={ncsAbertas}
         maisAberto={menuMaisAberto}
@@ -5329,6 +5530,15 @@ export default function Home() {
           onAbrirCaixa={(comVoz) => { setCaixaComVoz(comVoz); setCaixaAberta(true); }}
           micDisponivel={deveExibirRecursosDeIa(usuarioDaSessao)}
         />
+        {ehPC && visitaAtual && passoAtualDaTrilha && (
+          <VisitTrail
+            empresa={nomeParaExibir(empresaVisita)}
+            percentual={percentualVisitaTrilha}
+            dados={dadosTrilha}
+            atual={passoAtualDaTrilha}
+            onIr={irParaPasso}
+          />
+        )}
         <nav className="hidden">
           <button
             onClick={() => navegarPrincipal("inicio")}
@@ -5798,7 +6008,10 @@ export default function Home() {
               personalizado={ambientePersonalizado}
               onPersonalizado={setAmbientePersonalizado}
               statusSalvo={statusAmbientes}
-              onToggle={toggleAmbiente}
+              onToggle={alternarAmbientePc}
+              ocultos={resumoOcultos(visitaAtual)}
+              onMostrar={mostrarAmbienteDaVisita}
+              onExcluirOculto={excluirAmbienteOcultoDaVisita}
               onDetalhado={aplicarModeloDetalhadoRestaurante}
               onAdicionar={adicionarPersonalizado}
               onModelo={atualizarModeloQuestionarioAmbiente}
@@ -6502,6 +6715,87 @@ export default function Home() {
               </div>
             </div>
           </section>)
+        ) : view === "correcoes" && visitaAtual ? (
+            <PcCorrecoes
+              empresa={nomeParaExibir(empresaVisita)}
+              data={fdata(visitaAtual.data)}
+              hoje={hojeISO()}
+              selecionadaInicial={planoNcAbertaId}
+              podeEditar={permitido("ncs.acompanhar", visitaAtual.empresaId)}
+              podeEvidenciar={permitido("evidencias.adicionar", visitaAtual.empresaId)}
+              itens={ncsVisita.map((nc, indice) => {
+                const rein = reincidenciaDaNc(
+                  nc,
+                  (db.ncs || []).filter((outra) => !outra.inativaNoChecklist),
+                  (id) => db.visitas.find((visita) => visita.id === id)?.data || ""
+                );
+                const linhaPop = resumoPopsVisita.linhas.find((linha) => linha.ncs.includes(indice + 1));
+                return {
+                  id: nc.id,
+                  numero: indice + 1,
+                  titulo: nc.titulo,
+                  ambiente: nc.ambiente,
+                  criterio: nc.categoria,
+                  referencia: nc.referencia,
+                  gravidade: nc.criticidade,
+                  status: nc.status,
+                  acaoCorretiva: nc.acaoCorretiva || "",
+                  responsavelAcao: nc.responsavelAcao || "",
+                  prazo: nc.prazo || "",
+                  reincidente: rein.reincidente,
+                  dataAnterior: rein.dataAnterior,
+                  orientacao: nc.orientacao || "",
+                  pop: linhaPop ? { codigo: linhaPop.sugestao.codigo, titulo: linhaPop.sugestao.titulo, existe: linhaPop.situacao !== "a-criar" } : null,
+                  evidencias: (db.evidencias || [])
+                    .filter((ev) => ev.ncId === nc.id)
+                    .map((ev) => ({ id: ev.id, tipo: ev.tipo, nome: ev.descricao?.trim() || ev.nomeArquivo, quando: new Date(ev.criadoEm).toLocaleString("pt-BR"), url: urlEvidencia(ev) })),
+                  historico: [...(nc.historicoAcompanhamento || [])]
+                    .sort((a, b) => b.criadoEm.localeCompare(a.criadoEm))
+                    .map((item) => ({ id: item.id, quando: new Date(item.criadoEm).toLocaleString("pt-BR"), status: item.status, observacao: item.observacao })),
+                };
+              })}
+              onSalvarPlano={(id, dados) =>
+                atualizarNC(id, {
+                  acaoCorretiva: dados.acao,
+                  responsavelAcao: dados.responsavel,
+                  prazo: dados.prazo,
+                  status: dados.etapa === "acompanhamento" ? "Em tratamento" : "Aberta",
+                })
+              }
+              onRegistrar={(id, texto, status) => registrarAcompanhamento(id, texto, status)}
+              onAdicionarEvidencia={(id) => {
+                const nc = ncsVisita.find((registro) => registro.id === id);
+                setEvidenciaNcId(id);
+                setEvidenciaAmbiente(nc?.ambiente || "");
+                setEvidenciaChecklistItemId("");
+                setView("evidencias");
+              }}
+              onCriarPop={(codigo) => criarPopsSugeridos(codigo)}
+              onAbrirPop={abrirPopsPeloAtalho}
+              onLote={(ids, valores) => alteracoesEmLote(ncsVisita, ids, valores).forEach((alteracao) => atualizarNC(alteracao.id, alteracao.patch))}
+              onVoltar={() => setView("visita")}
+            />
+        ) : view === "popsvisita" && visitaAtual ? (
+            <PcPopsVisita
+              empresa={nomeParaExibir(empresaVisita)}
+              data={fdata(visitaAtual.data)}
+              resumo={{
+                totalNcs: resumoPopsVisita.totalNcs,
+                ncsComPop: resumoPopsVisita.ncsComPop,
+                rascunho: resumoPopsVisita.rascunho,
+                aCriar: resumoPopsVisita.aCriar,
+                aprovados: resumoPopsVisita.aprovados,
+                semPop: resumoPopsVisita.semPop,
+              }}
+              linhas={resumoPopsVisita.linhas}
+              podeCriar={permitido("empresas.editar", visitaAtual.empresaId)}
+              onCriar={(codigo) => criarPopsSugeridos(codigo)}
+              onAbrir={abrirPopsPeloAtalho}
+              onCriarTodos={() => criarPopsSugeridos()}
+              onContinuar={() => setView("relatorio")}
+              onTodosPops={abrirPopsPeloAtalho}
+              onVoltar={() => setView("visita")}
+            />
         ) : view === "plano" && visitaAtual ? (
           ehPC ? (
             <PcPlano
@@ -7220,7 +7514,7 @@ export default function Home() {
             )}
           </section>)
         ) : view === "checklist" && visitaAtual ? (
-          <section className="checklist-screen space-y-3">
+          <section className={`checklist-screen space-y-3${ehPC ? " ui-screen" : ""}`}>
             <div className="pc-check-head">
               <div className="flex flex-wrap items-end justify-between gap-3">
                 <div className="min-w-0">
@@ -7705,7 +7999,7 @@ export default function Home() {
                     <button
                       type="button"
                       onClick={avancarParaProximoAmbiente}
-                      className="mt-3 w-full rounded-xl bg-[var(--brand)] px-4 py-2.5 text-sm font-medium text-white"
+                      className="pc-hide-pc mt-3 w-full rounded-xl bg-[var(--brand)] px-4 py-2.5 text-sm font-medium text-white"
                     >
                       {pendentesAmbienteAtivo > 0
                         ? `Avançar com ${pendentesAmbienteAtivo} ${pendentesAmbienteAtivo === 1 ? "pendência" : "pendências"} →`
@@ -7721,6 +8015,16 @@ export default function Home() {
                 </div>
               </div>
             </div>
+            {ehPC && (
+              <div className="ui-footer">
+                <span className="ui-row-sub">As respostas são salvas automaticamente.</span>
+                <button type="button" className="ui-btn ui-btn--primary" onClick={avancarParaProximoAmbiente}>
+                  {pendentesAmbienteAtivo > 0
+                    ? `Avançar com ${pendentesAmbienteAtivo} ${pendentesAmbienteAtivo === 1 ? "pendência" : "pendências"} →`
+                    : "Concluir ambiente e avançar →"}
+                </button>
+              </div>
+            )}
           </section>
         ) : view === "visita" && visitaAtual ? (
           ehPC ? (
@@ -7886,7 +8190,46 @@ export default function Home() {
             })()}
           </section>)
         ) : view === "relatorio" && visitaAtual ? (
-          <section id="relatorio-visita" className="report-print space-y-4">
+          <>
+            {ehPC && (
+              <PcRelatorio
+                empresa={nomeParaExibir(empresaVisita)}
+                data={fdata(visitaAtual.data)}
+                linhas={conferenciaDoRelatorio({
+                  respondidos,
+                  totalChecklist,
+                  ncsAbertas,
+                  ncsSemResponsavelOuPrazo: ncsVisita.filter((nc) => nc.status !== "Resolvida" && (!nc.responsavelAcao?.trim() || !nc.prazo?.trim())).length,
+                  evidencias: evidenciasVisita.length,
+                  popsPendentes: resumoPopsVisita.pendentes,
+                  popsSugeridos: resumoPopsVisita.linhas.length,
+                  cadastroPreenchidos: empresaVisita ? preparacaoDaEmpresa(empresaVisita).preenchidos : 0,
+                  cadastroTotal: empresaVisita ? preparacaoDaEmpresa(empresaVisita).total : 0,
+                })}
+                secoes={secoesRelatorio}
+                onSecao={(chave, valor) => setSecoesRelatorio((atual) => ({ ...atual, [chave]: valor }))}
+                podeGerar={permitido("relatorios.exportar", visitaAtual.empresaId)}
+                podeOficial={permitido("relatorios.aprovar", visitaAtual.empresaId)}
+                gerando={gerandoPdf}
+                concluida={visitaAtual.status === "Concluída"}
+                podeConcluir={permitido("visitas.concluir", visitaAtual.empresaId)}
+                onIr={(destino) => {
+                  if (destino === "checklist") abrirChecklist();
+                  else if (destino === "correcoes") setView("correcoes");
+                  else if (destino === "evidencias") abrirEvidencias();
+                  else if (destino === "pops") setView("popsvisita");
+                  else abrirSecaoEmpresaPeloMenu("dados");
+                }}
+                onPrevia={() => void emitirRelatorioPc("previa")}
+                onParcial={() => void emitirRelatorioPc("parcial")}
+                onOficial={() => void emitirRelatorioPc("oficial")}
+                onFinalizar={finalizarInspecao}
+                onReabrir={reabrirInspecao}
+                onVoltar={() => setView("visita")}
+              />
+            )}
+          <section id="relatorio-visita" className={`report-print space-y-4${ehPC ? ` rep-offscreen ${classesSecoesRelatorio}` : ""}`}>
+            {emissaoParcial && <div className="print-only report-partial">RELATÓRIO PARCIAL</div>}
             <div className="print-only report-document-header">
               <div>
                 <div className="report-brand">{BRAND.name}</div>
@@ -7978,14 +8321,14 @@ export default function Home() {
               )}
             </div>
 
-            <div className="grid gap-3 md:grid-cols-4">
+            <div data-rep="resumo" className="grid gap-3 md:grid-cols-4">
               <MetricCard label="Progresso do checklist" value={`${percentualChecklist}%`} />
               <MetricCard label="Conformidade dos itens avaliados" value={`${percentualConformidade}%`} />
               <MetricCard label="Não conformidades" value={ncsVisita.length} />
               <MetricCard label="Evidências" value={evidenciasVisita.length} />
             </div>
 
-            <article className="print-card rounded-2xl bg-white p-5 shadow-sm">
+            <article data-rep="resumo" className="print-card rounded-2xl bg-white p-5 shadow-sm">
               <div className="text-xs font-extrabold uppercase text-[color:var(--brand)]">
                 Resumo executivo
               </div>
@@ -8091,7 +8434,7 @@ export default function Home() {
               </article>
             </div>
 
-            <article className="print-block rounded-2xl bg-white p-5 shadow-sm">
+            <article data-rep="ambientes" className="print-block rounded-2xl bg-white p-5 shadow-sm">
               <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                 <div>
                   <div className="text-xs font-extrabold uppercase text-slate-400">
@@ -8142,7 +8485,7 @@ export default function Home() {
               </div>
             </article>
 
-            <article className="print-block rounded-2xl bg-white p-5 shadow-sm">
+            <article data-rep="pops" className="print-block rounded-2xl bg-white p-5 shadow-sm">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                   <div className="text-xs font-extrabold uppercase text-[color:var(--brand)]">
@@ -8681,7 +9024,11 @@ export default function Home() {
               </p>
             </div>
           </section>
+          </>
         ) : view === "ajuda" ? (
+          ehPC ? (
+            <PcAjuda onVoltar={() => setView("inicio")} />
+          ) : (
           <section className="help-page space-y-4">
             <div className="help-hero">
               <div>
@@ -8814,7 +9161,7 @@ export default function Home() {
                 </a>
               </div>
             </div>
-          </section>
+          </section>)
         ) : view === "inicio" ? (
           ehPC ? (
             <PcInicio

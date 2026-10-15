@@ -165,3 +165,82 @@ export function tomSituacaoPOP(label: SituacaoRevisaoPOP["label"]): "ok" | "nc" 
       return "pend";
   }
 }
+
+// ===== POPs da visita: NC -> POP sugerido (mapeamento já existente: programa de controle) =====
+
+type SugestaoPop = (typeof SUGESTOES_POPS_MANUAL)[number];
+
+/** O Manual só relaciona POPs a programas de controle; NC de outro critério fica "Sem POP sugerido". */
+export function popSugeridoParaNc(nc: { categoria: string }): SugestaoPop | null {
+  return SUGESTOES_POPS_MANUAL.find((sugestao) => chave(sugestao.programaRelacionado) === chave(nc.categoria)) || null;
+}
+
+export type SituacaoPopVisita = "a-criar" | "rascunho" | "em-revisao" | "aprovado" | "inativo";
+
+export type LinhaPopVisita = {
+  sugestao: SugestaoPop;
+  /** Números das NCs (NC01, NC02...) que motivaram a sugestão. */
+  ncs: number[];
+  situacao: SituacaoPopVisita;
+  popId: string;
+};
+
+function situacaoDoPopExistente(pop: ProcedimentoOperacionalPadronizado | undefined): SituacaoPopVisita {
+  if (!pop) return "a-criar";
+  if (pop.status === "Aprovado") return "aprovado";
+  if (pop.status === "Em revisão") return "em-revisao";
+  if (pop.status === "Inativo") return "inativo";
+  return "rascunho";
+}
+
+export function popsDaVisita(
+  ncs: { numero: number; categoria: string }[],
+  pops: ProcedimentoOperacionalPadronizado[]
+) {
+  const linhas: LinhaPopVisita[] = [];
+  const semPop: number[] = [];
+  ncs.forEach((nc) => {
+    const sugestao = popSugeridoParaNc(nc);
+    if (!sugestao) {
+      semPop.push(nc.numero);
+      return;
+    }
+    const existente = linhas.find((linha) => linha.sugestao.codigo === sugestao.codigo);
+    if (existente) {
+      existente.ncs.push(nc.numero);
+      return;
+    }
+    const pop = pops.find((registro) => chave(registro.titulo) === chave(sugestao.titulo) || chave(registro.programaRelacionado) === chave(sugestao.programaRelacionado));
+    linhas.push({ sugestao, ncs: [nc.numero], situacao: situacaoDoPopExistente(pop), popId: pop?.id || "" });
+  });
+  const ncsComPop = ncs.length - semPop.length;
+  return {
+    linhas,
+    semPop,
+    totalNcs: ncs.length,
+    ncsComPop,
+    aCriar: linhas.filter((linha) => linha.situacao === "a-criar").length,
+    rascunho: linhas.filter((linha) => linha.situacao === "rascunho").length,
+    aprovados: linhas.filter((linha) => linha.situacao === "aprovado").length,
+    /** Pendente = sem POP criado ou ainda em rascunho. */
+    pendentes: linhas.filter((linha) => linha.situacao === "a-criar" || linha.situacao === "rascunho").length,
+  };
+}
+
+/** Cria SOMENTE rascunhos dos POPs que ainda não existem; nunca altera um POP existente. */
+export function criarRascunhosFaltantes(
+  pops: ProcedimentoOperacionalPadronizado[],
+  linhas: LinhaPopVisita[],
+  gerarId: () => string
+): { pops: ProcedimentoOperacionalPadronizado[]; criados: number } {
+  let atual = pops;
+  let criados = 0;
+  linhas
+    .filter((linha) => linha.situacao === "a-criar")
+    .forEach((linha) => {
+      const resultado = adicionarSugestaoPop(atual, linha.sugestao, gerarId());
+      if (resultado.pops !== atual) criados += 1;
+      atual = resultado.pops;
+    });
+  return { pops: atual, criados };
+}

@@ -187,6 +187,8 @@ export type Visita = {
   avaliacoesEquipamentos?: AvaliacaoEquipamentoVisita[];
   checklist?: ChecklistItem[];
   checklistVersao?: number;
+  /** Ambientes ocultos: itens e respostas guardados até serem mostrados de novo. */
+  ambientesOcultos?: { ambiente: string; itens: ChecklistItem[]; modelo?: string; ocultadoEm: string }[];
   encerradaEm?: string;
   historicoStatus?: HistoricoStatusVisita[];
 };

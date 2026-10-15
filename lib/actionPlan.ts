@@ -59,3 +59,109 @@ export function alteracoesEmLote<T extends NcDoPlano & { id: string }>(
       patch: { ...(responsavel ? { responsavelAcao: responsavel } : {}), ...(prazo ? { prazo } : {}) },
     }));
 }
+
+// ===== Correções: esteira, prazo sugerido, reincidência e validação =====
+
+export type GravidadeNc = "Crítica" | "Importante" | "Rotina";
+export type EtapaCorrecao = "identificadas" | "plano" | "acompanhamento" | "resolvidas";
+
+/**
+ * Esteira de 4 etapas sobre os status que já existem (Aberta / Em tratamento / Resolvida):
+ * Identificadas = aberta com plano incompleto; Com plano = aberta com ação, responsável e prazo;
+ * Em acompanhamento = "Em tratamento"; Resolvidas = "Resolvida".
+ */
+export function etapaDaCorrecao(nc: NcDoPlano): EtapaCorrecao {
+  if (nc.status === "Resolvida") return "resolvidas";
+  if (nc.status === "Em tratamento") return "acompanhamento";
+  return planoPorDefinir(nc) ? "identificadas" : "plano";
+}
+
+export const ORDEM_ETAPAS: EtapaCorrecao[] = ["identificadas", "plano", "acompanhamento", "resolvidas"];
+
+export function contarEtapas(ncs: NcDoPlano[]): Record<EtapaCorrecao, number> {
+  const total: Record<EtapaCorrecao, number> = { identificadas: 0, plano: 0, acompanhamento: 0, resolvidas: 0 };
+  ncs.forEach((nc) => {
+    total[etapaDaCorrecao(nc)] += 1;
+  });
+  return total;
+}
+
+/** Quantas bolinhas de progresso ficam acesas (1 a 4). */
+export function progressoDaCorrecao(nc: NcDoPlano): number {
+  return ORDEM_ETAPAS.indexOf(etapaDaCorrecao(nc)) + 1;
+}
+
+export const DIAS_POR_GRAVIDADE: Record<GravidadeNc, number> = { Crítica: 7, Importante: 15, Rotina: 30 };
+
+function somarDias(isoData: string, dias: number): string {
+  const [ano, mes, dia] = isoData.split("-").map(Number);
+  const data = new Date(Date.UTC(ano, (mes || 1) - 1, dia || 1));
+  data.setUTCDate(data.getUTCDate() + dias);
+  return data.toISOString().slice(0, 10);
+}
+
+export function prazoSugerido(gravidade: GravidadeNc, hoje: string): { dias: number; data: string } {
+  const dias = DIAS_POR_GRAVIDADE[gravidade] ?? DIAS_POR_GRAVIDADE.Rotina;
+  return { dias, data: somarDias(hoje, dias) };
+}
+
+type NcComCriterio = {
+  id: string;
+  empresaId: string;
+  visitaId: string;
+  ambiente: string;
+  categoria: string;
+  titulo: string;
+};
+
+/** Mesma chave de critério usada na comparação entre visitas (ambiente + categoria + título). */
+export function chaveDoCriterio(nc: { ambiente?: string; categoria?: string; titulo?: string }): string {
+  return [nc.ambiente, nc.categoria, nc.titulo].map((parte) => (parte || "").trim().toLocaleLowerCase("pt-BR")).join("|");
+}
+
+/**
+ * Reincidência: mesma empresa e mesmo critério com NC em visita ANTERIOR.
+ * `dataDaVisita` informa a data (AAAA-MM-DD) de cada visita; só visitas mais antigas contam.
+ */
+export function reincidenciaDaNc(
+  nc: NcComCriterio,
+  todas: NcComCriterio[],
+  dataDaVisita: (visitaId: string) => string
+): { reincidente: boolean; visitaAnteriorId: string; dataAnterior: string } {
+  const minhaData = dataDaVisita(nc.visitaId);
+  const chave = chaveDoCriterio(nc);
+  const anteriores = todas
+    .filter((outra) => outra.id !== nc.id && outra.empresaId === nc.empresaId && outra.visitaId !== nc.visitaId && chaveDoCriterio(outra) === chave)
+    .map((outra) => ({ visitaId: outra.visitaId, data: dataDaVisita(outra.visitaId) }))
+    .filter((registro) => registro.data && registro.data < minhaData)
+    .sort((a, b) => b.data.localeCompare(a.data));
+  if (anteriores.length === 0) return { reincidente: false, visitaAnteriorId: "", dataAnterior: "" };
+  return { reincidente: true, visitaAnteriorId: anteriores[0].visitaId, dataAnterior: anteriores[0].data };
+}
+
+const PESO_GRAVIDADE: Record<GravidadeNc, number> = { Crítica: 0, Importante: 1, Rotina: 2 };
+
+/** Ordena por gravidade; dentro dela, as reincidentes primeiro. */
+export function ordenarCorrecoes<T extends { gravidade: GravidadeNc; reincidente: boolean }>(itens: T[]): T[] {
+  return [...itens].sort(
+    (a, b) => PESO_GRAVIDADE[a.gravidade] - PESO_GRAVIDADE[b.gravidade] || Number(b.reincidente) - Number(a.reincidente)
+  );
+}
+
+export type ErrosDoPlano = { acao?: string; responsavel?: string; prazo?: string };
+
+/** Validação no campo ao salvar o plano; `comPlano` é verdadeiro ao marcar "Com plano" ou além. */
+export function validarPlano(
+  plano: { acaoCorretiva: string; responsavelAcao: string; prazo: string },
+  hoje: string,
+  comPlano: boolean
+): ErrosDoPlano {
+  const erros: ErrosDoPlano = {};
+  if (plano.prazo && plano.prazo < hoje) erros.prazo = "O prazo não pode estar no passado.";
+  if (comPlano) {
+    if (!plano.acaoCorretiva.trim()) erros.acao = "Defina a ação corretiva.";
+    if (!plano.responsavelAcao.trim()) erros.responsavel = "Informe o responsável.";
+    if (!plano.prazo) erros.prazo = erros.prazo || "Defina o prazo.";
+  }
+  return erros;
+}
