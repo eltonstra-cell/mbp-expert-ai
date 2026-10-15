@@ -4,18 +4,46 @@ import {
   autorizaAcaoServidor,
   obterAcessoServidor,
 } from "@/lib/serverAccess";
+import {
+  MAX_EVIDENCE_BYTES,
+  sanitizarVisitaId,
+  validarArquivoEvidencia,
+} from "@/lib/evidenceUpload";
+import { corpoExcedeLimite } from "@/lib/requestLimits";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const MENSAGENS_ARQUIVO = {
+  VAZIO: "Arquivo vazio.",
+  GRANDE: "Arquivo excede o limite de 8 MB.",
+  ASSINATURA: "Tipo de arquivo não permitido. Envie uma foto JPEG ou um áudio.",
+  MIME: "O tipo informado não corresponde ao conteúdo do arquivo.",
+} as const;
+
 export async function POST(request: Request) {
   try {
+    // Margem de 1 MB para os demais campos do formulário.
+    if (corpoExcedeLimite(request.headers.get("content-length"), MAX_EVIDENCE_BYTES + 1024 * 1024)) {
+      return NextResponse.json(
+        { error: "Arquivo excede o limite de 8 MB." },
+        { status: 413 }
+      );
+    }
+
     const form = await request.formData();
     const file = form.get("file");
-    const visitaId = String(form.get("visitaId") || "sem-visita");
-    const evidenciaId = String(
+    const visitaId = sanitizarVisitaId(form.get("visitaId") || "sem-visita");
+    const evidenciaId = sanitizarVisitaId(
       form.get("evidenciaId") || crypto.randomUUID()
     );
+
+    if (!visitaId || !evidenciaId) {
+      return NextResponse.json(
+        { error: "Identificação da visita ou da evidência inválida." },
+        { status: 400 }
+      );
+    }
 
     const acesso = await obterAcessoServidor();
     const visita = acesso.autorizado && acesso.data
@@ -39,10 +67,12 @@ export async function POST(request: Request) {
       );
     }
 
-    if (file.size > 8 * 1024 * 1024) {
+    const inicio = new Uint8Array(await file.slice(0, 16).arrayBuffer());
+    const validacao = validarArquivoEvidencia(file.type, inicio, file.size);
+    if (!validacao.ok) {
       return NextResponse.json(
-        { error: "Arquivo excede o limite de 8 MB." },
-        { status: 413 }
+        { error: MENSAGENS_ARQUIVO[validacao.motivo] },
+        { status: validacao.motivo === "GRANDE" ? 413 : 415 }
       );
     }
 
@@ -57,7 +87,7 @@ export async function POST(request: Request) {
     const blob = await put(pathname, file, {
       access: "private",
       addRandomSuffix: true,
-      contentType: file.type || "application/octet-stream",
+      contentType: validacao.contentType,
     });
 
     return NextResponse.json({

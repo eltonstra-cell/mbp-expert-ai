@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { obterAcessoServidor } from "@/lib/serverAccess";
+import { autorizaAcaoServidor, obterAcessoServidor } from "@/lib/serverAccess";
+import { corpoExcedeLimite } from "@/lib/requestLimits";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -63,10 +64,17 @@ export async function POST(request: Request) {
 
   try {
     const acesso = await obterAcessoServidor();
-    if (acesso.aplicado && !acesso.autorizado) {
+    if (!autorizaAcaoServidor(acesso, "ia.analisar")) {
       return NextResponse.json(
-        { error: "Sua sessão não permite usar a transcrição por voz." },
+        { error: "Seu perfil não permite usar a transcrição por voz." },
         { status: 403 }
+      );
+    }
+
+    if (corpoExcedeLimite(request.headers.get("content-length"), MAX_AUDIO_BYTES + 1024 * 1024)) {
+      return NextResponse.json(
+        { error: "O ditado ficou muito longo. Grave um trecho menor e tente novamente." },
+        { status: 413 }
       );
     }
 

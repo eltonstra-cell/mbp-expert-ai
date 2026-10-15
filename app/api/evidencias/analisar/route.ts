@@ -1,5 +1,6 @@
 import { get } from "@vercel/blob";
 import { NextResponse } from "next/server";
+import { corpoExcedeLimite } from "@/lib/requestLimits";
 import {
   autorizaAcaoServidor,
   obterAcessoServidor,
@@ -112,6 +113,10 @@ export async function POST(request: Request) {
   }
 
   try {
+    if (corpoExcedeLimite(request.headers.get("content-length"), 32 * 1024)) {
+      return NextResponse.json({ error: "Requisição muito grande." }, { status: 413 });
+    }
+
     const body = await request.json();
     const pathname = contextoSeguro(body?.pathname, 1200);
     if (!pathname) {

@@ -68,6 +68,14 @@ async function usuarioDaRequisicao(
   return { usuario, authId };
 }
 
+async function sessaoValida(): Promise<boolean> {
+  const auth = getNeonAuth();
+  if (!auth) return false;
+  const { data: session, error } = await auth.getSession();
+  const user = session?.user as { id?: unknown; email?: unknown } | undefined;
+  return !error && typeof user?.id === "string" && !!user.id.trim();
+}
+
 export async function GET(request: Request) {
   const sql = getSql();
 
@@ -86,6 +94,14 @@ export async function GET(request: Request) {
     const somenteMeta = url.searchParams.get("meta") === "1";
 
     if (somenteMeta) {
+      // Consulta leve: exige apenas sessão válida (sem ler o estado completo).
+      if (isAccessControlActive(process.env) && !(await sessaoValida())) {
+        return NextResponse.json(
+          { error: "Sessão necessária." },
+          { status: 401 }
+        );
+      }
+
       const rows = await sql`
         SELECT updated_at
         FROM mbp_cloud_state

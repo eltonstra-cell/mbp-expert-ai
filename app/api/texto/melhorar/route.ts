@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { obterAcessoServidor } from "@/lib/serverAccess";
+import { autorizaAcaoServidor, obterAcessoServidor } from "@/lib/serverAccess";
+import { corpoExcedeLimite } from "@/lib/requestLimits";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,11 +28,15 @@ export async function POST(request: Request) {
 
   try {
     const acesso = await obterAcessoServidor();
-    if (acesso.aplicado && !acesso.autorizado) {
+    if (!autorizaAcaoServidor(acesso, "ia.analisar")) {
       return NextResponse.json(
-        { error: "Sua sessão não permite usar a melhoria de texto com IA." },
+        { error: "Seu perfil não permite usar a melhoria de texto com IA." },
         { status: 403 }
       );
+    }
+
+    if (corpoExcedeLimite(request.headers.get("content-length"), 32 * 1024)) {
+      return NextResponse.json({ error: "Texto muito longo." }, { status: 413 });
     }
 
     const body = await request.json();
