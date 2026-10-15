@@ -1,4 +1,4 @@
-# MBP Expert AI — v2.46-dev.1
+# Ponto Certo — v2.46-dev.1 (antes MBP Expert AI)
 
 ## Controle de acesso em desenvolvimento
 

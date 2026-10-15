@@ -87,19 +87,19 @@ export default function PopsFields({ pops, onChange, aberto = false }: Props) {
 
       {pops.length > 0 && (
         <div className="mt-4 grid grid-cols-3 gap-2">
-          <div className="rounded-xl bg-emerald-50 p-3"><div className="text-[10px] font-extrabold uppercase text-emerald-700">Aprovados</div><div className="mt-1 text-xl font-extrabold text-emerald-900">{aprovados}</div></div>
-          <div className="rounded-xl bg-blue-50 p-3"><div className="text-[10px] font-extrabold uppercase text-blue-700">Em preparação</div><div className="mt-1 text-xl font-extrabold text-blue-900">{emPreparacao}</div></div>
-          <div className={`rounded-xl p-3 ${revisoesVencidas > 0 ? "bg-red-50" : "bg-slate-100"}`}><div className={`text-[10px] font-extrabold uppercase ${revisoesVencidas > 0 ? "text-red-700" : "text-slate-600"}`}>Revisão vencida</div><div className={`mt-1 text-xl font-extrabold ${revisoesVencidas > 0 ? "text-red-900" : "text-slate-800"}`}>{revisoesVencidas}</div></div>
+          <div className="rounded-xl bg-[var(--ok-bg)] p-3"><div className="text-[10px] font-extrabold uppercase text-emerald-700">Aprovados</div><div className="mt-1 text-xl font-extrabold text-emerald-900">{aprovados}</div></div>
+          <div className="rounded-xl bg-[var(--brand-soft)] p-3"><div className="text-[10px] font-extrabold uppercase text-blue-700">Em preparação</div><div className="mt-1 text-xl font-extrabold text-blue-900">{emPreparacao}</div></div>
+          <div className={`rounded-xl p-3 ${revisoesVencidas > 0 ? "bg-[var(--nc-bg)]" : "bg-slate-100"}`}><div className={`text-[10px] font-extrabold uppercase ${revisoesVencidas > 0 ? "text-red-700" : "text-slate-600"}`}>Revisão vencida</div><div className={`mt-1 text-xl font-extrabold ${revisoesVencidas > 0 ? "text-red-900" : "text-slate-800"}`}>{revisoesVencidas}</div></div>
         </div>
       )}
 
-      <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50 p-3">
-        <div className="text-xs font-extrabold uppercase tracking-wide text-[#2F5597]">Sugestões citadas no Manual</div>
+      <div className="mt-4 rounded-xl border border-blue-100 bg-[var(--brand-soft)] p-3">
+        <div className="text-xs font-extrabold uppercase tracking-wide text-[color:var(--brand)]">Sugestões citadas no Manual</div>
         <div className="mt-2 flex flex-wrap gap-2">
           {SUGESTOES_POPS_MANUAL.map((sugestao) => {
             const adicionado = pops.some((pop) => pop.titulo.toLocaleLowerCase("pt-BR") === sugestao.titulo.toLocaleLowerCase("pt-BR"));
             return (
-              <button key={sugestao.titulo} type="button" disabled={adicionado} onClick={() => adicionarSugestao(sugestao)} className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-left text-xs font-bold text-[#17365D] disabled:bg-blue-100 disabled:text-slate-500">
+              <button key={sugestao.titulo} type="button" disabled={adicionado} onClick={() => adicionarSugestao(sugestao)} className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-left text-xs font-bold text-[color:var(--ink)] disabled:bg-[var(--brand-soft)] disabled:text-slate-500">
                 {adicionado ? "✓ " : "+ "}{sugestao.titulo}
               </button>
             );
@@ -113,10 +113,10 @@ export default function PopsFields({ pops, onChange, aberto = false }: Props) {
           <input value={titulo} onChange={(event) => setTitulo(event.target.value)} placeholder="Título do POP" className="min-w-0 w-full rounded-xl border bg-white p-3 text-sm" />
           <FieldVoiceTools fieldKey="novo-pop-titulo" value={titulo} onChange={setTitulo} contexto="Título curto e objetivo de um Procedimento Operacional Padronizado." />
         </div>
-        <button type="button" onClick={adicionar} className="w-full rounded-xl bg-[#2F5597] px-4 py-3 text-sm font-extrabold text-white">Adicionar POP</button>
+        <button type="button" onClick={adicionar} className="w-full rounded-xl bg-[var(--brand)] px-4 py-3 text-sm font-medium text-white">Adicionar POP</button>
       </div>
 
-      {aviso && <div className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">{aviso}</div>}
+      {aviso && <div className="mt-2 rounded-lg bg-[var(--pend-bg)] px-3 py-2 text-xs font-bold text-[color:var(--ink)]">{aviso}</div>}
 
       <div className="mt-4 space-y-3">
         {pops.map((pop, indice) => {
@@ -155,7 +155,7 @@ export default function PopsFields({ pops, onChange, aberto = false }: Props) {
                 Próxima revisão
                 <input type="date" value={pop.proximaRevisao} onChange={(event) => atualizar(indice, { proximaRevisao: event.target.value })} className="mt-1 min-w-0 w-full rounded-lg border p-2 text-sm font-normal" />
               </label>
-              <button type="button" onClick={() => onChange(pops.filter((_, atual) => atual !== indice))} className="self-end rounded-lg bg-red-50 px-3 py-2 text-sm font-bold text-red-700">Excluir POP</button>
+              <button type="button" onClick={() => onChange(pops.filter((_, atual) => atual !== indice))} className="self-end rounded-lg bg-[var(--nc-bg)] px-3 py-2 text-sm font-bold text-[color:var(--ink)]">Excluir POP</button>
             </div>
           </details>
           );

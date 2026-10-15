@@ -1,4 +1,4 @@
-# MBP Expert AI
+# Ponto Certo (antes MBP Expert AI)
 
 Sistema web (PWA, uso em campo/offline) para consultoria em Segurança dos Alimentos: cadastro de empresas (consulta CNPJ), Manual de Boas Práticas (MBP), POPs, fluxos operacionais, programas de qualidade, visitas técnicas com checklist, não conformidades (NCs), evidências fotográficas com análise por IA (sempre revisada por profissional), relatórios/PDF e controle de acesso por perfil. Versão atual: `2.46.0-dev.1`. Repositório: `eltonstra-cell/mbp-expert-ai` (branch `main`; desenvolvimento em `v2.46-dev`).
 
@@ -62,3 +62,10 @@ Projeto separado do FoodControl. **Atenção:** o projeto Neon "mbp-expert-ai" t
 - LGPD / dados sensíveis (tratar como dados de saúde, por precaução): o sistema guarda dados de empresas, responsáveis (nome, e-mail, telefone), usuários e fotos de inspeção (podem conter pessoas/documentos). Tratar como dados pessoais; não enviar dados reais a serviços externos nem logar conteúdo.
 - Análises por IA são apoio: devem seguir "Aguardando revisão" e nunca criar/resolver NC automaticamente.
 - Manter o estilo do código existente (nomes em português, sem comentários desnecessários).
+
+## Identidade visual "Ponto Certo"
+- Nome, subtítulo e cores ficam em `lib/brand.ts` (único ponto; `app/layout.tsx` injeta as variáveis CSS `--brand`, `--ink`, `--ok`, `--nc` etc.). Fontes em `lib/fonts.ts` (Outfit para títulos, Nunito Sans para texto). Logo em `components/BrandLogo.tsx`; ícone em `app/icon.svg` e `public/icons/icon.svg`; manifest em `app/manifest.ts` (substitui o antigo `public/manifest.webmanifest`).
+- Padrão de botões: principal `--brand` com texto branco; Salvar `--ok` (um por tela); secundário branco com borda 2px `--brand`; excluir `--nc-bg`; abas selecionadas `--brand-soft` com texto preto. Sem barras ou botões escuros; texto sobre cor soft é preto.
+- Chaves de `localStorage` e prefixos CSS `mbp-` foram mantidos de propósito (renomear apagaria dados locais dos usuários).
+- Ícone PNG para instalação do PWA ainda não existe (o manifest usa SVG); `sharp` já está no `node_modules` (dependência do Next) e poderia gerar os PNGs, mas não foi usado.
+- Em desenvolvimento, a bolinha preta com "N" no canto é o indicador do Next.js (`next dev`); não existe em produção.

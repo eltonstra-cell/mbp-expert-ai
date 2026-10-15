@@ -1,6 +1,8 @@
 import { AuthView } from "@neondatabase/auth/react/ui";
 import { authViewPaths } from "@neondatabase/auth/react/ui/server";
 import { authEnvironmentStatus } from "@/lib/auth/server";
+import { BRAND } from "@/lib/brand";
+import { LogoSymbol } from "@/components/BrandLogo";
 
 export const dynamic = "force-dynamic";
 
@@ -19,24 +21,19 @@ export default async function AuthPage({ params }: { params: Promise<{ path: str
           <p className="mt-3 text-sm text-slate-600">
             O diretório pode ser preparado, mas o login só será liberado depois de habilitar o Neon Auth e cadastrar as duas variáveis secretas na Vercel.
           </p>
-          <a href="/" className="mt-5 inline-block rounded-xl bg-[#17365D] px-4 py-3 font-bold text-white">Voltar ao sistema</a>
+          <a href="/" className="mt-5 inline-block rounded-xl bg-[var(--brand)] px-4 py-3 font-medium text-white">Voltar ao sistema</a>
         </section>
       </main>
     );
   }
   return (
     <main className="auth-shell">
-      <section className="auth-brand-panel" aria-label="MBP Expert AI">
+      <section className="auth-brand-panel" aria-label={BRAND.name}>
         <div className="auth-brand-mark">
-          <div className="auth-shield" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 2.8 20 6v5.8c0 4.9-3.3 8-8 9.4-4.7-1.4-8-4.5-8-9.4V6l8-3.2Z" />
-              <path d="m8.2 12 2.3 2.3 5.4-5.4" />
-            </svg>
-          </div>
+          <LogoSymbol size={44} />
           <div>
-            <div className="auth-brand-name">MBP Expert AI</div>
-            <div className="auth-brand-caption">Segurança dos Alimentos</div>
+            <div className="auth-brand-name">{BRAND.name}</div>
+            <div className="auth-brand-caption">{BRAND.subtitle}</div>
           </div>
         </div>
 
@@ -51,15 +48,10 @@ export default async function AuthPage({ params }: { params: Promise<{ path: str
 
       <section className="auth-form-panel">
         <div className="auth-mobile-brand">
-          <div className="auth-shield" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 2.8 20 6v5.8c0 4.9-3.3 8-8 9.4-4.7-1.4-8-4.5-8-9.4V6l8-3.2Z" />
-              <path d="m8.2 12 2.3 2.3 5.4-5.4" />
-            </svg>
-          </div>
+          <LogoSymbol size={44} />
           <div>
-            <div className="auth-brand-name">MBP Expert AI</div>
-            <div className="auth-brand-caption">Segurança dos Alimentos</div>
+            <div className="auth-brand-name">{BRAND.name}</div>
+            <div className="auth-brand-caption">{BRAND.subtitle}</div>
           </div>
         </div>
 

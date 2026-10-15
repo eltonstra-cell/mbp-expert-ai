@@ -1,4 +1,4 @@
-# MBP Expert AI v2.45.5
+# Ponto Certo v2.45.5 (antes MBP Expert AI)
 
 ## Migração segura para o novo Neon
 

@@ -45,7 +45,7 @@ export default function OperationalFlowsFields({ fluxos, setores, onChange, aber
         {fluxos.map((fluxo, indice) => {
           const definicao = DEFINICOES_FLUXOS_OPERACIONAIS.find((item) => item.tipo === fluxo.tipo);
           return (
-            <div key={fluxo.id} className={`rounded-xl border p-3 ${fluxo.aplicavel ? "border-blue-300 bg-blue-50" : "border-slate-200 bg-white"}`}>
+            <div key={fluxo.id} className={`rounded-xl border p-3 ${fluxo.aplicavel ? "border-blue-300 bg-[var(--brand-soft)]" : "border-slate-200 bg-white"}`}>
               <label className="flex cursor-pointer gap-3">
                 <input
                   type="checkbox"

@@ -97,7 +97,7 @@ export default function ManualBaseFields({
   return (
     <div className={modo === "completo" ? "mt-6 space-y-4 border-t border-slate-200 pt-5" : "space-y-4"}>
       {modo === "completo" && <div>
-        <div className="text-xs font-extrabold uppercase tracking-wide text-[#2F5597]">Base do Manual de Boas Práticas</div>
+        <div className="text-xs font-extrabold uppercase tracking-wide text-[color:var(--brand)]">Base do Manual de Boas Práticas</div>
         <h3 className="mt-1 text-xl font-extrabold text-slate-950">Identificação, setores e responsabilidades</h3>
         <p className="mt-1 text-sm text-slate-500">Esses dados serão reutilizados no Manual, nas visitas e nos relatórios.</p>
       </div>}
@@ -108,7 +108,7 @@ export default function ManualBaseFields({
         </summary>
         <div className="mt-4 grid gap-2 md:grid-cols-2">
           {SETORES_OFICIAIS_MANUAL.map((setor) => (
-            <label key={setor} className={`flex cursor-pointer gap-3 rounded-xl border p-3 text-sm ${setores.includes(setor) ? "border-blue-300 bg-blue-50" : "border-slate-200 bg-white"}`}>
+            <label key={setor} className={`flex cursor-pointer gap-3 rounded-xl border p-3 text-sm ${setores.includes(setor) ? "border-blue-300 bg-[var(--brand-soft)]" : "border-slate-200 bg-white"}`}>
               <input type="checkbox" checked={setores.includes(setor)} onChange={() => toggleSetor(setor)} />
               <span className="font-bold">{setor}</span>
             </label>
@@ -117,13 +117,13 @@ export default function ManualBaseFields({
 
         {setores.filter((setor) => !SETORES_OFICIAIS_MANUAL.includes(setor as (typeof SETORES_OFICIAIS_MANUAL)[number])).length > 0 && (
           <div className="mt-4 space-y-2">
-            <div className="text-xs font-extrabold uppercase tracking-wide text-[#2F5597]">Ambientes com nomes próprios da empresa</div>
+            <div className="text-xs font-extrabold uppercase tracking-wide text-[color:var(--brand)]">Ambientes com nomes próprios da empresa</div>
             {setores
               .filter((setor) => !SETORES_OFICIAIS_MANUAL.includes(setor as (typeof SETORES_OFICIAIS_MANUAL)[number]))
               .map((setor) => (
                 <div key={setor} className="flex items-center justify-between gap-3 rounded-xl border border-blue-100 bg-white p-3 text-sm">
                   <span className="font-bold">{setor}</span>
-                  <button type="button" onClick={() => onSetoresChange(setores.filter((item) => item !== setor))} className="rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700">Remover</button>
+                  <button type="button" onClick={() => onSetoresChange(setores.filter((item) => item !== setor))} className="rounded-lg bg-[var(--nc-bg)] px-3 py-2 text-xs font-bold text-[color:var(--ink)]">Remover</button>
                 </div>
               ))}
           </div>
@@ -140,7 +140,7 @@ export default function ManualBaseFields({
               somenteVoz
             />
           </div>
-          <button type="button" onClick={adicionarAmbienteReal} className="rounded-xl bg-[#17365D] px-4 py-3 text-sm font-extrabold text-white">Adicionar ambiente</button>
+          <button type="button" onClick={adicionarAmbienteReal} className="rounded-xl bg-[var(--brand)] px-4 py-3 text-sm font-medium text-white">Adicionar ambiente</button>
         </div>
         <div className="mt-3 text-xs font-bold text-slate-500">{setores.length} setor(es) selecionado(s)</div>
       </details>}
@@ -152,7 +152,7 @@ export default function ManualBaseFields({
         <div className="mt-4 space-y-5">
           {(["Proprietário", "Consultor/RT"] as PapelResponsabilidadeManual[]).map((papel) => (
             <div key={papel}>
-              <div className="mb-2 text-sm font-extrabold text-[#17365D]">{papel}</div>
+              <div className="mb-2 text-sm font-extrabold text-[color:var(--ink)]">{papel}</div>
               <div className="space-y-2">
                 {responsabilidades.map((responsabilidade, indice) => responsabilidade.papel === papel && (
                   <div key={responsabilidade.id} className="flex gap-2 rounded-xl bg-white p-3">
@@ -166,7 +166,7 @@ export default function ManualBaseFields({
                         contexto={`Responsabilidade do papel ${papel} em um Manual de Boas Práticas. Preserve obrigações e fatos informados.`}
                       />
                     </div>
-                    <button type="button" aria-label="Excluir responsabilidade" onClick={() => onResponsabilidadesChange(responsabilidades.filter((_, atual) => atual !== indice))} className="self-start rounded-lg bg-red-50 px-2 py-1 text-xs font-bold text-red-700">Excluir</button>
+                    <button type="button" aria-label="Excluir responsabilidade" onClick={() => onResponsabilidadesChange(responsabilidades.filter((_, atual) => atual !== indice))} className="self-start rounded-lg bg-[var(--nc-bg)] px-2 py-1 text-xs font-bold text-[color:var(--ink)]">Excluir</button>
                   </div>
                 ))}
               </div>
@@ -178,7 +178,7 @@ export default function ManualBaseFields({
             <option>Proprietário</option>
             <option>Consultor/RT</option>
           </select>
-          <button type="button" onClick={adicionarResponsabilidade} className="rounded-xl bg-blue-50 px-4 py-2 text-sm font-extrabold text-[#2F5597]">+ Adicionar responsabilidade</button>
+          <button type="button" onClick={adicionarResponsabilidade} className="rounded-xl bg-[var(--brand-soft)] px-4 py-2 text-sm font-extrabold text-[color:var(--brand)]">+ Adicionar responsabilidade</button>
         </div>
       </details>}
 
@@ -195,19 +195,19 @@ export default function ManualBaseFields({
             <FieldVoiceTools fieldKey="novo-equipamento" value={nomeEquipamento} onChange={setNomeEquipamento} contexto="Nome curto de um equipamento ou móvel de estabelecimento de alimentos." somenteVoz />
           </div>
           <input type="number" min="1" value={quantidadeEquipamento} onChange={(event) => setQuantidadeEquipamento(event.target.value)} className="min-w-0 w-full rounded-xl border p-3 text-sm" aria-label="Quantidade" />
-          <button type="button" onClick={adicionarEquipamento} className="w-full rounded-xl bg-[#2F5597] px-4 py-3 text-sm font-extrabold text-white">Adicionar</button>
+          <button type="button" onClick={adicionarEquipamento} className="w-full rounded-xl bg-[var(--brand)] px-4 py-3 text-sm font-medium text-white">Adicionar</button>
         </div>
 
         <div className="mt-4 space-y-2">
           {equipamentos.map((equipamento, indice) => (
-            <div key={equipamento.id} className="min-w-0 rounded-xl border-2 border-blue-200 bg-blue-50/70 p-3">
+            <div key={equipamento.id} className="min-w-0 rounded-xl border-2 border-blue-200 bg-[var(--brand-soft)]/70 p-3">
               <div className="grid min-w-0 gap-2 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_90px_auto]">
                 <select value={equipamento.setor} onChange={(event) => onEquipamentosChange(equipamentos.map((item, atual) => atual === indice ? { ...item, setor: event.target.value } : item))} className="min-w-0 w-full rounded-lg border p-2 text-xs">
                   {setoresParaEquipamentos.map((setor) => <option key={setor}>{setor}</option>)}
                 </select>
                 <input value={equipamento.nome} onChange={(event) => onEquipamentosChange(equipamentos.map((item, atual) => atual === indice ? { ...item, nome: event.target.value } : item))} className="min-w-0 w-full rounded-lg border p-2 text-sm" />
                 <input type="number" min="1" value={equipamento.quantidade} onChange={(event) => onEquipamentosChange(equipamentos.map((item, atual) => atual === indice ? { ...item, quantidade: Math.max(1, Number(event.target.value) || 1) } : item))} className="min-w-0 w-full rounded-lg border p-2 text-sm" />
-                <button type="button" onClick={() => onEquipamentosChange(equipamentos.filter((_, atual) => atual !== indice))} className="rounded-lg bg-red-50 px-2 py-1 text-xs font-bold text-red-700">Excluir</button>
+                <button type="button" onClick={() => onEquipamentosChange(equipamentos.filter((_, atual) => atual !== indice))} className="rounded-lg bg-[var(--nc-bg)] px-2 py-1 text-xs font-bold text-[color:var(--ink)]">Excluir</button>
               </div>
 
               <div className="mt-2 rounded-xl bg-white/75 p-2">

@@ -101,30 +101,30 @@ export default function AccessPreparationPanel(props: Props) {
   return (
     <section className="space-y-4">
       <div className="rounded-2xl bg-white p-5 shadow-sm">
-        <div className="text-xs font-extrabold uppercase text-[#2F5597]">CORE-050 • v2.46</div>
+        <div className="text-xs font-extrabold uppercase text-[color:var(--brand)]">CORE-050 • v2.46</div>
         <h1 className="mt-1 text-2xl font-extrabold">Usuários e permissões</h1>
         <p className="mt-2 max-w-4xl text-sm text-slate-600">
           Prepare quem poderá entrar, o perfil de cada pessoa e as empresas autorizadas. Depois, envie o acesso para a pessoa definir a senha.
         </p>
         <div className="mt-5 grid gap-3 md:grid-cols-3">
-          <Status titulo="Diretório" valor="Preparado" classe="bg-emerald-50 text-emerald-900" />
+          <Status titulo="Diretório" valor="Preparado" classe="bg-[var(--ok-bg)] text-[color:var(--ink)]" />
           <Status
             titulo="Neon Auth"
             valor={readiness?.authConfigured ? "Configurado" : "Aguardando ativação"}
-            classe={readiness?.authConfigured ? "bg-emerald-50 text-emerald-900" : "bg-amber-50 text-amber-900"}
+            classe={readiness?.authConfigured ? "bg-[var(--ok-bg)] text-[color:var(--ink)]" : "bg-[var(--pend-bg)] text-[color:var(--ink)]"}
           />
           <Status
             titulo="Proteção de login"
             valor={readiness?.enforcementActive ? "Ativa" : "Modo preparação"}
-            classe={readiness?.enforcementActive ? "bg-emerald-50 text-emerald-900" : "bg-blue-50 text-blue-900"}
+            classe={readiness?.enforcementActive ? "bg-[var(--ok-bg)] text-[color:var(--ink)]" : "bg-[var(--brand-soft)] text-[color:var(--ink)]"}
           />
         </div>
         {readiness?.enforcementActive ? (
-          <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-950">
+          <div className="mt-4 rounded-xl border border-emerald-200 bg-[var(--ok-bg)] p-3 text-sm text-emerald-950">
             Proteção ativa: cada pessoa entra com seu próprio acesso e visualiza somente as empresas e funções autorizadas.
           </div>
         ) : (
-          <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-950">
+          <div className="mt-4 rounded-xl border border-blue-200 bg-[var(--brand-soft)] p-3 text-sm text-blue-950">
             A proteção será ativada após criar e testar o primeiro Administrador. Isso evita bloquear o sistema atual por engano.
           </div>
         )}
@@ -139,15 +139,15 @@ export default function AccessPreparationPanel(props: Props) {
           <button
             type="button"
             onClick={iniciarNovo}
-            className="inline-flex items-center justify-center rounded-xl px-4 py-3 font-extrabold shadow-sm"
-            style={{ backgroundColor: "#2F5597", border: "1px solid #244578", color: "#ffffff" }}
+            className="inline-flex items-center justify-center rounded-xl px-4 py-3 font-medium shadow-sm"
+            style={{ backgroundColor: "var(--brand)", color: "#ffffff" }}
           >
             + Preparar usuário
           </button>
         </div>
 
         {formulario && (
-          <div className="mt-5 rounded-2xl border border-blue-200 bg-blue-50 p-4">
+          <div className="mt-5 rounded-2xl border border-blue-200 bg-[var(--brand-soft)] p-4">
             <div className="grid gap-3 md:grid-cols-2">
               <Campo titulo="Nome"><input className="w-full rounded-xl border bg-white p-3" value={formulario.nome} onChange={(e) => setFormulario({ ...formulario, nome: e.target.value })} /></Campo>
               <Campo titulo="E-mail"><input type="email" className="w-full rounded-xl border bg-white p-3" value={formulario.email} onChange={(e) => setFormulario({ ...formulario, email: e.target.value })} /></Campo>
@@ -170,12 +170,12 @@ export default function AccessPreparationPanel(props: Props) {
               <button
                 type="button"
                 onClick={salvar}
-                className="inline-flex items-center justify-center rounded-xl px-4 py-3 font-extrabold shadow-sm"
-                style={{ backgroundColor: "#17365D", border: "1px solid #102844", color: "#ffffff" }}
+                className="inline-flex items-center justify-center rounded-xl px-4 py-3 font-medium shadow-sm"
+                style={{ backgroundColor: "var(--ok)", color: "#ffffff" }}
               >
                 Salvar preparação
               </button>
-              <button type="button" onClick={() => setFormulario(null)} className="rounded-xl bg-white px-4 py-3 font-bold">Cancelar</button>
+              <button type="button" onClick={() => setFormulario(null)} className="rounded-xl border-2 border-[var(--brand)] bg-white px-4 py-3 font-medium text-[color:var(--ink)]">Cancelar</button>
             </div>
           </div>
         )}
@@ -197,13 +197,13 @@ export default function AccessPreparationPanel(props: Props) {
                       type="button"
                       onClick={() => void enviarAcesso(usuario.id)}
                       disabled={Boolean(enviandoId)}
-                      className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800 disabled:cursor-wait disabled:opacity-60"
+                      className="rounded-lg bg-[var(--ok-bg)] px-3 py-2 text-xs font-bold text-[color:var(--ink)] disabled:cursor-wait disabled:opacity-60"
                     >
                       {enviandoId === usuario.id ? "Enviando..." : "Enviar acesso"}
                     </button>
                   )}
                   <button type="button" onClick={() => iniciarEdicao(usuario)} className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-bold">Editar</button>
-                  <button type="button" onClick={() => props.onAlterarStatus(usuario.id, usuario.status === "Suspenso" ? "Convidado" : "Suspenso")} className="rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700">{usuario.status === "Suspenso" ? "Restaurar" : "Suspender"}</button>
+                  <button type="button" onClick={() => props.onAlterarStatus(usuario.id, usuario.status === "Suspenso" ? "Convidado" : "Suspenso")} className="rounded-lg bg-[var(--nc-bg)] px-3 py-2 text-xs font-bold text-[color:var(--ink)]">{usuario.status === "Suspenso" ? "Restaurar" : "Suspender"}</button>
                 </div>
               </div>
             </article>

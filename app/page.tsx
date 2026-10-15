@@ -8,6 +8,8 @@ import OperationalFlowsFields from "@/components/OperationalFlowsFields";
 import QualityProgramsFields from "@/components/QualityProgramsFields";
 import PopsFields from "@/components/PopsFields";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
+import { BRAND } from "@/lib/brand";
+import { LogoHorizontal, LogoSymbol, LogoWordmark } from "@/components/BrandLogo";
 import { IaPermitidaContext, useIaPermitida } from "@/components/IaPermissionContext";
 import type {
   AppDB,
@@ -457,16 +459,16 @@ function criarChecklist(
 
 function situacaoPrazoNC(prazo?: string, status?: string) {
   if (status === "Resolvida") {
-    return { label: "Concluída", classe: "bg-emerald-100 text-emerald-800" };
+    return { label: "Concluída", classe: "bg-[var(--ok-bg)] text-[color:var(--ink)]" };
   }
 
   if (!prazo) {
-    return { label: "Sem prazo", classe: "bg-slate-100 text-slate-700" };
+    return { label: "Sem prazo", classe: "bg-[var(--na-bg)] text-[color:var(--ink)]" };
   }
 
   const partes = prazo.split("-").map(Number);
   if (partes.length !== 3 || partes.some((n) => !Number.isFinite(n))) {
-    return { label: "Sem prazo", classe: "bg-slate-100 text-slate-700" };
+    return { label: "Sem prazo", classe: "bg-[var(--na-bg)] text-[color:var(--ink)]" };
   }
 
   const [ano, mes, dia] = partes;
@@ -502,10 +504,10 @@ function situacaoPrazoNC(prazo?: string, status?: string) {
   }
 
   if (diffDias <= 3) {
-    return { label: "Vencendo", classe: "bg-amber-100 text-amber-900" };
+    return { label: "Vencendo", classe: "bg-[var(--pend-bg)] text-[color:var(--ink)]" };
   }
 
-  return { label: "Dentro do prazo", classe: "bg-blue-100 text-blue-800" };
+  return { label: "Dentro do prazo", classe: "bg-[var(--brand-soft)] text-[color:var(--ink)]" };
 }
 
 function chaveCriterio(item: {
@@ -2153,6 +2155,10 @@ export default function Home() {
   ).length;
   const respondidos = checklistAtual.filter((i) => i.status !== "Pendente").length;
   const totalChecklist = checklistAtual.length;
+  const conformesChecklist = checklistAtual.filter((i) => i.status === "Conforme").length;
+  const naoConformesChecklist = checklistAtual.filter((i) => i.status === "Não Conforme").length;
+  const naoSeAplicaChecklist = checklistAtual.filter((i) => i.status === "Não se aplica").length;
+  const pendentesChecklist = checklistAtual.filter((i) => i.status === "Pendente").length;
   const percentualChecklist = totalChecklist
     ? Math.round((respondidos / totalChecklist) * 100)
     : 0;
@@ -2574,7 +2580,7 @@ export default function Home() {
           pdf.setFontSize(8);
           pdf.setTextColor(23, 54, 93);
           pdf.text(
-            "MBP Expert AI • Relatório Técnico de Inspeção",
+            `${BRAND.name} • Relatório Técnico de Inspeção`,
             margemX,
             6.5
           );
@@ -3444,6 +3450,34 @@ export default function Home() {
     setFiltroChecklistRapido("Pendentes");
     setAmbienteChecklistAtivo(proxima.ambiente);
     setUltimoItemChecklistId(proxima.id);
+  }
+
+  function abrirEvidenciasDoItem(item: ChecklistItem, ncId?: string) {
+    if (!visitaAtual) return;
+    setEvidenciaDescricao("");
+    setEvidenciaAmbiente(item.ambiente);
+    setEvidenciaChecklistItemId(item.id);
+    setEvidenciaNcId(ncId || "");
+    setEvidenciaMsg("");
+    setView("evidencias");
+  }
+
+  // Depois de Conforme ou Não se aplica: rola até o próximo item pendente do ambiente.
+  function rolarParaProximaPendenciaDoAmbiente(itemIdAtual: string) {
+    if (!visitaAtual) return;
+    const itens = (visitaAtual.checklist || []).filter((item) => item.ambiente === ambienteChecklistAtivo);
+    const indiceAtual = itens.findIndex((item) => item.id === itemIdAtual);
+    if (indiceAtual < 0) return;
+    const pendentes = itens.filter((item) => item.id !== itemIdAtual && item.status === "Pendente");
+    const proximo =
+      pendentes.find((item) => itens.indexOf(item) > indiceAtual) || pendentes[0];
+    if (!proximo) return;
+    setUltimoItemChecklistId(proximo.id);
+    window.setTimeout(() => {
+      document
+        .getElementById(`checklist-item-${proximo.id}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 180);
   }
 
   function rolarParaProximoItem(itemIdAtual: string) {
@@ -4621,9 +4655,9 @@ export default function Home() {
     (!usuarioDaSessao || usuarioDaSessao.status !== "Ativo")
   ) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f4f7fb] p-4">
+      <div className="flex min-h-screen items-center justify-center bg-[var(--bg)] p-4">
         <div className="w-full max-w-lg rounded-2xl bg-white p-6 text-center shadow-sm">
-          <div className="text-xs font-extrabold uppercase text-[#2F5597]">
+          <div className="text-xs font-extrabold uppercase text-[color:var(--brand)]">
             Acesso não liberado
           </div>
           <h1 className="mt-2 text-2xl font-extrabold">Esta conta não pode entrar no sistema</h1>
@@ -4633,7 +4667,7 @@ export default function Home() {
           <button
             type="button"
             onClick={() => void sairDoSistema()}
-            className="mt-5 rounded-xl bg-[#17365D] px-5 py-3 font-extrabold text-white"
+            className="mt-5 rounded-xl bg-[var(--brand)] px-5 py-3 font-medium text-white"
           >
             Voltar ao login
           </button>
@@ -4644,28 +4678,17 @@ export default function Home() {
 
   return (
     <IaPermitidaContext.Provider value={deveExibirRecursosDeIa(usuarioDaSessao)}>
-    <div className="min-h-screen bg-[#f6f7fb]">
-      <aside className="fixed inset-y-0 left-0 z-50 hidden w-64 flex-col bg-[#061b4f] text-white shadow-[18px_0_50px_rgba(6,27,79,0.10)] md:flex">
-        <div className="border-b border-white/10 px-5 py-6">
-          <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-2xl bg-[#2856e8] shadow-[0_10px_30px_rgba(40,86,232,0.35)]">
-              <svg aria-hidden="true" viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2.8 20 6v5.8c0 4.9-3.3 8-8 9.4-4.7-1.4-8-4.5-8-9.4V6l8-3.2Z" />
-                <path d="m8.2 12 2.3 2.3 5.4-5.4" />
-              </svg>
-            </div>
-            <div>
-              <div className="text-lg font-extrabold tracking-tight">MBP Expert AI</div>
-              <div className="text-[11px] text-blue-200">Segurança dos Alimentos</div>
-            </div>
-          </div>
+    <div className="min-h-screen bg-[var(--bg)]">
+      <aside className="fixed inset-y-0 left-0 z-50 hidden w-64 flex-col border-r border-[var(--border)] bg-white text-[color:var(--ink)] md:flex">
+        <div className="border-b border-[var(--border)] px-5 py-6">
+          <LogoHorizontal size={40} showSubtitle textClassName="text-xl" />
         </div>
 
         {usuarioDaSessao && (
-          <div className="mx-4 mt-4 rounded-2xl border border-white/10 bg-white/[0.07] p-3.5">
-            <div className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-blue-200">Empresa ativa</div>
-            <div className="mt-1 truncate text-sm font-semibold">{atual?.nomeFantasia || "Selecione uma empresa"}</div>
-            <div className="mt-1 truncate text-[10px] text-blue-100/80">{usuarioDaSessao.nome} • {usuarioDaSessao.perfil}</div>
+          <div className="mx-4 mt-4 rounded-2xl bg-[var(--brand-soft)] p-3.5">
+            <div className="text-[9px] font-semibold uppercase tracking-[0.16em] text-[color:var(--brand)]">Empresa ativa</div>
+            <div className="mt-1 truncate text-sm font-semibold text-[color:var(--ink)]">{atual?.nomeFantasia || "Selecione uma empresa"}</div>
+            <div className="mt-1 truncate text-[10px] text-[color:var(--ink-2)]">{usuarioDaSessao.nome} • {usuarioDaSessao.perfil}</div>
           </div>
         )}
 
@@ -4686,9 +4709,9 @@ export default function Home() {
                   navegarPrincipal(destino);
                   setMenuContextualAberto(destino !== "acessos");
                 }}
-                className={`flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-left text-sm font-medium transition ${ativo ? "bg-white text-[#061b4f] shadow-lg" : "text-blue-100 hover:bg-white/10 hover:text-white"}`}
+                className={`flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-left text-sm font-medium text-[color:var(--ink)] transition ${ativo ? "bg-[var(--brand-soft)]" : "hover:bg-[var(--bg)]"}`}
               >
-                <span className={`grid h-8 w-8 place-items-center rounded-lg ${ativo ? "bg-[#e9efff] text-[#164ee8]" : "bg-white/10"}`}>
+                <span className={`grid h-8 w-8 place-items-center rounded-lg ${ativo ? "bg-white text-[color:var(--brand)]" : "bg-[var(--bg)] text-[color:var(--ink-2)]"}`}>
                   <MobileNavIcon name={destino} />
                 </span>
                 <span>{rotulo}</span>
@@ -4698,12 +4721,12 @@ export default function Home() {
           })}
         </nav>
 
-        <div className="space-y-3 border-t border-white/10 p-4">
-          <button type="button" onClick={() => void atualizarNuvemManualmente()} className="flex w-full items-center gap-2 rounded-xl bg-white/[0.07] px-3 py-2.5 text-left text-xs font-medium text-blue-100">
-            <span className={`h-2 w-2 rounded-full ${syncStatus === "sincronizado" ? "bg-emerald-400" : syncStatus === "erro" ? "bg-red-400" : "bg-amber-300"}`} />
+        <div className="space-y-3 border-t border-[var(--border)] p-4">
+          <button type="button" onClick={() => void atualizarNuvemManualmente()} className={`flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-xs font-medium text-[color:var(--ink)] ${syncStatus === "sincronizado" ? "bg-[var(--ok-bg)]" : syncStatus === "erro" ? "bg-[var(--nc-bg)]" : "bg-[var(--pend-bg)]"}`}>
+            <span className={`h-2 w-2 rounded-full ${syncStatus === "sincronizado" ? "bg-[var(--ok)]" : syncStatus === "erro" ? "bg-[var(--nc)]" : "bg-[var(--pend)]"}`} />
             {syncStatus === "sincronizado" ? "Dados sincronizados" : syncStatus === "conectando" ? "Sincronizando dados" : "Verificar sincronização"}
           </button>
-          <button type="button" onClick={() => void sairDoSistema()} disabled={saindo} className="w-full rounded-xl px-3 py-2 text-left text-xs font-medium text-blue-200 transition hover:bg-white/10 hover:text-white disabled:opacity-60">
+          <button type="button" onClick={() => void sairDoSistema()} disabled={saindo} className="w-full rounded-xl px-3 py-2 text-left text-xs font-medium text-[color:var(--ink-2)] transition hover:bg-[var(--bg)] disabled:opacity-60">
             Sair do sistema
           </button>
         </div>
@@ -4714,8 +4737,8 @@ export default function Home() {
         <aside className="fixed inset-y-0 left-64 z-40 hidden w-72 overflow-y-auto border-r border-slate-200 bg-white text-slate-700 shadow-[18px_0_45px_rgba(15,23,42,0.12)] md:block">
           <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white/95 px-5 py-5 backdrop-blur">
             <div>
-              <div className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#164ee8]">Navegação</div>
-              <div className="mt-1 text-xl font-semibold text-[#061b4f]">
+              <div className="text-[10px] font-bold uppercase tracking-[0.15em] text-[color:var(--brand)]">Navegação</div>
+              <div className="mt-1 text-xl font-semibold text-[color:var(--ink)]">
                 {view === "inicio" || view === "ajuda" ? "Início" : view === "empresas" ? "Empresas" : "Visitas"}
               </div>
             </div>
@@ -4725,10 +4748,10 @@ export default function Home() {
           <div className="space-y-1 p-4" onClick={(event) => { if ((event.target as HTMLElement).closest("button")) setMenuContextualAberto(false); }}>
             {(view === "inicio" || view === "ajuda") && (
               <>
-                <button type="button" onClick={() => setView("inicio")} className="flex w-full items-center gap-3 rounded-xl bg-[#e9efff] px-4 py-3 text-left font-semibold text-[#164ee8]"><span>⌂</span><span>Visão geral</span></button>
+                <button type="button" onClick={() => setView("inicio")} className="flex w-full items-center gap-3 rounded-xl bg-[var(--brand-soft)] px-4 py-3 text-left font-semibold text-[color:var(--ink)]"><span>⌂</span><span>Visão geral</span></button>
                 {visitaEmAndamentoDestaque && <button type="button" onClick={() => continuar(visitaEmAndamentoDestaque.id, true)} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm hover:bg-slate-50"><span>→</span><span>Continuar inspeção</span></button>}
                 <button type="button" onClick={() => setView("visitas")} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm hover:bg-slate-50"><span>▣</span><span>Todas as visitas</span></button>
-                <button type="button" onClick={abrirAjudaRapida} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm ${view === "ajuda" ? "bg-[#e9efff] font-semibold text-[#164ee8]" : "hover:bg-slate-50"}`}><span>?</span><span>Ajuda e guias</span></button>
+                <button type="button" onClick={abrirAjudaRapida} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm ${view === "ajuda" ? "bg-[var(--brand-soft)] font-semibold text-[color:var(--ink)]" : "hover:bg-slate-50"}`}><span>?</span><span>Ajuda e guias</span></button>
 
                 <div className="px-4 pb-1 pt-5 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Atalhos de campo</div>
                 <button type="button" onClick={() => abrirAtalhoDaVisita("checklist")} className="pc-home-shortcut"><span>✓</span><span>Checklist</span></button>
@@ -4742,12 +4765,12 @@ export default function Home() {
 
             {view === "empresas" && (
               <>
-                <button type="button" onClick={() => { setShowEmpresaForm(false); setEditingEmpresaId(null); setEmpresaSecao(null); }} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm ${!showEmpresaForm ? "bg-[#e9efff] font-semibold text-[#164ee8]" : "hover:bg-slate-50"}`}><span>▤</span><span>Lista de empresas</span></button>
+                <button type="button" onClick={() => { setShowEmpresaForm(false); setEditingEmpresaId(null); setEmpresaSecao(null); }} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm ${!showEmpresaForm ? "bg-[var(--brand-soft)] font-semibold text-[color:var(--ink)]" : "hover:bg-slate-50"}`}><span>▤</span><span>Lista de empresas</span></button>
                 {atual && permitido("empresas.editar", atual.id) && (
                   <>
                     <div className="px-4 pb-1 pt-5 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Empresa ativa</div>
-                    <button type="button" onClick={() => editarEmpresa(atual)} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm ${showEmpresaForm && empresaSecao === null ? "bg-[#e9efff] font-semibold text-[#164ee8]" : "hover:bg-slate-50"}`}><span>◎</span><span>Central da Empresa</span></button>
-                    {([ ["dados", "Dados da empresa"], ["manual", "Manual e responsabilidades"], ["ambientes", "Ambientes e equipamentos"], ["fluxos", "Fluxos operacionais"], ["programas", "Programas de Controle"], ["pops", "POPs e documentos"] ] as const).map(([secao, rotulo]) => <button key={secao} type="button" onClick={() => abrirSecaoEmpresaPeloMenu(secao)} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm ${showEmpresaForm && empresaSecao === secao ? "bg-[#e9efff] font-semibold text-[#164ee8]" : "hover:bg-slate-50"}`}><span className="text-slate-400">›</span><span>{rotulo}</span></button>)}
+                    <button type="button" onClick={() => editarEmpresa(atual)} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm ${showEmpresaForm && empresaSecao === null ? "bg-[var(--brand-soft)] font-semibold text-[color:var(--ink)]" : "hover:bg-slate-50"}`}><span>◎</span><span>Central da Empresa</span></button>
+                    {([ ["dados", "Dados da empresa"], ["manual", "Manual e responsabilidades"], ["ambientes", "Ambientes e equipamentos"], ["fluxos", "Fluxos operacionais"], ["programas", "Programas de Controle"], ["pops", "POPs e documentos"] ] as const).map(([secao, rotulo]) => <button key={secao} type="button" onClick={() => abrirSecaoEmpresaPeloMenu(secao)} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm ${showEmpresaForm && empresaSecao === secao ? "bg-[var(--brand-soft)] font-semibold text-[color:var(--ink)]" : "hover:bg-slate-50"}`}><span className="text-slate-400">›</span><span>{rotulo}</span></button>)}
                   </>
                 )}
               </>
@@ -4755,12 +4778,12 @@ export default function Home() {
 
             {(view === "visitas" || VISIT_VIEWS.includes(view)) && (
               <>
-                <button type="button" onClick={() => setView("visitas")} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm ${view === "visitas" ? "bg-[#e9efff] font-semibold text-[#164ee8]" : "hover:bg-slate-50"}`}><span>▤</span><span>Todas as visitas</span></button>
+                <button type="button" onClick={() => setView("visitas")} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm ${view === "visitas" ? "bg-[var(--brand-soft)] font-semibold text-[color:var(--ink)]" : "hover:bg-slate-50"}`}><span>▤</span><span>Todas as visitas</span></button>
                 {atual && permitido("visitas.criar", atual.id) && <button type="button" onClick={novaVisita} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm hover:bg-slate-50"><span>＋</span><span>Nova visita</span></button>}
                 {visitaAtual && (
                   <>
                     <div className="px-4 pb-1 pt-5 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Visita selecionada</div>
-                    {([ ["visita", "Central da Visita"], ["ambientes", "Ambientes"], ["checklist", "Checklist"], ["evidencias", "Evidências"], ["ncs", "Não conformidades"], ["plano", "Plano de ação"], ["acompanhamento", "Acompanhamento"], ["relatorio", "Relatório"] ] as const).map(([destino, rotulo]) => <button key={destino} type="button" onClick={() => destino === "ambientes" ? abrirAmbientes() : destino === "checklist" ? abrirChecklist() : destino === "evidencias" ? abrirEvidencias() : setView(destino)} disabled={(destino === "ncs" || destino === "plano" || destino === "acompanhamento") && !permitido("ncs.acompanhar", visitaAtual.empresaId)} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm disabled:opacity-40 ${view === destino ? "bg-[#e9efff] font-semibold text-[#164ee8]" : "hover:bg-slate-50"}`}><span className="text-slate-400">›</span><span>{rotulo}</span></button>)}
+                    {([ ["visita", "Central da Visita"], ["ambientes", "Ambientes"], ["checklist", "Checklist"], ["evidencias", "Evidências"], ["ncs", "Não conformidades"], ["plano", "Plano de ação"], ["acompanhamento", "Acompanhamento"], ["relatorio", "Relatório"] ] as const).map(([destino, rotulo]) => <button key={destino} type="button" onClick={() => destino === "ambientes" ? abrirAmbientes() : destino === "checklist" ? abrirChecklist() : destino === "evidencias" ? abrirEvidencias() : setView(destino)} disabled={(destino === "ncs" || destino === "plano" || destino === "acompanhamento") && !permitido("ncs.acompanhar", visitaAtual.empresaId)} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm disabled:opacity-40 ${view === destino ? "bg-[var(--brand-soft)] font-semibold text-[color:var(--ink)]" : "hover:bg-slate-50"}`}><span className="text-slate-400">›</span><span>{rotulo}</span></button>)}
                   </>
                 )}
               </>
@@ -4782,8 +4805,8 @@ export default function Home() {
               <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-slate-200" />
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#164ee8]">Navegação</div>
-                  <div className="mt-0.5 text-lg font-semibold text-[#061b4f]">
+                  <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[color:var(--brand)]">Navegação</div>
+                  <div className="mt-0.5 text-lg font-semibold text-[color:var(--ink)]">
                     {view === "inicio" || view === "ajuda" ? "Início" : view === "empresas" ? "Empresas" : "Visitas"}
                   </div>
                 </div>
@@ -4794,22 +4817,22 @@ export default function Home() {
             <div className="space-y-1 p-3 pb-5" onClick={(event) => { if ((event.target as HTMLElement).closest("button")) setMenuContextualAberto(false); }}>
               {(view === "inicio" || view === "ajuda") && (
                 <>
-                  <button type="button" onClick={() => setView("inicio")} className="flex w-full items-center gap-3 rounded-xl bg-[#e9efff] px-4 py-3 text-left text-sm font-semibold text-[#164ee8]"><span>⌂</span><span>Visão geral</span></button>
+                  <button type="button" onClick={() => setView("inicio")} className="flex w-full items-center gap-3 rounded-xl bg-[var(--brand-soft)] px-4 py-3 text-left text-sm font-semibold text-[color:var(--ink)]"><span>⌂</span><span>Visão geral</span></button>
                   {visitaEmAndamentoDestaque && <button type="button" onClick={() => continuar(visitaEmAndamentoDestaque.id, true)} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm hover:bg-slate-50"><span>→</span><span>Continuar inspeção</span></button>}
                   <button type="button" onClick={() => setView("visitas")} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm hover:bg-slate-50"><span>▣</span><span>Todas as visitas</span></button>
-                  <button type="button" onClick={abrirAjudaRapida} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm ${view === "ajuda" ? "bg-[#e9efff] font-semibold text-[#164ee8]" : "hover:bg-slate-50"}`}><span>?</span><span>Ajuda e guias</span></button>
+                  <button type="button" onClick={abrirAjudaRapida} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm ${view === "ajuda" ? "bg-[var(--brand-soft)] font-semibold text-[color:var(--ink)]" : "hover:bg-slate-50"}`}><span>?</span><span>Ajuda e guias</span></button>
                   <button type="button" onClick={() => setView("empresas")} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm hover:bg-slate-50"><span>□</span><span>Empresas</span></button>
                 </>
               )}
 
               {view === "empresas" && (
                 <>
-                  <button type="button" onClick={() => { setShowEmpresaForm(false); setEditingEmpresaId(null); setEmpresaSecao(null); }} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm ${!showEmpresaForm ? "bg-[#e9efff] font-semibold text-[#164ee8]" : "hover:bg-slate-50"}`}><span>▤</span><span>Lista de empresas</span></button>
+                  <button type="button" onClick={() => { setShowEmpresaForm(false); setEditingEmpresaId(null); setEmpresaSecao(null); }} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm ${!showEmpresaForm ? "bg-[var(--brand-soft)] font-semibold text-[color:var(--ink)]" : "hover:bg-slate-50"}`}><span>▤</span><span>Lista de empresas</span></button>
                   {atual && permitido("empresas.editar", atual.id) && (
                     <>
                       <div className="px-4 pb-1 pt-4 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Empresa ativa</div>
-                      <button type="button" onClick={() => editarEmpresa(atual)} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm ${showEmpresaForm && empresaSecao === null ? "bg-[#e9efff] font-semibold text-[#164ee8]" : "hover:bg-slate-50"}`}><span>◎</span><span>Central da Empresa</span></button>
-                      {([ ["dados", "Dados da empresa"], ["manual", "Manual e responsabilidades"], ["ambientes", "Ambientes e equipamentos"], ["fluxos", "Fluxos operacionais"], ["programas", "Programas de Controle"], ["pops", "POPs e documentos"] ] as const).map(([secao, rotulo]) => <button key={secao} type="button" onClick={() => abrirSecaoEmpresaPeloMenu(secao)} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm ${showEmpresaForm && empresaSecao === secao ? "bg-[#e9efff] font-semibold text-[#164ee8]" : "hover:bg-slate-50"}`}><span className="text-slate-400">›</span><span>{rotulo}</span></button>)}
+                      <button type="button" onClick={() => editarEmpresa(atual)} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm ${showEmpresaForm && empresaSecao === null ? "bg-[var(--brand-soft)] font-semibold text-[color:var(--ink)]" : "hover:bg-slate-50"}`}><span>◎</span><span>Central da Empresa</span></button>
+                      {([ ["dados", "Dados da empresa"], ["manual", "Manual e responsabilidades"], ["ambientes", "Ambientes e equipamentos"], ["fluxos", "Fluxos operacionais"], ["programas", "Programas de Controle"], ["pops", "POPs e documentos"] ] as const).map(([secao, rotulo]) => <button key={secao} type="button" onClick={() => abrirSecaoEmpresaPeloMenu(secao)} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm ${showEmpresaForm && empresaSecao === secao ? "bg-[var(--brand-soft)] font-semibold text-[color:var(--ink)]" : "hover:bg-slate-50"}`}><span className="text-slate-400">›</span><span>{rotulo}</span></button>)}
                     </>
                   )}
                 </>
@@ -4817,12 +4840,12 @@ export default function Home() {
 
               {(view === "visitas" || VISIT_VIEWS.includes(view)) && (
                 <>
-                  <button type="button" onClick={() => setView("visitas")} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm ${view === "visitas" ? "bg-[#e9efff] font-semibold text-[#164ee8]" : "hover:bg-slate-50"}`}><span>▤</span><span>Todas as visitas</span></button>
+                  <button type="button" onClick={() => setView("visitas")} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm ${view === "visitas" ? "bg-[var(--brand-soft)] font-semibold text-[color:var(--ink)]" : "hover:bg-slate-50"}`}><span>▤</span><span>Todas as visitas</span></button>
                   {atual && permitido("visitas.criar", atual.id) && <button type="button" onClick={novaVisita} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm hover:bg-slate-50"><span>＋</span><span>Nova visita</span></button>}
                   {visitaAtual && (
                     <>
                       <div className="px-4 pb-1 pt-4 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Visita selecionada</div>
-                      {([ ["visita", "Central da Visita"], ["ambientes", "Ambientes"], ["checklist", "Checklist"], ["evidencias", "Evidências"], ["ncs", "Não conformidades"], ["plano", "Plano de ação"], ["acompanhamento", "Acompanhamento"], ["relatorio", "Relatório"] ] as const).map(([destino, rotulo]) => <button key={destino} type="button" onClick={() => destino === "ambientes" ? abrirAmbientes() : destino === "checklist" ? abrirChecklist() : destino === "evidencias" ? abrirEvidencias() : setView(destino)} disabled={(destino === "ncs" || destino === "plano" || destino === "acompanhamento") && !permitido("ncs.acompanhar", visitaAtual.empresaId)} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm disabled:opacity-40 ${view === destino ? "bg-[#e9efff] font-semibold text-[#164ee8]" : "hover:bg-slate-50"}`}><span className="text-slate-400">›</span><span>{rotulo}</span></button>)}
+                      {([ ["visita", "Central da Visita"], ["ambientes", "Ambientes"], ["checklist", "Checklist"], ["evidencias", "Evidências"], ["ncs", "Não conformidades"], ["plano", "Plano de ação"], ["acompanhamento", "Acompanhamento"], ["relatorio", "Relatório"] ] as const).map(([destino, rotulo]) => <button key={destino} type="button" onClick={() => destino === "ambientes" ? abrirAmbientes() : destino === "checklist" ? abrirChecklist() : destino === "evidencias" ? abrirEvidencias() : setView(destino)} disabled={(destino === "ncs" || destino === "plano" || destino === "acompanhamento") && !permitido("ncs.acompanhar", visitaAtual.empresaId)} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm disabled:opacity-40 ${view === destino ? "bg-[var(--brand-soft)] font-semibold text-[color:var(--ink)]" : "hover:bg-slate-50"}`}><span className="text-slate-400">›</span><span>{rotulo}</span></button>)}
                     </>
                   )}
                 </>
@@ -4832,19 +4855,14 @@ export default function Home() {
         </div>
       )}
 
-      <header className="mobile-app-header relative overflow-hidden bg-gradient-to-r from-[#061b4f] to-[#164ee8] text-white md:hidden">
+      <header className="mobile-app-header relative overflow-hidden border-b border-[var(--border)] bg-white text-[color:var(--ink)] md:hidden">
         <div className="relative mx-auto max-w-7xl px-3 py-2">
           <div className="flex items-center justify-between gap-2">
             <div className="flex min-w-0 items-center gap-2.5">
-              <div className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-white/25 bg-white/10">
-                <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 2.8 20 6v5.8c0 4.9-3.3 8-8 9.4-4.7-1.4-8-4.5-8-9.4V6l8-3.2Z" />
-                  <path d="m8.2 12 2.3 2.3 5.4-5.4" />
-                </svg>
-              </div>
+              <LogoSymbol size={30} />
               <div className="min-w-0">
-                <div className="whitespace-nowrap text-sm font-semibold tracking-tight sm:text-base">MBP Expert AI</div>
-                <div className="hidden whitespace-nowrap text-[9px] text-blue-100 sm:block sm:text-[11px]">Segurança dos Alimentos</div>
+                <LogoWordmark className="whitespace-nowrap text-base" />
+                <div className="hidden whitespace-nowrap text-[9px] text-[color:var(--ink-2)] sm:block sm:text-[11px]">{BRAND.subtitle}</div>
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-1.5">
@@ -4853,18 +4871,18 @@ export default function Home() {
               onClick={() => void atualizarNuvemManualmente()}
               className={`rounded-full px-2.5 py-1.5 text-[11px] font-semibold sm:px-3 sm:text-xs ${
                 syncStatus === "sincronizado"
-                  ? "bg-emerald-100 text-emerald-800"
+                  ? "bg-[var(--ok-bg)] text-[color:var(--ink)]"
                   : syncStatus === "conectando"
-                  ? "bg-blue-100 text-blue-800"
+                  ? "bg-[var(--brand-soft)] text-[color:var(--ink)]"
                   : syncStatus === "local"
-                  ? "bg-amber-100 text-amber-800"
+                  ? "bg-[var(--pend-bg)] text-[color:var(--ink)]"
                   : syncStatus === "recuperacao"
-                  ? "bg-amber-100 text-amber-900"
+                  ? "bg-[var(--pend-bg)] text-[color:var(--ink)]"
                   : syncErroVisivel && !estaOnline
-                  ? "bg-amber-100 text-amber-800"
+                  ? "bg-[var(--pend-bg)] text-[color:var(--ink)]"
                   : syncErroVisivel
-                  ? "bg-red-100 text-red-800"
-                  : "bg-blue-100 text-blue-800"
+                  ? "bg-[var(--nc-bg)] text-[color:var(--ink)]"
+                  : "bg-[var(--brand-soft)] text-[color:var(--ink)]"
               }`}
               title={
                 syncAtualizadoEm
@@ -4891,7 +4909,7 @@ export default function Home() {
                 onClick={() => setMenuMaisAberto(true)}
                 aria-label="Mais opções"
                 title="Mais opções"
-                className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-white/15 bg-white/10 text-lg font-bold leading-none text-white"
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-[var(--border)] bg-white text-lg font-bold leading-none text-[color:var(--ink)]"
               >
                 <span aria-hidden="true" className="-mt-1">•••</span>
               </button>
@@ -4899,14 +4917,14 @@ export default function Home() {
           </div>
 
           {usuarioDaSessao && (
-            <div className="mt-1.5 flex min-w-0 items-center justify-between gap-3 border-t border-white/15 pt-1.5">
+            <div className="mt-1.5 flex min-w-0 items-center justify-between gap-3 border-t border-[var(--border)] pt-1.5">
               <div className="flex min-w-0 items-center gap-2.5">
-                <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[#4874bd] text-[9px] font-semibold text-white">
+                <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[var(--brand)] text-[9px] font-medium text-white">
                   {usuarioDaSessao.nome.split(" ").filter(Boolean).slice(0, 2).map((parte) => parte[0]).join("").toUpperCase()}
                 </div>
                 <div className="min-w-0">
                   <div className="truncate text-xs font-semibold sm:text-sm">{nomeEmFormatoNatural(atual?.nomeFantasia) || "Selecione uma empresa"}</div>
-                  <div className="hidden truncate text-[9px] text-blue-100 sm:block sm:text-[10px]">{usuarioDaSessao.nome} • {usuarioDaSessao.perfil}</div>
+                  <div className="hidden truncate text-[9px] text-[color:var(--ink-2)] sm:block sm:text-[10px]">{usuarioDaSessao.nome} • {usuarioDaSessao.perfil}</div>
                 </div>
               </div>
               <button
@@ -4915,7 +4933,7 @@ export default function Home() {
                 disabled={saindo}
                 aria-label="Sair"
                 title="Sair"
-                className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-white/20 bg-white/10 text-white disabled:opacity-60"
+                className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-[var(--border)] bg-white text-[color:var(--ink)] disabled:opacity-60"
               >
                 <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M10 17l5-5-5-5" />
@@ -4973,7 +4991,7 @@ export default function Home() {
               <button
                 type="button"
                 className="mbp-more-item"
-                onClick={() => window.alert("MBP Expert AI\nSegurança dos Alimentos")}
+                onClick={() => window.alert(`${BRAND.name}\n${BRAND.subtitle}`)}
               >
                 <span className="mbp-more-icon" aria-hidden="true">i</span>
                 <strong>Sobre</strong>
@@ -5060,7 +5078,7 @@ export default function Home() {
               <button type="button" onClick={abrirPopsPeloAtalho} className="mbp-shortcuts-footer-item">
                 <span>▤</span><strong>POPs</strong>
               </button>
-              <button type="button" onClick={() => window.alert("MBP Expert AI\nSegurança dos Alimentos")} className="mbp-shortcuts-footer-item">
+              <button type="button" onClick={() => window.alert(`${BRAND.name}\n${BRAND.subtitle}`)} className="mbp-shortcuts-footer-item">
                 <span>ⓘ</span><strong>Sobre</strong>
               </button>
               <button type="button" disabled={saindo} onClick={() => { setMenuAtalhosAberto(false); void sairDoSistema(); }} className="mbp-shortcuts-footer-item is-danger">
@@ -5122,7 +5140,7 @@ export default function Home() {
       )}
 
       {recuperacaoPendente && (
-        <div className="border-b border-amber-300 bg-amber-50 md:ml-64">
+        <div className="border-b border-amber-300 bg-[var(--pend-bg)] md:ml-64">
           <div className="mx-auto max-w-7xl px-4 py-4 text-amber-950">
             <div className="font-extrabold">
               Encontramos registros neste computador que não estão na nuvem.
@@ -5146,7 +5164,7 @@ export default function Home() {
       )}
 
       {protecaoLocalAtiva && !recuperacaoPendente && (
-        <div className={`border-b md:ml-64 ${estaOnline ? "border-red-200 bg-red-50" : "border-blue-200 bg-blue-50"}`}>
+        <div className={`border-b md:ml-64 ${estaOnline ? "border-red-200 bg-[var(--nc-bg)]" : "border-blue-200 bg-[var(--brand-soft)]"}`}>
           <div className={`mx-auto max-w-7xl px-4 py-3 ${estaOnline ? "text-red-950" : "text-blue-950"}`}>
             <div className="font-extrabold">
               {estaOnline ? "A nuvem não respondeu. Seus dados foram preservados." : "Modo offline ativo"}
@@ -5166,7 +5184,7 @@ export default function Home() {
       )}
 
       {armazenamentoLocalIndisponivel && (
-        <div className="border-b border-amber-300 bg-amber-50 md:ml-64">
+        <div className="border-b border-amber-300 bg-[var(--pend-bg)] md:ml-64">
           <div className="mx-auto max-w-7xl px-4 py-3 text-amber-950">
             <div className="font-extrabold">
               O armazenamento local deste aparelho está cheio ou indisponível.
@@ -5184,7 +5202,7 @@ export default function Home() {
             onClick={() => navegarPrincipal("inicio")}
             className={`rounded-xl px-4 py-2 font-bold ${
               view === "inicio"
-                ? "bg-[#17365D] text-white"
+                ? "bg-[var(--brand-soft)] text-[color:var(--ink)]"
                 : "bg-slate-200 text-slate-900"
             }`}
           >
@@ -5194,7 +5212,7 @@ export default function Home() {
             onClick={() => navegarPrincipal("empresas")}
             className={`rounded-xl px-4 py-2 font-bold ${
               view === "empresas"
-                ? "bg-[#17365D] text-white"
+                ? "bg-[var(--brand-soft)] text-[color:var(--ink)]"
                 : "bg-slate-200 text-slate-900"
             }`}
           >
@@ -5213,7 +5231,7 @@ export default function Home() {
               view === "historico" ||
               view === "evidencias" ||
               view === "relatorio"
-                ? "bg-[#17365D] text-white"
+                ? "bg-[var(--brand-soft)] text-[color:var(--ink)]"
                 : "bg-slate-200 text-slate-900"
             }`}
           >
@@ -5224,7 +5242,7 @@ export default function Home() {
               onClick={() => navegarPrincipal("acessos")}
               className={`rounded-xl px-4 py-2 font-bold ${
                 view === "acessos"
-                  ? "bg-[#17365D] text-white"
+                  ? "bg-[var(--brand-soft)] text-[color:var(--ink)]"
                   : "bg-slate-200 text-slate-900"
               }`}
             >
@@ -5246,7 +5264,7 @@ export default function Home() {
           <section className="rounded-2xl bg-white p-5 shadow-sm">
             <div className="flex justify-between gap-4">
               <div>
-                <div className="text-xs font-extrabold uppercase tracking-wide text-[#2F5597]">
+                <div className="text-xs font-extrabold uppercase tracking-wide text-[color:var(--brand)]">
                   {editingEmpresaId ? "Gestão da empresa" : "Cadastro"}
                 </div>
                 <h2 className="mt-1 text-2xl font-extrabold">
@@ -5300,15 +5318,15 @@ export default function Home() {
             {editingEmpresaId && empresaSecao === null ? (
               <div className="mt-5">
                 {msg && (
-                  <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-bold text-emerald-800">
+                  <div className="mb-4 rounded-xl border border-emerald-200 bg-[var(--ok-bg)] p-3 text-sm font-bold text-[color:var(--ink)]">
                     {msg}
                   </div>
                 )}
 
-                <div className="mb-4 rounded-2xl border border-blue-100 bg-blue-50/70 p-4">
+                <div className="mb-4 rounded-2xl border border-blue-100 bg-[var(--brand-soft)]/70 p-4">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <div className="text-[11px] font-extrabold uppercase tracking-wider text-[#2F5597]">
+                      <div className="text-[11px] font-extrabold uppercase tracking-wider text-[color:var(--brand)]">
                         Preparação da empresa
                       </div>
                       <div className="mt-1 font-extrabold text-slate-950">
@@ -5322,15 +5340,15 @@ export default function Home() {
                     </div>
                     <span className={`w-fit shrink-0 rounded-full px-3 py-1.5 text-xs font-extrabold ${
                       configuracaoEmpresaGerenciada.prontaParaVisita
-                        ? "bg-emerald-100 text-emerald-800"
-                        : "bg-amber-100 text-amber-800"
+                        ? "bg-[var(--ok-bg)] text-[color:var(--ink)]"
+                        : "bg-[var(--pend-bg)] text-[color:var(--ink)]"
                     }`}>
                       {configuracaoEmpresaGerenciada.percentual}% configurada
                     </span>
                   </div>
                   <div className="mt-3 h-2 overflow-hidden rounded-full bg-white">
                     <div
-                      className="h-full rounded-full bg-[#2F5597] transition-all"
+                      className="h-full rounded-full bg-[var(--brand)] transition-all"
                       style={{ width: `${configuracaoEmpresaGerenciada.percentual}%` }}
                     />
                   </div>
@@ -5344,7 +5362,7 @@ export default function Home() {
                         categoria: "Cadastro",
                         titulo: "Dados da empresa",
                         resumo: "Endereço, contato, responsável e horário.",
-                        cor: "bg-blue-100 text-blue-700",
+                        cor: "bg-[var(--brand-soft)] text-[color:var(--ink)]",
                       },
                       {
                         secao: "manual" as EmpresaSecao,
@@ -5365,7 +5383,7 @@ export default function Home() {
                         categoria: "Operação",
                         titulo: "Fluxos operacionais",
                         resumo: `${quantidadeComNome(fluxosEmpresa.filter((fluxo) => fluxo.aplicavel).length, "fluxo ativo", "fluxos ativos")} de ${fluxosEmpresa.length}.`,
-                        cor: "bg-amber-100 text-amber-700",
+                        cor: "bg-[var(--pend-bg)] text-[color:var(--ink)]",
                       },
                       {
                         secao: "programas" as EmpresaSecao,
@@ -5381,7 +5399,7 @@ export default function Home() {
                         resumo: popsComRevisaoVencida > 0
                           ? `${quantidadeComNome(popsEmpresa.length, "POP cadastrado", "POPs cadastrados")} • ${quantidadeComNome(popsComRevisaoVencida, "revisão vencida", "revisões vencidas")}.`
                           : `${quantidadeComNome(popsEmpresa.length, "POP cadastrado", "POPs cadastrados")} • nenhuma revisão vencida.`,
-                        cor: "bg-emerald-100 text-emerald-700",
+                        cor: "bg-[var(--ok-bg)] text-[color:var(--ink)]",
                       },
                     ]).map((item) => (
                       <button
@@ -5394,9 +5412,9 @@ export default function Home() {
                           <span className={`grid h-10 w-10 place-items-center rounded-xl ${item.cor}`}>
                             <CompanySectionIcon name={item.secao} />
                           </span>
-                          <span className="grid h-8 w-8 place-items-center rounded-full bg-slate-50 text-lg font-bold text-[#2F5597] transition group-hover:bg-blue-100">→</span>
+                          <span className="grid h-8 w-8 place-items-center rounded-full bg-slate-50 text-lg font-bold text-[color:var(--brand)] transition group-hover:bg-[var(--brand-soft)]">→</span>
                         </div>
-                        <div className="mt-3 text-[10px] font-extrabold uppercase tracking-wider text-[#2F5597]">{item.categoria}</div>
+                        <div className="mt-3 text-[10px] font-extrabold uppercase tracking-wider text-[color:var(--brand)]">{item.categoria}</div>
                         <div className="mt-0.5 font-extrabold text-slate-950">{item.titulo}</div>
                         <div className="mt-1 text-xs leading-5 text-slate-500">{item.resumo}</div>
                         <div className={`mt-3 text-[11px] font-extrabold ${
@@ -5418,8 +5436,8 @@ export default function Home() {
             ) : (
               <>
                 {editingEmpresaId && empresaSecao !== null && (
-                  <details className="mt-4 rounded-xl border border-blue-100 bg-blue-50/70 p-3">
-                    <summary className="cursor-pointer text-sm font-extrabold text-[#2F5597]">
+                  <details className="mt-4 rounded-xl border border-blue-100 bg-[var(--brand-soft)]/70 p-3">
+                    <summary className="cursor-pointer text-sm font-extrabold text-[color:var(--brand)]">
                       Para que serve esta área?
                     </summary>
                     <p className="mt-2 text-sm leading-6 text-slate-600">
@@ -5449,7 +5467,7 @@ export default function Home() {
                           onChange={(e) => setForm({ ...form, cnpj: e.target.value })}
                         />
                         {!editingEmpresaId && (
-                          <button onClick={buscar} className="rounded-xl bg-slate-900 px-4 font-bold text-white">
+                          <button onClick={buscar} className="rounded-xl bg-[var(--brand)] px-4 font-medium text-white">
                             {loading ? "..." : "Buscar"}
                           </button>
                         )}
@@ -5512,7 +5530,7 @@ export default function Home() {
                   <PopsFields pops={popsEmpresa} onChange={setPopsEmpresa} aberto />
                 )}
 
-                {msg && <div className="mt-3 rounded-xl bg-amber-50 p-3 text-sm">{msg}</div>}
+                {msg && <div className="mt-3 rounded-xl bg-[var(--pend-bg)] p-3 text-sm">{msg}</div>}
 
                 <div className="sticky bottom-20 z-20 mt-4 rounded-2xl border border-blue-100 bg-white/95 p-2 shadow-lg backdrop-blur md:bottom-4">
                   {editingEmpresaId && (
@@ -5522,7 +5540,7 @@ export default function Home() {
                         : "✓ Todas as alterações desta área estão salvas"}
                     </div>
                   )}
-                  <button onClick={salvarEmpresa} className="w-full rounded-xl bg-[#2F5597] p-3 font-extrabold text-white">
+                  <button onClick={salvarEmpresa} className="w-full rounded-xl bg-[var(--brand)] p-3 font-medium text-white">
                     {editingEmpresaId ? "Salvar e voltar à Central" : "Salvar e abrir a Central"}
                   </button>
                 </div>
@@ -5533,7 +5551,7 @@ export default function Home() {
           <section className="rounded-2xl bg-white p-5 shadow-sm">
             <div className="flex justify-between gap-4">
               <div>
-                <div className="text-xs font-extrabold uppercase text-[#2F5597]">
+                <div className="text-xs font-extrabold uppercase text-[color:var(--brand)]">
                   Nova visita
                 </div>
                 <h2 className="mt-1 text-2xl font-extrabold">
@@ -5620,7 +5638,7 @@ export default function Home() {
             <button
               onClick={salvarVisita}
               disabled={criandoVisita}
-              className="mt-5 w-full rounded-xl bg-[#2F5597] p-3 font-extrabold text-white disabled:opacity-50"
+              className="mt-5 w-full rounded-xl bg-[var(--brand)] p-3 font-medium text-white disabled:opacity-50"
             >
               {criandoVisita ? "Criando..." : "Criar visita"}
             </button>
@@ -5630,7 +5648,7 @@ export default function Home() {
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
               <div className="ambientes-top-row flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div>
-                  <div className="text-xs font-extrabold uppercase tracking-wider text-[#2F5597]">
+                  <div className="text-xs font-extrabold uppercase tracking-wider text-[color:var(--brand)]">
                     Ambientes
                   </div>
                   <h1 className="mt-1 text-2xl font-extrabold">
@@ -5642,13 +5660,13 @@ export default function Home() {
                 </div>
                 <button
                   onClick={() => setView("visita")}
-                  className="rounded-xl bg-slate-100 px-3 py-2 text-sm font-bold text-slate-700"
+                  className="rounded-xl bg-[var(--na-bg)] px-3 py-2 text-sm font-bold text-[color:var(--ink)]"
                 >
                   Voltar à Central
                 </button>
               </div>
 
-              <div className="mt-4 rounded-xl bg-blue-50 p-3 text-sm text-blue-900">
+              <div className="mt-4 rounded-xl bg-[var(--brand-soft)] p-3 text-sm text-[color:var(--ink)]">
                 Selecione apenas os ambientes que realmente serão avaliados. O
                 checklist será montado a partir desta seleção.
               </div>
@@ -5679,7 +5697,7 @@ export default function Home() {
                         onClick={() => toggleAmbiente(nome)}
                         className={`ambiente-choice flex min-w-0 items-center justify-between rounded-xl border p-4 text-left font-extrabold transition ${
                           ativo
-                            ? "border-[#2F5597] bg-blue-50 text-[#17365D]"
+                            ? "border-[var(--brand)] bg-[var(--brand-soft)] text-[color:var(--ink)]"
                             : "border-slate-200 bg-white"
                         }`}
                       >
@@ -5690,15 +5708,15 @@ export default function Home() {
                   })}
                 </div>
 
-                <div className="mt-5 rounded-xl border border-blue-200 bg-blue-50 p-4">
-                  <div className="font-extrabold text-[#17365D]">Lista detalhada do restaurante</div>
+                <div className="mt-5 rounded-xl border border-blue-200 bg-[var(--brand-soft)] p-4">
+                  <div className="font-extrabold text-[color:var(--ink)]">Lista detalhada do restaurante</div>
                   <p className="mt-1 text-xs text-slate-600">
                     Aplica os 18 ambientes enviados pela empresa e inclui a Central de Gás como item 19. Os nomes reais são preservados e cada um recebe o questionário correspondente.
                   </p>
                   <button
                     type="button"
                     onClick={aplicarModeloDetalhadoRestaurante}
-                    className="mt-3 w-full rounded-xl bg-[#2F5597] px-4 py-3 text-sm font-extrabold text-white"
+                    className="mt-3 w-full rounded-xl bg-[var(--brand)] px-4 py-3 text-sm font-medium text-white"
                   >
                     Aplicar lista detalhada de 19 ambientes
                   </button>
@@ -5719,7 +5737,7 @@ export default function Home() {
                     />
                     <button
                       onClick={adicionarPersonalizado}
-                      className="rounded-xl bg-[#17365D] px-4 font-bold text-white"
+                      className="rounded-xl bg-[var(--brand)] px-4 font-medium text-white"
                     >
                       Adicionar
                     </button>
@@ -5755,7 +5773,7 @@ export default function Home() {
                           </div>
                           <button
                             onClick={() => toggleAmbiente(nome)}
-                            className="shrink-0 rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700"
+                            className="shrink-0 rounded-lg bg-[var(--nc-bg)] px-3 py-2 text-xs font-bold text-[color:var(--ink)]"
                           >
                             Remover
                           </button>
@@ -5779,7 +5797,7 @@ export default function Home() {
 
                 <button
                   onClick={salvarAmbientes}
-                  className="mt-5 w-full rounded-xl bg-[#2F5597] p-3 font-extrabold text-white"
+                  className="mt-5 w-full rounded-xl bg-[var(--brand)] p-3 font-medium text-white"
                 >
                   Concluir e voltar à Central
                 </button>
@@ -5791,7 +5809,7 @@ export default function Home() {
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div>
-                  <div className="text-xs font-extrabold uppercase tracking-wider text-[#2F5597]">
+                  <div className="text-xs font-extrabold uppercase tracking-wider text-[color:var(--brand)]">
                     Evidências da inspeção
                   </div>
                   <h1 className="mt-1 text-2xl font-extrabold">Fotos e áudio</h1>
@@ -5801,7 +5819,7 @@ export default function Home() {
                 </div>
                 <button
                   onClick={() => setView("visita")}
-                  className="rounded-xl bg-slate-100 px-3 py-2 text-sm font-bold text-slate-700"
+                  className="rounded-xl bg-[var(--na-bg)] px-3 py-2 text-sm font-bold text-[color:var(--ink)]"
                 >
                   Voltar à Central
                 </button>
@@ -5911,7 +5929,7 @@ export default function Home() {
                 </label>
 
                 <div className="mt-5 grid gap-3">
-                  <label className="cursor-pointer rounded-xl bg-[#2F5597] p-4 text-center font-extrabold text-white">
+                  <label className="cursor-pointer rounded-xl bg-[var(--brand)] p-4 text-center font-medium text-white">
                     📷 Tirar ou adicionar foto
                     <input
                       type="file"
@@ -5933,7 +5951,7 @@ export default function Home() {
                     />
                   </label>
 
-                  <label className="cursor-pointer rounded-xl bg-[#17365D] p-4 text-center font-extrabold text-white">
+                  <label className="cursor-pointer rounded-xl bg-[var(--brand)] p-4 text-center font-medium text-white">
                     🎙️ Adicionar áudio
                     <input
                       type="file"
@@ -5949,12 +5967,12 @@ export default function Home() {
                 </div>
 
                 {evidenciaMsg && (
-                  <div className="mt-4 rounded-xl bg-blue-50 p-3 text-sm text-blue-900">
+                  <div className="mt-4 rounded-xl bg-[var(--brand-soft)] p-3 text-sm text-[color:var(--ink)]">
                     {evidenciaMsg}
                   </div>
                 )}
 
-                <div className="mt-4 rounded-xl bg-amber-50 p-3 text-xs text-amber-900">
+                <div className="mt-4 rounded-xl bg-[var(--pend-bg)] p-3 text-xs text-[color:var(--ink)]">
                   Fotos e áudios novos são armazenados no Blob privado.
                   O Neon guarda apenas os dados e a referência da evidência.
                 </div>
@@ -6008,12 +6026,12 @@ export default function Home() {
                               {ev.descricao || ev.nomeArquivo}
                             </div>
                             {ncRelacionada && (
-                              <div className="mt-2 inline-block rounded-full bg-red-50 px-3 py-1 text-xs font-extrabold text-red-700">
+                              <div className="mt-2 inline-block rounded-full bg-[var(--nc-bg)] px-3 py-1 text-xs font-extrabold text-[color:var(--ink)]">
                                 Vinculada à NC — {ncRelacionada.categoria}
                               </div>
                             )}
                             {itemChecklistRelacionado && (
-                              <div className="mt-2 rounded-xl bg-blue-50 p-3 text-xs text-blue-900">
+                              <div className="mt-2 rounded-xl bg-[var(--brand-soft)] p-3 text-xs text-[color:var(--ink)]">
                                 <span className="font-extrabold">Item vinculado:</span>{" "}
                                 {itemChecklistRelacionado.categoria} — {itemChecklistRelacionado.titulo}
                               </div>
@@ -6022,7 +6040,7 @@ export default function Home() {
                           {permitido("evidencias.adicionar", ev.empresaId) && (
                             <button
                               onClick={() => excluirEvidencia(ev.id)}
-                              className="rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700"
+                              className="rounded-lg bg-[var(--nc-bg)] px-3 py-2 text-xs font-bold text-[color:var(--ink)]"
                             >
                               Excluir
                             </button>
@@ -6070,21 +6088,21 @@ export default function Home() {
                                   <div className="flex flex-wrap items-center gap-2">
                                     <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${
                                       ultimaAnalise.status === "Confirmada"
-                                        ? "bg-emerald-100 text-emerald-800"
+                                        ? "bg-[var(--ok-bg)] text-[color:var(--ink)]"
                                         : ultimaAnalise.status === "Descartada"
-                                        ? "bg-slate-100 text-slate-700"
-                                        : "bg-amber-100 text-amber-900"
+                                        ? "bg-[var(--na-bg)] text-[color:var(--ink)]"
+                                        : "bg-[var(--pend-bg)] text-[color:var(--ink)]"
                                     }`}>
                                       {ultimaAnalise.status}
                                     </span>
                                     <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${
                                       ultimaAnalise.situacao === "Conforme"
-                                        ? "bg-emerald-100 text-emerald-800"
+                                        ? "bg-[var(--ok-bg)] text-[color:var(--ink)]"
                                         : ultimaAnalise.situacao === "Atenção"
-                                        ? "bg-amber-100 text-amber-900"
+                                        ? "bg-[var(--pend-bg)] text-[color:var(--ink)]"
                                         : ultimaAnalise.situacao === "Possível não conformidade"
-                                        ? "bg-red-100 text-red-800"
-                                        : "bg-slate-100 text-slate-700"
+                                        ? "bg-[var(--nc-bg)] text-[color:var(--ink)]"
+                                        : "bg-[var(--na-bg)] text-[color:var(--ink)]"
                                     }`}>
                                       {ultimaAnalise.situacao || ultimaAnalise.classificacao}
                                     </span>
@@ -6093,7 +6111,7 @@ export default function Home() {
                                   <p className="mt-3 font-bold text-slate-800">{ultimaAnalise.resumo}</p>
 
                                   {ultimaAnalise.achados[0]?.acaoSugerida && (
-                                    <p className="mt-3 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900">
+                                    <p className="mt-3 rounded-lg bg-[var(--ok-bg)] p-3 text-sm text-[color:var(--ink)]">
                                       <span className="font-extrabold">Ação:</span>{" "}
                                       {ultimaAnalise.achados[0].acaoSugerida}
                                     </p>
@@ -6189,7 +6207,7 @@ export default function Home() {
                                       </div>
                                     </div>
                                   ) : ultimaAnalise.status === "Confirmada" ? (
-                                    <div className="mt-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900">
+                                    <div className="mt-4 rounded-lg bg-[var(--ok-bg)] p-3 text-sm text-[color:var(--ink)]">
                                       <div className="font-extrabold">Análise confirmada pelo profissional</div>
                                       <div className="mt-2 text-xs">
                                         {ultimaAnalise.revisadaPor} • {ultimaAnalise.revisadaEm ? new Date(ultimaAnalise.revisadaEm).toLocaleString("pt-BR") : ""}
@@ -6206,7 +6224,7 @@ export default function Home() {
                                       Sugestão descartada por {ultimaAnalise.revisadaPor || "profissional"}. Ela não integra o registro técnico confirmado.
                                     </div>
                                   ) : (
-                                    <div className="mt-4 rounded-lg bg-amber-50 p-3 text-xs text-amber-900">
+                                    <div className="mt-4 rounded-lg bg-[var(--pend-bg)] p-3 text-xs text-[color:var(--ink)]">
                                       Esta sugestão aguarda revisão de um Administrador ou Consultor/RT.
                                     </div>
                                   )}
@@ -6242,9 +6260,9 @@ export default function Home() {
                   <div className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[#315da8]">
                     Gestão das correções
                   </div>
-                  <h1 className="mt-1 text-xl font-medium text-[#061b4f] sm:text-2xl">Plano de ação</h1>
-                  <p className="mt-0.5 truncate text-xs text-slate-500 sm:text-sm">
-                    {empresaVisita?.nomeFantasia} • {fdata(visitaAtual.data)}
+                  <h1 className="mt-1 text-xl font-medium text-[color:var(--ink)] sm:text-2xl">Plano de ação</h1>
+                  <p className="mt-0.5 break-words text-xs text-[color:var(--ink-2)] sm:text-sm">
+                    {empresaVisita?.nomeFantasia} · {fdata(visitaAtual.data)}
                   </p>
                 </div>
                 <button
@@ -6272,7 +6290,7 @@ export default function Home() {
                 </p>
                 <button
                   onClick={() => setView("checklist")}
-                  className="mt-5 rounded-xl bg-[#2F5597] px-5 py-3 font-extrabold text-white"
+                  className="mt-5 rounded-xl bg-[var(--brand)] px-5 py-3 font-medium text-white"
                 >
                   Abrir checklist
                 </button>
@@ -6329,7 +6347,7 @@ export default function Home() {
                       </div>
 
                     {nc.observacao && (
-                      <div className="mt-4 rounded-xl bg-red-50 p-4">
+                      <div className="mt-4 rounded-xl bg-[var(--nc-bg)] p-4">
                         <div className="text-xs font-extrabold uppercase text-red-700">
                           Constatação em campo
                         </div>
@@ -6477,7 +6495,7 @@ export default function Home() {
                   <div className="flex flex-wrap gap-2">
                     {(["Todos", "Abertas", "Em tratamento", "Resolvidas", "Vencidas"] as const).map((filtro) => (
                       <button key={filtro} onClick={() => setFiltroAcompanhamento(filtro)}
-                        className={`rounded-full px-4 py-2 text-sm font-extrabold ${filtroAcompanhamento === filtro ? "bg-[#2F5597] text-white" : "bg-slate-100 text-slate-700"}`}>
+                        className={`rounded-full px-4 py-2 text-sm font-extrabold ${filtroAcompanhamento === filtro ? "bg-[var(--brand)] text-white" : "bg-[var(--na-bg)] text-[color:var(--ink)]"}`}>
                         {filtro}
                       </button>
                     ))}
@@ -6502,7 +6520,7 @@ export default function Home() {
                       key={nc.id}
                       className={`rounded-2xl p-5 shadow-sm ${
                         nc.status === "Resolvida"
-                          ? "border border-emerald-200 bg-emerald-50/40"
+                          ? "border border-emerald-200 bg-[var(--ok-bg)]/40"
                           : "bg-white"
                       }`}
                     >
@@ -6510,30 +6528,30 @@ export default function Home() {
                         <div>
                           <div className="flex flex-wrap gap-2">
                             <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold">{nc.criticidade}</span>
-                            <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${nc.status === "Resolvida" ? "bg-emerald-100 text-emerald-800" : nc.status === "Em tratamento" ? "bg-amber-100 text-amber-800" : "bg-red-100 text-red-800"}`}>{nc.status}</span>
+                            <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${nc.status === "Resolvida" ? "bg-[var(--ok-bg)] text-[color:var(--ink)]" : nc.status === "Em tratamento" ? "bg-[var(--pend-bg)] text-[color:var(--ink)]" : "bg-[var(--nc-bg)] text-[color:var(--ink)]"}`}>{nc.status}</span>
                             <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${situacaoPrazo.classe}`}>{situacaoPrazo.label}</span>
                             <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${
                               evidenciasDaNc.length > 0
                                 ? "bg-violet-100 text-violet-800"
-                                : "bg-slate-100 text-slate-600"
+                                : "bg-[var(--na-bg)] text-[color:var(--ink)]"
                             }`}>
                               {evidenciasDaNc.length > 0
                                 ? `${evidenciasDaNc.length} evidência(s)`
                                 : "Sem evidência"}
                             </span>
-                            {!nc.acaoCorretiva?.trim() && nc.status !== "Resolvida" && <span className="rounded-full bg-slate-800 px-3 py-1 text-xs font-extrabold text-white">Ação não definida</span>}
+                            {!nc.acaoCorretiva?.trim() && nc.status !== "Resolvida" && <span className="rounded-full bg-[var(--brand)] px-3 py-1 text-xs font-medium text-white">Ação não definida</span>}
                           </div>
                           <h2 className="mt-3 text-lg font-extrabold">{nc.titulo}</h2>
                           <p className="mt-1 text-sm text-slate-500">{nc.ambiente} • {nc.categoria}</p>
                         </div>
-                        <button onClick={() => { setPlanoNcAbertaId(nc.id); setView("plano"); }} className="rounded-xl bg-[#2F5597] px-4 py-2 text-sm font-extrabold text-white">Editar plano</button>
+                        <button onClick={() => { setPlanoNcAbertaId(nc.id); setView("plano"); }} className="rounded-xl bg-[var(--brand)] px-4 py-2 text-sm font-medium text-white">Editar plano</button>
                       </div>
                       <div className="mt-4 grid gap-3 md:grid-cols-3">
                         <div className="rounded-xl bg-slate-50 p-3"><div className="text-xs font-extrabold uppercase text-slate-500">Responsável</div><div className="mt-1 font-bold">{nc.responsavelAcao || "Não definido"}</div></div>
                         <div className="rounded-xl bg-slate-50 p-3"><div className="text-xs font-extrabold uppercase text-slate-500">Prazo</div><div className={`mt-1 font-bold ${vencida ? "text-red-700" : ""}`}>{nc.prazo ? fdata(nc.prazo) : "Não definido"}</div></div>
                         <div className="rounded-xl bg-slate-50 p-3"><div className="text-xs font-extrabold uppercase text-slate-500">Situação do prazo</div><div className="mt-1 font-bold">{situacaoPrazo.label}</div></div>
                         {nc.status === "Resolvida" && nc.resolvidaEm && (
-                          <div className="rounded-xl bg-emerald-50 p-3 md:col-span-3">
+                          <div className="rounded-xl bg-[var(--ok-bg)] p-3 md:col-span-3">
                             <div className="text-xs font-extrabold uppercase text-emerald-700">Resolvida em</div>
                             <div className="mt-1 font-bold text-emerald-900">
                               {new Date(nc.resolvidaEm).toLocaleString("pt-BR")}
@@ -6544,7 +6562,7 @@ export default function Home() {
                       <div className="mt-3 rounded-xl border border-slate-200 p-3"><div className="text-xs font-extrabold uppercase text-slate-500">Ação corretiva</div><div className="mt-1 text-sm">{nc.acaoCorretiva?.trim() || "Ainda não definida no plano de ação."}</div></div>
                       {nc.status === "Resolvida" && (
                         <div className="mt-3 grid gap-3 md:grid-cols-3">
-                          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3">
+                          <div className="rounded-xl border border-emerald-200 bg-[var(--ok-bg)] p-3">
                             <div className="text-xs font-extrabold uppercase text-emerald-700">Fechamento</div>
                             <div className="mt-1 font-bold text-emerald-950">
                               {nc.resolvidaEm ? new Date(nc.resolvidaEm).toLocaleString("pt-BR") : "Data não registrada"}
@@ -6561,7 +6579,7 @@ export default function Home() {
                         </div>
                       )}
                       {nc.status === "Resolvida" && evidenciasDaNc.length === 0 && (
-                        <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                        <div className="mt-3 rounded-xl border border-amber-200 bg-[var(--pend-bg)] p-3 text-sm text-[color:var(--ink)]">
                           <span className="font-extrabold">Atenção:</span> esta ação está marcada como resolvida, mas ainda não possui evidência vinculada.
                         </div>
                       )}
@@ -6642,7 +6660,7 @@ export default function Home() {
                       </div>
 
                       {nc.status === "Resolvida" && (
-                        <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+                        <div className="mt-4 rounded-xl border border-emerald-200 bg-[var(--ok-bg)] p-4">
                           <div className="text-sm font-extrabold text-emerald-900">
                             ✓ Não conformidade resolvida
                           </div>
@@ -6660,8 +6678,8 @@ export default function Home() {
                         </div>
                       )}
 
-                      <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50 p-4">
-                        <div className="text-xs font-extrabold uppercase text-[#2F5597]">
+                      <div className="mt-4 rounded-xl border border-blue-100 bg-[var(--brand-soft)] p-4">
+                        <div className="text-xs font-extrabold uppercase text-[color:var(--brand)]">
                           {nc.status === "Resolvida" ? "Registrar nova atualização / reabrir" : "Registrar atualização"}
                         </div>
                         <div className="mt-3 grid gap-3 md:grid-cols-[1fr_190px]">
@@ -6702,14 +6720,14 @@ export default function Home() {
                             </select>
                             <button
                               onClick={() => registrarAcompanhamento(nc.id)}
-                              className="w-full rounded-xl bg-[#17365D] p-3 text-sm font-extrabold text-white"
+                              className="w-full rounded-xl bg-[var(--brand)] p-3 text-sm font-medium text-white"
                             >
                               {statusAcompanhamento[nc.id] === "Resolvida"
                                 ? "Concluir e registrar"
                                 : "Registrar atualização"}
                             </button>
                             {statusAcompanhamento[nc.id] === "Resolvida" && (
-                              <div className="rounded-lg bg-amber-50 p-2 text-xs font-bold text-amber-900">
+                              <div className="rounded-lg bg-[var(--pend-bg)] p-2 text-xs font-bold text-[color:var(--ink)]">
                                 Para concluir, é necessário ter pelo menos uma evidência vinculada.
                               </div>
                             )}
@@ -6721,7 +6739,7 @@ export default function Home() {
                         <div className="mt-4 rounded-xl border border-slate-200 p-4">
                           <div className="flex items-center justify-between gap-3">
                             <div className="text-xs font-extrabold uppercase text-slate-500">Histórico de acompanhamento</div>
-                            <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
+                            <div className="rounded-full bg-[var(--na-bg)] px-3 py-1 text-xs font-bold text-[color:var(--ink)]">
                               {nc.historicoAcompanhamento?.length || 1} registro(s)
                             </div>
                           </div>
@@ -6738,10 +6756,10 @@ export default function Home() {
                                       </div>
                                       <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${
                                         item.status === "Resolvida"
-                                          ? "bg-emerald-100 text-emerald-800"
+                                          ? "bg-[var(--ok-bg)] text-[color:var(--ink)]"
                                           : item.status === "Em tratamento"
-                                            ? "bg-amber-100 text-amber-800"
-                                            : "bg-red-100 text-red-800"
+                                            ? "bg-[var(--pend-bg)] text-[color:var(--ink)]"
+                                            : "bg-[var(--nc-bg)] text-[color:var(--ink)]"
                                       }`}>
                                         {item.status}
                                       </span>
@@ -6774,7 +6792,7 @@ export default function Home() {
               <div className="nc-title-row">
                 <div className="min-w-0">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.15em] text-red-600">Resultado da inspeção</div>
-                  <h1 className="mt-1 text-xl font-medium text-[#061b4f] sm:text-2xl">Não conformidades</h1>
+                  <h1 className="mt-1 text-xl font-medium text-[color:var(--ink)] sm:text-2xl">Não conformidades</h1>
                   <p className="mt-0.5 truncate text-xs text-slate-500 sm:text-sm">{empresaVisita?.nomeFantasia} • {fdata(visitaAtual.data)}</p>
                 </div>
                 <button onClick={() => setView("visita")} aria-label="Voltar à Central da visita" className="nc-back-button">
@@ -6801,13 +6819,13 @@ export default function Home() {
 
             {ncsVisita.length === 0 ? (
               <div className="nc-empty-state">
-                <div className="text-lg font-medium text-[#061b4f]">Nenhuma não conformidade registrada</div>
+                <div className="text-lg font-medium text-[color:var(--ink)]">Nenhuma não conformidade registrada</div>
                 <p className="mt-1 text-sm text-slate-500">Itens marcados como Não Conforme no checklist aparecerão aqui automaticamente.</p>
                 <button onClick={abrirChecklist}>Abrir checklist →</button>
               </div>
             ) : ncsVisiveis.length === 0 ? (
               <div className="nc-empty-state">
-                <div className="text-lg font-medium text-[#061b4f]">Nenhum resultado neste filtro</div>
+                <div className="text-lg font-medium text-[color:var(--ink)]">Nenhum resultado neste filtro</div>
                 <button onClick={() => setFiltroNcs("Todas")}>Ver todas</button>
               </div>
             ) : (
@@ -6855,21 +6873,21 @@ export default function Home() {
             <div className="checklist-page-head">
               <div className="flex min-w-0 items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#164ee8]">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand)]">
                     Checklist técnico
                   </div>
-                  <h1 className="mt-1 text-xl font-medium text-[#061b4f] sm:text-2xl">
+                  <h1 className="mt-1 text-xl font-medium text-[color:var(--ink)] sm:text-2xl">
                     Avaliação por ambiente
                   </h1>
-                  <p className="mt-0.5 truncate text-xs text-slate-500 sm:text-sm">
-                    {empresaVisita?.nomeFantasia} • {fdata(visitaAtual.data)}
+                  <p className="mt-0.5 break-words text-xs text-[color:var(--ink-2)] sm:text-sm">
+                    {empresaVisita?.nomeFantasia} · {fdata(visitaAtual.data)}
                   </p>
                 </div>
 
                 <button
                   onClick={() => setView("visita")}
                   aria-label="Voltar à Central da visita"
-                  className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-slate-200 bg-white text-lg text-[#061b4f] shadow-sm sm:flex sm:h-auto sm:w-fit sm:px-4 sm:py-2 sm:text-sm"
+                  className="grid h-9 w-9 shrink-0 place-items-center rounded-full border-2 border-[var(--brand)] bg-white text-lg text-[color:var(--ink)] sm:flex sm:h-auto sm:w-fit sm:px-4 sm:py-2 sm:text-sm"
                 >
                   <span className="sm:hidden">←</span><span className="hidden sm:inline">← Central da visita</span>
                 </button>
@@ -6877,12 +6895,25 @@ export default function Home() {
 
               <div className="checklist-progress-summary">
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-3 text-xs text-slate-500">
-                    <span><strong className="font-semibold text-[#061b4f]">{respondidos}</strong> de {totalChecklist} itens respondidos</span>
-                    <strong className="font-semibold text-[#164ee8]">{percentualChecklist}%</strong>
+                  <div className="flex items-center justify-between gap-3 text-xs text-[color:var(--ink-2)]">
+                    <span><strong className="font-semibold text-[color:var(--ink)]">{respondidos}</strong> de {totalChecklist} itens respondidos</span>
+                    <strong className="font-semibold text-[color:var(--ink)]">{percentualChecklist}%</strong>
                   </div>
-                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
-                    <div className="h-full rounded-full bg-gradient-to-r from-[#45d8ed] to-[#164ee8] transition-all" style={{ width: `${percentualChecklist}%` }} />
+                  <div className="pc-segbar" role="img" aria-label={`${conformesChecklist} conformes, ${naoConformesChecklist} não conformes, ${naoSeAplicaChecklist} não se aplica, ${pendentesChecklist} pendentes`}>
+                    {([
+                      [conformesChecklist, "var(--ok)"],
+                      [naoConformesChecklist, "var(--nc)"],
+                      [naoSeAplicaChecklist, "var(--na)"],
+                      [pendentesChecklist, "var(--border)"],
+                    ] as const).map(([qtd, cor], indice) => qtd > 0 ? (
+                      <span key={indice} style={{ flexGrow: qtd, background: cor }} />
+                    ) : null)}
+                  </div>
+                  <div className="pc-chips">
+                    <span className="pc-chip is-ok"><i aria-hidden="true" />{conformesChecklist} conformes</span>
+                    <span className="pc-chip is-nc"><i aria-hidden="true" />{naoConformesChecklist} não conformes</span>
+                    <span className="pc-chip is-na"><i aria-hidden="true" />{naoSeAplicaChecklist} não se aplica</span>
+                    <span className="pc-chip is-pend"><i aria-hidden="true" />{pendentesChecklist} pendentes</span>
                   </div>
                 </div>
               </div>
@@ -6892,10 +6923,10 @@ export default function Home() {
               <aside className="checklist-route-panel">
                 <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-3">
                   <div>
-                    <div className="text-sm font-semibold text-[#061b4f]">Ambientes</div>
+                    <div className="text-sm font-semibold text-[color:var(--ink)]">Ambientes</div>
                     <div className="mt-0.5 text-xs text-slate-500">Escolha onde deseja avaliar</div>
                   </div>
-                  <span className="rounded-full bg-[#edf2ff] px-2.5 py-1 text-xs font-semibold text-[#164ee8]">{gruposRoteiroChecklist.reduce((total, grupo) => total + grupo.itens.length, 0)}</span>
+                  <span className="rounded-full bg-[var(--brand-soft)] px-2.5 py-1 text-xs font-semibold text-[color:var(--ink)]">{gruposRoteiroChecklist.reduce((total, grupo) => total + grupo.itens.length, 0)}</span>
                 </div>
                 <div className="mt-3 space-y-4">
                   {gruposRoteiroChecklist.map((grupo) => (
@@ -6905,7 +6936,7 @@ export default function Home() {
                     >
                       <div className={`mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] ${
                         grupo.titulo === "Verificação geral"
-                          ? "text-[#164ee8]"
+                          ? "text-[color:var(--brand)]"
                           : "text-slate-400"
                       }`}>
                         {grupo.titulo}
@@ -6980,12 +7011,12 @@ export default function Home() {
                   <div className="checklist-workbar-main">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#164ee8]">Ambiente atual</div>
+                        <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand)]">Ambiente atual</div>
                         <span className={`checklist-current-status ${situacaoAmbienteAtivo === "Conforme" ? "is-conforming" : situacaoAmbienteAtivo === "Não conforme" ? "is-nonconforming" : "is-pending"}`}>{situacaoAmbienteAtivo}</span>
                       </div>
-                      <h2 className="mt-0.5 break-words text-lg font-medium text-[#061b4f] sm:text-xl">{ambienteChecklistAtivo}</h2>
-                      <div className="mt-1 text-xs text-slate-500">
-                        {itensAmbienteChecklistAtivo.length - pendentesAmbienteAtivo} de {itensAmbienteChecklistAtivo.length} respondidos • <span className="font-semibold text-amber-600">{pendentesAmbienteAtivo} pendente{pendentesAmbienteAtivo === 1 ? "" : "s"}</span>
+                      <h2 className="mt-0.5 break-words text-lg font-medium text-[color:var(--ink)] sm:text-xl">{ambienteChecklistAtivo}</h2>
+                      <div className="mt-1 text-xs text-[color:var(--ink-2)]">
+                        {itensAmbienteChecklistAtivo.length - pendentesAmbienteAtivo} de {itensAmbienteChecklistAtivo.length} respondidos · <span className="font-semibold text-amber-600">{pendentesAmbienteAtivo} pendente{pendentesAmbienteAtivo === 1 ? "" : "s"}</span>
                       </div>
                     </div>
                     <div className="checklist-workbar-actions">
@@ -7005,7 +7036,7 @@ export default function Home() {
                         type="button"
                         onClick={irParaProximaPendencia}
                         disabled={totalChecklist === respondidos}
-                        className="shrink-0 whitespace-nowrap rounded-full bg-[#164ee8] px-4 py-2.5 text-sm font-medium text-white shadow-[0_7px_16px_rgba(22,78,232,.18)] disabled:opacity-40"
+                        className="shrink-0 whitespace-nowrap rounded-full bg-[var(--brand)] px-4 py-2.5 text-sm font-medium text-white disabled:opacity-40"
                       >
                         <span className="sm:hidden">Próxima →</span><span className="hidden sm:inline">Próxima pendência →</span>
                       </button>
@@ -7018,7 +7049,7 @@ export default function Home() {
                     </summary>
                     <div className="checklist-mobile-environment">
                       <label htmlFor="checklist-environment" className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">Trocar ambiente</label>
-                      <select id="checklist-environment" value={ambienteChecklistAtivo || ""} onChange={(event) => setAmbienteChecklistAtivo(event.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-[#061b4f]">
+                      <select id="checklist-environment" value={ambienteChecklistAtivo || ""} onChange={(event) => setAmbienteChecklistAtivo(event.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-[color:var(--ink)]">
                         {gruposRoteiroChecklist.map((grupo) => (
                           <optgroup key={grupo.titulo} label={grupo.titulo}>
                             {grupo.itens.map((ambiente) => <option key={ambiente} value={ambiente}>{ambiente}</option>)}
@@ -7026,7 +7057,7 @@ export default function Home() {
                         ))}
                       </select>
                     </div>
-                    <div className="checklist-filter-tabs">
+                    <div className="checklist-filter-tabs pc-seg">
                       {(["Todos", "Pendentes", "Não conformes"] as FiltroChecklistRapido[]).map((filtro) => (
                         <button
                           key={filtro}
@@ -7034,7 +7065,7 @@ export default function Home() {
                           onClick={() => setFiltroChecklistRapido(filtro)}
                           className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
                             filtroChecklistRapido === filtro
-                              ? "bg-[#e7eeff] text-[#164ee8]"
+                              ? "bg-[var(--brand-soft)] text-[color:var(--ink)]"
                               : "text-slate-500"
                           }`}
                         >
@@ -7043,7 +7074,7 @@ export default function Home() {
                       ))}
                     </div>
                   </details>
-                  <div className="checklist-desktop-filters">
+                  <div className="checklist-desktop-filters pc-seg">
                     {(["Todos", "Pendentes", "Não conformes"] as FiltroChecklistRapido[]).map((filtro) => (
                       <button
                         key={filtro}
@@ -7051,7 +7082,7 @@ export default function Home() {
                         onClick={() => setFiltroChecklistRapido(filtro)}
                         className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
                           filtroChecklistRapido === filtro
-                            ? "bg-[#e7eeff] text-[#164ee8]"
+                            ? "bg-[var(--brand-soft)] text-[color:var(--ink)]"
                             : "text-slate-500"
                         }`}
                       >
@@ -7095,6 +7126,8 @@ export default function Home() {
                           ? "is-nonconforming"
                           : item.status === "Conforme"
                           ? "is-conforming"
+                          : item.status === "Não se aplica"
+                          ? "is-na"
                           : criterioCapitulo2
                           ? "is-chapter-two"
                           : criterioCapitulo3
@@ -7108,16 +7141,12 @@ export default function Home() {
                             criterioCapitulo2
                               ? "text-violet-700"
                               : criterioCapitulo3
-                              ? "text-[#2F5597]"
+                              ? "text-[color:var(--brand)]"
                               : "text-slate-400"
                           }`}>
-                            {criterioCapitulo2
-                              ? `Capítulo 2 • ${item.categoria.replace("Operação — ", "")}`
-                              : criterioCapitulo3
-                              ? `Capítulo 3 • ${item.categoria}`
-                              : `Capítulo 1 • Item ${idx + 1} • ${item.categoria}`}
+                            {`Item ${idx + 1} · ${item.categoria.replace("Operação — ", "")}`}
                           </div>
-                          <h3 className="mt-1 text-base font-medium leading-snug text-[#061b4f] sm:text-[17px]">
+                          <h3 className="mt-1 text-[19px] font-medium leading-snug text-[color:var(--ink)]">
                             {item.titulo}
                           </h3>
                           <div className="mt-2 flex flex-wrap gap-1.5">
@@ -7125,23 +7154,23 @@ export default function Home() {
                               <span
                                 className={`rounded-full px-2 py-1 text-[10px] font-medium ${
                                   item.criticidade === "Crítica"
-                                    ? "bg-red-50 text-red-700"
+                                    ? "bg-[var(--nc-bg)] text-[color:var(--ink)]"
                                     : item.criticidade === "Importante"
-                                    ? "bg-amber-50 text-amber-700"
-                                    : "bg-slate-100 text-slate-600"
+                                    ? "bg-[var(--pend-bg)] text-[color:var(--ink)]"
+                                    : "bg-[var(--na-bg)] text-[color:var(--ink)]"
                                 }`}
                               >
                                 {item.criticidade}
                               </span>
                             )}
                             {item.referencia && (
-                              <span className="rounded-full bg-[#f1f5ff] px-2 py-1 text-[10px] font-medium text-[#315da8]">
+                              <span className="rounded-full bg-[var(--info-bg)] px-2 py-1 text-[10px] font-medium text-[color:var(--ink)]">
                                 {item.referencia}
                               </span>
                             )}
                           </div>
                           {item.orientacao && (
-                            <p className="mt-2 text-sm leading-relaxed text-slate-500">
+                            <p className="mt-2 text-sm leading-relaxed text-[color:var(--ink-2)]">
                               {item.orientacao}
                             </p>
                           )}
@@ -7150,14 +7179,14 @@ export default function Home() {
                         <div
                           className={`checklist-status-pill ${
                             item.status === "Conforme"
-                              ? "bg-emerald-50 text-emerald-700"
+                              ? "bg-[var(--ok-bg)] text-[color:var(--ink)]"
                               : item.status === "Não Conforme" && ncDoItem?.status === "Resolvida"
-                              ? "bg-emerald-50 text-emerald-700"
+                              ? "bg-[var(--ok-bg)] text-[color:var(--ink)]"
                               : item.status === "Não Conforme"
-                              ? "bg-red-50 text-red-700"
+                              ? "bg-[var(--nc-bg)] text-[color:var(--ink)]"
                               : item.status === "Não se aplica"
-                              ? "bg-slate-100 text-slate-600"
-                              : "bg-amber-50 text-amber-700"
+                              ? "bg-[var(--na-bg)] text-[color:var(--ink)]"
+                              : "bg-[var(--pend-bg)] text-[color:var(--ink)]"
                           }`}
                         >
                           {item.status === "Não Conforme" && ncDoItem
@@ -7183,7 +7212,7 @@ export default function Home() {
                                   status === "Conforme" ||
                                   status === "Não se aplica"
                                 ) {
-                                  rolarParaProximoItem(item.id);
+                                  rolarParaProximaPendenciaDoAmbiente(item.id);
                                 }
                               }}
                               className={`checklist-answer ${item.status === status ? "is-selected " : ""}${
@@ -7216,39 +7245,70 @@ export default function Home() {
                       )}
 
                       {item.status === "Não Conforme" ? (
-                        <label className="mt-4 block">
-                          <span className="mb-1 block text-xs font-bold text-red-700">
-                            Descrição da não conformidade
-                          </span>
-                          <div className="mbp-voice-wrap">
-                            <textarea
-                              rows={3}
-                              className="w-full rounded-xl border border-red-200 p-3"
-                              placeholder="Descreva a não conformidade observada..."
-                              value={item.observacao}
-                              onChange={(e) =>
-                                atualizarChecklistItem(item.id, {
-                                  observacao: e.target.value,
-                                })
-                              }
-                            />
-                            <VoiceDictationButton
-                              ativo={campoVozAtivo === `checklist-nc-${item.id}`}
-                              melhorando={campoIaAtivo === `checklist-nc-${item.id}`}
-                              onIniciar={() => iniciarDitado(`checklist-nc-${item.id}`, (texto) => atualizarChecklistItem(item.id, { observacao: juntarTextoDitado(item.observacao, texto) }))}
-                              onMelhorar={() => melhorarTextoComIa(`checklist-nc-${item.id}`, item.observacao, (texto) => atualizarChecklistItem(item.id, { observacao: texto }), "Descrição objetiva de uma não conformidade observada durante checklist de Boas Práticas.")}
-                            />
+                        <div className="pc-nc-panel">
+                          <label className="block">
+                            <span className="pc-nc-label">O que foi encontrado</span>
+                            <div className="mbp-voice-wrap">
+                              <textarea
+                                rows={3}
+                                className={`w-full rounded-xl border p-3 ${item.observacao.trim() ? "" : "pc-needs"}`}
+                                placeholder="Descreva a não conformidade observada..."
+                                aria-invalid={!item.observacao.trim()}
+                                value={item.observacao}
+                                onChange={(e) =>
+                                  atualizarChecklistItem(item.id, {
+                                    observacao: e.target.value,
+                                  })
+                                }
+                              />
+                              <VoiceDictationButton
+                                ativo={campoVozAtivo === `checklist-nc-${item.id}`}
+                                melhorando={campoIaAtivo === `checklist-nc-${item.id}`}
+                                onIniciar={() => iniciarDitado(`checklist-nc-${item.id}`, (texto) => atualizarChecklistItem(item.id, { observacao: juntarTextoDitado(item.observacao, texto) }))}
+                                onMelhorar={() => melhorarTextoComIa(`checklist-nc-${item.id}`, item.observacao, (texto) => atualizarChecklistItem(item.id, { observacao: texto }), "Descrição objetiva de uma não conformidade observada durante checklist de Boas Práticas.")}
+                              />
+                            </div>
+                          </label>
+                          {!item.observacao.trim() && (
+                            <p className="pc-warn" role="alert">
+                              Falta descrever. Escreva ou grave um áudio antes de seguir.
+                            </p>
+                          )}
+                          <div className="pc-nc-actions">
+                            {permitido("evidencias.adicionar", visitaAtual.empresaId) && (
+                              <>
+                                <button type="button" className="pc-btn-info" onClick={() => abrirEvidenciasDoItem(item, ncDoItem?.id)}>
+                                  Adicionar foto
+                                </button>
+                                <button type="button" className="pc-btn-info" onClick={() => abrirEvidenciasDoItem(item, ncDoItem?.id)}>
+                                  Gravar áudio
+                                </button>
+                              </>
+                            )}
+                            <button
+                              type="button"
+                              className="pc-btn-amber"
+                              disabled={!ncDoItem || !permitido("ncs.acompanhar", visitaAtual.empresaId)}
+                              title={ncDoItem ? "Abrir o plano de ação desta não conformidade" : "A não conformidade é criada ao registrar o achado"}
+                              onClick={() => {
+                                if (!ncDoItem) return;
+                                setPlanoNcAbertaId(ncDoItem.id);
+                                setView("plano");
+                              }}
+                            >
+                              Criar ação corretiva
+                            </button>
                           </div>
                           {item.observacao.trim() && (
                             <button
                               type="button"
                               onClick={() => rolarParaProximoItem(item.id)}
-                              className="mt-2 w-full rounded-xl bg-[#173B67] px-4 py-3 text-sm font-extrabold text-white"
+                              className="mt-3 w-full rounded-xl bg-[var(--brand)] px-4 py-3 text-sm font-medium text-white"
                             >
                               Próximo item →
                             </button>
                           )}
-                        </label>
+                        </div>
                       ) : (
                         <details className="checklist-note mt-2.5">
                           <summary className="cursor-pointer select-none px-3 py-2 text-xs font-medium text-slate-500">
@@ -7283,8 +7343,8 @@ export default function Home() {
                           <div
                             className={`mt-3 rounded-xl p-3 text-sm ${
                               ncDoItem.status === "Resolvida"
-                                ? "bg-emerald-50 text-emerald-800"
-                                : "bg-amber-50 text-amber-900"
+                                ? "bg-[var(--ok-bg)] text-[color:var(--ink)]"
+                                : "bg-[var(--pend-bg)] text-[color:var(--ink)]"
                             }`}
                           >
                             {ncDoItem.status === "Resolvida"
@@ -7292,7 +7352,7 @@ export default function Home() {
                               : `Não conformidade já registrada e em acompanhamento — status: ${ncDoItem.status}.`}
                           </div>
                         ) : (
-                          <div className="mt-3 rounded-xl bg-red-50 p-3 text-sm text-red-800">
+                          <div className="mt-3 rounded-xl bg-[var(--nc-bg)] p-3 text-sm text-[color:var(--ink)]">
                             Este item gerará uma Não Conformidade para acompanhamento.
                           </div>
                         )
@@ -7307,7 +7367,7 @@ export default function Home() {
                       <summary className="checklist-equipment-summary">
                         <div className="min-w-0">
                           <div className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#315da8]">Quadro do ambiente</div>
-                          <h3 className="mt-0.5 text-base font-medium text-[#061b4f] sm:text-lg">Equipamentos e móveis</h3>
+                          <h3 className="mt-0.5 text-base font-medium text-[color:var(--ink)] sm:text-lg">Equipamentos e móveis</h3>
                           <p className="mt-0.5 text-xs text-slate-500">{equipamentosAmbienteAtivo.length} {equipamentosAmbienteAtivo.length === 1 ? "item cadastrado" : "itens cadastrados"}</p>
                         </div>
                         <span className="checklist-equipment-toggle" aria-hidden="true">⌄</span>
@@ -7320,8 +7380,8 @@ export default function Home() {
                         Nenhum equipamento ou móvel cadastrado para este ambiente. Você pode incluir o item encontrado abaixo.
                       </div>
                     ) : (
-                      <div className="mt-3 overflow-hidden rounded-xl border-2 border-blue-200 bg-blue-50/70">
-                        <div className="flex items-center justify-between gap-3 bg-blue-100/80 px-3 py-1.5 text-[9px] font-extrabold uppercase tracking-wide text-[#2F5597]">
+                      <div className="mt-3 overflow-hidden rounded-xl border-2 border-blue-200 bg-[var(--brand-soft)]/70">
+                        <div className="flex items-center justify-between gap-3 bg-[var(--brand-soft)]/80 px-3 py-1.5 text-[9px] font-extrabold uppercase tracking-wide text-[color:var(--brand)]">
                           <span>Equipamento ou móvel</span>
                           <span>Qtd.</span>
                         </div>
@@ -7368,7 +7428,7 @@ export default function Home() {
                     )}
 
                     <details className="mt-3 rounded-xl bg-slate-50 p-3">
-                      <summary className="cursor-pointer select-none text-xs font-extrabold text-[#2F5597]">
+                      <summary className="cursor-pointer select-none text-xs font-extrabold text-[color:var(--brand)]">
                         + Adicionar equipamento ou móvel
                       </summary>
                       <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_100px_auto]">
@@ -7398,7 +7458,7 @@ export default function Home() {
                         <button
                           type="button"
                           onClick={adicionarEquipamentoEncontradoNaVisita}
-                          className="rounded-xl bg-[#2F5597] px-4 py-3 text-sm font-extrabold text-white"
+                          className="rounded-xl bg-[var(--brand)] px-4 py-3 text-sm font-medium text-white"
                         >
                           Adicionar
                         </button>
@@ -7414,7 +7474,7 @@ export default function Home() {
                     <button
                       type="button"
                       onClick={avancarParaProximoAmbiente}
-                      className="mt-3 w-full rounded-xl bg-[#17365D] px-4 py-2.5 text-sm font-extrabold text-white"
+                      className="mt-3 w-full rounded-xl bg-[var(--brand)] px-4 py-2.5 text-sm font-medium text-white"
                     >
                       {pendentesAmbienteAtivo > 0
                         ? `Avançar com ${pendentesAmbienteAtivo} ${pendentesAmbienteAtivo === 1 ? "pendência" : "pendências"} →`
@@ -7423,7 +7483,7 @@ export default function Home() {
                   </article>
                 )}
 
-                <div className="rounded-2xl bg-blue-50 p-4 text-sm text-blue-900">
+                <div className="rounded-2xl bg-[var(--brand-soft)] p-4 text-sm text-[color:var(--ink)]">
                   As respostas são salvas automaticamente. Itens marcados como
                   <b> Não Conforme</b> geram uma Não Conformidade vinculada ao critério,
                   preservando plano, evidências e histórico para rastreabilidade.
@@ -7435,76 +7495,110 @@ export default function Home() {
           <section className="visit-central space-y-2.5 lg:space-y-4">
             <div className="flex items-center justify-between gap-2 border-b border-slate-200 pb-2.5 lg:items-end lg:gap-3 lg:pb-4">
               <div className="min-w-0 flex-1">
-                <div className="text-[10px] font-medium text-slate-400"><span className="text-[#164ee8]">Visitas</span><span className="mx-1.5">›</span>Central da visita</div>
-                <h1 className="mt-1 truncate text-xl font-medium tracking-tight text-[#061b4f] sm:text-2xl">{nomeEmFormatoNatural(empresaVisita?.nomeFantasia)}</h1>
+                <div className="text-[10px] font-medium text-slate-400"><span className="text-[color:var(--brand)]">Visitas</span><span className="mx-1.5">›</span>Central da visita</div>
+                <h1 className="mt-1 truncate text-xl font-medium tracking-tight text-[color:var(--ink)] sm:text-2xl">{nomeEmFormatoNatural(empresaVisita?.nomeFantasia)}</h1>
                 <div className="mt-0.5 truncate text-xs font-normal text-slate-500 sm:text-sm">{fdata(visitaAtual.data)} • {visitaAtual.responsavel || "Responsável não informado"}</div>
               </div>
-              <button onClick={() => setView("visitas")} aria-label="Voltar para todas as visitas" className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-slate-200 bg-white text-lg font-medium text-[#061b4f] shadow-sm transition hover:border-blue-200 hover:text-[#164ee8] sm:flex sm:h-auto sm:w-fit sm:px-4 sm:py-2 sm:text-sm"><span className="sm:hidden">←</span><span className="hidden sm:inline">← Todas as visitas</span></button>
+              <button onClick={() => setView("visitas")} aria-label="Voltar para todas as visitas" className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-slate-200 bg-white text-lg font-medium text-[color:var(--ink)] shadow-sm transition hover:border-blue-200 hover:text-[color:var(--brand)] sm:flex sm:h-auto sm:w-fit sm:px-4 sm:py-2 sm:text-sm"><span className="sm:hidden">←</span><span className="hidden sm:inline">← Todas as visitas</span></button>
             </div>
 
             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_8px_28px_rgba(6,27,79,0.06)]">
               <div className="grid gap-2.5 p-3 sm:gap-3 sm:p-4 lg:grid-cols-[minmax(250px,.8fr)_minmax(320px,1.2fr)_auto] lg:items-center lg:gap-7">
                 <div className="min-w-0">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#164ee8]">Próxima etapa</div>
-                  <h2 className="mt-1 truncate text-base font-medium text-[#061b4f] sm:text-lg">{proximoAmbienteVisita || ((visitaAtual.ambientes || []).length ? "Revisar a inspeção" : "Definir os ambientes da visita")}</h2>
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand)]">Próxima etapa</div>
+                  <h2 className="mt-1 truncate text-base font-medium text-[color:var(--ink)] sm:text-lg">{proximoAmbienteVisita || ((visitaAtual.ambientes || []).length ? "Revisar a inspeção" : "Definir os ambientes da visita")}</h2>
                   <p className="mt-1 hidden text-xs text-slate-500 sm:block">Retome exatamente do ponto em que parou.</p>
                 </div>
                 <div>
-                <div className="flex items-center justify-between text-[13px] text-slate-500"><span>{respondidos} de {totalChecklist} respondidos</span><span className="font-semibold text-[#164ee8]">{percentualChecklist}%</span></div>
+                <div className="flex items-center justify-between text-[13px] text-slate-500"><span>{respondidos} de {totalChecklist} respondidos</span><span className="font-semibold text-[color:var(--brand)]">{percentualChecklist}%</span></div>
                   <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
-                    <div className="h-full rounded-full bg-gradient-to-r from-[#45d8ed] to-[#164ee8] transition-all" style={{ width: `${percentualChecklist}%` }} />
+                    <div className="h-full rounded-full bg-gradient-to-r from-[var(--info)] to-[var(--brand)] transition-all" style={{ width: `${percentualChecklist}%` }} />
                   </div>
                 </div>
-                <button type="button" onClick={() => (visitaAtual.ambientes || []).length ? abrirChecklist() : abrirAmbientes()} disabled={!permitido("visitas.executar", visitaAtual.empresaId)} className="w-full whitespace-nowrap rounded-full bg-[#164ee8] px-5 py-2 text-sm font-medium text-white shadow-[0_8px_18px_rgba(22,78,232,.2)] transition hover:bg-[#0d3dca] disabled:opacity-50 sm:py-2.5 lg:w-auto">
+                <button type="button" onClick={() => (visitaAtual.ambientes || []).length ? abrirChecklist() : abrirAmbientes()} disabled={!permitido("visitas.executar", visitaAtual.empresaId)} className="w-full whitespace-nowrap rounded-full bg-[var(--brand)] px-5 py-2 text-sm font-medium text-white shadow-[0_8px_18px_rgba(22,78,232,.2)] transition hover:brightness-95 disabled:opacity-50 sm:py-2.5 lg:w-auto">
                   {(visitaAtual.ambientes || []).length ? "Continuar inspeção →" : "Selecionar ambientes →"}
                 </button>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_6px_20px_rgba(6,27,79,0.04)] lg:grid-cols-4">
-              <button type="button" onClick={abrirChecklist} className="border-b border-r border-slate-100 p-2.5 text-left transition hover:bg-slate-50 sm:p-4 lg:border-b-0">
-                <div className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700">Conformes</div><div className="mt-0.5 text-xl font-medium text-[#061b4f]">{conformesVisita}</div><div className="text-xs font-normal text-slate-500">{percentualConformidade}% dos avaliados</div>
+            <div className="pc-kpi-grid">
+              <button type="button" onClick={abrirChecklist} className="pc-kpi is-ok">
+                <div className="pc-kpi-label"><i style={{ background: "var(--ok)" }} aria-hidden="true" />Conformes</div><div className="pc-kpi-num">{conformesVisita}</div><div className="pc-kpi-sub">{percentualConformidade}% dos avaliados</div>
               </button>
-              <button type="button" onClick={() => setView("ncs")} disabled={!permitido("ncs.acompanhar", visitaAtual.empresaId)} className="border-b border-slate-100 p-2.5 text-left transition hover:bg-slate-50 disabled:opacity-50 sm:p-4 lg:border-b-0 lg:border-r">
-                <div className="text-[10px] font-semibold uppercase tracking-wide text-red-600">Não conformidades</div><div className="mt-0.5 text-xl font-medium text-[#061b4f]">{ncsVisita.length}</div><div className="text-xs font-normal text-slate-500">{ncsAbertas} em acompanhamento</div>
+              <button type="button" onClick={() => setView("ncs")} disabled={!permitido("ncs.acompanhar", visitaAtual.empresaId)} className="pc-kpi is-nc disabled:opacity-50">
+                <div className="pc-kpi-label"><i style={{ background: "var(--nc)" }} aria-hidden="true" />Não conformidades</div><div className="pc-kpi-num">{ncsVisita.length}</div><div className="pc-kpi-sub">{ncsAbertas} em acompanhamento</div>
               </button>
-              <button type="button" onClick={abrirEvidencias} className="border-r border-slate-100 p-2.5 text-left transition hover:bg-slate-50 sm:p-4">
-                <div className="text-[10px] font-semibold uppercase tracking-wide text-[#164ee8]">Evidências</div><div className="mt-0.5 text-xl font-medium text-[#061b4f]">{evidenciasVisita.length}</div><div className="text-xs font-normal text-slate-500">{fotosVisita} fotos • {audiosVisita} áudios</div>
+              <button type="button" onClick={abrirEvidencias} className="pc-kpi is-info">
+                <div className="pc-kpi-label"><i style={{ background: "var(--info)" }} aria-hidden="true" />Evidências</div><div className="pc-kpi-num">{evidenciasVisita.length}</div><div className="pc-kpi-sub">{fotosVisita} fotos · {audiosVisita} áudios</div>
               </button>
-              <button type="button" onClick={abrirChecklist} className="p-2.5 text-left transition hover:bg-slate-50 sm:p-4">
-                <div className="text-[10px] font-semibold uppercase tracking-wide text-amber-600">Pendências</div><div className="mt-0.5 text-xl font-medium text-[#061b4f]">{pendentesVisita}</div><div className="text-xs font-normal text-slate-500">Itens não verificados</div>
+              <button type="button" onClick={abrirChecklist} className="pc-kpi is-pend">
+                <div className="pc-kpi-label"><i style={{ background: "var(--pend)" }} aria-hidden="true" />Pendências</div><div className="pc-kpi-num">{pendentesVisita}</div><div className="pc-kpi-sub">Itens não verificados</div>
               </button>
             </div>
 
             <div>
-              <h2 className="mb-2 text-base font-medium text-[#061b4f]">Áreas da visita</h2>
+              <h2 className="mb-2 text-base font-medium text-[color:var(--ink)]">Áreas da visita</h2>
               <div className="visit-area-grid grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                <button type="button" onClick={abrirAmbientes} className="visit-area-card group flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-blue-200 hover:bg-blue-50/30"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-cyan-50 text-cyan-700"><CompanySectionIcon name="ambientes" /></span><span className="min-w-0 flex-1"><span className="block text-sm font-medium text-[#061b4f]">Ambientes da visita</span><span className="mt-0.5 block truncate text-xs text-slate-500">{(visitaAtual.ambientes || []).length} selecionados</span></span><span className="text-sm text-[#164ee8]">›</span></button>
-                <button type="button" onClick={abrirEvidencias} className="visit-area-card flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-blue-200 hover:bg-blue-50/30"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-violet-50 text-violet-700"><VisitAreaIcon name="evidencias" /></span><span className="min-w-0 flex-1"><span className="block text-sm font-medium text-[#061b4f]">Evidências</span><span className="mt-0.5 block truncate text-xs text-slate-500"><span className="sm:hidden">{evidenciasVisita.length} registros</span><span className="hidden sm:inline">Fotos, áudios e registros</span></span></span><span className="text-sm text-[#164ee8]">›</span></button>
-                <button type="button" onClick={() => setView("plano")} disabled={!ncsVisita.length || !permitido("ncs.acompanhar", visitaAtual.empresaId)} className="visit-area-card flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-blue-200 hover:bg-blue-50/30 disabled:opacity-40"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-amber-50 text-amber-700"><VisitAreaIcon name="plano" /></span><span className="min-w-0 flex-1"><span className="block text-sm font-medium text-[#061b4f]">Plano de ação</span><span className="mt-0.5 block truncate text-xs text-slate-500"><span className="sm:hidden">{ncsVisita.length} achados</span><span className="hidden sm:inline">Tratamento dos achados</span></span></span><span className="text-sm text-[#164ee8]">›</span></button>
-                <button type="button" onClick={() => setView("relatorio")} disabled={!permitido("relatorios.exportar", visitaAtual.empresaId) && !permitido("relatorios.aprovar", visitaAtual.empresaId)} className="visit-area-card flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-blue-200 hover:bg-blue-50/30 disabled:opacity-40"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-blue-50 text-[#164ee8]"><VisitAreaIcon name="relatorio" /></span><span className="min-w-0 flex-1"><span className="block text-sm font-medium text-[#061b4f]">Relatório</span><span className="mt-0.5 block truncate text-xs text-slate-500">Resumo e exportação</span></span><span className="text-sm text-[#164ee8]">›</span></button>
-                <button type="button" onClick={() => abrirChecklistNoAmbiente(equipamentosDaVisita[0]?.setor || (visitaAtual.ambientes || [])[0])} disabled={(visitaAtual.ambientes || []).length === 0} className="visit-area-card flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-blue-200 hover:bg-blue-50/30 disabled:opacity-40"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-emerald-50 text-emerald-700"><VisitAreaIcon name="equipamentos" /></span><span className="min-w-0 flex-1"><span className="block text-sm font-medium text-[#061b4f]">Equipamentos e móveis</span><span className="mt-0.5 block truncate text-xs text-slate-500">{equipamentosDaVisita.length} tipos • {totalUnidadesEquipamentos} unidades</span></span><span className="text-sm text-[#164ee8]">›</span></button>
-                {programasChecklistAtivos.length > 0 && <button type="button" onClick={() => abrirChecklistNoAmbiente(AMBIENTE_PROGRAMAS_CONTROLE)} className="visit-area-card flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-blue-200 hover:bg-blue-50/30"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-indigo-50 text-indigo-700"><VisitAreaIcon name="programas" /></span><span className="min-w-0 flex-1"><span className="block text-sm font-medium text-[#061b4f]">Programas de Controle</span><span className="mt-0.5 block truncate text-xs text-slate-500">{respondidosProgramasCentral} de {itensProgramasCentral.length} • {statusProgramasCentral}</span></span><span className="text-sm text-[#164ee8]">›</span></button>}
+                <button type="button" onClick={abrirAmbientes} className="visit-area-card group flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-blue-200 hover:bg-[var(--brand-soft)]/30"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-cyan-50 text-cyan-700"><CompanySectionIcon name="ambientes" /></span><span className="min-w-0 flex-1"><span className="block text-sm font-medium text-[color:var(--ink)]">Ambientes da visita</span><span className="mt-0.5 block truncate text-xs text-slate-500">{(visitaAtual.ambientes || []).length} selecionados</span></span><span className="text-sm text-[color:var(--brand)]">›</span></button>
+                <button type="button" onClick={abrirEvidencias} className="visit-area-card flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-blue-200 hover:bg-[var(--brand-soft)]/30"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-violet-50 text-violet-700"><VisitAreaIcon name="evidencias" /></span><span className="min-w-0 flex-1"><span className="block text-sm font-medium text-[color:var(--ink)]">Evidências</span><span className="mt-0.5 block truncate text-xs text-slate-500"><span className="sm:hidden">{evidenciasVisita.length} registros</span><span className="hidden sm:inline">Fotos, áudios e registros</span></span></span><span className="text-sm text-[color:var(--brand)]">›</span></button>
+                <button type="button" onClick={() => setView("plano")} disabled={!ncsVisita.length || !permitido("ncs.acompanhar", visitaAtual.empresaId)} className="visit-area-card flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-blue-200 hover:bg-[var(--brand-soft)]/30 disabled:opacity-40"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[var(--pend-bg)] text-[color:var(--ink)]"><VisitAreaIcon name="plano" /></span><span className="min-w-0 flex-1"><span className="block text-sm font-medium text-[color:var(--ink)]">Plano de ação</span><span className="mt-0.5 block truncate text-xs text-slate-500"><span className="sm:hidden">{ncsVisita.length} achados</span><span className="hidden sm:inline">Tratamento dos achados</span></span></span><span className="text-sm text-[color:var(--brand)]">›</span></button>
+                <button type="button" onClick={() => setView("relatorio")} disabled={!permitido("relatorios.exportar", visitaAtual.empresaId) && !permitido("relatorios.aprovar", visitaAtual.empresaId)} className="visit-area-card flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-blue-200 hover:bg-[var(--brand-soft)]/30 disabled:opacity-40"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[var(--brand-soft)] text-[color:var(--brand)]"><VisitAreaIcon name="relatorio" /></span><span className="min-w-0 flex-1"><span className="block text-sm font-medium text-[color:var(--ink)]">Relatório</span><span className="mt-0.5 block truncate text-xs text-slate-500">Resumo e exportação</span></span><span className="text-sm text-[color:var(--brand)]">›</span></button>
+                <button type="button" onClick={() => abrirChecklistNoAmbiente(equipamentosDaVisita[0]?.setor || (visitaAtual.ambientes || [])[0])} disabled={(visitaAtual.ambientes || []).length === 0} className="visit-area-card flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-blue-200 hover:bg-[var(--brand-soft)]/30 disabled:opacity-40"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[var(--ok-bg)] text-[color:var(--ink)]"><VisitAreaIcon name="equipamentos" /></span><span className="min-w-0 flex-1"><span className="block text-sm font-medium text-[color:var(--ink)]">Equipamentos e móveis</span><span className="mt-0.5 block truncate text-xs text-slate-500">{equipamentosDaVisita.length} tipos • {totalUnidadesEquipamentos} unidades</span></span><span className="text-sm text-[color:var(--brand)]">›</span></button>
+                {programasChecklistAtivos.length > 0 && <button type="button" onClick={() => abrirChecklistNoAmbiente(AMBIENTE_PROGRAMAS_CONTROLE)} className="visit-area-card flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-blue-200 hover:bg-[var(--brand-soft)]/30"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-indigo-50 text-indigo-700"><VisitAreaIcon name="programas" /></span><span className="min-w-0 flex-1"><span className="block text-sm font-medium text-[color:var(--ink)]">Programas de Controle</span><span className="mt-0.5 block truncate text-xs text-slate-500">{respondidosProgramasCentral} de {itensProgramasCentral.length} • {statusProgramasCentral}</span></span><span className="text-sm text-[color:var(--brand)]">›</span></button>}
               </div>
             </div>
 
             <div className="grid items-start gap-3 lg:grid-cols-2">
             <details className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-4"><div><div className="font-medium text-[#061b4f]">Mapa e situação dos ambientes</div><div className="mt-1 text-xs text-slate-500">Consulte os ambientes e seus estados</div></div><span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#edf2ff] font-medium text-[#164ee8] transition group-open:rotate-90">→</span></summary>
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-4"><div><div className="font-medium text-[color:var(--ink)]">Mapa e situação dos ambientes</div><div className="mt-1 text-xs text-slate-500">Consulte os ambientes e seus estados</div></div><span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[var(--brand-soft)] font-medium text-[color:var(--ink)] transition group-open:rotate-90">→</span></summary>
               <div className="border-t border-slate-100">
                 <div className="relative hidden aspect-[16/5] overflow-hidden bg-slate-50 sm:block"><img src="/images/mapa-inspecao.webp" alt="Ilustração de uma área de produção de alimentos" className="h-full w-full object-cover" /><div className="absolute bottom-3 left-3 rounded-full bg-white/95 px-3 py-1.5 text-[10px] font-bold text-slate-500 shadow-sm">Imagem ilustrativa</div></div>
-                {resumoAmbientesVisita.length === 0 ? <div className="p-5"><button type="button" onClick={abrirAmbientes} className="w-full rounded-xl bg-[#164ee8] px-4 py-3 text-sm font-extrabold text-white">Selecionar ambientes →</button></div> : <div className="space-y-5 p-4 sm:p-5">{ambientesAgrupadosCentral.map((grupo) => <div key={grupo.titulo}><div className="mb-2 text-[10px] font-extrabold uppercase tracking-wide text-[#164ee8]">{grupo.titulo}</div><div className="grid gap-2 sm:grid-cols-2">{grupo.ambientes.map((resumo) => <button key={resumo.ambiente} type="button" onClick={() => abrirChecklistNoAmbiente(resumo.ambiente)} className="flex min-w-0 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-left transition hover:border-blue-200 hover:bg-blue-50"><span className={`h-3 w-3 shrink-0 rounded-full ${resumo.status === "Conforme" ? "bg-emerald-500" : resumo.status === "Atenção" ? "bg-amber-500" : resumo.status === "Não conforme" ? "bg-red-500" : "bg-slate-400"}`} /><span className="min-w-0 flex-1"><span className="block text-sm font-bold text-slate-800">{resumo.ambiente}</span><span className="mt-0.5 block text-[10px] text-slate-500">{resumo.respondidos} de {resumo.itens} perguntas • {resumo.status}</span></span><span className="text-[#164ee8]">→</span></button>)}</div></div>)}</div>}
+                {resumoAmbientesVisita.length === 0 ? <div className="p-5"><button type="button" onClick={abrirAmbientes} className="w-full rounded-xl bg-[var(--brand)] px-4 py-3 text-sm font-medium text-white">Selecionar ambientes →</button></div> : <div className="space-y-5 p-4 sm:p-5">{ambientesAgrupadosCentral.map((grupo) => <div key={grupo.titulo}><div className="mb-2 text-[10px] font-extrabold uppercase tracking-wide text-[color:var(--brand)]">{grupo.titulo}</div><div className="grid gap-2 sm:grid-cols-2">{grupo.ambientes.map((resumo) => <button key={resumo.ambiente} type="button" onClick={() => abrirChecklistNoAmbiente(resumo.ambiente)} className="flex min-w-0 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-left transition hover:border-blue-200 hover:bg-[var(--brand-soft)]"><span className={`h-3 w-3 shrink-0 rounded-full ${resumo.status === "Conforme" ? "bg-[var(--ok-bg)]0" : resumo.status === "Atenção" ? "bg-[var(--pend-bg)]0" : resumo.status === "Não conforme" ? "bg-[var(--nc-bg)]0" : "bg-slate-400"}`} /><span className="min-w-0 flex-1"><span className="block text-sm font-bold text-slate-800">{resumo.ambiente}</span><span className="mt-0.5 block text-[10px] text-slate-500">{resumo.respondidos} de {resumo.itens} perguntas • {resumo.status}</span></span><span className="text-[color:var(--brand)]">→</span></button>)}</div></div>)}</div>}
               </div>
             </details>
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div className="flex items-center justify-between gap-3"><div><div className="font-medium text-[#061b4f]">Atividade da visita</div><div className="mt-1 text-xs text-slate-500">{respondidos} itens respondidos • {ncsVisita.length} não conformidades</div></div><button type="button" onClick={() => setView("acompanhamento")} disabled={!permitido("ncs.acompanhar", visitaAtual.empresaId)} className="shrink-0 whitespace-nowrap rounded-full bg-[#edf2ff] px-3 py-2 text-xs font-medium text-[#164ee8] disabled:opacity-40">Acompanhar →</button></div></div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div className="flex items-center justify-between gap-3"><div><div className="font-medium text-[color:var(--ink)]">Atividade da visita</div><div className="mt-1 text-xs text-slate-500">{respondidos} itens respondidos • {ncsVisita.length} não conformidades</div></div><button type="button" onClick={() => setView("acompanhamento")} disabled={!permitido("ncs.acompanhar", visitaAtual.empresaId)} className="shrink-0 whitespace-nowrap rounded-full bg-[var(--brand-soft)] px-3 py-2 text-xs font-medium text-[color:var(--ink)] disabled:opacity-40">Acompanhar →</button></div></div>
             </div>
+
+            {permitido("ncs.acompanhar", visitaAtual.empresaId) && (() => {
+              const abertas = [...ncsVisita]
+                .filter((nc) => nc.status !== "Resolvida")
+                .sort((a, b) => String(a.criadoEm).localeCompare(String(b.criadoEm)))
+                .slice(0, 3);
+              if (abertas.length === 0) return null;
+              return (
+                <div className="pc-open-ncs">
+                  <div className="flex items-center justify-between gap-3">
+                    <h2 className="text-base font-medium text-[color:var(--ink)]">Não conformidades em aberto</h2>
+                    <button type="button" onClick={() => setView("ncs")} className="text-sm text-[color:var(--ink)] underline decoration-[var(--brand)] underline-offset-4">
+                      Ver todas
+                    </button>
+                  </div>
+                  <div className="mt-2 grid gap-2">
+                    {abertas.map((nc) => (
+                      <button
+                        key={nc.id}
+                        type="button"
+                        onClick={() => { setPlanoNcAbertaId(nc.id); setView("plano"); }}
+                        className="pc-open-nc"
+                      >
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-medium text-[color:var(--ink)]">{nc.titulo}</span>
+                          <span className="block truncate text-xs text-[color:var(--ink-2)]">{nc.ambiente} · {nc.status}</span>
+                        </span>
+                        <span className="shrink-0 text-sm text-[color:var(--ink)]">Acompanhar →</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
           </section>
         ) : view === "relatorio" && visitaAtual ? (
           <section id="relatorio-visita" className="report-print space-y-4">
             <div className="print-only report-document-header">
               <div>
-                <div className="report-brand">MBP Expert AI</div>
+                <div className="report-brand">{BRAND.name}</div>
                 <div className="report-subtitle">Relatório Técnico de Inspeção em Segurança dos Alimentos</div>
               </div>
               <div className="report-date">{fdata(visitaAtual.data)}</div>
@@ -7512,7 +7606,7 @@ export default function Home() {
             <div className="rounded-2xl bg-white p-5 shadow-sm">
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div>
-                  <div className="text-xs font-extrabold uppercase tracking-wider text-[#2F5597]">
+                  <div className="text-xs font-extrabold uppercase tracking-wider text-[color:var(--brand)]">
                     Encerramento da inspeção
                   </div>
                   <h1 className="mt-1 text-2xl font-extrabold">
@@ -7522,7 +7616,7 @@ export default function Home() {
                     Revisão consolidada dos registros realizados em campo.
                   </p>
                   <div className="mt-3">
-                    <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${visitaAtual.status === "Concluída" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
+                    <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${visitaAtual.status === "Concluída" ? "bg-[var(--ok-bg)] text-[color:var(--ink)]" : "bg-[var(--pend-bg)] text-[color:var(--ink)]"}`}>
                       {visitaAtual.status === "Concluída" ? "● Inspeção concluída" : "● Inspeção em andamento"}
                     </span>
                   </div>
@@ -7530,7 +7624,7 @@ export default function Home() {
 
                 <button
                   onClick={() => setView("visita")}
-                  className="print-control rounded-xl bg-slate-100 px-3 py-2 text-sm font-bold text-slate-700"
+                  className="print-control rounded-xl bg-[var(--na-bg)] px-3 py-2 text-sm font-bold text-[color:var(--ink)]"
                 >
                   Voltar à Central
                 </button>
@@ -7538,7 +7632,7 @@ export default function Home() {
 
               <div className="print-control mt-5" data-html2canvas-ignore="true">
                 {visitaAtual.status === "Concluída" ? (
-                  <div className="flex flex-col gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 md:flex-row md:items-center md:justify-between">
+                  <div className="flex flex-col gap-3 rounded-xl border border-emerald-200 bg-[var(--ok-bg)] p-4 md:flex-row md:items-center md:justify-between">
                     <div>
                       <div className="font-extrabold text-emerald-900">✓ Inspeção finalizada</div>
                       <div className="text-sm text-emerald-800">Esta visita está marcada como Concluída.</div>
@@ -7565,7 +7659,7 @@ export default function Home() {
                   type="button"
                   onClick={baixarPdfRelatorio}
                   disabled={gerandoPdf}
-                  className="w-full rounded-xl bg-[#2F5597] px-5 py-4 text-base font-extrabold text-white shadow-md transition hover:bg-[#24477f] disabled:cursor-wait disabled:opacity-70"
+                  className="w-full rounded-xl bg-[var(--brand)] px-5 py-4 text-base font-medium text-white shadow-md transition hover:brightness-95 disabled:cursor-wait disabled:opacity-70"
                 >
                   {gerandoPdf ? "Gerando PDF..." : "Baixar relatório em PDF"}
                 </button>
@@ -7585,7 +7679,7 @@ export default function Home() {
               )}
 
               {pendentesVisita > 0 && (
-                <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                <div className="mt-5 rounded-xl border border-amber-200 bg-[var(--pend-bg)] p-4 text-sm text-[color:var(--ink)]">
                   <strong>Atenção:</strong> ainda existem {pendentesVisita} item(ns)
                   pendente(s) no checklist. O relatório pode ser revisado, mas a
                   inspeção ainda não está totalmente preenchida.
@@ -7601,7 +7695,7 @@ export default function Home() {
             </div>
 
             <article className="print-card rounded-2xl bg-white p-5 shadow-sm">
-              <div className="text-xs font-extrabold uppercase text-[#2F5597]">
+              <div className="text-xs font-extrabold uppercase text-[color:var(--brand)]">
                 Resumo executivo
               </div>
               <h2 className="mt-1 text-xl font-extrabold">Panorama da inspeção</h2>
@@ -7616,15 +7710,15 @@ export default function Home() {
               </p>
 
               <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <div className="rounded-xl bg-red-50 p-4">
+                <div className="rounded-xl bg-[var(--nc-bg)] p-4">
                   <div className="text-xs font-extrabold uppercase text-red-700">NCs críticas</div>
                   <div className="mt-1 text-2xl font-extrabold text-red-950">{ncsCriticasVisita}</div>
                 </div>
-                <div className="rounded-xl bg-amber-50 p-4">
+                <div className="rounded-xl bg-[var(--pend-bg)] p-4">
                   <div className="text-xs font-extrabold uppercase text-amber-700">NCs importantes</div>
                   <div className="mt-1 text-2xl font-extrabold text-amber-950">{ncsImportantesVisita}</div>
                 </div>
-                <div className="rounded-xl bg-blue-50 p-4">
+                <div className="rounded-xl bg-[var(--brand-soft)] p-4">
                   <div className="text-xs font-extrabold uppercase text-blue-700">Ações definidas</div>
                   <div className="mt-1 text-2xl font-extrabold text-blue-950">{acoesDefinidas}/{ncsVisita.length}</div>
                 </div>
@@ -7635,7 +7729,7 @@ export default function Home() {
               </div>
 
               {!relatorioProntoParaEncerrar && (
-                <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                <div className="mt-4 rounded-xl border border-amber-200 bg-[var(--pend-bg)] p-4 text-sm text-[color:var(--ink)]">
                   <div className="font-extrabold">Pendências para um fechamento completo</div>
                   <div className="mt-1">
                     {pendentesVisita > 0 && <span>{pendentesVisita} item(ns) de checklist pendente(s). </span>}
@@ -7692,7 +7786,7 @@ export default function Home() {
                     (visitaAtual.ambientes || []).map((ambiente) => (
                       <span
                         key={ambiente}
-                        className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-800"
+                        className="rounded-full bg-[var(--brand-soft)] px-3 py-1 text-xs font-bold text-[color:var(--ink)]"
                       >
                         {ambiente}
                       </span>
@@ -7722,7 +7816,7 @@ export default function Home() {
               </div>
 
               <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <div className="rounded-xl bg-emerald-50 p-4">
+                <div className="rounded-xl bg-[var(--ok-bg)] p-4">
                   <div className="text-xs font-extrabold uppercase text-emerald-700">
                     Conforme
                   </div>
@@ -7730,7 +7824,7 @@ export default function Home() {
                     {conformesVisita}
                   </div>
                 </div>
-                <div className="rounded-xl bg-red-50 p-4">
+                <div className="rounded-xl bg-[var(--nc-bg)] p-4">
                   <div className="text-xs font-extrabold uppercase text-red-700">
                     Não conforme
                   </div>
@@ -7746,7 +7840,7 @@ export default function Home() {
                     {naoSeAplicaVisita}
                   </div>
                 </div>
-                <div className="rounded-xl bg-amber-50 p-4">
+                <div className="rounded-xl bg-[var(--pend-bg)] p-4">
                   <div className="text-xs font-extrabold uppercase text-amber-700">
                     Pendente
                   </div>
@@ -7760,7 +7854,7 @@ export default function Home() {
             <article className="print-block rounded-2xl bg-white p-5 shadow-sm">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                 <div>
-                  <div className="text-xs font-extrabold uppercase text-[#2F5597]">
+                  <div className="text-xs font-extrabold uppercase text-[color:var(--brand)]">
                     Capítulo 3
                   </div>
                   <h2 className="mt-1 text-xl font-extrabold">Programas de Controle e POPs</h2>
@@ -7802,7 +7896,7 @@ export default function Home() {
                   ) : (
                     <div className="mt-3 space-y-2">
                       {popsRelatorio.map((pop) => (
-                        <div key={pop.id} className="rounded-lg bg-blue-50 p-3 text-sm">
+                        <div key={pop.id} className="rounded-lg bg-[var(--brand-soft)] p-3 text-sm">
                           <div className="font-bold text-slate-900">
                             {pop.codigo ? `${pop.codigo} — ` : ""}{pop.titulo}
                           </div>
@@ -7821,7 +7915,7 @@ export default function Home() {
             <article className="print-block rounded-2xl bg-white p-5 shadow-sm">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                 <div>
-                  <div className="text-xs font-extrabold uppercase text-[#2F5597]">
+                  <div className="text-xs font-extrabold uppercase text-[color:var(--brand)]">
                     Quadro dos ambientes
                   </div>
                   <h2 className="mt-1 text-xl font-extrabold">Equipamentos e móveis</h2>
@@ -7838,7 +7932,7 @@ export default function Home() {
               ) : (
                 <div className="mt-4 overflow-x-auto rounded-xl border border-slate-200">
                   <table className="w-full min-w-[680px] border-collapse text-left text-sm">
-                    <thead className="bg-slate-100 text-xs uppercase text-slate-600">
+                    <thead className="bg-[var(--na-bg)] text-xs uppercase text-[color:var(--ink)]">
                       <tr>
                         <th className="p-3">Ambiente</th>
                         <th className="p-3">Equipamento ou móvel</th>
@@ -7872,13 +7966,13 @@ export default function Home() {
                     Não conformidades
                   </h2>
                 </div>
-                <span className="rounded-full bg-red-50 px-3 py-1 text-xs font-extrabold text-red-700">
+                <span className="rounded-full bg-[var(--nc-bg)] px-3 py-1 text-xs font-extrabold text-[color:var(--ink)]">
                   {ncsVisita.length}
                 </span>
               </div>
 
               {ncsVisita.length === 0 ? (
-                <div className="mt-4 rounded-xl bg-emerald-50 p-4 text-sm text-emerald-800">
+                <div className="mt-4 rounded-xl bg-[var(--ok-bg)] p-4 text-sm text-[color:var(--ink)]">
                   Nenhuma não conformidade registrada nesta visita.
                 </div>
               ) : (
@@ -7898,10 +7992,10 @@ export default function Home() {
                         <span
                           className={`w-fit rounded-full px-3 py-1 text-xs font-extrabold ${
                             nc.status === "Resolvida"
-                              ? "bg-emerald-50 text-emerald-700"
+                              ? "bg-[var(--ok-bg)] text-[color:var(--ink)]"
                               : nc.status === "Em tratamento"
-                                ? "bg-amber-50 text-amber-700"
-                                : "bg-red-50 text-red-700"
+                                ? "bg-[var(--pend-bg)] text-[color:var(--ink)]"
+                                : "bg-[var(--nc-bg)] text-[color:var(--ink)]"
                           }`}
                         >
                           {nc.status}
@@ -7911,21 +8005,21 @@ export default function Home() {
                       <div className="mt-3 flex flex-wrap gap-2">
                         <span className={`rounded-full px-2.5 py-1 text-[11px] font-extrabold ${
                           nc.criticidade === "Crítica"
-                            ? "bg-red-100 text-red-800"
+                            ? "bg-[var(--nc-bg)] text-[color:var(--ink)]"
                             : nc.criticidade === "Importante"
-                              ? "bg-amber-100 text-amber-800"
-                              : "bg-slate-100 text-slate-700"
+                              ? "bg-[var(--pend-bg)] text-[color:var(--ink)]"
+                              : "bg-[var(--na-bg)] text-[color:var(--ink)]"
                         }`}>
                           {nc.criticidade}
                         </span>
                         {nc.referencia && (
-                          <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-700">
+                          <span className="rounded-full bg-[var(--brand-soft)] px-2.5 py-1 text-[11px] font-bold text-[color:var(--ink)]">
                             {nc.referencia}
                           </span>
                         )}
                       </div>
 
-                      <div className="mt-3 rounded-lg bg-red-50 p-3 text-sm">
+                      <div className="mt-3 rounded-lg bg-[var(--nc-bg)] p-3 text-sm">
                         <span className="font-extrabold text-red-700">
                           Constatação:
                         </span>{" "}
@@ -8015,7 +8109,7 @@ export default function Home() {
                           </div>
                         )}
                         {analiseConfirmada && (
-                          <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-950">
+                          <div className="mt-3 rounded-lg border border-emerald-200 bg-[var(--ok-bg)] p-3 text-xs text-emerald-950">
                             <div className="font-extrabold uppercase text-emerald-800">
                               Análise assistida confirmada pelo profissional
                             </div>
@@ -8064,7 +8158,7 @@ export default function Home() {
               <h2 className="mt-1 text-xl font-extrabold">
                 Síntese da inspeção
               </h2>
-              <div className={`mt-3 rounded-xl border p-3 text-sm font-extrabold ${visitaAtual.status === "Concluída" ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-amber-200 bg-amber-50 text-amber-900"}`}>
+              <div className={`mt-3 rounded-xl border p-3 text-sm font-extrabold ${visitaAtual.status === "Concluída" ? "border-emerald-200 bg-[var(--ok-bg)] text-[color:var(--ink)]" : "border-amber-200 bg-[var(--pend-bg)] text-[color:var(--ink)]"}`}>
                 Status da inspeção: {visitaAtual.status}
               </div>
 
@@ -8078,7 +8172,7 @@ export default function Home() {
                   </div>
                 </div>
 
-                <div className="rounded-xl bg-red-50 p-4">
+                <div className="rounded-xl bg-[var(--nc-bg)] p-4">
                   <div className="text-xs font-extrabold uppercase text-red-700">
                     Abertas
                   </div>
@@ -8087,7 +8181,7 @@ export default function Home() {
                   </div>
                 </div>
 
-                <div className="rounded-xl bg-amber-50 p-4">
+                <div className="rounded-xl bg-[var(--pend-bg)] p-4">
                   <div className="text-xs font-extrabold uppercase text-amber-700">
                     Em tratamento
                   </div>
@@ -8096,7 +8190,7 @@ export default function Home() {
                   </div>
                 </div>
 
-                <div className="rounded-xl bg-emerald-50 p-4">
+                <div className="rounded-xl bg-[var(--ok-bg)] p-4">
                   <div className="text-xs font-extrabold uppercase text-emerald-700">
                     Resolvidas
                   </div>
@@ -8189,7 +8283,7 @@ export default function Home() {
                         atualizarConclusaoRelatorio(e.target.value)
                       }
                       placeholder="Registre aqui a conclusão técnica, orientações gerais, pontos prioritários ou observações finais da visita."
-                      className="min-h-32 w-full rounded-xl border border-slate-300 bg-white p-4 text-sm outline-none focus:border-[#2F5597]"
+                      className="min-h-32 w-full rounded-xl border border-slate-300 bg-white p-4 text-sm outline-none focus:border-[var(--brand)]"
                     />
                     <VoiceDictationButton
                       ativo={campoVozAtivo === `relatorio-${visitaAtual.id}`}
@@ -8205,7 +8299,7 @@ export default function Home() {
                     <button
                       type="button"
                       onClick={() => atualizarConclusaoRelatorio(gerarConclusaoAutomatica())}
-                      className="rounded-lg bg-blue-50 px-3 py-2 text-xs font-extrabold text-blue-800"
+                      className="rounded-lg bg-[var(--brand-soft)] px-3 py-2 text-xs font-extrabold text-[color:var(--ink)]"
                     >
                       ✨ Gerar sugestão automática
                     </button>
@@ -8286,7 +8380,7 @@ export default function Home() {
               </div>
             </article>
 
-            <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5 no-print">
+            <div className="rounded-2xl border border-blue-200 bg-[var(--brand-soft)] p-5 no-print">
               <div className="text-sm font-extrabold text-blue-900">
                 Relatório pronto para revisão
               </div>
@@ -8301,7 +8395,7 @@ export default function Home() {
             <div className="help-hero">
               <div>
                 <div className="help-kicker">AJUDA • GUIAS DO SISTEMA</div>
-                <h1>Como usar o MBP Expert AI</h1>
+                <h1>Como usar o {BRAND.name}</h1>
                 <p>Respostas rápidas para o trabalho em campo e acesso ao manual completo quando precisar de mais detalhes.</p>
               </div>
               <button type="button" onClick={() => setView("inicio")} className="help-back-button">← Voltar ao Início</button>
@@ -8433,7 +8527,7 @@ export default function Home() {
         ) : view === "inicio" ? (
           <div className="space-y-4">
             <section className="grid gap-3 lg:grid-cols-[minmax(0,1.08fr)_minmax(360px,0.92fr)] lg:gap-4">
-              <div className="flex flex-col overflow-hidden rounded-2xl bg-gradient-to-br from-[#061b4f] via-[#0b2d72] to-[#164ee8] p-4 text-white shadow-[0_16px_40px_rgba(6,27,79,0.16)] lg:min-h-[320px] lg:rounded-[28px] lg:p-7 lg:shadow-[0_22px_60px_rgba(6,27,79,0.20)]">
+              <div className="flex flex-col overflow-hidden rounded-2xl bg-[var(--brand)] p-4 text-white shadow-[0_16px_40px_rgba(6,27,79,0.16)] lg:min-h-[320px] lg:rounded-[28px] lg:p-7 lg:shadow-[0_22px_60px_rgba(6,27,79,0.20)]">
                 <div className="hidden lg:block">
                   <div className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-blue-200">Visão geral</div>
                   <h1 className="mt-2 text-2xl font-extrabold tracking-tight sm:text-3xl">
@@ -8450,7 +8544,7 @@ export default function Home() {
                       <div className="mt-1 text-lg font-extrabold lg:text-xl">{db.empresas[visitaEmAndamentoDestaque.empresaId]?.nomeFantasia || "Empresa"}</div>
                       <div className="mt-1 text-xs text-blue-100">{progressoVisitaDestaque}% concluída • {fdata(visitaEmAndamentoDestaque.data)}</div>
                       <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/15 lg:mt-4"><div className="h-full rounded-full bg-cyan-300" style={{ width: `${progressoVisitaDestaque}%` }} /></div>
-                      <button type="button" onClick={() => { setDb((estado) => ({ ...estado, empresaAtualId: visitaEmAndamentoDestaque.empresaId })); setVisitaAtualId(visitaEmAndamentoDestaque.id); setView("visita"); }} className="mt-3 w-full rounded-xl bg-white px-4 py-2.5 text-sm font-extrabold text-[#0b2d72] shadow-lg transition hover:bg-blue-50 lg:mt-4 lg:py-3">Continuar visita →</button>
+                      <button type="button" onClick={() => { setDb((estado) => ({ ...estado, empresaAtualId: visitaEmAndamentoDestaque.empresaId })); setVisitaAtualId(visitaEmAndamentoDestaque.id); setView("visita"); }} className="mt-3 w-full rounded-xl bg-white px-4 py-2.5 text-sm font-extrabold text-[#0b2d72] shadow-lg transition hover:bg-[var(--brand-soft)] lg:mt-4 lg:py-3">Continuar visita →</button>
                     </div>
                   ) : (
                     <div className="mt-2">
@@ -8465,7 +8559,7 @@ export default function Home() {
               <div className="relative min-h-[145px] overflow-hidden rounded-2xl bg-[#061b4f] bg-[url('/images/cozinha-inspecao.webp')] bg-cover bg-center shadow-sm lg:min-h-[320px] lg:rounded-[28px]">
                 <div className="absolute inset-0 bg-gradient-to-t from-[#061b4f]/80 via-transparent to-transparent" />
                 <div className="absolute inset-x-0 bottom-0 p-4 text-white lg:p-6">
-                  <div className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-cyan-200">MBP Expert AI</div>
+                  <div className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-cyan-200">{BRAND.name}</div>
                   <div className="mt-1 max-w-md text-sm font-extrabold leading-snug lg:text-lg">Inspeções mais claras, rápidas e organizadas.</div>
                 </div>
               </div>
@@ -8474,43 +8568,43 @@ export default function Home() {
             {atual && (
               <section className="grid gap-3 sm:grid-cols-2">
                 <button type="button" onClick={() => editarEmpresa(atual)} className="rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-blue-200 hover:shadow-md">
-                  <div className="flex items-center justify-between gap-3"><div><div className="text-[10px] font-extrabold uppercase tracking-wide text-[#164ee8]">Preparação da empresa</div><div className="mt-1 font-extrabold text-[#061b4f]">{configuracaoEmpresaAtual.prontaParaVisita ? "Dados essenciais prontos" : `Próximo: ${configuracaoEmpresaAtual.proximaEtapa?.titulo || "completar cadastro"}`}</div></div><span className="rounded-full bg-[#e9efff] px-3 py-1.5 text-xs font-extrabold text-[#164ee8]">{configuracaoEmpresaAtual.percentual}%</span></div>
+                  <div className="flex items-center justify-between gap-3"><div><div className="text-[10px] font-extrabold uppercase tracking-wide text-[color:var(--brand)]">Preparação da empresa</div><div className="mt-1 font-extrabold text-[color:var(--ink)]">{configuracaoEmpresaAtual.prontaParaVisita ? "Dados essenciais prontos" : `Próximo: ${configuracaoEmpresaAtual.proximaEtapa?.titulo || "completar cadastro"}`}</div></div><span className="rounded-full bg-[var(--brand-soft)] px-3 py-1.5 text-xs font-extrabold text-[color:var(--ink)]">{configuracaoEmpresaAtual.percentual}%</span></div>
                 </button>
                 <button type="button" onClick={() => setView("visitas")} className="rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-blue-200 hover:shadow-md">
-                  <div className="flex items-center justify-between gap-3"><div><div className="text-[10px] font-extrabold uppercase tracking-wide text-[#164ee8]">Pendências técnicas</div><div className="mt-1 font-extrabold text-[#061b4f]">{ncsEmpresaAbertas ? "Não conformidades em acompanhamento" : "Nenhuma não conformidade aberta"}</div></div><span className={`rounded-full px-3 py-1.5 text-xs font-extrabold ${ncsEmpresaAbertas ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-700"}`}>{ncsEmpresaAbertas}</span></div>
+                  <div className="flex items-center justify-between gap-3"><div><div className="text-[10px] font-extrabold uppercase tracking-wide text-[color:var(--brand)]">Pendências técnicas</div><div className="mt-1 font-extrabold text-[color:var(--ink)]">{ncsEmpresaAbertas ? "Não conformidades em acompanhamento" : "Nenhuma não conformidade aberta"}</div></div><span className={`rounded-full px-3 py-1.5 text-xs font-extrabold ${ncsEmpresaAbertas ? "bg-[var(--nc-bg)] text-[color:var(--ink)]" : "bg-[var(--ok-bg)] text-[color:var(--ink)]"}`}>{ncsEmpresaAbertas}</span></div>
                 </button>
               </section>
             )}
 
             <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               {[
-                { valor: visitasDoMes.length, rotulo: "Visitas este mês", cor: "bg-blue-50 text-[#164ee8]", icone: "▣" },
-                { valor: visitasDoMes.filter((v) => v.status === "Concluída").length, rotulo: "Concluídas este mês", cor: "bg-emerald-50 text-emerald-700", icone: "✓" },
-                { valor: visitas.filter((v) => v.status === "Em andamento").length, rotulo: "Em andamento agora", cor: "bg-amber-50 text-amber-700", icone: "◷" },
+                { valor: visitasDoMes.length, rotulo: "Visitas este mês", cor: "bg-[var(--brand-soft)] text-[color:var(--brand)]", icone: "▣" },
+                { valor: visitasDoMes.filter((v) => v.status === "Concluída").length, rotulo: "Concluídas este mês", cor: "bg-[var(--ok-bg)] text-[color:var(--ink)]", icone: "✓" },
+                { valor: visitas.filter((v) => v.status === "Em andamento").length, rotulo: "Em andamento agora", cor: "bg-[var(--pend-bg)] text-[color:var(--ink)]", icone: "◷" },
                 { valor: empresasVisiveis.length, rotulo: "Empresas ativas", cor: "bg-violet-50 text-violet-700", icone: "□" },
               ].map((indicador) => (
                 <div key={indicador.rotulo} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                   <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl text-base font-extrabold ${indicador.cor}`}>{indicador.icone}</div>
-                  <div><div className="text-xl font-extrabold leading-none text-[#061b4f]">{indicador.valor}</div><div className="mt-1 text-xs text-slate-500">{indicador.rotulo}</div></div>
+                  <div><div className="text-xl font-extrabold leading-none text-[color:var(--ink)]">{indicador.valor}</div><div className="mt-1 text-xs text-slate-500">{indicador.rotulo}</div></div>
                 </div>
               ))}
             </section>
 
             <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
               <div className="flex items-center justify-between gap-3">
-                <div><div className="text-[10px] font-extrabold uppercase tracking-wide text-[#164ee8]">Acompanhamento</div><h2 className="mt-1 text-lg font-extrabold text-[#061b4f]">Visitas recentes</h2></div>
+                <div><div className="text-[10px] font-extrabold uppercase tracking-wide text-[color:var(--brand)]">Acompanhamento</div><h2 className="mt-1 text-lg font-extrabold text-[color:var(--ink)]">Visitas recentes</h2></div>
                 <div className="flex rounded-lg bg-slate-50 p-0.5 text-[10px] font-bold">
                   <button
                     type="button"
                     onClick={() => setFiltroInicio("Em andamento")}
-                    className={`rounded-md px-3 py-1.5 ${filtroInicio === "Em andamento" ? "bg-[#2F5597] text-white shadow-sm" : "text-slate-500"}`}
+                    className={`rounded-md px-3 py-1.5 ${filtroInicio === "Em andamento" ? "bg-[var(--brand)] text-white shadow-sm" : "text-slate-500"}`}
                   >
                     Em andamento
                   </button>
                   <button
                     type="button"
                     onClick={() => setFiltroInicio("Concluída")}
-                    className={`rounded-md px-3 py-1.5 ${filtroInicio === "Concluída" ? "bg-[#2F5597] text-white shadow-sm" : "text-slate-500"}`}
+                    className={`rounded-md px-3 py-1.5 ${filtroInicio === "Concluída" ? "bg-[var(--brand)] text-white shadow-sm" : "text-slate-500"}`}
                   >
                     Concluídas
                   </button>
@@ -8526,15 +8620,15 @@ export default function Home() {
                       onClick={() => { setVisitaAtualId(visita.id); setView("visita"); }}
                       className="flex w-full items-center gap-3 py-3 text-left transition hover:bg-slate-50"
                     >
-                      <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${visita.status === "Concluída" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-600"}`}>
+                      <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${visita.status === "Concluída" ? "bg-[var(--ok-bg)] text-[color:var(--ink)]" : "bg-[var(--pend-bg)] text-[color:var(--ink)]"}`}>
                         {visita.status === "Concluída" ? "✓" : "◷"}
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-xs font-extrabold text-slate-950">{db.empresas[visita.empresaId]?.nomeFantasia || "Empresa"}</span>
                         <span className="block truncate text-[11px] text-slate-500">{fdata(visita.data)} • {visita.responsavel || "Responsável não informado"}</span>
                       </span>
-                      <span className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-bold ${visita.status === "Concluída" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>{visita.status}</span>
-                      <span className="shrink-0 text-[#2F5597]">›</span>
+                      <span className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-bold ${visita.status === "Concluída" ? "bg-[var(--ok-bg)] text-[color:var(--ink)]" : "bg-[var(--pend-bg)] text-[color:var(--ink)]"}`}>{visita.status}</span>
+                      <span className="shrink-0 text-[color:var(--brand)]">›</span>
                     </button>
                   ))}
                   {visitasRecentesInicio.length === 0 && (
@@ -8543,7 +8637,7 @@ export default function Home() {
                 </div>
               </div>
 
-              <button type="button" onClick={() => setView("visitas")} className="mt-3 flex w-full items-center justify-between rounded-xl bg-[#edf2ff] px-3 py-2.5 text-xs font-extrabold text-[#164ee8]">
+              <button type="button" onClick={() => setView("visitas")} className="mt-3 flex w-full items-center justify-between rounded-xl bg-[var(--brand-soft)] px-3 py-2.5 text-xs font-extrabold text-[color:var(--ink)]">
                 <span>Ver todas as visitas</span><span>›</span>
               </button>
             </section>
@@ -8585,7 +8679,7 @@ export default function Home() {
                     setMsg("");
                     setShowEmpresaForm(true);
                   }}
-                  className="rounded-xl bg-[#2F5597] px-4 py-3 font-extrabold text-white"
+                  className="rounded-xl bg-[var(--brand)] px-4 py-3 font-medium text-white"
                 >
                   + Nova empresa
                 </button>
@@ -8608,7 +8702,7 @@ export default function Home() {
                   key={e.id}
                   className={`rounded-xl border p-4 ${
                     db.empresaAtualId === e.id
-                      ? "border-[#2F5597] bg-blue-50"
+                      ? "border-[var(--brand)] bg-[var(--brand-soft)]"
                       : ""
                   }`}
                 >
@@ -8661,7 +8755,7 @@ export default function Home() {
                     {db.empresaAtualId === e.id && permitido("visitas.criar", e.id) && (
                       <button
                         onClick={novaVisita}
-                        className="rounded-xl bg-[#2F5597] px-4 py-2 font-bold text-white"
+                        className="rounded-xl bg-[var(--brand)] px-4 py-2 font-medium text-white"
                       >
                         Nova visita
                       </button>
@@ -8681,7 +8775,7 @@ export default function Home() {
             <div className="rounded-2xl bg-white p-5 shadow-sm">
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div>
-                  <div className="text-xs font-extrabold uppercase text-[#2F5597]">
+                  <div className="text-xs font-extrabold uppercase text-[color:var(--brand)]">
                     Histórico da empresa
                   </div>
                   <h1 className="mt-1 text-2xl font-extrabold">
@@ -8707,7 +8801,7 @@ export default function Home() {
               </div>
 
               {ncsEmpresaForaDoHistorico > 0 && (
-                <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                <div className="mt-4 rounded-xl border border-amber-200 bg-[var(--pend-bg)] p-3 text-sm text-[color:var(--ink)]">
                   <span className="font-extrabold">Dados anteriores preservados:</span>{" "}
                   {ncsEmpresaForaDoHistorico} registro(s) de não conformidade da empresa não estão
                   vinculados a uma visita atualmente existente. Eles foram excluídos dos indicadores
@@ -8719,7 +8813,7 @@ export default function Home() {
             {comparacaoVisitas ? (
               <div className="space-y-4">
                 <div className="rounded-2xl bg-white p-5 shadow-sm">
-                  <div className="text-xs font-extrabold uppercase text-[#2F5597]">
+                  <div className="text-xs font-extrabold uppercase text-[color:var(--brand)]">
                     Comparação entre visitas
                   </div>
                   <div className="mt-1 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
@@ -8731,10 +8825,10 @@ export default function Home() {
                     </div>
                     <div className={`rounded-full px-4 py-2 text-sm font-extrabold ${
                       comparacaoVisitas.deltaConformidade > 0
-                        ? "bg-emerald-100 text-emerald-800"
+                        ? "bg-[var(--ok-bg)] text-[color:var(--ink)]"
                         : comparacaoVisitas.deltaConformidade < 0
-                          ? "bg-red-100 text-red-800"
-                          : "bg-slate-100 text-slate-700"
+                          ? "bg-[var(--nc-bg)] text-[color:var(--ink)]"
+                          : "bg-[var(--na-bg)] text-[color:var(--ink)]"
                     }`}>
                       {comparacaoVisitas.deltaConformidade > 0 ? "+" : ""}
                       {comparacaoVisitas.deltaConformidade} p.p. de conformidade
@@ -8742,7 +8836,7 @@ export default function Home() {
                   </div>
 
                   <div className="mt-5 grid gap-3 md:grid-cols-4">
-                    <div className="rounded-xl bg-blue-50 p-4">
+                    <div className="rounded-xl bg-[var(--brand-soft)] p-4">
                       <div className="text-xs font-extrabold uppercase text-blue-700">Conformidade anterior</div>
                       <div className="mt-1 text-2xl font-extrabold text-blue-950">
                         {comparacaoVisitas.resumoAnterior.avaliados
@@ -8750,7 +8844,7 @@ export default function Home() {
                           : "—"}
                       </div>
                     </div>
-                    <div className="rounded-xl bg-emerald-50 p-4">
+                    <div className="rounded-xl bg-[var(--ok-bg)] p-4">
                       <div className="text-xs font-extrabold uppercase text-emerald-700">Conformidade atual</div>
                       <div className="mt-1 text-2xl font-extrabold text-emerald-950">
                         {comparacaoVisitas.resumoAtual.avaliados
@@ -8758,7 +8852,7 @@ export default function Home() {
                           : "—"}
                       </div>
                     </div>
-                    <div className="rounded-xl bg-red-50 p-4">
+                    <div className="rounded-xl bg-[var(--nc-bg)] p-4">
                       <div className="text-xs font-extrabold uppercase text-red-700">Não conformidades</div>
                       <div className="mt-1 text-2xl font-extrabold text-red-950">
                         {comparacaoVisitas.ncsAnterior.length} → {comparacaoVisitas.ncsAtual.length}
@@ -8781,17 +8875,17 @@ export default function Home() {
                 </div>
 
                 <div className="grid gap-4 lg:grid-cols-4">
-                  <div className="rounded-2xl border border-red-100 bg-red-50 p-4">
+                  <div className="rounded-2xl border border-red-100 bg-[var(--nc-bg)] p-4">
                     <div className="text-xs font-extrabold uppercase text-red-700">Novas não conformidades</div>
                     <div className="mt-1 text-3xl font-extrabold text-red-950">{comparacaoVisitas.novas.length}</div>
                     <p className="mt-1 text-xs text-red-800">Não apareciam na visita anterior.</p>
                   </div>
-                  <div className="rounded-2xl border border-amber-100 bg-amber-50 p-4">
+                  <div className="rounded-2xl border border-amber-100 bg-[var(--pend-bg)] p-4">
                     <div className="text-xs font-extrabold uppercase text-amber-700">Reincidências</div>
                     <div className="mt-1 text-3xl font-extrabold text-amber-950">{comparacaoVisitas.reincidentes.length}</div>
                     <p className="mt-1 text-xs text-amber-800">Persistiram como não conformes.</p>
                   </div>
-                  <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
+                  <div className="rounded-2xl border border-emerald-100 bg-[var(--ok-bg)] p-4">
                     <div className="text-xs font-extrabold uppercase text-emerald-700">Itens corrigidos</div>
                     <div className="mt-1 text-3xl font-extrabold text-emerald-950">{comparacaoVisitas.corrigidas.length}</div>
                     <p className="mt-1 text-xs text-emerald-800">Eram NCs e passaram a Conforme.</p>
@@ -8813,7 +8907,7 @@ export default function Home() {
                         <div className="text-xs font-extrabold uppercase text-amber-700">Reincidências</div>
                         <div className="mt-2 space-y-2">
                           {comparacaoVisitas.reincidentes.length ? comparacaoVisitas.reincidentes.slice(0, 5).map((nc) => (
-                            <div key={nc.id} className="rounded-xl bg-amber-50 p-3 text-sm">
+                            <div key={nc.id} className="rounded-xl bg-[var(--pend-bg)] p-3 text-sm">
                               <div className="font-extrabold">{nc.titulo}</div>
                               <div className="mt-1 text-xs text-amber-800">{nc.ambiente}</div>
                             </div>
@@ -8824,7 +8918,7 @@ export default function Home() {
                         <div className="text-xs font-extrabold uppercase text-red-700">Novas</div>
                         <div className="mt-2 space-y-2">
                           {comparacaoVisitas.novas.length ? comparacaoVisitas.novas.slice(0, 5).map((nc) => (
-                            <div key={nc.id} className="rounded-xl bg-red-50 p-3 text-sm">
+                            <div key={nc.id} className="rounded-xl bg-[var(--nc-bg)] p-3 text-sm">
                               <div className="font-extrabold">{nc.titulo}</div>
                               <div className="mt-1 text-xs text-red-800">{nc.ambiente}</div>
                             </div>
@@ -8835,7 +8929,7 @@ export default function Home() {
                         <div className="text-xs font-extrabold uppercase text-emerald-700">Corrigidas</div>
                         <div className="mt-2 space-y-2">
                           {comparacaoVisitas.corrigidas.length ? comparacaoVisitas.corrigidas.slice(0, 5).map((nc) => (
-                            <div key={nc.id} className="rounded-xl bg-emerald-50 p-3 text-sm">
+                            <div key={nc.id} className="rounded-xl bg-[var(--ok-bg)] p-3 text-sm">
                               <div className="font-extrabold">{nc.titulo}</div>
                               <div className="mt-1 text-xs text-emerald-800">{nc.ambiente}</div>
                             </div>
@@ -8847,7 +8941,7 @@ export default function Home() {
                 )}
               </div>
             ) : visitasEmpresaAtual.length === 1 ? (
-              <div className="rounded-2xl border border-blue-100 bg-blue-50 p-5">
+              <div className="rounded-2xl border border-blue-100 bg-[var(--brand-soft)] p-5">
                 <div className="text-xs font-extrabold uppercase text-blue-700">
                   Comparação entre visitas
                 </div>
@@ -8890,24 +8984,24 @@ export default function Home() {
                       <article
                         key={v.id}
                         className={`rounded-2xl bg-white p-5 shadow-sm ${
-                          v.id === visitaAtualId ? "ring-2 ring-[#2F5597] ring-offset-2" : ""
+                          v.id === visitaAtualId ? "ring-2 ring-[var(--brand)] ring-offset-2" : ""
                         }`}
                       >
                         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                           <div>
                             <div className="flex flex-wrap items-center gap-2">
-                              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold text-slate-600">
+                              <span className="rounded-full bg-[var(--na-bg)] px-3 py-1 text-xs font-extrabold text-[color:var(--ink)]">
                                 Visita {numeroVisitaPorId.get(v.id) || visitasEmpresaAtual.length - idx}
                               </span>
                               <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${
                                 v.status === "Concluída"
-                                  ? "bg-emerald-100 text-emerald-800"
-                                  : "bg-amber-100 text-amber-800"
+                                  ? "bg-[var(--ok-bg)] text-[color:var(--ink)]"
+                                  : "bg-[var(--pend-bg)] text-[color:var(--ink)]"
                               }`}>
                                 {v.status}
                               </span>
                               {v.id === visitaAtualId && (
-                                <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-extrabold text-blue-800">
+                                <span className="rounded-full bg-[var(--brand-soft)] px-3 py-1 text-xs font-extrabold text-[color:var(--ink)]">
                                   Visita selecionada
                                 </span>
                               )}
@@ -8923,14 +9017,14 @@ export default function Home() {
                               setVisitaAtualId(v.id);
                               setView(v.status === "Concluída" ? "relatorio" : "visita");
                             }}
-                            className="rounded-xl bg-[#17365D] px-4 py-2 font-bold text-white"
+                            className="rounded-xl bg-[var(--brand)] px-4 py-2 font-medium text-white"
                           >
                             {v.status === "Concluída" ? "Abrir relatório" : "Abrir visita"}
                           </button>
                         </div>
 
                         <div className="mt-4 grid gap-3 md:grid-cols-4">
-                          <div className="rounded-xl bg-blue-50 p-3">
+                          <div className="rounded-xl bg-[var(--brand-soft)] p-3">
                             <div className="text-xs font-extrabold uppercase text-blue-700">
                               Conformidade
                             </div>
@@ -8938,7 +9032,7 @@ export default function Home() {
                               {avaliados ? `${conformidade}%` : "—"}
                             </div>
                           </div>
-                          <div className="rounded-xl bg-red-50 p-3">
+                          <div className="rounded-xl bg-[var(--nc-bg)] p-3">
                             <div className="text-xs font-extrabold uppercase text-red-700">
                               Não conformidades
                             </div>
@@ -8946,7 +9040,7 @@ export default function Home() {
                               {ncsDaVisita.length}
                             </div>
                           </div>
-                          <div className="rounded-xl bg-amber-50 p-3">
+                          <div className="rounded-xl bg-[var(--pend-bg)] p-3">
                             <div className="text-xs font-extrabold uppercase text-amber-700">
                               Em aberto
                             </div>
@@ -8983,7 +9077,7 @@ export default function Home() {
             <div className="visits-list-header rounded-2xl bg-white p-4 shadow-sm sm:p-5">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
-                  <div className="text-xs font-extrabold uppercase text-[#2F5597]">
+                  <div className="text-xs font-extrabold uppercase text-[color:var(--brand)]">
                     Módulo Visitas
                   </div>
                   <h1 className="mt-1 text-2xl font-extrabold">
@@ -9003,14 +9097,14 @@ export default function Home() {
                   <button
                     onClick={() => setView("historico")}
                     disabled={!atual}
-                    className="rounded-xl bg-slate-100 px-4 py-3 font-extrabold text-[#17365D] disabled:opacity-40"
+                    className="rounded-xl bg-slate-100 px-4 py-3 font-extrabold text-[color:var(--ink)] disabled:opacity-40"
                   >
                     <span className="sm:hidden">Histórico</span><span className="hidden sm:inline">Histórico da empresa</span>
                   </button>
                   <button
                     onClick={novaVisita}
                     disabled={!atual || !permitido("visitas.criar", atual.id)}
-                    className="rounded-xl bg-[#2F5597] px-4 py-3 font-extrabold text-white disabled:opacity-40"
+                    className="rounded-xl bg-[var(--brand)] px-4 py-3 font-medium text-white disabled:opacity-40"
                   >
                     + Nova visita
                   </button>
@@ -9026,7 +9120,7 @@ export default function Home() {
                   onClick={() => setFiltroListaVisitas(filtro)}
                   className={`min-w-0 rounded-xl px-1.5 py-2.5 text-xs font-semibold sm:px-3 sm:text-sm ${
                     filtroListaVisitas === filtro
-                      ? "bg-[#17365D] text-white"
+                      ? "bg-[var(--brand-soft)] text-[color:var(--ink)]"
                       : "bg-slate-50 text-slate-600"
                   }`}
                 >
@@ -9048,14 +9142,14 @@ export default function Home() {
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-extrabold text-slate-600">
+                          <span className="rounded-full bg-[var(--na-bg)] px-2.5 py-1 text-xs font-extrabold text-[color:var(--ink)]">
                             Visita {numeroVisitaPorId.get(v.id) || "—"}
                           </span>
                           <span className="text-xs font-extrabold uppercase text-slate-400">
                             {fdata(v.data)}
                           </span>
                           {v.id === visitaAtualId && (
-                            <span className="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-extrabold text-blue-800">
+                            <span className="rounded-full bg-[var(--brand-soft)] px-2.5 py-1 text-xs font-extrabold text-[color:var(--ink)]">
                               Selecionada
                             </span>
                           )}
@@ -9068,7 +9162,7 @@ export default function Home() {
                         </p>
                       </div>
 
-                      <span className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-extrabold ${v.status === "Concluída" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+                      <span className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-extrabold ${v.status === "Concluída" ? "bg-[var(--ok-bg)] text-[color:var(--ink)]" : "bg-[var(--pend-bg)] text-[color:var(--ink)]"}`}>
                         {v.status}
                       </span>
                     </div>
@@ -9079,7 +9173,7 @@ export default function Home() {
                           {permitido("visitas.executar", v.empresaId) && (
                             <button
                               onClick={() => continuar(v.id)}
-                              className="visits-primary-action rounded-xl bg-[#17365D] px-4 py-2.5 font-semibold text-white sm:flex-1"
+                              className="visits-primary-action rounded-xl bg-[var(--brand)] px-4 py-2.5 font-medium text-white sm:flex-1"
                             >
                               Continuar visita
                             </button>
@@ -9087,7 +9181,7 @@ export default function Home() {
                           {permitido("visitas.concluir", v.empresaId) && (
                             <button
                               onClick={() => concluir(v.id)}
-                              className="rounded-xl bg-emerald-50 px-3 py-2.5 font-semibold text-emerald-700 sm:px-4"
+                              className="rounded-xl bg-[var(--ok-bg)] px-3 py-2.5 font-semibold text-[color:var(--ink)] sm:px-4"
                             >
                               Concluir
                             </button>
@@ -9108,7 +9202,7 @@ export default function Home() {
                               setVisitaAtualId(v.id);
                               setView("relatorio");
                             }}
-                            className="rounded-xl bg-[#17365D] px-4 py-2.5 font-semibold text-white sm:flex-1"
+                            className="rounded-xl bg-[var(--brand)] px-4 py-2.5 font-medium text-white sm:flex-1"
                           >
                             Abrir relatório
                           </button>
@@ -9118,7 +9212,7 @@ export default function Home() {
                       {usuarioDaSessao?.perfil === "Administrador" && (
                         <button
                           onClick={() => excluir(v.id)}
-                          className="rounded-xl bg-red-50 px-3 py-2.5 font-semibold text-red-700 sm:px-4"
+                          className="rounded-xl bg-[var(--nc-bg)] px-3 py-2.5 font-semibold text-[color:var(--ink)] sm:px-4"
                         >
                           Excluir
                         </button>
@@ -9145,7 +9239,7 @@ export default function Home() {
           ] as const).map(([destino, rotulo]) => {
             const ativo = destino === "visitas" ? view === "visitas" || VISIT_VIEWS.includes(view) : destino === "inicio" ? view === "inicio" || view === "ajuda" : view === destino;
             return (
-              <button key={destino} type="button" onClick={() => { setMenuAtalhosAberto(false); if (ativo) { setMenuContextualAberto(true); return; } navegarPrincipal(destino); setMenuContextualAberto(true); }} className={`mobile-bottom-nav-item flex min-h-14 flex-col items-center justify-center rounded-2xl px-1 text-[9px] font-semibold ${ativo ? "bg-[#e9efff] text-[#164ee8]" : "text-slate-500"}`}>
+              <button key={destino} type="button" onClick={() => { setMenuAtalhosAberto(false); if (ativo) { setMenuContextualAberto(true); return; } navegarPrincipal(destino); setMenuContextualAberto(true); }} className={`mobile-bottom-nav-item flex min-h-14 flex-col items-center justify-center rounded-2xl px-1 text-[9px] font-semibold ${ativo ? "bg-[var(--brand-soft)] text-[color:var(--ink)]" : "text-slate-500"}`}>
                 <MobileNavIcon name={destino} />
                 <span className="mt-1">{rotulo}</span>
               </button>
@@ -9158,7 +9252,7 @@ export default function Home() {
               setMenuMaisAberto(false);
               setMenuAtalhosAberto(true);
             }}
-            className={`mobile-bottom-nav-item flex min-h-14 flex-col items-center justify-center rounded-2xl px-1 text-[9px] font-semibold ${menuAtalhosAberto ? "bg-[#e9efff] text-[#164ee8]" : "text-slate-500"}`}
+            className={`mobile-bottom-nav-item flex min-h-14 flex-col items-center justify-center rounded-2xl px-1 text-[9px] font-semibold ${menuAtalhosAberto ? "bg-[var(--brand-soft)] text-[color:var(--ink)]" : "text-slate-500"}`}
             aria-label="Mais opções"
           >
             <span className="mbp-bottom-more-dots" aria-hidden="true">•••</span>

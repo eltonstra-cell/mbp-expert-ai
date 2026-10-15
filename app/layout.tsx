@@ -1,14 +1,19 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import Providers from "./providers";
+import { BRAND, BRAND_COLORS, brandCssVariables } from "@/lib/brand";
+import { fontClassNames } from "@/lib/fonts";
 
 export const metadata: Metadata = {
-  title: "MBP Expert AI",
-  description: "Sistema Operacional para Consultoria em Segurança dos Alimentos",
+  title: BRAND.name,
+  description: BRAND.description,
   manifest: "/manifest.webmanifest",
+  icons: {
+    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
   appleWebApp: {
     capable: true,
-    title: "MBP Expert AI",
+    title: BRAND.name,
     statusBarStyle: "default",
   },
 };
@@ -16,12 +21,15 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#17365D",
+  themeColor: BRAND_COLORS.brand,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" className={fontClassNames}>
+      <head>
+        <style dangerouslySetInnerHTML={{ __html: brandCssVariables() }} />
+      </head>
       <body><Providers>{children}</Providers></body>
     </html>
   );
