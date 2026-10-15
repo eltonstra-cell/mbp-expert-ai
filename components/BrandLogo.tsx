@@ -54,7 +54,7 @@ export function LogoHorizontal({
       <span className="min-w-0">
         <LogoWordmark className={`block ${textClassName}`} />
         {showSubtitle && (
-          <span className="mt-1 block text-[11px] leading-tight" style={{ color: "var(--ink-2)" }}>
+          <span className="brand-subtitle mt-1 block text-[11px] leading-tight" style={{ color: "var(--ink-2)" }}>
             {BRAND.subtitle}
           </span>
         )}

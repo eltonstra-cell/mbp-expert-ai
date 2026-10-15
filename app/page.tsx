@@ -3,6 +3,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import MetricCard from "@/components/MetricCard";
 import AccessPreparationPanel from "@/components/AccessPreparationPanel";
+import AppNavigation, { type CartaoVisita, type ContagemEtapa } from "@/components/AppNavigation";
+import AppTopbar from "@/components/AppTopbar";
+import { chaveAtiva, itemDoMenu, type NavContexto, type NavKey } from "@/lib/navigation";
 import ManualBaseFields from "@/components/ManualBaseFields";
 import OperationalFlowsFields from "@/components/OperationalFlowsFields";
 import QualityProgramsFields from "@/components/QualityProgramsFields";
@@ -522,16 +525,6 @@ function chaveCriterio(item: {
   ].join("::");
 }
 
-type MobileNavIconName = "inicio" | "empresas" | "visitas" | "acessos";
-
-function MobileNavIcon({ name }: { name: MobileNavIconName }) {
-  const common = { width: 22, height: 22, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.9, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, "aria-hidden": true };
-  if (name === "inicio") return <svg {...common}><path d="m3 11 9-7 9 7" /><path d="M5.5 9.5V20h13V9.5" /><path d="M9.5 20v-6h5v6" /></svg>;
-  if (name === "empresas") return <svg {...common}><path d="M3 21h18" /><path d="M5 21V7h9v14" /><path d="M14 11h5v10" /><path d="M8 10h3M8 14h3M8 18h3M17 14h.01M17 18h.01" /></svg>;
-  if (name === "visitas") return <svg {...common}><path d="M9 5h6" /><path d="M9 3h6v4H9z" /><path d="M7 5H5.5A1.5 1.5 0 0 0 4 6.5v13A1.5 1.5 0 0 0 5.5 21h13a1.5 1.5 0 0 0 1.5-1.5v-13A1.5 1.5 0 0 0 18.5 5H17" /><path d="m8 14 2.2 2.2L16 10.5" /></svg>;
-  return <svg {...common}><path d="M12 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" /><path d="M5 21a7 7 0 0 1 14 0" /><path d="M18 4.5h3M19.5 3v3" /></svg>;
-}
-
 function juntarTextoDitado(atual: string, novo: string) {
   const base = (atual || "").trimEnd();
   const trecho = (novo || "").trim();
@@ -651,14 +644,13 @@ export default function Home() {
   const [db, setDb] = useState<AppDB>(emptyDB);
   const [ready, setReady] = useState(false);
   const [view, setView] = useState<View>("inicio");
-  const [menuContextualAberto, setMenuContextualAberto] = useState(false);
   const [menuMaisAberto, setMenuMaisAberto] = useState(false);
-  const [menuAtalhosAberto, setMenuAtalhosAberto] = useState(false);
   const [painelTamanhoTextoAberto, setPainelTamanhoTextoAberto] = useState(false);
   const [tamanhoTexto, setTamanhoTexto] = useState(100);
   const [tamanhoTextoRascunho, setTamanhoTextoRascunho] = useState(100);
   const [campoVozAtivo, setCampoVozAtivo] = useState<string | null>(null);
   const [campoIaAtivo, setCampoIaAtivo] = useState<string | null>(null);
+  const registrarInputRef = useRef<HTMLInputElement | null>(null);
   const gravadorVozRef = useRef<MediaRecorder | null>(null);
   const streamVozRef = useRef<MediaStream | null>(null);
   const timerVozRef = useRef<number | null>(null);
@@ -672,16 +664,15 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (!menuMaisAberto && !menuAtalhosAberto && !painelTamanhoTextoAberto) return;
+    if (!menuMaisAberto && !painelTamanhoTextoAberto) return;
     const fecharComEscape = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       if (painelTamanhoTextoAberto) setPainelTamanhoTextoAberto(false);
-      else if (menuAtalhosAberto) setMenuAtalhosAberto(false);
       else setMenuMaisAberto(false);
     };
     window.addEventListener("keydown", fecharComEscape);
     return () => window.removeEventListener("keydown", fecharComEscape);
-  }, [menuMaisAberto, menuAtalhosAberto, painelTamanhoTextoAberto]);
+  }, [menuMaisAberto, painelTamanhoTextoAberto]);
 
   async function melhorarTextoComIa(
     chave: string,
@@ -877,14 +868,6 @@ export default function Home() {
     setPainelTamanhoTextoAberto(false);
     setMenuMaisAberto(false);
   }
-  useEffect(() => {
-    if (!menuContextualAberto) return;
-    const fecharComEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setMenuContextualAberto(false);
-    };
-    window.addEventListener("keydown", fecharComEscape);
-    return () => window.removeEventListener("keydown", fecharComEscape);
-  }, [menuContextualAberto]);
   const [filtroInicio, setFiltroInicio] = useState<"Em andamento" | "Concluída">("Em andamento");
   const [buscaEmpresas, setBuscaEmpresas] = useState("");
   const [filtroListaVisitas, setFiltroListaVisitas] = useState<"Todas" | "Em andamento" | "Concluída">("Todas");
@@ -3794,7 +3777,6 @@ export default function Home() {
 
   function abrirAtalhoDaVisita(destino: "checklist" | "evidencias" | "ncs" | "plano" | "relatorio") {
     const alvo = visitaAtual || visitaEmAndamentoDestaque;
-    setMenuAtalhosAberto(false);
 
     if (!alvo) {
       setView("visitas");
@@ -3829,7 +3811,6 @@ export default function Home() {
   }
 
   function abrirPopsPeloAtalho() {
-    setMenuAtalhosAberto(false);
     if (!atual) {
       setView("empresas");
       return;
@@ -3837,10 +3818,89 @@ export default function Home() {
     abrirSecaoEmpresaPeloMenu("pops");
   }
 
+  function registrarRapido() {
+    const alvo = visitaAtual?.status === "Em andamento" ? visitaAtual : visitaEmAndamentoDestaque;
+    if (!alvo) {
+      setView("visitas");
+      window.alert("Escolha a visita em que deseja registrar ou inicie uma nova visita.");
+      return;
+    }
+    if (!exigirPermissao("visitas.executar", alvo.empresaId)) return;
+    if (!exigirPermissao("evidencias.adicionar", alvo.empresaId)) return;
+    setDb((estado) => ({ ...estado, empresaAtualId: alvo.empresaId }));
+    setVisitaAtualId(alvo.id);
+
+    // Se o último item tocado no checklist está como Não Conforme, a foto já nasce
+    // vinculada a ele e à NC existente (fluxo atual de Evidências, sem dados novos).
+    const itemNc = (alvo.checklist || []).find(
+      (item) => item.id === ultimoItemChecklistId && item.status === "Não Conforme"
+    );
+    const ncDoItem = itemNc
+      ? (db.ncs || []).find(
+          (nc) => nc.visitaId === alvo.id && nc.checklistItemId === itemNc.id && !nc.inativaNoChecklist
+        )
+      : undefined;
+    setEvidenciaDescricao("");
+    setEvidenciaAmbiente(
+      itemNc?.ambiente ||
+        (ambienteChecklistAtivo && (alvo.ambientes || []).includes(ambienteChecklistAtivo)
+          ? ambienteChecklistAtivo
+          : (alvo.ambientes || [])[0] || "")
+    );
+    setEvidenciaChecklistItemId(itemNc?.id || "");
+    setEvidenciaNcId(ncDoItem?.id || "");
+    setEvidenciaMsg("");
+    setView("evidencias");
+
+    // O toque em Registrar é o gesto do usuário: abre a câmera de forma síncrona.
+    registrarInputRef.current?.click();
+  }
+
+  function irParaMenu(key: NavKey) {
+    setMenuMaisAberto(false);
+    switch (key) {
+      case "inicio":
+      case "visitas":
+      case "empresas":
+      case "acessos":
+        navegarPrincipal(key);
+        return;
+      case "central":
+        setView("visita");
+        return;
+      case "ambientes":
+        abrirAmbientes();
+        return;
+      case "checklist":
+        if (visitaAtual) abrirChecklist();
+        else abrirAtalhoDaVisita("checklist");
+        return;
+      case "evidencias":
+        if (visitaAtual) abrirEvidencias();
+        else abrirAtalhoDaVisita("evidencias");
+        return;
+      case "ncs":
+      case "plano":
+      case "relatorio":
+        abrirAtalhoDaVisita(key);
+        return;
+      case "acompanhamento":
+        setView("acompanhamento");
+        return;
+      case "ajuda":
+        abrirAjudaRapida();
+        return;
+      case "pops":
+        abrirPopsPeloAtalho();
+        return;
+      case "registrar":
+        registrarRapido();
+        return;
+    }
+  }
+
   function abrirAjudaRapida() {
     setMenuMaisAberto(false);
-    setMenuAtalhosAberto(false);
-    setMenuContextualAberto(false);
     setView("ajuda");
     window.setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 40);
   }
@@ -4676,184 +4736,87 @@ export default function Home() {
     );
   }
 
+  const contextoMenu: NavContexto = {
+    dentroDeVisita: VISIT_VIEWS.includes(view),
+    pode: (acao) => permitido(acao, visitaAtual?.empresaId ?? atual?.id),
+  };
+  const dentroDaVisita = contextoMenu.dentroDeVisita && !!visitaAtual;
+  // Mesmos números que a Central da visita já usa; nenhuma consulta nova.
+  const contagensMenu: Partial<Record<NavKey, ContagemEtapa>> = dentroDaVisita
+    ? {
+        ambientes: { texto: String((visitaAtual?.ambientes || []).length) },
+        checklist: { texto: `${respondidos}/${totalChecklist}` },
+        evidencias: { texto: String(evidenciasVisita.length) },
+        ncs: { texto: String(ncsVisita.length), tom: "nc" },
+        plano: { texto: String(ncsVisita.length), tom: "pend" },
+      }
+    : {};
+  const cartaoVisita: CartaoVisita | null =
+    dentroDaVisita && visitaAtual
+      ? {
+          rotulo: visitaAtual.status === "Concluída" ? "Visita concluída" : "Visita em andamento",
+          empresa: nomeEmFormatoNatural(empresaVisita?.nomeFantasia) || "Empresa",
+          data: fdata(visitaAtual.data),
+          percentual: percentualChecklist,
+          conformes: conformesChecklist,
+          naoConformes: naoConformesChecklist,
+          naoSeAplica: naoSeAplicaChecklist,
+          pendentes: pendentesChecklist,
+        }
+      : null;
+  const chaveDaTela = chaveAtiva(view);
+  const itemDaTela = chaveDaTela ? itemDoMenu(chaveDaTela) : undefined;
+  const rotuloDaTela = view === "historico" ? "Histórico" : chaveDaTela === "central" ? "Central" : itemDaTela?.rotulo || "";
+  const caminhoTopo = dentroDaVisita
+    ? ["Visitas", cartaoVisita?.empresa || "Empresa", rotuloDaTela || "Central"]
+    : [rotuloDaTela || "Início"];
+  const iniciaisUsuario = usuarioDaSessao
+    ? usuarioDaSessao.nome.split(" ").filter(Boolean).slice(0, 2).map((parte) => parte[0]).join("").toUpperCase()
+    : null;
+
   return (
     <IaPermitidaContext.Provider value={deveExibirRecursosDeIa(usuarioDaSessao)}>
     <div className="min-h-screen bg-[var(--bg)]">
-      <aside className="fixed inset-y-0 left-0 z-50 hidden w-64 flex-col border-r border-[var(--border)] bg-white text-[color:var(--ink)] md:flex">
-        <div className="border-b border-[var(--border)] px-5 py-6">
-          <LogoHorizontal size={40} showSubtitle textClassName="text-xl" />
-        </div>
+      <AppNavigation
+        contexto={contextoMenu}
+        ativa={chaveAtiva(view)}
+        onSelecionar={irParaMenu}
+        ncsAbertas={ncsAbertas}
+        maisAberto={menuMaisAberto}
+        onAbrirMais={() => setMenuMaisAberto(true)}
+        onFecharMais={() => setMenuMaisAberto(false)}
+        utilitarias={[
+          { id: "texto", rotulo: "Texto", onClick: () => { setTamanhoTextoRascunho(tamanhoTexto); setPainelTamanhoTextoAberto(true); } },
+          { id: "sincronizar", rotulo: "Sincronizar", onClick: () => { setMenuMaisAberto(false); void atualizarNuvemManualmente(); } },
+          { id: "sobre", rotulo: "Sobre", onClick: () => window.alert(`${BRAND.name}\n${BRAND.subtitle}`) },
+          { id: "sair", rotulo: "Sair", desabilitado: saindo, onClick: () => { setMenuMaisAberto(false); void sairDoSistema(); } },
+        ]}
+        sincronizacao={{
+          estado: syncStatus === "sincronizado" ? "ok" : syncStatus === "erro" ? "erro" : "pendente",
+          rotulo: syncStatus === "sincronizado" ? "Dados sincronizados" : syncStatus === "conectando" ? "Sincronizando dados" : "Verificar sincronização",
+          onClick: () => void atualizarNuvemManualmente(),
+        }}
+        contagens={contagensMenu}
+        visita={cartaoVisita}
+        onSair={() => void sairDoSistema()}
+        saindo={saindo}
+      />
 
-        {usuarioDaSessao && (
-          <div className="mx-4 mt-4 rounded-2xl bg-[var(--brand-soft)] p-3.5">
-            <div className="text-[9px] font-semibold uppercase tracking-[0.16em] text-[color:var(--brand)]">Empresa ativa</div>
-            <div className="mt-1 truncate text-sm font-semibold text-[color:var(--ink)]">{atual?.nomeFantasia || "Selecione uma empresa"}</div>
-            <div className="mt-1 truncate text-[10px] text-[color:var(--ink-2)]">{usuarioDaSessao.nome} • {usuarioDaSessao.perfil}</div>
-          </div>
-        )}
-
-        <nav className="mt-5 flex-1 space-y-1.5 overflow-y-auto px-3 pb-4">
-          {([
-            ["inicio", "Início"],
-            ["empresas", "Empresas"],
-            ["visitas", "Visitas"],
-            ["acessos", "Acessos"],
-          ] as const).map(([destino, rotulo]) => {
-            if (destino === "acessos" && !permitido("usuarios.gerenciar")) return null;
-            const ativo = destino === "visitas" ? view === "visitas" || VISIT_VIEWS.includes(view) : destino === "inicio" ? view === "inicio" || view === "ajuda" : view === destino;
-            return (
-              <button
-                key={destino}
-                type="button"
-                onClick={() => {
-                  navegarPrincipal(destino);
-                  setMenuContextualAberto(destino !== "acessos");
-                }}
-                className={`flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-left text-sm font-medium text-[color:var(--ink)] transition ${ativo ? "bg-[var(--brand-soft)]" : "hover:bg-[var(--bg)]"}`}
-              >
-                <span className={`grid h-8 w-8 place-items-center rounded-lg ${ativo ? "bg-white text-[color:var(--brand)]" : "bg-[var(--bg)] text-[color:var(--ink-2)]"}`}>
-                  <MobileNavIcon name={destino} />
-                </span>
-                <span>{rotulo}</span>
-                {destino !== "acessos" && <span className="ml-auto text-xs opacity-60">›</span>}
-              </button>
-            );
-          })}
-        </nav>
-
-        <div className="space-y-3 border-t border-[var(--border)] p-4">
-          <button type="button" onClick={() => void atualizarNuvemManualmente()} className={`flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-xs font-medium text-[color:var(--ink)] ${syncStatus === "sincronizado" ? "bg-[var(--ok-bg)]" : syncStatus === "erro" ? "bg-[var(--nc-bg)]" : "bg-[var(--pend-bg)]"}`}>
-            <span className={`h-2 w-2 rounded-full ${syncStatus === "sincronizado" ? "bg-[var(--ok)]" : syncStatus === "erro" ? "bg-[var(--nc)]" : "bg-[var(--pend)]"}`} />
-            {syncStatus === "sincronizado" ? "Dados sincronizados" : syncStatus === "conectando" ? "Sincronizando dados" : "Verificar sincronização"}
-          </button>
-          <button type="button" onClick={() => void sairDoSistema()} disabled={saindo} className="w-full rounded-xl px-3 py-2 text-left text-xs font-medium text-[color:var(--ink-2)] transition hover:bg-[var(--bg)] disabled:opacity-60">
-            Sair do sistema
-          </button>
-        </div>
-      </aside>
-
-      {menuContextualAberto && <button type="button" aria-label="Fechar submenu" onClick={() => setMenuContextualAberto(false)} className="fixed inset-0 z-30 hidden cursor-default bg-slate-950/[0.03] md:block" />}
-      {menuContextualAberto && (
-        <aside className="fixed inset-y-0 left-64 z-40 hidden w-72 overflow-y-auto border-r border-slate-200 bg-white text-slate-700 shadow-[18px_0_45px_rgba(15,23,42,0.12)] md:block">
-          <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white/95 px-5 py-5 backdrop-blur">
-            <div>
-              <div className="text-[10px] font-bold uppercase tracking-[0.15em] text-[color:var(--brand)]">Navegação</div>
-              <div className="mt-1 text-xl font-semibold text-[color:var(--ink)]">
-                {view === "inicio" || view === "ajuda" ? "Início" : view === "empresas" ? "Empresas" : "Visitas"}
-              </div>
-            </div>
-            <button type="button" onClick={() => setMenuContextualAberto(false)} aria-label="Fechar submenu" className="grid h-9 w-9 place-items-center rounded-full bg-slate-100 text-lg text-slate-500">×</button>
-          </div>
-
-          <div className="space-y-1 p-4" onClick={(event) => { if ((event.target as HTMLElement).closest("button")) setMenuContextualAberto(false); }}>
-            {(view === "inicio" || view === "ajuda") && (
-              <>
-                <button type="button" onClick={() => setView("inicio")} className="flex w-full items-center gap-3 rounded-xl bg-[var(--brand-soft)] px-4 py-3 text-left font-semibold text-[color:var(--ink)]"><span>⌂</span><span>Visão geral</span></button>
-                {visitaEmAndamentoDestaque && <button type="button" onClick={() => continuar(visitaEmAndamentoDestaque.id, true)} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm hover:bg-slate-50"><span>→</span><span>Continuar inspeção</span></button>}
-                <button type="button" onClick={() => setView("visitas")} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm hover:bg-slate-50"><span>▣</span><span>Todas as visitas</span></button>
-                <button type="button" onClick={abrirAjudaRapida} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm ${view === "ajuda" ? "bg-[var(--brand-soft)] font-semibold text-[color:var(--ink)]" : "hover:bg-slate-50"}`}><span>?</span><span>Ajuda e guias</span></button>
-
-                <div className="px-4 pb-1 pt-5 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Atalhos de campo</div>
-                <button type="button" onClick={() => abrirAtalhoDaVisita("checklist")} className="pc-home-shortcut"><span>✓</span><span>Checklist</span></button>
-                <button type="button" onClick={() => abrirAtalhoDaVisita("evidencias")} className="pc-home-shortcut"><span>▣</span><span>Evidências</span></button>
-                <button type="button" onClick={() => abrirAtalhoDaVisita("ncs")} className="pc-home-shortcut"><span>!</span><span>Não conformidades</span></button>
-                <button type="button" onClick={() => abrirAtalhoDaVisita("plano")} className="pc-home-shortcut"><span>▤</span><span>Plano de ação</span></button>
-                <button type="button" onClick={() => abrirAtalhoDaVisita("relatorio")} className="pc-home-shortcut"><span>▥</span><span>Relatório</span></button>
-                <button type="button" onClick={abrirPopsPeloAtalho} className="pc-home-shortcut"><span>≡</span><span>POPs</span></button>
-              </>
-            )}
-
-            {view === "empresas" && (
-              <>
-                <button type="button" onClick={() => { setShowEmpresaForm(false); setEditingEmpresaId(null); setEmpresaSecao(null); }} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm ${!showEmpresaForm ? "bg-[var(--brand-soft)] font-semibold text-[color:var(--ink)]" : "hover:bg-slate-50"}`}><span>▤</span><span>Lista de empresas</span></button>
-                {atual && permitido("empresas.editar", atual.id) && (
-                  <>
-                    <div className="px-4 pb-1 pt-5 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Empresa ativa</div>
-                    <button type="button" onClick={() => editarEmpresa(atual)} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm ${showEmpresaForm && empresaSecao === null ? "bg-[var(--brand-soft)] font-semibold text-[color:var(--ink)]" : "hover:bg-slate-50"}`}><span>◎</span><span>Central da Empresa</span></button>
-                    {([ ["dados", "Dados da empresa"], ["manual", "Manual e responsabilidades"], ["ambientes", "Ambientes e equipamentos"], ["fluxos", "Fluxos operacionais"], ["programas", "Programas de Controle"], ["pops", "POPs e documentos"] ] as const).map(([secao, rotulo]) => <button key={secao} type="button" onClick={() => abrirSecaoEmpresaPeloMenu(secao)} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm ${showEmpresaForm && empresaSecao === secao ? "bg-[var(--brand-soft)] font-semibold text-[color:var(--ink)]" : "hover:bg-slate-50"}`}><span className="text-slate-400">›</span><span>{rotulo}</span></button>)}
-                  </>
-                )}
-              </>
-            )}
-
-            {(view === "visitas" || VISIT_VIEWS.includes(view)) && (
-              <>
-                <button type="button" onClick={() => setView("visitas")} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm ${view === "visitas" ? "bg-[var(--brand-soft)] font-semibold text-[color:var(--ink)]" : "hover:bg-slate-50"}`}><span>▤</span><span>Todas as visitas</span></button>
-                {atual && permitido("visitas.criar", atual.id) && <button type="button" onClick={novaVisita} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm hover:bg-slate-50"><span>＋</span><span>Nova visita</span></button>}
-                {visitaAtual && (
-                  <>
-                    <div className="px-4 pb-1 pt-5 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Visita selecionada</div>
-                    {([ ["visita", "Central da Visita"], ["ambientes", "Ambientes"], ["checklist", "Checklist"], ["evidencias", "Evidências"], ["ncs", "Não conformidades"], ["plano", "Plano de ação"], ["acompanhamento", "Acompanhamento"], ["relatorio", "Relatório"] ] as const).map(([destino, rotulo]) => <button key={destino} type="button" onClick={() => destino === "ambientes" ? abrirAmbientes() : destino === "checklist" ? abrirChecklist() : destino === "evidencias" ? abrirEvidencias() : setView(destino)} disabled={(destino === "ncs" || destino === "plano" || destino === "acompanhamento") && !permitido("ncs.acompanhar", visitaAtual.empresaId)} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm disabled:opacity-40 ${view === destino ? "bg-[var(--brand-soft)] font-semibold text-[color:var(--ink)]" : "hover:bg-slate-50"}`}><span className="text-slate-400">›</span><span>{rotulo}</span></button>)}
-                  </>
-                )}
-              </>
-            )}
-          </div>
-        </aside>
-      )}
-
-      {menuContextualAberto && (
-        <div className="fixed inset-0 z-50 md:hidden">
-          <button
-            type="button"
-            aria-label="Fechar menu"
-            onClick={() => setMenuContextualAberto(false)}
-            className="absolute inset-0 bg-[#061b4f]/45 backdrop-blur-[2px]"
-          />
-          <aside className="absolute inset-x-0 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] max-h-[72dvh] overflow-y-auto rounded-t-[26px] bg-white text-slate-700 shadow-[0_-18px_55px_rgba(6,27,79,0.22)]">
-            <div className="sticky top-0 z-10 border-b border-slate-100 bg-white/95 px-5 pb-3 pt-3 backdrop-blur">
-              <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-slate-200" />
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[color:var(--brand)]">Navegação</div>
-                  <div className="mt-0.5 text-lg font-semibold text-[color:var(--ink)]">
-                    {view === "inicio" || view === "ajuda" ? "Início" : view === "empresas" ? "Empresas" : "Visitas"}
-                  </div>
-                </div>
-                <button type="button" onClick={() => setMenuContextualAberto(false)} aria-label="Fechar menu" className="grid h-9 w-9 place-items-center rounded-full bg-slate-100 text-lg text-slate-500">×</button>
-              </div>
-            </div>
-
-            <div className="space-y-1 p-3 pb-5" onClick={(event) => { if ((event.target as HTMLElement).closest("button")) setMenuContextualAberto(false); }}>
-              {(view === "inicio" || view === "ajuda") && (
-                <>
-                  <button type="button" onClick={() => setView("inicio")} className="flex w-full items-center gap-3 rounded-xl bg-[var(--brand-soft)] px-4 py-3 text-left text-sm font-semibold text-[color:var(--ink)]"><span>⌂</span><span>Visão geral</span></button>
-                  {visitaEmAndamentoDestaque && <button type="button" onClick={() => continuar(visitaEmAndamentoDestaque.id, true)} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm hover:bg-slate-50"><span>→</span><span>Continuar inspeção</span></button>}
-                  <button type="button" onClick={() => setView("visitas")} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm hover:bg-slate-50"><span>▣</span><span>Todas as visitas</span></button>
-                  <button type="button" onClick={abrirAjudaRapida} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm ${view === "ajuda" ? "bg-[var(--brand-soft)] font-semibold text-[color:var(--ink)]" : "hover:bg-slate-50"}`}><span>?</span><span>Ajuda e guias</span></button>
-                  <button type="button" onClick={() => setView("empresas")} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm hover:bg-slate-50"><span>□</span><span>Empresas</span></button>
-                </>
-              )}
-
-              {view === "empresas" && (
-                <>
-                  <button type="button" onClick={() => { setShowEmpresaForm(false); setEditingEmpresaId(null); setEmpresaSecao(null); }} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm ${!showEmpresaForm ? "bg-[var(--brand-soft)] font-semibold text-[color:var(--ink)]" : "hover:bg-slate-50"}`}><span>▤</span><span>Lista de empresas</span></button>
-                  {atual && permitido("empresas.editar", atual.id) && (
-                    <>
-                      <div className="px-4 pb-1 pt-4 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Empresa ativa</div>
-                      <button type="button" onClick={() => editarEmpresa(atual)} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm ${showEmpresaForm && empresaSecao === null ? "bg-[var(--brand-soft)] font-semibold text-[color:var(--ink)]" : "hover:bg-slate-50"}`}><span>◎</span><span>Central da Empresa</span></button>
-                      {([ ["dados", "Dados da empresa"], ["manual", "Manual e responsabilidades"], ["ambientes", "Ambientes e equipamentos"], ["fluxos", "Fluxos operacionais"], ["programas", "Programas de Controle"], ["pops", "POPs e documentos"] ] as const).map(([secao, rotulo]) => <button key={secao} type="button" onClick={() => abrirSecaoEmpresaPeloMenu(secao)} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm ${showEmpresaForm && empresaSecao === secao ? "bg-[var(--brand-soft)] font-semibold text-[color:var(--ink)]" : "hover:bg-slate-50"}`}><span className="text-slate-400">›</span><span>{rotulo}</span></button>)}
-                    </>
-                  )}
-                </>
-              )}
-
-              {(view === "visitas" || VISIT_VIEWS.includes(view)) && (
-                <>
-                  <button type="button" onClick={() => setView("visitas")} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm ${view === "visitas" ? "bg-[var(--brand-soft)] font-semibold text-[color:var(--ink)]" : "hover:bg-slate-50"}`}><span>▤</span><span>Todas as visitas</span></button>
-                  {atual && permitido("visitas.criar", atual.id) && <button type="button" onClick={novaVisita} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm hover:bg-slate-50"><span>＋</span><span>Nova visita</span></button>}
-                  {visitaAtual && (
-                    <>
-                      <div className="px-4 pb-1 pt-4 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Visita selecionada</div>
-                      {([ ["visita", "Central da Visita"], ["ambientes", "Ambientes"], ["checklist", "Checklist"], ["evidencias", "Evidências"], ["ncs", "Não conformidades"], ["plano", "Plano de ação"], ["acompanhamento", "Acompanhamento"], ["relatorio", "Relatório"] ] as const).map(([destino, rotulo]) => <button key={destino} type="button" onClick={() => destino === "ambientes" ? abrirAmbientes() : destino === "checklist" ? abrirChecklist() : destino === "evidencias" ? abrirEvidencias() : setView(destino)} disabled={(destino === "ncs" || destino === "plano" || destino === "acompanhamento") && !permitido("ncs.acompanhar", visitaAtual.empresaId)} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm disabled:opacity-40 ${view === destino ? "bg-[var(--brand-soft)] font-semibold text-[color:var(--ink)]" : "hover:bg-slate-50"}`}><span className="text-slate-400">›</span><span>{rotulo}</span></button>)}
-                    </>
-                  )}
-                </>
-              )}
-            </div>
-          </aside>
-        </div>
-      )}
+      <input
+        ref={registrarInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        tabIndex={-1}
+        aria-hidden="true"
+        onChange={(event) => {
+          const input = event.currentTarget;
+          const arquivo = input.files?.[0];
+          if (arquivo) void adicionarEvidencia(arquivo, "Foto");
+          input.value = "";
+        }}
+      />
 
       <header className="mobile-app-header relative overflow-hidden border-b border-[var(--border)] bg-white text-[color:var(--ink)] md:hidden">
         <div className="relative mx-auto max-w-7xl px-3 py-2">
@@ -4946,151 +4909,8 @@ export default function Home() {
         </div>
       </header>
 
-      {menuMaisAberto && (
-        <div className="mbp-sheet-layer md:hidden" role="presentation">
-          <button
-            type="button"
-            className="mbp-sheet-backdrop"
-            aria-label="Fechar menu"
-            onClick={() => setMenuMaisAberto(false)}
-          />
-          <section className="mbp-bottom-sheet" role="dialog" aria-modal="true" aria-label="Mais opções">
-            <div className="mbp-sheet-handle" aria-hidden="true" />
-            <div className="mbp-sheet-title-row">
-              <h2>Mais opções</h2>
-              <button type="button" className="mbp-sheet-close" aria-label="Fechar" onClick={() => setMenuMaisAberto(false)}>×</button>
-            </div>
-
-            <div className="mbp-more-grid">
-              <button
-                type="button"
-                className="mbp-more-item is-primary"
-                onClick={() => {
-                  setTamanhoTextoRascunho(tamanhoTexto);
-                  setPainelTamanhoTextoAberto(true);
-                }}
-              >
-                <span className="mbp-more-icon" aria-hidden="true">AA</span>
-                <strong>Tamanho do texto</strong>
-                <small>{tamanhoTexto}%</small>
-              </button>
-
-              <button
-                type="button"
-                className="mbp-more-item"
-                onClick={() => {
-                  setMenuMaisAberto(false);
-                  void atualizarNuvemManualmente();
-                }}
-              >
-                <span className="mbp-more-icon" aria-hidden="true">↻</span>
-                <strong>Sincronizar</strong>
-                <small>Atualizar dados</small>
-              </button>
-
-              <button
-                type="button"
-                className="mbp-more-item"
-                onClick={() => window.alert(`${BRAND.name}\n${BRAND.subtitle}`)}
-              >
-                <span className="mbp-more-icon" aria-hidden="true">i</span>
-                <strong>Sobre</strong>
-                <small>Informações do app</small>
-              </button>
-
-              <button
-                type="button"
-                className="mbp-more-item is-danger"
-                disabled={saindo}
-                onClick={() => {
-                  setMenuMaisAberto(false);
-                  void sairDoSistema();
-                }}
-              >
-                <span className="mbp-more-icon" aria-hidden="true">↪</span>
-                <strong>Sair</strong>
-                <small>Encerrar sessão</small>
-              </button>
-            </div>
-
-            <button type="button" className="mbp-sheet-cancel" onClick={() => setMenuMaisAberto(false)}>Cancelar</button>
-          </section>
-        </div>
-      )}
-
-      {menuAtalhosAberto && (
-        <div className="mbp-sheet-layer mbp-shortcuts-layer md:hidden" role="presentation">
-          <button
-            type="button"
-            className="mbp-sheet-backdrop"
-            aria-label="Fechar atalhos"
-            onClick={() => setMenuAtalhosAberto(false)}
-          />
-          <section className="mbp-shortcuts-sheet" role="dialog" aria-modal="true" aria-label="Mais opções">
-            <div className="mbp-sheet-handle" aria-hidden="true" />
-            <div className="mbp-shortcuts-heading">
-              <div>
-                <h2>Mais opções</h2>
-                <p>Acesso rápido às principais funções</p>
-              </div>
-              <button type="button" aria-label="Fechar" onClick={() => setMenuAtalhosAberto(false)}>×</button>
-            </div>
-
-            <div className="mbp-shortcuts-grid">
-              <button type="button" onClick={() => abrirAtalhoDaVisita("checklist")} className="mbp-shortcut-card">
-                <span className="mbp-shortcut-icon is-purple">✓</span>
-                <span className="mbp-shortcut-copy"><strong>Checklist</strong><small>Modelos e itens</small></span>
-                <span className="mbp-shortcut-arrow">›</span>
-              </button>
-
-              <button type="button" onClick={() => abrirAtalhoDaVisita("evidencias")} className="mbp-shortcut-card">
-                <span className="mbp-shortcut-icon is-blue">▣</span>
-                <span className="mbp-shortcut-copy"><strong>Evidências</strong><small>Fotos e anexos</small></span>
-                <span className="mbp-shortcut-arrow">›</span>
-              </button>
-
-              <button type="button" onClick={() => abrirAtalhoDaVisita("ncs")} className="mbp-shortcut-card">
-                <span className="mbp-shortcut-icon is-orange">!</span>
-                <span className="mbp-shortcut-copy"><strong>Não conformidades</strong><small>Registrar e acompanhar</small></span>
-                <span className="mbp-shortcut-arrow">›</span>
-              </button>
-
-              <button type="button" onClick={() => abrirAtalhoDaVisita("plano")} className="mbp-shortcut-card">
-                <span className="mbp-shortcut-icon is-green">▤</span>
-                <span className="mbp-shortcut-copy"><strong>Plano de ação</strong><small>Ações e prazos</small></span>
-                <span className="mbp-shortcut-arrow">›</span>
-              </button>
-
-              <button type="button" onClick={() => abrirAtalhoDaVisita("relatorio")} className="mbp-shortcut-card">
-                <span className="mbp-shortcut-icon is-amber">▥</span>
-                <span className="mbp-shortcut-copy"><strong>Relatórios</strong><small>Visualizar e exportar</small></span>
-                <span className="mbp-shortcut-arrow">›</span>
-              </button>
-
-              <button type="button" onClick={abrirAjudaRapida} className="mbp-shortcut-card">
-                <span className="mbp-shortcut-icon is-help">?</span>
-                <span className="mbp-shortcut-copy"><strong>Ajuda</strong><small>Dúvidas rápidas</small></span>
-                <span className="mbp-shortcut-arrow">›</span>
-              </button>
-            </div>
-
-            <div className="mbp-shortcuts-footer">
-              <button type="button" onClick={abrirPopsPeloAtalho} className="mbp-shortcuts-footer-item">
-                <span>▤</span><strong>POPs</strong>
-              </button>
-              <button type="button" onClick={() => window.alert(`${BRAND.name}\n${BRAND.subtitle}`)} className="mbp-shortcuts-footer-item">
-                <span>ⓘ</span><strong>Sobre</strong>
-              </button>
-              <button type="button" disabled={saindo} onClick={() => { setMenuAtalhosAberto(false); void sairDoSistema(); }} className="mbp-shortcuts-footer-item is-danger">
-                <span>↪</span><strong>Sair</strong>
-              </button>
-            </div>
-          </section>
-        </div>
-      )}
-
       {painelTamanhoTextoAberto && (
-        <div className="mbp-sheet-layer md:hidden" role="presentation">
+        <div className="mbp-sheet-layer pc-hide-xl" role="presentation">
           <button
             type="button"
             className="mbp-sheet-backdrop"
@@ -5140,7 +4960,7 @@ export default function Home() {
       )}
 
       {recuperacaoPendente && (
-        <div className="border-b border-amber-300 bg-[var(--pend-bg)] md:ml-64">
+        <div className="border-b border-amber-300 bg-[var(--pend-bg)] pc-offset">
           <div className="mx-auto max-w-7xl px-4 py-4 text-amber-950">
             <div className="font-extrabold">
               Encontramos registros neste computador que não estão na nuvem.
@@ -5164,7 +4984,7 @@ export default function Home() {
       )}
 
       {protecaoLocalAtiva && !recuperacaoPendente && (
-        <div className={`border-b md:ml-64 ${estaOnline ? "border-red-200 bg-[var(--nc-bg)]" : "border-blue-200 bg-[var(--brand-soft)]"}`}>
+        <div className={`border-b pc-offset ${estaOnline ? "border-red-200 bg-[var(--nc-bg)]" : "border-blue-200 bg-[var(--brand-soft)]"}`}>
           <div className={`mx-auto max-w-7xl px-4 py-3 ${estaOnline ? "text-red-950" : "text-blue-950"}`}>
             <div className="font-extrabold">
               {estaOnline ? "A nuvem não respondeu. Seus dados foram preservados." : "Modo offline ativo"}
@@ -5184,7 +5004,7 @@ export default function Home() {
       )}
 
       {armazenamentoLocalIndisponivel && (
-        <div className="border-b border-amber-300 bg-[var(--pend-bg)] md:ml-64">
+        <div className="border-b border-amber-300 bg-[var(--pend-bg)] pc-offset">
           <div className="mx-auto max-w-7xl px-4 py-3 text-amber-950">
             <div className="font-extrabold">
               O armazenamento local deste aparelho está cheio ou indisponível.
@@ -5196,7 +5016,15 @@ export default function Home() {
         </div>
       )}
 
-      <div className="mx-auto min-w-0 max-w-[1500px] overflow-x-hidden px-3 py-4 pb-28 sm:p-5 md:ml-64 md:overflow-visible md:pb-6 lg:p-7">
+      <div className="mx-auto min-w-0 max-w-[1500px] overflow-x-hidden px-3 py-4 pb-28 sm:p-5 pc-offset pc-content-pad md:overflow-visible md:pb-6 lg:p-7">
+        <AppTopbar
+          caminho={caminhoTopo}
+          onPrimeiro={() => navegarPrincipal("visitas")}
+          empresaAtiva={nomeEmFormatoNatural(atual?.nomeFantasia) || null}
+          iniciais={iniciaisUsuario}
+          mostrarTodasVisitas={dentroDaVisita}
+          onTodasVisitas={() => navegarPrincipal("visitas")}
+        />
         <nav className="hidden">
           <button
             onClick={() => navegarPrincipal("inicio")}
@@ -8527,7 +8355,7 @@ export default function Home() {
         ) : view === "inicio" ? (
           <div className="space-y-4">
             <section className="grid gap-3 lg:grid-cols-[minmax(0,1.08fr)_minmax(360px,0.92fr)] lg:gap-4">
-              <div className="flex flex-col overflow-hidden rounded-2xl bg-[var(--brand)] p-4 text-white shadow-[0_16px_40px_rgba(6,27,79,0.16)] lg:min-h-[320px] lg:rounded-[28px] lg:p-7 lg:shadow-[0_22px_60px_rgba(6,27,79,0.20)]">
+              <div className="pc-hero flex flex-col overflow-hidden rounded-2xl bg-[var(--brand)] p-4 text-white shadow-[0_16px_40px_rgba(6,27,79,0.16)] lg:min-h-[320px] lg:rounded-[28px] lg:p-7 lg:shadow-[0_22px_60px_rgba(6,27,79,0.20)]">
                 <div className="hidden lg:block">
                   <div className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-blue-200">Visão geral</div>
                   <h1 className="mt-2 text-2xl font-extrabold tracking-tight sm:text-3xl">
@@ -9230,36 +9058,6 @@ export default function Home() {
           </section>
         )}
       </div>
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_30px_rgba(15,23,42,0.08)] backdrop-blur md:hidden">
-        <div className="mx-auto grid max-w-lg grid-cols-4 gap-1">
-          {([
-            ["inicio", "Início"],
-            ["empresas", "Empresas"],
-            ["visitas", "Visitas"],
-          ] as const).map(([destino, rotulo]) => {
-            const ativo = destino === "visitas" ? view === "visitas" || VISIT_VIEWS.includes(view) : destino === "inicio" ? view === "inicio" || view === "ajuda" : view === destino;
-            return (
-              <button key={destino} type="button" onClick={() => { setMenuAtalhosAberto(false); if (ativo) { setMenuContextualAberto(true); return; } navegarPrincipal(destino); setMenuContextualAberto(true); }} className={`mobile-bottom-nav-item flex min-h-14 flex-col items-center justify-center rounded-2xl px-1 text-[9px] font-semibold ${ativo ? "bg-[var(--brand-soft)] text-[color:var(--ink)]" : "text-slate-500"}`}>
-                <MobileNavIcon name={destino} />
-                <span className="mt-1">{rotulo}</span>
-              </button>
-            );
-          })}
-          <button
-            type="button"
-            onClick={() => {
-              setMenuContextualAberto(false);
-              setMenuMaisAberto(false);
-              setMenuAtalhosAberto(true);
-            }}
-            className={`mobile-bottom-nav-item flex min-h-14 flex-col items-center justify-center rounded-2xl px-1 text-[9px] font-semibold ${menuAtalhosAberto ? "bg-[var(--brand-soft)] text-[color:var(--ink)]" : "text-slate-500"}`}
-            aria-label="Mais opções"
-          >
-            <span className="mbp-bottom-more-dots" aria-hidden="true">•••</span>
-            <span className="mt-1">Mais</span>
-          </button>
-        </div>
-      </nav>
     </div>
     </IaPermitidaContext.Provider>
   );

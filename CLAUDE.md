@@ -69,3 +69,10 @@ Projeto separado do FoodControl. **Atenção:** o projeto Neon "mbp-expert-ai" t
 - Chaves de `localStorage` e prefixos CSS `mbp-` foram mantidos de propósito (renomear apagaria dados locais dos usuários).
 - Ícone PNG para instalação do PWA ainda não existe (o manifest usa SVG); `sharp` já está no `node_modules` (dependência do Next) e poderia gerar os PNGs, mas não foi usado.
 - Em desenvolvimento, a bolinha preta com "N" no canto é o indicador do Next.js (`next dev`); não existe em produção.
+
+## Navegação (menu por tiles)
+- Modelo puro em `lib/navigation.ts` (itens, grupos, barra do celular, trilho do tablet, folha "Mais", item ativo); testes em `tests/navigation.test.mjs`. Reaproveita `permitido()` (permissões existentes); itens básicos (Início, Visitas, Empresas, Ajuda) aparecem sempre; Registrar exige `visitas.executar` + `evidencias.adicionar`. A autorização continua no servidor.
+- UI em `components/AppNavigation.tsx` (celular <768px: cápsula flutuante; tablet 768–1199px: trilho de 104px; PC ≥1200px: menu lateral com AGORA, cartão "Visita em andamento" com as etapas e contagens — só dentro de uma visita — e GERAL), `components/AppTopbar.tsx` (caminho, chip "Empresa ativa" e avatar; no tablet, link "← Todas as visitas") e `components/NavIcons.tsx`. Tons das etapas: Central azul, Ambientes turquesa, Checklist verde, Evidências céu, Não conformidades vermelho, Plano âmbar, Acompanhamento violeta, Relatório ardósia.
+- O painel/overlay antigo "Navegação" e as duas folhas antigas ("Mais opções" e atalhos) foram removidos. "Registrar" abre a câmera (input de arquivo escondido acionado no próprio clique) e entrega a foto ao fluxo existente de Evidências da visita em andamento; se o último item do checklist tocado está Não Conforme, a foto já vem vinculada a ele e à NC. Não cria NC sozinho.
+- `app/layout.tsx`: `suppressHydrationWarning` no `<html>` (next-themes altera classe/estilo antes da hidratação) e ícones declarados explicitamente (declarar só `apple` em `metadata.icons` faz o Next omitir o `<link rel="icon">`).
+- Não existe ESLint no projeto (sem script `lint`); a verificação é `tsc --noEmit`, `npm test` e `next build`.

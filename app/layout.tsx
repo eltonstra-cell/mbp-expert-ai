@@ -9,6 +9,10 @@ export const metadata: Metadata = {
   description: BRAND.description,
   manifest: "/manifest.webmanifest",
   icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
     apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
   appleWebApp: {
@@ -26,7 +30,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR" className={fontClassNames}>
+    <html lang="pt-BR" className={fontClassNames} suppressHydrationWarning>
       <head>
         <style dangerouslySetInnerHTML={{ __html: brandCssVariables() }} />
       </head>

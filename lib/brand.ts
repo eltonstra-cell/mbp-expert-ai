@@ -28,6 +28,35 @@ export const BRAND_COLORS = {
   naBg: "#EEF1F5",
 } as const;
 
+
+// Tiles de navegação (estilo ícone de app): gradiente do claro para a base.
+export const TILE_GRADIENTS = {
+  azul: ["#6B8CFF", "#2456D6"],
+  verde: ["#4ADE80", "#16A34A"],
+  laranja: ["#FDBA74", "#F97316"],
+  vermelho: ["#FCA5A5", "#E5252A"],
+  roxo: ["#C4B5FD", "#7C3AED"],
+  turquesa: ["#5EEAD4", "#0D9488"],
+  ceu: ["#7DD3FC", "#0EA5E9"],
+  ambar: ["#FCD34D", "#F59E0B"],
+  violeta: ["#A78BFA", "#7C3AED"],
+  rosa: ["#F9A8D4", "#EC4899"],
+  indigo: ["#818CF8", "#4F46E5"],
+  ardosia: ["#94A3B8", "#475569"],
+} as const;
+
+export type TileTone = keyof typeof TILE_GRADIENTS;
+
+const NAV_VARIABLES: Record<string, string> = {
+  "--nav-capsule-bg": "rgba(255,255,255,.92)",
+  "--nav-shadow": "0 10px 30px rgba(18,32,43,.16), 0 2px 6px rgba(18,32,43,.08)",
+  "--sheet-bg":
+    "radial-gradient(120% 70% at 20% 0%, rgba(36,86,214,.28), rgba(36,86,214,0) 60%), linear-gradient(170deg, #B4C8F8, #CBD8F6 42%, #EBD9B4)",
+  "--nav-ring-inner": "#FFFFFF",
+  "--visit-card-bg": "#F4F7FE",
+  "--nav-ease": "160ms ease-out",
+};
+
 const CSS_VARIABLES: Record<string, string> = {
   "--brand": BRAND_COLORS.brand,
   "--brand-soft": BRAND_COLORS.brandSoft,
@@ -50,6 +79,12 @@ const CSS_VARIABLES: Record<string, string> = {
 };
 
 export function brandCssVariables(): string {
-  const linhas = Object.entries(CSS_VARIABLES).map(([nome, valor]) => `${nome}:${valor}`);
+  const tiles = Object.entries(TILE_GRADIENTS).flatMap(([tom, [claro, base]]) => [
+    [`--tile-${tom}-from`, claro],
+    [`--tile-${tom}-to`, base],
+  ]);
+  const linhas = [...Object.entries(CSS_VARIABLES), ...tiles, ...Object.entries(NAV_VARIABLES)].map(
+    ([nome, valor]) => `${nome}:${valor}`
+  );
   return `:root{${linhas.join(";")}}`;
 }
