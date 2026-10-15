@@ -20,7 +20,10 @@ export type NavIconName =
   | "texto"
   | "sincronizar"
   | "sobre"
-  | "sair";
+  | "sair"
+  | "raio"
+  | "microfone"
+  | "lupa";
 
 const TRACADOS: Record<NavIconName, ReactNode> = {
   inicio: (
@@ -143,10 +146,23 @@ const TRACADOS: Record<NavIconName, ReactNode> = {
       <path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4" />
     </>
   ),
+  raio: <path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z" />,
+  microfone: (
+    <>
+      <rect x="9" y="3" width="6" height="11" rx="3" />
+      <path d="M6 10a6 6 0 0 0 12 0M12 16v5M9 21h6" />
+    </>
+  ),
+  lupa: (
+    <>
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-3.5-3.5" />
+    </>
+  ),
 };
 
 // Traço branco de 2.2, desenhado sobre o tile colorido.
-export function NavIcon({ name, size = 24 }: { name: NavIconName; size?: number }) {
+export function NavIcon({ name, size = 24, strokeWidth = 2.2 }: { name: NavIconName; size?: number; strokeWidth?: number }) {
   return (
     <svg
       width={size}
@@ -154,7 +170,7 @@ export function NavIcon({ name, size = 24 }: { name: NavIconName; size?: number 
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.2}
+      strokeWidth={strokeWidth}
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"

@@ -211,9 +211,9 @@ export default function AppNavigation({
         {temRegistrar && (
           <button type="button" className="pc-register-button" onClick={() => onSelecionar("registrar")}>
             <span className="pc-register-icon">
-              <NavIcon name="registrar" size={22} />
+              <NavIcon name="registrar" size={18} strokeWidth={2.4} />
             </span>
-            Registrar agora
+            <span className="pc-register-text">Registrar agora</span>
           </button>
         )}
 

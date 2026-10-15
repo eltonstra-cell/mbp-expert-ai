@@ -53,7 +53,18 @@ const NAV_VARIABLES: Record<string, string> = {
   "--sheet-bg":
     "radial-gradient(120% 70% at 20% 0%, rgba(36,86,214,.28), rgba(36,86,214,0) 60%), linear-gradient(170deg, #B4C8F8, #CBD8F6 42%, #EBD9B4)",
   "--nav-ring-inner": "#FFFFFF",
-  "--visit-card-bg": "#F4F7FE",
+  "--visit-card-bg": "#FFFFFF",
+  "--menu-bg-from": "#F1F5FE",
+  "--menu-bg-to": "#F9FBFF",
+  "--menu-border": "#DCE5F8",
+  "--menu-active-shadow": "0 2px 8px rgba(36,86,214,.12), 0 1px 2px rgba(18,32,43,.06)",
+  "--register-gradient": "linear-gradient(135deg, #FFC85A, #F5A623 55%, #F08A1A)",
+  "--register-shadow": "0 6px 14px rgba(245,166,35,.38)",
+  "--seg-pend": "#E8E1D2",
+  "--pill-border": "#E4D6BC",
+  "--card-warm-border": "#E8E1D2",
+  "--strip-pend": "#DDD3BF",
+  "--outline": "#DDE6EA",
   "--nav-ease": "160ms ease-out",
 };
 

@@ -5,7 +5,12 @@ import MetricCard from "@/components/MetricCard";
 import AccessPreparationPanel from "@/components/AccessPreparationPanel";
 import AppNavigation, { type CartaoVisita, type ContagemEtapa } from "@/components/AppNavigation";
 import AppTopbar from "@/components/AppTopbar";
-import { chaveAtiva, itemDoMenu, type NavContexto, type NavKey } from "@/lib/navigation";
+import ChecklistEnvStrip from "@/components/ChecklistEnvStrip";
+import CommandPalette from "@/components/CommandPalette";
+import { construirDestinos, type Destino } from "@/lib/commandSearch";
+import { quantidadeDeAmbientes, resumoAmbientes, vizinhoDoAmbiente } from "@/lib/checklistEnvs";
+import { NavIcon } from "@/components/NavIcons";
+import { chaveAtiva, itemDoMenu, itensVisiveis, type NavContexto, type NavKey } from "@/lib/navigation";
 import ManualBaseFields from "@/components/ManualBaseFields";
 import OperationalFlowsFields from "@/components/OperationalFlowsFields";
 import QualityProgramsFields from "@/components/QualityProgramsFields";
@@ -651,6 +656,18 @@ export default function Home() {
   const [campoVozAtivo, setCampoVozAtivo] = useState<string | null>(null);
   const [campoIaAtivo, setCampoIaAtivo] = useState<string | null>(null);
   const registrarInputRef = useRef<HTMLInputElement | null>(null);
+  const [caixaAberta, setCaixaAberta] = useState(false);
+  const [caixaComVoz, setCaixaComVoz] = useState(false);
+  // Foto escolhida em "Registrar": confirma o vínculo antes de enviar (nada é vinculado em silêncio).
+  const [confirmaFoto, setConfirmaFoto] = useState<{
+    arquivo: File;
+    itemId: string;
+    itemTitulo: string;
+    ambiente: string;
+    ncId: string;
+  } | null>(null);
+  // Foto aguardando o usuário escolher o item no Checklist ("Escolher outro item").
+  const [fotoAguardando, setFotoAguardando] = useState<File | null>(null);
   const gravadorVozRef = useRef<MediaRecorder | null>(null);
   const streamVozRef = useRef<MediaStream | null>(null);
   const timerVozRef = useRef<number | null>(null);
@@ -673,6 +690,18 @@ export default function Home() {
     window.addEventListener("keydown", fecharComEscape);
     return () => window.removeEventListener("keydown", fecharComEscape);
   }, [menuMaisAberto, painelTamanhoTextoAberto]);
+
+  useEffect(() => {
+    const aoTeclar = (evento: KeyboardEvent) => {
+      if ((evento.ctrlKey || evento.metaKey) && evento.key.toLowerCase() === "k") {
+        evento.preventDefault();
+        setCaixaComVoz(false);
+        setCaixaAberta((aberta) => !aberta);
+      }
+    };
+    window.addEventListener("keydown", aoTeclar);
+    return () => window.removeEventListener("keydown", aoTeclar);
+  }, []);
 
   async function melhorarTextoComIa(
     chave: string,
@@ -1950,14 +1979,6 @@ export default function Home() {
     empresaVisita?.programasControleQualidade,
   ]);
 
-  const gruposRoteiroChecklist = visitaAtual
-    ? [
-        { titulo: "Capítulos 1 e 2 • Ambientes da visita", itens: visitaAtual.ambientes || [] },
-        ...(programasChecklistAtivos.length > 0
-          ? [{ titulo: "Verificação geral", itens: [AMBIENTE_PROGRAMAS_CONTROLE] }]
-          : []),
-      ]
-    : [];
   const ambientesSugeridosVisita =
     empresaVisita?.setoresManual?.length
       ? empresaVisita.setoresManual
@@ -3818,7 +3839,8 @@ export default function Home() {
     abrirSecaoEmpresaPeloMenu("pops");
   }
 
-  function registrarRapido() {
+  // abrirCamera=false (caixa inteligente): só leva à tela de captura, sem tentar abrir a câmera.
+  function registrarRapido(abrirCamera = true) {
     const alvo = visitaAtual?.status === "Em andamento" ? visitaAtual : visitaEmAndamentoDestaque;
     if (!alvo) {
       setView("visitas");
@@ -3830,30 +3852,84 @@ export default function Home() {
     setDb((estado) => ({ ...estado, empresaAtualId: alvo.empresaId }));
     setVisitaAtualId(alvo.id);
 
-    // Se o último item tocado no checklist está como Não Conforme, a foto já nasce
-    // vinculada a ele e à NC existente (fluxo atual de Evidências, sem dados novos).
-    const itemNc = (alvo.checklist || []).find(
-      (item) => item.id === ultimoItemChecklistId && item.status === "Não Conforme"
-    );
-    const ncDoItem = itemNc
-      ? (db.ncs || []).find(
-          (nc) => nc.visitaId === alvo.id && nc.checklistItemId === itemNc.id && !nc.inativaNoChecklist
-        )
-      : undefined;
+    const ultimoItem = (alvo.checklist || []).find((item) => item.id === ultimoItemChecklistId);
     setEvidenciaDescricao("");
     setEvidenciaAmbiente(
-      itemNc?.ambiente ||
+      ultimoItem?.ambiente ||
         (ambienteChecklistAtivo && (alvo.ambientes || []).includes(ambienteChecklistAtivo)
           ? ambienteChecklistAtivo
           : (alvo.ambientes || [])[0] || "")
     );
-    setEvidenciaChecklistItemId(itemNc?.id || "");
-    setEvidenciaNcId(ncDoItem?.id || "");
+    setEvidenciaChecklistItemId("");
+    setEvidenciaNcId("");
     setEvidenciaMsg("");
     setView("evidencias");
 
     // O toque em Registrar é o gesto do usuário: abre a câmera de forma síncrona.
-    registrarInputRef.current?.click();
+    if (abrirCamera) registrarInputRef.current?.click();
+  }
+
+  // Depois da foto: pergunta antes de vincular ao último item tocado no checklist.
+  function aoEscolherFotoDoRegistro(arquivo: File) {
+    const ultimoItem = (visitaAtual?.checklist || []).find((item) => item.id === ultimoItemChecklistId);
+    if (!ultimoItem || !visitaAtual) {
+      void adicionarEvidencia(arquivo, "Foto");
+      return;
+    }
+    const ncDoItem = (db.ncs || []).find(
+      (nc) => nc.visitaId === visitaAtual.id && nc.checklistItemId === ultimoItem.id && !nc.inativaNoChecklist
+    );
+    setConfirmaFoto({
+      arquivo,
+      itemId: ultimoItem.id,
+      itemTitulo: ultimoItem.titulo,
+      ambiente: ultimoItem.ambiente,
+      ncId: ncDoItem?.id || "",
+    });
+  }
+
+  function vincularFotoAguardandoAoItem(item: ChecklistItem, ncId: string) {
+    if (!fotoAguardando) return;
+    const arquivo = fotoAguardando;
+    setFotoAguardando(null);
+    setView("evidencias");
+    void adicionarEvidencia(arquivo, "Foto", { ambiente: item.ambiente, checklistItemId: item.id, ncId });
+  }
+
+  function escolherDestinoDaCaixa(destino: Destino) {
+    const acao = destino.acao;
+    switch (acao.tipo) {
+      case "nav":
+        irParaMenu(acao.key);
+        return;
+      case "registrar":
+        registrarRapido(false);
+        return;
+      case "continuar":
+        if (visitaEmAndamentoDestaque) continuar(visitaEmAndamentoDestaque.id, true);
+        return;
+      case "empresa":
+        setDb((estado) => ({ ...estado, empresaAtualId: acao.id }));
+        navegarPrincipal("visitas");
+        return;
+      case "visita":
+        continuar(acao.id);
+        return;
+      case "ambiente":
+        setAmbienteChecklistAtivo(acao.nome);
+        setFiltroChecklistRapido("Todos");
+        if (visitaAtual) setView("checklist");
+        return;
+      case "item":
+        setAmbienteChecklistAtivo(acao.ambiente);
+        setFiltroChecklistRapido("Todos");
+        setUltimoItemChecklistId(acao.id);
+        if (visitaAtual) setView("checklist");
+        window.setTimeout(() => {
+          document.getElementById("checklist-item-" + acao.id)?.scrollIntoView({ block: "start" });
+        }, 250);
+        return;
+    }
   }
 
   function irParaMenu(key: NavKey) {
@@ -3894,7 +3970,7 @@ export default function Home() {
         abrirPopsPeloAtalho();
         return;
       case "registrar":
-        registrarRapido();
+        registrarRapido(true);
         return;
     }
   }
@@ -4173,7 +4249,8 @@ export default function Home() {
 
   async function adicionarEvidencia(
     file: File | undefined,
-    tipo: "Foto" | "Áudio"
+    tipo: "Foto" | "Áudio",
+    vinculo?: { ambiente: string; checklistItemId: string; ncId: string }
   ) {
     if (!file || !visitaAtual) return;
     if (!exigirPermissao("evidencias.adicionar", visitaAtual.empresaId)) return;
@@ -4220,9 +4297,9 @@ export default function Home() {
         blobPathname: blob.pathname,
         blobUrl: blob.url,
         descricao: evidenciaDescricao.trim(),
-        ambiente: evidenciaAmbiente || "",
-        checklistItemId: evidenciaChecklistItemId || undefined,
-        ncId: evidenciaNcId || undefined,
+        ambiente: (vinculo ? vinculo.ambiente : evidenciaAmbiente) || "",
+        checklistItemId: (vinculo ? vinculo.checklistItemId : evidenciaChecklistItemId) || undefined,
+        ncId: (vinculo ? vinculo.ncId : evidenciaNcId) || undefined,
         criadoEm: new Date().toISOString(),
       };
 
@@ -4741,10 +4818,20 @@ export default function Home() {
     pode: (acao) => permitido(acao, visitaAtual?.empresaId ?? atual?.id),
   };
   const dentroDaVisita = contextoMenu.dentroDeVisita && !!visitaAtual;
+  // UMA fonte para os ambientes: o menu e a lista do checklist usam esta mesma resposta.
+  const infosAmbientes = visitaAtual
+    ? resumoAmbientes(
+        visitaAtual.ambientes || [],
+        checklistAtual,
+        programasChecklistAtivos.length > 0
+          ? [{ nome: AMBIENTE_PROGRAMAS_CONTROLE, rotulo: AMBIENTE_PROGRAMAS_CONTROLE }]
+          : []
+      )
+    : [];
   // Mesmos números que a Central da visita já usa; nenhuma consulta nova.
   const contagensMenu: Partial<Record<NavKey, ContagemEtapa>> = dentroDaVisita
     ? {
-        ambientes: { texto: String((visitaAtual?.ambientes || []).length) },
+        ambientes: { texto: String(quantidadeDeAmbientes(infosAmbientes)) },
         checklist: { texto: `${respondidos}/${totalChecklist}` },
         evidencias: { texto: String(evidenciasVisita.length) },
         ncs: { texto: String(ncsVisita.length), tom: "nc" },
@@ -4764,6 +4851,29 @@ export default function Home() {
           pendentes: pendentesChecklist,
         }
       : null;
+  const podeUsarChecklistNaBusca = permitido("visitas.executar", visitaAtual?.empresaId ?? atual?.id);
+  const destinosCaixa: Destino[] = caixaAberta
+    ? construirDestinos({
+        itensMenu: itensVisiveis(contextoMenu),
+        empresas: Object.values(db.empresas)
+          .filter((empresa) => podeAcessarEmpresa(usuarioDaSessao, empresa.id) || !usuarioDaSessao)
+          .map((empresa) => ({ id: empresa.id, nome: nomeEmFormatoNatural(empresa.nomeFantasia) || empresa.razaoSocial || "Empresa" })),
+        empresaAtivaId: db.empresaAtualId,
+        visitas: visitas.map((visita) => ({
+          id: visita.id,
+          empresaId: visita.empresaId,
+          rotulo: fdata(visita.data),
+          status: visita.status,
+        })),
+        dentroDeVisita: dentroDaVisita,
+        ambientes: dentroDaVisita ? infosAmbientes.map((info) => info.nome) : [],
+        itensChecklist: dentroDaVisita
+          ? checklistAtual.map((item) => ({ id: item.id, ambiente: item.ambiente, titulo: item.titulo, status: item.status }))
+          : [],
+        visitaEmAndamentoId: visitaEmAndamentoDestaque?.id ?? null,
+        podeChecklist: podeUsarChecklistNaBusca && !!visitaEmAndamentoDestaque,
+      })
+    : [];
   const chaveDaTela = chaveAtiva(view);
   const itemDaTela = chaveDaTela ? itemDoMenu(chaveDaTela) : undefined;
   const rotuloDaTela = view === "historico" ? "Histórico" : chaveDaTela === "central" ? "Central" : itemDaTela?.rotulo || "";
@@ -4813,9 +4923,61 @@ export default function Home() {
         onChange={(event) => {
           const input = event.currentTarget;
           const arquivo = input.files?.[0];
-          if (arquivo) void adicionarEvidencia(arquivo, "Foto");
+          if (arquivo) aoEscolherFotoDoRegistro(arquivo);
           input.value = "";
         }}
+      />
+
+      {confirmaFoto && (
+        <div className="pc-dialog-layer" role="presentation">
+          <div className="pc-dialog" role="dialog" aria-modal="true" aria-labelledby="pc-dialog-titulo">
+            <p id="pc-dialog-titulo" className="pc-dialog-title">Vincular a: {confirmaFoto.itemTitulo}?</p>
+            <p className="pc-dialog-sub">{confirmaFoto.ambiente}</p>
+            <div className="pc-dialog-actions">
+              <button
+                type="button"
+                className="pc-dialog-primary"
+                onClick={() => {
+                  const foto = confirmaFoto;
+                  setConfirmaFoto(null);
+                  void adicionarEvidencia(foto.arquivo, "Foto", { ambiente: foto.ambiente, checklistItemId: foto.itemId, ncId: foto.ncId });
+                }}
+              >
+                Sim
+              </button>
+              <button
+                type="button"
+                className="pc-dialog-outline"
+                onClick={() => {
+                  setFotoAguardando(confirmaFoto.arquivo);
+                  setConfirmaFoto(null);
+                  abrirChecklist();
+                }}
+              >
+                Escolher outro item
+              </button>
+              <button
+                type="button"
+                className="pc-dialog-outline"
+                onClick={() => {
+                  const foto = confirmaFoto;
+                  setConfirmaFoto(null);
+                  void adicionarEvidencia(foto.arquivo, "Foto", { ambiente: "", checklistItemId: "", ncId: "" });
+                }}
+              >
+                Só salvar como evidência da visita
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <CommandPalette
+        aberto={caixaAberta}
+        comVoz={caixaComVoz}
+        destinos={destinosCaixa}
+        onEscolher={escolherDestinoDaCaixa}
+        onFechar={() => setCaixaAberta(false)}
       />
 
       <header className="mobile-app-header relative overflow-hidden border-b border-[var(--border)] bg-white text-[color:var(--ink)] md:hidden">
@@ -4866,6 +5028,15 @@ export default function Home() {
                 : syncErroVisivel
                 ? "⚠️ Nuvem indisponível"
                 : "● Conectando"}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setCaixaComVoz(false); setCaixaAberta(true); }}
+                aria-label="Buscar ou dizer o que quer fazer"
+                title="Buscar"
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-[var(--border)] bg-white text-[color:var(--ink)]"
+              >
+                <NavIcon name="lupa" size={16} />
               </button>
               <button
                 type="button"
@@ -5024,6 +5195,8 @@ export default function Home() {
           iniciais={iniciaisUsuario}
           mostrarTodasVisitas={dentroDaVisita}
           onTodasVisitas={() => navegarPrincipal("visitas")}
+          onAbrirCaixa={(comVoz) => { setCaixaComVoz(comVoz); setCaixaAberta(true); }}
+          micDisponivel={deveExibirRecursosDeIa(usuarioDaSessao)}
         />
         <nav className="hidden">
           <button
@@ -6698,193 +6871,97 @@ export default function Home() {
           </section>
         ) : view === "checklist" && visitaAtual ? (
           <section className="checklist-screen space-y-3">
-            <div className="checklist-page-head">
-              <div className="flex min-w-0 items-start justify-between gap-3">
+            <div className="pc-check-head">
+              <div className="flex flex-wrap items-end justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand)]">
-                    Checklist técnico
-                  </div>
-                  <h1 className="mt-1 text-xl font-medium text-[color:var(--ink)] sm:text-2xl">
-                    Avaliação por ambiente
-                  </h1>
-                  <p className="mt-0.5 break-words text-xs text-[color:var(--ink-2)] sm:text-sm">
-                    {empresaVisita?.nomeFantasia} · {fdata(visitaAtual.data)}
-                  </p>
+                  <h1 className="pc-check-title">Checklist</h1>
+                  <p className="pc-check-sub">{respondidos} de {totalChecklist} · {percentualChecklist}%</p>
                 </div>
-
                 <button
                   onClick={() => setView("visita")}
                   aria-label="Voltar à Central da visita"
-                  className="grid h-9 w-9 shrink-0 place-items-center rounded-full border-2 border-[var(--brand)] bg-white text-lg text-[color:var(--ink)] sm:flex sm:h-auto sm:w-fit sm:px-4 sm:py-2 sm:text-sm"
+                  className="pc-check-back"
                 >
-                  <span className="sm:hidden">←</span><span className="hidden sm:inline">← Central da visita</span>
+                  ← Central da visita
                 </button>
               </div>
-
-              <div className="checklist-progress-summary">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-3 text-xs text-[color:var(--ink-2)]">
-                    <span><strong className="font-semibold text-[color:var(--ink)]">{respondidos}</strong> de {totalChecklist} itens respondidos</span>
-                    <strong className="font-semibold text-[color:var(--ink)]">{percentualChecklist}%</strong>
-                  </div>
-                  <div className="pc-segbar" role="img" aria-label={`${conformesChecklist} conformes, ${naoConformesChecklist} não conformes, ${naoSeAplicaChecklist} não se aplica, ${pendentesChecklist} pendentes`}>
-                    {([
-                      [conformesChecklist, "var(--ok)"],
-                      [naoConformesChecklist, "var(--nc)"],
-                      [naoSeAplicaChecklist, "var(--na)"],
-                      [pendentesChecklist, "var(--border)"],
-                    ] as const).map(([qtd, cor], indice) => qtd > 0 ? (
-                      <span key={indice} style={{ flexGrow: qtd, background: cor }} />
-                    ) : null)}
-                  </div>
-                  <div className="pc-chips">
-                    <span className="pc-chip is-ok"><i aria-hidden="true" />{conformesChecklist} conformes</span>
-                    <span className="pc-chip is-nc"><i aria-hidden="true" />{naoConformesChecklist} não conformes</span>
-                    <span className="pc-chip is-na"><i aria-hidden="true" />{naoSeAplicaChecklist} não se aplica</span>
-                    <span className="pc-chip is-pend"><i aria-hidden="true" />{pendentesChecklist} pendentes</span>
-                  </div>
-                </div>
+              <div
+                className="pc-segbar pc-segbar--lg"
+                role="img"
+                aria-label={`${conformesChecklist} conformes, ${naoConformesChecklist} não conformes, ${naoSeAplicaChecklist} não se aplica, ${pendentesChecklist} pendentes`}
+              >
+                {([
+                  [conformesChecklist, "var(--ok)"],
+                  [naoConformesChecklist, "var(--nc)"],
+                  [naoSeAplicaChecklist, "var(--na)"],
+                  [pendentesChecklist, "var(--seg-pend)"],
+                ] as const).map(([qtd, cor], indice) => qtd > 0 ? (
+                  <span key={indice} style={{ flexGrow: qtd, background: cor }} />
+                ) : null)}
               </div>
+              <p className="pc-counts">
+                <span><i style={{ background: "var(--ok)" }} aria-hidden="true" />{conformesChecklist} conformes</span>
+                <span><i style={{ background: "var(--nc)" }} aria-hidden="true" />{naoConformesChecklist} não conformes</span>
+                <span><i style={{ background: "var(--na)" }} aria-hidden="true" />{naoSeAplicaChecklist} não se aplica</span>
+                <span><i style={{ background: "var(--seg-pend)" }} aria-hidden="true" />{pendentesChecklist} pendentes</span>
+              </p>
+              <ChecklistEnvStrip
+                ambientes={infosAmbientes}
+                atual={ambienteChecklistAtivo}
+                onSelecionar={(nome) => setAmbienteChecklistAtivo(nome)}
+              />
+              {fotoAguardando && (
+                <div className="pc-photo-wait" role="status">
+                  <span>Foto aguardando vínculo: toque em “Vincular foto aqui” no item correto.</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const arquivo = fotoAguardando;
+                      setFotoAguardando(null);
+                      void adicionarEvidencia(arquivo, "Foto", { ambiente: "", checklistItemId: "", ncId: "" });
+                    }}
+                  >
+                    Salvar só na visita
+                  </button>
+                  <button type="button" onClick={() => setFotoAguardando(null)}>Cancelar</button>
+                </div>
+              )}
             </div>
 
             <div className="checklist-layout">
-              <aside className="checklist-route-panel">
-                <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-3">
-                  <div>
-                    <div className="text-sm font-semibold text-[color:var(--ink)]">Ambientes</div>
-                    <div className="mt-0.5 text-xs text-slate-500">Escolha onde deseja avaliar</div>
-                  </div>
-                  <span className="rounded-full bg-[var(--brand-soft)] px-2.5 py-1 text-xs font-semibold text-[color:var(--ink)]">{gruposRoteiroChecklist.reduce((total, grupo) => total + grupo.itens.length, 0)}</span>
-                </div>
-                <div className="mt-3 space-y-4">
-                  {gruposRoteiroChecklist.map((grupo) => (
-                    <div
-                      key={grupo.titulo}
-                      className={grupo.titulo === "Verificação geral" ? "border-t-2 border-blue-100 pt-4" : ""}
-                    >
-                      <div className={`mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] ${
-                        grupo.titulo === "Verificação geral"
-                          ? "text-[color:var(--brand)]"
-                          : "text-slate-400"
-                      }`}>
-                        {grupo.titulo}
-                      </div>
-                      <div className="space-y-2">
-                        {grupo.itens.map((ambiente) => {
-                          const itensAmb = checklistAtual.filter((i) => i.ambiente === ambiente);
-                          const respAmb = itensAmb.filter((i) => i.status !== "Pendente").length;
-                          const temNaoConforme = itensAmb.some((i) => i.status === "Não Conforme");
-                          const ambienteConforme = itensAmb.length > 0 && respAmb === itensAmb.length && !temNaoConforme;
-                          const ativo = ambienteChecklistAtivo === ambiente;
-                          const verificacaoGeral = ambiente === AMBIENTE_PROGRAMAS_CONTROLE;
-                          const statusAmbienteRota = temNaoConforme
-                            ? "Não conforme"
-                            : ambienteConforme
-                            ? "Conforme"
-                            : respAmb > 0
-                            ? "Em avaliação"
-                            : "Pendente";
-
-                          return (
-                            <button
-                              key={ambiente}
-                              onClick={() => setAmbienteChecklistAtivo(ambiente)}
-                              className={`checklist-route-item ${
-                                temNaoConforme
-                                  ? "is-nonconforming"
-                                  : ambienteConforme
-                                  ? "is-conforming"
-                                  : verificacaoGeral
-                                  ? "is-general"
-                                  : ""
-                              } ${ativo ? "is-active" : ""}`}
-                            >
-                              <div className="flex items-start justify-between gap-2">
-                                <span className="min-w-0 text-sm font-medium leading-snug">
-                                  {verificacaoGeral ? "Programas de Controle" : ambiente}
-                                </span>
-                                <span className="shrink-0 text-[11px] font-semibold text-slate-500">
-                                  {respAmb}/{itensAmb.length}
-                                </span>
-                              </div>
-                              {!verificacaoGeral && (
-                                <div className={`checklist-route-status ${
-                                  temNaoConforme
-                                    ? "is-nonconforming"
-                                    : ambienteConforme
-                                    ? "is-conforming"
-                                    : respAmb > 0
-                                    ? "is-progress"
-                                    : "is-pending"
-                                }`}>
-                                  {statusAmbienteRota}
-                                </div>
-                              )}
-                              {verificacaoGeral && (
-                                <div className={`mt-1 text-[11px] ${ativo ? "text-blue-100" : "text-slate-500"}`}>
-                                  Documentos e registros
-                                </div>
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </aside>
-
               <div className="min-w-0 space-y-2.5">
-                <div id="checklist-ambiente-topo" className="checklist-workbar scroll-mt-3">
-                  <div className="checklist-workbar-main">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand)]">Ambiente atual</div>
-                        <span className={`checklist-current-status ${situacaoAmbienteAtivo === "Conforme" ? "is-conforming" : situacaoAmbienteAtivo === "Não conforme" ? "is-nonconforming" : "is-pending"}`}>{situacaoAmbienteAtivo}</span>
-                      </div>
-                      <h2 className="mt-0.5 break-words text-lg font-medium text-[color:var(--ink)] sm:text-xl">{ambienteChecklistAtivo}</h2>
-                      <div className="mt-1 text-xs text-[color:var(--ink-2)]">
-                        {itensAmbienteChecklistAtivo.length - pendentesAmbienteAtivo} de {itensAmbienteChecklistAtivo.length} respondidos · <span className="font-semibold text-amber-600">{pendentesAmbienteAtivo} pendente{pendentesAmbienteAtivo === 1 ? "" : "s"}</span>
-                      </div>
+                <div id="checklist-ambiente-topo" className="pc-env-head scroll-mt-3">
+                  <div className="pc-env-head-main">
+                    <div className="min-w-0">
+                      <h2 className="pc-env-title">{infosAmbientes.find((info) => info.nome === ambienteChecklistAtivo)?.rotulo || ambienteChecklistAtivo}</h2>
+                      <p className="pc-env-sub">
+                        {itensAmbienteChecklistAtivo.length - pendentesAmbienteAtivo} de {itensAmbienteChecklistAtivo.length} respondidos · {pendentesAmbienteAtivo} pendente{pendentesAmbienteAtivo === 1 ? "" : "s"}
+                      </p>
                     </div>
-                    <div className="checklist-workbar-actions">
-                      {itensAmbienteChecklistAtivo.some((item) => item.status !== "Pendente") && (
-                        <button
-                          type="button"
-                          onClick={zerarAmbienteChecklist}
-                          className="checklist-reset-environment"
-                          title="Limpar todas as respostas deste ambiente"
-                        >
-                          <span aria-hidden="true">↺</span>
-                          <span className="hidden sm:inline">Zerar ambiente</span>
-                          <span className="sm:hidden">Zerar</span>
-                        </button>
-                      )}
+                    <div className="pc-env-step">
                       <button
                         type="button"
-                        onClick={irParaProximaPendencia}
-                        disabled={totalChecklist === respondidos}
-                        className="shrink-0 whitespace-nowrap rounded-full bg-[var(--brand)] px-4 py-2.5 text-sm font-medium text-white disabled:opacity-40"
+                        disabled={!vizinhoDoAmbiente(infosAmbientes, ambienteChecklistAtivo, -1)}
+                        onClick={() => {
+                          const nome = vizinhoDoAmbiente(infosAmbientes, ambienteChecklistAtivo, -1);
+                          if (nome) setAmbienteChecklistAtivo(nome);
+                        }}
                       >
-                        <span className="sm:hidden">Próxima →</span><span className="hidden sm:inline">Próxima pendência →</span>
+                        ‹ Anterior
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!vizinhoDoAmbiente(infosAmbientes, ambienteChecklistAtivo, 1)}
+                        onClick={() => {
+                          const nome = vizinhoDoAmbiente(infosAmbientes, ambienteChecklistAtivo, 1);
+                          if (nome) setAmbienteChecklistAtivo(nome);
+                        }}
+                      >
+                        Próximo ›
                       </button>
                     </div>
                   </div>
-                  <details className="checklist-mobile-tools">
-                    <summary>
-                      <span>Ambiente e filtros</span>
-                      <span aria-hidden="true">⌄</span>
-                    </summary>
-                    <div className="checklist-mobile-environment">
-                      <label htmlFor="checklist-environment" className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">Trocar ambiente</label>
-                      <select id="checklist-environment" value={ambienteChecklistAtivo || ""} onChange={(event) => setAmbienteChecklistAtivo(event.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-[color:var(--ink)]">
-                        {gruposRoteiroChecklist.map((grupo) => (
-                          <optgroup key={grupo.titulo} label={grupo.titulo}>
-                            {grupo.itens.map((ambiente) => <option key={ambiente} value={ambiente}>{ambiente}</option>)}
-                          </optgroup>
-                        ))}
-                      </select>
-                    </div>
+                  <div className="pc-env-actions">
                     <div className="checklist-filter-tabs pc-seg">
                       {(["Todos", "Pendentes", "Não conformes"] as FiltroChecklistRapido[]).map((filtro) => (
                         <button
@@ -6901,22 +6978,20 @@ export default function Home() {
                         </button>
                       ))}
                     </div>
-                  </details>
-                  <div className="checklist-desktop-filters pc-seg">
-                    {(["Todos", "Pendentes", "Não conformes"] as FiltroChecklistRapido[]).map((filtro) => (
-                      <button
-                        key={filtro}
-                        type="button"
-                        onClick={() => setFiltroChecklistRapido(filtro)}
-                        className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
-                          filtroChecklistRapido === filtro
-                            ? "bg-[var(--brand-soft)] text-[color:var(--ink)]"
-                            : "text-slate-500"
-                        }`}
-                      >
-                        {filtro}
+                    <button
+                      type="button"
+                      onClick={irParaProximaPendencia}
+                      disabled={totalChecklist === respondidos}
+                      className="pc-next-pending"
+                    >
+                      Próxima pendência →
+                    </button>
+                    {itensAmbienteChecklistAtivo.some((item) => item.status !== "Pendente") && (
+                      <button type="button" onClick={zerarAmbienteChecklist} className="checklist-reset-environment" title="Limpar todas as respostas deste ambiente">
+                        <span aria-hidden="true">↺</span>
+                        <span>Zerar ambiente</span>
                       </button>
-                    ))}
+                    )}
                   </div>
                 </div>
 
@@ -6956,47 +7031,25 @@ export default function Home() {
                           ? "is-conforming"
                           : item.status === "Não se aplica"
                           ? "is-na"
-                          : criterioCapitulo2
-                          ? "is-chapter-two"
-                          : criterioCapitulo3
-                          ? "is-chapter-three"
                           : ""
                       }`}
                     >
                       <div className="checklist-item-heading">
                         <div className="min-w-0">
-                          <div className={`text-[10px] font-semibold uppercase tracking-[0.1em] ${
-                            criterioCapitulo2
-                              ? "text-violet-700"
-                              : criterioCapitulo3
-                              ? "text-[color:var(--brand)]"
-                              : "text-slate-400"
-                          }`}>
-                            {`Item ${idx + 1} · ${item.categoria.replace("Operação — ", "")}`}
+                          <div className="pc-item-head">
+                            <span className="pc-item-badge">Item {idx + 1}</span>
+                            <span className="pc-item-env">{infosAmbientes.find((info) => info.nome === item.ambiente)?.rotulo || item.ambiente}</span>
                           </div>
-                          <h3 className="mt-1 text-[19px] font-medium leading-snug text-[color:var(--ink)]">
+                          <h3 className="mt-2 text-[19px] font-medium leading-snug text-[color:var(--ink)]">
                             {item.titulo}
                           </h3>
-                          <div className="mt-2 flex flex-wrap gap-1.5">
-                            {item.criticidade && (
-                              <span
-                                className={`rounded-full px-2 py-1 text-[10px] font-medium ${
-                                  item.criticidade === "Crítica"
-                                    ? "bg-[var(--nc-bg)] text-[color:var(--ink)]"
-                                    : item.criticidade === "Importante"
-                                    ? "bg-[var(--pend-bg)] text-[color:var(--ink)]"
-                                    : "bg-[var(--na-bg)] text-[color:var(--ink)]"
-                                }`}
-                              >
-                                {item.criticidade}
-                              </span>
-                            )}
-                            {item.referencia && (
-                              <span className="rounded-full bg-[var(--info-bg)] px-2 py-1 text-[10px] font-medium text-[color:var(--ink)]">
-                                {item.referencia}
-                              </span>
-                            )}
-                          </div>
+                          {(item.criticidade || item.referencia) && (
+                            <p className="pc-item-meta">
+                              {[item.criticidade, item.referencia ? item.referencia.replace(" — ", " · ").replace("Capítulo", "Cap.") : ""]
+                                .filter(Boolean)
+                                .join(" · ")}
+                            </p>
+                          )}
                           {item.orientacao && (
                             <p className="mt-2 text-sm leading-relaxed text-[color:var(--ink-2)]">
                               {item.orientacao}
@@ -7005,17 +7058,7 @@ export default function Home() {
                         </div>
 
                         <div
-                          className={`checklist-status-pill ${
-                            item.status === "Conforme"
-                              ? "bg-[var(--ok-bg)] text-[color:var(--ink)]"
-                              : item.status === "Não Conforme" && ncDoItem?.status === "Resolvida"
-                              ? "bg-[var(--ok-bg)] text-[color:var(--ink)]"
-                              : item.status === "Não Conforme"
-                              ? "bg-[var(--nc-bg)] text-[color:var(--ink)]"
-                              : item.status === "Não se aplica"
-                              ? "bg-[var(--na-bg)] text-[color:var(--ink)]"
-                              : "bg-[var(--pend-bg)] text-[color:var(--ink)]"
-                          }`}
+                          className={`checklist-status-pill pc-state-text is-${item.status === "Conforme" || (item.status === "Não Conforme" && ncDoItem?.status === "Resolvida") ? "ok" : item.status === "Não Conforme" ? "nc" : item.status === "Não se aplica" ? "na" : "pend"}`}
                         >
                           {item.status === "Não Conforme" && ncDoItem
                             ? `Não Conforme • ${ncDoItem.status}`
@@ -7023,6 +7066,15 @@ export default function Home() {
                         </div>
                       </div>
 
+                      {fotoAguardando && (
+                        <button
+                          type="button"
+                          className="pc-link-photo"
+                          onClick={() => vincularFotoAguardandoAoItem(item, ncDoItem?.id || "")}
+                        >
+                          Vincular foto aqui
+                        </button>
+                      )}
                       <div className="checklist-answer-grid">
                         {(["Conforme", "Não Conforme", "Não se aplica"] as ChecklistStatus[]).map(
                           (status) => (
