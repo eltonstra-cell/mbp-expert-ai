@@ -165,8 +165,6 @@ export const ETAPAS_ORDEM: NavKey[] = [
   "relatorio",
 ];
 
-const GERAL_ORDEM: NavKey[] = ["visitas", "empresas", "acessos", "pops", "ajuda"];
-
 /** Etapas da visita que o perfil pode usar. Fora de uma visita, lista vazia. */
 export function etapasDaVisita(ctx: NavContexto): NavItem[] {
   if (!ctx.dentroDeVisita) return [];
@@ -176,14 +174,38 @@ export function etapasDaVisita(ctx: NavContexto): NavItem[] {
   );
 }
 
-/** Menu lateral do PC: AGORA (Início), etapas da visita (só dentro dela) e GERAL. */
-export function menuLateral(ctx: NavContexto): { agora: NavItem[]; etapas: NavItem[]; geral: NavItem[] } {
+/** Etapas da visita no menu lateral do PC (Ambientes é o passo 1 da visita, não uma etapa do menu). */
+export const ETAPAS_PC: NavKey[] = [
+  "central",
+  "checklist",
+  "evidencias",
+  "ncs",
+  "plano",
+  "acompanhamento",
+  "relatorio",
+];
+
+/**
+ * Menu lateral do PC: itens do topo, etapas da visita (só dentro dela), apoio e administração.
+ * Reaproveita as mesmas regras de visibilidade por perfil.
+ */
+export function menuLateralPC(ctx: NavContexto): {
+  topo: NavItem[];
+  etapas: NavItem[];
+  apoio: NavItem[];
+  admin: NavItem[];
+} {
   const visiveis = itensVisiveis(ctx);
   const pegar = (keys: NavKey[]) =>
     keys
       .map((key) => visiveis.find((item) => item.key === key))
       .filter((item): item is NavItem => Boolean(item));
-  return { agora: pegar(["inicio"]), etapas: etapasDaVisita(ctx), geral: pegar(GERAL_ORDEM) };
+  return {
+    topo: pegar(["inicio", "visitas", "empresas", "pops"]),
+    etapas: ctx.dentroDeVisita ? pegar(ETAPAS_PC) : [],
+    apoio: pegar(["ajuda"]),
+    admin: pegar(["acessos"]),
+  };
 }
 
 export function registrarDisponivel(ctx: NavContexto): boolean {

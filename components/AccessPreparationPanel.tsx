@@ -9,6 +9,7 @@ import type {
   UsuarioSistema,
 } from "@/types";
 import type { DadosUsuarioPreparacao } from "@/lib/userManagement";
+import PcAcessos from "@/components/pc/PcAcessos";
 import {
   PERMISSIONS_BY_PROFILE,
   PERMISSION_LABELS,
@@ -30,6 +31,8 @@ type Props = {
   onSalvarUsuario: (dados: DadosUsuarioPreparacao, usuarioId?: string) => boolean;
   onAlterarStatus: (usuarioId: string, status: StatusUsuario) => boolean;
   onEnviarAcesso: (usuarioId: string) => Promise<boolean>;
+  /** Layout do PC (a partir de 1024px). */
+  pc?: boolean;
 };
 
 type Readiness = {
@@ -96,6 +99,28 @@ export default function AccessPreparationPanel(props: Props) {
     } finally {
       setEnviandoId(undefined);
     }
+  }
+
+  if (props.pc) {
+    return (
+      <PcAcessos
+        usuarios={props.usuarios}
+        empresas={empresas}
+        registrosAuditoria={props.registrosAuditoria}
+        loginProtegido={Boolean(readiness?.enforcementActive)}
+        formulario={formulario}
+        editando={Boolean(editandoId)}
+        enviandoId={enviandoId}
+        onNovo={iniciarNovo}
+        onEditar={iniciarEdicao}
+        onCampo={(alteracao) => setFormulario((atual) => (atual ? { ...atual, ...alteracao } : atual))}
+        onAlternarEmpresa={alternarEmpresa}
+        onSalvar={salvar}
+        onCancelar={() => setFormulario(null)}
+        onEnviarAcesso={(id) => void enviarAcesso(id)}
+        onAlterarStatus={(id, status) => props.onAlterarStatus(id, status)}
+      />
+    );
   }
 
   return (

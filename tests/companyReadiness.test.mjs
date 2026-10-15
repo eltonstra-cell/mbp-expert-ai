@@ -99,3 +99,45 @@ test("etapas técnicas são reconhecidas sem exigir que estejam todas concluída
     [true, true, true, true, true, true]
   );
 });
+
+test("preparação da empresa: 6 itens, só com dados existentes", async () => {
+  const { preparacaoDaEmpresa } = await import("../lib/companyReadiness.ts");
+  const vazia = preparacaoDaEmpresa(empresaBase({ responsavel: "" }));
+  assert.equal(vazia.total, 6);
+  assert.equal(vazia.preenchidos, 0);
+  assert.equal(vazia.percentual, 0);
+  assert.equal(vazia.completo, false);
+  assert.deepEqual(vazia.contagens, { setores: 0, equipamentos: 0, programas: 0, pops: 0 });
+  assert.equal(preparacaoDaEmpresa(undefined).percentual, 0);
+});
+
+test("preparação da empresa: percentual = preenchidos / 6 e 100% é cadastro completo", async () => {
+  const { preparacaoDaEmpresa } = await import("../lib/companyReadiness.ts");
+  const parcial = preparacaoDaEmpresa(
+    empresaBase({ horarioFuncionamento: "Seg a Sex", setoresManual: ["Cozinha"] })
+  );
+  assert.equal(parcial.preenchidos, 3);
+  assert.equal(parcial.percentual, 50);
+  assert.equal(parcial.completo, false);
+
+  const completa = preparacaoDaEmpresa(
+    empresaBase({
+      horariosFuncionamento: [{ dia: "Segunda-feira", aberto: true, abertura: "08:00", fechamento: "18:00" }],
+      setoresManual: ["Cozinha", "Estoque"],
+      equipamentosSetores: [{ id: "q1", setor: "Cozinha", nome: "Fogão", quantidade: 1 }],
+      programasControleQualidade: [{ id: "p1", status: "Implantado" }, { id: "p2", status: "Não iniciado" }],
+      pops: [{ id: "pop-1", titulo: "Higiene" }],
+    })
+  );
+  assert.equal(completa.percentual, 100);
+  assert.equal(completa.completo, true);
+  assert.deepEqual(completa.contagens, { setores: 2, equipamentos: 1, programas: 1, pops: 1 });
+});
+
+test("preparação da empresa: horário fechado em todos os dias não conta", async () => {
+  const { preparacaoDaEmpresa } = await import("../lib/companyReadiness.ts");
+  const r = preparacaoDaEmpresa(
+    empresaBase({ horariosFuncionamento: [{ dia: "Domingo", aberto: false, abertura: "", fechamento: "" }] })
+  );
+  assert.equal(r.itens.find((item) => item.id === "horario").ok, false);
+});

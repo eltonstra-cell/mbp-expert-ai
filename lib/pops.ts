@@ -70,3 +70,98 @@ export function normalizarPops(
       proximaRevisao: pop.proximaRevisao || "",
     }));
 }
+
+function chave(texto: string) {
+  return texto.trim().toLocaleLowerCase("pt-BR");
+}
+
+export type ResultadoNovoPOP =
+  | { ok: true; pops: ProcedimentoOperacionalPadronizado[] }
+  | { ok: false; campo: "titulo" | "codigo"; aviso: string };
+
+/** Valida e adiciona um POP novo (mesmas regras do cadastro atual). */
+export function adicionarPop(
+  pops: ProcedimentoOperacionalPadronizado[],
+  codigo: string,
+  titulo: string,
+  id: string
+): ResultadoNovoPOP {
+  if (!titulo.trim()) return { ok: false, campo: "titulo", aviso: "Informe o título do POP." };
+  if (codigo.trim() && pops.some((pop) => chave(pop.codigo) === chave(codigo))) {
+    return { ok: false, campo: "codigo", aviso: "Este código já está sendo utilizado em outro POP." };
+  }
+  return {
+    ok: true,
+    pops: [
+      ...pops,
+      {
+        id,
+        codigo: codigo.trim(),
+        titulo: titulo.trim(),
+        versao: "1.0",
+        status: "Rascunho",
+        programaRelacionado: "",
+        responsavel: "",
+        proximaRevisao: "",
+      },
+    ],
+  };
+}
+
+export function sugestaoJaCriada(
+  pops: ProcedimentoOperacionalPadronizado[],
+  sugestao: { titulo: string }
+): boolean {
+  return pops.some((pop) => chave(pop.titulo) === chave(sugestao.titulo));
+}
+
+/** Adiciona uma sugestão do Manual; sem código se a numeração já estiver em uso. */
+export function adicionarSugestaoPop(
+  pops: ProcedimentoOperacionalPadronizado[],
+  sugestao: { codigo: string; titulo: string; programaRelacionado: string },
+  id: string
+): { pops: ProcedimentoOperacionalPadronizado[]; aviso: string } {
+  if (sugestaoJaCriada(pops, sugestao)) return { pops, aviso: "" };
+  const codigoEmUso = pops.some((pop) => chave(pop.codigo) === chave(sugestao.codigo));
+  const codigo = codigoEmUso ? "" : sugestao.codigo;
+  return {
+    pops: [
+      ...pops,
+      {
+        id,
+        codigo,
+        titulo: sugestao.titulo,
+        versao: "1.0",
+        status: "Rascunho",
+        programaRelacionado: sugestao.programaRelacionado,
+        responsavel: "",
+        proximaRevisao: "",
+      },
+    ],
+    aviso: codigo ? "" : "Sugestão adicionada sem código porque essa numeração já estava em uso.",
+  };
+}
+
+export function resumoPops(pops: ProcedimentoOperacionalPadronizado[], hoje?: string) {
+  return {
+    aprovados: pops.filter((pop) => pop.status === "Aprovado").length,
+    emPreparacao: pops.filter((pop) => pop.status === "Rascunho" || pop.status === "Em revisão").length,
+    revisaoVencida: pops.filter((pop) => situacaoRevisaoPOP(pop, hoje).label === "Revisão vencida").length,
+  };
+}
+
+/** Tom da pílula (texto sempre preto) para cada situação de revisão. */
+export function tomSituacaoPOP(label: SituacaoRevisaoPOP["label"]): "ok" | "nc" | "pend" | "info" | "na" {
+  switch (label) {
+    case "Em dia":
+      return "ok";
+    case "Revisão vencida":
+      return "nc";
+    case "Em revisão":
+      return "info";
+    case "Inativo":
+      return "na";
+    default:
+      return "pend";
+  }
+}

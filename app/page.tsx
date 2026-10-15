@@ -5,6 +5,20 @@ import MetricCard from "@/components/MetricCard";
 import AccessPreparationPanel from "@/components/AccessPreparationPanel";
 import AppNavigation, { type CartaoVisita, type ContagemEtapa } from "@/components/AppNavigation";
 import AppTopbar from "@/components/AppTopbar";
+import PcInicio from "@/components/pc/PcInicio";
+import UpdateNotice from "@/components/UpdateNotice";
+import PcAcompanhamento from "@/components/pc/PcAcompanhamento";
+import PcPlano from "@/components/pc/PcPlano";
+import { alteracoesEmLote, resumoDoPlano } from "@/lib/actionPlan";
+import PcNcs from "@/components/pc/PcNcs";
+import PcEvidencias from "@/components/pc/PcEvidencias";
+import PcAmbientes from "@/components/pc/PcAmbientes";
+import PcCentral from "@/components/pc/PcCentral";
+import PcPops from "@/components/pc/PcPops";
+import PcVisitas from "@/components/pc/PcVisitas";
+import PcEmpresas from "@/components/pc/PcEmpresas";
+import { useIsPc } from "@/components/useIsPc";
+import { preparacaoDaEmpresa } from "@/lib/companyReadiness";
 import ChecklistEnvStrip from "@/components/ChecklistEnvStrip";
 import CommandPalette from "@/components/CommandPalette";
 import { construirDestinos, type Destino } from "@/lib/commandSearch";
@@ -17,6 +31,7 @@ import QualityProgramsFields from "@/components/QualityProgramsFields";
 import PopsFields from "@/components/PopsFields";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
 import { BRAND } from "@/lib/brand";
+import pacote from "../package.json";
 import { LogoHorizontal, LogoSymbol, LogoWordmark } from "@/components/BrandLogo";
 import { IaPermitidaContext, useIaPermitida } from "@/components/IaPermissionContext";
 import type {
@@ -656,6 +671,8 @@ export default function Home() {
   const [campoVozAtivo, setCampoVozAtivo] = useState<string | null>(null);
   const [campoIaAtivo, setCampoIaAtivo] = useState<string | null>(null);
   const registrarInputRef = useRef<HTMLInputElement | null>(null);
+  const criandoVisitaRef = useRef(false);
+  const ehPC = useIsPc();
   const [caixaAberta, setCaixaAberta] = useState(false);
   const [caixaComVoz, setCaixaComVoz] = useState(false);
   // Foto escolhida em "Registrar": confirma o vínculo antes de enviar (nada é vinculado em silêncio).
@@ -912,6 +929,7 @@ export default function Home() {
   const [modelosAmbientesSelecionados, setModelosAmbientesSelecionados] = useState<Record<string, string>>({});
   const [ambientePersonalizado, setAmbientePersonalizado] = useState("");
   const [statusAmbientes, setStatusAmbientes] = useState("");
+  const [iniciarChecklistPendente, setIniciarChecklistPendente] = useState(false);
   const [ambienteChecklistAtivo, setAmbienteChecklistAtivo] = useState<string | null>(null);
   const [filtroChecklistRapido, setFiltroChecklistRapido] = useState<FiltroChecklistRapido>("Todos");
   const [ultimoItemChecklistId, setUltimoItemChecklistId] = useState<string | null>(null);
@@ -1910,6 +1928,24 @@ export default function Home() {
       ? visitaAtualCadastrada
       : undefined;
   const empresaVisita = visitaAtual ? db.empresas[visitaAtual.empresaId] : undefined;
+  useEffect(() => {
+    // PC: a nova evidência já nasce vinculada ao último item tocado (mesma regra do Registrar).
+    if (!ehPC || view !== "evidencias" || !visitaAtual || evidenciaChecklistItemId || !ultimoItemChecklistId) return;
+    const item = (visitaAtual.checklist || []).find((registro) => registro.id === ultimoItemChecklistId);
+    if (!item) return;
+    setEvidenciaChecklistItemId(item.id);
+    setEvidenciaAmbiente(item.ambiente);
+    const ncDoItem = (db.ncs || []).find((nc) => nc.visitaId === visitaAtual.id && nc.checklistItemId === item.id && !nc.inativaNoChecklist);
+    setEvidenciaNcId(ncDoItem?.id || "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ehPC, view, visitaAtual?.id]);
+  useEffect(() => {
+    if (!iniciarChecklistPendente || !visitaAtual) return;
+    if (!(visitaAtual.ambientes || []).length) return;
+    setIniciarChecklistPendente(false);
+    abrirChecklist();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [iniciarChecklistPendente, visitaAtual]);
   const programasControleAtivos = normalizarProgramasControle(
     empresaVisita?.programasControleQualidade
   ).filter(
@@ -3123,12 +3159,13 @@ export default function Home() {
   }
 
   function salvarVisita() {
-    if (!atual || criandoVisita) return;
+    if (!atual || criandoVisita || criandoVisitaRef.current) return;
     if (!exigirPermissao("visitas.criar", atual.id)) return;
     if (!vf.responsavel.trim()) {
       window.alert("Informe o responsável pela visita antes de criar a inspeção.");
       return;
     }
+    criandoVisitaRef.current = true;
     setCriandoVisita(true);
     const v: Visita = {
       id: crypto.randomUUID(),
@@ -3150,8 +3187,20 @@ export default function Home() {
     setDb((o) => ({ ...o, visitas: [v, ...o.visitas] }));
     setShowVisitaForm(false);
     setVisitaAtualId(v.id);
-    setView("visita");
-    setTimeout(() => setCriandoVisita(false), 500);
+    if (ehPC) {
+      const iniciais = atual.setoresManual || [];
+      setAmbientesSelecionados(iniciais);
+      setModelosAmbientesSelecionados(criarModelosQuestionarioAmbientes(iniciais, atual.modelosQuestionarioAmbientes));
+      setAmbientePersonalizado("");
+      setStatusAmbientes("");
+      setView("ambientes");
+    } else {
+      setView("visita");
+    }
+    setTimeout(() => {
+      criandoVisitaRef.current = false;
+      setCriandoVisita(false);
+    }, 500);
   }
 
   function continuar(id: string, retomarChecklist = false) {
@@ -3840,6 +3889,32 @@ export default function Home() {
   }
 
   // abrirCamera=false (caixa inteligente): só leva à tela de captura, sem tentar abrir a câmera.
+  function iniciarNovaEmpresa() {
+    const responsabilidadesIniciais = criarResponsabilidadesPadrao();
+    const fluxosIniciais = criarFluxosOperacionaisPadrao();
+    const programasIniciais = criarProgramasControlePadrao();
+    setEditingEmpresaId(null);
+    setForm(formEmpresaVazio);
+    setResponsabilidadesEmpresa(responsabilidadesIniciais);
+    setSetoresEmpresa([]);
+    setEquipamentosEmpresa([]);
+    setFluxosEmpresa(fluxosIniciais);
+    setProgramasEmpresa(programasIniciais);
+    setPopsEmpresa([]);
+    setAssinaturaEmpresaSalva(assinaturaEdicaoEmpresa({
+      form: formEmpresaVazio,
+      responsabilidades: responsabilidadesIniciais,
+      setores: [],
+      equipamentos: [],
+      fluxos: fluxosIniciais,
+      programas: programasIniciais,
+      pops: [],
+    }));
+    setEmpresaSecao("dados");
+    setMsg("");
+    setShowEmpresaForm(true);
+  }
+
   function registrarRapido(abrirCamera = true) {
     const alvo = visitaAtual?.status === "Em andamento" ? visitaAtual : visitaEmAndamentoDestaque;
     if (!alvo) {
@@ -4209,10 +4284,10 @@ export default function Home() {
     }
   }
 
-  function confirmarAnaliseFoto(ev: Evidencia, analise: AnaliseFotoIA) {
+  function confirmarAnaliseFoto(ev: Evidencia, analise: AnaliseFotoIA, textoEditado?: string) {
     if (!exigirPermissao("ia.analisar", ev.empresaId)) return;
     try {
-      const texto = analiseIATextos[analise.id] ?? analise.textoRevisado;
+      const texto = textoEditado ?? analiseIATextos[analise.id] ?? analise.textoRevisado;
       const confirmada = confirmarSugestaoFotoIA(
         analise,
         texto,
@@ -4874,7 +4949,60 @@ export default function Home() {
         podeChecklist: podeUsarChecklistNaBusca && !!visitaEmAndamentoDestaque,
       })
     : [];
-  const chaveDaTela = chaveAtiva(view);
+  const checklistDestaque = visitaEmAndamentoDestaque?.checklist || [];
+  const inicioPc = {
+    continuar: visitaEmAndamentoDestaque
+      ? {
+          empresa: nomeEmFormatoNatural(db.empresas[visitaEmAndamentoDestaque.empresaId]?.nomeFantasia) || "Empresa",
+          proximaEtapa:
+            checklistDestaque.find((item) => item.status === "Pendente")?.ambiente ||
+            ((visitaEmAndamentoDestaque.ambientes || []).length ? "Revisar a inspeção" : "Definir os ambientes da visita"),
+          respondidos: checklistDestaque.filter((item) => item.status !== "Pendente").length,
+          total: checklistDestaque.length,
+          percentual: progressoVisitaDestaque,
+          conformes: checklistDestaque.filter((item) => item.status === "Conforme").length,
+          naoConformes: checklistDestaque.filter((item) => item.status === "Não Conforme").length,
+          naoSeAplica: checklistDestaque.filter((item) => item.status === "Não se aplica").length,
+          pendentes: checklistDestaque.filter((item) => item.status === "Pendente").length,
+          onContinuar: () => {
+            setDb((estado) => ({ ...estado, empresaAtualId: visitaEmAndamentoDestaque.empresaId }));
+            setVisitaAtualId(visitaEmAndamentoDestaque.id);
+            setView("visita");
+          },
+        }
+      : null,
+    ncAcompanhamento: (db.ncs || []).filter(
+      (nc) =>
+        !nc.inativaNoChecklist &&
+        nc.status !== "Resolvida" &&
+        visitas.some((visita) => visita.id === nc.visitaId)
+    ).length,
+    preparacaoAtual: atual ? preparacaoDaEmpresa(atual) : null,
+    recentes: (filtro: "Em andamento" | "Concluída") =>
+      visitas
+        .filter((visita) => visita.status === filtro)
+        .slice(0, 12)
+        .map((visita) => {
+          const itens = visita.checklist || [];
+          const respondidosVisita = itens.filter((item) => item.status !== "Pendente").length;
+          return {
+            id: visita.id,
+            empresa: nomeEmFormatoNatural(db.empresas[visita.empresaId]?.nomeFantasia) || "Empresa",
+            data: fdata(visita.data),
+            responsavel: visita.responsavel || "Responsável não informado",
+            status: visita.status,
+            percentual: itens.length ? Math.round((respondidosVisita / itens.length) * 100) : 0,
+          };
+        }),
+  };
+  const nomeParaExibir = (empresa?: Empresa) => {
+    if (!empresa) return "Empresa";
+    const fantasia = (empresa.nomeFantasia || "").trim();
+    const pareceCnpj = /^[\d.\/\-\s]+$/.test(fantasia);
+    return nomeEmFormatoNatural(pareceCnpj || !fantasia ? empresa.razaoSocial || fantasia : fantasia) || "Empresa";
+  };
+  const chaveDaTela: NavKey | null =
+    view === "empresas" && showEmpresaForm && empresaSecao === "pops" ? "pops" : chaveAtiva(view);
   const itemDaTela = chaveDaTela ? itemDoMenu(chaveDaTela) : undefined;
   const rotuloDaTela = view === "historico" ? "Histórico" : chaveDaTela === "central" ? "Central" : itemDaTela?.rotulo || "";
   const caminhoTopo = dentroDaVisita
@@ -4887,9 +5015,10 @@ export default function Home() {
   return (
     <IaPermitidaContext.Provider value={deveExibirRecursosDeIa(usuarioDaSessao)}>
     <div className="min-h-screen bg-[var(--bg)]">
+      <UpdateNotice />
       <AppNavigation
         contexto={contextoMenu}
-        ativa={chaveAtiva(view)}
+        ativa={chaveDaTela}
         onSelecionar={irParaMenu}
         ncsAbertas={ncsAbertas}
         maisAberto={menuMaisAberto}
@@ -4909,6 +5038,8 @@ export default function Home() {
         contagens={contagensMenu}
         visita={cartaoVisita}
         onSair={() => void sairDoSistema()}
+        usuario={usuarioDaSessao ? { nome: usuarioDaSessao.nome, perfil: usuarioDaSessao.perfil, iniciais: iniciaisUsuario || "" } : null}
+        versao={pacote.version.split(".").slice(0, 2).join(".")}
         saindo={saindo}
       />
 
@@ -5254,6 +5385,7 @@ export default function Home() {
 
         {view === "acessos" && permitido("usuarios.gerenciar") ? (
           <AccessPreparationPanel
+            pc={ehPC}
             usuarios={db.usuarios}
             empresas={db.empresas}
             registrosAuditoria={db.registrosAuditoria}
@@ -5262,6 +5394,16 @@ export default function Home() {
             onEnviarAcesso={enviarAcessoUsuario}
           />
         ) : view === "empresas" && showEmpresaForm && permitido("empresas.editar") ? (
+          ehPC && !!editingEmpresaId && empresaSecao === "pops" ? (
+            <PcPops
+              pops={popsEmpresa}
+              onChange={setPopsEmpresa}
+              temAlteracoes={empresaTemAlteracoes}
+              mensagem={msg}
+              onSalvar={salvarEmpresa}
+              onVoltar={() => { if (confirmarSaidaDaEdicao()) setEmpresaSecao(null); }}
+            />
+          ) : (
           <section className="rounded-2xl bg-white p-5 shadow-sm">
             <div className="flex justify-between gap-4">
               <div>
@@ -5547,7 +5689,7 @@ export default function Home() {
                 </div>
               </>
             )}
-          </section>
+          </section>)
         ) : view === "visitas" && showVisitaForm ? (
           <section className="rounded-2xl bg-white p-5 shadow-sm">
             <div className="flex justify-between gap-4">
@@ -5645,6 +5787,30 @@ export default function Home() {
             </button>
           </section>
         ) : view === "ambientes" && visitaAtual ? (
+          ehPC ? (
+            <PcAmbientes
+              empresa={nomeParaExibir(empresaVisita)}
+              data={fdata(visitaAtual.data)}
+              sugeridos={ambientesSugeridosVisita}
+              selecionados={ambientesSelecionados}
+              opcoesModelo={[...OPCOES_MODELO_QUESTIONARIO]}
+              modeloDoAmbiente={(nome) => modelosAmbientesSelecionados[nome] || obterModeloQuestionarioParaAmbiente(nome)}
+              personalizado={ambientePersonalizado}
+              onPersonalizado={setAmbientePersonalizado}
+              statusSalvo={statusAmbientes}
+              onToggle={toggleAmbiente}
+              onDetalhado={aplicarModeloDetalhadoRestaurante}
+              onAdicionar={adicionarPersonalizado}
+              onModelo={atualizarModeloQuestionarioAmbiente}
+              onVoltar={() => setView("visita")}
+              onIniciar={() => {
+                if (JSON.stringify(visitaAtual.ambientes || []) !== JSON.stringify(ambientesSelecionados)) {
+                  atualizarAmbientesDaVisita(ambientesSelecionados);
+                }
+                setIniciarChecklistPendente(true);
+              }}
+            />
+          ) : (
           <section className="ambientes-screen space-y-4">
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
               <div className="ambientes-top-row flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -5804,8 +5970,91 @@ export default function Home() {
                 </button>
               </div>
             </div>
-          </section>
+          </section>)
         ) : view === "evidencias" && visitaAtual ? (
+          ehPC ? (
+            <PcEvidencias
+              empresa={nomeParaExibir(empresaVisita)}
+              data={fdata(visitaAtual.data)}
+              totais={{ evidencias: evidenciasVisita.length, fotos: fotosVisita, audios: audiosVisita, revisar: analisesIAPendentes }}
+              podeAdicionar={permitido("evidencias.adicionar", visitaAtual.empresaId)}
+              vinculo={(() => {
+                const item = checklistAtual.find((registro) => registro.id === evidenciaChecklistItemId);
+                const posicao = item ? checklistAtual.filter((registro) => registro.ambiente === item.ambiente).findIndex((registro) => registro.id === item.id) + 1 : 0;
+                return {
+                  ambiente: evidenciaAmbiente,
+                  temItem: Boolean(item),
+                  item: item ? `Item ${posicao} · ${item.titulo}` : "",
+                };
+              })()}
+              ambientes={visitaAtual.ambientes || []}
+              itens={checklistAtual
+                .filter((item) => !evidenciaAmbiente || item.ambiente === evidenciaAmbiente)
+                .map((item) => ({ id: item.id, rotulo: `${item.categoria} — ${item.titulo}` }))}
+              ncs={ncsVisita.map((nc, idx) => ({ id: nc.id, rotulo: `NC ${idx + 1} — ${nc.ambiente} — ${nc.titulo}` }))}
+              ambienteSel={evidenciaAmbiente}
+              itemSel={evidenciaChecklistItemId}
+              ncSel={evidenciaNcId}
+              onAmbiente={(valor) => { setEvidenciaAmbiente(valor); setEvidenciaChecklistItemId(""); }}
+              onItem={(itemId) => {
+                setEvidenciaChecklistItemId(itemId);
+                const item = checklistAtual.find((registro) => registro.id === itemId);
+                if (item) {
+                  setEvidenciaAmbiente(item.ambiente);
+                  const ncDoItem = ncsVisita.find((nc) => nc.checklistItemId === item.id);
+                  if (ncDoItem) setEvidenciaNcId(ncDoItem.id);
+                }
+              }}
+              onNc={setEvidenciaNcId}
+              descricao={evidenciaDescricao}
+              onDescricao={setEvidenciaDescricao}
+              mensagem={evidenciaMsg}
+              onFoto={async (arquivo) => {
+                if (!arquivo) {
+                  setEvidenciaMsg("Nenhuma foto foi recebida da câmera.");
+                  return;
+                }
+                await adicionarEvidencia(arquivo, "Foto");
+              }}
+              onAudio={(arquivo) => void adicionarEvidencia(arquivo, "Áudio")}
+              onVoltar={() => setView("visita")}
+              evidencias={evidenciasVisita.map((ev) => {
+                const analises = ev.analisesIA || [];
+                const ultima = analises.length ? analises[analises.length - 1] : undefined;
+                return {
+                  id: ev.id,
+                  tipo: ev.tipo,
+                  nome: ev.nomeArquivo,
+                  descricao: ev.descricao || "",
+                  ambiente: ev.ambiente || "",
+                  quando: new Date(ev.criadoEm).toLocaleString("pt-BR"),
+                  url: urlEvidencia(ev),
+                  possivelNc: ultima?.situacao === "Possível não conformidade",
+                  analise: ultima
+                    ? {
+                        id: ultima.id,
+                        status: ultima.status,
+                        situacao: ultima.situacao || ultima.classificacao || "",
+                        resumo: ultima.resumo,
+                        acao: ultima.achados[0]?.acaoSugerida || "",
+                        textoRevisado: ultima.textoRevisado,
+                        revisadoPor: ultima.revisadaPor || "",
+                        podeRevisar: permitido("ia.analisar", ev.empresaId),
+                      }
+                    : null,
+                  podeAnalisar: ev.tipo === "Foto" && permitido("ia.analisar", ev.empresaId),
+                  analisando: analiseIAEmAndamentoId === ev.id,
+                  bloqueioIA: analiseIAEmAndamentoId !== null,
+                  mensagemIA: analiseIAMensagens[ev.id] || "",
+                  podeExcluir: permitido("evidencias.adicionar", ev.empresaId),
+                  onAnalisar: () => void analisarFotoComIA(ev),
+                  onConfirmar: (texto: string) => ultima && confirmarAnaliseFoto(ev, ultima, texto),
+                  onDescartar: () => ultima && descartarAnaliseFoto(ev, ultima),
+                  onExcluir: () => excluirEvidencia(ev.id),
+                };
+              })}
+            />
+          ) : (
           <section className="space-y-4">
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -6252,8 +6501,49 @@ export default function Home() {
                 )}
               </div>
             </div>
-          </section>
+          </section>)
         ) : view === "plano" && visitaAtual ? (
+          ehPC ? (
+            <PcPlano
+              empresa={nomeParaExibir(empresaVisita)}
+              data={fdata(visitaAtual.data)}
+              hoje={hojeISO()}
+              podeEditar={permitido("ncs.acompanhar", visitaAtual.empresaId)}
+              responsaveis={Array.from(
+                new Set(
+                  [
+                    visitaAtual.responsavel,
+                    ...(db.usuarios || []).map((usuario) => usuario.nome),
+                    ...ncsVisita.map((nc) => nc.responsavelAcao || ""),
+                  ]
+                    .map((nome) => (nome || "").trim())
+                    .filter(Boolean)
+                )
+              )}
+              resumo={resumoDoPlano(ncsVisita, hojeISO())}
+              ncs={ncsVisita.map((nc, indice) => ({
+                id: nc.id,
+                numero: indice + 1,
+                titulo: nc.titulo,
+                ambiente: nc.ambiente,
+                gravidade: nc.criticidade,
+                status: nc.status,
+                acaoCorretiva: nc.acaoCorretiva || "",
+                responsavelAcao: nc.responsavelAcao || "",
+                prazo: nc.prazo || "",
+                realce: planoNcAbertaId === nc.id,
+              }))}
+              onAcao={(id, valor) => atualizarNC(id, { acaoCorretiva: valor })}
+              onResponsavel={(id, valor) => atualizarNC(id, { responsavelAcao: valor })}
+              onPrazo={(id, valor) => atualizarNC(id, { prazo: valor })}
+              onIniciar={(id) => atualizarNC(id, { status: "Em tratamento" })}
+              onAplicar={(ids, valores) => {
+                alteracoesEmLote(ncsVisita, ids, valores).forEach((alteracao) => atualizarNC(alteracao.id, alteracao.patch));
+              }}
+              onVoltar={() => setView("visita")}
+              onChecklist={abrirChecklist}
+            />
+          ) : (
           <section className="plan-center space-y-3">
             <div className="plan-page-head">
               <div className="plan-title-row">
@@ -6466,8 +6756,48 @@ export default function Home() {
                 ))}
               </div>
             )}
-          </section>
+          </section>)
         ) : view === "acompanhamento" && visitaAtual ? (
+          ehPC ? (
+            <PcAcompanhamento
+              empresa={nomeParaExibir(empresaVisita)}
+              data={fdata(visitaAtual.data)}
+              podeAcompanhar={permitido("ncs.acompanhar", visitaAtual.empresaId)}
+              podeEvidenciar={permitido("evidencias.adicionar", visitaAtual.empresaId)}
+              ncs={ncsVisita.map((nc, indice) => ({
+                id: nc.id,
+                numero: indice + 1,
+                titulo: nc.titulo,
+                ambiente: nc.ambiente,
+                gravidade: nc.criticidade,
+                status: nc.status,
+                vencida: situacaoPrazoNC(nc.prazo, nc.status).label === "Vencida",
+                acaoCorretiva: nc.acaoCorretiva || "",
+                responsavel: nc.responsavelAcao || "",
+                prazo: nc.prazo || "",
+                resolvidaEm: nc.resolvidaEm || "",
+                evidencias: (db.evidencias || [])
+                  .filter((ev) => ev.ncId === nc.id)
+                  .map((ev) => ({ id: ev.id, tipo: ev.tipo, nome: ev.descricao?.trim() || ev.nomeArquivo, quando: new Date(ev.criadoEm).toLocaleString("pt-BR"), url: urlEvidencia(ev) })),
+                historico: [...(nc.historicoAcompanhamento || [])]
+                  .sort((a, b) => b.criadoEm.localeCompare(a.criadoEm))
+                  .map((item) => ({ id: item.id, quando: new Date(item.criadoEm).toLocaleString("pt-BR"), status: item.status, observacao: item.observacao })),
+                texto: textoAcompanhamento[nc.id] || "",
+                statusEscolhido: statusAcompanhamento[nc.id] || nc.status,
+              }))}
+              onTexto={(id, valor) => setTextoAcompanhamento((o) => ({ ...o, [id]: valor }))}
+              onStatus={(id, status) => setStatusAcompanhamento((o) => ({ ...o, [id]: status }))}
+              onRegistrar={registrarAcompanhamento}
+              onAdicionarEvidencia={(id) => {
+                const nc = ncsVisita.find((registro) => registro.id === id);
+                setEvidenciaNcId(id);
+                setEvidenciaAmbiente(nc?.ambiente || "");
+                setView("evidencias");
+              }}
+              onPlano={(id) => { setPlanoNcAbertaId(id); setView("plano"); }}
+              onVoltar={() => setView("visita")}
+            />
+          ) : (
           <section className="space-y-4">
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -6786,8 +7116,28 @@ export default function Home() {
                 })}
               </div>
             )}
-          </section>
+          </section>)
         ) : view === "ncs" && visitaAtual ? (
+          ehPC ? (
+            <PcNcs
+              empresa={nomeParaExibir(empresaVisita)}
+              data={fdata(visitaAtual.data)}
+              ncs={ncsVisita.map((nc, indice) => ({
+                id: nc.id,
+                numero: indice + 1,
+                titulo: nc.titulo,
+                ambiente: nc.ambiente,
+                item: nc.categoria,
+                referencia: nc.referencia,
+                gravidade: nc.criticidade,
+                status: nc.status,
+                onAcompanhar: () => { setPlanoNcAbertaId(nc.id); setView("plano"); },
+              }))}
+              onPlano={permitido("ncs.acompanhar", visitaAtual.empresaId) ? () => setView("plano") : null}
+              onVoltar={() => setView("visita")}
+              onChecklist={abrirChecklist}
+            />
+          ) : (
           <section className="nc-center space-y-3">
             <div className="nc-page-head">
               <div className="nc-title-row">
@@ -6868,7 +7218,7 @@ export default function Home() {
                 })}
               </div>
             )}
-          </section>
+          </section>)
         ) : view === "checklist" && visitaAtual ? (
           <section className="checklist-screen space-y-3">
             <div className="pc-check-head">
@@ -6909,6 +7259,7 @@ export default function Home() {
                 ambientes={infosAmbientes}
                 atual={ambienteChecklistAtivo}
                 onSelecionar={(nome) => setAmbienteChecklistAtivo(nome)}
+                onEditar={permitido("visitas.executar", visitaAtual?.empresaId) ? () => abrirAmbientes() : undefined}
               />
               {fotoAguardando && (
                 <div className="pc-photo-wait" role="status">
@@ -7372,6 +7723,66 @@ export default function Home() {
             </div>
           </section>
         ) : view === "visita" && visitaAtual ? (
+          ehPC ? (
+            <PcCentral
+              empresa={nomeParaExibir(empresaVisita)}
+              detalhe={`${fdata(visitaAtual.data)} · ${visitaAtual.responsavel || "Responsável não informado"}`}
+              proxima={{
+                titulo: proximoAmbienteVisita || ((visitaAtual.ambientes || []).length ? "Revisar a inspeção" : "Definir os ambientes da visita"),
+                respondidos,
+                total: totalChecklist,
+                percentual: percentualChecklist,
+                conformes: conformesChecklist,
+                naoConformes: naoConformesChecklist,
+                naoSeAplica: naoSeAplicaChecklist,
+                pendentes: pendentesChecklist,
+                botao: (visitaAtual.ambientes || []).length ? "Continuar inspeção →" : "Selecionar ambientes →",
+                desabilitado: !permitido("visitas.executar", visitaAtual.empresaId),
+                onContinuar: () => ((visitaAtual.ambientes || []).length ? abrirChecklist() : abrirAmbientes()),
+              }}
+              indicadores={{
+                conformes: conformesVisita,
+                naoConformidades: ncsVisita.length,
+                evidencias: evidenciasVisita.length,
+                pendencias: pendentesVisita,
+              }}
+              equipamentos={{
+                texto: `${equipamentosDaVisita.length} tipos · ${totalUnidadesEquipamentos} unidades`,
+                desabilitado: (visitaAtual.ambientes || []).length === 0,
+                onAbrir: () => abrirChecklistNoAmbiente(equipamentosDaVisita[0]?.setor || (visitaAtual.ambientes || [])[0]),
+              }}
+              programas={
+                programasChecklistAtivos.length > 0
+                  ? {
+                      texto: `${respondidosProgramasCentral} de ${itensProgramasCentral.length} · ${statusProgramasCentral}`,
+                      onAbrir: () => abrirChecklistNoAmbiente(AMBIENTE_PROGRAMAS_CONTROLE),
+                    }
+                  : null
+              }
+              atividade={{
+                texto: `${respondidos} itens respondidos · ${ncsVisita.length} não conformidades`,
+                onAcompanhar: permitido("ncs.acompanhar", visitaAtual.empresaId) ? () => setView("acompanhamento") : null,
+              }}
+              ncsAbertas={
+                permitido("ncs.acompanhar", visitaAtual.empresaId)
+                  ? [...ncsVisita]
+                      .filter((nc) => nc.status !== "Resolvida")
+                      .sort((a, b) => String(a.criadoEm).localeCompare(String(b.criadoEm)))
+                      .slice(0, 3)
+                      .map((nc) => ({
+                        id: nc.id,
+                        titulo: nc.titulo,
+                        detalhe: `${nc.ambiente} · ${nc.categoria}`,
+                        status: nc.status,
+                        onAbrir: () => { setPlanoNcAbertaId(nc.id); setView("plano"); },
+                      }))
+                  : null
+              }
+              onVerNcs={() => setView("ncs")}
+              onEditarAmbientes={permitido("visitas.executar", visitaAtual.empresaId) ? () => abrirAmbientes() : null}
+              onTodasVisitas={() => navegarPrincipal("visitas")}
+            />
+          ) : (
           <section className="visit-central space-y-2.5 lg:space-y-4">
             <div className="flex items-center justify-between gap-2 border-b border-slate-200 pb-2.5 lg:items-end lg:gap-3 lg:pb-4">
               <div className="min-w-0 flex-1">
@@ -7473,7 +7884,7 @@ export default function Home() {
                 </div>
               );
             })()}
-          </section>
+          </section>)
         ) : view === "relatorio" && visitaAtual ? (
           <section id="relatorio-visita" className="report-print space-y-4">
             <div className="print-only report-document-header">
@@ -8405,6 +8816,47 @@ export default function Home() {
             </div>
           </section>
         ) : view === "inicio" ? (
+          ehPC ? (
+            <PcInicio
+              nome={usuarioDaSessao?.nome.split(" ").filter(Boolean)[0] || "bem-vindo"}
+              continuar={inicioPc.continuar}
+              novaVisita={{
+                texto: atual
+                  ? `A próxima visita será criada para ${nomeEmFormatoNatural(atual.nomeFantasia)}.`
+                  : "Selecione uma empresa para começar.",
+                botao: atual ? "Nova visita" : "Selecionar empresa →",
+                onClick: atual ? novaVisita : () => setView("empresas"),
+              }}
+              indicadores={{
+                emAndamento: visitas.filter((visita) => visita.status === "Em andamento").length,
+                ncAcompanhamento: inicioPc.ncAcompanhamento,
+                concluidasMes: visitasDoMes.filter((visita) => visita.status === "Concluída").length,
+                empresasAtivas: empresasVisiveis.length,
+              }}
+              preparacao={
+                atual && inicioPc.preparacaoAtual
+                  ? {
+                      percentual: inicioPc.preparacaoAtual.percentual,
+                      texto: inicioPc.preparacaoAtual.completo
+                        ? "Cadastro completo"
+                        : `${inicioPc.preparacaoAtual.preenchidos} de ${inicioPc.preparacaoAtual.total} itens preenchidos`,
+                      onAbrir: () => editarEmpresa(atual),
+                    }
+                  : null
+              }
+              pendencias={{
+                texto: ncsEmpresaAbertas ? `${ncsEmpresaAbertas} não conformidade(s) em acompanhamento` : "Nenhuma não conformidade aberta",
+                onVer: permitido("ncs.acompanhar", atual?.id) ? () => irParaMenu("ncs") : null,
+              }}
+              filtro={filtroInicio}
+              onFiltro={setFiltroInicio}
+              contagemEmAndamento={visitas.filter((visita) => visita.status === "Em andamento").length}
+              contagemConcluidas={visitas.filter((visita) => visita.status === "Concluída").length}
+              recentes={inicioPc.recentes(filtroInicio)}
+              onAbrirVisita={(id) => { setVisitaAtualId(id); setView("visita"); }}
+              onVerTodas={() => setView("visitas")}
+            />
+          ) : (
           <div className="space-y-4">
             <section className="grid gap-3 lg:grid-cols-[minmax(0,1.08fr)_minmax(360px,0.92fr)] lg:gap-4">
               <div className="pc-hero flex flex-col overflow-hidden rounded-2xl bg-[var(--brand)] p-4 text-white shadow-[0_16px_40px_rgba(6,27,79,0.16)] lg:min-h-[320px] lg:rounded-[28px] lg:p-7 lg:shadow-[0_22px_60px_rgba(6,27,79,0.20)]">
@@ -8521,8 +8973,37 @@ export default function Home() {
                 <span>Ver todas as visitas</span><span>›</span>
               </button>
             </section>
-          </div>
+          </div>)
         ) : view === "empresas" ? (
+          ehPC ? (
+            <PcEmpresas
+              totalClientes={empresasVisiveis.length}
+              busca={buscaEmpresas}
+              onBusca={setBuscaEmpresas}
+              podeCriar={permitido("empresas.editar")}
+              onNova={iniciarNovaEmpresa}
+              onSelecionar={(id) => { setDb((o) => ({ ...o, empresaAtualId: id })); setVisitaAtualId(null); }}
+              onGerenciar={(id) => { const alvo = db.empresas[id]; if (alvo) editarEmpresa(alvo); }}
+              onNovaVisita={novaVisita}
+              empresas={empresasFiltradas.map((e) => {
+                const prep = preparacaoDaEmpresa(e);
+                return {
+                  id: e.id,
+                  nome: nomeParaExibir(e),
+                  razaoSocial: e.razaoSocial || "",
+                  ativa: db.empresaAtualId === e.id,
+                  setores: prep.contagens.setores,
+                  equipamentos: prep.contagens.equipamentos,
+                  programas: prep.contagens.programas,
+                  pops: prep.contagens.pops,
+                  preparacao: prep.percentual,
+                  completo: prep.completo,
+                  podeGerenciar: permitido("empresas.editar", e.id),
+                  podeNovaVisita: permitido("visitas.criar", e.id),
+                };
+              })}
+            />
+          ) : (
           <section className="rounded-2xl bg-white p-5 shadow-sm">
             <div className="flex justify-between gap-4">
               <div>
@@ -8649,7 +9130,7 @@ export default function Home() {
                 </div>
               )}
             </div>
-          </section>
+          </section>)
         ) : view === "historico" && atual ? (
           <section className="space-y-4">
             <div className="rounded-2xl bg-white p-5 shadow-sm">
@@ -8953,6 +9434,47 @@ export default function Home() {
             )}
           </section>
         ) : (
+          ehPC ? (
+            <PcVisitas
+              empresaAtiva={atual ? nomeParaExibir(atual) : "nenhuma"}
+              filtro={filtroListaVisitas}
+              onFiltro={setFiltroListaVisitas}
+              historicoDesabilitado={!atual}
+              novaDesabilitada={!atual || !permitido("visitas.criar", atual.id)}
+              onHistorico={() => setView("historico")}
+              onNova={novaVisita}
+              onContinuar={(id) => continuar(id)}
+              onConcluir={(id) => void concluir(id)}
+              onReabrir={(id) => void reabrir(id)}
+              onExcluir={(id) => excluir(id)}
+              onRelatorio={(id) => {
+                const alvo = db.visitas.find((visita) => visita.id === id);
+                if (!alvo) return;
+                setDb((estado) => ({ ...estado, empresaAtualId: alvo.empresaId }));
+                setVisitaAtualId(id);
+                setView("relatorio");
+              }}
+              visitas={visitas.map((v) => {
+                const itens = v.checklist || [];
+                const respondidosV = itens.filter((item) => item.status !== "Pendente").length;
+                return {
+                  id: v.id,
+                  empresa: nomeParaExibir(db.empresas[v.empresaId]),
+                  empresaAtiva: v.empresaId === db.empresaAtualId,
+                  numero: numeroVisitaPorId.get(v.id) || "—",
+                  data: fdata(v.data),
+                  responsavel: v.responsavel || "Responsável não informado",
+                  percentual: itens.length ? Math.round((respondidosV / itens.length) * 100) : 0,
+                  status: v.status,
+                  podeContinuar: permitido("visitas.executar", v.empresaId),
+                  podeConcluir: permitido("visitas.concluir", v.empresaId),
+                  podeReabrir: permitido("visitas.concluir", v.empresaId),
+                  podeRelatorio: permitido("relatorios.exportar", v.empresaId),
+                  podeExcluir: usuarioDaSessao?.perfil === "Administrador",
+                };
+              })}
+            />
+          ) : (
           <section className="visits-list-page space-y-3 sm:space-y-4">
             <div className="visits-list-header rounded-2xl bg-white p-4 shadow-sm sm:p-5">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -9107,7 +9629,7 @@ export default function Home() {
                 </div>
               )}
             </div>
-          </section>
+          </section>)
         )}
       </div>
     </div>

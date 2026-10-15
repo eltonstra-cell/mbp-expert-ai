@@ -12,12 +12,13 @@ type Props = {
   ambientes: InfoAmbiente[];
   atual: string | null;
   onSelecionar: (nome: string) => void;
+  onEditar?: () => void;
 };
 
 type Modo = "situacao" | "ordem";
 
 // Faixa de pílulas em ordem FIXA (a da visita) com o painel "Ver todos".
-export default function ChecklistEnvStrip({ ambientes, atual, onSelecionar }: Props) {
+export default function ChecklistEnvStrip({ ambientes, atual, onSelecionar, onEditar }: Props) {
   const [painelAberto, setPainelAberto] = useState(false);
   const [busca, setBusca] = useState("");
   const [modo, setModo] = useState<Modo>("situacao");
@@ -144,6 +145,11 @@ export default function ChecklistEnvStrip({ ambientes, atual, onSelecionar }: Pr
                 Por situação
               </button>
             </div>
+            {onEditar && (
+              <button type="button" className="pc-link-btn" onClick={() => { setPainelAberto(false); onEditar(); }}>
+                Editar ambientes
+              </button>
+            )}
             <button type="button" className="pc-env-close" onClick={() => setPainelAberto(false)}>
               Fechar
             </button>

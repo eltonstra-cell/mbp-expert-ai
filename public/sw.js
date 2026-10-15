@@ -1,4 +1,4 @@
-const CACHE_NAME = "mbp-app-shell-v19";
+const CACHE_NAME = "mbp-app-shell-v20";
 const APP_SHELL = "/";
 const STATIC_ASSETS = ["/kitchen-line.svg", "/images/cozinha-inspecao.webp", "/images/mapa-inspecao.webp", "/manifest.webmanifest"];
 
@@ -32,7 +32,6 @@ async function guardarEstrutura() {
 }
 
 self.addEventListener("install", (event) => {
-  self.skipWaiting();
   event.waitUntil(guardarEstrutura().catch(() => undefined));
 });
 
@@ -46,6 +45,10 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("message", (event) => {
+  if (event.data?.type === "SKIP_WAITING") {
+    self.skipWaiting();
+    return;
+  }
   if (event.data?.type === "CACHE_APP_SHELL") {
     event.waitUntil(guardarEstrutura().catch(() => undefined));
   }

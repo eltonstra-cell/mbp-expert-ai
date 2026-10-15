@@ -5,7 +5,7 @@ import {
   barraInferior,
   chaveAtiva,
   etapasDaVisita,
-  menuLateral,
+  menuLateralPC,
   itensDaBarra,
   itensDaFolhaMais,
   itensVisiveis,
@@ -87,24 +87,20 @@ test("itens exclusivos da visita só aparecem dentro dela", () => {
   for (const key of ["central", "ambientes", "acompanhamento"]) assert.ok(dentro.includes(key), key);
 });
 
-test("PC: AGORA, cartão de etapas (só na visita) e GERAL; Registrar fica fora das listas", () => {
-  const dentro = menuLateral(contexto("Administrador", true));
-  assert.deepEqual(chaves(dentro.agora), ["inicio"]);
-  assert.deepEqual(chaves(dentro.etapas), [
-    "central",
-    "ambientes",
-    "checklist",
-    "evidencias",
-    "ncs",
-    "plano",
-    "acompanhamento",
-    "relatorio",
-  ]);
-  assert.deepEqual(chaves(dentro.geral), ["visitas", "empresas", "acessos", "pops", "ajuda"]);
-  const todas = [...dentro.agora, ...dentro.etapas, ...dentro.geral];
+test("PC: topo, grupo da visita (só dentro dela), apoio e administração; Registrar fica fora", () => {
+  const dentro = menuLateralPC(contexto("Administrador", true));
+  assert.deepEqual(chaves(dentro.topo), ["inicio", "visitas", "empresas", "pops"]);
+  assert.deepEqual(chaves(dentro.etapas), ["central", "checklist", "evidencias", "ncs", "plano", "acompanhamento", "relatorio"]);
+  assert.deepEqual(chaves(dentro.apoio), ["ajuda"]);
+  assert.deepEqual(chaves(dentro.admin), ["acessos"]);
+  const todas = [...dentro.topo, ...dentro.etapas, ...dentro.apoio, ...dentro.admin];
   assert.ok(!chaves(todas).includes("registrar"));
-  const fora = menuLateral(contexto("Administrador", false));
+  const fora = menuLateralPC(contexto("Administrador", false));
   assert.deepEqual(fora.etapas, []);
+});
+
+test("PC: Ambientes não é etapa do menu (é o passo 1 da visita)", () => {
+  assert.ok(!chaves(menuLateralPC(contexto("Administrador", true)).etapas).includes("ambientes"));
 });
 
 test("etapas: tons aprovados para cada etapa", () => {
@@ -131,8 +127,16 @@ test("etapas: cada perfil vê só o que pode usar", () => {
     "relatorio",
   ]);
   assert.deepEqual(chaves(etapasDaVisita(semUsuario(true))), ["central"]);
-  const clienteGeral = menuLateral(contexto("Cliente Gestor", true)).geral;
-  assert.deepEqual(chaves(clienteGeral), ["visitas", "empresas", "ajuda"]);
+  const cliente = menuLateralPC(contexto("Cliente Gestor", true));
+  assert.deepEqual(chaves(cliente.topo), ["inicio", "visitas", "empresas"]);
+  assert.deepEqual(chaves(cliente.etapas), ["central", "ncs", "plano", "acompanhamento", "relatorio"]);
+  assert.deepEqual(chaves(cliente.apoio), ["ajuda"]);
+  assert.deepEqual(cliente.admin, []);
+  const consultor = menuLateralPC(contexto("Consultor/RT", true));
+  assert.deepEqual(consultor.admin, []);
+  assert.ok(chaves(consultor.topo).includes("pops"));
+  const local = menuLateralPC(semUsuario(false));
+  assert.deepEqual([...chaves(local.topo), ...chaves(local.apoio), ...chaves(local.admin)], ["inicio", "visitas", "empresas", "ajuda"]);
 });
 
 test("tablet fora da visita: Início, Visitas, Empresas e Acessos (Ajuda no lugar sem Acessos)", () => {

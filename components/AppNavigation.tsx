@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useRef, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { LogoHorizontal } from "@/components/BrandLogo";
 import { NavIcon, type NavIconName } from "@/components/NavIcons";
 import {
   barraInferior,
   itensDaBarra,
   itensDaFolhaMais,
-  menuLateral,
+  menuLateralPC,
   registrarDisponivel,
   trilhoDoTablet,
   type NavContexto,
@@ -53,6 +53,9 @@ type Props = {
   sincronizacao: { estado: "ok" | "erro" | "pendente"; rotulo: string; onClick: () => void };
   onSair: () => void;
   saindo: boolean;
+  /** Pessoa conectada (cartão do rodapé do menu do PC); null no modo local. */
+  usuario: { nome: string; perfil: string; iniciais: string } | null;
+  versao: string;
 };
 
 function Tile({
@@ -103,11 +106,15 @@ export default function AppNavigation({
   sincronizacao,
   onSair,
   saindo,
+  usuario,
+  versao,
 }: Props) {
+  const [grupoVisitaAberto, setGrupoVisitaAberto] = useState(true);
+  const [grupoAdminAberto, setGrupoAdminAberto] = useState(true);
   const slots = barraInferior(contexto);
   const itensBarra = itensDaBarra(slots);
   const trilho = trilhoDoTablet(contexto);
-  const lateral = menuLateral(contexto);
+  const lateral = menuLateralPC(contexto);
   const temRegistrar = registrarDisponivel(contexto);
   const badgeDe = (item: NavItem) => (item.key === "ncs" ? ncsAbertas : 0);
 
@@ -150,6 +157,26 @@ export default function AppNavigation({
       <span className="pc-label">Mais</span>
     </button>
   );
+
+  const linkLateral = (item: NavItem, sub: boolean) => {
+    const ehAtivo = ativa === item.key;
+    const contagem = contagens[item.key];
+    return (
+      <button
+        key={item.key}
+        type="button"
+        className={`pc-link${sub ? " pc-link--sub" : ""}${ehAtivo ? " is-active" : ""}`}
+        aria-current={ehAtivo ? "page" : undefined}
+        onClick={() => onSelecionar(item.key)}
+      >
+        <span className="pc-link-icon">
+          <NavIcon name={item.key} size={sub ? 16 : 18} strokeWidth={1.9} />
+        </span>
+        <span className="pc-link-label">{item.rotulo}</span>
+        {sub && contagem && <span className="pc-link-count">{contagem.texto}</span>}
+      </button>
+    );
+  };
 
   const total = visita
     ? Math.max(1, visita.conformes + visita.naoConformes + visita.naoSeAplica + visita.pendentes)
@@ -202,36 +229,44 @@ export default function AppNavigation({
         </button>
       </nav>
 
-      {/* PC: menu lateral */}
-      <aside className="pc-side">
-        <div className="pc-side-head">
-          <LogoHorizontal size={40} showSubtitle textClassName="text-xl" />
+      {/* PC: menu lateral azul */}
+      <aside className="pc-side" aria-label="Menu lateral">
+        <div className="pc-side-brand">
+          <LogoHorizontal size={38} showSubtitle textClassName="text-xl" />
         </div>
 
         {temRegistrar && (
-          <button type="button" className="pc-register-button" onClick={() => onSelecionar("registrar")}>
-            <span className="pc-register-icon">
-              <NavIcon name="registrar" size={18} strokeWidth={2.4} />
+          <button type="button" className="pc-register-line" onClick={() => onSelecionar("registrar")}>
+            <span className="pc-register-orb">
+              <NavIcon name="registrar" size={22} strokeWidth={2.2} />
             </span>
-            <span className="pc-register-text">Registrar agora</span>
+            <span className="pc-register-label">Registrar agora</span>
           </button>
         )}
 
         <nav className="pc-side-nav" aria-label="Navegação principal">
-          {lateral.agora.length > 0 && (
-            <div className="pc-side-group">
-              <div className="pc-side-label">Agora</div>
-              {lateral.agora.map((item) => botaoItem(item, "side", 30))}
-            </div>
-          )}
+          {lateral.topo.map((item) => linkLateral(item, false))}
 
           {visita && lateral.etapas.length > 0 && (
-            <section className="pc-visit-card" aria-label={visita.rotulo}>
-              <div className="pc-visit-card-head">
-                <div className="pc-side-label">{visita.rotulo}</div>
-                <div className="pc-visit-company">{visita.empresa}</div>
+            <>
+              <div className="pc-side-sep" role="separator" />
+              <section className="pc-vgroup" aria-label={visita.rotulo}>
+                <button
+                  type="button"
+                  className="pc-vgroup-head"
+                  aria-expanded={grupoVisitaAberto}
+                  onClick={() => setGrupoVisitaAberto((aberto) => !aberto)}
+                >
+                  <span className="pc-vgroup-text">
+                    <span className="pc-vgroup-label">{visita.rotulo}</span>
+                    <span className="pc-vgroup-title">
+                      {visita.empresa} · {visita.percentual}%
+                    </span>
+                  </span>
+                  <span className="pc-chev" aria-hidden="true">{grupoVisitaAberto ? "⌄" : "›"}</span>
+                </button>
                 <div
-                  className="pc-segbar pc-segbar--thin"
+                  className="pc-vbar"
                   role="img"
                   aria-label={`${visita.conformes} conformes, ${visita.naoConformes} não conformes, ${visita.naoSeAplica} não se aplica, ${visita.pendentes} pendentes`}
                 >
@@ -239,59 +274,55 @@ export default function AppNavigation({
                     [visita.conformes, "var(--ok)"],
                     [visita.naoConformes, "var(--nc)"],
                     [visita.naoSeAplica, "var(--na)"],
-                    [visita.pendentes, "var(--border)"],
                   ] as const).map(([qtd, cor], indice) =>
                     qtd > 0 ? <span key={indice} style={{ flexGrow: qtd / total, background: cor }} /> : null
                   )}
+                  <span style={{ flexGrow: visita.pendentes / total }} className="pc-vbar-rest" />
                 </div>
-                <div className="pc-visit-meta">
-                  {visita.percentual}% concluída · {visita.data}
-                </div>
-              </div>
-              <div className="pc-visit-steps">
-                {lateral.etapas.map((item) => {
-                  const ehAtivo = ativa === item.key;
-                  const contagem = contagens[item.key];
-                  return (
-                    <button
-                      key={item.key}
-                      type="button"
-                      className={`pc-step${ehAtivo ? " is-active" : ""}`}
-                      aria-current={ehAtivo ? "page" : undefined}
-                      onClick={() => onSelecionar(item.key)}
-                    >
-                      <Tile tom={item.tom} icone={item.key} tamanho={30} />
-                      <span className="pc-step-name">{item.rotulo}</span>
-                      {contagem && (
-                        <span className={`pc-count${contagem.tom ? ` is-${contagem.tom}` : ""}`}>{contagem.texto}</span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </section>
+                {grupoVisitaAberto && <div className="pc-vsteps">{lateral.etapas.map((item) => linkLateral(item, true))}</div>}
+              </section>
+            </>
           )}
 
-          {lateral.geral.length > 0 && (
-            <div className="pc-side-group">
-              <div className="pc-side-label">Geral</div>
-              {lateral.geral.map((item) => botaoItem(item, "side", 30))}
+          {(lateral.apoio.length > 0 || lateral.admin.length > 0) && <div className="pc-side-sep" role="separator" />}
+          {lateral.apoio.map((item) => linkLateral(item, false))}
+          {lateral.admin.length > 0 && (
+            <div className="pc-agroup">
+              <button
+                type="button"
+                className="pc-agroup-head"
+                aria-expanded={grupoAdminAberto}
+                onClick={() => setGrupoAdminAberto((aberto) => !aberto)}
+              >
+                <span className="pc-link-label">Administração</span>
+                <span className="pc-chev" aria-hidden="true">{grupoAdminAberto ? "⌄" : "›"}</span>
+              </button>
+              {grupoAdminAberto && <div className="pc-vsteps">{lateral.admin.map((item) => linkLateral(item, true))}</div>}
             </div>
           )}
         </nav>
 
         <div className="pc-side-foot">
-          <button
-            type="button"
-            className={`pc-sync is-${sincronizacao.estado}`}
-            onClick={sincronizacao.onClick}
-          >
+          <button type="button" className={`pc-sync is-${sincronizacao.estado}`} onClick={sincronizacao.onClick}>
             <span className="pc-sync-dot" aria-hidden="true" />
             {sincronizacao.rotulo}
           </button>
-          <button type="button" className="pc-logout" onClick={onSair} disabled={saindo}>
-            Sair do sistema
-          </button>
+          {usuario && (
+            <div className="pc-user-card">
+              <div className="pc-user-line">
+                <span className="pc-user-avatar" aria-hidden="true">{usuario.iniciais}</span>
+                <span className="pc-user-text">
+                  <span className="pc-user-role">{usuario.perfil}</span>
+                  <span className="pc-user-name">{usuario.nome}</span>
+                </span>
+              </div>
+              <button type="button" className="pc-logout" onClick={onSair} disabled={saindo}>
+                <NavIcon name="sair" size={16} strokeWidth={2} />
+                Sair
+              </button>
+            </div>
+          )}
+          {versao && <div className="pc-version">v{versao}</div>}
         </div>
       </aside>
 
