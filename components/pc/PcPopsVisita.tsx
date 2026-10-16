@@ -54,7 +54,7 @@ export default function PcPopsVisita({ empresa, data, resumo, linhas, podeCriar,
           </button>
           {podeCriar && (
             <button type="button" className="ui-btn ui-btn--primary" disabled={faltantes.length === 0} onClick={() => setConfirmando(true)}>
-              {faltantes.length === 1 ? "Criar 1 POP de uma vez" : `Criar os ${faltantes.length} POPs de uma vez`}
+              {faltantes.length === 0 ? "Criar POPs de uma vez" : faltantes.length === 1 ? "Criar 1 POP de uma vez" : `Criar os ${faltantes.length} POPs de uma vez`}
             </button>
           )}
         </div>

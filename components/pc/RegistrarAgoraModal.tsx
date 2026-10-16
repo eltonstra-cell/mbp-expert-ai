@@ -47,6 +47,7 @@ export default function RegistrarAgoraModal({ visitas, visitaInicialId, itemInic
   const [avisoCamera, setAvisoCamera] = useState("");
   const [gravando, setGravando] = useState(false);
   const [avisoAudio, setAvisoAudio] = useState("");
+  const [avisoArquivo, setAvisoArquivo] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
   const [origem, setOrigem] = useState<"camera" | "arquivo" | "audio">("camera");
@@ -99,6 +100,15 @@ export default function RegistrarAgoraModal({ visitas, visitaInicialId, itemInic
     };
   }, [liberarMidia]);
 
+  // Liga a prévia só depois que o <video> existe (evita corrida entre o estado e a renderização).
+  useEffect(() => {
+    const video = videoRef.current;
+    const stream = streamCameraRef.current;
+    if (!cameraAtiva || !video || !stream) return;
+    video.srcObject = stream;
+    void video.play().catch(() => undefined);
+  }, [cameraAtiva]);
+
   function fechar() {
     liberarMidia();
     onFechar();
@@ -126,12 +136,6 @@ export default function RegistrarAgoraModal({ visitas, visitaInicialId, itemInic
       setArquivo(null);
       trocarPrevia("");
       setCameraAtiva(true);
-      requestAnimationFrame(() => {
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          void videoRef.current.play().catch(() => undefined);
-        }
-      });
     } catch (falha) {
       const negada = falha instanceof DOMException && (falha.name === "NotAllowedError" || falha.name === "SecurityError");
       setAvisoCamera(
@@ -181,13 +185,14 @@ export default function RegistrarAgoraModal({ visitas, visitaInicialId, itemInic
     const escolhido = lista?.[0];
     if (!escolhido) return;
     setErro("");
+    setAvisoArquivo("");
     cancelarCamera();
     if (!escolhido.type.startsWith("image/") && !escolhido.type.startsWith("audio/")) {
-      setErro("Escolha uma foto ou um áudio. Outros tipos de arquivo não são aceitos nas evidências.");
+      setAvisoArquivo("Escolha uma foto ou um áudio. Outros tipos de arquivo não são aceitos nas evidências.");
       return;
     }
     if (escolhido.type.startsWith("audio/") && escolhido.size > LIMITE_AUDIO) {
-      setErro("O áudio está muito grande. Use um arquivo de até 3 MB.");
+      setAvisoArquivo("O áudio está muito grande. Use um arquivo de até 3 MB.");
       return;
     }
     setOrigem("arquivo");
@@ -383,6 +388,11 @@ export default function RegistrarAgoraModal({ visitas, visitaInicialId, itemInic
             <span className="pc-reg-card-sub">
               {origem === "arquivo" && arquivo ? arquivo.name : "Foto ou áudio do computador (só foto e áudio)"}
             </span>
+            {avisoArquivo && (
+              <p className="pc-reg-aviso" role="alert">
+                {avisoArquivo}
+              </p>
+            )}
             <input
               ref={arquivoInputRef}
               type="file"

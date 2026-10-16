@@ -85,3 +85,47 @@ test("grupo Visita atual: 6 passos na ordem do menu, com os contadores certos", 
   assert.deepEqual(passos.map((p) => p.rotulo), ["Central da visita", "Checklist", "Evidências", "Correções", "POPs da visita", "Relatório"]);
   assert.deepEqual(passos.map((p) => p.contador), [null, "29/221", "2", "9", "1", null]);
 });
+
+// ---- Servidor: o que cada perfil pode gravar (arquivar empresa / ocultar ambiente) ----
+import { filtrarEstadoPorUsuario, mesclarEstadoPorUsuario } from "../lib/stateAccess.ts";
+
+function estadoDoServidor() {
+  const agora = "2026-10-15T10:00:00.000Z";
+  const u = (perfil, empresaIds) => ({ id: `u-${perfil}`, nome: perfil, email: `${perfil.replace(/\W/g, "")}@x.com`, perfil, status: "Ativo", empresaIds, criadoEm: agora, atualizadoEm: agora });
+  return {
+    agora,
+    estado: {
+      empresas: { e1: { id: "e1", nomeFantasia: "Permitida" }, e2: { id: "e2", nomeFantasia: "Restrita" } },
+      empresaAtualId: "e1",
+      visitas: [{ id: "v1", empresaId: "e1", status: "Em andamento" }],
+      ncs: [],
+      evidencias: [],
+      usuarios: [u("Administrador", []), u("Consultor/RT", ["e1"]), u("Cliente Gestor", ["e1"])],
+      registrosAuditoria: [],
+      configuracaoAcesso: { versao: 1, modo: "Ativo", autenticacao: "Configurada", atualizadoEm: agora },
+    },
+  };
+}
+
+test("servidor: Consultor/RT grava o arquivamento da própria empresa, mas não de outra", () => {
+  const { estado, agora } = estadoDoServidor();
+  const consultor = estado.usuarios[1];
+  const recebido = filtrarEstadoPorUsuario(estado, consultor);
+  recebido.empresas.e1 = { ...recebido.empresas.e1, arquivada: true };
+  recebido.empresas.e2 = { id: "e2", nomeFantasia: "Invasão", arquivada: true };
+  const mesclado = mesclarEstadoPorUsuario(estado, recebido, consultor, "auth-c", agora);
+  assert.equal(mesclado.empresas.e1.arquivada, true);
+  assert.equal(mesclado.empresas.e2.arquivada, undefined);
+  assert.equal(mesclado.empresas.e2.nomeFantasia, "Restrita");
+});
+
+test("servidor: Cliente Gestor não consegue arquivar empresa nem ocultar ambiente", () => {
+  const { estado, agora } = estadoDoServidor();
+  const cliente = estado.usuarios[2];
+  const recebido = filtrarEstadoPorUsuario(estado, cliente);
+  recebido.empresas.e1 = { ...recebido.empresas.e1, arquivada: true };
+  recebido.visitas[0] = { ...recebido.visitas[0], ambientesOcultos: [{ ambiente: "Cozinha", itens: [], ocultadoEm: agora }], ambientes: [] };
+  const mesclado = mesclarEstadoPorUsuario(estado, recebido, cliente, "auth-cli", agora);
+  assert.equal(mesclado.empresas.e1.arquivada, undefined);
+  assert.equal(mesclado.visitas[0].ambientesOcultos, undefined);
+});
