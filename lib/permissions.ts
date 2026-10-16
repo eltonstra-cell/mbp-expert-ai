@@ -1,3 +1,4 @@
+import { permissoesEfetivas } from "./screenAccess.ts";
 import type {
   AcaoPermissao,
   PerfilUsuario,
@@ -15,6 +16,7 @@ export const PERMISSION_LABELS: Record<AcaoPermissao, string> = {
   "relatorios.aprovar": "Aprovar a versão oficial do relatório",
   "relatorios.exportar": "Visualizar e exportar relatórios liberados",
   "ncs.acompanhar": "Acompanhar não conformidades e planos de ação",
+  "ncs.marcar_feita": "Marcar uma correção como feita (o Consultor/RT confirma)",
   "evidencias.adicionar": "Adicionar evidências",
   "ia.analisar": "Solicitar e confirmar análise por IA",
   "auditoria.ver": "Consultar registros de auditoria",
@@ -27,33 +29,16 @@ export const PROFILE_DESCRIPTIONS: Record<PerfilUsuario, string> = {
     "Executa visitas, registra evidências, acompanha correções e aprova documentos técnicos.",
   "Cliente Gestor":
     "Acessa somente empresas e documentos liberados, acompanhando pendências e planos de ação.",
+  Gerente:
+    "Acompanha a visita, registra evidências e marca correções como feitas; o Consultor/RT confirma.",
 };
 
-const todasAcoes = Object.keys(PERMISSION_LABELS) as AcaoPermissao[];
-
-export const PERMISSIONS_BY_PROFILE: Record<
-  PerfilUsuario,
-  readonly AcaoPermissao[]
-> = {
-  Administrador: todasAcoes,
-  "Consultor/RT": [
-    "empresas.ver",
-    "empresas.editar",
-    "visitas.criar",
-    "visitas.executar",
-    "visitas.concluir",
-    "relatorios.aprovar",
-    "relatorios.exportar",
-    "ncs.acompanhar",
-    "evidencias.adicionar",
-    "ia.analisar",
-    "auditoria.ver",
-  ],
-  "Cliente Gestor": [
-    "empresas.ver",
-    "relatorios.exportar",
-    "ncs.acompanhar",
-  ],
+// Ações de cada perfil: padrão das telas liberadas do perfil (sem ajustes por pessoa).
+export const PERMISSIONS_BY_PROFILE: Record<PerfilUsuario, readonly AcaoPermissao[]> = {
+  Administrador: permissoesEfetivas({ perfil: "Administrador" }),
+  "Consultor/RT": permissoesEfetivas({ perfil: "Consultor/RT" }),
+  "Cliente Gestor": permissoesEfetivas({ perfil: "Cliente Gestor" }),
+  Gerente: permissoesEfetivas({ perfil: "Gerente" }),
 };
 
 export function possuiPermissao(
@@ -61,7 +46,8 @@ export function possuiPermissao(
   acao: AcaoPermissao
 ): boolean {
   if (!usuario || usuario.status !== "Ativo") return false;
-  return PERMISSIONS_BY_PROFILE[usuario.perfil].includes(acao);
+  // Padrão do perfil + telas liberadas da pessoa (a mesma conta é feita no servidor).
+  return permissoesEfetivas(usuario).includes(acao);
 }
 
 export function podeAcessarEmpresa(

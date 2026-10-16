@@ -8,15 +8,19 @@ import { TILE_GRADIENTS } from "@/lib/brand";
 import { ListRow } from "@/components/ui/ListRow";
 import { Pill } from "@/components/ui/Pill";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
+import TelasLiberadasModal from "@/components/pc/TelasLiberadasModal";
+import type { TelasDoUsuario } from "@/lib/screenAccess";
 import type { ItemMenu } from "@/components/ui/RowMenu";
 import { acoesDoAcesso } from "@/lib/menuActions";
+import { contarPessoas, filtrarPessoas, type FiltroPessoas } from "@/lib/userManagement";
 
-const PERFIS: PerfilUsuario[] = ["Administrador", "Consultor/RT", "Cliente Gestor"];
+const PERFIS: PerfilUsuario[] = ["Administrador", "Consultor/RT", "Cliente Gestor", "Gerente"];
 
 const GRADIENTE_PERFIL: Record<PerfilUsuario, string> = {
   Administrador: `linear-gradient(160deg, ${TILE_GRADIENTS.roxo[0]}, ${TILE_GRADIENTS.roxo[1]})`,
   "Consultor/RT": `linear-gradient(160deg, ${TILE_GRADIENTS.azul[0]}, ${TILE_GRADIENTS.azul[1]})`,
   "Cliente Gestor": `linear-gradient(160deg, ${TILE_GRADIENTS.turquesa[0]}, ${TILE_GRADIENTS.turquesa[1]})`,
+  Gerente: `linear-gradient(160deg, ${TILE_GRADIENTS.ambar[0]}, ${TILE_GRADIENTS.ambar[1]})`,
 };
 
 type Aba = "pessoas" | "perfis" | "historico";
@@ -37,6 +41,9 @@ type Props = {
   onCancelar: () => void;
   onEnviarAcesso: (usuarioId: string) => void;
   onAlterarStatus: (usuarioId: string, status: StatusUsuario) => void;
+  podeExcluir: (usuario: UsuarioSistema) => boolean;
+  onExcluir: (usuarioId: string) => void;
+  onSalvarTelas: (usuarioId: string, dados: { perfil: PerfilUsuario; empresaIds: string[]; telas: TelasDoUsuario }) => boolean;
 };
 
 function iniciais(nome: string) {
@@ -67,14 +74,19 @@ export default function PcAcessos({
   onCancelar,
   onEnviarAcesso,
   onAlterarStatus,
+  podeExcluir,
+  onExcluir,
+  onSalvarTelas,
 }: Props) {
+  const [telasDe, setTelasDe] = useState<UsuarioSistema | null>(null);
+  const [filtroPessoas, setFiltroPessoas] = useState<FiltroPessoas>("ativos");
   const [aba, setAba] = useState<Aba>("pessoas");
   const [tocado, setTocado] = useState<{ nome: boolean; email: boolean }>({ nome: false, email: false });
 
   // Ativos primeiro, suspensos por último.
   const ordenados = useMemo(
-    () => [...usuarios].sort((a, b) => Number(a.status === "Suspenso") - Number(b.status === "Suspenso")),
-    [usuarios]
+    () => [...filtrarPessoas(usuarios, filtroPessoas)].sort((a, b) => Number(a.status === "Suspenso") - Number(b.status === "Suspenso")),
+    [usuarios, filtroPessoas]
   );
   const historico = useMemo(
     () => registrosAuditoria.filter((registro) => registro.entidade === "Usuário").slice(-50).reverse(),
@@ -211,6 +223,18 @@ export default function PcAcessos({
               </div>
             )}
 
+            <div className="ui-toolbar" role="group" aria-label="Filtrar pessoas">
+              <SegmentedTabs<FiltroPessoas>
+                rotulo="Filtrar pessoas"
+                valor={filtroPessoas}
+                onChange={setFiltroPessoas}
+                abas={[
+                  { id: "ativos", rotulo: "Ativos", contagem: contarPessoas(usuarios).ativos },
+                  { id: "suspensos", rotulo: "Suspensos", contagem: contarPessoas(usuarios).suspensos },
+                  { id: "todos", rotulo: "Todos", contagem: contarPessoas(usuarios).todos },
+                ]}
+              />
+            </div>
             <div className="ui-list">
               {ordenados.map((usuario) => (
                 <ListRow
@@ -252,19 +276,30 @@ export default function PcAcessos({
                       </button>
                     </>
                   }
-                  menu={acoesDoAcesso({ status: usuario.status, podeGerenciar: true }).map((acao): ItemMenu => {
+                  menu={acoesDoAcesso({ status: usuario.status, podeGerenciar: true, podeExcluir: podeExcluir(usuario) }).map((acao): ItemMenu => {
                     switch (acao) {
                       case "editar":
                         return { rotulo: "Editar", onClick: () => onEditar(usuario) };
                       case "desativar":
                         return { rotulo: "Desativar acesso", perigo: true, confirmar: `Desativar o acesso de ${usuario.nome}? A pessoa continua cadastrada e o acesso pode ser reativado.`, onClick: () => onAlterarStatus(usuario.id, "Suspenso") };
+                      case "telas":
+                        return { rotulo: "Telas liberadas…", onClick: () => setTelasDe(usuario) };
+                      case "excluir":
+                        return {
+                          rotulo: "Excluir usuário…",
+                          perigo: true,
+                          onClick: () => {
+                            const digitado = window.prompt(`Excluir ${usuario.nome} definitivamente? Isso só é possível porque a pessoa nunca entrou no sistema. Para confirmar, digite EXCLUIR:`);
+                            if (digitado === "EXCLUIR") onExcluir(usuario.id);
+                          },
+                        };
                       default:
                         return { rotulo: "Reativar acesso", onClick: () => onAlterarStatus(usuario.id, "Convidado") };
                     }
                   })}
                 />
               ))}
-              {usuarios.length === 0 && <div className="ui-empty">Nenhum usuário preparado.</div>}
+              {ordenados.length === 0 && <div className="ui-empty">{usuarios.length === 0 ? "Nenhum usuário preparado." : "Ninguém neste filtro."}</div>}
             </div>
           </>
         )}
@@ -297,6 +332,16 @@ export default function PcAcessos({
           </div>
         )}
       </div>
+      {telasDe && (
+        <TelasLiberadasModal
+          usuario={telasDe}
+          empresas={empresas}
+          onFechar={() => setTelasDe(null)}
+          onSalvar={(dados) => {
+            if (onSalvarTelas(telasDe.id, dados)) setTelasDe(null);
+          }}
+        />
+      )}
     </section>
   );
 }

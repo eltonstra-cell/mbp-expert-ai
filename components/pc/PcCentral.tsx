@@ -1,6 +1,7 @@
 "use client";
 
 import { NavIcon, type NavIconName } from "@/components/NavIcons";
+import { useCabem } from "@/components/useFit";
 import { ListRow } from "@/components/ui/ListRow";
 import { Pill } from "@/components/ui/Pill";
 import { SegmentedProgress } from "@/components/ui/ProgressBar";
@@ -59,6 +60,7 @@ export default function PcCentral({
   onEditarAmbientes,
   onTodasVisitas,
 }: Props) {
+  const ncsFit = useCabem<HTMLDivElement>(72, 4, 0);
   return (
     <section className="ui-screen" aria-label="Central da visita">
       <div className="ui-head">
@@ -103,7 +105,7 @@ export default function PcCentral({
         rotulo="Resumo da visita"
         itens={[
           { rotulo: "Conformes", valor: indicadores.conformes, tom: "ok" },
-          { rotulo: "Não conformidades", valor: indicadores.naoConformidades, tom: "nc" },
+          { rotulo: "Não conformidades registradas", valor: indicadores.naoConformidades, tom: "nc" },
           { rotulo: "Evidências", valor: indicadores.evidencias, tom: "info" },
           { rotulo: "Pendências", valor: indicadores.pendencias, tom: "pend" },
         ]}
@@ -159,8 +161,8 @@ export default function PcCentral({
               Ver todas →
             </button>
           </div>
-          <div className="ui-list">
-            {ncsAbertas.map((nc) => (
+          <div className="ui-list pc-open-list" ref={ncsFit.ref}>
+            {ncsAbertas.slice(0, ncsFit.quantos).map((nc) => (
               <ListRow
                 key={nc.id}
                 faixa="nc"

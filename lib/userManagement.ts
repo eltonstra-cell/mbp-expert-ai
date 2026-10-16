@@ -155,3 +155,61 @@ export function vincularSessaoUsuario(
     },
   };
 }
+
+// ===== Filtro de pessoas e exclusão segura de usuário =====
+
+export type FiltroPessoas = "ativos" | "suspensos" | "todos";
+
+/** "Ativos" inclui quem foi convidado e ainda não entrou; "Suspensos" é só quem foi desativado. */
+export function filtrarPessoas(usuarios: UsuarioSistema[], filtro: FiltroPessoas): UsuarioSistema[] {
+  if (filtro === "todos") return usuarios;
+  return usuarios.filter((usuario) => (filtro === "suspensos" ? usuario.status === "Suspenso" : usuario.status !== "Suspenso"));
+}
+
+export function contarPessoas(usuarios: UsuarioSistema[]): Record<FiltroPessoas, number> {
+  return {
+    ativos: filtrarPessoas(usuarios, "ativos").length,
+    suspensos: filtrarPessoas(usuarios, "suspensos").length,
+    todos: usuarios.length,
+  };
+}
+
+export type ContextoExclusao = {
+  solicitanteId?: string;
+  solicitanteEmail?: string;
+  registrosAuditoria: { usuarioId: string }[];
+};
+
+/**
+ * Regra de exclusão: só quem NUNCA entrou no sistema nem registrou nada.
+ * Devolve o motivo do bloqueio ou null quando pode excluir.
+ */
+export function motivoParaNaoExcluir(usuario: UsuarioSistema, contexto: ContextoExclusao): string | null {
+  if (usuario.perfil === "Administrador") return "Administrador não pode ser excluído.";
+  if (
+    (contexto.solicitanteId && usuario.id === contexto.solicitanteId) ||
+    (contexto.solicitanteEmail && normalizarEmail(usuario.email) === normalizarEmail(contexto.solicitanteEmail))
+  ) {
+    return "Você não pode excluir o seu próprio usuário.";
+  }
+  if (usuario.authId || usuario.ultimoAcessoEm) return "Esta pessoa já entrou no sistema. Use Desativar acesso.";
+  if (contexto.registrosAuditoria.some((registro) => registro.usuarioId === usuario.id)) {
+    return "Esta pessoa já registrou atividades. Use Desativar acesso.";
+  }
+  return null;
+}
+
+/** Validação do SERVIDOR: todo usuário que sumiu entre o estado atual e o recebido precisa poder ser excluído. */
+export function validarRemocaoDeUsuarios(
+  atual: UsuarioSistema[],
+  recebido: UsuarioSistema[],
+  contexto: ContextoExclusao
+): { ok: true } | { ok: false; motivo: string } {
+  const ids = new Set(recebido.map((usuario) => usuario.id));
+  for (const usuario of atual) {
+    if (ids.has(usuario.id)) continue;
+    const motivo = motivoParaNaoExcluir(usuario, contexto);
+    if (motivo) return { ok: false, motivo };
+  }
+  return { ok: true };
+}

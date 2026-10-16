@@ -1,22 +1,8 @@
 import type { AcaoPermissao, AppDB, UsuarioSistema } from "@/types";
-
-const ACOES_POR_PERFIL: Record<UsuarioSistema["perfil"], readonly AcaoPermissao[]> = {
-  Administrador: [
-    "usuarios.gerenciar", "empresas.ver", "empresas.editar", "visitas.criar",
-    "visitas.executar", "visitas.concluir", "relatorios.aprovar",
-    "relatorios.exportar", "ncs.acompanhar", "evidencias.adicionar",
-    "ia.analisar", "auditoria.ver",
-  ],
-  "Consultor/RT": [
-    "empresas.ver", "empresas.editar", "visitas.criar", "visitas.executar",
-    "visitas.concluir", "relatorios.aprovar", "relatorios.exportar",
-    "ncs.acompanhar", "evidencias.adicionar", "ia.analisar", "auditoria.ver",
-  ],
-  "Cliente Gestor": ["empresas.ver", "relatorios.exportar", "ncs.acompanhar"],
-};
+import { permissoesEfetivas } from "./screenAccess.ts";
 
 function possuiPermissao(usuario: UsuarioSistema, acao: AcaoPermissao): boolean {
-  return usuario.status === "Ativo" && ACOES_POR_PERFIL[usuario.perfil].includes(acao);
+  return usuario.status === "Ativo" && permissoesEfetivas(usuario).includes(acao);
 }
 
 function podeAcessarEmpresa(usuario: UsuarioSistema, empresaId: string): boolean {
@@ -187,6 +173,14 @@ export function mesclarEstadoPorUsuario(
     } else {
       ncs = mesclarPorEscopo("ncs", atual.ncs, recebido.ncs, empresaIds, false);
     }
+  } else if (possuiPermissao(efetivo, "ncs.marcar_feita")) {
+    // Marcar como feita: só o campo marcadaFeita muda; o Consultor/RT confirma e resolve.
+    const recebidas = new Map(recebido.ncs.map((nc) => [nc.id, nc]));
+    ncs = atual.ncs.map((nc) => {
+      const nova = recebidas.get(nc.id);
+      if (!nova || !empresaIds.has(nc.empresaId) || nc.status === "Resolvida") return nc;
+      return { ...nc, marcadaFeita: nova.marcadaFeita };
+    });
   }
 
   if (possuiPermissao(efetivo, "evidencias.adicionar")) {

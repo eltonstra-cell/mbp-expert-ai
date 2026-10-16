@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { LogoHorizontal } from "@/components/BrandLogo";
+import { LogoHorizontal, LogoSymbol } from "@/components/BrandLogo";
 import { NavIcon, type NavIconName } from "@/components/NavIcons";
 import type { PassoTrilha, PassoVisita } from "@/lib/visitTrail";
 import {
   barraInferior,
   itensDaBarra,
   itensDaFolhaMais,
+  itensVisiveis,
   menuLateralPC,
   registrarDisponivel,
   trilhoDoTablet,
@@ -18,7 +19,7 @@ import {
 } from "@/lib/navigation";
 
 export type AcaoUtilitaria = {
-  id: "texto" | "sincronizar" | "sobre" | "sair";
+  id: "texto" | "sincronizar" | "sobre" | "sair" | "modo";
   rotulo: string;
   onClick: () => void;
   desabilitado?: boolean;
@@ -167,6 +168,10 @@ export default function AppNavigation({
   const slots = barraInferior(contexto);
   const itensBarra = itensDaBarra(slots);
   const trilho = trilhoDoTablet(contexto);
+  // Equilibrado: Início, Visitas e as etapas da visita (Registrar fica embaixo; o resto vai em "Mais").
+  const ORDEM_TRILHO: NavKey[] = ["inicio", "visitas", "central", "checklist", "evidencias", "ncs", "pops", "relatorio"];
+  const visiveisDoTrilho = itensVisiveis(contexto);
+  const itensDoTrilho = ORDEM_TRILHO.map((chave) => visiveisDoTrilho.find((item) => item.key === chave)).filter((item): item is NavItem => Boolean(item));
   const lateral = menuLateralPC(contexto);
   const temRegistrar = registrarDisponivel(contexto);
   const badgeDe = (item: NavItem) => (item.key === "ncs" ? ncsAbertas : 0);
@@ -261,25 +266,53 @@ export default function AppNavigation({
         })}
       </nav>
 
-      {/* Tablet: trilho de 104px */}
+      {/* Equilibrado (tablet): trilho de 108 px com ícone e nome */}
       <nav className="pc-rail" aria-label="Navegação principal">
+        <span className="pc-rail-logo" aria-hidden="true">
+          <LogoSymbol size={38} />
+        </span>
+        <div className="pc-rail-list">
+          {itensDoTrilho.map((item) => {
+            const ehAtivo = ativa === item.key || (item.key === "ncs" && (ativa === "plano" || ativa === "acompanhamento"));
+            const contador = item.key === "ncs" ? ncsAbertas : 0;
+            return (
+              <button
+                key={item.key}
+                type="button"
+                className={`pc-rail-item${ehAtivo ? " is-active" : ""}`}
+                aria-current={ehAtivo ? "page" : undefined}
+                aria-label={rotuloAcessivel(item, contador)}
+                onClick={() => onSelecionar(item.key)}
+              >
+                <span className="pc-rail-icon">
+                  <NavIcon name={item.key} size={22} strokeWidth={1.9} />
+                  {contador > 0 && <span className="pc-rail-count">{contador > 99 ? "99+" : contador}</span>}
+                </span>
+                <span className="pc-rail-label">{item.key === "ncs" ? "Correções" : item.key === "pops" ? "POPs" : item.curto}</span>
+              </button>
+            );
+          })}
+        </div>
         {temRegistrar && (
-          <button type="button" className="pc-item pc-item--rail pc-item--rail-fab" onClick={() => onSelecionar("registrar")}>
-            <Tile tom="laranja" icone="registrar" tamanho={62} />
-            <span className="pc-label">Registrar</span>
+          <button type="button" className="pc-rail-register" onClick={() => onSelecionar("registrar")}>
+            <span className="pc-rail-register-orb">
+              <NavIcon name="registrar" size={24} strokeWidth={2.1} />
+            </span>
+            <span className="pc-rail-label">Registrar</span>
           </button>
         )}
-        <div className="pc-rail-list">{trilho.map((item) => botaoItem(item, "rail", 48))}</div>
-        {botaoMais("rail")}
-        <button
-          type="button"
-          className={`pc-rail-sync is-${sincronizacao.estado}`}
-          aria-label={sincronizacao.rotulo}
-          onClick={sincronizacao.onClick}
-        >
-          <span className="pc-sync-dot" aria-hidden="true" />
-          Sinc.
+        <button type="button" className="pc-rail-item" aria-haspopup="dialog" aria-expanded={maisAberto} onClick={maisAberto ? onFecharMais : onAbrirMais}>
+          <span className="pc-rail-icon">
+            <NavIcon name="mais" size={22} strokeWidth={1.9} />
+          </span>
+          <span className="pc-rail-label">Mais</span>
         </button>
+        {usuario && (
+          <button type="button" className="pc-rail-avatar" title={`${usuario.nome} · ${sincronizacao.rotulo}`} aria-label={`${usuario.nome}. ${sincronizacao.rotulo}`} onClick={sincronizacao.onClick}>
+            {usuario.iniciais}
+            <span className={`pc-avatar-dot is-${sincronizacao.estado}`} aria-hidden="true" />
+          </button>
+        )}
       </nav>
 
       {/* PC: menu lateral azul */}

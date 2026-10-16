@@ -1,5 +1,6 @@
 "use client";
 
+import { useCabem } from "@/components/useFit";
 import { Pill } from "@/components/ui/Pill";
 import { ProgressBar, SegmentedProgress } from "@/components/ui/ProgressBar";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
@@ -38,6 +39,8 @@ type Props = {
   contagemConcluidas: number;
   recentes: VisitaRecenteInicio[];
   onAbrirVisita: (id: string) => void;
+  /** Início simples: só continuar visita e visitas recentes. */
+  simples?: boolean;
   onVerTodas: () => void;
 };
 
@@ -55,7 +58,9 @@ export default function PcInicio({
   recentes,
   onAbrirVisita,
   onVerTodas,
+  simples = false,
 }: Props) {
+  const recentesFit = useCabem<HTMLDivElement>(48, 4, 1);
   return (
     <section className="ui-screen" aria-label="Início">
       <div className="ui-head">
@@ -98,6 +103,7 @@ export default function PcInicio({
         )}
       </div>
 
+      {!simples && (
       <StatStrip
         rotulo="Indicadores"
         itens={[
@@ -107,7 +113,9 @@ export default function PcInicio({
           { rotulo: "Empresas ativas", valor: indicadores.empresasAtivas, tom: "brand" },
         ]}
       />
+      )}
 
+      {!simples && (
       <div className="pc-two">
         {preparacao && (
           <button type="button" className="ui-card pc-card-btn" onClick={preparacao.onAbrir}>
@@ -131,6 +139,7 @@ export default function PcInicio({
           )}
         </div>
       </div>
+      )}
 
       <div className="ui-card pc-recent">
         <div className="ui-head">
@@ -148,9 +157,9 @@ export default function PcInicio({
             ]}
           />
         </div>
-        <div className="ui-scroll pc-recent-list">
+        <div className="pc-recent-list" ref={recentesFit.ref}>
           {recentes.length === 0 && <div className="ui-empty">Nenhuma visita nesta situação.</div>}
-          {recentes.map((visita) => (
+          {recentes.slice(0, recentesFit.quantos).map((visita) => (
             <button key={visita.id} type="button" className="pc-recent-row" onClick={() => onAbrirVisita(visita.id)}>
               <span className="pc-recent-main">
                 <span className="pc-recent-title">{visita.empresa}</span>

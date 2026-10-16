@@ -1,6 +1,8 @@
 "use client";
 
 import { NavIcon } from "@/components/NavIcons";
+import { RowMenu, type ItemMenu } from "@/components/ui/RowMenu";
+import { ROTULO_DO_MODO, type ModoTela } from "@/lib/screenMode";
 
 type Props = {
   /** Caminho exibido no PC, por exemplo: Visitas › Empresa › Central. */
@@ -15,6 +17,12 @@ type Props = {
   /** Abre a caixa inteligente (Ctrl K); com voz, já começa a ouvir. */
   onAbrirCaixa: (comVoz: boolean) => void;
   micDisponivel: boolean;
+  /** Modo de tela em uso e ações da troca rápida (menu ⋯ do topo). */
+  modo?: ModoTela;
+  automatico?: boolean;
+  onEscolherModo?: (modo: ModoTela) => void;
+  onVoltarAoAutomatico?: () => void;
+  onAbrirConfigModo?: () => void;
 };
 
 export default function AppTopbar({
@@ -26,7 +34,23 @@ export default function AppTopbar({
   onTodasVisitas,
   onAbrirCaixa,
   micDisponivel,
+  modo,
+  automatico = true,
+  onEscolherModo,
+  onVoltarAoAutomatico,
+  onAbrirConfigModo,
 }: Props) {
+  const itensModo: ItemMenu[] =
+    modo && onEscolherModo
+      ? [
+          ...(Object.keys(ROTULO_DO_MODO) as ModoTela[]).map((opcao): ItemMenu => ({
+            rotulo: `${modo === opcao ? "● " : "○ "}${ROTULO_DO_MODO[opcao]}`,
+            onClick: () => onEscolherModo(opcao),
+          })),
+          { rotulo: "Voltar ao automático", onClick: () => onVoltarAoAutomatico?.(), desabilitado: automatico },
+          { rotulo: "Configurar modo de tela…", onClick: () => onAbrirConfigModo?.() },
+        ]
+      : [];
   return (
     <>
     <div className="pc-topbar">
@@ -63,6 +87,12 @@ export default function AppTopbar({
             <span className="pc-company-chip-name">{empresaAtiva}</span>
           </span>
         )}
+        {modo === "equilibrado" && onAbrirConfigModo && (
+          <button type="button" className="pc-mode-chip" onClick={onAbrirConfigModo} title="Configurar o modo de tela">
+            Modo Equilibrado
+          </button>
+        )}
+        {itensModo.length > 0 && <RowMenu itens={itensModo} rotulo="Modo de tela" />}
         {iniciais && (
           <span className="pc-avatar" aria-hidden="true">
             {iniciais}

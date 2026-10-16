@@ -8,6 +8,7 @@ import {
   localizarUsuarioAutenticado,
   mesclarEstadoPorUsuario,
 } from "@/lib/stateAccess";
+import { validarRemocaoDeUsuarios } from "@/lib/userManagement";
 import {
   estadoExcedeLimite,
   resolverLimiteEstado,
@@ -220,6 +221,17 @@ export async function PUT(request: Request) {
         }
         // Chaves de topo desconhecidas são descartadas; o restante é gravado.
         dadosParaGravar = forma.estado as unknown as AppDB;
+      }
+      if (acesso.usuario.perfil === "Administrador") {
+        // Excluir usuário só vale para quem nunca entrou nem registrou nada (nunca Administrador nem o próprio).
+        const remocao = validarRemocaoDeUsuarios(estadoAtual.usuarios || [], dadosParaGravar.usuarios || [], {
+          solicitanteId: acesso.usuario.id,
+          solicitanteEmail: acesso.usuario.email,
+          registrosAuditoria: estadoAtual.registrosAuditoria || [],
+        });
+        if (!remocao.ok) {
+          return NextResponse.json({ error: "Exclusão de usuário não permitida.", detalhe: remocao.motivo }, { status: 403 });
+        }
       }
       dadosParaGravar = mesclarEstadoPorUsuario(
         estadoAtual,

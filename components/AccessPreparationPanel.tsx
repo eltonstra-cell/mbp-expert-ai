@@ -10,13 +10,14 @@ import type {
 } from "@/types";
 import type { DadosUsuarioPreparacao } from "@/lib/userManagement";
 import PcAcessos from "@/components/pc/PcAcessos";
+import type { NivelTela, TelaKey } from "@/lib/screenAccess";
 import {
   PERMISSIONS_BY_PROFILE,
   PERMISSION_LABELS,
   PROFILE_DESCRIPTIONS,
 } from "@/lib/permissions";
 
-const perfis: PerfilUsuario[] = ["Administrador", "Consultor/RT", "Cliente Gestor"];
+const perfis: PerfilUsuario[] = ["Administrador", "Consultor/RT", "Cliente Gestor", "Gerente"];
 const vazio: DadosUsuarioPreparacao = {
   nome: "",
   email: "",
@@ -31,6 +32,10 @@ type Props = {
   onSalvarUsuario: (dados: DadosUsuarioPreparacao, usuarioId?: string) => boolean;
   onAlterarStatus: (usuarioId: string, status: StatusUsuario) => boolean;
   onEnviarAcesso: (usuarioId: string) => Promise<boolean>;
+  onExcluirUsuario?: (usuarioId: string) => boolean;
+  onSalvarTelas?: (usuarioId: string, dados: { perfil: PerfilUsuario; empresaIds: string[]; telas: Partial<Record<TelaKey, NivelTela>> }) => boolean;
+  /** Motivo pelo qual a pessoa não pode ser excluída (null = pode). */
+  motivoNaoExcluir?: (usuario: UsuarioSistema) => string | null;
   /** Layout do PC (a partir de 1024px). */
   pc?: boolean;
 };
@@ -119,6 +124,9 @@ export default function AccessPreparationPanel(props: Props) {
         onCancelar={() => setFormulario(null)}
         onEnviarAcesso={(id) => void enviarAcesso(id)}
         onAlterarStatus={(id, status) => props.onAlterarStatus(id, status)}
+        podeExcluir={(usuario) => !props.motivoNaoExcluir?.(usuario) && Boolean(props.onExcluirUsuario)}
+        onExcluir={(id) => props.onExcluirUsuario?.(id)}
+        onSalvarTelas={(id, dados) => props.onSalvarTelas?.(id, dados) ?? false}
       />
     );
   }

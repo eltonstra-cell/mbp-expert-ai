@@ -37,6 +37,8 @@ export type CorrecaoItem = {
   pop: { codigo: string; titulo: string; existe: boolean } | null;
   evidencias: { id: string; tipo: string; nome: string; quando: string; url: string }[];
   historico: { id: string; quando: string; status: StatusNc; observacao: string }[];
+  /** Marcada como feita por quem não pode resolver; aguarda confirmação do Consultor/RT. */
+  marcadaFeita: { em: string; por: string; observacao?: string } | null;
 };
 
 type Props = {
@@ -47,6 +49,10 @@ type Props = {
   selecionadaInicial: string;
   podeEditar: boolean;
   podeEvidenciar: boolean;
+  /** Nível "Marcar como feita": marca a ação como feita, sem resolver. */
+  podeMarcar: boolean;
+  onMarcarFeita: (id: string, observacao: string) => void;
+  onDesfazerFeita: (id: string) => void;
   onSalvarPlano: (id: string, dados: { acao: string; responsavel: string; prazo: string; etapa: EtapaCorrecao }) => void;
   onRegistrar: (id: string, texto: string, status: StatusNc) => void;
   onAdicionarEvidencia: (id: string) => void;
@@ -97,6 +103,9 @@ export default function PcCorrecoes({
   selecionadaInicial,
   podeEditar,
   podeEvidenciar,
+  podeMarcar,
+  onMarcarFeita,
+  onDesfazerFeita,
   onSalvarPlano,
   onRegistrar,
   onAdicionarEvidencia,
@@ -243,6 +252,7 @@ export default function PcCorrecoes({
                             </span>
                           </span>
                           {nc.reincidente && <Pill tom="lilas">Reincidente</Pill>}
+                          {nc.marcadaFeita && nc.status !== "Resolvida" && <Pill tom="info">Feita, aguardando confirmação</Pill>}
                           <Bolinhas nc={nc} />
                         </button>
                       ))}
@@ -262,6 +272,9 @@ export default function PcCorrecoes({
                 onAba={setAba}
                 podeEditar={podeEditar}
                 podeEvidenciar={podeEvidenciar}
+                podeMarcar={podeMarcar}
+                onMarcarFeita={onMarcarFeita}
+                onDesfazerFeita={onDesfazerFeita}
                 onSalvarPlano={onSalvarPlano}
                 onRegistrar={onRegistrar}
                 onAdicionarEvidencia={onAdicionarEvidencia}
@@ -297,6 +310,9 @@ function Detalhe({
   onAba,
   podeEditar,
   podeEvidenciar,
+  podeMarcar,
+  onMarcarFeita,
+  onDesfazerFeita,
   onSalvarPlano,
   onRegistrar,
   onAdicionarEvidencia,
@@ -309,6 +325,9 @@ function Detalhe({
   onAba: (aba: AbaDetalhe) => void;
   podeEditar: boolean;
   podeEvidenciar: boolean;
+  podeMarcar: boolean;
+  onMarcarFeita: Props["onMarcarFeita"];
+  onDesfazerFeita: Props["onDesfazerFeita"];
   onSalvarPlano: Props["onSalvarPlano"];
   onRegistrar: Props["onRegistrar"];
   onAdicionarEvidencia: Props["onAdicionarEvidencia"];
@@ -320,6 +339,7 @@ function Detalhe({
   const [prazo, setPrazo] = useState(nc.prazo);
   const [etapaAlvo, setEtapaAlvo] = useState<EtapaCorrecao>(etapaDaCorrecao(nc));
   const [tentou, setTentou] = useState(false);
+  const [notaFeita, setNotaFeita] = useState("");
   const [texto, setTexto] = useState("");
   const [statusNovo, setStatusNovo] = useState<StatusNc>(nc.status);
   const resolvida = nc.status === "Resolvida";
@@ -341,16 +361,16 @@ function Detalhe({
   return (
     <>
       <div className="pc-detail-head">
-        <div className="pc-ev-pills">
+        <div className="pc-detail-line">
           <Pill tom="na">{`NC${String(nc.numero).padStart(2, "0")}`}</Pill>
           <Pill tom={FAIXA[nc.gravidade]}>{nc.gravidade}</Pill>
           {nc.reincidente && <Pill tom="lilas">Reincidente</Pill>}
+          <h2 className="pc-detail-title">{nc.titulo}</h2>
         </div>
-        <h2 className="pc-detail-title">{nc.titulo}</h2>
-        <p className="ui-row-sub">
+        <p className="ui-row-sub pc-detail-meta">
           {[nc.ambiente, nc.criterio, nc.referencia].filter(Boolean).join(" · ")}
+          {nc.reincidente ? ` · também na visita de ${dataMes(nc.dataAnterior)}` : ""}
         </p>
-        {nc.reincidente && <p className="ui-row-sub">Reincidente · também na visita de {dataMes(nc.dataAnterior)}</p>}
         <SegmentedTabs<AbaDetalhe>
           rotulo="Seções da correção"
           valor={aba}
@@ -366,6 +386,49 @@ function Detalhe({
       <div className="ui-scroll pc-detail-scroll">
         {aba === "plano" && (
           <>
+            {nc.marcadaFeita && !resolvida && (
+              <div className="pc-feita" role="status">
+                <span>
+                  Feita, aguardando confirmação · por {nc.marcadaFeita.por} em {new Date(nc.marcadaFeita.em).toLocaleString("pt-BR")}
+                  {nc.marcadaFeita.observacao ? ` — ${nc.marcadaFeita.observacao}` : ""}
+                </span>
+                {podeEditar ? (
+                  <button
+                    type="button"
+                    className="ui-btn ui-btn--primary ui-btn--small"
+                    onClick={() => {
+                      setStatusNovo("Resolvida");
+                      onAba("atualizacoes");
+                    }}
+                  >
+                    Confirmar e resolver
+                  </button>
+                ) : (
+                  podeMarcar && (
+                    <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => onDesfazerFeita(nc.id)}>
+                      Desfazer
+                    </button>
+                  )
+                )}
+              </div>
+            )}
+            {podeMarcar && !podeEditar && !resolvida && !nc.marcadaFeita && (
+              <div className="pc-feita is-form">
+                <span className="ui-eyebrow">Esta correção já foi feita?</span>
+                <input className="ui-input" value={notaFeita} onChange={(evento) => setNotaFeita(evento.target.value)} placeholder="Observação (opcional)" aria-label="Observação ao marcar como feita" />
+                <button
+                  type="button"
+                  className="ui-btn ui-btn--primary ui-btn--small pc-self-start"
+                  onClick={() => {
+                    onMarcarFeita(nc.id, notaFeita);
+                    setNotaFeita("");
+                  }}
+                >
+                  Marcar como feita
+                </button>
+                <span className="ui-row-sub">O Consultor/RT confirma antes de resolver.</span>
+              </div>
+            )}
             <div className="pc-plan-block">
               <span className="ui-eyebrow">Ação corretiva</span>
               <span className="ui-field-wrap ui-field-wrap--area">

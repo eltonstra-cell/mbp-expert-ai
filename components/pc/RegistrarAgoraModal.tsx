@@ -27,6 +27,13 @@ type Props = {
 
 const LIMITE_AUDIO = 3 * 1024 * 1024;
 
+function restanteDoLimite(bytes: number, segundos: number) {
+  if (segundos < 2 || bytes <= 0) return "—";
+  const porSegundo = bytes / segundos;
+  const restantes = Math.max(0, Math.floor((LIMITE_AUDIO - bytes) / Math.max(1, porSegundo)));
+  return formatarTempo(restantes);
+}
+
 function formatarTempo(total: number) {
   const minutos = Math.floor(total / 60);
   return `${minutos}:${String(total % 60).padStart(2, "0")}`;
@@ -54,6 +61,10 @@ export default function RegistrarAgoraModal({ visitas, visitaInicialId, itemInic
   const [segundos, setSegundos] = useState(0);
   const arquivoInputRef = useRef<HTMLInputElement | null>(null);
   const relogioRef = useRef<number | null>(null);
+  const [bytesGravados, setBytesGravados] = useState(0);
+  const [niveis, setNiveis] = useState<number[]>(() => Array.from({ length: 14 }, () => 0));
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const medidorRef = useRef<number | null>(null);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamCameraRef = useRef<MediaStream | null>(null);
@@ -83,6 +94,10 @@ export default function RegistrarAgoraModal({ visitas, visitaInicialId, itemInic
     gravadorRef.current = null;
     if (relogioRef.current) window.clearInterval(relogioRef.current);
     relogioRef.current = null;
+    if (medidorRef.current) window.clearInterval(medidorRef.current);
+    medidorRef.current = null;
+    void audioCtxRef.current?.close().catch(() => undefined);
+    audioCtxRef.current = null;
     if (videoRef.current) videoRef.current.srcObject = null;
   }, []);
 
@@ -217,14 +232,26 @@ export default function RegistrarAgoraModal({ visitas, visitaInicialId, itemInic
       streamAudioRef.current = stream;
       const gravador = new MediaRecorder(stream);
       trechosRef.current = [];
+      setBytesGravados(0);
       gravador.ondataavailable = (evento) => {
-        if (evento.data.size > 0) trechosRef.current.push(evento.data);
+        if (evento.data.size > 0) {
+          trechosRef.current.push(evento.data);
+          const total = trechosRef.current.reduce((soma, trecho) => soma + trecho.size, 0);
+          setBytesGravados(total);
+          // Para sozinho perto do limite de 3 MB, sem estourar o arquivo.
+          if (total >= LIMITE_AUDIO * 0.97 && gravador.state === "recording") gravador.stop();
+        }
       };
       gravador.onstop = () => {
         pararTrilhas(streamAudioRef.current);
         streamAudioRef.current = null;
         if (relogioRef.current) window.clearInterval(relogioRef.current);
         relogioRef.current = null;
+        if (medidorRef.current) window.clearInterval(medidorRef.current);
+        medidorRef.current = null;
+        void audioCtxRef.current?.close().catch(() => undefined);
+        audioCtxRef.current = null;
+        setNiveis(Array.from({ length: 14 }, () => 0));
         setGravando(false);
         const tipo = gravador.mimeType || "audio/webm";
         const blob = new Blob(trechosRef.current, { type: tipo });
@@ -242,7 +269,27 @@ export default function RegistrarAgoraModal({ visitas, visitaInicialId, itemInic
       gravadorRef.current = gravador;
       setArquivo(null);
       trocarPrevia("");
-      gravador.start();
+      // Medidor de som ao vivo (Web Audio): mostra que o microfone está captando.
+      try {
+        const Contexto = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        if (Contexto) {
+          const contexto = new Contexto();
+          const analisador = contexto.createAnalyser();
+          analisador.fftSize = 64;
+          contexto.createMediaStreamSource(stream).connect(analisador);
+          audioCtxRef.current = contexto;
+          const dados = new Uint8Array(analisador.frequencyBinCount);
+          if (medidorRef.current) window.clearInterval(medidorRef.current);
+          medidorRef.current = window.setInterval(() => {
+            analisador.getByteFrequencyData(dados);
+            const passo = Math.max(1, Math.floor(dados.length / 14));
+            setNiveis(Array.from({ length: 14 }, (_, i) => Math.min(1, (dados[i * passo] || 0) / 200)));
+          }, 80);
+        }
+      } catch {
+        // sem medidor: a gravação continua normalmente
+      }
+      gravador.start(500);
       setSegundos(0);
       if (relogioRef.current) window.clearInterval(relogioRef.current);
       relogioRef.current = window.setInterval(() => setSegundos((atual) => atual + 1), 1000);
@@ -415,10 +462,10 @@ export default function RegistrarAgoraModal({ visitas, visitaInicialId, itemInic
             aria-disabled={camposDesabilitados}
             aria-label={gravando ? "Parar gravação" : "Gravar áudio, fale o que observou"}
             onClick={() => {
-              if (!camposDesabilitados) void alternarGravacao();
+              if (!camposDesabilitados && !gravando) void alternarGravacao();
             }}
             onKeyDown={(evento) => {
-              if ((evento.key === "Enter" || evento.key === " ") && evento.target === evento.currentTarget && !camposDesabilitados) {
+              if ((evento.key === "Enter" || evento.key === " ") && evento.target === evento.currentTarget && !camposDesabilitados && !gravando) {
                 evento.preventDefault();
                 void alternarGravacao();
               }
@@ -428,11 +475,42 @@ export default function RegistrarAgoraModal({ visitas, visitaInicialId, itemInic
             <span className="pc-reg-card-title">{gravando ? "Gravando..." : "Gravar áudio"}</span>
             <span className="pc-reg-card-sub">
               {gravando
-                ? `${formatarTempo(segundos)} · toque para parar`
+                ? `${formatarTempo(segundos)} · restam ${restanteDoLimite(bytesGravados, segundos)}`
                 : origem === "audio" && arquivo
                   ? `Áudio gravado · ${formatarTempo(segundos)}`
                   : "Fale o que observou"}
             </span>
+            {gravando && (
+              <>
+                <span className="pc-reg-meter" role="img" aria-label="Nível do som captado">
+                  {niveis.map((nivel, indice) => (
+                    <i key={indice} style={{ height: `${Math.max(8, Math.round(nivel * 100))}%` }} />
+                  ))}
+                </span>
+                <button
+                  type="button"
+                  className="ui-btn ui-btn--primary pc-reg-stop"
+                  onClick={(evento) => {
+                    evento.stopPropagation();
+                    void alternarGravacao();
+                  }}
+                >
+                  Parar
+                </button>
+              </>
+            )}
+            {!gravando && origem === "audio" && arquivo && (
+              <button
+                type="button"
+                className="ui-btn ui-btn--secondary ui-btn--small"
+                onClick={(evento) => {
+                  evento.stopPropagation();
+                  void alternarGravacao();
+                }}
+              >
+                Regravar
+              </button>
+            )}
             {avisoAudio && (
               <p className="pc-reg-aviso" role="alert">
                 {avisoAudio}
@@ -444,7 +522,9 @@ export default function RegistrarAgoraModal({ visitas, visitaInicialId, itemInic
         {previa && (
           <div className="pc-reg-preview">
             {tipoArquivo === "audio" ? (
-              <audio controls src={previa} />
+              <>
+                <span className="ui-row-sub">Ouvir:</span> <audio controls src={previa} />
+              </>
             ) : (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={previa} alt="Prévia da foto" />
@@ -474,12 +554,12 @@ export default function RegistrarAgoraModal({ visitas, visitaInicialId, itemInic
         {erro && <span className="ui-field-error" role="alert">{erro}</span>}
 
         <div className="pc-modal-foot">
-          <span className="ui-row-sub">{arquivo ? "Pronto para salvar." : "Tire uma foto, envie um arquivo ou grave um áudio para salvar."}</span>
+          <span className="ui-row-sub">{gravando ? "Pare a gravação para salvar." : arquivo ? "Pronto para salvar." : "Tire uma foto, envie um arquivo ou grave um áudio para salvar."}</span>
           <div className="ui-footer-actions">
             <button type="button" className="ui-btn ui-btn--secondary" onClick={fechar}>
               Cancelar
             </button>
-            <button type="button" className="ui-btn ui-btn--save" disabled={!arquivo || semVisita || salvando} onClick={salvar}>
+            <button type="button" className="ui-btn ui-btn--save" disabled={!arquivo || semVisita || salvando || gravando} onClick={salvar}>
               {salvando ? "Salvando..." : "Salvar"}
             </button>
           </div>

@@ -46,8 +46,8 @@ test("⋯ de POPs e de Acessos", () => {
   assert.deepEqual(acoesDoPop({ arquivado: false, podeEditar: true }), ["abrir", "duplicar", "arquivar", "excluir"]);
   assert.deepEqual(acoesDoPop({ arquivado: true, podeEditar: true }), ["abrir", "duplicar", "desarquivar", "excluir"]);
   assert.deepEqual(acoesDoPop({ arquivado: false, podeEditar: false }), ["abrir"]);
-  assert.deepEqual(acoesDoAcesso({ status: "Ativo", podeGerenciar: true }), ["editar", "desativar"]);
-  assert.deepEqual(acoesDoAcesso({ status: "Suspenso", podeGerenciar: true }), ["editar", "reativar"]);
+  assert.deepEqual(acoesDoAcesso({ status: "Ativo", podeGerenciar: true }), ["editar", "telas", "desativar"]);
+  assert.deepEqual(acoesDoAcesso({ status: "Suspenso", podeGerenciar: true }), ["editar", "telas", "reativar"]);
   assert.deepEqual(acoesDoAcesso({ status: "Ativo", podeGerenciar: false }), []);
 });
 
@@ -128,4 +128,56 @@ test("servidor: Cliente Gestor não consegue arquivar empresa nem ocultar ambien
   const mesclado = mesclarEstadoPorUsuario(estado, recebido, cliente, "auth-cli", agora);
   assert.equal(mesclado.empresas.e1.arquivada, undefined);
   assert.equal(mesclado.visitas[0].ambientesOcultos, undefined);
+});
+
+// ---- Fase 1: Acessos (filtro e exclusão segura) e conciliação 7 x 9 ----
+import { contarPessoas, filtrarPessoas, motivoParaNaoExcluir, validarRemocaoDeUsuarios } from "../lib/userManagement.ts";
+import { conciliarNcs, frasesDaConciliacao } from "../lib/ncReconcile.ts";
+
+const pessoa = (id, perfil, status, extra = {}) => ({ id, nome: id, email: `${id}@x.com`, perfil, status, empresaIds: ["e1"], criadoEm: "2026-01-01", atualizadoEm: "2026-01-01", ...extra });
+
+test("Acessos: filtro Ativos (padrão), Suspensos e Todos com contagens", () => {
+  const lista = [pessoa("a", "Consultor/RT", "Ativo"), pessoa("b", "Cliente Gestor", "Convidado"), pessoa("c", "Consultor/RT", "Suspenso")];
+  assert.deepEqual(contarPessoas(lista), { ativos: 2, suspensos: 1, todos: 3 });
+  assert.deepEqual(filtrarPessoas(lista, "ativos").map((p) => p.id), ["a", "b"]);
+  assert.deepEqual(filtrarPessoas(lista, "suspensos").map((p) => p.id), ["c"]);
+  assert.equal(filtrarPessoas(lista, "todos").length, 3);
+});
+
+test("excluir usuário: só quem nunca entrou nem registrou nada; nunca Administrador nem o próprio", () => {
+  const ctx = { solicitanteId: "adm", solicitanteEmail: "adm@x.com", registrosAuditoria: [{ usuarioId: "ativo" }] };
+  assert.equal(motivoParaNaoExcluir(pessoa("novo", "Cliente Gestor", "Convidado"), ctx), null);
+  assert.match(motivoParaNaoExcluir(pessoa("adm2", "Administrador", "Ativo"), ctx), /Administrador/);
+  assert.match(motivoParaNaoExcluir(pessoa("adm", "Consultor/RT", "Ativo"), ctx), /próprio/);
+  assert.match(motivoParaNaoExcluir(pessoa("x", "Consultor/RT", "Ativo", { authId: "a1" }), ctx), /já entrou/);
+  assert.match(motivoParaNaoExcluir(pessoa("y", "Consultor/RT", "Ativo", { ultimoAcessoEm: "2026-02-01" }), ctx), /já entrou/);
+  assert.match(motivoParaNaoExcluir(pessoa("ativo", "Consultor/RT", "Ativo"), ctx), /atividades/);
+});
+
+test("servidor recusa remoção de usuário que não pode ser excluído", () => {
+  const atual = [pessoa("adm", "Administrador", "Ativo"), pessoa("novo", "Cliente Gestor", "Convidado"), pessoa("velho", "Consultor/RT", "Ativo", { authId: "a" })];
+  const ctx = { solicitanteId: "adm", registrosAuditoria: [] };
+  assert.equal(validarRemocaoDeUsuarios(atual, atual.filter((p) => p.id !== "novo"), ctx).ok, true);
+  assert.equal(validarRemocaoDeUsuarios(atual, atual.filter((p) => p.id !== "velho"), ctx).ok, false);
+  assert.equal(validarRemocaoDeUsuarios(atual, atual.filter((p) => p.id !== "adm"), ctx).ok, false);
+  assert.equal(validarRemocaoDeUsuarios(atual, atual, ctx).ok, true);
+});
+
+test("7 x 9: conciliação aponta NCs sem item correspondente, sem alterar dados", () => {
+  const checklist = [{ id: "i1", status: "Não Conforme" }, { id: "i2", status: "Conforme" }, { id: "i3", status: "Não Conforme" }];
+  const ncs = [
+    { id: "n1", checklistItemId: "i1" },
+    { id: "n2", checklistItemId: "i3" },
+    { id: "n3", checklistItemId: "apagado" },
+    { id: "n4", checklistItemId: "i2" },
+    { id: "n5", checklistItemId: "i1", inativaNoChecklist: true },
+  ];
+  const copia = JSON.stringify([checklist, ncs]);
+  const c = conciliarNcs(checklist, ncs);
+  assert.deepEqual([c.itensNaoConformes, c.ncsRegistradas], [2, 4]);
+  assert.deepEqual(c.ncsSemItem, ["n3", "n4"]);
+  assert.equal(c.diverge, true);
+  assert.equal(JSON.stringify([checklist, ncs]), copia);
+  assert.match(frasesDaConciliacao(c).join(" "), /2 itens não conformes no checklist/);
+  assert.equal(conciliarNcs([{ id: "a", status: "Não Conforme" }], [{ id: "n", checklistItemId: "a" }]).diverge, false);
 });

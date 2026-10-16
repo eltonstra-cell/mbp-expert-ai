@@ -1,3 +1,4 @@
+import type { NivelTela, TelaKey } from "../lib/screenAccess.ts";
 export type Empresa = {
   id: string;
   cnpj: string;
@@ -225,6 +226,8 @@ export type NaoConformidade = {
   acompanhamento?: string;
   historicoAcompanhamento?: HistoricoAcompanhamento[];
   resolvidaEm?: string;
+  /** Marcada como feita por quem não pode resolver; o Consultor/RT confirma antes de resolver. */
+  marcadaFeita?: { em: string; por: string; observacao?: string };
   /** Mantém a NC para restauração caso o checklist seja temporariamente alterado para Conforme/Não se aplica. */
   inativaNoChecklist?: boolean;
   criadoEm: string;
@@ -285,7 +288,8 @@ export type Evidencia = {
 export type PerfilUsuario =
   | "Administrador"
   | "Consultor/RT"
-  | "Cliente Gestor";
+  | "Cliente Gestor"
+  | "Gerente";
 
 export type StatusUsuario = "Convidado" | "Ativo" | "Suspenso";
 
@@ -297,6 +301,8 @@ export type UsuarioSistema = {
   perfil: PerfilUsuario;
   status: StatusUsuario;
   empresaIds: string[];
+  /** Ajustes de telas liberadas além do padrão do perfil (JSON opcional). */
+  telas?: Partial<Record<TelaKey, NivelTela>>;
   criadoEm: string;
   atualizadoEm: string;
   convidadoEm?: string;
@@ -313,6 +319,7 @@ export type AcaoPermissao =
   | "relatorios.aprovar"
   | "relatorios.exportar"
   | "ncs.acompanhar"
+  | "ncs.marcar_feita"
   | "evidencias.adicionar"
   | "ia.analisar"
   | "auditoria.ver";

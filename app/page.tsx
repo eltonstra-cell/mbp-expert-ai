@@ -15,6 +15,9 @@ import { passoDaView, passosDaTrilha, percentualDaVisita, type PassoVisita } fro
 import { conferenciaDoRelatorio } from "@/lib/reportCheck";
 import { ocultarAmbiente, mostrarAmbiente, excluirAmbienteOculto, resumoOcultos } from "@/lib/hiddenEnvs";
 import { reincidenciaDaNc } from "@/lib/actionPlan";
+import { conciliarNcs } from "@/lib/ncReconcile";
+import { motivoParaNaoExcluir } from "@/lib/userManagement";
+import { diferencasDeTelas, nivelDaTela, telaDaVisao, telasEfetivas, type NivelTela, type TelaKey, type TelasDoUsuario } from "@/lib/screenAccess";
 import { maisRecentesPrimeiro, visitaPadraoParaRegistro } from "@/lib/registerTarget";
 import { listaSemArquivadas, marcarArquivada } from "@/lib/menuActions";
 import { adicionarSugestaoPop, criarRascunhosFaltantes, popsDaVisita } from "@/lib/pops";
@@ -25,11 +28,16 @@ import { alteracoesEmLote, resumoDoPlano } from "@/lib/actionPlan";
 import PcNcs from "@/components/pc/PcNcs";
 import PcEvidencias from "@/components/pc/PcEvidencias";
 import PcAmbientes from "@/components/pc/PcAmbientes";
-import PcCentral from "@/components/pc/PcCentral";
+import PcCentral, { type PassoCentral } from "@/components/pc/PcCentral";
 import PcPops from "@/components/pc/PcPops";
 import PcVisitas from "@/components/pc/PcVisitas";
 import PcEmpresas from "@/components/pc/PcEmpresas";
-import { useIsPc } from "@/components/useIsPc";
+import { useScreenMode } from "@/components/useScreenMode";
+import PcModoTela from "@/components/pc/PcModoTela";
+import ChecklistFocoItem from "@/components/ChecklistFocoItem";
+import { CampoBarra, CampoCabecalho, CampoCorrecoes, CampoInicio, CampoMais, type TelaCampo } from "@/components/campo/CampoTelas";
+import type { ItemMenu } from "@/components/ui/RowMenu";
+import { ROTULO_DO_MODO } from "@/lib/screenMode";
 import { preparacaoDaEmpresa } from "@/lib/companyReadiness";
 import ChecklistEnvStrip from "@/components/ChecklistEnvStrip";
 import CommandPalette from "@/components/CommandPalette";
@@ -62,6 +70,8 @@ import type {
   ProcedimentoOperacionalPadronizado,
   ResponsabilidadeManual,
   StatusUsuario,
+  PerfilUsuario,
+  UsuarioSistema,
   Visita,
 } from "@/types";
 import {
@@ -142,7 +152,7 @@ import {
 } from "@/lib/userManagement";
 import { resumoConfiguracaoEmpresa } from "@/lib/companyReadiness";
 
-type View = "inicio" | "ajuda" | "empresas" | "visitas" | "visita" | "ambientes" | "checklist" | "ncs" | "plano" | "acompanhamento" | "historico" | "evidencias" | "relatorio" | "acessos" | "correcoes" | "popsvisita";
+type View = "inicio" | "ajuda" | "empresas" | "visitas" | "visita" | "ambientes" | "checklist" | "ncs" | "plano" | "acompanhamento" | "historico" | "evidencias" | "relatorio" | "acessos" | "correcoes" | "popsvisita" | "modotela" | "campomais";
 type EmpresaSecao = "dados" | "manual" | "ambientes" | "fluxos" | "programas" | "pops";
 type FiltroChecklistRapido = "Todos" | "Pendentes" | "Não conformes";
 
@@ -694,7 +704,13 @@ export default function Home() {
   }, [aviso]);
   const [secoesRelatorio, setSecoesRelatorio] = useState<Record<SecaoRelatorio, boolean>>({ resumo: true, ambientes: true, ncs: true, evidencias: true, pops: true });
   const [emissaoParcial, setEmissaoParcial] = useState(false);
-  const ehPC = useIsPc();
+  const telaModo = useScreenMode();
+  const modo = telaModo.modo;
+  // Completo e Equilibrado usam o kit de telas do PC; Campo tem apresentação própria.
+  const ehPC = modo !== "campo";
+  useEffect(() => {
+    if (modo !== "campo" && view === "campomais") setView("inicio");
+  }, [modo, view]);
   const [caixaAberta, setCaixaAberta] = useState(false);
   const [caixaComVoz, setCaixaComVoz] = useState(false);
   // Foto escolhida em "Registrar": confirma o vínculo antes de enviar (nada é vinculado em silêncio).
@@ -955,6 +971,7 @@ export default function Home() {
   const [ambienteChecklistAtivo, setAmbienteChecklistAtivo] = useState<string | null>(null);
   const [filtroChecklistRapido, setFiltroChecklistRapido] = useState<FiltroChecklistRapido>("Todos");
   const [ultimoItemChecklistId, setUltimoItemChecklistId] = useState<string | null>(null);
+  const [itemFocoId, setItemFocoId] = useState<string | null>(null);
   const [novoEquipamentoVisitaNome, setNovoEquipamentoVisitaNome] = useState("");
   const [novoEquipamentoVisitaQuantidade, setNovoEquipamentoVisitaQuantidade] = useState("1");
   const [msg, setMsg] = useState("");
@@ -1693,6 +1710,22 @@ export default function Home() {
     return false;
   }
 
+  // Telas liberadas da pessoa (padrão do perfil + ajustes). Sem pessoa identificada (modo local) nada é escondido por aqui.
+  function nivelDe(tela: TelaKey): NivelTela {
+    // Equilibrado (tablet) não tem Acessos nem o cadastro de Empresas.
+    if (modo === "equilibrado" && (tela === "acessos" || tela === "administracao" || tela === "empresas")) return "oculta";
+    return usuarioDaSessao ? nivelDaTela(usuarioDaSessao, tela) : "editar";
+  }
+  function telaVisivel(tela: TelaKey): boolean {
+    return nivelDe(tela) !== "oculta";
+  }
+  function podeAbrirVisita(empresaId: string): boolean {
+    return (
+      permitido("visitas.executar", empresaId) ||
+      (!!usuarioDaSessao && podeAcessarEmpresa(usuarioDaSessao, empresaId) && telaVisivel("central"))
+    );
+  }
+
   useEffect(() => {
     if (
       usuarioDaSessao &&
@@ -1954,9 +1987,17 @@ export default function Home() {
       : undefined;
   const empresaVisita = visitaAtual ? db.empresas[visitaAtual.empresaId] : undefined;
   useEffect(() => {
+    if (!usuarioDaSessao) return;
+    const tela = telaDaVisao(view);
+    if (tela && nivelDe(tela) === "oculta") setView("inicio");
+    if (view === "ajuda" && !telaVisivel("guiaRapido") && !telaVisivel("manualCompleto")) setView("inicio");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [usuarioDaSessao, view, modo]);
+
+  useEffect(() => {
     // PC: Não conformidades, Plano e Acompanhamento viraram "Correções"; fora do PC essas telas novas não existem.
-    if (ehPC && (view === "ncs" || view === "plano" || view === "acompanhamento")) setView("correcoes");
-    if (!ehPC && (view === "correcoes" || view === "popsvisita")) setView("visita");
+    if (view === "ncs" || view === "plano" || view === "acompanhamento") setView("correcoes");
+    if (!ehPC && view === "popsvisita") setView("visita");
   }, [ehPC, view]);
   useEffect(() => {
     // PC: a nova evidência já nasce vinculada ao último item tocado (mesma regra do Registrar).
@@ -2056,6 +2097,7 @@ export default function Home() {
           (visita) =>
             podeAcessarEmpresa(usuarioDaSessao, visita.empresaId) &&
             (podeExecutar(usuarioDaSessao, "visitas.executar", visita.empresaId) ||
+              podeExecutar(usuarioDaSessao, "evidencias.adicionar", visita.empresaId) ||
               visita.status === "Concluída")
         )
         .sort((a, b) =>
@@ -2083,7 +2125,7 @@ export default function Home() {
   const visitasDoMes = visitas.filter((visita) => visita.data?.startsWith(prefixoMesAtual));
   const visitasRecentesInicio = visitas
     .filter((visita) => visita.status === filtroInicio)
-    .slice(0, 3);
+    .slice(0, 4);
 
   const visitaEmAndamentoDestaque = visitas.find(
     (visita) => visita.status === "Em andamento"
@@ -2384,7 +2426,7 @@ export default function Home() {
     ncsSemResponsavel === 0 &&
     ncsSemPrazo === 0;
 
-  async function baixarPdfRelatorio() {
+  async function baixarPdfRelatorio(opcoes?: { parcial?: boolean }) {
     if (!visitaAtual || !empresaVisita || gerandoPdf) return;
     if (!exigirPermissao("relatorios.exportar", visitaAtual.empresaId)) return;
 
@@ -2392,9 +2434,11 @@ export default function Home() {
     if (!elemento) return;
 
     setGerandoPdf(true);
+    const marcadores: HTMLElement[] = [];
+    const imagensOcultas: HTMLImageElement[] = [];
 
     try {
-      // Aguarda as evidências fotográficas carregarem.
+      // Aguarda as evidências fotográficas carregarem (no máximo 8 s por foto).
       const imagens = Array.from(
         elemento.querySelectorAll("img")
       ) as HTMLImageElement[];
@@ -2407,107 +2451,100 @@ export default function Home() {
                 resolve();
                 return;
               }
-              img.addEventListener("load", () => resolve(), { once: true });
-              img.addEventListener("error", () => resolve(), { once: true });
+              const limite = window.setTimeout(() => resolve(), 8000);
+              const concluir = () => {
+                window.clearTimeout(limite);
+                resolve();
+              };
+              img.addEventListener("load", concluir, { once: true });
+              img.addEventListener("error", concluir, { once: true });
             })
         )
       );
 
+      // Foto que não carregou: troca por um aviso, para o PDF não ficar esperando.
+      imagens.forEach((img) => {
+        if (img.complete && img.naturalWidth > 0) return;
+        const aviso = document.createElement("div");
+        aviso.textContent = "Imagem indisponível";
+        aviso.style.cssText =
+          "display:flex;align-items:center;justify-content:center;min-height:90px;border:1px dashed #94a3b8;border-radius:8px;background:#f1f5f9;color:#12202B;font-size:12px";
+        img.parentElement?.insertBefore(aviso, img);
+        marcadores.push(aviso);
+        img.style.display = "none";
+        imagensOcultas.push(img);
+      });
+
       elemento.classList.add("pdf-export");
 
-      // Aguarda o navegador aplicar o layout específico da exportação.
-      await new Promise<void>((resolve) =>
-        requestAnimationFrame(() =>
-          requestAnimationFrame(() => resolve())
-        )
-      );
+      // Aguarda o navegador aplicar o layout da exportação. Usa temporizador (e não
+      // requestAnimationFrame, que pausa com a aba oculta e travava a geração).
+      await new Promise<void>((resolve) => window.setTimeout(resolve, 160));
 
       const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
         import("html2canvas-pro"),
         import("jspdf"),
       ]);
 
-      const elementoRect = elemento.getBoundingClientRect();
-
       // Blocos que não devem ser cortados no meio entre páginas.
-      const blocosProtegidos = Array.from(
-        elemento.querySelectorAll(".print-card, .print-block")
-      ).map((node) => {
-        const rect = (node as HTMLElement).getBoundingClientRect();
-        return {
-          topCss: Math.max(0, rect.top - elementoRect.top),
-          bottomCss: Math.max(0, rect.bottom - elementoRect.top),
-          heightCss: rect.height,
-        };
-      });
+      // Medidos no MESMO layout que o html2canvas desenha (clone), para as posições baterem.
+      const medirBlocos = (raiz: HTMLElement) => {
+        const base = raiz.getBoundingClientRect();
+        const blocos: { topCss: number; bottomCss: number; heightCss: number }[] = [];
+        raiz.querySelectorAll(".print-card, .print-block").forEach((node) => {
+          const rect = (node as HTMLElement).getBoundingClientRect();
+          blocos.push({
+            topCss: Math.max(0, rect.top - base.top),
+            bottomCss: Math.max(0, rect.bottom - base.top),
+            heightCss: rect.height,
+          });
+        });
 
-      // Proteção rígida da abertura da seção Evidências:
-      // título + contador + primeira linha de fotos devem permanecer juntos.
-      const secaoEvidencias = elemento.querySelector(
-        '[data-pdf-section="evidencias"]'
-      ) as HTMLElement | null;
-
-      if (secaoEvidencias) {
-        const cardsEvidencia = Array.from(
-          secaoEvidencias.querySelectorAll(".print-card")
-        ) as HTMLElement[];
-
-        if (cardsEvidencia.length > 0) {
+        // Abertura da seção Evidências: título + contador + primeira linha de fotos juntos.
+        const secaoEvidencias = raiz.querySelector('[data-pdf-section="evidencias"]') as HTMLElement | null;
+        const cardsEvidencia = secaoEvidencias ? (Array.from(secaoEvidencias.querySelectorAll(".print-card")) as HTMLElement[]) : [];
+        if (secaoEvidencias && cardsEvidencia.length > 0) {
           const secaoRect = secaoEvidencias.getBoundingClientRect();
-
-          // Em telas largas, protege os dois primeiros cards (primeira linha).
-          // Em telas estreitas, protege pelo menos o primeiro card.
           const primeiroRect = cardsEvidencia[0].getBoundingClientRect();
-          const segundoRect =
-            cardsEvidencia.length > 1
-              ? cardsEvidencia[1].getBoundingClientRect()
-              : null;
-
-          const mesmaLinha =
-            segundoRect &&
-            Math.abs(segundoRect.top - primeiroRect.top) < 20;
-
-          const fimProtegido = mesmaLinha
-            ? Math.max(primeiroRect.bottom, segundoRect!.bottom)
-            : primeiroRect.bottom;
-
-          blocosProtegidos.push({
-            topCss: Math.max(0, secaoRect.top - elementoRect.top),
-            bottomCss: Math.max(0, fimProtegido - elementoRect.top),
+          const segundoRect = cardsEvidencia.length > 1 ? cardsEvidencia[1].getBoundingClientRect() : null;
+          const mesmaLinha = segundoRect && Math.abs(segundoRect.top - primeiroRect.top) < 20;
+          const fimProtegido = mesmaLinha ? Math.max(primeiroRect.bottom, segundoRect!.bottom) : primeiroRect.bottom;
+          blocos.push({
+            topCss: Math.max(0, secaoRect.top - base.top),
+            bottomCss: Math.max(0, fimProtegido - base.top),
             heightCss: Math.max(0, fimProtegido - secaoRect.top),
           });
         }
-      }
 
-      // Mantém o título de Não Conformidades junto da primeira NC.
-      // Evita uma página terminar apenas com o cabeçalho da seção.
-      const secaoNCs = elemento.querySelector(
-        '[data-pdf-section="nao-conformidades"]'
-      ) as HTMLElement | null;
-
-      if (secaoNCs) {
-        const primeiraNC = secaoNCs.querySelector(".print-card") as HTMLElement | null;
-
-        if (primeiraNC) {
+        // Título de Não Conformidades junto da primeira NC.
+        const secaoNCs = raiz.querySelector('[data-pdf-section="nao-conformidades"]') as HTMLElement | null;
+        const primeiraNC = secaoNCs?.querySelector(".print-card") as HTMLElement | null;
+        if (secaoNCs && primeiraNC) {
           const secaoRect = secaoNCs.getBoundingClientRect();
           const primeiraRect = primeiraNC.getBoundingClientRect();
-
-          blocosProtegidos.push({
-            topCss: Math.max(0, secaoRect.top - elementoRect.top),
-            bottomCss: Math.max(0, primeiraRect.bottom - elementoRect.top),
+          blocos.push({
+            topCss: Math.max(0, secaoRect.top - base.top),
+            bottomCss: Math.max(0, primeiraRect.bottom - base.top),
             heightCss: Math.max(0, primeiraRect.bottom - secaoRect.top),
           });
         }
-      }
+        return blocos.sort((a, b) => a.topCss - b.topCss);
+      };
 
-      blocosProtegidos.sort((a, b) => a.topCss - b.topCss);
+      let blocosProtegidos = medirBlocos(elemento);
 
+      const ESCALA_PDF = 1.6;
       const canvas = await html2canvas(elemento, {
-        scale: 1.6,
+        scale: ESCALA_PDF,
         useCORS: true,
         backgroundColor: "#ffffff",
         logging: false,
         windowWidth: 1100,
+        imageTimeout: 8000,
+        onclone: (documentoClone) => {
+          const raizClone = documentoClone.getElementById("relatorio-visita");
+          if (raizClone) blocosProtegidos = medirBlocos(raizClone);
+        },
         ignoreElements: (node) =>
           node instanceof HTMLElement &&
           node.classList.contains("print-control"),
@@ -2531,14 +2568,11 @@ export default function Home() {
       const mmPorCanvasPx = larguraUtil / canvas.width;
       const alturaPaginaPx = Math.floor(alturaUtil / mmPorCanvasPx);
 
-      // Converte as posições dos cards do DOM para pixels do canvas.
-      const escalaCanvasY =
-        elementoRect.height > 0 ? canvas.height / elementoRect.height : 1;
-
+      // Converte as posições dos cards (CSS) para pixels do canvas.
       const protegidosPx = blocosProtegidos.map((bloco) => ({
-        top: Math.round(bloco.topCss * escalaCanvasY),
-        bottom: Math.round(bloco.bottomCss * escalaCanvasY),
-        height: Math.round(bloco.heightCss * escalaCanvasY),
+        top: Math.round(bloco.topCss * ESCALA_PDF),
+        bottom: Math.round(bloco.bottomCss * ESCALA_PDF),
+        height: Math.round(bloco.heightCss * ESCALA_PDF),
       }));
 
       const cortes: { inicio: number; fim: number }[] = [];
@@ -2570,10 +2604,16 @@ export default function Home() {
           )[0];
 
           if (atravessado) {
-            const fimSeguro = atravessado.top - folgaPx;
+            // Respiro até o bloco anterior (sem invadi-lo quando os blocos são colados).
+            const fimDoBlocoAnterior = Math.max(
+              0,
+              ...protegidosPx.filter((bloco) => bloco.bottom <= atravessado.top + 1 && bloco !== atravessado).map((bloco) => bloco.bottom)
+            );
+            const respiro = Math.max(0, Math.min(folgaPx, atravessado.top - fimDoBlocoAnterior));
+            const fimSeguro = atravessado.top - respiro;
 
             // Evita criar uma página quase vazia.
-            if (fimSeguro - inicio >= alturaPaginaPx * 0.35) {
+            if (fimSeguro - inicio >= alturaPaginaPx * 0.12) {
               fimDesejado = fimSeguro;
             }
           }
@@ -2680,6 +2720,16 @@ export default function Home() {
           paginaAltura - 4.5
         );
 
+        if (opcoes?.parcial) {
+          pdf.setFont("helvetica", "bold");
+          pdf.setFontSize(8);
+          pdf.setTextColor(18, 32, 43);
+          pdf.text("RELATÓRIO PARCIAL", paginaLargura / 2, paginaAltura - 4.5, { align: "center" });
+          pdf.setFont("helvetica", "normal");
+          pdf.setFontSize(7.5);
+          pdf.setTextColor(100, 116, 139);
+        }
+
         pdf.text(
           `Página ${indice + 1} de ${totalPaginas}`,
           paginaLargura - margemX,
@@ -2713,6 +2763,10 @@ export default function Home() {
       );
     } finally {
       elemento.classList.remove("pdf-export");
+      marcadores.forEach((marcador) => marcador.remove());
+      imagensOcultas.forEach((img) => {
+        img.style.display = "";
+      });
       setGerandoPdf(false);
     }
   }
@@ -3237,7 +3291,10 @@ export default function Home() {
     const original = db.visitas.find((x) => x.id === id);
     const v = original ? migrarVisitaParaChecklistManual(original, CHECKLIST_VERSAO_ATUAL, true) : undefined;
     if (!v) return;
-    if (!exigirPermissao("visitas.executar", v.empresaId)) return;
+    if (!podeAbrirVisita(v.empresaId)) {
+      window.alert("Seu perfil não possui permissão para abrir esta visita.");
+      return;
+    }
     const empresaDaVisita = db.empresas[v.empresaId];
 
     if (retomarChecklist && !(v.ambientes || []).length) {
@@ -3450,7 +3507,10 @@ export default function Home() {
 
   function abrirChecklistNoAmbiente(ambienteInicial?: string) {
     if (!visitaAtual || !(visitaAtual.ambientes || []).length) return;
-    if (!exigirPermissao("visitas.executar", visitaAtual.empresaId)) return;
+    if (!(permitido("visitas.executar", visitaAtual.empresaId) || (!!usuarioDaSessao && telaVisivel("checklist")))) {
+      window.alert("Seu perfil não possui permissão para abrir o checklist.");
+      return;
+    }
 
     const visitaMigrada = migrarVisitaParaChecklistManual(visitaAtual, CHECKLIST_VERSAO_ATUAL, true);
     const checklistExistente = visitaMigrada.checklist || [];
@@ -3945,6 +4005,34 @@ export default function Home() {
     setShowEmpresaForm(true);
   }
 
+  // Lista plana na ordem da visita: base do "um item por vez" (Campo e Equilibrado).
+  function itensEmOrdem(): ChecklistItem[] {
+    const ordem = infosAmbientes.map((info) => info.nome);
+    const lista = checklistAtual;
+    return ordem.flatMap((nome) => lista.filter((item) => item.ambiente === nome));
+  }
+
+  function itemEmFoco(): ChecklistItem | undefined {
+    const lista = itensEmOrdem();
+    return (
+      lista.find((item) => item.id === itemFocoId) ||
+      lista.find((item) => item.ambiente === ambienteChecklistAtivo && item.status === "Pendente") ||
+      lista.find((item) => item.status === "Pendente") ||
+      lista[0]
+    );
+  }
+
+  function moverItemFoco(passo: 1 | -1) {
+    const lista = itensEmOrdem();
+    const atual = itemEmFoco();
+    if (!atual) return;
+    const alvo = lista[lista.findIndex((item) => item.id === atual.id) + passo];
+    if (!alvo) return;
+    setItemFocoId(alvo.id);
+    setAmbienteChecklistAtivo(alvo.ambiente);
+    setUltimoItemChecklistId(alvo.id);
+  }
+
   function registrarRapido(abrirCamera = true) {
     const alvo = visitaAtual?.status === "Em andamento" ? visitaAtual : visitaEmAndamentoDestaque;
     if (!alvo) {
@@ -3952,7 +4040,6 @@ export default function Home() {
       window.alert("Escolha a visita em que deseja registrar ou inicie uma nova visita.");
       return;
     }
-    if (!exigirPermissao("visitas.executar", alvo.empresaId)) return;
     if (!exigirPermissao("evidencias.adicionar", alvo.empresaId)) return;
     setDb((estado) => ({ ...estado, empresaAtualId: alvo.empresaId }));
     setVisitaAtualId(alvo.id);
@@ -4050,6 +4137,27 @@ export default function Home() {
     setEvidenciaMsg("");
     setAviso(null);
     setView("evidencias");
+  }
+
+  function marcarCorrecaoComoFeita(ncId: string, observacao: string) {
+    const nc = (db.ncs || []).find((registro) => registro.id === ncId);
+    if (!nc || !exigirPermissao("ncs.marcar_feita", nc.empresaId)) return;
+    if (nc.status === "Resolvida") return;
+    const marca = { em: new Date().toISOString(), por: usuarioDaSessao?.nome || "Responsável", ...(observacao.trim() ? { observacao: observacao.trim() } : {}) };
+    setDb((o) => ({ ...o, ncs: (o.ncs || []).map((item) => (item.id === ncId ? { ...item, marcadaFeita: marca } : item)) }));
+  }
+
+  function desfazerCorrecaoFeita(ncId: string) {
+    const nc = (db.ncs || []).find((registro) => registro.id === ncId);
+    if (!nc || !exigirPermissao("ncs.marcar_feita", nc.empresaId)) return;
+    setDb((o) => ({
+      ...o,
+      ncs: (o.ncs || []).map((item) => {
+        if (item.id !== ncId) return item;
+        const { marcadaFeita: _desfeita, ...resto } = item;
+        return resto;
+      }),
+    }));
   }
 
   function irParaPasso(passo: PassoVisita) {
@@ -4159,7 +4267,7 @@ export default function Home() {
       await new Promise((resolver) => window.setTimeout(resolver, 80));
     }
     try {
-      await baixarPdfRelatorio();
+      await baixarPdfRelatorio({ parcial: modo === "parcial" });
     } finally {
       setEmissaoParcial(false);
     }
@@ -4203,10 +4311,28 @@ export default function Home() {
         abrirPopsPeloAtalho();
         return;
       case "registrar":
-        if (ehPC) setRegistrarAberto(true);
+        if (ehPC || modo === "campo") setRegistrarAberto(true);
         else registrarRapido(true);
         return;
     }
+  }
+
+  function irParaTelaCampo(tela: TelaCampo) {
+    setMenuMaisAberto(false);
+    if (tela === "inicio") navegarPrincipal("inicio");
+    else if (tela === "checklist") irParaMenu("checklist");
+    else if (tela === "correcoes") {
+      const alvo = visitaAtual || visitaEmAndamentoDestaque;
+      if (!alvo) {
+        setView("visitas");
+        return;
+      }
+      setDb((estado) => ({ ...estado, empresaAtualId: alvo.empresaId }));
+      setVisitaAtualId(alvo.id);
+      setPlanoNcAbertaId("");
+      setView("correcoes");
+    }
+    else setView("campomais");
   }
 
   function abrirAjudaRapida() {
@@ -4916,6 +5042,99 @@ export default function Home() {
     }
   }
 
+  function contextoExclusaoUsuario() {
+    return {
+      solicitanteId: usuarioDaSessao?.id,
+      solicitanteEmail: usuarioDaSessao?.email,
+      registrosAuditoria: db.registrosAuditoria,
+    };
+  }
+
+  function excluirUsuarioPreparacao(usuarioId: string): boolean {
+    if (!exigirPermissao("usuarios.gerenciar")) return false;
+    const alvo = db.usuarios.find((usuario) => usuario.id === usuarioId);
+    if (!alvo) return false;
+    const motivo = motivoParaNaoExcluir(alvo, contextoExclusaoUsuario());
+    if (motivo) {
+      window.alert(motivo);
+      return false;
+    }
+    const agora = new Date().toISOString();
+    const registro = criarRegistroAuditoria(
+      {
+        usuarioId: usuarioDaSessao?.id || "preparacao-sistema",
+        usuarioNome: usuarioDaSessao?.nome || "Preparação do sistema",
+        acao: "usuario.excluido",
+        entidade: "Usuário",
+        entidadeId: alvo.id,
+        detalhes: `Usuário preparado excluído (nunca entrou no sistema) • ${alvo.perfil}.`,
+      },
+      agora
+    );
+    const novo: AppDB = {
+      ...db,
+      usuarios: db.usuarios.filter((usuario) => usuario.id !== alvo.id),
+      registrosAuditoria: [...db.registrosAuditoria, registro],
+    };
+    salvarDBLocal(novo);
+    setDb(novo);
+    return true;
+  }
+
+  function salvarTelasLiberadas(
+    usuarioId: string,
+    dados: { perfil: PerfilUsuario; empresaIds: string[]; telas: TelasDoUsuario }
+  ): boolean {
+    if (!exigirPermissao("usuarios.gerenciar")) return false;
+    const alvo = db.usuarios.find((usuario) => usuario.id === usuarioId);
+    if (!alvo) return false;
+    if (dados.perfil !== "Administrador" && dados.empresaIds.length === 0) {
+      window.alert("Escolha pelo menos uma empresa para este perfil.");
+      return false;
+    }
+    const outrosAdministradores = db.usuarios.filter((usuario) => usuario.id !== alvo.id && usuario.perfil === "Administrador" && usuario.status !== "Suspenso");
+    if (alvo.perfil === "Administrador" && dados.perfil !== "Administrador" && outrosAdministradores.length === 0) {
+      window.alert("Não é possível tirar o perfil do único Administrador.");
+      return false;
+    }
+    const agora = new Date().toISOString();
+    const atualizado: UsuarioSistema = {
+      ...alvo,
+      perfil: dados.perfil,
+      empresaIds: dados.perfil === "Administrador" ? [] : dados.empresaIds,
+      telas: Object.keys(dados.telas).length > 0 ? dados.telas : undefined,
+      atualizadoEm: agora,
+    };
+    const antes = telasEfetivas(alvo);
+    const depois = telasEfetivas(atualizado);
+    const diferencas = diferencasDeTelas(antes, depois);
+    const partes = [
+      alvo.perfil !== atualizado.perfil ? `Perfil: ${alvo.perfil} → ${atualizado.perfil}` : "",
+      JSON.stringify([...alvo.empresaIds].sort()) !== JSON.stringify([...atualizado.empresaIds].sort()) ? "Empresas alteradas" : "",
+      ...diferencas,
+    ].filter(Boolean);
+    if (partes.length === 0) return true;
+    const registro = criarRegistroAuditoria(
+      {
+        usuarioId: usuarioDaSessao?.id || "preparacao-sistema",
+        usuarioNome: usuarioDaSessao?.nome || "Preparação do sistema",
+        acao: "usuario.telas_alteradas",
+        entidade: "Usuário",
+        entidadeId: alvo.id,
+        detalhes: `${usuarioDaSessao?.nome || "Administrador"} alterou as telas de ${alvo.nome}. Antes → depois: ${partes.join("; ")}.`,
+      },
+      agora
+    );
+    const novo: AppDB = {
+      ...db,
+      usuarios: db.usuarios.map((usuario) => (usuario.id === alvo.id ? atualizado : usuario)),
+      registrosAuditoria: [...db.registrosAuditoria, registro],
+    };
+    salvarDBLocal(novo);
+    setDb(novo);
+    return true;
+  }
+
   function mudarStatusUsuarioPreparacao(
     usuarioId: string,
     status: StatusUsuario
@@ -5055,6 +5274,7 @@ export default function Home() {
   const contextoMenu: NavContexto = {
     dentroDeVisita: VISIT_VIEWS.includes(view),
     pode: (acao) => permitido(acao, visitaAtual?.empresaId ?? atual?.id),
+    nivelTela: usuarioDaSessao ? (tela) => nivelDe(tela) : undefined,
   };
   const dentroDaVisita = contextoMenu.dentroDeVisita && !!visitaAtual;
   // UMA fonte para os ambientes: o menu e a lista do checklist usam esta mesma resposta.
@@ -5216,6 +5436,15 @@ export default function Home() {
     ? usuarioDaSessao.nome.split(" ").filter(Boolean).slice(0, 2).map((parte) => parte[0]).join("").toUpperCase()
     : null;
 
+  const itensMenuModo: ItemMenu[] = [
+    ...(Object.keys(ROTULO_DO_MODO) as Array<keyof typeof ROTULO_DO_MODO>).map((opcao): ItemMenu => ({
+      rotulo: `${modo === opcao ? "● " : "○ "}${ROTULO_DO_MODO[opcao]}`,
+      onClick: () => telaModo.escolherModo(opcao),
+    })),
+    { rotulo: "Voltar ao automático", onClick: () => telaModo.voltarAoAutomatico(), desabilitado: telaModo.preferencia.automatico },
+    { rotulo: "Configurar modo de tela…", onClick: () => setView("modotela") },
+  ];
+
   return (
     <IaPermitidaContext.Provider value={deveExibirRecursosDeIa(usuarioDaSessao)}>
     <div className="min-h-screen bg-[var(--bg)]">
@@ -5228,9 +5457,9 @@ export default function Home() {
           </button>
         </div>
       )}
-      {registrarAberto && ehPC && (() => {
+      {registrarAberto && (() => {
         const abertasBrutas = (db.visitas || []).filter(
-          (visita) => visita.status !== "Concluída" && permitido("evidencias.adicionar", visita.empresaId) && permitido("visitas.executar", visita.empresaId)
+          (visita) => visita.status !== "Concluída" && permitido("evidencias.adicionar", visita.empresaId)
         );
         const abertas = maisRecentesPrimeiro(abertasBrutas);
         const visitas = abertas.map((visita) => ({
@@ -5279,6 +5508,7 @@ export default function Home() {
         utilitarias={[
           { id: "texto", rotulo: "Texto", onClick: () => { setTamanhoTextoRascunho(tamanhoTexto); setPainelTamanhoTextoAberto(true); } },
           { id: "sincronizar", rotulo: "Sincronizar", onClick: () => { setMenuMaisAberto(false); void atualizarNuvemManualmente(); } },
+          { id: "modo", rotulo: "Modo de tela", onClick: () => { setMenuMaisAberto(false); setView("modotela"); } },
           { id: "sobre", rotulo: "Sobre", onClick: () => window.alert(`${BRAND.name}\n${BRAND.subtitle}`) },
           { id: "sair", rotulo: "Sair", desabilitado: saindo, onClick: () => { setMenuMaisAberto(false); void sairDoSistema(); } },
         ]}
@@ -5290,7 +5520,7 @@ export default function Home() {
         contagens={contagensMenu}
         visita={cartaoVisita}
         onSair={() => void sairDoSistema()}
-        visitaMenu={ehPC && visitaAbertaNoMenu ? { empresa: nomeParaExibir(empresaVisita), passos: passosDaTrilha(dadosTrilha), atual: passoAtualDaTrilha, emTelaDaVisita: VISIT_VIEWS.includes(view) } : null}
+        visitaMenu={ehPC && visitaAbertaNoMenu ? { empresa: nomeParaExibir(empresaVisita), passos: passosDaTrilha(dadosTrilha).filter((passo) => telaVisivel(passo.chave === "pops" ? "popsVisita" : (passo.chave as TelaKey))), atual: passoAtualDaTrilha, emTelaDaVisita: VISIT_VIEWS.includes(view) } : null}
         onIrPasso={irParaPasso}
         usuario={usuarioDaSessao ? { nome: usuarioDaSessao.nome, perfil: usuarioDaSessao.perfil, iniciais: iniciaisUsuario || "" } : null}
         versao={pacote.version.split(".").slice(0, 2).join(".")}
@@ -5573,6 +5803,26 @@ export default function Home() {
       )}
 
       <div className="mx-auto min-w-0 max-w-[1500px] overflow-x-hidden px-3 py-4 pb-28 sm:p-5 pc-offset pc-content-pad md:overflow-visible md:pb-6 lg:p-7">
+        {modo === "campo" && (
+          <>
+            <CampoCabecalho
+              empresa={nomeEmFormatoNatural(atual?.nomeFantasia) || ""}
+              sincronizacao={{
+                estado: syncStatus === "sincronizado" ? "ok" : syncStatus === "erro" ? "erro" : "pendente",
+                rotulo: syncStatus === "sincronizado" ? "Dados sincronizados" : syncStatus === "conectando" ? "Sincronizando dados" : "Verificar sincronização",
+                onClick: () => void atualizarNuvemManualmente(),
+              }}
+              menuModo={itensMenuModo}
+            />
+            <CampoBarra
+              tela={view === "inicio" ? "inicio" : view === "checklist" ? "checklist" : view === "correcoes" ? "correcoes" : view === "campomais" ? "mais" : null}
+              correcoesAbertas={ncsAbertas}
+              podeRegistrar={permitido("evidencias.adicionar") || permitido("visitas.executar")}
+              onIr={irParaTelaCampo}
+              onRegistrar={() => setRegistrarAberto(true)}
+            />
+          </>
+        )}
         <AppTopbar
           caminho={caminhoTopo}
           onPrimeiro={() => navegarPrincipal("visitas")}
@@ -5582,6 +5832,11 @@ export default function Home() {
           onTodasVisitas={() => navegarPrincipal("visitas")}
           onAbrirCaixa={(comVoz) => { setCaixaComVoz(comVoz); setCaixaAberta(true); }}
           micDisponivel={deveExibirRecursosDeIa(usuarioDaSessao)}
+          modo={modo}
+          automatico={telaModo.preferencia.automatico}
+          onEscolherModo={telaModo.escolherModo}
+          onVoltarAoAutomatico={telaModo.voltarAoAutomatico}
+          onAbrirConfigModo={() => setView("modotela")}
         />
         <nav className="hidden">
           <button
@@ -5637,7 +5892,118 @@ export default function Home() {
           )}
         </nav>
 
-        {view === "acessos" && permitido("usuarios.gerenciar") ? (
+        {modo === "campo" && view === "campomais" ? (
+          <CampoMais
+            itens={[
+              { id: "visitas", rotulo: "Visitas", onClick: () => irParaMenu("visitas") },
+              ...(visitaAtual ? [{ id: "evidencias", rotulo: "Evidências da visita", onClick: () => irParaMenu("evidencias") }] : []),
+              ...(telaVisivel("relatorio") ? [{ id: "relatorio", rotulo: "Relatório", onClick: () => irParaMenu("relatorio") }] : []),
+              ...(telaVisivel("pops") ? [{ id: "pops", rotulo: "POPs", onClick: () => irParaMenu("pops") }] : []),
+              { id: "ajuda", rotulo: "Ajuda", onClick: () => irParaMenu("ajuda") },
+              { id: "modo", rotulo: "Modo de tela", onClick: () => setView("modotela") },
+              { id: "sincronizar", rotulo: "Sincronizar agora", onClick: () => void atualizarNuvemManualmente() },
+              { id: "sair", rotulo: "Sair", onClick: () => void sairDoSistema() },
+            ]}
+            onVersaoCompleta={() => telaModo.escolherModo("completo")}
+          />
+        ) : modo === "campo" && view === "inicio" ? (
+          (() => {
+            const alvo = visitaAtual?.status === "Em andamento" ? visitaAtual : visitaEmAndamentoDestaque;
+            const lista = alvo?.checklist || [];
+            const abertasDoAlvo = alvo ? (db.ncs || []).filter((nc) => nc.visitaId === alvo.id && !nc.inativaNoChecklist && nc.status !== "Resolvida").length : 0;
+            return (
+              <CampoInicio
+                usuario={usuarioDaSessao?.nome || ""}
+                visitaAtiva={alvo ? { empresa: nomeParaExibir(db.empresas[alvo.empresaId]), data: fdata(alvo.data) } : null}
+                respondidos={lista.filter((item) => item.status !== "Pendente").length}
+                total={lista.length}
+                naoConformes={lista.filter((item) => item.status === "Não Conforme").length}
+                correcoesAbertas={abertasDoAlvo}
+                outras={db.visitas
+                  .filter((visita) => visita.status === "Em andamento" && visita.id !== alvo?.id && podeAbrirVisita(visita.empresaId))
+                  .map((visita) => ({ id: visita.id, rotulo: `${nomeParaExibir(db.empresas[visita.empresaId])} · ${fdata(visita.data)}` }))}
+                podeRegistrar={permitido("evidencias.adicionar", alvo?.empresaId) || permitido("visitas.executar", alvo?.empresaId)}
+                onContinuar={() => alvo && continuar(alvo.id, true)}
+                onRegistrar={() => setRegistrarAberto(true)}
+                onCorrecoes={() => irParaTelaCampo("correcoes")}
+                onAbrirVisita={(id) => continuar(id, true)}
+                onVisitas={() => irParaMenu("visitas")}
+              />
+            );
+          })()
+        ) : modo === "campo" && view === "checklist" && visitaAtual ? (
+          (() => {
+            const lista = itensEmOrdem();
+            const foco = itemEmFoco();
+            const posicao = foco ? lista.findIndex((item) => item.id === foco.id) : -1;
+            return (
+              <section className="campo-tela campo-tela--fixa" aria-label="Checklist">
+                <div>
+                  <h1 className="campo-h1">Checklist</h1>
+                  <p className="campo-sub">{respondidos} de {totalChecklist} · {percentualChecklist}%</p>
+                </div>
+                <div className="campo-chips" role="tablist" aria-label="Ambientes">
+                  {infosAmbientes.map((info) => (
+                    <button
+                      key={info.nome}
+                      type="button"
+                      role="tab"
+                      aria-selected={foco?.ambiente === info.nome}
+                      className={`campo-chip-env${foco?.ambiente === info.nome ? " is-on" : ""}`}
+                      onClick={() => {
+                        const primeiro = lista.find((item) => item.ambiente === info.nome && item.status === "Pendente") || lista.find((item) => item.ambiente === info.nome);
+                        setAmbienteChecklistAtivo(info.nome);
+                        if (primeiro) setItemFocoId(primeiro.id);
+                      }}
+                    >
+                      {info.rotulo} {info.respondidos}/{info.total}
+                    </button>
+                  ))}
+                </div>
+                {foco ? (
+                  <ChecklistFocoItem
+                    item={foco}
+                    posicao={posicao + 1}
+                    total={lista.length}
+                    podeEditar={permitido("visitas.executar", visitaAtual.empresaId)}
+                    temAnterior={posicao > 0}
+                    temProximo={posicao < lista.length - 1}
+                    onStatus={(status) => { setItemFocoId(foco.id); atualizarChecklistItem(foco.id, { status, ...(status !== "Não Conforme" ? { observacao: "" } : {}) }); }}
+                    onObservacao={(texto) => atualizarChecklistItem(foco.id, { observacao: texto })}
+                    onFoto={() => { setUltimoItemChecklistId(foco.id); setRegistrarAberto(true); }}
+                    onAnterior={() => moverItemFoco(-1)}
+                    onProximo={() => moverItemFoco(1)}
+                  />
+                ) : (
+                  <p className="campo-sub">Esta visita não tem itens de checklist.</p>
+                )}
+              </section>
+            );
+          })()
+        ) : modo === "campo" && view === "correcoes" && visitaAtual ? (
+          <CampoCorrecoes
+            hoje={hojeISO()}
+            podeEditar={permitido("ncs.acompanhar", visitaAtual.empresaId)}
+            podeMarcar={permitido("ncs.marcar_feita", visitaAtual.empresaId)}
+            itens={ncsVisita.map((nc, indice) => ({
+              id: nc.id,
+              numero: indice + 1,
+              titulo: nc.titulo,
+              ambiente: nc.ambiente,
+              gravidade: nc.criticidade,
+              status: nc.status,
+              acaoCorretiva: nc.acaoCorretiva || "",
+              responsavelAcao: nc.responsavelAcao || "",
+              prazo: nc.prazo || "",
+              marcadaFeita: !!nc.marcadaFeita,
+            }))}
+            onSalvarPlano={(id, dados) =>
+              atualizarNC(id, { acaoCorretiva: dados.acao, responsavelAcao: dados.responsavel, prazo: dados.prazo, status: "Aberta" })
+            }
+            onMarcarFeita={(id) => marcarCorrecaoComoFeita(id, "")}
+            onDesfazerFeita={desfazerCorrecaoFeita}
+          />
+        ) : view === "acessos" && permitido("usuarios.gerenciar") ? (
           <AccessPreparationPanel
             pc={ehPC}
             usuarios={db.usuarios}
@@ -5646,6 +6012,9 @@ export default function Home() {
             onSalvarUsuario={salvarUsuarioPreparacao}
             onAlterarStatus={mudarStatusUsuarioPreparacao}
             onEnviarAcesso={enviarAcessoUsuario}
+            onExcluirUsuario={excluirUsuarioPreparacao}
+            onSalvarTelas={salvarTelasLiberadas}
+            motivoNaoExcluir={(usuario) => motivoParaNaoExcluir(usuario, contextoExclusaoUsuario())}
           />
         ) : view === "empresas" && showEmpresaForm && permitido("empresas.editar") ? (
           ehPC && !!editingEmpresaId && empresaSecao === "pops" ? (
@@ -6767,6 +7136,9 @@ export default function Home() {
               selecionadaInicial={planoNcAbertaId}
               podeEditar={permitido("ncs.acompanhar", visitaAtual.empresaId)}
               podeEvidenciar={permitido("evidencias.adicionar", visitaAtual.empresaId)}
+              podeMarcar={permitido("ncs.marcar_feita", visitaAtual.empresaId)}
+              onMarcarFeita={marcarCorrecaoComoFeita}
+              onDesfazerFeita={desfazerCorrecaoFeita}
               itens={ncsVisita.map((nc, indice) => {
                 const rein = reincidenciaDaNc(
                   nc,
@@ -6790,6 +7162,7 @@ export default function Home() {
                   dataAnterior: rein.dataAnterior,
                   orientacao: nc.orientacao || "",
                   pop: linhaPop ? { codigo: linhaPop.sugestao.codigo, titulo: linhaPop.sugestao.titulo, existe: linhaPop.situacao !== "a-criar" } : null,
+                  marcadaFeita: nc.marcadaFeita || null,
                   evidencias: (db.evidencias || [])
                     .filter((ev) => ev.ncId === nc.id)
                     .map((ev) => ({ id: ev.id, tipo: ev.tipo, nome: ev.descricao?.trim() || ev.nomeArquivo, quando: new Date(ev.criadoEm).toLocaleString("pt-BR"), url: urlEvidencia(ev) })),
@@ -7557,6 +7930,82 @@ export default function Home() {
               </div>
             )}
           </section>)
+        ) : view === "checklist" && visitaAtual && modo === "equilibrado" ? (
+          (() => {
+            const lista = itensEmOrdem();
+            const foco = itemEmFoco();
+            const posicao = foco ? lista.findIndex((item) => item.id === foco.id) : -1;
+            const ambienteDoFoco = foco?.ambiente || ambienteChecklistAtivo;
+            const doAmbiente = lista.filter((item) => item.ambiente === ambienteDoFoco);
+            const podeEditar = permitido("visitas.executar", visitaAtual.empresaId);
+            return (
+              <section className="checklist-screen ui-screen eq-check">
+                <div className="ui-head">
+                  <div>
+                    <h1 className="ui-title">Checklist</h1>
+                    <p className="ui-subtitle">{respondidos} de {totalChecklist} · {percentualChecklist}%</p>
+                  </div>
+                  <button type="button" onClick={() => setView("visita")} className="pc-check-back" aria-label="Voltar à Central da visita">← Central da visita</button>
+                </div>
+                <div className="eq-check-body">
+                  <nav className="eq-check-envs" aria-label="Ambientes">
+                    {infosAmbientes.map((info) => (
+                      <button
+                        key={info.nome}
+                        type="button"
+                        className={`eq-env${info.nome === ambienteDoFoco ? " is-on" : ""}`}
+                        aria-current={info.nome === ambienteDoFoco ? "true" : undefined}
+                        onClick={() => {
+                          setAmbienteChecklistAtivo(info.nome);
+                          const primeiro = lista.find((item) => item.ambiente === info.nome && item.status === "Pendente") || lista.find((item) => item.ambiente === info.nome);
+                          if (primeiro) setItemFocoId(primeiro.id);
+                        }}
+                      >
+                        <span className="eq-env-name">{info.rotulo}</span>
+                        <span className="eq-env-count">{info.respondidos}/{info.total}{info.naoConformes > 0 ? ` · ${info.naoConformes} NC` : ""}</span>
+                      </button>
+                    ))}
+                  </nav>
+                  <div className="eq-check-items" role="list" aria-label="Itens do ambiente">
+                    {doAmbiente.map((item, i) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        role="listitem"
+                        className={`eq-item is-${item.status === "Conforme" ? "ok" : item.status === "Não Conforme" ? "nc" : item.status === "Não se aplica" ? "na" : "pend"}${foco?.id === item.id ? " is-on" : ""}`}
+                        onClick={() => { setItemFocoId(item.id); setUltimoItemChecklistId(item.id); }}
+                      >
+                        <span className="eq-item-n">{i + 1}</span>
+                        <span className="eq-item-t">{item.titulo}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="eq-check-detail">
+                    {foco ? (
+                      <ChecklistFocoItem
+                        item={foco}
+                        posicao={posicao + 1}
+                        total={lista.length}
+                        podeEditar={podeEditar}
+                        temAnterior={posicao > 0}
+                        temProximo={posicao < lista.length - 1}
+                        onStatus={(status) => {
+                          setItemFocoId(foco.id);
+                          atualizarChecklistItem(foco.id, { status, ...(status !== "Não Conforme" ? { observacao: "" } : {}) });
+                        }}
+                        onObservacao={(texto) => atualizarChecklistItem(foco.id, { observacao: texto })}
+                        onFoto={() => { setUltimoItemChecklistId(foco.id); registrarRapido(); }}
+                        onAnterior={() => moverItemFoco(-1)}
+                        onProximo={() => moverItemFoco(1)}
+                      />
+                    ) : (
+                      <p className="ui-row-sub">Esta visita não tem itens de checklist.</p>
+                    )}
+                  </div>
+                </div>
+              </section>
+            );
+          })()
         ) : view === "checklist" && visitaAtual ? (
           <section className={`checklist-screen space-y-3${ehPC ? " ui-screen" : ""}`}>
             <div className="pc-check-head">
@@ -8073,13 +8522,13 @@ export default function Home() {
         ) : view === "visita" && visitaAtual ? (
           ehPC ? (
             <PcCentral
-              passos={[
+              passos={([
                 { chave: "checklist", rotulo: "Checklist", resumo: `${respondidos} de ${totalChecklist} respondidos`, icone: "checklist", tom: "ok" },
                 { chave: "evidencias", rotulo: "Evidências", resumo: `${fotosVisita} ${fotosVisita === 1 ? "foto" : "fotos"} · ${audiosVisita} ${audiosVisita === 1 ? "áudio" : "áudios"}`, icone: "evidencias", tom: "info" },
                 { chave: "correcoes", rotulo: "Correções", resumo: `${ncsAbertas} em aberto`, icone: "ncs", tom: "nc" },
                 { chave: "pops", rotulo: "POPs da visita", resumo: `${resumoPopsVisita.pendentes} a criar ou em rascunho`, icone: "pops", tom: "pend" },
                 { chave: "relatorio", rotulo: "Relatório", resumo: `${linhasConferenciaRel.filter((linha) => !linha.ok).length} pendências`, icone: "relatorio", tom: "lilas" },
-              ]}
+              ] as PassoCentral[]).filter((passo) => telaVisivel(passo.chave === "pops" ? "popsVisita" : (passo.chave as TelaKey)))}
               onIrPasso={(chave) => irParaPasso(chave as PassoVisita)}
               empresa={nomeParaExibir(empresaVisita)}
               detalhe={`${fdata(visitaAtual.data)} · ${visitaAtual.responsavel || "Responsável não informado"}`}
@@ -8093,7 +8542,7 @@ export default function Home() {
                 naoSeAplica: naoSeAplicaChecklist,
                 pendentes: pendentesChecklist,
                 botao: (visitaAtual.ambientes || []).length ? "Continuar inspeção →" : "Selecionar ambientes →",
-                desabilitado: !permitido("visitas.executar", visitaAtual.empresaId),
+                desabilitado: !(permitido("visitas.executar", visitaAtual.empresaId) || (!!usuarioDaSessao && telaVisivel("checklist"))),
                 onContinuar: () => ((visitaAtual.ambientes || []).length ? abrirChecklist() : abrirAmbientes()),
               }}
               indicadores={{
@@ -8124,7 +8573,7 @@ export default function Home() {
                   ? [...ncsVisita]
                       .filter((nc) => nc.status !== "Resolvida")
                       .sort((a, b) => String(a.criadoEm).localeCompare(String(b.criadoEm)))
-                      .slice(0, 3)
+                      .slice(0, 4)
                       .map((nc) => ({
                         id: nc.id,
                         titulo: nc.titulo,
@@ -8333,7 +8782,7 @@ export default function Home() {
               >
                 <button
                   type="button"
-                  onClick={baixarPdfRelatorio}
+                  onClick={() => void baixarPdfRelatorio()}
                   disabled={gerandoPdf}
                   className="w-full rounded-xl bg-[var(--brand)] px-5 py-4 text-base font-medium text-white shadow-md transition hover:brightness-95 disabled:cursor-wait disabled:opacity-70"
                 >
@@ -8366,7 +8815,7 @@ export default function Home() {
             <div data-rep="resumo" className="grid gap-3 md:grid-cols-4">
               <MetricCard label="Progresso do checklist" value={`${percentualChecklist}%`} />
               <MetricCard label="Conformidade dos itens avaliados" value={`${percentualConformidade}%`} />
-              <MetricCard label="Não conformidades" value={ncsVisita.length} />
+              <MetricCard label="Não conformidades registradas" value={ncsVisita.length} />
               <MetricCard label="Evidências" value={evidenciasVisita.length} />
             </div>
 
@@ -8378,12 +8827,21 @@ export default function Home() {
               <p className="mt-2 text-sm leading-6 text-slate-600">
                 Foram avaliados <strong>{itensAvaliadosVisita} item(ns)</strong>, com{" "}
                 <strong>{conformesVisita} conforme(s)</strong> e{" "}
-                <strong>{naoConformesVisita} não conforme(s)</strong>, resultando em{" "}
+                <strong>{naoConformesVisita} item(ns) não conforme(s) no checklist</strong>, resultando em{" "}
                 <strong>{percentualConformidade}% de conformidade</strong> entre os itens avaliados.
                 {pendentesVisita > 0
                   ? ` Permanecem ${pendentesVisita} item(ns) pendente(s) de avaliação.`
                   : " Não há itens pendentes no checklist."}
               </p>
+              {(() => {
+                const conciliacao = conciliarNcs(checklistAtual, ncsVisita);
+                return conciliacao.diverge ? (
+                  <p className="mt-2 text-xs leading-5 text-slate-600">
+                    Observação: o checklist tem {conciliacao.itensNaoConformes} item(ns) não conforme(s) e há {conciliacao.ncsRegistradas} não conformidade(s) registrada(s)
+                    {conciliacao.ncsSemItem.length > 0 ? `, das quais ${conciliacao.ncsSemItem.length} sem item não conforme correspondente no checklist atual` : ""}.
+                  </p>
+                ) : null;
+              })()}
 
               <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <div className="rounded-xl bg-[var(--nc-bg)] p-4">
@@ -8417,7 +8875,7 @@ export default function Home() {
               )}
             </article>
 
-            <div className="grid gap-4 lg:grid-cols-3">
+            <div className="print-block grid gap-4 lg:grid-cols-3">
               <article className="rounded-2xl bg-white p-5 shadow-sm lg:col-span-2">
                 <div className="text-xs font-extrabold uppercase text-slate-400">
                   Identificação
@@ -8437,7 +8895,8 @@ export default function Home() {
                   <div>
                     <span className="font-extrabold text-slate-500">Responsável pela visita</span>
                     <div>{visitaAtual.responsavel || "Não informado"}</div>
-                    {visitaAtual.responsavelIdentificacao && (
+                    {visitaAtual.responsavelIdentificacao &&
+                      visitaAtual.responsavelIdentificacao.trim().toLocaleLowerCase("pt-BR") !== (visitaAtual.responsavel || "").trim().toLocaleLowerCase("pt-BR") && (
                       <div className="text-xs text-slate-500">{visitaAtual.responsavelIdentificacao}</div>
                     )}
                   </div>
@@ -9067,9 +9526,22 @@ export default function Home() {
             </div>
           </section>
           </>
+        ) : view === "modotela" ? (
+          <PcModoTela
+            preferencia={telaModo.preferencia}
+            modoEmUso={modo}
+            modoRecomendado={telaModo.modoRecomendado}
+            larguraDoAparelho={telaModo.larguraDoAparelho}
+            onSalvar={(preferencia) => { telaModo.salvar(preferencia); setView("inicio"); }}
+            onCancelar={() => setView("ajuda")}
+          />
         ) : view === "ajuda" ? (
           ehPC ? (
-            <PcAjuda onVoltar={() => setView("inicio")} />
+            <PcAjuda
+              onVoltar={() => setView("inicio")}
+              onModoDeTela={() => setView("modotela")}
+              guiasLiberados={{ guiaRapido: telaVisivel("guiaRapido"), manualCompleto: telaVisivel("manualCompleto") }}
+            />
           ) : (
           <section className="help-page space-y-4">
             <div className="help-hero">
@@ -9193,20 +9665,25 @@ export default function Home() {
                 <p>Abra o material em PDF quando quiser consultar o passo a passo com mais detalhes.</p>
               </div>
               <div className="help-document-actions">
-                <a href="/guias/guia-rapido-mbp-expert-ai.pdf" target="_blank" rel="noreferrer" className="help-doc-button is-primary">
+                {telaVisivel("guiaRapido") && (
+                <a href="/api/guias/guia-rapido" target="_blank" rel="noreferrer" className="help-doc-button is-primary">
                   <span>⚡</span>
                   <span><strong>Guia rápido</strong><small>Consulta prática para o dia a dia</small></span>
                 </a>
-                <a href="/guias/manual-completo-mbp-expert-ai.pdf" target="_blank" rel="noreferrer" className="help-doc-button">
+                )}
+                {telaVisivel("manualCompleto") && (
+                <a href="/api/guias/manual-completo" target="_blank" rel="noreferrer" className="help-doc-button">
                   <span>📘</span>
                   <span><strong>Manual completo</strong><small>Explicação detalhada do sistema</small></span>
                 </a>
+                )}
               </div>
             </div>
           </section>)
         ) : view === "inicio" ? (
           ehPC ? (
             <PcInicio
+              simples={nivelDe("inicio") === "simples"}
               nome={usuarioDaSessao?.nome.split(" ").filter(Boolean)[0] || "bem-vindo"}
               continuar={inicioPc.continuar}
               novaVisita={{
@@ -9870,7 +10347,7 @@ export default function Home() {
                   responsavel: v.responsavel || "Responsável não informado",
                   percentual: itens.length ? Math.round((respondidosV / itens.length) * 100) : 0,
                   status: v.status,
-                  podeContinuar: permitido("visitas.executar", v.empresaId),
+                  podeContinuar: podeAbrirVisita(v.empresaId),
                   podeConcluir: permitido("visitas.concluir", v.empresaId),
                   podeReabrir: permitido("visitas.concluir", v.empresaId),
                   podeRelatorio: permitido("relatorios.exportar", v.empresaId),

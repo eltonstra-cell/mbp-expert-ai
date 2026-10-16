@@ -87,7 +87,7 @@ export default function PcRelatorio({
       <div className="pc-rep-cols">
         <div className="ui-card pc-rep-card">
           <h2 className="ui-card-title">Conferência antes de emitir</h2>
-          <div className="ui-scroll">
+          <div>
             <ul className="pc-check-list">
               {linhas.map((linha) => (
                 <li key={linha.chave} className="pc-check-row">
@@ -95,7 +95,7 @@ export default function PcRelatorio({
                     {linha.ok ? "✓" : "!"}
                   </span>
                   <span className="pc-check-text">
-                    <span className="pc-check-title">{linha.rotulo}</span>
+                    <span className="pc-rep-item-title">{linha.rotulo}</span>
                     <span className="ui-row-sub">{linha.resumo}</span>
                   </span>
                   {!linha.ok && (
@@ -112,14 +112,14 @@ export default function PcRelatorio({
         <div className="ui-card pc-rep-card">
           <h2 className="ui-card-title">Conteúdo do relatório</h2>
           <p className="ui-row-sub">As caixas desmarcadas não entram no PDF.</p>
-          <div className="ui-scroll">
+          <div>
             <ul className="pc-check-list">
               {SECOES_RELATORIO.map((secao) => (
                 <li key={secao.chave}>
                   <label className="pc-content-row">
                     <input type="checkbox" checked={secoes[secao.chave]} onChange={(evento) => onSecao(secao.chave, evento.target.checked)} />
                     <span className="pc-check-text">
-                      <span className="pc-check-title">{secao.rotulo}</span>
+                      <span className="pc-rep-item-title">{secao.rotulo}</span>
                       <span className="ui-row-sub">{secao.texto}</span>
                     </span>
                   </label>

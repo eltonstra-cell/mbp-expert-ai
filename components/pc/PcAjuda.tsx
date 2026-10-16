@@ -13,12 +13,12 @@ const CATEGORIAS: Categoria[] = [
   { id: "conta", titulo: "Conta e acessos", texto: "Perfis, login e sincronização", cor: "rosa", palavras: "conta acesso perfil login sincronização usuário" },
 ];
 
-type Guia = { arquivo: string; titulo: string; texto: string; categoria: string };
+type Guia = { arquivo: string; titulo: string; texto: string; categoria: string; tela: "guiaRapido" | "manualCompleto" };
 
 // PDFs que existem em public/guias.
 const GUIAS: Guia[] = [
-  { arquivo: "/guias/guia-rapido-mbp-expert-ai.pdf", titulo: "Guia rápido", texto: "O essencial para a primeira visita.", categoria: "primeiros" },
-  { arquivo: "/guias/manual-completo-mbp-expert-ai.pdf", titulo: "Manual completo", texto: "Todas as telas e regras em detalhe.", categoria: "visita" },
+  { arquivo: "/api/guias/guia-rapido", titulo: "Guia rápido", texto: "O essencial para a primeira visita.", categoria: "primeiros", tela: "guiaRapido" },
+  { arquivo: "/api/guias/manual-completo", titulo: "Manual completo", texto: "Todas as telas e regras em detalhe.", categoria: "visita", tela: "manualCompleto" },
 ];
 
 type Pergunta = { categoria: string; pergunta: string; resposta: string };
@@ -66,14 +66,14 @@ function normalizar(texto: string) {
   return texto.normalize("NFD").replace(/[̀-ͯ]/g, "").toLocaleLowerCase("pt-BR");
 }
 
-export default function PcAjuda({ onVoltar }: { onVoltar: () => void }) {
+export default function PcAjuda({ onVoltar, onModoDeTela, guiasLiberados = { guiaRapido: true, manualCompleto: true } }: { onVoltar: () => void; onModoDeTela?: () => void; guiasLiberados?: { guiaRapido: boolean; manualCompleto: boolean } }) {
   const [busca, setBusca] = useState("");
   const [categoria, setCategoria] = useState<string | null>(null);
   const [aberta, setAberta] = useState<number | null>(null);
 
   const termo = normalizar(busca.trim());
   const categoriasVisiveis = CATEGORIAS.filter((c) => !termo || normalizar(`${c.titulo} ${c.texto} ${c.palavras}`).includes(termo));
-  const guias = GUIAS.filter((g) => (!categoria || g.categoria === categoria) && (!termo || normalizar(`${g.titulo} ${g.texto}`).includes(termo)));
+  const guias = GUIAS.filter((g) => guiasLiberados[g.tela] && (!categoria || g.categoria === categoria) && (!termo || normalizar(`${g.titulo} ${g.texto}`).includes(termo)));
   const perguntas = useMemo(
     () => PERGUNTAS.filter((p) => (!categoria || p.categoria === categoria) && (!termo || normalizar(`${p.pergunta} ${p.resposta}`).includes(termo))),
     [categoria, termo]
@@ -87,6 +87,11 @@ export default function PcAjuda({ onVoltar }: { onVoltar: () => void }) {
           <p className="ui-subtitle">Respostas rápidas para o trabalho em campo.</p>
         </div>
         <div className="ui-head-actions">
+          {onModoDeTela && (
+            <button type="button" className="ui-btn ui-btn--secondary" onClick={onModoDeTela}>
+              Modo de tela
+            </button>
+          )}
           <button type="button" className="ui-btn ui-btn--secondary" onClick={onVoltar}>
             ← Início
           </button>

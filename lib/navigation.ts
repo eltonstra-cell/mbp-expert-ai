@@ -1,4 +1,5 @@
 import type { AcaoPermissao } from "@/types";
+import type { NivelTela, TelaKey } from "./screenAccess.ts";
 
 // Modelo puro do menu: o que cada contexto/perfil enxerga e em que ordem.
 // Não cria regra de acesso: apenas reaproveita `pode`, que vem das permissões
@@ -52,6 +53,26 @@ export type NavItem = {
 export type NavContexto = {
   dentroDeVisita: boolean;
   pode: (acao: AcaoPermissao) => boolean;
+  /** Telas liberadas da pessoa identificada; sem isso (modo local) valem só as regras antigas. */
+  nivelTela?: (tela: TelaKey) => NivelTela;
+};
+
+// Tela liberada que controla cada item do menu (qualquer uma delas ligada mostra o item).
+const TELAS_DO_ITEM: Partial<Record<NavKey, TelaKey[]>> = {
+  inicio: ["inicio"],
+  visitas: ["visitas"],
+  central: ["central"],
+  ambientes: ["ambientes"],
+  checklist: ["checklist"],
+  evidencias: ["evidencias"],
+  ncs: ["correcoes"],
+  plano: ["correcoes"],
+  acompanhamento: ["correcoes"],
+  relatorio: ["relatorio"],
+  empresas: ["empresas"],
+  pops: ["pops"],
+  acessos: ["acessos"],
+  ajuda: ["guiaRapido", "manualCompleto"],
 };
 
 const CATALOGO: NavItem[] = [
@@ -149,6 +170,12 @@ const POR_CHAVE = new Map(CATALOGO.map((item) => [item.key, item]));
 export function itensVisiveis(ctx: NavContexto): NavItem[] {
   return CATALOGO.filter((item) => {
     if (item.somenteNaVisita && !ctx.dentroDeVisita) return false;
+    if (ctx.nivelTela) {
+      // Registrar agora aparece quando Evidências está em Editar.
+      if (item.key === "registrar") return ctx.nivelTela("evidencias") === "editar";
+      const telas = TELAS_DO_ITEM[item.key];
+      if (telas) return telas.some((tela) => ctx.nivelTela!(tela) !== "oculta");
+    }
     return item.requer ? item.requer(ctx.pode) : true;
   });
 }
@@ -288,6 +315,7 @@ export function chaveAtiva(view: string): NavKey | null {
     case "inicio":
       return "inicio";
     case "ajuda":
+    case "modotela":
       return "ajuda";
     case "visitas":
       return "visitas";

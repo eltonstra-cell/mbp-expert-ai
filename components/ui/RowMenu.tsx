@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 export type ItemMenu = {
   rotulo: string;
@@ -19,13 +20,13 @@ export function RowMenu({ itens, rotulo = "Mais ações" }: { itens: ItemMenu[];
   const botaoRef = useRef<HTMLButtonElement | null>(null);
   const popRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!aberto || !botaoRef.current) return;
     const caixa = botaoRef.current.getBoundingClientRect();
-    const alturaEstimada = Math.min(itens.length * 38 + 16, 240);
-    const abreParaCima = caixa.bottom + alturaEstimada + 8 > window.innerHeight && caixa.top > alturaEstimada;
-    setPosicao({ top: abreParaCima ? Math.max(8, caixa.top - alturaEstimada - 4) : caixa.bottom + 4, right: Math.max(8, window.innerWidth - caixa.right) });
-    window.requestAnimationFrame(() => popRef.current?.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus());
+    const altura = popRef.current?.offsetHeight || Math.min(itens.length * 38 + 16, 240);
+    const abreParaCima = caixa.bottom + altura + 8 > window.innerHeight && caixa.top > altura + 8;
+    setPosicao({ top: abreParaCima ? Math.max(8, caixa.top - altura - 4) : caixa.bottom + 4, right: Math.max(8, window.innerWidth - caixa.right) });
+    popRef.current?.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus();
     const fechar = () => setAberto(false);
     window.addEventListener("resize", fechar);
     window.addEventListener("scroll", fechar, true);
@@ -54,7 +55,9 @@ export function RowMenu({ itens, rotulo = "Mais ações" }: { itens: ItemMenu[];
       }
     };
     const aoClicarFora = (evento: MouseEvent) => {
-      if (raizRef.current && !raizRef.current.contains(evento.target as Node)) setAberto(false);
+      const alvo = evento.target as Node;
+      if (raizRef.current?.contains(alvo) || popRef.current?.contains(alvo)) return;
+      setAberto(false);
     };
     window.addEventListener("keydown", aoTeclar);
     window.addEventListener("mousedown", aoClicarFora);
@@ -81,7 +84,8 @@ export function RowMenu({ itens, rotulo = "Mais ações" }: { itens: ItemMenu[];
       >
         <span aria-hidden="true">⋯</span>
       </button>
-      {aberto && (
+      {aberto &&
+        createPortal(
         <div className="ui-menu-pop" role="menu" ref={popRef} style={posicao ? { top: posicao.top, right: posicao.right } : { visibility: "hidden" }}>
           {itens.map((item) => (
             <button
@@ -100,7 +104,8 @@ export function RowMenu({ itens, rotulo = "Mais ações" }: { itens: ItemMenu[];
               {item.rotulo}
             </button>
           ))}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
