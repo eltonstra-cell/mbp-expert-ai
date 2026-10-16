@@ -1,10 +1,13 @@
 import type { PerfilUsuario, StatusUsuario, UsuarioSistema } from "@/types";
+import type { TelasDoUsuario } from "./screenAccess.ts";
 
 export type DadosUsuarioPreparacao = {
   nome: string;
   email: string;
   perfil: PerfilUsuario;
   empresaIds: string[];
+  /** Telas liberadas definidas já no preparo (opcional); sem isso vale o padrão do perfil. */
+  telas?: TelasDoUsuario;
 };
 
 export type IdentidadeSessao = {
@@ -66,6 +69,7 @@ export function criarUsuarioPreparacao(
       dados.perfil === "Administrador"
         ? []
         : Array.from(new Set(dados.empresaIds)),
+    ...(dados.telas && Object.keys(dados.telas).length > 0 ? { telas: dados.telas } : {}),
     criadoEm,
     atualizadoEm: criadoEm,
   };

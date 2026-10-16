@@ -2,7 +2,7 @@
 
 import { NavIcon } from "@/components/NavIcons";
 import { RowMenu, type ItemMenu } from "@/components/ui/RowMenu";
-import { ROTULO_DO_MODO, type ModoTela } from "@/lib/screenMode";
+import { ROTULO_DE_USO, type ModoTela } from "@/lib/screenMode";
 
 type Props = {
   /** Caminho exibido no PC, por exemplo: Visitas › Empresa › Central. */
@@ -43,8 +43,8 @@ export default function AppTopbar({
   const itensModo: ItemMenu[] =
     modo && onEscolherModo
       ? [
-          ...(Object.keys(ROTULO_DO_MODO) as ModoTela[]).map((opcao): ItemMenu => ({
-            rotulo: `${modo === opcao ? "● " : "○ "}${ROTULO_DO_MODO[opcao]}`,
+          ...(Object.keys(ROTULO_DE_USO) as ModoTela[]).map((opcao): ItemMenu => ({
+            rotulo: `${modo === opcao ? "● " : "○ "}${ROTULO_DE_USO[opcao]}`,
             onClick: () => onEscolherModo(opcao),
           })),
           { rotulo: "Voltar ao automático", onClick: () => onVoltarAoAutomatico?.(), desabilitado: automatico },
@@ -87,9 +87,9 @@ export default function AppTopbar({
             <span className="pc-company-chip-name">{empresaAtiva}</span>
           </span>
         )}
-        {modo === "equilibrado" && onAbrirConfigModo && (
+        {modo && onAbrirConfigModo && (
           <button type="button" className="pc-mode-chip" onClick={onAbrirConfigModo} title="Configurar o modo de tela">
-            Modo Equilibrado
+            {ROTULO_DE_USO[modo]}
           </button>
         )}
         {itensModo.length > 0 && <RowMenu itens={itensModo} rotulo="Modo de tela" />}

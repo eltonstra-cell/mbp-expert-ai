@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ROTULO_DO_MODO, descreverAparelho, type ModoTela, type PreferenciaDeTela } from "@/lib/screenMode";
+import { ROTULO_DE_USO, ROTULO_DO_MODO, descreverAparelho, type ModoTela, type PreferenciaDeTela } from "@/lib/screenMode";
 
 type Props = {
   preferencia: PreferenciaDeTela;
@@ -13,9 +13,9 @@ type Props = {
 };
 
 const CARTOES: { modo: ModoTela; subtitulo: string; itens: string[] }[] = [
-  { modo: "campo", subtitulo: "Para o celular durante a visita", itens: ["7 telas, uma coluna", "Câmera e microfone em destaque", "Registrar agora no botão central"] },
-  { modo: "equilibrado", subtitulo: "Para o tablet em visita ou demonstração", itens: ["11 telas, menu de ícones", "Lista e detalhe lado a lado", "Relatório com conferência"] },
-  { modo: "completo", subtitulo: "Para o PC e para demonstrar tudo", itens: ["13 telas, menu completo", "Cadastros, Acessos e Administração", "Painéis com todos os indicadores"] },
+  { modo: "campo", subtitulo: "Para o celular durante a visita", itens: ["5 abas: Início, Checklist, Registrar, Correções, Mais", "Um item do checklist por vez", "Câmera e microfone em destaque"] },
+  { modo: "equilibrado", subtitulo: "Para o tablet em visita ou demonstração", itens: ["Menu de ícones de 108 px", "Lista e detalhe lado a lado", "Relatório com conferência"] },
+  { modo: "completo", subtitulo: "Para o PC e para demonstrar tudo", itens: ["Menu lateral completo", "Cadastros, Acessos e Administração", "Painéis com todos os indicadores"] },
 ];
 
 function Miniatura({ modo }: { modo: ModoTela }) {
@@ -87,6 +87,7 @@ export default function PcModoTela({ preferencia, modoEmUso, modoRecomendado, la
         </span>
       </div>
 
+      <div className="pc-modo-body">
       <div className="pc-modo-cards" role="radiogroup" aria-label="Modo de tela">
         {CARTOES.map((cartao) => {
           const selecionado = modoSelecionado === cartao.modo;
@@ -145,12 +146,14 @@ export default function PcModoTela({ preferencia, modoEmUso, modoRecomendado, la
             {(Object.keys(ROTULO_DO_MODO) as ModoTela[]).map((modo) => (
               <li key={modo} className={modoSelecionado === modo ? "is-on" : ""}>
                 <span className={`pc-modo-radio${modoSelecionado === modo ? " is-on" : ""}`} aria-hidden="true" />
-                {ROTULO_DO_MODO[modo]}
+                {ROTULO_DE_USO[modo]}
               </li>
             ))}
           </ul>
           <span className="pc-link-btn">Voltar ao automático</span>
         </div>
+      </div>
+
       </div>
 
       <div className="ui-footer">

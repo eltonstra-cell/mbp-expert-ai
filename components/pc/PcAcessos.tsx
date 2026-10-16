@@ -9,7 +9,7 @@ import { ListRow } from "@/components/ui/ListRow";
 import { Pill } from "@/components/ui/Pill";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import TelasLiberadasModal from "@/components/pc/TelasLiberadasModal";
-import type { TelasDoUsuario } from "@/lib/screenAccess";
+import { telasDiferentesDoPadrao, type TelasDoUsuario } from "@/lib/screenAccess";
 import type { ItemMenu } from "@/components/ui/RowMenu";
 import { acoesDoAcesso } from "@/lib/menuActions";
 import { contarPessoas, filtrarPessoas, type FiltroPessoas } from "@/lib/userManagement";
@@ -79,6 +79,7 @@ export default function PcAcessos({
   onSalvarTelas,
 }: Props) {
   const [telasDe, setTelasDe] = useState<UsuarioSistema | null>(null);
+  const [telasDoNovo, setTelasDoNovo] = useState(false);
   const [filtroPessoas, setFiltroPessoas] = useState<FiltroPessoas>("ativos");
   const [aba, setAba] = useState<Aba>("pessoas");
   const [tocado, setTocado] = useState<{ nome: boolean; email: boolean }>({ nome: false, email: false });
@@ -216,6 +217,11 @@ export default function PcAcessos({
                   >
                     Salvar preparação
                   </button>
+                  {!editando && (
+                    <button type="button" className="ui-btn ui-btn--soft" onClick={() => setTelasDoNovo(true)}>
+                      Telas liberadas…{formulario.telas && Object.keys(formulario.telas).length > 0 ? ` (${Object.keys(formulario.telas).length} ajustada${Object.keys(formulario.telas).length === 1 ? "" : "s"})` : ""}
+                    </button>
+                  )}
                   <button type="button" className="ui-btn ui-btn--secondary" onClick={onCancelar}>
                     Cancelar
                   </button>
@@ -254,6 +260,7 @@ export default function PcAcessos({
                   pilulas={
                     <>
                       <Pill tom="brand">{usuario.perfil}</Pill>
+                      {telasDiferentesDoPadrao(usuario).length > 0 && <Pill tom="amber">Diferente do padrão</Pill>}
                       <Pill tom={usuario.status === "Ativo" ? "ok" : usuario.status === "Suspenso" ? "nc" : "pend"}>
                         {usuario.status}
                       </Pill>
@@ -271,6 +278,9 @@ export default function PcAcessos({
                           {enviandoId === usuario.id ? "Enviando..." : "Enviar acesso"}
                         </button>
                       )}
+                      <button type="button" className="ui-btn ui-btn--soft ui-btn--small" aria-label={`Telas liberadas de ${usuario.nome}`} onClick={() => setTelasDe(usuario)}>
+                        Telas
+                      </button>
                       <button type="button" className="ui-btn ui-btn--secondary" onClick={() => onEditar(usuario)}>
                         Editar
                       </button>
@@ -282,8 +292,6 @@ export default function PcAcessos({
                         return { rotulo: "Editar", onClick: () => onEditar(usuario) };
                       case "desativar":
                         return { rotulo: "Desativar acesso", perigo: true, confirmar: `Desativar o acesso de ${usuario.nome}? A pessoa continua cadastrada e o acesso pode ser reativado.`, onClick: () => onAlterarStatus(usuario.id, "Suspenso") };
-                      case "telas":
-                        return { rotulo: "Telas liberadas…", onClick: () => setTelasDe(usuario) };
                       case "excluir":
                         return {
                           rotulo: "Excluir usuário…",
@@ -332,6 +340,27 @@ export default function PcAcessos({
           </div>
         )}
       </div>
+      {telasDoNovo && formulario && (
+        <TelasLiberadasModal
+          usuario={{
+            id: "novo",
+            nome: formulario.nome.trim() || "Nova pessoa",
+            email: formulario.email,
+            perfil: formulario.perfil,
+            status: "Convidado",
+            empresaIds: formulario.empresaIds,
+            telas: formulario.telas,
+            criadoEm: "",
+            atualizadoEm: "",
+          }}
+          empresas={empresas}
+          onFechar={() => setTelasDoNovo(false)}
+          onSalvar={(dados) => {
+            onCampo({ perfil: dados.perfil, empresaIds: dados.empresaIds, telas: Object.keys(dados.telas).length > 0 ? dados.telas : undefined });
+            setTelasDoNovo(false);
+          }}
+        />
+      )}
       {telasDe && (
         <TelasLiberadasModal
           usuario={telasDe}

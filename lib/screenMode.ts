@@ -73,3 +73,10 @@ export function larguraDoLayout(modo: ModoTela, larguraDaTela: number): number |
   if (modo === "equilibrado" && larguraDaTela < 768) return 820;
   return null;
 }
+
+/** Nome do modo com o aparelho a que ele serve, para o chip e a lista do menu ⋯. */
+export const ROTULO_DE_USO: Record<ModoTela, string> = {
+  campo: "Celular · Campo",
+  equilibrado: "Tablet · Visita e demonstração",
+  completo: "Computador · Completo",
+};

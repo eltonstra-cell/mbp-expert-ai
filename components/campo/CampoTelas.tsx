@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { LogoSymbol } from "@/components/BrandLogo";
-import { NavIcon } from "@/components/NavIcons";
+import { NavIcon, type NavIconName } from "@/components/NavIcons";
 import { RowMenu, type ItemMenu } from "@/components/ui/RowMenu";
+import { prazoSugerido } from "@/lib/actionPlan";
 
 export type TelaCampo = "inicio" | "checklist" | "correcoes" | "mais";
 
@@ -169,6 +170,7 @@ export type CorrecaoCampo = {
   acaoCorretiva: string;
   responsavelAcao: string;
   prazo: string;
+  orientacao: string;
   marcadaFeita: boolean;
 };
 
@@ -194,6 +196,13 @@ export function CampoCorrecoes({
   const [responsavel, setResponsavel] = useState("");
   const [prazo, setPrazo] = useState("");
   const [tocou, setTocou] = useState(false);
+  const [aviso, setAviso] = useState("");
+
+  useEffect(() => {
+    if (!aviso) return;
+    const tempo = window.setTimeout(() => setAviso(""), 2600);
+    return () => window.clearTimeout(tempo);
+  }, [aviso]);
 
   const abrir = (item: CorrecaoCampo) => {
     setEditando(item);
@@ -205,6 +214,7 @@ export function CampoCorrecoes({
   const erroAcao = tocou && !acao.trim() ? "Escreva o que será feito." : "";
   const erroPrazo = prazo && prazo < hoje ? "O prazo não pode ser anterior a hoje." : "";
   const podeSalvar = !!acao.trim() && !erroPrazo;
+  const sugestaoPrazo = prazoSugerido(editando?.gravidade === "Crítica" || editando?.gravidade === "Importante" ? editando.gravidade : "Rotina", hoje);
   const abertas = itens.filter((item) => item.status !== "Resolvida");
 
   return (
@@ -244,6 +254,12 @@ export function CampoCorrecoes({
         </article>
       ))}
 
+      {aviso && (
+        <div className="pc-toast pc-toast--ok campo-toast" role="status">
+          <span>{aviso}</span>
+        </div>
+      )}
+
       {editando && (
         <div className="campo-sheet-layer" role="dialog" aria-modal="true" aria-label="Plano de correção">
           <button type="button" className="campo-sheet-fundo" aria-label="Fechar" onClick={() => setEditando(null)} />
@@ -252,9 +268,14 @@ export function CampoCorrecoes({
               <h2 className="campo-card-title">Plano da correção {editando.numero}</h2>
               <p className="campo-sub">{editando.titulo}</p>
               <label className="campo-field">
-                <span className="ui-eyebrow">O que será feito</span>
+                <span className="ui-eyebrow">O que será feito (ação corretiva)</span>
                 <textarea className={`ui-input${erroAcao ? " is-invalid" : ""}`} rows={3} value={acao} disabled={!podeEditar} aria-invalid={!!erroAcao} onChange={(e) => { setAcao(e.target.value); setTocou(true); }} onBlur={() => setTocou(true)} />
-                {erroAcao && <span className="campo-erro">{erroAcao}</span>}
+                {erroAcao ? <span className="campo-erro">{erroAcao}</span> : !acao.trim() && <span className="campo-sub">Obrigatório para salvar o plano.</span>}
+                {podeEditar && editando.orientacao && acao.trim() !== editando.orientacao.trim() && (
+                  <button type="button" className="campo-sugestao" onClick={() => setAcao(editando.orientacao)}>
+                    Ação sugerida: {editando.orientacao} · toque para usar
+                  </button>
+                )}
               </label>
               <label className="campo-field">
                 <span className="ui-eyebrow">Quem faz</span>
@@ -264,6 +285,11 @@ export function CampoCorrecoes({
                 <span className="ui-eyebrow">Prazo</span>
                 <input className={`ui-input${erroPrazo ? " is-invalid" : ""}`} type="date" min={hoje} value={prazo} disabled={!podeEditar} aria-invalid={!!erroPrazo} onChange={(e) => setPrazo(e.target.value)} />
                 {erroPrazo && <span className="campo-erro">{erroPrazo}</span>}
+                {podeEditar && (
+                  <button type="button" className="campo-sugestao" onClick={() => setPrazo(sugestaoPrazo.data)}>
+                    Prazo sugerido: {sugestaoPrazo.dias} dias · {sugestaoPrazo.data.split("-").reverse().join("/")} · toque para usar
+                  </button>
+                )}
               </label>
             </div>
             <div className="campo-sheet-foot">
@@ -278,6 +304,7 @@ export function CampoCorrecoes({
                   setTocou(true);
                   if (!podeSalvar) return;
                   onSalvarPlano(editando.id, { acao: acao.trim(), responsavel: responsavel.trim(), prazo });
+                  setAviso("Plano salvo");
                   setEditando(null);
                 }}
               >
@@ -291,24 +318,31 @@ export function CampoCorrecoes({
   );
 }
 
-export function CampoMais({ itens, onVersaoCompleta }: { itens: { id: string; rotulo: string; onClick: () => void; destaque?: boolean }[]; onVersaoCompleta: () => void }) {
+export type CartaoMais = { id: string; rotulo: string; icone: NavIconName; tom: string; onClick: () => void };
+
+export function CampoMais({ daVisita, gerais, onVersaoCompleta }: { daVisita: CartaoMais[]; gerais: CartaoMais[]; onVersaoCompleta: () => void }) {
+  const cartao = (item: CartaoMais) => (
+    <button key={item.id} type="button" className="campo-mais-card" onClick={item.onClick}>
+      <span className="campo-mais-tile" style={{ background: `linear-gradient(160deg, var(--tile-${item.tom}-from), var(--tile-${item.tom}-to))` }}>
+        <NavIcon name={item.icone} size={22} strokeWidth={1.9} />
+      </span>
+      <span className="campo-mais-label">{item.rotulo}</span>
+    </button>
+  );
   return (
-    <section className="campo-tela" aria-label="Mais">
-      <div>
-        <h1 className="campo-h1">Mais</h1>
-        <p className="campo-sub">Outras telas e ajustes deste aparelho</p>
-      </div>
-      <div className="campo-lista">
-        {itens.map((item) => (
-          <button key={item.id} type="button" className="campo-linha" onClick={item.onClick}>
-            {item.rotulo}
-          </button>
-        ))}
-      </div>
+    <section className="campo-tela campo-tela--mais" aria-label="Mais">
+      <h1 className="campo-h1">Mais</h1>
+      {daVisita.length > 0 && (
+        <>
+          <div className="ui-eyebrow">Desta visita</div>
+          <div className="campo-mais-grid">{daVisita.map(cartao)}</div>
+        </>
+      )}
+      <div className="ui-eyebrow">Geral</div>
+      <div className="campo-mais-grid">{gerais.map(cartao)}</div>
       <button type="button" className="campo-btn campo-btn--brand" onClick={onVersaoCompleta}>
         Usar versão completa agora
       </button>
-      <p className="campo-sub">Troca só este aparelho para o modo Completo. Dá para voltar em Mais ou no menu ⋯ do topo.</p>
     </section>
   );
 }

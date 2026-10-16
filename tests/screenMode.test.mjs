@@ -53,3 +53,12 @@ test("descrição do aparelho segue as mesmas faixas", () => {
   assert.equal(descreverAparelho(820), "Tablet");
   assert.equal(descreverAparelho(1280), "Computador");
 });
+
+test("nomes de uso: aparelho + modo, como no chip e no menu ⋯", async () => {
+  const { ROTULO_DE_USO, ROTULO_DO_MODO } = await import("../lib/screenMode.ts");
+  assert.equal(ROTULO_DE_USO.campo, "Celular · Campo");
+  assert.equal(ROTULO_DE_USO.equilibrado, "Tablet · Visita e demonstração");
+  assert.equal(ROTULO_DE_USO.completo, "Computador · Completo");
+  // os cartões da tela de configuração mantêm os nomes curtos
+  assert.deepEqual(ROTULO_DO_MODO, { campo: "Campo", equilibrado: "Equilibrado", completo: "Completo" });
+});

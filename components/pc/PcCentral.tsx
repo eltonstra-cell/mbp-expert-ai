@@ -74,9 +74,6 @@ export default function PcCentral({
               Editar ambientes
             </button>
           )}
-          <button type="button" className="ui-btn ui-btn--secondary" onClick={onTodasVisitas}>
-            ← Todas as visitas
-          </button>
         </div>
       </div>
 

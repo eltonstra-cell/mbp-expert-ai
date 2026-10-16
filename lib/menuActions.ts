@@ -36,11 +36,11 @@ export function acoesDoPop(f: { arquivado: boolean; podeEditar: boolean }): Acao
   return ["abrir", "duplicar", f.arquivado ? "desarquivar" : "arquivar", "excluir"];
 }
 
-export type AcaoAcesso = "editar" | "telas" | "desativar" | "reativar" | "excluir";
+export type AcaoAcesso = "editar" | "desativar" | "reativar" | "excluir";
 
 export function acoesDoAcesso(f: { status: "Convidado" | "Ativo" | "Suspenso"; podeGerenciar: boolean; podeExcluir?: boolean }): AcaoAcesso[] {
   if (!f.podeGerenciar) return [];
-  const acoes: AcaoAcesso[] = ["editar", "telas", f.status === "Suspenso" ? "reativar" : "desativar"];
+  const acoes: AcaoAcesso[] = ["editar", f.status === "Suspenso" ? "reativar" : "desativar"];
   if (f.podeExcluir) acoes.push("excluir");
   return acoes;
 }

@@ -3,9 +3,9 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   devIndicators: false,
-  // O manual completo fica fora de public e é lido pela rota /api/guias/[nome].
+  // Os guias ficam fora de public e são lidos pela rota /api/guias/[nome].
   outputFileTracingIncludes: {
-    "/api/guias/[nome]": ["./conteudo-privado/guias/**/*", "./public/guias/**/*"],
+    "/api/guias/[nome]": ["./conteudo-privado/guias/**/*"],
   },
 };
 

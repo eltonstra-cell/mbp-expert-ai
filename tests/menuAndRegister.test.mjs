@@ -46,8 +46,8 @@ test("⋯ de POPs e de Acessos", () => {
   assert.deepEqual(acoesDoPop({ arquivado: false, podeEditar: true }), ["abrir", "duplicar", "arquivar", "excluir"]);
   assert.deepEqual(acoesDoPop({ arquivado: true, podeEditar: true }), ["abrir", "duplicar", "desarquivar", "excluir"]);
   assert.deepEqual(acoesDoPop({ arquivado: false, podeEditar: false }), ["abrir"]);
-  assert.deepEqual(acoesDoAcesso({ status: "Ativo", podeGerenciar: true }), ["editar", "telas", "desativar"]);
-  assert.deepEqual(acoesDoAcesso({ status: "Suspenso", podeGerenciar: true }), ["editar", "telas", "reativar"]);
+  assert.deepEqual(acoesDoAcesso({ status: "Ativo", podeGerenciar: true }), ["editar", "desativar"]);
+  assert.deepEqual(acoesDoAcesso({ status: "Suspenso", podeGerenciar: true }), ["editar", "reativar"]);
   assert.deepEqual(acoesDoAcesso({ status: "Ativo", podeGerenciar: false }), []);
 });
 

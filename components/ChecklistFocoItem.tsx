@@ -3,17 +3,23 @@
 import { useEffect, useRef, useState } from "react";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
 import { NavIcon } from "@/components/NavIcons";
-import type { ChecklistItem, ChecklistStatus } from "@/types";
+import type { ChecklistCriticidade, ChecklistItem, ChecklistStatus } from "@/types";
 
 type Props = {
   item: ChecklistItem;
   posicao: number;
   total: number;
+  /** Cabeçalho do ambiente: nome, posição do item dentro dele e progresso. */
+  ambienteRotulo: string;
+  posAmbiente: number;
+  totalAmbiente: number;
+  respondidosAmbiente: number;
   podeEditar: boolean;
   temAnterior: boolean;
   temProximo: boolean;
   onStatus: (status: ChecklistStatus) => void;
   onObservacao: (texto: string) => void;
+  onGravidade: (gravidade: ChecklistCriticidade) => void;
   onFoto: () => void;
   onAnterior: () => void;
   onProximo: () => void;
@@ -22,7 +28,7 @@ type Props = {
 const NOME_GRAVIDADE: Record<string, string> = { Crítica: "Crítica", Importante: "Importante", Rotina: "Leve" };
 
 // Um item por vez, com botões grandes (Campo e Equilibrado). Usa as mesmas regras do checklist de sempre.
-export default function ChecklistFocoItem({ item, posicao, total, podeEditar, temAnterior, temProximo, onStatus, onObservacao, onFoto, onAnterior, onProximo }: Props) {
+export default function ChecklistFocoItem({ item, posicao, total, ambienteRotulo, posAmbiente, totalAmbiente, respondidosAmbiente, onGravidade, podeEditar, temAnterior, temProximo, onStatus, onObservacao, onFoto, onAnterior, onProximo }: Props) {
   const [texto, setTexto] = useState(item.observacao || "");
   const areaRef = useRef<HTMLTextAreaElement | null>(null);
   const caixaRef = useRef<HTMLDivElement | null>(null);
@@ -39,14 +45,21 @@ export default function ChecklistFocoItem({ item, posicao, total, podeEditar, te
 
   return (
     <div className="chk-foco">
-      <div className="chk-foco-card">
-        <div className="chk-foco-top">
-          <span className="chk-foco-count">
-            Item {posicao} de {total}
-            {item.ambiente ? ` · ${item.ambiente}` : ""}
+      <div className="chk-foco-amb">
+        <div className="chk-foco-amb-top">
+          <span className="chk-foco-amb-nome">{ambienteRotulo}</span>
+          <span className="chk-foco-amb-pos" aria-label={`Item ${posAmbiente} de ${totalAmbiente} neste ambiente`}>
+            {posAmbiente}/{totalAmbiente}
           </span>
-          <span className={`chk-grav chk-grav--${gravidade === "Crítica" ? "nc" : gravidade === "Importante" ? "amber" : "na"}`}>{NOME_GRAVIDADE[gravidade]}</span>
         </div>
+        <div className="chk-foco-bar" role="img" aria-label={`${respondidosAmbiente} de ${totalAmbiente} respondidos`}>
+          <span style={{ width: `${totalAmbiente ? Math.round((respondidosAmbiente / totalAmbiente) * 100) : 0}%` }} />
+        </div>
+        <span className="chk-foco-count">
+          {respondidosAmbiente} de {totalAmbiente} respondidos · item {posicao} de {total} na visita
+        </span>
+      </div>
+      <div className="chk-foco-card">
         <h2 className="chk-foco-title">{item.titulo}</h2>
         {item.orientacao && <p className="chk-foco-hint">{item.orientacao}</p>}
       </div>
@@ -88,10 +101,10 @@ export default function ChecklistFocoItem({ item, posicao, total, podeEditar, te
           <textarea
             ref={areaRef}
             className="ui-input pc-input-tools"
-            rows={2}
+            rows={3}
             value={texto}
             disabled={!podeEditar}
-            placeholder="Ex.: termômetro marcando 9 °C na câmara fria."
+            placeholder="Ex.: termômetro a 9 °C"
             aria-label="Observação do item"
             onChange={(evento) => setTexto(evento.target.value)}
             onBlur={salvarTexto}
@@ -102,12 +115,19 @@ export default function ChecklistFocoItem({ item, posicao, total, podeEditar, te
             </span>
           )}
         </span>
-        <div className="chk-grav-linha" aria-label="Gravidade do item">
-          <span className="ui-row-sub">Gravidade:</span>
+        <div className="chk-grav-linha" role="group" aria-label="Gravidade do item">
+          <span className="ui-row-sub">Gravidade</span>
           {(["Rotina", "Importante", "Crítica"] as const).map((nivel) => (
-            <span key={nivel} className={`chk-grav chk-grav--${nivel === "Crítica" ? "nc" : nivel === "Importante" ? "amber" : "na"}${gravidade === nivel ? " is-on" : ""}`}>
+            <button
+              key={nivel}
+              type="button"
+              disabled={!podeEditar}
+              aria-pressed={gravidade === nivel}
+              className={`chk-grav chk-grav--${nivel === "Crítica" ? "nc" : nivel === "Importante" ? "amber" : "na"}${gravidade === nivel ? " is-on" : ""}`}
+              onClick={() => onGravidade(nivel)}
+            >
               {NOME_GRAVIDADE[nivel]}
-            </span>
+            </button>
           ))}
         </div>
       </div>

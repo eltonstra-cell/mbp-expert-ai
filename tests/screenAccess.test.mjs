@@ -134,3 +134,21 @@ test("auditoria das telas: antes → depois e mapeamento de telas", () => {
   assert.equal(telaDaVisao("popsvisita"), "popsVisita");
   assert.equal(telaDaVisao("desconhecida"), null);
 });
+
+test("preparar usuário já com telas ajustadas: só guarda o que difere e não muda o padrão dos outros", async () => {
+  const { criarUsuarioPreparacao } = await import("../lib/userManagement.ts");
+  const { telasDiferentesDoPadrao, telasEfetivas, PADRAO_DO_PERFIL } = await import("../lib/screenAccess.ts");
+  const base = { nome: "Pessoa Nova", email: "nova@teste.com", perfil: "Gerente", empresaIds: ["emp-1"] };
+  const semAjuste = criarUsuarioPreparacao(base, [], "2026-01-01T00:00:00.000Z", "u1");
+  assert.equal(semAjuste.telas, undefined);
+  assert.deepEqual(telasDiferentesDoPadrao(semAjuste), []);
+
+  const comAjuste = criarUsuarioPreparacao({ ...base, telas: { guiaRapido: "oculta" } }, [], "2026-01-01T00:00:00.000Z", "u2");
+  assert.deepEqual(comAjuste.telas, { guiaRapido: "oculta" });
+  assert.deepEqual(telasDiferentesDoPadrao(comAjuste), ["guiaRapido"]);
+  assert.equal(telasEfetivas(comAjuste).guiaRapido, "oculta");
+  // as demais telas continuam no padrão do perfil
+  assert.equal(telasEfetivas(comAjuste).checklist, PADRAO_DO_PERFIL.Gerente.checklist);
+  // telas vazias não viram ajuste
+  assert.equal(criarUsuarioPreparacao({ ...base, telas: {} }, [], "2026-01-01T00:00:00.000Z", "u3").telas, undefined);
+});

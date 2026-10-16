@@ -120,6 +120,7 @@ export default function PcCorrecoes({
   const [escolhidaId, setEscolhidaId] = useState(selecionadaInicial);
   const [aba, setAba] = useState<AbaDetalhe>("plano");
   const [lote, setLote] = useState(false);
+  const [aviso, setAviso] = useState("");
 
   const contagem = contarEtapas(itens);
   const recorrentes = itens.filter((nc) => nc.reincidente).length;
@@ -143,6 +144,17 @@ export default function PcCorrecoes({
   useEffect(() => {
     setAba("plano");
   }, [selecionada?.id]);
+
+  useEffect(() => {
+    if (!aviso) return;
+    const tempo = window.setTimeout(() => setAviso(""), 2600);
+    return () => window.clearTimeout(tempo);
+  }, [aviso]);
+
+  const salvarPlano: Props["onSalvarPlano"] = (id, dados) => {
+    onSalvarPlano(id, dados);
+    setAviso("Plano salvo");
+  };
 
   const grupos: { rotulo: string; faixa: Tom; itens: CorrecaoItem[] }[] =
     agrupar === "gravidade"
@@ -275,7 +287,7 @@ export default function PcCorrecoes({
                 podeMarcar={podeMarcar}
                 onMarcarFeita={onMarcarFeita}
                 onDesfazerFeita={onDesfazerFeita}
-                onSalvarPlano={onSalvarPlano}
+                onSalvarPlano={salvarPlano}
                 onRegistrar={onRegistrar}
                 onAdicionarEvidencia={onAdicionarEvidencia}
                 onCriarPop={onCriarPop}
@@ -285,6 +297,12 @@ export default function PcCorrecoes({
               <div className="ui-empty">Selecione uma correção.</div>
             )}
           </div>
+        </div>
+      )}
+
+      {aviso && (
+        <div className="pc-toast pc-toast--ok" role="status">
+          <span>{aviso}</span>
         </div>
       )}
 
@@ -365,7 +383,7 @@ function Detalhe({
           <Pill tom="na">{`NC${String(nc.numero).padStart(2, "0")}`}</Pill>
           <Pill tom={FAIXA[nc.gravidade]}>{nc.gravidade}</Pill>
           {nc.reincidente && <Pill tom="lilas">Reincidente</Pill>}
-          <h2 className="pc-detail-title">{nc.titulo}</h2>
+          <h2 className="pc-detail-title" title={nc.titulo}>{nc.titulo}</h2>
         </div>
         <p className="ui-row-sub pc-detail-meta">
           {[nc.ambiente, nc.criterio, nc.referencia].filter(Boolean).join(" · ")}
@@ -430,7 +448,7 @@ function Detalhe({
               </div>
             )}
             <div className="pc-plan-block">
-              <span className="ui-eyebrow">Ação corretiva</span>
+              <span className="ui-eyebrow">O que será feito (ação corretiva)</span>
               <span className="ui-field-wrap ui-field-wrap--area">
                 <textarea
                   className={`ui-input pc-input-tools${vazio(acao) ? " pc-empty" : ""}${mostrarErro("acao") ? " is-invalid" : ""}`}
@@ -448,10 +466,14 @@ function Detalhe({
                   </span>
                 )}
               </span>
-              {mostrarErro("acao") && <span className="ui-field-error">{erros.acao}</span>}
-              {!bloqueado && vazio(acao) && nc.orientacao && (
+              {mostrarErro("acao") ? (
+                <span className="ui-field-error">{erros.acao}</span>
+              ) : (
+                !bloqueado && vazio(acao) && <span className="pc-field-hint">Obrigatório para salvar o plano: escreva o que será feito.</span>
+              )}
+              {!bloqueado && nc.orientacao && acao.trim() !== nc.orientacao.trim() && (
                 <div className="pc-suggest-line">
-                  <span className="ui-row-sub">Orientação do critério: {nc.orientacao}</span>
+                  <span className="ui-row-sub">Ação sugerida: {nc.orientacao}</span>
                   <button type="button" className="pc-link-btn" onClick={() => setAcao(nc.orientacao)}>
                     Usar como ação
                   </button>

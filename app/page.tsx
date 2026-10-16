@@ -17,7 +17,7 @@ import { ocultarAmbiente, mostrarAmbiente, excluirAmbienteOculto, resumoOcultos 
 import { reincidenciaDaNc } from "@/lib/actionPlan";
 import { conciliarNcs } from "@/lib/ncReconcile";
 import { motivoParaNaoExcluir } from "@/lib/userManagement";
-import { diferencasDeTelas, nivelDaTela, telaDaVisao, telasEfetivas, type NivelTela, type TelaKey, type TelasDoUsuario } from "@/lib/screenAccess";
+import { diferencasDeTelas, nivelDaTela, telaDaVisao, telasDiferentesDoPadrao, telasEfetivas, type NivelTela, type TelaKey, type TelasDoUsuario } from "@/lib/screenAccess";
 import { maisRecentesPrimeiro, visitaPadraoParaRegistro } from "@/lib/registerTarget";
 import { listaSemArquivadas, marcarArquivada } from "@/lib/menuActions";
 import { adicionarSugestaoPop, criarRascunhosFaltantes, popsDaVisita } from "@/lib/pops";
@@ -37,7 +37,7 @@ import PcModoTela from "@/components/pc/PcModoTela";
 import ChecklistFocoItem from "@/components/ChecklistFocoItem";
 import { CampoBarra, CampoCabecalho, CampoCorrecoes, CampoInicio, CampoMais, type TelaCampo } from "@/components/campo/CampoTelas";
 import type { ItemMenu } from "@/components/ui/RowMenu";
-import { ROTULO_DO_MODO } from "@/lib/screenMode";
+import { ROTULO_DE_USO, descreverAparelho } from "@/lib/screenMode";
 import { preparacaoDaEmpresa } from "@/lib/companyReadiness";
 import ChecklistEnvStrip from "@/components/ChecklistEnvStrip";
 import CommandPalette from "@/components/CommandPalette";
@@ -1997,7 +1997,6 @@ export default function Home() {
   useEffect(() => {
     // PC: Não conformidades, Plano e Acompanhamento viraram "Correções"; fora do PC essas telas novas não existem.
     if (view === "ncs" || view === "plano" || view === "acompanhamento") setView("correcoes");
-    if (!ehPC && view === "popsvisita") setView("visita");
   }, [ehPC, view]);
   useEffect(() => {
     // PC: a nova evidência já nasce vinculada ao último item tocado (mesma regra do Registrar).
@@ -2127,9 +2126,10 @@ export default function Home() {
     .filter((visita) => visita.status === filtroInicio)
     .slice(0, 4);
 
-  const visitaEmAndamentoDestaque = visitas.find(
-    (visita) => visita.status === "Em andamento"
-  );
+  // "Continue de onde parou" segue a visita aberta no momento; sem uma, a mais recente em andamento.
+  const visitaEmAndamentoDestaque =
+    (visitaAtual && visitaAtual.status === "Em andamento" ? visitas.find((visita) => visita.id === visitaAtual.id) : undefined) ||
+    visitas.find((visita) => visita.status === "Em andamento");
   const progressoVisitaDestaque = visitaEmAndamentoDestaque?.checklist?.length
     ? Math.round(
         (visitaEmAndamentoDestaque.checklist.filter(
@@ -3819,7 +3819,7 @@ export default function Home() {
 
   function atualizarChecklistItem(
     itemId: string,
-    patch: Partial<Pick<ChecklistItem, "status" | "observacao">>
+    patch: Partial<Pick<ChecklistItem, "status" | "observacao" | "criticidade">>
   ) {
     if (!visitaAtual) return;
     if (!exigirPermissao("visitas.executar", visitaAtual.empresaId)) return;
@@ -4020,6 +4020,17 @@ export default function Home() {
       lista.find((item) => item.status === "Pendente") ||
       lista[0]
     );
+  }
+
+  // Cabeçalho do ambiente no Checklist em foco: posição do item dentro do ambiente e progresso.
+  function dadosDoAmbienteEmFoco(foco: ChecklistItem, lista: ChecklistItem[]) {
+    const doAmbiente = lista.filter((item) => item.ambiente === foco.ambiente);
+    return {
+      ambienteRotulo: infosAmbientes.find((info) => info.nome === foco.ambiente)?.rotulo || foco.ambiente,
+      posAmbiente: doAmbiente.findIndex((item) => item.id === foco.id) + 1,
+      totalAmbiente: doAmbiente.length,
+      respondidosAmbiente: doAmbiente.filter((item) => item.status !== "Pendente").length,
+    };
   }
 
   function moverItemFoco(passo: 1 | -1) {
@@ -5022,7 +5033,7 @@ export default function Home() {
           acao: existente ? "usuario.preparacao_atualizada" : "usuario.preparado",
           entidade: "Usuário",
           entidadeId: usuario.id,
-          detalhes: `${usuario.nome} • ${usuario.perfil} • convite ainda não enviado.`,
+          detalhes: `${usuario.nome} • ${usuario.perfil} • convite ainda não enviado.${!existente && usuario.telas ? ` Telas diferentes do padrão: ${telasDiferentesDoPadrao(usuario).join(", ")}.` : ""}`,
         },
         agora
       );
@@ -5437,8 +5448,8 @@ export default function Home() {
     : null;
 
   const itensMenuModo: ItemMenu[] = [
-    ...(Object.keys(ROTULO_DO_MODO) as Array<keyof typeof ROTULO_DO_MODO>).map((opcao): ItemMenu => ({
-      rotulo: `${modo === opcao ? "● " : "○ "}${ROTULO_DO_MODO[opcao]}`,
+    ...(Object.keys(ROTULO_DE_USO) as Array<keyof typeof ROTULO_DE_USO>).map((opcao): ItemMenu => ({
+      rotulo: `${modo === opcao ? "● " : "○ "}${ROTULO_DE_USO[opcao]}`,
       onClick: () => telaModo.escolherModo(opcao),
     })),
     { rotulo: "Voltar ao automático", onClick: () => telaModo.voltarAoAutomatico(), desabilitado: telaModo.preferencia.automatico },
@@ -5472,6 +5483,7 @@ export default function Home() {
         const itemInicial = inicial?.itens.some((item) => item.id === ultimoItemChecklistId) ? ultimoItemChecklistId || "" : "";
         return (
           <RegistrarAgoraModal
+            aparelho={descreverAparelho(telaModo.larguraDoAparelho).toLocaleLowerCase("pt-BR") as "celular" | "tablet" | "computador"}
             visitas={visitas}
             visitaInicialId={inicial?.id || ""}
             itemInicialId={itemInicial}
@@ -5894,15 +5906,23 @@ export default function Home() {
 
         {modo === "campo" && view === "campomais" ? (
           <CampoMais
-            itens={[
-              { id: "visitas", rotulo: "Visitas", onClick: () => irParaMenu("visitas") },
-              ...(visitaAtual ? [{ id: "evidencias", rotulo: "Evidências da visita", onClick: () => irParaMenu("evidencias") }] : []),
-              ...(telaVisivel("relatorio") ? [{ id: "relatorio", rotulo: "Relatório", onClick: () => irParaMenu("relatorio") }] : []),
-              ...(telaVisivel("pops") ? [{ id: "pops", rotulo: "POPs", onClick: () => irParaMenu("pops") }] : []),
-              { id: "ajuda", rotulo: "Ajuda", onClick: () => irParaMenu("ajuda") },
-              { id: "modo", rotulo: "Modo de tela", onClick: () => setView("modotela") },
-              { id: "sincronizar", rotulo: "Sincronizar agora", onClick: () => void atualizarNuvemManualmente() },
-              { id: "sair", rotulo: "Sair", onClick: () => void sairDoSistema() },
+            daVisita={
+              visitaAtual
+                ? [
+                    { id: "central", rotulo: "Central da visita", icone: "central", tom: "azul", onClick: () => irParaMenu("central") },
+                    { id: "ambientes", rotulo: "Ambientes", icone: "ambientes", tom: "turquesa", onClick: () => irParaMenu("ambientes") },
+                    { id: "evidencias", rotulo: "Evidências", icone: "evidencias", tom: "ceu", onClick: () => irParaMenu("evidencias") },
+                    ...(telaVisivel("popsVisita") ? [{ id: "popsvisita", rotulo: "POPs da visita", icone: "pops" as const, tom: "violeta", onClick: () => { setMenuMaisAberto(false); setView("popsvisita"); } }] : []),
+                    ...(telaVisivel("relatorio") ? [{ id: "relatorio", rotulo: "Relatório", icone: "relatorio" as const, tom: "ardosia", onClick: () => irParaMenu("relatorio") }] : []),
+                  ]
+                : []
+            }
+            gerais={[
+              { id: "visitas", rotulo: "Visitas", icone: "visitas", tom: "indigo", onClick: () => irParaMenu("visitas") },
+              { id: "ajuda", rotulo: "Ajuda", icone: "ajuda", tom: "laranja", onClick: () => irParaMenu("ajuda") },
+              { id: "modo", rotulo: "Modo de tela", icone: "modo", tom: "roxo", onClick: () => setView("modotela") },
+              { id: "sincronizar", rotulo: "Sincronizar", icone: "sincronizar", tom: "verde", onClick: () => void atualizarNuvemManualmente() },
+              { id: "sair", rotulo: "Sair", icone: "sair", tom: "vermelho", onClick: () => void sairDoSistema() },
             ]}
             onVersaoCompleta={() => telaModo.escolherModo("completo")}
           />
@@ -5938,10 +5958,6 @@ export default function Home() {
             const posicao = foco ? lista.findIndex((item) => item.id === foco.id) : -1;
             return (
               <section className="campo-tela campo-tela--fixa" aria-label="Checklist">
-                <div>
-                  <h1 className="campo-h1">Checklist</h1>
-                  <p className="campo-sub">{respondidos} de {totalChecklist} · {percentualChecklist}%</p>
-                </div>
                 <div className="campo-chips" role="tablist" aria-label="Ambientes">
                   {infosAmbientes.map((info) => (
                     <button
@@ -5963,6 +5979,8 @@ export default function Home() {
                 {foco ? (
                   <ChecklistFocoItem
                     item={foco}
+                    {...dadosDoAmbienteEmFoco(foco, lista)}
+                    onGravidade={(gravidade) => { setItemFocoId(foco.id); atualizarChecklistItem(foco.id, { criticidade: gravidade }); }}
                     posicao={posicao + 1}
                     total={lista.length}
                     podeEditar={permitido("visitas.executar", visitaAtual.empresaId)}
@@ -5995,6 +6013,7 @@ export default function Home() {
               acaoCorretiva: nc.acaoCorretiva || "",
               responsavelAcao: nc.responsavelAcao || "",
               prazo: nc.prazo || "",
+              orientacao: nc.orientacao || "",
               marcadaFeita: !!nc.marcadaFeita,
             }))}
             onSalvarPlano={(id, dados) =>
@@ -7967,6 +7986,21 @@ export default function Home() {
                     ))}
                   </nav>
                   <div className="eq-check-items" role="list" aria-label="Itens do ambiente">
+                    <select
+                      className="ui-input eq-env-select"
+                      aria-label="Ambiente"
+                      value={ambienteDoFoco || ""}
+                      onChange={(evento) => {
+                        const nome = evento.target.value;
+                        const primeiro = lista.find((item) => item.ambiente === nome && item.status === "Pendente") || lista.find((item) => item.ambiente === nome);
+                        setAmbienteChecklistAtivo(nome);
+                        if (primeiro) setItemFocoId(primeiro.id);
+                      }}
+                    >
+                      {infosAmbientes.map((info) => (
+                        <option key={info.nome} value={info.nome}>{info.rotulo} · {info.respondidos}/{info.total}</option>
+                      ))}
+                    </select>
                     {doAmbiente.map((item, i) => (
                       <button
                         key={item.id}
@@ -7984,6 +8018,8 @@ export default function Home() {
                     {foco ? (
                       <ChecklistFocoItem
                         item={foco}
+                        {...dadosDoAmbienteEmFoco(foco, lista)}
+                        onGravidade={(gravidade) => { setItemFocoId(foco.id); atualizarChecklistItem(foco.id, { criticidade: gravidade }); }}
                         posicao={posicao + 1}
                         total={lista.length}
                         podeEditar={podeEditar}
@@ -8911,17 +8947,17 @@ export default function Home() {
                 </div>
               </article>
 
-              <article className="rounded-2xl bg-white p-5 shadow-sm">
+              <article className="print-block rounded-2xl bg-white p-5 shadow-sm">
                 <div className="text-xs font-extrabold uppercase text-slate-400">
                   Escopo
                 </div>
                 <h2 className="mt-1 text-xl font-extrabold">Ambientes avaliados</h2>
-                <div className="mt-4 flex flex-wrap gap-2">
+                <div className="rep-chips mt-4 flex flex-wrap gap-2">
                   {(visitaAtual.ambientes || []).length > 0 ? (
                     (visitaAtual.ambientes || []).map((ambiente) => (
                       <span
                         key={ambiente}
-                        className="rounded-full bg-[var(--brand-soft)] px-3 py-1 text-xs font-bold text-[color:var(--ink)]"
+                        className="rep-chip rounded-full bg-[var(--brand-soft)] px-3 py-1 text-xs text-[color:var(--ink)]"
                       >
                         {ambiente}
                       </span>
@@ -10495,9 +10531,9 @@ export default function Home() {
                       {usuarioDaSessao?.perfil === "Administrador" && (
                         <button
                           onClick={() => excluir(v.id)}
-                          className="rounded-xl bg-[var(--nc-bg)] px-3 py-2.5 font-semibold text-[color:var(--ink)] sm:px-4"
+                          className="rounded-xl bg-[var(--nc)] px-3 py-2.5 text-white sm:px-4"
                         >
-                          Excluir
+                          Excluir visita
                         </button>
                       )}
                     </div>

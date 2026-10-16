@@ -1425,6 +1425,7 @@ html[data-modo="completo"] .pc-side{display:flex}
 .ui-menu-pop{position:fixed;z-index:120;min-width:11rem;padding:6px;border:1px solid var(--border);border-radius:12px;background:#fff;box-shadow:var(--nav-shadow)}
 .ui-menu-item{display:block;width:100%;min-height:36px;padding:0 10px;border:0;border-radius:8px;background:transparent;text-align:left;font-size:.88rem;font-weight:400;color:var(--ink)}
 .ui-menu-item:hover{background:var(--na-bg)}
+.ui-menu-item.is-danger{color:#B42318}
 .ui-menu-item.is-danger:hover{background:var(--nc-bg)}
 .ui-menu-item:disabled{opacity:.45}
 
@@ -1591,7 +1592,7 @@ html[data-modo="completo"] .pc-side{display:flex}
 .pc-master-list .ui-tabs{flex-wrap:wrap;justify-content:flex-start}
 .pc-master-list{display:flex;flex-direction:column;gap:10px;min-height:0}
 .pc-master-row{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:10px 14px 10px 20px;text-align:left;cursor:pointer;color:var(--ink)}
-.pc-master-row.is-selected{border:2px solid var(--brand)}
+.pc-master-row.is-selected{border:2px solid var(--brand);background:var(--brand-soft);box-shadow:inset 6px 0 0 var(--brand)}
 .pc-master-text{display:flex;flex-direction:column;min-width:0}
 .pc-master-text .ui-row-title-text{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pc-dots{display:inline-flex;flex:none;gap:5px}
@@ -2016,11 +2017,12 @@ html[data-modo="equilibrado"] .pc-rail-list{gap:2px;overflow-y:auto}
 .chk-foco-hint{margin:0;font-size:.86rem;color:var(--ink-2)}
 .chk-grav{display:inline-block;padding:3px 10px;border-radius:999px;background:var(--na-bg);color:var(--ink);font-size:.78rem}
 .chk-grav--nc{background:var(--nc-bg)}.chk-grav--amber{background:var(--pend-bg)}.chk-grav--na{background:var(--na-bg)}
-.chk-grav-linha .chk-grav{opacity:.55}
+.chk-grav-linha .chk-grav{border:0;color:var(--ink);cursor:pointer;opacity:.6}
+.chk-grav-linha .chk-grav:disabled{cursor:default}
 .chk-grav-linha .chk-grav.is-on{opacity:1;box-shadow:inset 0 0 0 2px var(--ink)}
 .chk-grav-linha{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .chk-foco-botoes{display:grid;flex:none;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
-.chk-resp{display:flex;align-items:center;justify-content:center;gap:8px;min-height:68px;padding:8px;border:3px solid transparent;border-radius:16px;color:#fff;font-size:1.05rem;font-weight:400;cursor:pointer}
+.chk-resp{display:flex;align-items:center;justify-content:center;gap:8px;min-height:56px;padding:6px;border:3px solid transparent;border-radius:16px;color:#fff;font-size:1.05rem;font-weight:400;cursor:pointer}
 .chk-resp:disabled{opacity:.6}
 .chk-resp--ok{background:#15803D}.chk-resp--nc{background:#D93A3A}.chk-resp--na{background:#6B7A90}
 .chk-resp.is-on{border-color:var(--ink);box-shadow:0 0 0 3px #fff inset}
@@ -2046,7 +2048,9 @@ html[data-modo="equilibrado"] .pc-rail-list{gap:2px;overflow-y:auto}
 .eq-item-n{display:grid;flex:none;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--pend-bg);font-size:.8rem}
 .eq-item.is-ok .eq-item-n{background:var(--ok-bg)}.eq-item.is-nc .eq-item-n{background:var(--nc-bg)}.eq-item.is-na .eq-item-n{background:var(--na-bg)}
 .eq-item-t{font-size:.88rem;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-@media (max-width:900px){.eq-check-body{grid-template-columns:150px minmax(0,1fr)}.eq-check-items{display:none}}
+@media (max-width:900px){.eq-check-body{grid-template-columns:minmax(190px,230px) minmax(0,1fr)}.eq-check-envs{display:none}}
+.eq-env-select{display:none;flex:none;min-height:44px}
+@media (max-width:900px){.eq-env-select{display:block}}
 
 /* ===== Modo Campo (celular) ===== */
 html[data-modo="campo"] .pc-capsule{display:none}
@@ -2069,7 +2073,8 @@ html:not([data-modo="campo"]) .campo-head,html:not([data-modo="campo"]) .campo-b
 .campo-tela--fixa{overflow:hidden}
 .campo-tela--fixa .chk-foco-obs{overflow-y:auto}
 html[data-modo="campo"] .mobile-app-header{display:none}
-html[data-modo="campo"] .pc-content-pad:has(.campo-tela){padding-bottom:0!important}
+html[data-modo="campo"] .pc-content-pad:has(.campo-tela,.ui-screen){padding-bottom:0!important}
+html[data-modo="campo"] .ui-screen{flex:none;height:calc(100dvh - 137px);overflow:hidden}
 .campo-tela .chk-foco-title{font-size:1.15rem}
 .campo-tela .chk-resp{min-height:60px;font-size:.95rem}
 .campo-h1{margin:0;font-family:var(--font-display),"Outfit",sans-serif;font-size:1.6rem;font-weight:400;color:var(--ink)}
@@ -2110,3 +2115,54 @@ html[data-modo="campo"] .pc-content-pad:has(.campo-tela){padding-bottom:0!import
 .campo-chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px}
 .campo-chip-env{flex:none;padding:8px 14px;border:1px solid var(--border);border-radius:999px;background:#fff;color:var(--ink);font-size:.88rem;white-space:nowrap;cursor:pointer}
 .campo-chip-env.is-on{background:var(--brand-soft);border-color:var(--ink)}
+
+/* ===== Modo de tela: cabeçalho e rodapé fixos, o meio se ajusta ===== */
+.pc-modo-body{display:flex;flex:1;min-height:0;flex-direction:column;gap:12px;overflow-y:auto;padding:2px}
+.pc-modo-bottom{flex:none}
+@media (max-height:820px){.pc-modo-mini{height:64px}.pc-modo-list{display:none}.pc-modo-card{padding:10px}}
+@media (max-height:700px){.pc-modo-mini{display:none}.pc-modo-card-sub{display:none}}
+
+.campo-tela--mais{gap:8px}
+.campo-mais-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.campo-mais-card{display:flex;align-items:center;gap:10px;min-height:56px;padding:8px 10px;border:1px solid var(--border);border-radius:14px;background:#fff;color:var(--ink);text-align:left;cursor:pointer}
+.campo-mais-tile{display:grid;flex:none;place-items:center;width:40px;height:40px;border-radius:12px;color:#fff}
+.campo-mais-label{font-size:.92rem;line-height:1.15}
+
+/* ===== Checklist em foco: cabeçalho do ambiente e ajustes de altura ===== */
+.chk-foco-amb{display:flex;flex:none;flex-direction:column;gap:6px;padding:10px 14px;border-radius:16px;background:var(--brand-soft);color:var(--ink)}
+.chk-foco-amb-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.chk-foco-amb-nome{font-family:var(--font-display),"Outfit",sans-serif;font-size:1.3rem;line-height:1.15;color:var(--ink)}
+.chk-foco-amb-pos{padding:2px 14px;border-radius:999px;background:#fff;font-family:var(--font-display),"Outfit",sans-serif;font-size:1.5rem;line-height:1.3;color:var(--ink)}
+.chk-foco-bar{height:10px;border-radius:999px;background:#fff;overflow:hidden}
+.chk-foco-bar span{display:block;height:100%;border-radius:999px;background:var(--ok)}
+.chk-foco-obs .ui-field-wrap--area{display:flex;flex:1;min-height:76px}
+.chk-foco-obs .ui-field-wrap--area textarea{flex:1;height:auto;min-height:76px;resize:none}
+.chk-grav-linha{flex:none}
+.chk-foco-card{padding:10px 14px;gap:4px}
+
+.ui-screen[aria-label="Relatório da visita"] .ui-title{font-size:1.3rem}
+.ui-screen[aria-label="Relatório da visita"] .ui-card-title{font-size:.95rem}
+.chk-resp{height:56px;min-height:56px!important;padding:4px 6px;font-size:.92rem;line-height:1.1;text-align:center}
+.campo-tela .chk-resp{font-size:.88rem;gap:4px}
+@media (max-width:760px){
+  .pc-modo-mini,.pc-modo-list,.pc-modo-quick,.pc-modo-name .ui-row-sub,.ui-screen .ui-footer>.ui-row-sub{display:none}
+  .pc-modo-card{flex-direction:row;flex-wrap:wrap;align-items:center;padding:10px 44px 10px 12px;gap:2px 8px}
+  .pc-modo-card-sub{flex-basis:100%;display:block}
+  .pc-modo-tags{margin-top:0}
+  .pc-modo-cards{gap:8px}
+  .pc-modo-body{gap:8px}
+  .pc-modo-auto{padding:10px 12px;gap:8px}
+  .pc-modo-device{display:none}
+}
+
+.pc-field-hint{font-size:.84rem;color:var(--ink-2)}
+.pc-toast--ok{background:var(--ok-bg);border-color:var(--ok)}
+.pc-detail-title{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (max-height:780px){.ui-screen .ui-subtitle{display:none}}
+
+/* Chips de escopo no relatório/PDF: o texto nunca passa da pílula nem quebra no meio. */
+.rep-chips{align-items:flex-start;overflow:visible}
+.rep-chip{display:inline-block;max-width:100%;padding:5px 14px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:top}
+.campo-toast{bottom:84px}
+.campo-sugestao{align-self:flex-start;padding:6px 10px;border:0;border-radius:10px;background:var(--info-bg);color:var(--ink);font-size:.84rem;text-align:left;cursor:pointer}
+@media (max-width:900px){.pc-modo-mini,.pc-modo-list{display:none}}

@@ -10,6 +10,8 @@ export type VisitaParaRegistro = {
 };
 
 type Props = {
+  /** Aparelho em uso, para os textos ("câmera do celular", "do tablet", "do computador"). */
+  aparelho?: "celular" | "tablet" | "computador";
   visitas: VisitaParaRegistro[];
   visitaInicialId: string;
   itemInicialId: string;
@@ -43,10 +45,11 @@ function pararTrilhas(stream: MediaStream | null) {
   stream?.getTracks().forEach((trilha) => trilha.stop());
 }
 
-export default function RegistrarAgoraModal({ visitas, visitaInicialId, itemInicialId, onSalvar, onFechar, onIrVisitas }: Props) {
+export default function RegistrarAgoraModal({ aparelho = "computador", visitas, visitaInicialId, itemInicialId, onSalvar, onFechar, onIrVisitas }: Props) {
   const [visitaId, setVisitaId] = useState(visitaInicialId);
   const [trocando, setTrocando] = useState(false);
   const [itemId, setItemId] = useState(itemInicialId);
+  const doAparelho = `do ${aparelho}`;
   const [descricao, setDescricao] = useState("");
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [previa, setPrevia] = useState("");
@@ -156,7 +159,7 @@ export default function RegistrarAgoraModal({ visitas, visitaInicialId, itemInic
       setAvisoCamera(
         negada
           ? "A permissão da câmera foi negada. Libere no navegador ou use “Enviar arquivo”."
-          : "Não encontramos uma câmera neste computador. Use “Enviar arquivo”."
+          : "Não encontramos uma câmera neste aparelho. Use “Enviar arquivo”."
       );
     }
   }
@@ -296,7 +299,7 @@ export default function RegistrarAgoraModal({ visitas, visitaInicialId, itemInic
       setGravando(true);
     } catch (falha) {
       const negada = falha instanceof DOMException && (falha.name === "NotAllowedError" || falha.name === "SecurityError");
-      setAvisoAudio(negada ? "A permissão do microfone foi negada. Libere no navegador ou use “Enviar arquivo”." : "Não encontramos um microfone neste computador.");
+      setAvisoAudio(negada ? "A permissão do microfone foi negada. Libere no navegador ou use “Enviar arquivo”." : "Não encontramos um microfone neste aparelho.");
     }
   }
 
@@ -374,7 +377,7 @@ export default function RegistrarAgoraModal({ visitas, visitaInicialId, itemInic
             role="button"
             tabIndex={camposDesabilitados ? -1 : 0}
             aria-disabled={camposDesabilitados}
-            aria-label="Tirar foto, usa a câmera do computador"
+            aria-label={`Tirar foto, usa a câmera ${doAparelho}`}
             onClick={() => {
               if (!camposDesabilitados && !cameraAtiva) void abrirCamera();
             }}
@@ -388,7 +391,7 @@ export default function RegistrarAgoraModal({ visitas, visitaInicialId, itemInic
             <span className="pc-reg-tile"><NavIcon name="registrar" size={28} strokeWidth={1.9} /></span>
             <span className="pc-reg-card-title">Tirar foto</span>
             <span className="pc-reg-card-sub">
-              {cameraAtiva ? "Câmera ligada" : origem === "camera" && arquivo ? "Foto capturada" : "Usa a câmera do computador"}
+              {cameraAtiva ? "Câmera ligada" : origem === "camera" && arquivo ? "Foto capturada" : `Usa a câmera ${doAparelho}`}
             </span>
             {cameraAtiva && (
               <>
@@ -415,7 +418,7 @@ export default function RegistrarAgoraModal({ visitas, visitaInicialId, itemInic
             role="button"
             tabIndex={camposDesabilitados ? -1 : 0}
             aria-disabled={camposDesabilitados}
-            aria-label="Enviar arquivo, foto ou áudio do computador"
+            aria-label={`Enviar arquivo, foto ou áudio ${doAparelho}`}
             onClick={() => {
               if (!camposDesabilitados) arquivoInputRef.current?.click();
             }}
@@ -433,7 +436,7 @@ export default function RegistrarAgoraModal({ visitas, visitaInicialId, itemInic
             </span>
             <span className="pc-reg-card-title">Enviar arquivo</span>
             <span className="pc-reg-card-sub">
-              {origem === "arquivo" && arquivo ? arquivo.name : "Foto ou áudio do computador (só foto e áudio)"}
+              {origem === "arquivo" && arquivo ? arquivo.name : `Foto ou áudio ${doAparelho} (só foto e áudio)`}
             </span>
             {avisoArquivo && (
               <p className="pc-reg-aviso" role="alert">
@@ -546,8 +549,8 @@ export default function RegistrarAgoraModal({ visitas, visitaInicialId, itemInic
         </label>
 
         <label className="pc-plan-block">
-          <span className="ui-eyebrow">Descrição (opcional)</span>
-          <input className="ui-input" value={descricao} disabled={camposDesabilitados} onChange={(evento) => setDescricao(evento.target.value)} placeholder="Ex.: embalagem avariada no recebimento" />
+          <span className="ui-eyebrow">Anotação (opcional)</span>
+          <input className="ui-input" value={descricao} disabled={camposDesabilitados} onChange={(evento) => setDescricao(evento.target.value)} placeholder="Ex.: embalagem avariada no recebimento" aria-label="Anotação sobre este registro" />
         </label>
 
         <p className="ui-note">Antes de usar a IA, evite enquadrar rostos, crachás e documentos pessoais.</p>
