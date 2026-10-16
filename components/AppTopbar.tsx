@@ -4,6 +4,8 @@ import { NavIcon } from "@/components/NavIcons";
 import { RowMenu, type ItemMenu } from "@/components/ui/RowMenu";
 import { ROTULO_DE_USO, type ModoTela } from "@/lib/screenMode";
 
+const ROTULO_SYNC = { ok: "Sincronizado", pendente: "Sincronizando…", erro: "Sem conexão" } as const;
+
 type Props = {
   /** Caminho exibido no PC, por exemplo: Visitas › Empresa › Central. */
   caminho: string[];
@@ -19,6 +21,8 @@ type Props = {
   micDisponivel: boolean;
   /** Modo de tela em uso e ações da troca rápida (menu ⋯ do topo). */
   modo?: ModoTela;
+  /** Situação da sincronização: chip discreto no topo. */
+  sincronizacao?: { estado: "ok" | "pendente" | "erro"; onClick: () => void };
   automatico?: boolean;
   onEscolherModo?: (modo: ModoTela) => void;
   onVoltarAoAutomatico?: () => void;
@@ -35,6 +39,7 @@ export default function AppTopbar({
   onAbrirCaixa,
   micDisponivel,
   modo,
+  sincronizacao,
   automatico = true,
   onEscolherModo,
   onVoltarAoAutomatico,
@@ -81,6 +86,17 @@ export default function AppTopbar({
       )}
 
       <div className="pc-topbar-end">
+        {sincronizacao && (
+          <button
+            type="button"
+            className={`pc-sync-chip is-${sincronizacao.estado}`}
+            onClick={sincronizacao.onClick}
+            title="Toque para atualizar agora"
+          >
+            <span className="pc-sync-dot" aria-hidden="true" />
+            {ROTULO_SYNC[sincronizacao.estado]}
+          </button>
+        )}
         {empresaAtiva && (
           <span className="pc-company-chip" title={empresaAtiva}>
             <span className="pc-company-chip-label">Empresa ativa</span>

@@ -34,6 +34,8 @@ export type CorrecaoItem = {
   reincidente: boolean;
   dataAnterior: string;
   orientacao: string;
+  /** Ação corretiva real do critério (catálogo normativo); ainda não existe nos dados. */
+  acaoSugerida?: string;
   pop: { codigo: string; titulo: string; existe: boolean } | null;
   evidencias: { id: string; tipo: string; nome: string; quando: string; url: string }[];
   historico: { id: string; quando: string; status: StatusNc; observacao: string }[];
@@ -177,6 +179,30 @@ export default function PcCorrecoes({
           </p>
         </div>
         <div className="ui-head-actions">
+          <div className="ui-toolbar pc-toolbar-compacta">
+            <div className="pc-group-by">
+              <SegmentedTabs<Agrupar>
+                rotulo="Agrupar correções por gravidade ou ambiente"
+                valor={agrupar}
+                onChange={setAgrupar}
+                abas={[
+                  { id: "gravidade", rotulo: "Gravidade" },
+                  { id: "ambiente", rotulo: "Ambiente" },
+                ]}
+              />
+            </div>
+            <div className="pc-quick" role="group" aria-label="Filtros rápidos">
+              <button type="button" className={`pc-quick-btn${rapidos.recorrentes ? " is-on" : ""}`} aria-pressed={rapidos.recorrentes} onClick={() => alternarRapido("recorrentes")}>
+                Recorrentes ({recorrentes})
+              </button>
+              <button type="button" className={`pc-quick-btn${rapidos.semResp ? " is-on" : ""}`} aria-pressed={rapidos.semResp} onClick={() => alternarRapido("semResp")}>
+                Sem responsável ({semResp})
+              </button>
+              <button type="button" className={`pc-quick-btn${rapidos.atrasadas ? " is-on" : ""}`} aria-pressed={rapidos.atrasadas} onClick={() => alternarRapido("atrasadas")}>
+                Atrasadas ({atrasadas})
+              </button>
+            </div>
+          </div>
           {podeEditar && (
             <button type="button" className="ui-btn ui-btn--secondary" onClick={() => setLote(true)} disabled={itens.every((nc) => nc.status === "Resolvida")}>
               Definir em lote
@@ -205,31 +231,6 @@ export default function PcCorrecoes({
         ))}
       </div>
 
-      <div className="ui-toolbar">
-        <div className="pc-group-by">
-          <span className="ui-row-sub">Agrupar por:</span>
-          <SegmentedTabs<Agrupar>
-            rotulo="Agrupar correções"
-            valor={agrupar}
-            onChange={setAgrupar}
-            abas={[
-              { id: "gravidade", rotulo: "Gravidade" },
-              { id: "ambiente", rotulo: "Ambiente" },
-            ]}
-          />
-        </div>
-        <div className="pc-quick" role="group" aria-label="Filtros rápidos">
-          <button type="button" className={`pc-quick-btn${rapidos.recorrentes ? " is-on" : ""}`} aria-pressed={rapidos.recorrentes} onClick={() => alternarRapido("recorrentes")}>
-            Recorrentes ({recorrentes})
-          </button>
-          <button type="button" className={`pc-quick-btn${rapidos.semResp ? " is-on" : ""}`} aria-pressed={rapidos.semResp} onClick={() => alternarRapido("semResp")}>
-            Sem responsável ({semResp})
-          </button>
-          <button type="button" className={`pc-quick-btn${rapidos.atrasadas ? " is-on" : ""}`} aria-pressed={rapidos.atrasadas} onClick={() => alternarRapido("atrasadas")}>
-            Atrasadas ({atrasadas})
-          </button>
-        </div>
-      </div>
 
       {itens.length === 0 ? (
         <div className="ui-empty">Nenhuma não conformidade nesta visita. Itens marcados como Não Conforme no checklist aparecem aqui.</div>
@@ -257,13 +258,13 @@ export default function PcCorrecoes({
                         >
                           <span className="pc-master-text">
                             <span className="ui-row-title-text">
-                              NC{String(nc.numero).padStart(2, "0")} · {nc.titulo}
+                              {nc.ambiente ? `${nc.ambiente} · ` : ""}
+                              {nc.titulo}
                             </span>
-                            <span className="ui-row-sub">
-                              {nc.ambiente} · {nc.criterio}
-                            </span>
+                            <span className="ui-row-sub">{nc.criterio}</span>
                           </span>
                           {nc.reincidente && <Pill tom="lilas">Reincidente</Pill>}
+                          <span className="pc-nc-codigo">NC{String(nc.numero).padStart(2, "0")}</span>
                           {nc.marcadaFeita && nc.status !== "Resolvida" && <Pill tom="info">Feita, aguardando confirmação</Pill>}
                           <Bolinhas nc={nc} />
                         </button>
@@ -385,6 +386,7 @@ function Detalhe({
           {nc.reincidente && <Pill tom="lilas">Reincidente</Pill>}
           <h2 className="pc-detail-title" title={nc.titulo}>{nc.titulo}</h2>
         </div>
+        <div className="pc-detail-sub">
         <p className="ui-row-sub pc-detail-meta">
           {[nc.ambiente, nc.criterio, nc.referencia].filter(Boolean).join(" · ")}
           {nc.reincidente ? ` · também na visita de ${dataMes(nc.dataAnterior)}` : ""}
@@ -399,6 +401,7 @@ function Detalhe({
             { id: "atualizacoes", rotulo: "Atualizações", contagem: nc.historico.length },
           ]}
         />
+        </div>
       </div>
 
       <div className="ui-scroll pc-detail-scroll">
@@ -447,6 +450,8 @@ function Detalhe({
                 <span className="ui-row-sub">O Consultor/RT confirma antes de resolver.</span>
               </div>
             )}
+            <div className="pc-plan-cols">
+              <div className="pc-plan-col pc-plan-col--main">
             <div className="pc-plan-block">
               <span className="ui-eyebrow">O que será feito (ação corretiva)</span>
               <span className="ui-field-wrap ui-field-wrap--area">
@@ -469,18 +474,42 @@ function Detalhe({
               {mostrarErro("acao") ? (
                 <span className="ui-field-error">{erros.acao}</span>
               ) : (
-                !bloqueado && vazio(acao) && <span className="pc-field-hint">Obrigatório para salvar o plano: escreva o que será feito.</span>
+                !bloqueado && vazio(acao) && <span className="pc-field-hint" role="note">Obrigatório para salvar o plano.</span>
               )}
-              {!bloqueado && nc.orientacao && acao.trim() !== nc.orientacao.trim() && (
+              {!bloqueado && nc.acaoSugerida && acao.trim() !== nc.acaoSugerida.trim() && (
                 <div className="pc-suggest-line">
-                  <span className="ui-row-sub">Ação sugerida: {nc.orientacao}</span>
-                  <button type="button" className="pc-link-btn" onClick={() => setAcao(nc.orientacao)}>
-                    Usar como ação
+                  <span className="ui-row-sub">Ação sugerida: {nc.acaoSugerida}</span>
+                  <button type="button" className="pc-link-btn" onClick={() => setAcao(nc.acaoSugerida || "")}>
+                    Usar ação sugerida
                   </button>
                 </div>
               )}
             </div>
 
+            <div className="pc-plan-block">
+              <span className="ui-eyebrow">POP relacionado</span>
+              {nc.pop ? (
+                <div className="pc-pop-line">
+                  <span>{nc.pop.codigo ? `${nc.pop.codigo} · ` : ""}{nc.pop.titulo}</span>
+                  {nc.pop.existe ? (
+                    <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={onAbrirPop}>
+                      Abrir
+                    </button>
+                  ) : (
+                    podeEditar && (
+                      <button type="button" className="ui-btn ui-btn--primary ui-btn--small" onClick={() => onCriarPop(nc.pop!.codigo)}>
+                        Criar POP
+                      </button>
+                    )
+                  )}
+                </div>
+              ) : (
+                <span className="ui-row-sub">Sem POP sugerido para este critério.</span>
+              )}
+            </div>
+
+              </div>
+              <div className="pc-plan-col">
             <div className="pc-plan-two">
               <label className="pc-plan-block">
                 <span className="ui-eyebrow">Responsável</span>
@@ -508,71 +537,49 @@ function Detalhe({
                 {!bloqueado && (
                   <span className="pc-suggest-line">
                     <span className="ui-row-sub">
-                      Sugerido: {sugestao.dias} dias ({nc.gravidade === "Rotina" ? "leve" : nc.gravidade.toLocaleLowerCase("pt-BR")}) · {dataMes(sugestao.data)}
+                      Sugerido: {sugestao.dias} dias ({nc.gravidade === "Rotina" ? "leve" : nc.gravidade.toLocaleLowerCase("pt-BR")})
                     </span>
-                    <button type="button" className="pc-link-btn" onClick={() => setPrazo(sugestao.data)}>
-                      Usar sugestão
+                    <button type="button" className="pc-link-btn" title={`Usar ${dataMes(sugestao.data)}`} onClick={() => setPrazo(sugestao.data)}>
+                      Usar prazo
                     </button>
                   </span>
                 )}
               </label>
             </div>
 
-            <div className="pc-plan-block">
-              <span className="ui-eyebrow">POP relacionado</span>
-              {nc.pop ? (
-                <div className="pc-pop-line">
-                  <span>{nc.pop.codigo ? `${nc.pop.codigo} · ` : ""}{nc.pop.titulo}</span>
-                  {nc.pop.existe ? (
-                    <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={onAbrirPop}>
-                      Abrir
-                    </button>
-                  ) : (
-                    podeEditar && (
-                      <button type="button" className="ui-btn ui-btn--primary ui-btn--small" onClick={() => onCriarPop(nc.pop!.codigo)}>
-                        Criar POP
-                      </button>
-                    )
-                  )}
-                </div>
-              ) : (
-                <span className="ui-row-sub">Sem POP sugerido para este critério.</span>
-              )}
-            </div>
-
             {!bloqueado && (
               <div className="pc-plan-block">
                 <span className="ui-eyebrow">Situação</span>
-                <div className="pc-status-buttons" role="group" aria-label="Situação da correção">
-                  {(
-                    [
-                      ["identificadas", "Identificada"],
-                      ["plano", "Com plano"],
-                      ["acompanhamento", "Em acompanhamento"],
-                      ["resolvidas", "Resolvida"],
-                    ] as [EtapaCorrecao, string][]
-                  ).map(([chave, rotulo]) => (
-                    <button
-                      key={chave}
-                      type="button"
-                      aria-pressed={etapaAlvo === chave}
-                      className={`pc-status-btn${etapaAlvo === chave ? " is-on" : ""}`}
-                      onClick={() => {
-                        if (chave === "resolvidas") {
-                          setStatusNovo("Resolvida");
-                          onAba("atualizacoes");
-                          return;
-                        }
-                        setEtapaAlvo(chave);
-                      }}
-                    >
-                      {rotulo}
-                    </button>
-                  ))}
-                </div>
-                <span className="ui-row-sub">Resolvida é registrada na aba Atualizações, com texto e evidência.</span>
+                <select
+                  className="ui-input"
+                  aria-label="Situação da correção"
+                  value={etapaAlvo}
+                  onChange={(evento) => {
+                    const chave = evento.target.value as EtapaCorrecao;
+                    if (chave === "resolvidas") {
+                      setStatusNovo("Resolvida");
+                      onAba("atualizacoes");
+                      return;
+                    }
+                    setEtapaAlvo(chave);
+                  }}
+                >
+                  <option value="identificadas">Identificada</option>
+                  <option value="plano">Com plano</option>
+                  <option value="acompanhamento">Em acompanhamento</option>
+                  <option value="resolvidas">Resolvida (registrar em Atualizações)</option>
+                </select>
               </div>
             )}
+                {!bloqueado && (
+                  <div className="pc-plan-salvar">
+                    <button type="button" className="ui-btn ui-btn--save" onClick={salvar}>
+                      Salvar plano
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
             {resolvida && <div className="ui-note">Correção resolvida: o plano está protegido. Novas atualizações ou reabertura ficam na aba Atualizações.</div>}
           </>
         )}
@@ -652,14 +659,6 @@ function Detalhe({
         )}
       </div>
 
-      {aba === "plano" && !bloqueado && (
-        <div className="pc-detail-foot">
-          <span className="ui-row-sub">Salve para guardar o plano desta correção.</span>
-          <button type="button" className="ui-btn ui-btn--save" onClick={salvar}>
-            Salvar plano
-          </button>
-        </div>
-      )}
       {aba === "atualizacoes" && podeEditar && (
         <div className="pc-detail-foot">
           <span className="ui-row-sub">{texto.trim() ? "Pronto para registrar." : "Escreva a atualização para registrar."}</span>

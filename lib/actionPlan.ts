@@ -165,3 +165,16 @@ export function validarPlano(
   }
   return erros;
 }
+
+/** Contagem de NCs por gravidade, incluindo as leves (gravidade "Rotina"). */
+export function contarNcsPorGravidade(ncs: { criticidade?: string }[]): { criticas: number; importantes: number; leves: number } {
+  let criticas = 0;
+  let importantes = 0;
+  let leves = 0;
+  for (const nc of ncs) {
+    if (nc.criticidade === "Crítica") criticas += 1;
+    else if (nc.criticidade === "Importante") importantes += 1;
+    else leves += 1;
+  }
+  return { criticas, importantes, leves };
+}

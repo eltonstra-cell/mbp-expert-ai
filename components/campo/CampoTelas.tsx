@@ -170,7 +170,8 @@ export type CorrecaoCampo = {
   acaoCorretiva: string;
   responsavelAcao: string;
   prazo: string;
-  orientacao: string;
+  /** Ação corretiva real do critério; ainda não existe nos dados, então fica vazio. */
+  acaoSugerida?: string;
   marcadaFeita: boolean;
 };
 
@@ -270,10 +271,10 @@ export function CampoCorrecoes({
               <label className="campo-field">
                 <span className="ui-eyebrow">O que será feito (ação corretiva)</span>
                 <textarea className={`ui-input${erroAcao ? " is-invalid" : ""}`} rows={3} value={acao} disabled={!podeEditar} aria-invalid={!!erroAcao} onChange={(e) => { setAcao(e.target.value); setTocou(true); }} onBlur={() => setTocou(true)} />
-                {erroAcao ? <span className="campo-erro">{erroAcao}</span> : !acao.trim() && <span className="campo-sub">Obrigatório para salvar o plano.</span>}
-                {podeEditar && editando.orientacao && acao.trim() !== editando.orientacao.trim() && (
-                  <button type="button" className="campo-sugestao" onClick={() => setAcao(editando.orientacao)}>
-                    Ação sugerida: {editando.orientacao} · toque para usar
+                {erroAcao ? <span className="campo-erro">{erroAcao}</span> : !acao.trim() && <span className="pc-field-hint" role="note">Obrigatório para salvar o plano.</span>}
+                {podeEditar && editando.acaoSugerida && acao.trim() !== editando.acaoSugerida.trim() && (
+                  <button type="button" className="campo-sugestao" onClick={() => setAcao(editando.acaoSugerida || "")}>
+                    Ação sugerida: {editando.acaoSugerida} · toque para usar
                   </button>
                 )}
               </label>

@@ -9,6 +9,7 @@ import { ListRow } from "@/components/ui/ListRow";
 import { Pill } from "@/components/ui/Pill";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import TelasLiberadasModal from "@/components/pc/TelasLiberadasModal";
+import ConfirmarExclusaoModal from "@/components/pc/ConfirmarExclusaoModal";
 import { telasDiferentesDoPadrao, type TelasDoUsuario } from "@/lib/screenAccess";
 import type { ItemMenu } from "@/components/ui/RowMenu";
 import { acoesDoAcesso } from "@/lib/menuActions";
@@ -80,6 +81,7 @@ export default function PcAcessos({
 }: Props) {
   const [telasDe, setTelasDe] = useState<UsuarioSistema | null>(null);
   const [telasDoNovo, setTelasDoNovo] = useState(false);
+  const [excluirDe, setExcluirDe] = useState<UsuarioSistema | null>(null);
   const [filtroPessoas, setFiltroPessoas] = useState<FiltroPessoas>("ativos");
   const [aba, setAba] = useState<Aba>("pessoas");
   const [tocado, setTocado] = useState<{ nome: boolean; email: boolean }>({ nome: false, email: false });
@@ -296,10 +298,7 @@ export default function PcAcessos({
                         return {
                           rotulo: "Excluir usuário…",
                           perigo: true,
-                          onClick: () => {
-                            const digitado = window.prompt(`Excluir ${usuario.nome} definitivamente? Isso só é possível porque a pessoa nunca entrou no sistema. Para confirmar, digite EXCLUIR:`);
-                            if (digitado === "EXCLUIR") onExcluir(usuario.id);
-                          },
+                          onClick: () => setExcluirDe(usuario),
                         };
                       default:
                         return { rotulo: "Reativar acesso", onClick: () => onAlterarStatus(usuario.id, "Convidado") };
@@ -340,6 +339,18 @@ export default function PcAcessos({
           </div>
         )}
       </div>
+      {excluirDe && (
+        <ConfirmarExclusaoModal
+          titulo="Excluir usuário"
+          nome={`${excluirDe.nome} · ${excluirDe.email}`}
+          explicacao="A exclusão é definitiva. Só é possível porque esta pessoa nunca entrou no sistema; quem já entrou deve ser desativado."
+          onCancelar={() => setExcluirDe(null)}
+          onConfirmar={() => {
+            onExcluir(excluirDe.id);
+            setExcluirDe(null);
+          }}
+        />
+      )}
       {telasDoNovo && formulario && (
         <TelasLiberadasModal
           usuario={{

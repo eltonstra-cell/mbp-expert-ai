@@ -24,7 +24,7 @@ import { adicionarSugestaoPop, criarRascunhosFaltantes, popsDaVisita } from "@/l
 import UpdateNotice from "@/components/UpdateNotice";
 import PcAcompanhamento from "@/components/pc/PcAcompanhamento";
 import PcPlano from "@/components/pc/PcPlano";
-import { alteracoesEmLote, resumoDoPlano } from "@/lib/actionPlan";
+import { alteracoesEmLote, contarNcsPorGravidade, resumoDoPlano } from "@/lib/actionPlan";
 import PcNcs from "@/components/pc/PcNcs";
 import PcEvidencias from "@/components/pc/PcEvidencias";
 import PcAmbientes from "@/components/pc/PcAmbientes";
@@ -35,6 +35,12 @@ import PcEmpresas from "@/components/pc/PcEmpresas";
 import { useScreenMode } from "@/components/useScreenMode";
 import PcModoTela from "@/components/pc/PcModoTela";
 import ChecklistFocoItem from "@/components/ChecklistFocoItem";
+import PcChecklist, { type ApoioDoItem } from "@/components/pc/PcChecklist";
+import RevisaoTranscricao from "@/components/RevisaoTranscricao";
+import { iniciarMedidorDeVolume } from "@/components/useNivelDeAudio";
+import { MENSAGEM_SEM_FALA, ehSilencio } from "@/lib/transcricao";
+import { rotuloDoRelatorio, seloDoPdf } from "@/lib/reportLabels";
+import { sincronizarNcDoItem } from "@/lib/checklistNcs";
 import { CampoBarra, CampoCabecalho, CampoCorrecoes, CampoInicio, CampoMais, type TelaCampo } from "@/components/campo/CampoTelas";
 import type { ItemMenu } from "@/components/ui/RowMenu";
 import { ROTULO_DE_USO, descreverAparelho } from "@/lib/screenMode";
@@ -838,6 +844,8 @@ export default function Home() {
         audio: { echoCancellation: true, noiseSuppression: true },
       });
       streamVozRef.current = stream;
+      const medidor = iniciarMedidorDeVolume(stream);
+      const inicioDoDitado = Date.now();
 
       const tiposPreferidos = [
         "audio/mp4",
@@ -884,8 +892,16 @@ export default function Home() {
         gravadorVozRef.current = null;
         setCampoVozAtivo(null);
 
+        const pico = medidor.pico();
+        medidor.parar();
+        const duracaoDitado = Math.max(0, Math.round((Date.now() - inicioDoDitado) / 1000));
         const tipoAudio = gravador.mimeType || mimeType || "audio/mp4";
         const audio = new Blob(partes, { type: tipoAudio });
+        // Sem som: não envia para transcrever.
+        if (ehSilencio(pico)) {
+          setAvisoVoz(MENSAGEM_SEM_FALA);
+          return;
+        }
         if (!audio.size) {
           window.alert("Não detectei áudio. Toque em Falar, dite o texto e toque novamente para encerrar.");
           return;
@@ -901,6 +917,7 @@ export default function Home() {
             : "m4a";
           const form = new FormData();
           form.append("audio", audio, `ditado.${extensao}`);
+          form.append("duracao", String(duracaoDitado));
 
           const response = await fetch("/api/audio/transcrever", {
             method: "POST",
@@ -908,16 +925,21 @@ export default function Home() {
             body: form,
           });
           const body = await response.json().catch(() => null);
+          if (body?.semFala) {
+            setAvisoVoz(MENSAGEM_SEM_FALA);
+            return;
+          }
           if (!response.ok) {
             throw new Error(body?.error || "Não foi possível transcrever o áudio.");
           }
 
           const texto = typeof body?.text === "string" ? body.text.trim() : "";
           if (!texto) {
-            window.alert("Não consegui identificar fala nesse áudio. Tente novamente falando mais próximo do aparelho.");
+            setAvisoVoz(MENSAGEM_SEM_FALA);
             return;
           }
-          aoTranscrever(texto);
+          // O texto ouvido só entra no campo depois da revisão.
+          setRevisaoVoz({ texto, aplicar: aoTranscrever });
         } catch (error) {
           window.alert(error instanceof Error ? error.message : "Não foi possível transcrever o áudio.");
         }
@@ -972,6 +994,13 @@ export default function Home() {
   const [filtroChecklistRapido, setFiltroChecklistRapido] = useState<FiltroChecklistRapido>("Todos");
   const [ultimoItemChecklistId, setUltimoItemChecklistId] = useState<string | null>(null);
   const [itemFocoId, setItemFocoId] = useState<string | null>(null);
+  const [revisaoVoz, setRevisaoVoz] = useState<{ texto: string; aplicar: (texto: string) => void } | null>(null);
+  const [avisoVoz, setAvisoVoz] = useState("");
+  useEffect(() => {
+    if (!avisoVoz) return;
+    const tempo = window.setTimeout(() => setAvisoVoz(""), 3500);
+    return () => window.clearTimeout(tempo);
+  }, [avisoVoz]);
   const [novoEquipamentoVisitaNome, setNovoEquipamentoVisitaNome] = useState("");
   const [novoEquipamentoVisitaQuantidade, setNovoEquipamentoVisitaQuantidade] = useState("1");
   const [msg, setMsg] = useState("");
@@ -2405,12 +2434,7 @@ export default function Home() {
   const proximoAmbienteVisita = resumoAmbientesVisita.find(
     (ambiente) => ambiente.itens === 0 || ambiente.respondidos < ambiente.itens
   )?.ambiente;
-  const ncsCriticasVisita = ncsVisita.filter(
-    (nc) => nc.criticidade === "Crítica"
-  ).length;
-  const ncsImportantesVisita = ncsVisita.filter(
-    (nc) => nc.criticidade === "Importante"
-  ).length;
+  const { criticas: ncsCriticasVisita, importantes: ncsImportantesVisita, leves: ncsLevesVisita } = contarNcsPorGravidade(ncsVisita);
   const ncsSemResponsavel = ncsVisita.filter(
     (nc: any) => !(nc.responsavelAcao || "").trim()
   ).length;
@@ -2426,7 +2450,7 @@ export default function Home() {
     ncsSemResponsavel === 0 &&
     ncsSemPrazo === 0;
 
-  async function baixarPdfRelatorio(opcoes?: { parcial?: boolean }) {
+  async function baixarPdfRelatorio(opcoes?: { parcial?: boolean; previa?: boolean }) {
     if (!visitaAtual || !empresaVisita || gerandoPdf) return;
     if (!exigirPermissao("relatorios.exportar", visitaAtual.empresaId)) return;
 
@@ -2720,11 +2744,13 @@ export default function Home() {
           paginaAltura - 4.5
         );
 
-        if (opcoes?.parcial) {
+        // O selo (parcial ou prévia) vai no rodapé de todas as páginas.
+        const selo = seloDoPdf(opcoes?.parcial ? "parcial" : opcoes?.previa ? "previa" : "oficial");
+        if (selo) {
           pdf.setFont("helvetica", "bold");
           pdf.setFontSize(8);
           pdf.setTextColor(18, 32, 43);
-          pdf.text("RELATÓRIO PARCIAL", paginaLargura / 2, paginaAltura - 4.5, { align: "center" });
+          pdf.text(selo, paginaLargura / 2, paginaAltura - 4.5, { align: "center" });
           pdf.setFont("helvetica", "normal");
           pdf.setFontSize(7.5);
           pdf.setTextColor(100, 116, 139);
@@ -2785,9 +2811,9 @@ export default function Home() {
         `Foram registradas ${ncsVisita.length} não conformidade(s): ${ncsResolvidas} resolvida(s), ${ncsEmTratamento} em tratamento e ${ncsSomenteAbertas} aberta(s).`
       );
 
-      if (ncsCriticasVisita > 0 || ncsImportantesVisita > 0) {
+      if (ncsCriticasVisita > 0 || ncsImportantesVisita > 0 || ncsLevesVisita > 0) {
         partes.push(
-          `Entre os achados, ${ncsCriticasVisita} foram classificados como críticos e ${ncsImportantesVisita} como importantes.`
+          `Entre os achados, ${ncsCriticasVisita} foram classificados como críticos, ${ncsImportantesVisita} como importantes e ${ncsLevesVisita} como leves.`
         );
       }
 
@@ -3900,35 +3926,7 @@ export default function Home() {
 
       let ncs = o.ncs || [];
       if (itemAtualizado) {
-        const item = itemAtualizado as ChecklistItem;
-        const idNc = `${visitaAtual.id}:${item.id}`;
-        if (item.status === "Não Conforme") {
-          const existente = ncs.find((nc) => nc.id === idNc);
-          const nc = {
-            id: idNc,
-            empresaId: visitaAtual.empresaId,
-            visitaId: visitaAtual.id,
-            ambiente: item.ambiente,
-            checklistItemId: item.id,
-            titulo: item.titulo,
-            categoria: item.categoria,
-            criticidade: item.criticidade || "Rotina" as const,
-            referencia: item.referencia || "",
-            orientacao: item.orientacao || "",
-            observacao: item.observacao || "",
-            prioridade: item.criticidade || "Rotina",
-            status: existente?.status || "Aberta" as const,
-            inativaNoChecklist: false,
-            criadoEm: existente?.criadoEm || new Date().toISOString(),
-          };
-          ncs = existente ? ncs.map((x) => x.id === idNc ? { ...x, ...nc } : x) : [nc, ...ncs];
-        } else {
-          // Não apaga a NC: apenas a retira dos módulos ativos. Se o item voltar
-          // a "Não Conforme", todo o plano, evidências e histórico reaparecem.
-          ncs = ncs.map((nc) =>
-            nc.id === idNc ? { ...nc, inativaNoChecklist: true } : nc
-          );
-        }
+        ncs = sincronizarNcDoItem(ncs, { id: visitaAtual.id, empresaId: visitaAtual.empresaId }, itemAtualizado as ChecklistItem, new Date().toISOString());
       }
 
       return { ...o, visitas: visitasAtualizadas, ncs };
@@ -4278,7 +4276,7 @@ export default function Home() {
       await new Promise((resolver) => window.setTimeout(resolver, 80));
     }
     try {
-      await baixarPdfRelatorio({ parcial: modo === "parcial" });
+      await baixarPdfRelatorio({ parcial: modo === "parcial", previa: modo === "previa" });
     } finally {
       setEmissaoParcial(false);
     }
@@ -5460,6 +5458,21 @@ export default function Home() {
     <IaPermitidaContext.Provider value={deveExibirRecursosDeIa(usuarioDaSessao)}>
     <div className="min-h-screen bg-[var(--bg)]">
       <UpdateNotice />
+      {revisaoVoz && (
+        <RevisaoTranscricao
+          texto={revisaoVoz.texto}
+          onDescartar={() => setRevisaoVoz(null)}
+          onUsar={(texto) => {
+            revisaoVoz.aplicar(texto);
+            setRevisaoVoz(null);
+          }}
+        />
+      )}
+      {avisoVoz && (
+        <div className="pc-toast voz-toast" role="status">
+          <span>{avisoVoz}</span>
+        </div>
+      )}
       {aviso && (
         <div className="pc-toast" role="status">
           <span>{aviso.texto}</span>
@@ -5820,8 +5833,8 @@ export default function Home() {
             <CampoCabecalho
               empresa={nomeEmFormatoNatural(atual?.nomeFantasia) || ""}
               sincronizacao={{
-                estado: syncStatus === "sincronizado" ? "ok" : syncStatus === "erro" ? "erro" : "pendente",
-                rotulo: syncStatus === "sincronizado" ? "Dados sincronizados" : syncStatus === "conectando" ? "Sincronizando dados" : "Verificar sincronização",
+                estado: !estaOnline || syncStatus === "erro" ? "erro" : syncStatus === "sincronizado" ? "ok" : "pendente",
+                rotulo: !estaOnline ? "Sem conexão" : syncStatus === "sincronizado" ? "Sincronizado" : syncStatus === "conectando" ? "Sincronizando…" : "Verificar sincronização",
                 onClick: () => void atualizarNuvemManualmente(),
               }}
               menuModo={itensMenuModo}
@@ -5845,6 +5858,10 @@ export default function Home() {
           onAbrirCaixa={(comVoz) => { setCaixaComVoz(comVoz); setCaixaAberta(true); }}
           micDisponivel={deveExibirRecursosDeIa(usuarioDaSessao)}
           modo={modo}
+          sincronizacao={{
+            estado: !estaOnline || syncStatus === "erro" ? "erro" : syncStatus === "sincronizado" ? "ok" : "pendente",
+            onClick: () => void atualizarNuvemManualmente(),
+          }}
           automatico={telaModo.preferencia.automatico}
           onEscolherModo={telaModo.escolherModo}
           onVoltarAoAutomatico={telaModo.voltarAoAutomatico}
@@ -6013,7 +6030,6 @@ export default function Home() {
               acaoCorretiva: nc.acaoCorretiva || "",
               responsavelAcao: nc.responsavelAcao || "",
               prazo: nc.prazo || "",
-              orientacao: nc.orientacao || "",
               marcadaFeita: !!nc.marcadaFeita,
             }))}
             onSalvarPlano={(id, dados) =>
@@ -7949,6 +7965,93 @@ export default function Home() {
               </div>
             )}
           </section>)
+        ) : view === "checklist" && visitaAtual && modo === "completo" ? (
+          (() => {
+            const lista = itensEmOrdem();
+            const foco = itemEmFoco();
+            const posicao = foco ? lista.findIndex((item) => item.id === foco.id) : -1;
+            const ambienteDoFoco = foco?.ambiente || ambienteChecklistAtivo || "";
+            const doAmbiente = lista.filter((item) => item.ambiente === ambienteDoFoco);
+            const podeEditar = permitido("visitas.executar", visitaAtual.empresaId);
+            let apoio: ApoioDoItem = { evidencias: [] };
+            if (foco) {
+              const linhaPop = popsDaVisita([{ numero: 1, categoria: foco.categoria }], empresaVisita?.pops || []).linhas[0];
+              const anteriores = db.visitas
+                .filter((visita) => visita.empresaId === visitaAtual.empresaId && visita.id !== visitaAtual.id && visita.data <= visitaAtual.data)
+                .sort((a, b) => b.data.localeCompare(a.data) || b.criadoEm.localeCompare(a.criadoEm));
+              let ultimaVisita: ApoioDoItem["ultimaVisita"];
+              for (const anterior of anteriores) {
+                const igual = (anterior.checklist || []).find(
+                  (item) => item.status !== "Pendente" && (item.id === foco.id || (item.titulo === foco.titulo && item.ambiente === foco.ambiente))
+                );
+                if (igual) {
+                  ultimaVisita = { data: fdata(anterior.data), status: igual.status, observacao: igual.observacao || "" };
+                  break;
+                }
+              }
+              apoio = {
+                orientacao: foco.orientacao || undefined,
+                baseLegal: foco.referencia ? { referencia: foco.referencia } : undefined,
+                pop: linhaPop ? { codigo: linhaPop.sugestao.codigo, titulo: linhaPop.sugestao.titulo, situacao: linhaPop.situacao } : undefined,
+                ultimaVisita,
+                evidencias: (db.evidencias || [])
+                  .filter((ev) => ev.visitaId === visitaAtual.id && ev.checklistItemId === foco.id)
+                  .map((ev) => ({ id: ev.id, url: urlEvidencia(ev), tipo: ev.tipo, nome: ev.descricao?.trim() || ev.nomeArquivo })),
+              };
+            }
+            return (
+              <PcChecklist
+                titulo="Checklist"
+                subtitulo={`${respondidos} de ${totalChecklist} respondidos · ${percentualChecklist}% · ${nomeParaExibir(empresaVisita)}`}
+                ambientes={infosAmbientes}
+                ambienteAtual={ambienteDoFoco}
+                onAmbiente={(nome) => {
+                  const primeiro = lista.find((item) => item.ambiente === nome && item.status === "Pendente") || lista.find((item) => item.ambiente === nome);
+                  setAmbienteChecklistAtivo(nome);
+                  if (primeiro) setItemFocoId(primeiro.id);
+                }}
+                fila={doAmbiente.map((item) => ({ id: item.id, status: item.status }))}
+                itemAtualId={foco?.id || ""}
+                onItem={(id) => {
+                  setItemFocoId(id);
+                  setUltimoItemChecklistId(id);
+                }}
+                onVoltar={() => setView("visita")}
+                apoio={apoio}
+                principal={
+                  foco ? (
+                    <ChecklistFocoItem
+                      item={foco}
+                      semCabecalhoDeAmbiente
+                      {...dadosDoAmbienteEmFoco(foco, lista)}
+                      onGravidade={(gravidade) => {
+                        setItemFocoId(foco.id);
+                        atualizarChecklistItem(foco.id, { criticidade: gravidade });
+                      }}
+                      posicao={posicao + 1}
+                      total={lista.length}
+                      podeEditar={podeEditar}
+                      temAnterior={posicao > 0}
+                      temProximo={posicao < lista.length - 1}
+                      onStatus={(status) => {
+                        setItemFocoId(foco.id);
+                        atualizarChecklistItem(foco.id, { status, ...(status !== "Não Conforme" ? { observacao: "" } : {}) });
+                      }}
+                      onObservacao={(texto) => atualizarChecklistItem(foco.id, { observacao: texto })}
+                      onFoto={() => {
+                        setUltimoItemChecklistId(foco.id);
+                        registrarRapido();
+                      }}
+                      onAnterior={() => moverItemFoco(-1)}
+                      onProximo={() => moverItemFoco(1)}
+                    />
+                  ) : (
+                    <p className="ui-row-sub">Esta visita não tem itens de checklist.</p>
+                  )
+                }
+              />
+            );
+          })()
         ) : view === "checklist" && visitaAtual && modo === "equilibrado" ? (
           (() => {
             const lista = itensEmOrdem();
@@ -8768,7 +8871,7 @@ export default function Home() {
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div>
                   <div className="text-xs font-extrabold uppercase tracking-wider text-[color:var(--brand)]">
-                    Encerramento da inspeção
+                    {rotuloDoRelatorio(visitaAtual.status)}
                   </div>
                   <h1 className="mt-1 text-2xl font-extrabold">
                     Relatório da visita
@@ -8879,7 +8982,7 @@ export default function Home() {
                 ) : null;
               })()}
 
-              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
                 <div className="rounded-xl bg-[var(--nc-bg)] p-4">
                   <div className="text-xs font-extrabold uppercase text-red-700">NCs críticas</div>
                   <div className="mt-1 text-2xl font-extrabold text-red-950">{ncsCriticasVisita}</div>
@@ -8887,6 +8990,10 @@ export default function Home() {
                 <div className="rounded-xl bg-[var(--pend-bg)] p-4">
                   <div className="text-xs font-extrabold uppercase text-amber-700">NCs importantes</div>
                   <div className="mt-1 text-2xl font-extrabold text-amber-950">{ncsImportantesVisita}</div>
+                </div>
+                <div className="rounded-xl bg-[var(--info-bg)] p-4">
+                  <div className="text-xs font-extrabold uppercase text-sky-700">NCs leves</div>
+                  <div className="mt-1 text-2xl font-extrabold text-sky-950">{ncsLevesVisita}</div>
                 </div>
                 <div className="rounded-xl bg-[var(--brand-soft)] p-4">
                   <div className="text-xs font-extrabold uppercase text-blue-700">Ações definidas</div>

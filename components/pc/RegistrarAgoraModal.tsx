@@ -45,6 +45,9 @@ function pararTrilhas(stream: MediaStream | null) {
   stream?.getTracks().forEach((trilha) => trilha.stop());
 }
 
+import { iniciarMedidorDeVolume } from "@/components/useNivelDeAudio";
+import { MENSAGEM_SEM_FALA, ehSilencio } from "@/lib/transcricao";
+
 export default function RegistrarAgoraModal({ aparelho = "computador", visitas, visitaInicialId, itemInicialId, onSalvar, onFechar, onIrVisitas }: Props) {
   const [visitaId, setVisitaId] = useState(visitaInicialId);
   const [trocando, setTrocando] = useState(false);
@@ -68,6 +71,7 @@ export default function RegistrarAgoraModal({ aparelho = "computador", visitas, 
   const [niveis, setNiveis] = useState<number[]>(() => Array.from({ length: 14 }, () => 0));
   const audioCtxRef = useRef<AudioContext | null>(null);
   const medidorRef = useRef<number | null>(null);
+  const volumeRef = useRef<{ pico: () => number; parar: () => void } | null>(null);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamCameraRef = useRef<MediaStream | null>(null);
@@ -101,6 +105,8 @@ export default function RegistrarAgoraModal({ aparelho = "computador", visitas, 
     medidorRef.current = null;
     void audioCtxRef.current?.close().catch(() => undefined);
     audioCtxRef.current = null;
+    volumeRef.current?.parar();
+    volumeRef.current = null;
     if (videoRef.current) videoRef.current.srcObject = null;
   }, []);
 
@@ -233,6 +239,7 @@ export default function RegistrarAgoraModal({ aparelho = "computador", visitas, 
       cancelarCamera();
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamAudioRef.current = stream;
+      volumeRef.current = iniciarMedidorDeVolume(stream);
       const gravador = new MediaRecorder(stream);
       trechosRef.current = [];
       setBytesGravados(0);
@@ -256,9 +263,17 @@ export default function RegistrarAgoraModal({ aparelho = "computador", visitas, 
         audioCtxRef.current = null;
         setNiveis(Array.from({ length: 14 }, () => 0));
         setGravando(false);
+        const picoDoVolume = volumeRef.current?.pico() ?? 1;
+        volumeRef.current?.parar();
+        volumeRef.current = null;
         const tipo = gravador.mimeType || "audio/webm";
         const blob = new Blob(trechosRef.current, { type: tipo });
         if (blob.size === 0) return;
+        // Gravação sem som não vira registro.
+        if (ehSilencio(picoDoVolume)) {
+          setAvisoAudio(MENSAGEM_SEM_FALA);
+          return;
+        }
         if (blob.size > LIMITE_AUDIO) {
           setAvisoAudio("A gravação passou de 3 MB. Grave um trecho mais curto.");
           return;

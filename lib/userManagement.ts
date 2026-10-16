@@ -217,3 +217,10 @@ export function validarRemocaoDeUsuarios(
   }
   return { ok: true };
 }
+
+export const PALAVRA_DE_CONFIRMACAO = "EXCLUIR";
+
+/** A janela de exclusão só libera o botão vermelho quando a palavra é digitada exatamente. */
+export function confirmacaoDeExclusaoValida(texto: string): boolean {
+  return texto.trim() === PALAVRA_DE_CONFIRMACAO;
+}

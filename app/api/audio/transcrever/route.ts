@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { autorizaAcaoServidor, obterAcessoServidor } from "@/lib/serverAccess";
 import { corpoExcedeLimite } from "@/lib/requestLimits";
+import { INSTRUCAO_DE_TRANSCRICAO, MENSAGEM_SEM_FALA, avaliarTranscricao } from "@/lib/transcricao";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,17 +25,15 @@ const TIPOS_ACEITOS = new Set([
 async function transcreverComModelo(
   apiKey: string,
   audio: File,
-  modelo: string
-): Promise<{ ok: true; text: string } | { ok: false; status: number; tipo?: string }> {
+  modelo: string,
+  duracaoSeg?: number
+): Promise<{ ok: true; text: string } | { ok: false; status: number; tipo?: string; semFala?: boolean }> {
   const openAiForm = new FormData();
   openAiForm.append("file", audio, audio.name || "ditado.m4a");
   openAiForm.append("model", modelo);
   openAiForm.append("language", "pt");
   openAiForm.append("response_format", "json");
-  openAiForm.append(
-    "prompt",
-    "Transcreva fielmente em português do Brasil. Preserve termos técnicos de segurança dos alimentos, higiene, checklist, não conformidade, POP e plano de ação."
-  );
+  openAiForm.append("prompt", INSTRUCAO_DE_TRANSCRICAO);
 
   const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
     method: "POST",
@@ -49,8 +48,10 @@ async function transcreverComModelo(
   }
 
   const text = typeof body?.text === "string" ? body.text.trim() : "";
-  if (!text) return { ok: false, status: 422 };
-  return { ok: true, text };
+  // Áudio sem fala faz o serviço devolver a própria instrução: isso nunca pode virar texto do usuário.
+  const avaliacao = avaliarTranscricao(text, duracaoSeg);
+  if (!avaliacao.ok) return { ok: false, status: 422, semFala: true };
+  return { ok: true, text: avaliacao.texto };
 }
 
 export async function POST(request: Request) {
@@ -102,10 +103,17 @@ export async function POST(request: Request) {
       console.warn("Tipo de áudio não listado, tentando transcrever mesmo assim:", tipoBase);
     }
 
+    const duracaoInformada = Number(form.get("duracao"));
+    const duracaoSeg = Number.isFinite(duracaoInformada) && duracaoInformada > 0 ? duracaoInformada : undefined;
+
     const modeloPrincipal = process.env.OPENAI_TRANSCRIBE_MODEL || "gpt-4o-mini-transcribe";
-    const principal = await transcreverComModelo(apiKey, audio, modeloPrincipal);
+    const principal = await transcreverComModelo(apiKey, audio, modeloPrincipal, duracaoSeg);
     if (principal.ok) {
       return NextResponse.json({ text: principal.text, model: modeloPrincipal });
+    }
+
+    if (!principal.ok && principal.semFala) {
+      return NextResponse.json({ error: MENSAGEM_SEM_FALA, semFala: true }, { status: 422 });
     }
 
     if (principal.status === 429) {
@@ -117,9 +125,12 @@ export async function POST(request: Request) {
 
     // Fallback para compatibilidade com formatos enviados por alguns iPhones/PWAs.
     if (modeloPrincipal !== "whisper-1") {
-      const fallback = await transcreverComModelo(apiKey, audio, "whisper-1");
+      const fallback = await transcreverComModelo(apiKey, audio, "whisper-1", duracaoSeg);
       if (fallback.ok) {
         return NextResponse.json({ text: fallback.text, model: "whisper-1" });
+      }
+      if (fallback.semFala) {
+        return NextResponse.json({ error: MENSAGEM_SEM_FALA, semFala: true }, { status: 422 });
       }
     }
 

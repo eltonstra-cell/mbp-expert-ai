@@ -437,12 +437,6 @@ export default function AppNavigation({
               )}
             </div>
           )}
-          {!visitaMenu && (
-            <button type="button" className={`pc-sync is-${sincronizacao.estado}`} onClick={sincronizacao.onClick}>
-              <span className="pc-sync-dot" aria-hidden="true" />
-              {sincronizacao.rotulo}
-            </button>
-          )}
           {usuario && (
             <div className="pc-user-card">
               <div className="pc-user-line">

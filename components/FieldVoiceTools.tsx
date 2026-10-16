@@ -1,7 +1,10 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useIaPermitida } from "@/components/IaPermissionContext";
+import RevisaoTranscricao from "@/components/RevisaoTranscricao";
+import { iniciarMedidorDeVolume } from "@/components/useNivelDeAudio";
+import { MENSAGEM_SEM_FALA, ehSilencio } from "@/lib/transcricao";
 
 type Props = {
   fieldKey: string;
@@ -44,6 +47,16 @@ export default function FieldVoiceTools({
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const medidorRef = useRef<{ pico: () => number; parar: () => void } | null>(null);
+  const inicioRef = useRef(0);
+  const [proposta, setProposta] = useState<string | null>(null);
+  const [aviso, setAviso] = useState("");
+
+  useEffect(() => {
+    if (!aviso) return;
+    const tempo = window.setTimeout(() => setAviso(""), 3500);
+    return () => window.clearTimeout(tempo);
+  }, [aviso]);
 
   async function iniciarOuParar() {
     if (gravando && recorderRef.current) {
@@ -67,6 +80,8 @@ export default function FieldVoiceTools({
       const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
       recorderRef.current = recorder;
       chunksRef.current = [];
+      medidorRef.current = iniciarMedidorDeVolume(stream);
+      inicioRef.current = Date.now();
 
       recorder.ondataavailable = (event) => {
         if (event.data?.size) chunksRef.current.push(event.data);
@@ -81,8 +96,20 @@ export default function FieldVoiceTools({
 
       recorder.onstop = async () => {
         setGravando(false);
-        setTranscrevendo(true);
         stream.getTracks().forEach((track) => track.stop());
+        const pico = medidorRef.current?.pico() ?? 1;
+        medidorRef.current?.parar();
+        medidorRef.current = null;
+        const duracao = Math.max(0, Math.round((Date.now() - inicioRef.current) / 1000));
+        // Sem som: nem envia ao serviço de transcrição.
+        if (ehSilencio(pico)) {
+          setAviso(MENSAGEM_SEM_FALA);
+          chunksRef.current = [];
+          recorderRef.current = null;
+          streamRef.current = null;
+          return;
+        }
+        setTranscrevendo(true);
 
         try {
           const tipo = recorder.mimeType || mimeType || "audio/mp4";
@@ -92,6 +119,7 @@ export default function FieldVoiceTools({
           const extensao = tipo.includes("webm") ? "webm" : tipo.includes("ogg") ? "ogg" : "m4a";
           const form = new FormData();
           form.append("audio", blob, `ditado-${fieldKey}.${extensao}`);
+          form.append("duracao", String(duracao));
 
           const response = await fetch("/api/audio/transcrever", {
             method: "POST",
@@ -99,11 +127,19 @@ export default function FieldVoiceTools({
             body: form,
           });
           const body = await response.json().catch(() => null);
+          if (body?.semFala) {
+            setAviso(MENSAGEM_SEM_FALA);
+            return;
+          }
           if (!response.ok) throw new Error(body?.error || "Não foi possível transcrever o áudio.");
 
           const texto = typeof body?.text === "string" ? body.text.trim() : "";
-          if (!texto) throw new Error("Não foi possível identificar fala nesse áudio.");
-          onChange(juntarTexto(value, texto));
+          if (!texto) {
+            setAviso(MENSAGEM_SEM_FALA);
+            return;
+          }
+          // O texto ouvido só entra no campo depois da revisão.
+          setProposta(texto);
         } catch (error) {
           window.alert(error instanceof Error ? error.message : "Não foi possível transcrever o áudio.");
         } finally {
@@ -156,6 +192,7 @@ export default function FieldVoiceTools({
   if (!iaPermitida) return null;
 
   return (
+    <>
     <div className="field-assist-tools">
       {!somenteVoz && (
         <button
@@ -184,5 +221,21 @@ export default function FieldVoiceTools({
         <span>{transcrevendo ? "Transcrevendo" : gravando ? "Parar" : "Falar"}</span>
       </button>
     </div>
+    {aviso && (
+      <div className="pc-toast voz-toast" role="status">
+        <span>{aviso}</span>
+      </div>
+    )}
+    {proposta !== null && (
+      <RevisaoTranscricao
+        texto={proposta}
+        onDescartar={() => setProposta(null)}
+        onUsar={(texto) => {
+          onChange(juntarTexto(value, texto));
+          setProposta(null);
+        }}
+      />
+    )}
+    </>
   );
 }
