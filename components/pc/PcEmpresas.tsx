@@ -4,6 +4,7 @@ import { ListRow } from "@/components/ui/ListRow";
 import { Pill } from "@/components/ui/Pill";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import type { ItemMenu } from "@/components/ui/RowMenu";
+import { acoesDaEmpresa } from "@/lib/menuActions";
 import { TILE_GRADIENTS } from "@/lib/brand";
 
 export type LinhaEmpresa = {
@@ -18,6 +19,8 @@ export type LinhaEmpresa = {
   preparacao: number;
   completo: boolean;
   podeGerenciar: boolean;
+  podeAcessos: boolean;
+  arquivada: boolean;
   podeNovaVisita: boolean;
 };
 
@@ -31,6 +34,12 @@ type Props = {
   onSelecionar: (id: string) => void;
   onGerenciar: (id: string) => void;
   onNovaVisita: () => void;
+  onHistorico: (id: string) => void;
+  onAcessos: () => void;
+  onArquivar: (id: string, arquivar: boolean) => void;
+  arquivadasTotal: number;
+  mostrarArquivadas: boolean;
+  onMostrarArquivadas: (valor: boolean) => void;
 };
 
 const TONS = ["azul", "verde", "violeta", "turquesa", "rosa", "indigo", "ambar", "ceu"] as const;
@@ -67,6 +76,12 @@ export default function PcEmpresas({
   onSelecionar,
   onGerenciar,
   onNovaVisita,
+  onHistorico,
+  onAcessos,
+  onArquivar,
+  arquivadasTotal,
+  mostrarArquivadas,
+  onMostrarArquivadas,
 }: Props) {
   return (
     <section className="ui-screen" aria-label="Empresas">
@@ -91,6 +106,11 @@ export default function PcEmpresas({
           value={busca}
           onChange={(evento) => onBusca(evento.target.value)}
         />
+        {arquivadasTotal > 0 && (
+          <button type="button" className="pc-quick-btn" aria-pressed={mostrarArquivadas} onClick={() => onMostrarArquivadas(!mostrarArquivadas)}>
+            {mostrarArquivadas ? "Ocultar arquivadas" : `Ver arquivadas (${arquivadasTotal})`}
+          </button>
+        )}
       </div>
 
       <div className="ui-scroll">
@@ -105,21 +125,37 @@ export default function PcEmpresas({
                     plural(empresa.programas, "programa", "programas"),
                     plural(empresa.pops, "POP", "POPs"),
                   ].join(" · ");
-            const menu: ItemMenu[] = empresa.podeGerenciar
-              ? [{ rotulo: "Gerenciar empresa", onClick: () => onGerenciar(empresa.id) }]
-              : [];
+            const menu: ItemMenu[] = acoesDaEmpresa({
+              podeEditar: empresa.podeGerenciar,
+              podeGerenciarAcessos: empresa.podeAcessos,
+              arquivada: empresa.arquivada,
+            }).map((acao): ItemMenu => {
+              switch (acao) {
+                case "editar":
+                  return { rotulo: "Editar empresa", onClick: () => onGerenciar(empresa.id) };
+                case "historico":
+                  return { rotulo: "Histórico da empresa", onClick: () => onHistorico(empresa.id) };
+                case "acessos":
+                  return { rotulo: "Acessos", onClick: onAcessos };
+                case "arquivar":
+                  return { rotulo: "Arquivar empresa", confirmar: `Arquivar "${empresa.nome}"? Nada será apagado; ela sai da lista e pode ser desarquivada depois.`, onClick: () => onArquivar(empresa.id, true) };
+                default:
+                  return { rotulo: "Desarquivar empresa", onClick: () => onArquivar(empresa.id, false) };
+              }
+            });
             return (
               <ListRow
                 key={empresa.id}
                 faixa={empresa.ativa ? "brand" : undefined}
                 selecionada={empresa.ativa}
+                esmaecida={empresa.arquivada}
                 icone={
                   <span className="ui-avatar" style={{ background: gradienteDaEmpresa(empresa.id) }} aria-hidden="true">
                     {iniciais(empresa.nome)}
                   </span>
                 }
                 titulo={empresa.nome}
-                chip={empresa.ativa ? <Pill tom="brand">Empresa ativa</Pill> : undefined}
+                chip={empresa.arquivada ? <Pill tom="na">Arquivada</Pill> : empresa.ativa ? <Pill tom="brand">Empresa ativa</Pill> : undefined}
                 secundario={`${empresa.razaoSocial} · ${detalhes}`}
                 meio={
                   <>

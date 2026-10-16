@@ -40,6 +40,9 @@ export type Empresa = {
   programasControleQualidade?: ProgramaControleQualidade[];
   pops?: ProcedimentoOperacionalPadronizado[];
   criadoEm: string;
+  /** Arquivada: some da lista principal, sem apagar nada. */
+  arquivada?: boolean;
+  arquivadaEm?: string;
 };
 
 export type DiaSemana =
@@ -143,6 +146,8 @@ export type ProcedimentoOperacionalPadronizado = {
   programaRelacionado: string;
   responsavel: string;
   proximaRevisao: string;
+  /** Arquivado: sai da lista principal, mas continua guardado. */
+  arquivado?: boolean;
 };
 
 export type ChecklistStatus = "Pendente" | "Conforme" | "Não Conforme" | "Não se aplica";

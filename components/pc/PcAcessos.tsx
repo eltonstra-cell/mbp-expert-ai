@@ -8,6 +8,8 @@ import { TILE_GRADIENTS } from "@/lib/brand";
 import { ListRow } from "@/components/ui/ListRow";
 import { Pill } from "@/components/ui/Pill";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
+import type { ItemMenu } from "@/components/ui/RowMenu";
+import { acoesDoAcesso } from "@/lib/menuActions";
 
 const PERFIS: PerfilUsuario[] = ["Administrador", "Consultor/RT", "Cliente Gestor"];
 
@@ -245,18 +247,21 @@ export default function PcAcessos({
                           {enviandoId === usuario.id ? "Enviando..." : "Enviar acesso"}
                         </button>
                       )}
-                      <button
-                        type="button"
-                        className="ui-btn ui-btn--secondary"
-                        onClick={() => onAlterarStatus(usuario.id, usuario.status === "Suspenso" ? "Convidado" : "Suspenso")}
-                      >
-                        {usuario.status === "Suspenso" ? "Restaurar" : "Suspender"}
-                      </button>
                       <button type="button" className="ui-btn ui-btn--secondary" onClick={() => onEditar(usuario)}>
                         Editar
                       </button>
                     </>
                   }
+                  menu={acoesDoAcesso({ status: usuario.status, podeGerenciar: true }).map((acao): ItemMenu => {
+                    switch (acao) {
+                      case "editar":
+                        return { rotulo: "Editar", onClick: () => onEditar(usuario) };
+                      case "desativar":
+                        return { rotulo: "Desativar acesso", perigo: true, confirmar: `Desativar o acesso de ${usuario.nome}? A pessoa continua cadastrada e o acesso pode ser reativado.`, onClick: () => onAlterarStatus(usuario.id, "Suspenso") };
+                      default:
+                        return { rotulo: "Reativar acesso", onClick: () => onAlterarStatus(usuario.id, "Convidado") };
+                    }
+                  })}
                 />
               ))}
               {usuarios.length === 0 && <div className="ui-empty">Nenhum usuário preparado.</div>}

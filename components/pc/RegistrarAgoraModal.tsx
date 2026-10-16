@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { NavIcon } from "@/components/NavIcons";
 
 export type VisitaParaRegistro = {
   id: string;
@@ -16,6 +17,7 @@ type Props = {
     visitaId: string;
     arquivo: File;
     tipo: "Foto" | "Áudio";
+    origem: "camera" | "arquivo" | "audio";
     descricao: string;
     item: { id: string; ambiente: string } | null;
   }) => Promise<void> | void;
@@ -24,6 +26,11 @@ type Props = {
 };
 
 const LIMITE_AUDIO = 3 * 1024 * 1024;
+
+function formatarTempo(total: number) {
+  const minutos = Math.floor(total / 60);
+  return `${minutos}:${String(total % 60).padStart(2, "0")}`;
+}
 
 function pararTrilhas(stream: MediaStream | null) {
   stream?.getTracks().forEach((trilha) => trilha.stop());
@@ -42,6 +49,10 @@ export default function RegistrarAgoraModal({ visitas, visitaInicialId, itemInic
   const [avisoAudio, setAvisoAudio] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
+  const [origem, setOrigem] = useState<"camera" | "arquivo" | "audio">("camera");
+  const [segundos, setSegundos] = useState(0);
+  const arquivoInputRef = useRef<HTMLInputElement | null>(null);
+  const relogioRef = useRef<number | null>(null);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamCameraRef = useRef<MediaStream | null>(null);
@@ -69,6 +80,8 @@ export default function RegistrarAgoraModal({ visitas, visitaInicialId, itemInic
       }
     }
     gravadorRef.current = null;
+    if (relogioRef.current) window.clearInterval(relogioRef.current);
+    relogioRef.current = null;
     if (videoRef.current) videoRef.current.srcObject = null;
   }, []);
 
@@ -149,6 +162,7 @@ export default function RegistrarAgoraModal({ visitas, visitaInicialId, itemInic
           return;
         }
         const foto = new File([blob], `foto-${Date.now()}.jpg`, { type: "image/jpeg" });
+        setOrigem("camera");
         setArquivo(foto);
         trocarPrevia(URL.createObjectURL(foto));
       },
@@ -176,6 +190,7 @@ export default function RegistrarAgoraModal({ visitas, visitaInicialId, itemInic
       setErro("O áudio está muito grande. Use um arquivo de até 3 MB.");
       return;
     }
+    setOrigem("arquivo");
     setArquivo(escolhido);
     trocarPrevia(URL.createObjectURL(escolhido));
   }
@@ -203,6 +218,8 @@ export default function RegistrarAgoraModal({ visitas, visitaInicialId, itemInic
       gravador.onstop = () => {
         pararTrilhas(streamAudioRef.current);
         streamAudioRef.current = null;
+        if (relogioRef.current) window.clearInterval(relogioRef.current);
+        relogioRef.current = null;
         setGravando(false);
         const tipo = gravador.mimeType || "audio/webm";
         const blob = new Blob(trechosRef.current, { type: tipo });
@@ -213,6 +230,7 @@ export default function RegistrarAgoraModal({ visitas, visitaInicialId, itemInic
         }
         const extensao = tipo.includes("mp4") ? "m4a" : tipo.includes("ogg") ? "ogg" : "webm";
         const audio = new File([blob], `audio-${Date.now()}.${extensao}`, { type: tipo });
+        setOrigem("audio");
         setArquivo(audio);
         trocarPrevia(URL.createObjectURL(audio));
       };
@@ -220,6 +238,9 @@ export default function RegistrarAgoraModal({ visitas, visitaInicialId, itemInic
       setArquivo(null);
       trocarPrevia("");
       gravador.start();
+      setSegundos(0);
+      if (relogioRef.current) window.clearInterval(relogioRef.current);
+      relogioRef.current = window.setInterval(() => setSegundos((atual) => atual + 1), 1000);
       setGravando(true);
     } catch (falha) {
       const negada = falha instanceof DOMException && (falha.name === "NotAllowedError" || falha.name === "SecurityError");
@@ -237,6 +258,7 @@ export default function RegistrarAgoraModal({ visitas, visitaInicialId, itemInic
         visitaId: visita.id,
         arquivo,
         tipo: arquivo.type.startsWith("audio/") ? "Áudio" : "Foto",
+        origem,
         descricao,
         item: item ? { id: item.id, ambiente: item.ambiente } : null,
       });
@@ -295,24 +317,39 @@ export default function RegistrarAgoraModal({ visitas, visitaInicialId, itemInic
         )}
 
         <div className="pc-reg-cards">
-          <div className={`pc-reg-card pc-reg-card--foto${camposDesabilitados ? " is-off" : ""}`}>
+          <div
+            className={`pc-reg-card pc-reg-card--foto${camposDesabilitados ? " is-off" : ""}`}
+            role="button"
+            tabIndex={camposDesabilitados ? -1 : 0}
+            aria-disabled={camposDesabilitados}
+            aria-label="Tirar foto, usa a câmera do computador"
+            onClick={() => {
+              if (!camposDesabilitados && !cameraAtiva) void abrirCamera();
+            }}
+            onKeyDown={(evento) => {
+              if ((evento.key === "Enter" || evento.key === " ") && evento.target === evento.currentTarget && !camposDesabilitados && !cameraAtiva) {
+                evento.preventDefault();
+                void abrirCamera();
+              }
+            }}
+          >
+            <span className="pc-reg-tile"><NavIcon name="registrar" size={28} strokeWidth={1.9} /></span>
             <span className="pc-reg-card-title">Tirar foto</span>
-            {cameraAtiva ? (
+            <span className="pc-reg-card-sub">
+              {cameraAtiva ? "Câmera ligada" : origem === "camera" && arquivo ? "Foto capturada" : "Usa a câmera do computador"}
+            </span>
+            {cameraAtiva && (
               <>
                 <video ref={videoRef} className="pc-reg-video" muted playsInline aria-label="Prévia da câmera" />
-                <div className="pc-reg-row">
-                  <button type="button" className="ui-btn ui-btn--primary ui-btn--small" onClick={capturar}>
+                <span className="pc-reg-row">
+                  <button type="button" className="ui-btn ui-btn--primary ui-btn--small" onClick={(evento) => { evento.stopPropagation(); capturar(); }}>
                     Capturar
                   </button>
-                  <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={cancelarCamera}>
+                  <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={(evento) => { evento.stopPropagation(); cancelarCamera(); }}>
                     Cancelar
                   </button>
-                </div>
+                </span>
               </>
-            ) : (
-              <button type="button" className="ui-btn ui-btn--secondary" disabled={camposDesabilitados} onClick={abrirCamera}>
-                {tipoArquivo === "foto" ? "Tirar outra" : "Abrir câmera"}
-              </button>
             )}
             {avisoCamera && (
               <p className="pc-reg-aviso" role="alert">
@@ -321,20 +358,71 @@ export default function RegistrarAgoraModal({ visitas, visitaInicialId, itemInic
             )}
           </div>
 
-          <div className={`pc-reg-card pc-reg-card--arq${camposDesabilitados ? " is-off" : ""}`}>
+          <div
+            className={`pc-reg-card pc-reg-card--arq${camposDesabilitados ? " is-off" : ""}`}
+            role="button"
+            tabIndex={camposDesabilitados ? -1 : 0}
+            aria-disabled={camposDesabilitados}
+            aria-label="Enviar arquivo, foto ou áudio do computador"
+            onClick={() => {
+              if (!camposDesabilitados) arquivoInputRef.current?.click();
+            }}
+            onKeyDown={(evento) => {
+              if ((evento.key === "Enter" || evento.key === " ") && evento.target === evento.currentTarget && !camposDesabilitados) {
+                evento.preventDefault();
+                arquivoInputRef.current?.click();
+              }
+            }}
+          >
+            <span className="pc-reg-tile">
+              <svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 16V4M7 9l5-5 5 5M5 20h14" />
+              </svg>
+            </span>
             <span className="pc-reg-card-title">Enviar arquivo</span>
-            <label className={`ui-btn ui-btn--secondary${camposDesabilitados ? " is-disabled" : ""}`}>
-              Escolher foto ou áudio
-              <input type="file" accept="image/*,audio/*" className="sr-only" disabled={camposDesabilitados} onChange={(evento) => { escolherArquivo(evento.target.files); evento.currentTarget.value = ""; }} />
-            </label>
+            <span className="pc-reg-card-sub">
+              {origem === "arquivo" && arquivo ? arquivo.name : "Foto ou áudio do computador (só foto e áudio)"}
+            </span>
+            <input
+              ref={arquivoInputRef}
+              type="file"
+              accept="image/*,audio/*"
+              className="sr-only"
+              tabIndex={-1}
+              disabled={camposDesabilitados}
+              onClick={(evento) => evento.stopPropagation()}
+              onChange={(evento) => {
+                escolherArquivo(evento.target.files);
+                evento.currentTarget.value = "";
+              }}
+            />
           </div>
 
-          <div className={`pc-reg-card pc-reg-card--audio${camposDesabilitados ? " is-off" : ""}`}>
-            <span className="pc-reg-card-title">Gravar áudio</span>
-            <button type="button" className="ui-btn ui-btn--secondary" disabled={camposDesabilitados} onClick={alternarGravacao}>
-              {gravando ? "Parar gravação" : tipoArquivo === "audio" ? "Gravar de novo" : "Gravar"}
-            </button>
-            {gravando && <span className="ui-row-sub">Gravando... toque em parar para terminar.</span>}
+          <div
+            className={`pc-reg-card pc-reg-card--audio${camposDesabilitados ? " is-off" : ""}`}
+            role="button"
+            tabIndex={camposDesabilitados ? -1 : 0}
+            aria-disabled={camposDesabilitados}
+            aria-label={gravando ? "Parar gravação" : "Gravar áudio, fale o que observou"}
+            onClick={() => {
+              if (!camposDesabilitados) void alternarGravacao();
+            }}
+            onKeyDown={(evento) => {
+              if ((evento.key === "Enter" || evento.key === " ") && evento.target === evento.currentTarget && !camposDesabilitados) {
+                evento.preventDefault();
+                void alternarGravacao();
+              }
+            }}
+          >
+            <span className="pc-reg-tile"><NavIcon name="microfone" size={28} strokeWidth={1.9} /></span>
+            <span className="pc-reg-card-title">{gravando ? "Gravando..." : "Gravar áudio"}</span>
+            <span className="pc-reg-card-sub">
+              {gravando
+                ? `${formatarTempo(segundos)} · toque para parar`
+                : origem === "audio" && arquivo
+                  ? `Áudio gravado · ${formatarTempo(segundos)}`
+                  : "Fale o que observou"}
+            </span>
             {avisoAudio && (
               <p className="pc-reg-aviso" role="alert">
                 {avisoAudio}

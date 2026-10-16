@@ -7,6 +7,7 @@ import { Pill } from "@/components/ui/Pill";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import type { ItemMenu } from "@/components/ui/RowMenu";
+import { acoesDaVisita } from "@/lib/menuActions";
 
 export type LinhaVisita = {
   id: string;
@@ -77,13 +78,24 @@ export default function PcVisitas({
   const concluidas = visiveis.filter((visita) => visita.status === "Concluída");
 
   const linha = (visita: LinhaVisita) => {
-    const menu: ItemMenu[] = [];
-    if (visita.status === "Em andamento" && visita.podeConcluir) {
-      menu.push({ rotulo: "Concluir visita", onClick: () => onConcluir(visita.id), confirmar: "Concluir esta visita?" });
-    }
-    if (visita.podeExcluir) {
-      menu.push({ rotulo: "Excluir visita…", perigo: true, onClick: () => onExcluir(visita.id) });
-    }
+    const menu: ItemMenu[] = acoesDaVisita({
+      status: visita.status,
+      podeContinuar: visita.podeContinuar,
+      podeRelatorio: visita.podeRelatorio,
+      podeConcluir: visita.podeConcluir,
+      podeExcluir: visita.podeExcluir,
+    }).map((acao): ItemMenu => {
+      switch (acao) {
+        case "abrir":
+          return { rotulo: "Abrir visita", onClick: () => onContinuar(visita.id) };
+        case "relatorio":
+          return { rotulo: "Ver relatório", onClick: () => onRelatorio(visita.id) };
+        case "encerrar":
+          return { rotulo: "Encerrar visita", onClick: () => onConcluir(visita.id), confirmar: "Encerrar esta visita?" };
+        default:
+          return { rotulo: "Excluir visita…", perigo: true, onClick: () => onExcluir(visita.id) };
+      }
+    });
     return (
       <ListRow
         key={visita.id}

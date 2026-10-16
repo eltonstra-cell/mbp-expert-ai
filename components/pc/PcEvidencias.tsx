@@ -118,7 +118,14 @@ function Cartao({ ev, onAmpliar }: { ev: CartaoEvidencia; onAmpliar: (url: strin
           </div>
         </div>
         {ev.podeExcluir && (
-          <RowMenu itens={[{ rotulo: "Excluir evidência", perigo: true, onClick: ev.onExcluir }]} />
+          <RowMenu
+            itens={[
+              ev.tipo === "Foto" && ev.url
+                ? { rotulo: "Ampliar foto", onClick: () => onAmpliar(ev.url, ev.descricao || ev.nome) }
+                : { rotulo: "Abrir arquivo", onClick: () => window.open(ev.url, "_blank", "noopener"), desabilitado: !ev.url },
+              { rotulo: "Excluir evidência", perigo: true, onClick: ev.onExcluir },
+            ]}
+          />
         )}
       </div>
 
@@ -216,6 +223,8 @@ export default function PcEvidencias({
 }: Props) {
   const [aba, setAba] = useState<Aba>("todas");
   const [trocando, setTrocando] = useState(false);
+  const [pendente, setPendente] = useState<{ arquivo: File; tipo: "Foto" | "Áudio" } | null>(null);
+  const [salvando, setSalvando] = useState(false);
   const [ampliada, setAmpliada] = useState<{ url: string; legenda: string } | null>(null);
 
   const visiveis = evidencias.filter((ev) =>
@@ -226,7 +235,7 @@ export default function PcEvidencias({
     <span className="ui-field-wrap ui-field-wrap--area">
       <textarea
         className="ui-input pc-input-tools"
-        rows={3}
+        rows={2}
         value={descricao}
         onChange={(evento) => onDescricao(evento.target.value)}
         placeholder="Ex.: embalagem avariada identificada no recebimento..."
@@ -269,12 +278,12 @@ export default function PcEvidencias({
         ]}
       />
 
-      <p className="ui-note">Antes de usar a IA, evite enquadrar rostos, crachás e documentos pessoais.</p>
 
       <div className={`pc-ev-cols${podeAdicionar ? "" : " is-single"}`}>
         {podeAdicionar && (
           <div className="ui-card pc-ev-new">
             <h2 className="ui-card-title">Nova evidência</h2>
+            <div className="pc-ev-new-body scroll-fino">
             <div className="pc-ev-capture">
               <label className="pc-capture pc-capture--photo">
                 <CameraIcon /> Tirar foto
@@ -283,9 +292,10 @@ export default function PcEvidencias({
                   accept="image/*"
                   capture="environment"
                   className="sr-only"
-                  onChange={async (evento) => {
+                  onChange={(evento) => {
                     const entrada = evento.currentTarget;
-                    await onFoto(entrada.files?.[0]);
+                    const arquivo = entrada.files?.[0];
+                    setPendente(arquivo ? { arquivo, tipo: "Foto" } : null);
                     entrada.value = "";
                   }}
                 />
@@ -297,8 +307,10 @@ export default function PcEvidencias({
                   accept="audio/*"
                   className="sr-only"
                   onChange={(evento) => {
-                    onAudio(evento.target.files?.[0]);
-                    evento.currentTarget.value = "";
+                    const entrada = evento.currentTarget;
+                    const arquivo = entrada.files?.[0];
+                    setPendente(arquivo ? { arquivo, tipo: "Áudio" } : null);
+                    entrada.value = "";
                   }}
                 />
               </label>
@@ -360,11 +372,40 @@ export default function PcEvidencias({
               {campoDescricao}
             </label>
 
+            <p className="pc-ev-privacy">Antes de usar a IA, evite enquadrar rostos, crachás e documentos pessoais.</p>
             {mensagem && (
               <div className="ui-note" role="status">
                 {mensagem}
               </div>
             )}
+            </div>
+            <div className="pc-ev-new-foot">
+              <span className="ui-row-sub">{pendente ? `${pendente.tipo}: ${pendente.arquivo.name}` : "Escolha uma foto ou um áudio para salvar."}</span>
+              <div className="ui-footer-actions">
+                <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" disabled={!pendente && !descricao} onClick={() => { setPendente(null); onDescricao(""); }}>
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  className="ui-btn ui-btn--save ui-btn--small"
+                  disabled={!pendente || salvando}
+                  onClick={async () => {
+                    if (!pendente) return;
+                    const atual = pendente;
+                    setSalvando(true);
+                    try {
+                      if (atual.tipo === "Foto") await onFoto(atual.arquivo);
+                      else onAudio(atual.arquivo);
+                      setPendente(null);
+                    } finally {
+                      setSalvando(false);
+                    }
+                  }}
+                >
+                  {salvando ? "Salvando..." : "Salvar"}
+                </button>
+              </div>
+            </div>
           </div>
         )}
 

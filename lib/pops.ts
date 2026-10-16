@@ -68,6 +68,7 @@ export function normalizarPops(
       programaRelacionado: pop.programaRelacionado || "",
       responsavel: pop.responsavel || "",
       proximaRevisao: pop.proximaRevisao || "",
+      ...(pop.arquivado ? { arquivado: true } : {}),
     }));
 }
 
@@ -243,4 +244,38 @@ export function criarRascunhosFaltantes(
       atual = resultado.pops;
     });
   return { pops: atual, criados };
+}
+
+// ===== Duplicar / arquivar POP (sem apagar) =====
+
+export function duplicarPop(
+  pops: ProcedimentoOperacionalPadronizado[],
+  id: string,
+  novoId: string
+): ProcedimentoOperacionalPadronizado[] {
+  const origem = pops.find((pop) => pop.id === id);
+  if (!origem) return pops;
+  const copia: ProcedimentoOperacionalPadronizado = {
+    ...origem,
+    id: novoId,
+    codigo: "",
+    titulo: `${origem.titulo} (cópia)`,
+    versao: "1.0",
+    status: "Rascunho",
+    arquivado: false,
+  };
+  const posicao = pops.findIndex((pop) => pop.id === id);
+  return [...pops.slice(0, posicao + 1), copia, ...pops.slice(posicao + 1)];
+}
+
+export function arquivarPop(
+  pops: ProcedimentoOperacionalPadronizado[],
+  id: string,
+  arquivado: boolean
+): ProcedimentoOperacionalPadronizado[] {
+  return pops.map((pop) => (pop.id === id ? { ...pop, arquivado } : pop));
+}
+
+export function popsAtivos(pops: ProcedimentoOperacionalPadronizado[]): ProcedimentoOperacionalPadronizado[] {
+  return pops.filter((pop) => !pop.arquivado);
 }

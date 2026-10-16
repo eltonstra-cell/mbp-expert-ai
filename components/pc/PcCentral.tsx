@@ -1,5 +1,6 @@
 "use client";
 
+import { NavIcon, type NavIconName } from "@/components/NavIcons";
 import { ListRow } from "@/components/ui/ListRow";
 import { Pill } from "@/components/ui/Pill";
 import { SegmentedProgress } from "@/components/ui/ProgressBar";
@@ -13,7 +14,11 @@ export type NcAbertaCentral = {
   onAbrir: () => void;
 };
 
+export type PassoCentral = { chave: string; rotulo: string; resumo: string; icone: NavIconName; tom: "ok" | "info" | "nc" | "pend" | "lilas" };
+
 type Props = {
+  passos: PassoCentral[];
+  onIrPasso: (chave: string) => void;
   empresa: string;
   detalhe: string;
   proxima: {
@@ -40,6 +45,8 @@ type Props = {
 };
 
 export default function PcCentral({
+  passos,
+  onIrPasso,
   empresa,
   detalhe,
   proxima,
@@ -101,6 +108,21 @@ export default function PcCentral({
           { rotulo: "Pendências", valor: indicadores.pendencias, tom: "pend" },
         ]}
       />
+
+      <div className="pc-steps-row" role="group" aria-label="Próximos passos da visita">
+        {passos.map((passo) => (
+          <button key={passo.chave} type="button" className={`pc-step-card pc-step-card--${passo.tom}`} onClick={() => onIrPasso(passo.chave)}>
+            <span className="pc-step-tile">
+              <NavIcon name={passo.icone} size={20} strokeWidth={1.9} />
+            </span>
+            <span className="pc-step-text">
+              <span className="pc-step-name">{passo.rotulo}</span>
+              <span className="pc-step-sum">{passo.resumo}</span>
+            </span>
+            <span className="pc-step-arrow" aria-hidden="true">→</span>
+          </button>
+        ))}
+      </div>
 
       <div className="pc-three">
         <button type="button" className="ui-card pc-card-btn" disabled={equipamentos.desabilitado} onClick={equipamentos.onAbrir}>

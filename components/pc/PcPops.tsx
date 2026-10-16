@@ -7,6 +7,9 @@ import {
   SUGESTOES_POPS_MANUAL,
   adicionarPop,
   adicionarSugestaoPop,
+  arquivarPop,
+  duplicarPop,
+  popsAtivos,
   resumoPops,
   situacaoRevisaoPOP,
   sugestaoJaCriada,
@@ -16,6 +19,8 @@ import FieldVoiceTools from "@/components/FieldVoiceTools";
 import { ListRow } from "@/components/ui/ListRow";
 import { Pill } from "@/components/ui/Pill";
 import { StatStrip } from "@/components/ui/StatStrip";
+import type { ItemMenu } from "@/components/ui/RowMenu";
+import { acoesDoPop } from "@/lib/menuActions";
 import { NavIcon } from "@/components/NavIcons";
 
 const STATUS: StatusPOP[] = ["Rascunho", "Em revisão", "Aprovado", "Inativo"];
@@ -41,8 +46,11 @@ export default function PcPops({ pops, onChange, temAlteracoes, mensagem, onSalv
   const [erro, setErro] = useState<{ campo: "titulo" | "codigo"; aviso: string } | null>(null);
   const [aviso, setAviso] = useState("");
   const [aberto, setAberto] = useState<string | null>(null);
+  const [verArquivados, setVerArquivados] = useState(false);
 
-  const resumo = resumoPops(pops);
+  const resumo = resumoPops(popsAtivos(pops));
+  const arquivados = pops.filter((pop) => pop.arquivado).length;
+  const listados = verArquivados ? pops : popsAtivos(pops);
 
   function adicionar() {
     const resultado = adicionarPop(pops, codigo, titulo, crypto.randomUUID());
@@ -151,10 +159,15 @@ export default function PcPops({ pops, onChange, temAlteracoes, mensagem, onSalv
         </button>
       </div>
       {aviso && <div className="ui-note">{aviso}</div>}
+      {arquivados > 0 && (
+        <button type="button" className="pc-link-btn pc-self-start" onClick={() => setVerArquivados((atual) => !atual)}>
+          {verArquivados ? "Ocultar arquivados" : `Ver arquivados (${arquivados})`}
+        </button>
+      )}
 
       <div className="ui-scroll">
         <div className="ui-list">
-          {pops.map((pop) => {
+          {listados.map((pop) => {
             const situacao = situacaoRevisaoPOP(pop);
             const expandido = aberto === pop.id;
             return (
@@ -174,14 +187,26 @@ export default function PcPops({ pops, onChange, temAlteracoes, mensagem, onSalv
                     {expandido ? "Fechar" : "Abrir"}
                   </button>
                 }
-                menu={[
-                  {
-                    rotulo: "Excluir POP",
-                    perigo: true,
-                    confirmar: `Excluir o POP "${pop.titulo || pop.codigo}"?`,
-                    onClick: () => onChange(pops.filter((item) => item.id !== pop.id)),
-                  },
-                ]}
+                esmaecida={Boolean(pop.arquivado)}
+                menu={acoesDoPop({ arquivado: Boolean(pop.arquivado), podeEditar: true }).map((acao): ItemMenu => {
+                  switch (acao) {
+                    case "abrir":
+                      return { rotulo: "Abrir", onClick: () => setAberto(pop.id) };
+                    case "duplicar":
+                      return { rotulo: "Duplicar", onClick: () => onChange(duplicarPop(pops, pop.id, crypto.randomUUID())) };
+                    case "arquivar":
+                      return { rotulo: "Arquivar", confirmar: `Arquivar o POP "${pop.titulo || pop.codigo}"? Ele sai da lista, mas continua guardado.`, onClick: () => onChange(arquivarPop(pops, pop.id, true)) };
+                    case "desarquivar":
+                      return { rotulo: "Desarquivar", onClick: () => onChange(arquivarPop(pops, pop.id, false)) };
+                    default:
+                      return {
+                        rotulo: "Excluir POP",
+                        perigo: true,
+                        confirmar: `Excluir o POP "${pop.titulo || pop.codigo}"?`,
+                        onClick: () => onChange(pops.filter((item) => item.id !== pop.id)),
+                      };
+                  }
+                })}
                 filhos={
                   expandido ? (
                     <div className="pc-pop-edit">

@@ -1424,7 +1424,7 @@ h1,h2,h3,.font-display{font-family:var(--font-display),"Outfit","Segoe UI",syste
 .ui-menu{position:relative}
 .ui-menu-btn{display:grid;place-items:center;width:36px;height:36px;border:0;border-radius:10px;background:transparent;font-size:1.3rem;line-height:1;color:var(--ink)}
 .ui-menu-btn:hover{background:var(--na-bg)}
-.ui-menu-pop{position:absolute;z-index:30;top:calc(100% + 4px);right:0;min-width:11rem;padding:6px;border:1px solid var(--border);border-radius:12px;background:#fff;box-shadow:var(--nav-shadow)}
+.ui-menu-pop{position:fixed;z-index:70;min-width:11rem;padding:6px;border:1px solid var(--border);border-radius:12px;background:#fff;box-shadow:var(--nav-shadow)}
 .ui-menu-item{display:block;width:100%;min-height:36px;padding:0 10px;border:0;border-radius:8px;background:transparent;text-align:left;font-size:.88rem;font-weight:400;color:var(--ink)}
 .ui-menu-item:hover{background:var(--na-bg)}
 .ui-menu-item.is-danger:hover{background:var(--nc-bg)}
@@ -1784,3 +1784,78 @@ h1,h2,h3,.font-display{font-family:var(--font-display),"Outfit","Segoe UI",syste
 }
 
 @media (min-width:1024px){.pc-hide-pc{display:none!important}}
+
+/* ===== Menu: grupo "Visita atual" ===== */
+.pc-vcard{display:flex;flex-direction:column;gap:2px;margin:6px 0 2px;padding:6px;border-radius:16px;background:rgba(255,255,255,.12)}
+.pc-vcard-head{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;padding:4px 6px;border:0;border-radius:12px;background:transparent;color:#fff;text-align:left}
+.pc-vcard-head:hover{background:rgba(255,255,255,.1)}
+.pc-vcard-head:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.pc-vcard-tile{display:grid;flex:none;place-items:center;width:34px;height:34px;border-radius:10px;background:#fff;color:var(--brand)}
+.pc-vcard-title{font-size:15px;font-weight:400;color:#fff}
+.pc-vcard-company{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:#E6EEFF}
+.pc-vcard-steps{display:flex;flex-direction:column;gap:1px}
+.pc-link--step{min-height:34px;padding:0 8px 0 30px;font-size:15px}
+.pc-link--step .pc-link-icon{width:28px;height:28px;border-radius:8px}
+.pc-mini-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pc-mini-wrap{position:relative;display:flex}
+.pc-mini-wrap .pc-mini{width:100%}
+.pc-mini{display:flex;align-items:center;justify-content:center;gap:6px;min-height:34px;padding:0 8px;border:0;border-radius:10px;background:rgba(255,255,255,.12);color:#fff;font-size:13px;font-weight:400}
+.pc-mini:hover{background:rgba(255,255,255,.2)}
+.pc-mini.is-active{background:var(--side-active-bg);box-shadow:inset 3px 0 0 var(--orange)}
+.pc-mini:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.pc-admin-pop{position:absolute;right:0;bottom:calc(100% + 6px);z-index:60;min-width:170px;padding:6px;border-radius:12px;background:#fff;box-shadow:0 10px 28px rgba(18,32,43,.28)}
+.pc-admin-item{display:block;width:100%;padding:9px 12px;border:0;border-radius:8px;background:transparent;color:var(--ink);font-size:.9rem;font-weight:400;text-align:left}
+.pc-admin-item:hover,.pc-admin-item:focus-visible{background:var(--brand-soft);outline:none}
+.pc-avatar-dot{position:absolute;right:-2px;bottom:-2px;width:12px;height:12px;padding:0;border:2px solid #fff;border-radius:50%;background:var(--pend)}
+.pc-avatar-dot.is-ok{background:var(--ok)}.pc-avatar-dot.is-erro{background:var(--nc)}
+.pc-user-avatar{position:relative}
+@media (min-width:1024px){
+  .pc-side--visita{gap:6px;padding:10px 12px 10px}
+  .pc-side--visita .pc-side-brand{padding:8px 14px}
+  .pc-side--visita .pc-register-orb{width:38px;height:38px}
+  .pc-side--visita .pc-register-line{min-height:40px}
+  .pc-side--visita .pc-link{min-height:36px}
+  .pc-side--visita .pc-link--step{min-height:34px}
+  .pc-side--visita .pc-user-card{gap:6px;padding:8px}
+  .pc-side--visita .pc-user-avatar{width:32px;height:32px}
+  .pc-side--visita .pc-logout{min-height:32px}
+}
+
+/* ===== Central: cartões dos passos ===== */
+.pc-steps-row{display:grid;flex:none;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+.pc-step-card{display:flex;align-items:center;gap:10px;min-width:0;padding:10px 12px;border:0;border-radius:14px;color:var(--ink);text-align:left;cursor:pointer;transition:transform .12s}
+.pc-step-card:hover{transform:translateY(-1px)}
+.pc-step-card:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
+.pc-step-card--ok{background:var(--ok-bg)}.pc-step-card--info{background:var(--info-bg)}.pc-step-card--nc{background:var(--nc-bg)}.pc-step-card--pend{background:var(--pend-bg)}.pc-step-card--lilas{background:var(--lilas-bg)}
+.pc-step-tile{display:grid;flex:none;place-items:center;width:38px;height:38px;border-radius:11px;color:#fff}
+.pc-step-card--ok .pc-step-tile{background:var(--ok)}.pc-step-card--info .pc-step-tile{background:#1E88C7}.pc-step-card--nc .pc-step-tile{background:var(--nc)}.pc-step-card--pend .pc-step-tile{background:var(--count)}.pc-step-card--lilas .pc-step-tile{background:var(--lilas)}
+.pc-step-text{display:flex;flex:1;min-width:0;flex-direction:column}
+.pc-step-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.92rem;color:var(--ink)}
+.pc-step-sum{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.78rem;color:var(--ink)}
+.pc-step-arrow{flex:none;color:var(--ink)}
+@media (min-width:1024px) and (max-width:1279px){.pc-steps-row{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+/* ===== Registrar agora: cartões ===== */
+.pc-reg-card{align-items:flex-start;justify-content:flex-start;min-height:150px;cursor:pointer;border:2px solid transparent}
+.pc-reg-card:hover{border-color:rgba(18,32,43,.18)}
+.pc-reg-card:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
+.pc-reg-card--foto{background:#FFF3D6}.pc-reg-card--arq{background:#CFEBF8}.pc-reg-card--audio{background:#E8E3FB}
+.pc-reg-tile{display:grid;place-items:center;width:52px;height:52px;border-radius:14px;background:#fff;color:var(--ink)}
+.pc-reg-card-title{font-family:var(--font-display),"Outfit",sans-serif;font-size:1.05rem;font-weight:400;color:var(--ink)}
+.pc-reg-card-sub{font-size:.84rem;font-weight:400;color:var(--ink);overflow-wrap:anywhere}
+@media (min-width:1024px) and (max-height:760px){.pc-reg-card{min-height:120px;padding:10px;gap:4px}.pc-reg-tile{width:44px;height:44px}}
+
+.pc-toast{position:fixed;left:50%;bottom:22px;z-index:95;display:flex;align-items:center;gap:14px;padding:10px 16px;transform:translateX(-50%);border:1px solid var(--border);border-radius:14px;background:#fff;box-shadow:0 10px 28px rgba(18,32,43,.22);color:var(--ink);font-size:.92rem}
+
+/* ===== Evidências: formulário sem rolagem ===== */
+.pc-ev-new{overflow:hidden;gap:8px;padding:12px}
+.pc-ev-new-body{display:flex;flex:1;min-height:0;flex-direction:column;gap:8px;overflow-y:auto}
+.pc-ev-new-foot{display:flex;flex:none;align-items:center;justify-content:space-between;gap:8px;padding-top:8px;border-top:1px solid var(--border)}
+.pc-ev-new-foot .ui-row-sub{margin:0;min-width:0}
+.pc-ev-privacy{margin:0;font-size:.78rem;color:var(--ink-2)}
+.pc-ev-new .pc-capture{min-height:44px}
+.pc-ev-new .pc-ev-link{padding:6px 10px}
+.pc-ev-new .ui-input{padding-top:6px;padding-bottom:6px}
+.pc-step-name,.pc-step-sum{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.2}
+.pc-step-card{padding:8px 10px;gap:8px}
+.pc-step-tile{width:34px;height:34px}

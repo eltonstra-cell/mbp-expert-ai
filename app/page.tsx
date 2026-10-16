@@ -6,16 +6,17 @@ import AccessPreparationPanel from "@/components/AccessPreparationPanel";
 import AppNavigation, { type CartaoVisita, type ContagemEtapa } from "@/components/AppNavigation";
 import AppTopbar from "@/components/AppTopbar";
 import PcInicio from "@/components/pc/PcInicio";
-import VisitTrail from "@/components/pc/VisitTrail";
 import RegistrarAgoraModal from "@/components/pc/RegistrarAgoraModal";
 import PcCorrecoes from "@/components/pc/PcCorrecoes";
 import PcPopsVisita from "@/components/pc/PcPopsVisita";
 import PcRelatorio, { type SecaoRelatorio } from "@/components/pc/PcRelatorio";
 import PcAjuda from "@/components/pc/PcAjuda";
-import { passoDaView, percentualDaVisita, type PassoVisita } from "@/lib/visitTrail";
+import { passoDaView, passosDaTrilha, percentualDaVisita, type PassoVisita } from "@/lib/visitTrail";
 import { conferenciaDoRelatorio } from "@/lib/reportCheck";
 import { ocultarAmbiente, mostrarAmbiente, excluirAmbienteOculto, resumoOcultos } from "@/lib/hiddenEnvs";
 import { reincidenciaDaNc } from "@/lib/actionPlan";
+import { maisRecentesPrimeiro, visitaPadraoParaRegistro } from "@/lib/registerTarget";
+import { listaSemArquivadas, marcarArquivada } from "@/lib/menuActions";
 import { adicionarSugestaoPop, criarRascunhosFaltantes, popsDaVisita } from "@/lib/pops";
 import UpdateNotice from "@/components/UpdateNotice";
 import PcAcompanhamento from "@/components/pc/PcAcompanhamento";
@@ -684,6 +685,13 @@ export default function Home() {
   const registrarInputRef = useRef<HTMLInputElement | null>(null);
   const criandoVisitaRef = useRef(false);
   const [registrarAberto, setRegistrarAberto] = useState(false);
+  const [mostrarEmpresasArquivadas, setMostrarEmpresasArquivadas] = useState(false);
+  const [aviso, setAviso] = useState<{ texto: string; visitaId: string } | null>(null);
+  useEffect(() => {
+    if (!aviso) return;
+    const timer = window.setTimeout(() => setAviso(null), 7000);
+    return () => window.clearTimeout(timer);
+  }, [aviso]);
   const [secoesRelatorio, setSecoesRelatorio] = useState<Record<SecaoRelatorio, boolean>>({ resumo: true, ambientes: true, ncs: true, evidencias: true, pops: true });
   const [emissaoParcial, setEmissaoParcial] = useState(false);
   const ehPC = useIsPc();
@@ -1915,12 +1923,14 @@ export default function Home() {
   );
   const empresasFiltradas = useMemo(() => {
     const termo = buscaEmpresas.trim().toLocaleLowerCase("pt-BR");
-    if (!termo) return empresasVisiveis;
-    return empresasVisiveis.filter((empresa) =>
+    // Só o PC tem "Arquivar"; no tablet e no celular a lista continua completa.
+    const base = ehPC ? listaSemArquivadas(empresasVisiveis, mostrarEmpresasArquivadas) : empresasVisiveis;
+    if (!termo) return base;
+    return base.filter((empresa) =>
       [empresa.nomeFantasia, empresa.razaoSocial, empresa.cnpj, empresa.municipio]
         .some((valor) => valor?.toLocaleLowerCase("pt-BR").includes(termo))
     );
-  }, [empresasVisiveis, buscaEmpresas]);
+  }, [empresasVisiveis, buscaEmpresas, ehPC, mostrarEmpresasArquivadas]);
   const empresaAtualCadastrada = db.empresaAtualId
     ? db.empresas[db.empresaAtualId]
     : undefined;
@@ -4028,6 +4038,20 @@ export default function Home() {
     }
   }
 
+  function verEvidenciasDaVisita(id: string) {
+    const visita = db.visitas.find((registro) => registro.id === id);
+    if (!visita) return;
+    setDb((o) => ({ ...o, empresaAtualId: visita.empresaId }));
+    setVisitaAtualId(visita.id);
+    setEvidenciaDescricao("");
+    setEvidenciaAmbiente((visita.ambientes || [])[0] || "");
+    setEvidenciaChecklistItemId("");
+    setEvidenciaNcId("");
+    setEvidenciaMsg("");
+    setAviso(null);
+    setView("evidencias");
+  }
+
   function irParaPasso(passo: PassoVisita) {
     switch (passo) {
       case "central":
@@ -5152,6 +5176,17 @@ export default function Home() {
     correcoesAbertas: ncsAbertas,
     popsPendentes: resumoPopsVisita.pendentes,
   };
+  const linhasConferenciaRel = conferenciaDoRelatorio({
+                  respondidos,
+                  totalChecklist,
+                  ncsAbertas,
+                  ncsSemResponsavelOuPrazo: ncsVisita.filter((nc) => nc.status !== "Resolvida" && (!nc.responsavelAcao?.trim() || !nc.prazo?.trim())).length,
+                  evidencias: evidenciasVisita.length,
+                  popsPendentes: resumoPopsVisita.pendentes,
+                  popsSugeridos: resumoPopsVisita.linhas.length,
+                  cadastroPreenchidos: empresaVisita ? preparacaoDaEmpresa(empresaVisita).preenchidos : 0,
+                  cadastroTotal: empresaVisita ? preparacaoDaEmpresa(empresaVisita).total : 0,
+  });
   const passoAtualDaTrilha = passoDaView(view);
   const percentualVisitaTrilha = percentualDaVisita(respondidos, totalChecklist);
   const classesSecoesRelatorio = (Object.keys(secoesRelatorio) as SecaoRelatorio[])
@@ -5172,7 +5207,8 @@ export default function Home() {
             ? "Central"
             : itemDaTela?.rotulo || "";
   // No PC o menu não lista as etapas da visita: dentro dela, o item ativo é "Visitas".
-  const chaveMenuAtivo: NavKey | null = ehPC && (VISIT_VIEWS.includes(view) || view === "ambientes") ? "visitas" : chaveDaTela;
+  const chaveMenuAtivo: NavKey | null = ehPC && VISIT_VIEWS.includes(view) ? null : chaveDaTela;
+  const visitaAbertaNoMenu = !!visitaAtual && (VISIT_VIEWS.includes(view) || visitaAtual.status !== "Concluída");
   const caminhoTopo = dentroDaVisita
     ? ["Visitas", cartaoVisita?.empresa || "Empresa", rotuloDaTela || "Central"]
     : [rotuloDaTela || "Início"];
@@ -5184,16 +5220,26 @@ export default function Home() {
     <IaPermitidaContext.Provider value={deveExibirRecursosDeIa(usuarioDaSessao)}>
     <div className="min-h-screen bg-[var(--bg)]">
       <UpdateNotice />
+      {aviso && (
+        <div className="pc-toast" role="status">
+          <span>{aviso.texto}</span>
+          <button type="button" className="pc-link-btn" onClick={() => verEvidenciasDaVisita(aviso.visitaId)}>
+            Ver
+          </button>
+        </div>
+      )}
       {registrarAberto && ehPC && (() => {
-        const abertas = (db.visitas || []).filter(
+        const abertasBrutas = (db.visitas || []).filter(
           (visita) => visita.status !== "Concluída" && permitido("evidencias.adicionar", visita.empresaId) && permitido("visitas.executar", visita.empresaId)
         );
+        const abertas = maisRecentesPrimeiro(abertasBrutas);
         const visitas = abertas.map((visita) => ({
           id: visita.id,
           rotulo: `${nomeParaExibir(db.empresas[visita.empresaId])} · visita de ${fdata(visita.data)}`,
           itens: (visita.checklist || []).map((item) => ({ id: item.id, rotulo: item.titulo, ambiente: item.ambiente })),
         }));
-        const inicial = visitas.find((visita) => visita.id === visitaAtual?.id) || visitas[0];
+        const padrao = visitaPadraoParaRegistro(abertas, visitaAtualId, db.empresaAtualId);
+        const inicial = visitas.find((visita) => visita.id === padrao?.id);
         const itemInicial = inicial?.itens.some((item) => item.id === ultimoItemChecklistId) ? ultimoItemChecklistId || "" : "";
         return (
           <RegistrarAgoraModal
@@ -5202,7 +5248,7 @@ export default function Home() {
             itemInicialId={itemInicial}
             onFechar={() => setRegistrarAberto(false)}
             onIrVisitas={() => { setRegistrarAberto(false); navegarPrincipal("visitas"); }}
-            onSalvar={async ({ visitaId, arquivo, tipo, descricao, item }) => {
+            onSalvar={async ({ visitaId, arquivo, tipo, origem, descricao, item }) => {
               const alvo = db.visitas.find((visita) => visita.id === visitaId);
               if (!alvo) throw new Error("visita não encontrada");
               const nc = item ? (db.ncs || []).find((registro) => registro.visitaId === alvo.id && registro.checklistItemId === item.id && !registro.inativaNoChecklist) : undefined;
@@ -5213,6 +5259,11 @@ export default function Home() {
                 { visita: alvo, descricao }
               );
               if (!ok) throw new Error("falha ao salvar");
+              const nomeEmpresa = nomeParaExibir(db.empresas[alvo.empresaId]);
+              setAviso({
+                texto: `${origem === "audio" || tipo === "Áudio" ? "Áudio salvo" : origem === "arquivo" ? "Arquivo salvo" : "Foto salva"} em ${nomeEmpresa} · Evidências`,
+                visitaId: alvo.id,
+              });
             }}
           />
         );
@@ -5239,6 +5290,8 @@ export default function Home() {
         contagens={contagensMenu}
         visita={cartaoVisita}
         onSair={() => void sairDoSistema()}
+        visitaMenu={ehPC && visitaAbertaNoMenu ? { empresa: nomeParaExibir(empresaVisita), passos: passosDaTrilha(dadosTrilha), atual: passoAtualDaTrilha, emTelaDaVisita: VISIT_VIEWS.includes(view) } : null}
+        onIrPasso={irParaPasso}
         usuario={usuarioDaSessao ? { nome: usuarioDaSessao.nome, perfil: usuarioDaSessao.perfil, iniciais: iniciaisUsuario || "" } : null}
         versao={pacote.version.split(".").slice(0, 2).join(".")}
         saindo={saindo}
@@ -5530,15 +5583,6 @@ export default function Home() {
           onAbrirCaixa={(comVoz) => { setCaixaComVoz(comVoz); setCaixaAberta(true); }}
           micDisponivel={deveExibirRecursosDeIa(usuarioDaSessao)}
         />
-        {ehPC && visitaAtual && passoAtualDaTrilha && (
-          <VisitTrail
-            empresa={nomeParaExibir(empresaVisita)}
-            percentual={percentualVisitaTrilha}
-            dados={dadosTrilha}
-            atual={passoAtualDaTrilha}
-            onIr={irParaPasso}
-          />
-        )}
         <nav className="hidden">
           <button
             onClick={() => navegarPrincipal("inicio")}
@@ -8029,6 +8073,14 @@ export default function Home() {
         ) : view === "visita" && visitaAtual ? (
           ehPC ? (
             <PcCentral
+              passos={[
+                { chave: "checklist", rotulo: "Checklist", resumo: `${respondidos} de ${totalChecklist} respondidos`, icone: "checklist", tom: "ok" },
+                { chave: "evidencias", rotulo: "Evidências", resumo: `${fotosVisita} ${fotosVisita === 1 ? "foto" : "fotos"} · ${audiosVisita} ${audiosVisita === 1 ? "áudio" : "áudios"}`, icone: "evidencias", tom: "info" },
+                { chave: "correcoes", rotulo: "Correções", resumo: `${ncsAbertas} em aberto`, icone: "ncs", tom: "nc" },
+                { chave: "pops", rotulo: "POPs da visita", resumo: `${resumoPopsVisita.pendentes} a criar ou em rascunho`, icone: "pops", tom: "pend" },
+                { chave: "relatorio", rotulo: "Relatório", resumo: `${linhasConferenciaRel.filter((linha) => !linha.ok).length} pendências`, icone: "relatorio", tom: "lilas" },
+              ]}
+              onIrPasso={(chave) => irParaPasso(chave as PassoVisita)}
               empresa={nomeParaExibir(empresaVisita)}
               detalhe={`${fdata(visitaAtual.data)} · ${visitaAtual.responsavel || "Responsável não informado"}`}
               proxima={{
@@ -8195,17 +8247,7 @@ export default function Home() {
               <PcRelatorio
                 empresa={nomeParaExibir(empresaVisita)}
                 data={fdata(visitaAtual.data)}
-                linhas={conferenciaDoRelatorio({
-                  respondidos,
-                  totalChecklist,
-                  ncsAbertas,
-                  ncsSemResponsavelOuPrazo: ncsVisita.filter((nc) => nc.status !== "Resolvida" && (!nc.responsavelAcao?.trim() || !nc.prazo?.trim())).length,
-                  evidencias: evidenciasVisita.length,
-                  popsPendentes: resumoPopsVisita.pendentes,
-                  popsSugeridos: resumoPopsVisita.linhas.length,
-                  cadastroPreenchidos: empresaVisita ? preparacaoDaEmpresa(empresaVisita).preenchidos : 0,
-                  cadastroTotal: empresaVisita ? preparacaoDaEmpresa(empresaVisita).total : 0,
-                })}
+                linhas={linhasConferenciaRel}
                 secoes={secoesRelatorio}
                 onSecao={(chave, valor) => setSecoesRelatorio((atual) => ({ ...atual, [chave]: valor }))}
                 podeGerar={permitido("relatorios.exportar", visitaAtual.empresaId)}
@@ -9332,6 +9374,19 @@ export default function Home() {
               onSelecionar={(id) => { setDb((o) => ({ ...o, empresaAtualId: id })); setVisitaAtualId(null); }}
               onGerenciar={(id) => { const alvo = db.empresas[id]; if (alvo) editarEmpresa(alvo); }}
               onNovaVisita={novaVisita}
+              onHistorico={(id) => {
+                setDb((o) => ({ ...o, empresaAtualId: id }));
+                setVisitaAtualId(null);
+                setView("historico");
+              }}
+              onAcessos={() => navegarPrincipal("acessos")}
+              onArquivar={(id, arquivar) => {
+                if (!exigirPermissao("empresas.editar", id)) return;
+                setDb((o) => (o.empresas[id] ? { ...o, empresas: { ...o.empresas, [id]: marcarArquivada(o.empresas[id], arquivar, new Date().toISOString()) } } : o));
+              }}
+              arquivadasTotal={empresasVisiveis.filter((e) => e.arquivada).length}
+              mostrarArquivadas={mostrarEmpresasArquivadas}
+              onMostrarArquivadas={setMostrarEmpresasArquivadas}
               empresas={empresasFiltradas.map((e) => {
                 const prep = preparacaoDaEmpresa(e);
                 return {
@@ -9346,6 +9401,8 @@ export default function Home() {
                   preparacao: prep.percentual,
                   completo: prep.completo,
                   podeGerenciar: permitido("empresas.editar", e.id),
+                  podeAcessos: permitido("usuarios.gerenciar"),
+                  arquivada: Boolean(e.arquivada),
                   podeNovaVisita: permitido("visitas.criar", e.id),
                 };
               })}

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { LogoHorizontal } from "@/components/BrandLogo";
 import { NavIcon, type NavIconName } from "@/components/NavIcons";
+import type { PassoTrilha, PassoVisita } from "@/lib/visitTrail";
 import {
   barraInferior,
   itensDaBarra,
@@ -56,7 +57,21 @@ type Props = {
   /** Pessoa conectada (cartão do rodapé do menu do PC); null no modo local. */
   usuario: { nome: string; perfil: string; iniciais: string } | null;
   versao: string;
+  /** Grupo "Visita atual" do menu do PC; null quando não há visita aberta. */
+  visitaMenu?: { empresa: string; passos: PassoTrilha[]; atual: PassoVisita | null; emTelaDaVisita: boolean } | null;
+  onIrPasso?: (passo: PassoVisita) => void;
 };
+
+const ICONE_DO_PASSO: Record<PassoVisita, NavIconName> = {
+  central: "central",
+  checklist: "checklist",
+  evidencias: "evidencias",
+  correcoes: "ncs",
+  pops: "pops",
+  relatorio: "relatorio",
+};
+
+const CHAVE_GRUPO_VISITA = "mbp-menu-visita-atual";
 
 function Tile({
   tom,
@@ -108,9 +123,47 @@ export default function AppNavigation({
   saindo,
   usuario,
   versao,
+  visitaMenu = null,
+  onIrPasso,
 }: Props) {
-  const [grupoVisitaAberto, setGrupoVisitaAberto] = useState(true);
+  // Escolha do usuário (recolher/expandir) guardada na sessão; sem escolha, abre só nas telas da visita.
+  const [escolhaGrupoVisita, setEscolhaGrupoVisita] = useState<boolean | null>(null);
+  const [adminPopAberto, setAdminPopAberto] = useState(false);
+  const adminRef = useRef<HTMLDivElement | null>(null);
   const [grupoAdminAberto, setGrupoAdminAberto] = useState(true);
+  useEffect(() => {
+    try {
+      const salvo = window.sessionStorage.getItem(CHAVE_GRUPO_VISITA);
+      if (salvo === "1" || salvo === "0") setEscolhaGrupoVisita(salvo === "1");
+    } catch {
+      // sessão sem armazenamento: segue o padrão
+    }
+  }, []);
+  useEffect(() => {
+    if (!adminPopAberto) return;
+    const aoTeclar = (evento: KeyboardEvent) => {
+      if (evento.key === "Escape") setAdminPopAberto(false);
+    };
+    const aoClicarFora = (evento: MouseEvent) => {
+      if (adminRef.current && !adminRef.current.contains(evento.target as Node)) setAdminPopAberto(false);
+    };
+    window.addEventListener("keydown", aoTeclar);
+    window.addEventListener("mousedown", aoClicarFora);
+    return () => {
+      window.removeEventListener("keydown", aoTeclar);
+      window.removeEventListener("mousedown", aoClicarFora);
+    };
+  }, [adminPopAberto]);
+  const grupoVisitaAberto = escolhaGrupoVisita ?? Boolean(visitaMenu?.emTelaDaVisita);
+  const alternarGrupoVisita = () => {
+    const proximo = !grupoVisitaAberto;
+    setEscolhaGrupoVisita(proximo);
+    try {
+      window.sessionStorage.setItem(CHAVE_GRUPO_VISITA, proximo ? "1" : "0");
+    } catch {
+      // sem armazenamento da sessão
+    }
+  };
   const slots = barraInferior(contexto);
   const itensBarra = itensDaBarra(slots);
   const trilho = trilhoDoTablet(contexto);
@@ -230,9 +283,9 @@ export default function AppNavigation({
       </nav>
 
       {/* PC: menu lateral azul */}
-      <aside className="pc-side" aria-label="Menu lateral">
+      <aside className={`pc-side${visitaMenu ? " pc-side--visita" : ""}`} aria-label="Menu lateral">
         <div className="pc-side-brand">
-          <LogoHorizontal size={38} showSubtitle textClassName="text-xl" />
+          <LogoHorizontal size={38} showSubtitle={!visitaMenu} textClassName="text-xl" />
         </div>
 
         {temRegistrar && (
@@ -247,9 +300,46 @@ export default function AppNavigation({
         <nav className="pc-side-nav" aria-label="Navegação principal">
           {lateral.topo.map((item) => linkLateral(item, false))}
 
-          {(lateral.apoio.length > 0 || lateral.admin.length > 0) && <div className="pc-side-sep" role="separator" />}
-          {lateral.apoio.map((item) => linkLateral(item, false))}
-          {lateral.admin.length > 0 && (
+          {visitaMenu && (
+            <section className="pc-vcard" aria-label="Visita atual">
+              <button type="button" className="pc-vcard-head" aria-expanded={grupoVisitaAberto} onClick={alternarGrupoVisita}>
+                <span className="pc-vcard-tile">
+                  <NavIcon name="visitas" size={20} strokeWidth={1.9} />
+                </span>
+                <span className="pc-vgroup-text">
+                  <span className="pc-vcard-title">Visita atual</span>
+                  <span className="pc-vcard-company">{visitaMenu.empresa}</span>
+                </span>
+                <span className="pc-chev" aria-hidden="true">{grupoVisitaAberto ? "⌃" : "⌄"}</span>
+              </button>
+              {grupoVisitaAberto && (
+                <div className="pc-vcard-steps">
+                  {visitaMenu.passos.map((passo) => {
+                    const ehAtivo = visitaMenu.atual === passo.chave;
+                    return (
+                      <button
+                        key={passo.chave}
+                        type="button"
+                        className={`pc-link pc-link--step${ehAtivo ? " is-active" : ""}`}
+                        aria-current={ehAtivo ? "page" : undefined}
+                        onClick={() => onIrPasso?.(passo.chave)}
+                      >
+                        <span className="pc-link-icon">
+                          <NavIcon name={ICONE_DO_PASSO[passo.chave]} size={15} strokeWidth={1.9} />
+                        </span>
+                        <span className="pc-link-label">{passo.rotulo}</span>
+                        {passo.contador && <span className="pc-link-count">{passo.contador}</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          )}
+
+          {!visitaMenu && (lateral.apoio.length > 0 || lateral.admin.length > 0) && <div className="pc-side-sep" role="separator" />}
+          {!visitaMenu && lateral.apoio.map((item) => linkLateral(item, false))}
+          {!visitaMenu && lateral.admin.length > 0 && (
             <div className="pc-agroup">
               <button
                 type="button"
@@ -266,14 +356,75 @@ export default function AppNavigation({
         </nav>
 
         <div className="pc-side-foot">
-          <button type="button" className={`pc-sync is-${sincronizacao.estado}`} onClick={sincronizacao.onClick}>
-            <span className="pc-sync-dot" aria-hidden="true" />
-            {sincronizacao.rotulo}
-          </button>
+          {visitaMenu && (lateral.apoio.length > 0 || lateral.admin.length > 0) && (
+            <div className="pc-mini-row">
+              {lateral.apoio.map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  className={`pc-mini${ativa === item.key ? " is-active" : ""}`}
+                  aria-current={ativa === item.key ? "page" : undefined}
+                  onClick={() => onSelecionar(item.key)}
+                >
+                  <NavIcon name={item.key} size={16} strokeWidth={1.9} />
+                  Ajuda
+                </button>
+              ))}
+              {lateral.admin.length > 0 && (
+                <div className="pc-mini-wrap" ref={adminRef}>
+                  <button
+                    type="button"
+                    className={`pc-mini${lateral.admin.some((item) => item.key === ativa) ? " is-active" : ""}`}
+                    aria-haspopup="menu"
+                    aria-expanded={adminPopAberto}
+                    onClick={() => setAdminPopAberto((aberto) => !aberto)}
+                  >
+                    <NavIcon name="acessos" size={16} strokeWidth={1.9} />
+                    Admin
+                  </button>
+                  {adminPopAberto && (
+                    <div className="pc-admin-pop" role="menu">
+                      {lateral.admin.map((item) => (
+                        <button
+                          key={item.key}
+                          type="button"
+                          role="menuitem"
+                          className="pc-admin-item"
+                          onClick={() => {
+                            setAdminPopAberto(false);
+                            onSelecionar(item.key);
+                          }}
+                        >
+                          {item.rotulo}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+          {!visitaMenu && (
+            <button type="button" className={`pc-sync is-${sincronizacao.estado}`} onClick={sincronizacao.onClick}>
+              <span className="pc-sync-dot" aria-hidden="true" />
+              {sincronizacao.rotulo}
+            </button>
+          )}
           {usuario && (
             <div className="pc-user-card">
               <div className="pc-user-line">
-                <span className="pc-user-avatar" aria-hidden="true">{usuario.iniciais}</span>
+                <span className="pc-user-avatar">
+                  {usuario.iniciais}
+                  {visitaMenu && (
+                    <button
+                      type="button"
+                      className={`pc-avatar-dot is-${sincronizacao.estado}`}
+                      title={sincronizacao.rotulo}
+                      aria-label={sincronizacao.rotulo}
+                      onClick={sincronizacao.onClick}
+                    />
+                  )}
+                </span>
                 <span className="pc-user-text">
                   <span className="pc-user-role">{usuario.perfil}</span>
                   <span className="pc-user-name">{usuario.nome}</span>
@@ -285,7 +436,7 @@ export default function AppNavigation({
               </button>
             </div>
           )}
-          {versao && <div className="pc-version">v{versao}</div>}
+          {versao && !visitaMenu && <div className="pc-version">v{versao}</div>}
         </div>
       </aside>
 
