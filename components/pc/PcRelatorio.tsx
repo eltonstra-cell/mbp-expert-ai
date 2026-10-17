@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import { mensagemDoRelatorio, pendenciasDoRelatorio, type DestinoConferencia, type LinhaConferencia } from "@/lib/reportCheck";
 
 export type SecaoRelatorio = "resumo" | "ambientes" | "ncs" | "evidencias" | "pops";
@@ -27,6 +29,8 @@ type Props = {
   onPrevia: () => void;
   onParcial: () => void;
   onOficial: () => void;
+  /** PDF pela impressão do navegador (texto selecionável). */
+  onSelecionavel: (tipo: "previa" | "parcial" | "oficial") => void;
   onFinalizar: () => void;
   onReabrir: () => void;
   onVoltar: () => void;
@@ -47,10 +51,12 @@ export default function PcRelatorio({
   onPrevia,
   onParcial,
   onOficial,
+  onSelecionavel,
   onFinalizar,
   onReabrir,
   onVoltar,
 }: Props) {
+  const [menuSel, setMenuSel] = useState(false);
   const pendencias = pendenciasDoRelatorio(linhas);
   const mensagem = mensagemDoRelatorio(pendencias);
 
@@ -64,6 +70,39 @@ export default function PcRelatorio({
           </p>
         </div>
         <div className="ui-head-actions">
+          {podeGerar && (
+            <div className="pc-sel-pdf">
+              <button type="button" className="ui-btn ui-btn--soft" aria-haspopup="menu" aria-expanded={menuSel} disabled={gerando} onClick={() => setMenuSel((valor) => !valor)}>
+                Gerar PDF (texto selecionável) ▾
+              </button>
+              {menuSel && (
+                <div className="pc-sel-pdf-menu" role="menu">
+                  {(
+                    [
+                      ["previa", "Prévia"],
+                      ["parcial", "Parcial"],
+                      ["oficial", "Versão oficial"],
+                    ] as ["previa" | "parcial" | "oficial", string][]
+                  ).map(([tipo, rotulo]) => (
+                    <button
+                      key={tipo}
+                      type="button"
+                      role="menuitem"
+                      className="ui-menu-item"
+                      disabled={tipo === "oficial" && (!podeOficial || pendencias > 0)}
+                      title={tipo === "oficial" && (!podeOficial || pendencias > 0) ? "Resolva as pendências para emitir a versão oficial" : undefined}
+                      onClick={() => {
+                        setMenuSel(false);
+                        onSelecionavel(tipo);
+                      }}
+                    >
+                      {rotulo}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           {podeConcluir &&
             (concluida ? (
               <button type="button" className="ui-btn ui-btn--secondary" onClick={onReabrir}>
@@ -116,7 +155,7 @@ export default function PcRelatorio({
             <ul className="pc-check-list">
               {SECOES_RELATORIO.map((secao) => (
                 <li key={secao.chave}>
-                  <label className="pc-content-row">
+                  <label className="pc-content-row" title={secao.texto}>
                     <input type="checkbox" checked={secoes[secao.chave]} onChange={(evento) => onSecao(secao.chave, evento.target.checked)} />
                     <span className="pc-check-text">
                       <span className="pc-rep-item-title">{secao.rotulo}</span>

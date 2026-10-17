@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { InfoAmbiente } from "@/lib/checklistEnvs";
 import type { ChecklistStatus } from "@/types";
 
@@ -29,7 +29,8 @@ type Props = {
   onItem: (id: string) => void;
   onVoltar: () => void;
   principal: ReactNode;
-  apoio: ApoioDoItem;
+  /** Sem apoio (tablet), o painel da direita não aparece. */
+  apoio?: ApoioDoItem;
 };
 
 const CLASSE_DO_STATUS: Record<ChecklistStatus, string> = {
@@ -45,98 +46,82 @@ const SITUACAO_DO_POP: Record<string, string> = {
   aprovado: "aprovado",
 };
 
-// Abas de ambiente numa faixa só; os que não cabem ficam no "+ N ambientes".
-function AbasDeAmbiente({ ambientes, atual, onSelecionar }: { ambientes: InfoAmbiente[]; atual: string; onSelecionar: (nome: string) => void }) {
-  const faixaRef = useRef<HTMLDivElement | null>(null);
-  const [cabem, setCabem] = useState(ambientes.length);
-  const [aberto, setAberto] = useState(false);
+// Um único seletor ("Recebimento 9/12 ▾") que abre o painel com todos os ambientes em cartões.
+function classeDoAmbiente(info: InfoAmbiente): string {
+  if (info.naoConformes > 0) return "nc";
+  if (info.total > 0 && info.respondidos >= info.total) return "ok";
+  if (info.respondidos > 0) return "pend";
+  return "info";
+}
 
-  useLayoutEffect(() => {
-    const faixa = faixaRef.current;
-    if (!faixa) return;
-    const medir = () => {
-      const filhos = [...faixa.querySelectorAll<HTMLElement>("[data-aba]")];
-      if (filhos.length === 0) return;
-      const reservaDoMais = 120;
-      let soma = 0;
-      let quantas = 0;
-      for (const filho of filhos) {
-        soma += filho.offsetWidth + 8;
-        if (soma > faixa.clientWidth - (filhos.length > quantas + 1 ? reservaDoMais : 0)) break;
-        quantas += 1;
-      }
-      setCabem(Math.max(1, quantas));
-    };
-    medir();
-    if (typeof ResizeObserver === "undefined") return;
-    const observador = new ResizeObserver(medir);
-    observador.observe(faixa);
-    return () => observador.disconnect();
-  }, [ambientes]);
+function SeletorDeAmbiente({
+  ambientes,
+  atual,
+  posicao,
+  total,
+  onSelecionar,
+}: {
+  ambientes: InfoAmbiente[];
+  atual: string;
+  posicao: number;
+  total: number;
+  onSelecionar: (nome: string) => void;
+}) {
+  const [aberto, setAberto] = useState(false);
+  const raizRef = useRef<HTMLDivElement | null>(null);
+  const info = ambientes.find((ambiente) => ambiente.nome === atual);
 
   useEffect(() => {
     if (!aberto) return;
-    const fechar = () => setAberto(false);
-    window.addEventListener("mousedown", fechar);
-    return () => window.removeEventListener("mousedown", fechar);
+    const aoClicarFora = (evento: MouseEvent) => {
+      if (raizRef.current && !raizRef.current.contains(evento.target as Node)) setAberto(false);
+    };
+    const aoTeclar = (evento: KeyboardEvent) => {
+      if (evento.key === "Escape") setAberto(false);
+    };
+    window.addEventListener("mousedown", aoClicarFora);
+    window.addEventListener("keydown", aoTeclar);
+    return () => {
+      window.removeEventListener("mousedown", aoClicarFora);
+      window.removeEventListener("keydown", aoTeclar);
+    };
   }, [aberto]);
 
-  const indiceAtual = ambientes.findIndex((info) => info.nome === atual);
-  // O ambiente atual nunca fica escondido: entra no lugar da última aba visível.
-  const visiveis = ambientes.slice(0, cabem);
-  if (indiceAtual >= cabem && cabem > 0) visiveis[cabem - 1] = ambientes[indiceAtual];
-  const escondidos = ambientes.filter((info) => !visiveis.includes(info));
-
   return (
-    <div className="chk-pc-abas" role="tablist" aria-label="Ambientes">
-      <div className="chk-pc-abas-faixa" ref={faixaRef}>
-        {(cabem >= ambientes.length ? ambientes : visiveis).map((info) => (
-          <button
-            key={info.nome}
-            type="button"
-            role="tab"
-            data-aba={info.nome}
-            aria-selected={info.nome === atual}
-            className={`chk-pc-aba${info.nome === atual ? " is-on" : ""}${info.naoConformes > 0 ? " tem-nc" : ""}`}
-            onClick={() => onSelecionar(info.nome)}
-          >
-            <span>{info.rotulo}</span>
-            <span className="chk-pc-aba-n">
-              {info.respondidos}/{info.total}
-            </span>
-          </button>
-        ))}
-        {/* Mede todas as abas antes de decidir quantas cabem. */}
-        {cabem < ambientes.length &&
-          ambientes.slice(cabem).map((info) => (
-            <span key={`medida-${info.nome}`} data-aba={info.nome} className="chk-pc-aba chk-pc-aba--medida" aria-hidden="true">
-              {info.rotulo} {info.respondidos}/{info.total}
-            </span>
-          ))}
-      </div>
-      {escondidos.length > 0 && (
-        <div className="chk-pc-mais" onMouseDown={(evento) => evento.stopPropagation()}>
-          <button type="button" className="chk-pc-aba" aria-haspopup="menu" aria-expanded={aberto} onClick={() => setAberto((atualAberto) => !atualAberto)}>
-            + {escondidos.length} ambiente{escondidos.length === 1 ? "" : "s"}
-          </button>
-          {aberto && (
-            <div className="chk-pc-mais-lista" role="menu">
-              {escondidos.map((info) => (
-                <button
-                  key={info.nome}
-                  type="button"
-                  role="menuitem"
-                  className="ui-menu-item"
-                  onClick={() => {
-                    setAberto(false);
-                    onSelecionar(info.nome);
-                  }}
-                >
-                  {info.rotulo} · {info.respondidos}/{info.total}
-                </button>
-              ))}
-            </div>
-          )}
+    <div className="chk-sel" ref={raizRef}>
+      <button type="button" className="chk-sel-botao" aria-haspopup="dialog" aria-expanded={aberto} onClick={() => setAberto((valor) => !valor)}>
+        <span className="chk-sel-nome">{info?.rotulo || atual}</span>
+        <span className="chk-sel-pos">
+          {posicao}/{total}
+        </span>
+        <span aria-hidden="true">▾</span>
+      </button>
+      {aberto && (
+        <div className="chk-sel-painel" role="dialog" aria-label="Escolher ambiente">
+          {ambientes.map((ambiente) => {
+            const percentual = ambiente.total ? Math.round((ambiente.respondidos / ambiente.total) * 100) : 0;
+            return (
+              <button
+                key={ambiente.nome}
+                type="button"
+                className={`chk-sel-cartao chk-sel-cartao--${classeDoAmbiente(ambiente)}${ambiente.nome === atual ? " is-on" : ""}`}
+                aria-current={ambiente.nome === atual ? "true" : undefined}
+                onClick={() => {
+                  setAberto(false);
+                  onSelecionar(ambiente.nome);
+                }}
+              >
+                <span className="chk-sel-cartao-nome">{ambiente.rotulo}</span>
+                <span className="chk-sel-cartao-info">
+                  {ambiente.respondidos}/{ambiente.total} respondidos
+                </span>
+                <span className="chk-sel-cartao-barra" aria-hidden="true">
+                  <span style={{ width: `${percentual}%` }} />
+                </span>
+                <span className="chk-sel-cartao-nc">{ambiente.naoConformes > 0 ? `${ambiente.naoConformes} NC${ambiente.naoConformes === 1 ? "" : "s"}` : "Sem NCs"}</span>
+              </button>
+            );
+          })}
         </div>
       )}
     </div>
@@ -219,26 +204,33 @@ export default function PcChecklist({ titulo, subtitulo, ambientes, ambienteAtua
         </button>
       </div>
 
-      <AbasDeAmbiente ambientes={ambientes} atual={ambienteAtual} onSelecionar={onAmbiente} />
-
-      <div className="chk-pc-fila" role="group" aria-label="Itens do ambiente">
-        {fila.map((item, indice) => (
-          <button
-            key={item.id}
-            type="button"
-            className={`chk-pc-num ${CLASSE_DO_STATUS[item.status]}${item.id === itemAtualId ? " is-atual" : ""}`}
-            aria-current={item.id === itemAtualId ? "true" : undefined}
-            aria-label={`Item ${indice + 1}: ${item.status}`}
-            onClick={() => onItem(item.id)}
-          >
-            {indice + 1}
-          </button>
-        ))}
+      <div className="chk-pc-linha">
+        <SeletorDeAmbiente
+          ambientes={ambientes}
+          atual={ambienteAtual}
+          posicao={Math.max(1, fila.findIndex((item) => item.id === itemAtualId) + 1)}
+          total={fila.length}
+          onSelecionar={onAmbiente}
+        />
+        <div className="chk-pc-fila" role="group" aria-label="Itens do ambiente">
+          {fila.map((item, indice) => (
+            <button
+              key={item.id}
+              type="button"
+              className={`chk-pc-num ${CLASSE_DO_STATUS[item.status]}${item.id === itemAtualId ? " is-atual" : ""}`}
+              aria-current={item.id === itemAtualId ? "true" : undefined}
+              aria-label={`Item ${indice + 1}: ${item.status}`}
+              onClick={() => onItem(item.id)}
+            >
+              {indice + 1}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="chk-pc-corpo">
+      <div className={`chk-pc-corpo${apoio ? "" : " chk-pc-corpo--sem-apoio"}`}>
         <div className="chk-pc-principal">{principal}</div>
-        <PainelDeApoio apoio={apoio} />
+        {apoio && <PainelDeApoio apoio={apoio} />}
       </div>
     </section>
   );

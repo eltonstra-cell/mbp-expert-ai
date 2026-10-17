@@ -39,7 +39,9 @@ import PcChecklist, { type ApoioDoItem } from "@/components/pc/PcChecklist";
 import RevisaoTranscricao from "@/components/RevisaoTranscricao";
 import { iniciarMedidorDeVolume } from "@/components/useNivelDeAudio";
 import { MENSAGEM_SEM_FALA, ehSilencio } from "@/lib/transcricao";
-import { rotuloDoRelatorio, seloDoPdf } from "@/lib/reportLabels";
+import { nomeDoArquivoPdf, rotuloDoRelatorio, seloDoPdf } from "@/lib/reportLabels";
+import { calcularCortes } from "@/lib/pdfPaginacao";
+import { cssDoRodapeDeImpressao, suportaCaixasDeMargem } from "@/lib/printFooter";
 import { sincronizarNcDoItem } from "@/lib/checklistNcs";
 import { CampoBarra, CampoCabecalho, CampoCorrecoes, CampoInicio, CampoMais, type TelaCampo } from "@/components/campo/CampoTelas";
 import type { ItemMenu } from "@/components/ui/RowMenu";
@@ -710,6 +712,7 @@ export default function Home() {
   }, [aviso]);
   const [secoesRelatorio, setSecoesRelatorio] = useState<Record<SecaoRelatorio, boolean>>({ resumo: true, ambientes: true, ncs: true, evidencias: true, pops: true });
   const [emissaoParcial, setEmissaoParcial] = useState(false);
+  const [rodapeImpressao, setRodapeImpressao] = useState<{ empresa: string; selo: string; fixo: boolean } | null>(null);
   const telaModo = useScreenMode();
   const modo = telaModo.modo;
   // Completo e Equilibrado usam o kit de telas do PC; Campo tem apresentação própria.
@@ -2514,7 +2517,7 @@ export default function Home() {
       // Medidos no MESMO layout que o html2canvas desenha (clone), para as posições baterem.
       const medirBlocos = (raiz: HTMLElement) => {
         const base = raiz.getBoundingClientRect();
-        const blocos: { topCss: number; bottomCss: number; heightCss: number }[] = [];
+        const blocos: { topCss: number; bottomCss: number; heightCss: number; sintetico?: boolean }[] = [];
         raiz.querySelectorAll(".print-card, .print-block").forEach((node) => {
           const rect = (node as HTMLElement).getBoundingClientRect();
           blocos.push({
@@ -2537,6 +2540,7 @@ export default function Home() {
             topCss: Math.max(0, secaoRect.top - base.top),
             bottomCss: Math.max(0, fimProtegido - base.top),
             heightCss: Math.max(0, fimProtegido - secaoRect.top),
+            sintetico: true,
           });
         }
 
@@ -2550,6 +2554,7 @@ export default function Home() {
             topCss: Math.max(0, secaoRect.top - base.top),
             bottomCss: Math.max(0, primeiraRect.bottom - base.top),
             heightCss: Math.max(0, primeiraRect.bottom - secaoRect.top),
+            sintetico: true,
           });
         }
         return blocos.sort((a, b) => a.topCss - b.topCss);
@@ -2597,63 +2602,11 @@ export default function Home() {
         top: Math.round(bloco.topCss * ESCALA_PDF),
         bottom: Math.round(bloco.bottomCss * ESCALA_PDF),
         height: Math.round(bloco.heightCss * ESCALA_PDF),
+        sintetico: bloco.sintetico,
       }));
 
-      const cortes: { inicio: number; fim: number }[] = [];
-      let inicio = 0;
       const folgaPx = Math.max(10, Math.round(5 / mmPorCanvasPx));
-
-      while (inicio < canvas.height) {
-        let fimDesejado = Math.min(
-          inicio + alturaPaginaPx,
-          canvas.height
-        );
-
-        if (fimDesejado < canvas.height) {
-          // Se a quebra cair dentro de um cartão, move a quebra para
-          // imediatamente antes do cartão.
-          const atravessados = protegidosPx.filter(
-            (bloco) =>
-              bloco.top > inicio + folgaPx &&
-              bloco.top < fimDesejado &&
-              bloco.bottom > fimDesejado &&
-              bloco.height < alturaPaginaPx - folgaPx
-          );
-
-          // Se mais de um bloco protegido atravessar a quebra, usa o que
-          // começa mais cedo. Isso garante que o cabeçalho de Evidências
-          // seja levado junto com a primeira linha de fotos.
-          const atravessado = atravessados.sort(
-            (a, b) => a.top - b.top
-          )[0];
-
-          if (atravessado) {
-            // Respiro até o bloco anterior (sem invadi-lo quando os blocos são colados).
-            const fimDoBlocoAnterior = Math.max(
-              0,
-              ...protegidosPx.filter((bloco) => bloco.bottom <= atravessado.top + 1 && bloco !== atravessado).map((bloco) => bloco.bottom)
-            );
-            const respiro = Math.max(0, Math.min(folgaPx, atravessado.top - fimDoBlocoAnterior));
-            const fimSeguro = atravessado.top - respiro;
-
-            // Evita criar uma página quase vazia.
-            if (fimSeguro - inicio >= alturaPaginaPx * 0.12) {
-              fimDesejado = fimSeguro;
-            }
-          }
-        }
-
-        // Proteção contra loop em layouts inesperados.
-        if (fimDesejado <= inicio) {
-          fimDesejado = Math.min(
-            inicio + alturaPaginaPx,
-            canvas.height
-          );
-        }
-
-        cortes.push({ inicio, fim: fimDesejado });
-        inicio = fimDesejado;
-      }
+      const cortes = calcularCortes({ alturaTotal: canvas.height, alturaPagina: alturaPaginaPx, folga: folgaPx, blocos: protegidosPx });
 
       const totalPaginas = cortes.length;
 
@@ -2764,22 +2717,11 @@ export default function Home() {
         );
       });
 
-      const nomeEmpresa = (
-        empresaVisita.nomeFantasia ||
-        empresaVisita.razaoSocial ||
-        "empresa"
-      )
-        .replace(/[^\p{L}\p{N}]+/gu, "-")
-        .replace(/^-+|-+$/g, "")
-        .toLowerCase();
-
-      const dataArquivo = (visitaAtual.data || "")
-        .replace(/\//g, "-")
-        .replace(/\s+/g, "-");
-
-      pdf.save(
-        `relatorio-tecnico-${nomeEmpresa || "visita"}-${dataArquivo || "inspecao"}.pdf`
-      );
+      // O nome do arquivo vem do próprio relatório que está na tela (empresa e data da visita dele).
+      const empresaDoRelatorio = elemento.dataset.empresa || nomeParaExibir(empresaVisita);
+      const dataDoRelatorio = elemento.dataset.dataVisita || visitaAtual.data || "";
+      const tipoDoArquivo = opcoes?.parcial ? "parcial" : opcoes?.previa ? "previa" : "oficial";
+      pdf.save(nomeDoArquivoPdf(empresaDoRelatorio, dataDoRelatorio, tipoDoArquivo));
     } catch (error) {
       console.error("Falha ao gerar PDF:", error);
       const detalhe =
@@ -4265,6 +4207,38 @@ export default function Home() {
       }
     }
     toggleAmbiente(nome);
+  }
+
+  // PDF com texto selecionável: usa a impressão do navegador ("Salvar como PDF"), com rodapé em todas as páginas.
+  async function gerarPdfSelecionavel(tipo: "previa" | "parcial" | "oficial") {
+    if (!visitaAtual || !empresaVisita) return;
+    if (tipo === "oficial" && !exigirPermissao("relatorios.aprovar", visitaAtual.empresaId)) return;
+    if (!exigirPermissao("relatorios.exportar", visitaAtual.empresaId)) return;
+    const elemento = document.getElementById("relatorio-visita");
+    if (!elemento) return;
+    const empresa = elemento.dataset.empresa || nomeParaExibir(empresaVisita);
+    const dataVisita = elemento.dataset.dataVisita || visitaAtual.data || "";
+    const selo = seloDoPdf(tipo) || "VERSÃO OFICIAL";
+    const marcas = (navigator as Navigator & { userAgentData?: { brands: { brand: string; version: string }[] } }).userAgentData?.brands;
+    const comCaixasDeMargem = suportaCaixasDeMargem(marcas, navigator.userAgent);
+    const estilo = document.createElement("style");
+    estilo.id = "estilo-impressao-relatorio";
+    estilo.textContent = cssDoRodapeDeImpressao({ empresa, selo, comCaixasDeMargem });
+    document.head.appendChild(estilo);
+    setRodapeImpressao({ empresa, selo, fixo: !comCaixasDeMargem });
+    const tituloAntes = document.title;
+    document.title = nomeDoArquivoPdf(empresa, dataVisita, tipo).replace(/\.pdf$/, "");
+    if (tipo === "parcial") setEmissaoParcial(true);
+    const limpar = () => {
+      estilo.remove();
+      document.title = tituloAntes;
+      setRodapeImpressao(null);
+      setEmissaoParcial(false);
+      window.removeEventListener("afterprint", limpar);
+    };
+    window.addEventListener("afterprint", limpar);
+    await new Promise((resolver) => window.setTimeout(resolver, 150));
+    window.print();
   }
 
   async function emitirRelatorioPc(modo: "previa" | "parcial" | "oficial") {
@@ -8023,6 +7997,7 @@ export default function Home() {
                     <ChecklistFocoItem
                       item={foco}
                       semCabecalhoDeAmbiente
+                      mostrarApoio={false}
                       {...dadosDoAmbienteEmFoco(foco, lista)}
                       onGravidade={(gravidade) => {
                         setItemFocoId(foco.id);
@@ -8057,92 +8032,59 @@ export default function Home() {
             const lista = itensEmOrdem();
             const foco = itemEmFoco();
             const posicao = foco ? lista.findIndex((item) => item.id === foco.id) : -1;
-            const ambienteDoFoco = foco?.ambiente || ambienteChecklistAtivo;
+            const ambienteDoFoco = foco?.ambiente || ambienteChecklistAtivo || "";
             const doAmbiente = lista.filter((item) => item.ambiente === ambienteDoFoco);
             const podeEditar = permitido("visitas.executar", visitaAtual.empresaId);
             return (
-              <section className="checklist-screen ui-screen eq-check">
-                <div className="ui-head">
-                  <div>
-                    <h1 className="ui-title">Checklist</h1>
-                    <p className="ui-subtitle">{respondidos} de {totalChecklist} · {percentualChecklist}%</p>
-                  </div>
-                  <button type="button" onClick={() => setView("visita")} className="pc-check-back" aria-label="Voltar à Central da visita">← Central da visita</button>
-                </div>
-                <div className="eq-check-body">
-                  <nav className="eq-check-envs" aria-label="Ambientes">
-                    {infosAmbientes.map((info) => (
-                      <button
-                        key={info.nome}
-                        type="button"
-                        className={`eq-env${info.nome === ambienteDoFoco ? " is-on" : ""}`}
-                        aria-current={info.nome === ambienteDoFoco ? "true" : undefined}
-                        onClick={() => {
-                          setAmbienteChecklistAtivo(info.nome);
-                          const primeiro = lista.find((item) => item.ambiente === info.nome && item.status === "Pendente") || lista.find((item) => item.ambiente === info.nome);
-                          if (primeiro) setItemFocoId(primeiro.id);
-                        }}
-                      >
-                        <span className="eq-env-name">{info.rotulo}</span>
-                        <span className="eq-env-count">{info.respondidos}/{info.total}{info.naoConformes > 0 ? ` · ${info.naoConformes} NC` : ""}</span>
-                      </button>
-                    ))}
-                  </nav>
-                  <div className="eq-check-items" role="list" aria-label="Itens do ambiente">
-                    <select
-                      className="ui-input eq-env-select"
-                      aria-label="Ambiente"
-                      value={ambienteDoFoco || ""}
-                      onChange={(evento) => {
-                        const nome = evento.target.value;
-                        const primeiro = lista.find((item) => item.ambiente === nome && item.status === "Pendente") || lista.find((item) => item.ambiente === nome);
-                        setAmbienteChecklistAtivo(nome);
-                        if (primeiro) setItemFocoId(primeiro.id);
+              <PcChecklist
+                titulo="Checklist"
+                subtitulo={`${respondidos} de ${totalChecklist} respondidos · ${percentualChecklist}%`}
+                ambientes={infosAmbientes}
+                ambienteAtual={ambienteDoFoco}
+                onAmbiente={(nome) => {
+                  const primeiro = lista.find((item) => item.ambiente === nome && item.status === "Pendente") || lista.find((item) => item.ambiente === nome);
+                  setAmbienteChecklistAtivo(nome);
+                  if (primeiro) setItemFocoId(primeiro.id);
+                }}
+                fila={doAmbiente.map((item) => ({ id: item.id, status: item.status }))}
+                itemAtualId={foco?.id || ""}
+                onItem={(id) => {
+                  setItemFocoId(id);
+                  setUltimoItemChecklistId(id);
+                }}
+                onVoltar={() => setView("visita")}
+                principal={
+                  foco ? (
+                    <ChecklistFocoItem
+                      item={foco}
+                      semCabecalhoDeAmbiente
+                      {...dadosDoAmbienteEmFoco(foco, lista)}
+                      onGravidade={(gravidade) => {
+                        setItemFocoId(foco.id);
+                        atualizarChecklistItem(foco.id, { criticidade: gravidade });
                       }}
-                    >
-                      {infosAmbientes.map((info) => (
-                        <option key={info.nome} value={info.nome}>{info.rotulo} · {info.respondidos}/{info.total}</option>
-                      ))}
-                    </select>
-                    {doAmbiente.map((item, i) => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        role="listitem"
-                        className={`eq-item is-${item.status === "Conforme" ? "ok" : item.status === "Não Conforme" ? "nc" : item.status === "Não se aplica" ? "na" : "pend"}${foco?.id === item.id ? " is-on" : ""}`}
-                        onClick={() => { setItemFocoId(item.id); setUltimoItemChecklistId(item.id); }}
-                      >
-                        <span className="eq-item-n">{i + 1}</span>
-                        <span className="eq-item-t">{item.titulo}</span>
-                      </button>
-                    ))}
-                  </div>
-                  <div className="eq-check-detail">
-                    {foco ? (
-                      <ChecklistFocoItem
-                        item={foco}
-                        {...dadosDoAmbienteEmFoco(foco, lista)}
-                        onGravidade={(gravidade) => { setItemFocoId(foco.id); atualizarChecklistItem(foco.id, { criticidade: gravidade }); }}
-                        posicao={posicao + 1}
-                        total={lista.length}
-                        podeEditar={podeEditar}
-                        temAnterior={posicao > 0}
-                        temProximo={posicao < lista.length - 1}
-                        onStatus={(status) => {
-                          setItemFocoId(foco.id);
-                          atualizarChecklistItem(foco.id, { status, ...(status !== "Não Conforme" ? { observacao: "" } : {}) });
-                        }}
-                        onObservacao={(texto) => atualizarChecklistItem(foco.id, { observacao: texto })}
-                        onFoto={() => { setUltimoItemChecklistId(foco.id); registrarRapido(); }}
-                        onAnterior={() => moverItemFoco(-1)}
-                        onProximo={() => moverItemFoco(1)}
-                      />
-                    ) : (
-                      <p className="ui-row-sub">Esta visita não tem itens de checklist.</p>
-                    )}
-                  </div>
-                </div>
-              </section>
+                      posicao={posicao + 1}
+                      total={lista.length}
+                      podeEditar={podeEditar}
+                      temAnterior={posicao > 0}
+                      temProximo={posicao < lista.length - 1}
+                      onStatus={(status) => {
+                        setItemFocoId(foco.id);
+                        atualizarChecklistItem(foco.id, { status, ...(status !== "Não Conforme" ? { observacao: "" } : {}) });
+                      }}
+                      onObservacao={(texto) => atualizarChecklistItem(foco.id, { observacao: texto })}
+                      onFoto={() => {
+                        setUltimoItemChecklistId(foco.id);
+                        registrarRapido();
+                      }}
+                      onAnterior={() => moverItemFoco(-1)}
+                      onProximo={() => moverItemFoco(1)}
+                    />
+                  ) : (
+                    <p className="ui-row-sub">Esta visita não tem itens de checklist.</p>
+                  )
+                }
+              />
             );
           })()
         ) : view === "checklist" && visitaAtual ? (
@@ -8853,13 +8795,20 @@ export default function Home() {
                 onPrevia={() => void emitirRelatorioPc("previa")}
                 onParcial={() => void emitirRelatorioPc("parcial")}
                 onOficial={() => void emitirRelatorioPc("oficial")}
+                onSelecionavel={(tipo) => void gerarPdfSelecionavel(tipo)}
                 onFinalizar={finalizarInspecao}
                 onReabrir={reabrirInspecao}
                 onVoltar={() => setView("visita")}
               />
             )}
-          <section id="relatorio-visita" className={`report-print space-y-4${ehPC ? ` rep-offscreen ${classesSecoesRelatorio}` : ""}`}>
+          <section id="relatorio-visita" data-empresa={nomeParaExibir(empresaVisita)} data-data-visita={visitaAtual.data} data-visita-id={visitaAtual.id} className={`report-print space-y-4${ehPC ? ` rep-offscreen ${classesSecoesRelatorio}` : ""}`}>
             {emissaoParcial && <div className="print-only report-partial">RELATÓRIO PARCIAL</div>}
+            {rodapeImpressao?.fixo && (
+              <div className="print-only rep-rodape-fixo">
+                <span>{rodapeImpressao.empresa}</span>
+                <span>{rodapeImpressao.selo}</span>
+              </div>
+            )}
             <div className="print-only report-document-header">
               <div>
                 <div className="report-brand">{BRAND.name}</div>
@@ -8921,7 +8870,7 @@ export default function Home() {
               >
                 <button
                   type="button"
-                  onClick={() => void baixarPdfRelatorio()}
+                  onClick={() => void baixarPdfRelatorio({ parcial: visitaAtual.status !== "Concluída" })}
                   disabled={gerandoPdf}
                   className="w-full rounded-xl bg-[var(--brand)] px-5 py-4 text-base font-medium text-white shadow-md transition hover:brightness-95 disabled:cursor-wait disabled:opacity-70"
                 >

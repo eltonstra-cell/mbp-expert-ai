@@ -13,3 +13,26 @@ export function seloDoPdf(tipo: TipoDeEmissao): string {
   if (tipo === "previa") return "PRÉVIA";
   return "";
 }
+
+function semAcentos(texto: string): string {
+  return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+/** Aceita "2026-08-10" ou "10/08/2026" e devolve "2026-08-10"; sem data válida, vazio. */
+export function dataParaArquivo(data: string): string {
+  const texto = (data || "").trim();
+  const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(texto);
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+  const br = /^(\d{2})\/(\d{2})\/(\d{4})/.exec(texto);
+  if (br) return `${br[3]}-${br[2]}-${br[1]}`;
+  return "";
+}
+
+/** relatorio-tecnico-{empresa}-{data da visita}-{parcial|previa|oficial}.pdf */
+export function nomeDoArquivoPdf(empresa: string, dataDaVisita: string, tipo: TipoDeEmissao): string {
+  const nome = semAcentos(empresa || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return `relatorio-tecnico-${nome || "empresa"}-${dataParaArquivo(dataDaVisita) || "sem-data"}-${tipo}.pdf`;
+}

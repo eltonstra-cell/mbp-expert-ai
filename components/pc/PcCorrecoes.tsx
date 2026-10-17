@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
 import { Pill, type Tom } from "@/components/ui/Pill";
+import { NOME_DAS_ETAPAS, linhaDaCorrecao } from "@/lib/correcaoRotulos";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import {
   contarEtapas,
@@ -89,9 +90,9 @@ function dataMes(iso: string) {
 function Bolinhas({ nc }: { nc: CorrecaoItem }) {
   const acesas = progressoDaCorrecao(nc);
   return (
-    <span className="pc-dots" role="img" aria-label={`Etapa ${acesas} de 4`}>
+    <span className="pc-dots" role="img" aria-label={`Etapa ${acesas} de 4: ${NOME_DAS_ETAPAS[Math.max(0, acesas - 1)]}`}>
       {[1, 2, 3, 4].map((n) => (
-        <span key={n} className={`pc-dot${n <= acesas ? " is-on" : ""}`} />
+        <span key={n} title={`${n}. ${NOME_DAS_ETAPAS[n - 1]}${n <= acesas ? " (feita)" : ""}`} className={`pc-dot${n <= acesas ? " is-on" : ""}`} />
       ))}
     </span>
   );
@@ -237,6 +238,19 @@ export default function PcCorrecoes({
       ) : (
         <div className="pc-master pc-master--corr">
           <div className="pc-master-list">
+            <div className="pc-legenda" aria-label="Legenda dos pontos">
+              <span className="pc-legenda-titulo">Pontos:</span>
+              {NOME_DAS_ETAPAS.map((nome, indice) => (
+                <span key={nome} className="pc-legenda-item">
+                  <span className="pc-dots" aria-hidden="true">
+                    {[1, 2, 3, 4].map((n) => (
+                      <span key={n} className={`pc-dot${n <= indice + 1 ? " is-on" : ""}`} />
+                    ))}
+                  </span>
+                  {nome}
+                </span>
+              ))}
+            </div>
             <div className="ui-scroll">
               {ordenados.length === 0 ? (
                 <div className="ui-empty">Nenhuma correção neste filtro.</div>
@@ -257,14 +271,11 @@ export default function PcCorrecoes({
                           onClick={() => setEscolhidaId(nc.id)}
                         >
                           <span className="pc-master-text">
-                            <span className="ui-row-title-text">
-                              {nc.ambiente ? `${nc.ambiente} · ` : ""}
-                              {nc.titulo}
-                            </span>
-                            <span className="ui-row-sub">{nc.criterio}</span>
+                            <span className="ui-row-title-text pc-master-titulo">{linhaDaCorrecao(nc).titulo}</span>
+                            <span className="ui-row-sub">{linhaDaCorrecao(nc).ambiente}</span>
                           </span>
                           {nc.reincidente && <Pill tom="lilas">Reincidente</Pill>}
-                          <span className="pc-nc-codigo">NC{String(nc.numero).padStart(2, "0")}</span>
+                          <span className="pc-nc-codigo">{linhaDaCorrecao(nc).codigo}</span>
                           {nc.marcadaFeita && nc.status !== "Resolvida" && <Pill tom="info">Feita, aguardando confirmação</Pill>}
                           <Bolinhas nc={nc} />
                         </button>

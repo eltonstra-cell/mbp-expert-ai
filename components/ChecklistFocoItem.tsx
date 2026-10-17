@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
 import { NavIcon } from "@/components/NavIcons";
+import { estadosDosBotoes } from "@/lib/checklistUi";
 import type { ChecklistCriticidade, ChecklistItem, ChecklistStatus } from "@/types";
 
 type Props = {
@@ -16,6 +17,8 @@ type Props = {
   respondidosAmbiente: number;
   /** No PC o ambiente aparece nas abas, então o cabeçalho do ambiente não se repete aqui. */
   semCabecalhoDeAmbiente?: boolean;
+  /** Mostra "O que verificar" e "Base legal" abaixo da observação (no PC eles ficam no painel de apoio). */
+  mostrarApoio?: boolean;
   podeEditar: boolean;
   temAnterior: boolean;
   temProximo: boolean;
@@ -40,6 +43,7 @@ export default function ChecklistFocoItem({
   totalAmbiente,
   respondidosAmbiente,
   semCabecalhoDeAmbiente = false,
+  mostrarApoio = true,
   podeEditar,
   temAnterior,
   temProximo,
@@ -63,6 +67,7 @@ export default function ChecklistFocoItem({
   };
   const naoConforme = item.status === "Não Conforme";
   const gravidade = item.criticidade || "Rotina";
+  const estados = estadosDosBotoes(item.status);
 
   return (
     <div className="chk-foco">
@@ -84,22 +89,31 @@ export default function ChecklistFocoItem({
       )}
       <div className="chk-foco-card">
         <h2 className="chk-foco-title">{item.titulo}</h2>
-        {item.orientacao && !semCabecalhoDeAmbiente && <p className="chk-foco-hint">{item.orientacao}</p>}
       </div>
 
       <div className="chk-foco-botoes" role="group" aria-label="Resposta do item">
-        <button type="button" disabled={!podeEditar} aria-pressed={item.status === "Conforme"} className={`chk-resp chk-resp--ok${item.status === "Conforme" ? " is-on" : ""}`} onClick={() => onStatus("Conforme")}>
-          <span aria-hidden="true">✓</span>
-          <span>Conforme</span>
-        </button>
-        <button type="button" disabled={!podeEditar} aria-pressed={naoConforme} className={`chk-resp chk-resp--nc${naoConforme ? " is-on" : ""}`} onClick={() => onStatus("Não Conforme")}>
-          <span aria-hidden="true">×</span>
-          <span>Não conforme</span>
-        </button>
-        <button type="button" disabled={!podeEditar} aria-pressed={item.status === "Não se aplica"} className={`chk-resp chk-resp--na${item.status === "Não se aplica" ? " is-on" : ""}`} onClick={() => onStatus("Não se aplica")}>
-          <span aria-hidden="true">—</span>
-          <span>Não se aplica</span>
-        </button>
+        {(
+          [
+            ["Conforme", "ok", "Conforme", "✓"],
+            ["Não Conforme", "nc", "Não conforme", "×"],
+            ["Não se aplica", "na", "Não se aplica", "—"],
+          ] as [ChecklistStatus, string, string, string][]
+        ).map(([resposta, tom, rotulo, simbolo]) => {
+          const estado = estados[resposta as "Conforme" | "Não Conforme" | "Não se aplica"];
+          return (
+            <button
+              key={resposta}
+              type="button"
+              disabled={!podeEditar}
+              aria-pressed={estado === "marcado"}
+              className={`chk-resp chk-resp--${tom} is-${estado}`}
+              onClick={() => onStatus(resposta)}
+            >
+              <span aria-hidden="true">{estado === "marcado" ? "✓" : simbolo}</span>
+              <span>{rotulo}</span>
+            </button>
+          );
+        })}
       </div>
 
       {naoConforme && (
@@ -159,6 +173,23 @@ export default function ChecklistFocoItem({
           </div>
         )}
       </div>
+
+      {mostrarApoio && (item.orientacao || item.referencia) && (
+        <div className="chk-foco-apoio">
+          {item.orientacao && (
+            <section className="chk-foco-apoio-card chk-foco-apoio-card--azul">
+              <h3 className="chk-apoio-titulo">O que verificar</h3>
+              <p className="chk-apoio-texto">{item.orientacao}</p>
+            </section>
+          )}
+          {item.referencia && (
+            <section className="chk-foco-apoio-card chk-foco-apoio-card--ambar">
+              <h3 className="chk-apoio-titulo">Base legal</h3>
+              <p className="chk-apoio-texto">{item.referencia}</p>
+            </section>
+          )}
+        </div>
+      )}
 
       <div className="chk-foco-rodape">
         <button
