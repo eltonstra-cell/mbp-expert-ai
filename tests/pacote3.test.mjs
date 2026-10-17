@@ -82,3 +82,12 @@ test("rodapé de impressão: texto escapado e caixas de margem só no Chromium 1
   assert.match(css, /content:"Página " counter\(page\) " de " counter\(pages\)/);
   assert.equal(cssDoRodapeDeImpressao({ empresa: "X", selo: "PRÉVIA", comCaixasDeMargem: false }), "");
 });
+
+test("monograma da empresa no menu: duas iniciais das palavras principais", async () => {
+  const { iniciaisDaEmpresa } = await import("../lib/navigation.ts");
+  assert.equal(iniciaisDaEmpresa("Churrascaria do Chico"), "CC");
+  assert.equal(iniciaisDaEmpresa("Beyond Nutri"), "BN");
+  assert.equal(iniciaisDaEmpresa("Padaria"), "P");
+  assert.equal(iniciaisDaEmpresa("44.150.273 Maria"), "4M");
+  assert.equal(iniciaisDaEmpresa(""), "");
+});

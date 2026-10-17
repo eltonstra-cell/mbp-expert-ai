@@ -2341,3 +2341,54 @@ html[data-modo="equilibrado"] .pc-rep-card{gap:6px;padding:10px 12px}
 html[data-modo="equilibrado"] .pc-check-row{padding:5px 10px;gap:8px}
 html[data-modo="equilibrado"] .ui-screen[aria-label="Relatório da visita"] .ui-footer>.ui-row-sub{display:none}
 html[data-modo="equilibrado"] .ui-screen[aria-label="Relatório da visita"] .ui-footer{justify-content:flex-end}
+
+/* ===== Menu lateral v4 (Ponto Certo): degradê azul, cartão da visita, rodapé fixo ===== */
+.pc-side,.pc-rail{background:linear-gradient(180deg,var(--side-from),var(--side-to))}
+html[data-modo="completo"] .pc-side{width:18.25rem;gap:10px;padding:14px 14px 12px}
+.pc-side-brand{padding:10px 14px;border-radius:16px;background:#fff}
+.pc-register-line{gap:10px;min-height:46px;padding:6px 10px;border:0;border-radius:14px;background:rgba(255,255,255,.16);color:#fff;font-size:1rem;font-weight:400;cursor:pointer}
+.pc-register-orb{display:grid;flex:none;place-items:center;width:32px;height:32px;border-radius:50%;background:var(--register-gradient);box-shadow:none;color:#fff}
+.pc-register-label{color:#fff;font-weight:400}
+.pc-side .pc-link{color:#fff;font-weight:400}
+.pc-side .pc-link-icon{background:transparent;color:#fff}
+.pc-side .pc-link.is-active{background:var(--side-active-bg)}
+.pc-side .pc-link.is-active::before{display:none}
+.pc-side .pc-link.is-active .pc-link-icon{background:transparent;color:#fff}
+.pc-vcard{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.pc-vcard-rotulo{padding:0 6px;color:rgba(255,255,255,.85);font-size:.72rem;letter-spacing:.14em}
+.pc-vcard-corpo{display:flex;flex-direction:column;gap:2px;padding:8px;border-radius:16px;background:rgba(255,255,255,.14)}
+.pc-vcard-head{display:flex;align-items:center;gap:10px;width:100%;padding:4px;border:0;border-radius:12px;background:transparent;color:#fff;text-align:left;cursor:pointer}
+.pc-vcard-head.is-active{background:var(--side-active-bg)}
+.pc-vcard-mono{display:grid;flex:none;place-items:center;width:36px;height:36px;border-radius:10px;background:#fff;color:var(--brand);font-family:var(--font-display),"Outfit",sans-serif;font-size:.95rem}
+.pc-vcard-company{display:block;overflow:hidden;color:#fff;font-size:.98rem;text-overflow:ellipsis;white-space:nowrap}
+.pc-vcard-sub{display:block;color:rgba(255,255,255,.85);font-size:.78rem}
+.pc-vcard-steps{display:flex;flex-direction:column;gap:1px}
+.pc-step{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:34px;padding:0 10px 0 14px;border:0;border-radius:10px;background:transparent;color:#fff;font-size:.92rem;text-align:left;cursor:pointer}
+.pc-step:hover{background:rgba(255,255,255,.1)}
+.pc-step.is-active{background:var(--side-active-bg)}
+.pc-step-count{color:rgba(255,255,255,.9);font-size:.82rem}
+.pc-step-count.is-badge{min-width:22px;padding:1px 8px;border-radius:999px;background:#E8760A;color:#fff;text-align:center}
+.pc-side-foot{gap:8px}
+.pc-mini-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pc-mini{display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%;min-height:36px;padding:0 10px;border:0;border-radius:12px;background:rgba(255,255,255,.16);color:#fff;font-size:.82rem;white-space:nowrap;cursor:pointer}
+.pc-mini.is-active{background:rgba(255,255,255,.3)}
+.pc-mini-wrap{position:relative}
+.pc-admin-pop{position:absolute;bottom:calc(100% + 6px);left:0;right:0;z-index:60;display:flex;flex-direction:column;padding:6px;border-radius:12px;background:#fff;box-shadow:0 10px 28px rgba(18,32,43,.25)}
+.pc-admin-item{padding:8px 10px;border:0;border-radius:8px;background:transparent;color:var(--ink);font-size:.9rem;text-align:left;cursor:pointer}
+.pc-admin-item:hover{background:var(--brand-soft)}
+.pc-user-wrap{position:relative}
+.pc-user-card{display:flex;align-items:center;gap:10px;width:100%;padding:8px 10px;border:0;border-radius:16px;background:rgba(255,255,255,.16);color:#fff;text-align:left;cursor:pointer}
+.pc-user-avatar{position:relative;display:grid;flex:none;place-items:center;width:38px;height:38px;border-radius:50%;background:#fff;color:var(--ink);font-size:.82rem}
+.pc-user-avatar .pc-avatar-dot{position:absolute;right:-1px;bottom:-1px;width:12px;height:12px;border:2px solid #fff;border-radius:50%;background:#15803D}
+.pc-user-avatar .pc-avatar-dot.is-pendente{background:#F5A623}.pc-user-avatar .pc-avatar-dot.is-erro{background:#D93A3A}
+.pc-user-text{display:flex;min-width:0;flex:1;flex-direction:column}
+.pc-user-name{overflow:hidden;color:#fff;font-size:.92rem;text-overflow:ellipsis;white-space:nowrap}
+.pc-user-role{color:rgba(255,255,255,.85);font-size:.76rem}
+.pc-user-card .pc-chev{color:#fff}
+.pc-user-pop{position:absolute;right:0;bottom:calc(100% + 8px);left:0;z-index:60;display:flex;flex-direction:column;padding:6px;border-radius:14px;background:#fff;box-shadow:0 10px 28px rgba(18,32,43,.28)}
+.pc-user-pop-item{display:flex;align-items:center;gap:10px;min-height:40px;padding:0 12px;border:0;border-radius:10px;background:transparent;color:var(--ink);font-size:.95rem;text-align:left;cursor:pointer}
+.pc-user-pop-item:hover{background:var(--brand-soft)}
+.pc-user-pop-item.is-sair{color:#D93A3A}
+:is(html[data-modo="completo"]) .pc-offset{margin-left:18.25rem}
+.perfil-lista{display:grid;gap:8px;margin:0}
+.perfil-lista dd{margin:0;color:var(--ink);font-size:.95rem}

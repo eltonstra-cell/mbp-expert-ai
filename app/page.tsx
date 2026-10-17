@@ -37,6 +37,7 @@ import PcModoTela from "@/components/pc/PcModoTela";
 import ChecklistFocoItem from "@/components/ChecklistFocoItem";
 import PcChecklist, { type ApoioDoItem } from "@/components/pc/PcChecklist";
 import RevisaoTranscricao from "@/components/RevisaoTranscricao";
+import MeuPerfilModal from "@/components/pc/MeuPerfilModal";
 import { iniciarMedidorDeVolume } from "@/components/useNivelDeAudio";
 import { MENSAGEM_SEM_FALA, ehSilencio } from "@/lib/transcricao";
 import { nomeDoArquivoPdf, rotuloDoRelatorio, seloDoPdf } from "@/lib/reportLabels";
@@ -999,6 +1000,7 @@ export default function Home() {
   const [itemFocoId, setItemFocoId] = useState<string | null>(null);
   const [revisaoVoz, setRevisaoVoz] = useState<{ texto: string; aplicar: (texto: string) => void } | null>(null);
   const [avisoVoz, setAvisoVoz] = useState("");
+  const [perfilAberto, setPerfilAberto] = useState(false);
   useEffect(() => {
     if (!avisoVoz) return;
     const tempo = window.setTimeout(() => setAvisoVoz(""), 3500);
@@ -5432,6 +5434,16 @@ export default function Home() {
     <IaPermitidaContext.Provider value={deveExibirRecursosDeIa(usuarioDaSessao)}>
     <div className="min-h-screen bg-[var(--bg)]">
       <UpdateNotice />
+      {perfilAberto && usuarioDaSessao && (
+        <MeuPerfilModal
+          nome={usuarioDaSessao.nome}
+          email={usuarioDaSessao.email}
+          perfil={usuarioDaSessao.perfil}
+          empresas={usuarioDaSessao.perfil === "Administrador" ? ["Todas as empresas"] : usuarioDaSessao.empresaIds.map((id) => nomeParaExibir(db.empresas[id])).filter(Boolean)}
+          versao={pacote.version}
+          onFechar={() => setPerfilAberto(false)}
+        />
+      )}
       {revisaoVoz && (
         <RevisaoTranscricao
           texto={revisaoVoz.texto}
@@ -5519,8 +5531,9 @@ export default function Home() {
         contagens={contagensMenu}
         visita={cartaoVisita}
         onSair={() => void sairDoSistema()}
-        visitaMenu={ehPC && visitaAbertaNoMenu ? { empresa: nomeParaExibir(empresaVisita), passos: passosDaTrilha(dadosTrilha).filter((passo) => telaVisivel(passo.chave === "pops" ? "popsVisita" : (passo.chave as TelaKey))), atual: passoAtualDaTrilha, emTelaDaVisita: VISIT_VIEWS.includes(view) } : null}
+        visitaMenu={ehPC && visitaAbertaNoMenu ? { empresa: nomeParaExibir(empresaVisita), data: `${visitaAtual ? fdata(visitaAtual.data).slice(0, 5) : ""} · ${visitaAtual?.status === "Concluída" ? "concluída" : "em andamento"}`, passos: passosDaTrilha(dadosTrilha).filter((passo) => telaVisivel(passo.chave === "pops" ? "popsVisita" : (passo.chave as TelaKey))), atual: passoAtualDaTrilha, emTelaDaVisita: VISIT_VIEWS.includes(view) } : null}
         onIrPasso={irParaPasso}
+        onMeuPerfil={() => setPerfilAberto(true)}
         usuario={usuarioDaSessao ? { nome: usuarioDaSessao.nome, perfil: usuarioDaSessao.perfil, iniciais: iniciaisUsuario || "" } : null}
         versao={pacote.version.split(".").slice(0, 2).join(".")}
         saindo={saindo}

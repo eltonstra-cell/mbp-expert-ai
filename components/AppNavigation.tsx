@@ -8,6 +8,7 @@ import {
   barraInferior,
   itensDaBarra,
   itensDaFolhaMais,
+  iniciaisDaEmpresa,
   itensVisiveis,
   menuLateralPC,
   registrarDisponivel,
@@ -59,7 +60,9 @@ type Props = {
   usuario: { nome: string; perfil: string; iniciais: string } | null;
   versao: string;
   /** Grupo "Visita atual" do menu do PC; null quando não há visita aberta. */
-  visitaMenu?: { empresa: string; passos: PassoTrilha[]; atual: PassoVisita | null; emTelaDaVisita: boolean } | null;
+  visitaMenu?: { empresa: string; data: string; passos: PassoTrilha[]; atual: PassoVisita | null; emTelaDaVisita: boolean } | null;
+  /** Abre a janela "Meu perfil" (menu do cartão do usuário). */
+  onMeuPerfil?: () => void;
   onIrPasso?: (passo: PassoVisita) => void;
 };
 
@@ -126,7 +129,25 @@ export default function AppNavigation({
   versao,
   visitaMenu = null,
   onIrPasso,
+  onMeuPerfil,
 }: Props) {
+  const [perfilPopAberto, setPerfilPopAberto] = useState(false);
+  const perfilRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!perfilPopAberto) return;
+    const aoTeclar = (evento: KeyboardEvent) => {
+      if (evento.key === "Escape") setPerfilPopAberto(false);
+    };
+    const aoClicarFora = (evento: MouseEvent) => {
+      if (perfilRef.current && !perfilRef.current.contains(evento.target as Node)) setPerfilPopAberto(false);
+    };
+    window.addEventListener("keydown", aoTeclar);
+    window.addEventListener("mousedown", aoClicarFora);
+    return () => {
+      window.removeEventListener("keydown", aoTeclar);
+      window.removeEventListener("mousedown", aoClicarFora);
+    };
+  }, [perfilPopAberto]);
   // Escolha do usuário (recolher/expandir) guardada na sessão; sem escolha, abre só nas telas da visita.
   const [escolhaGrupoVisita, setEscolhaGrupoVisita] = useState<boolean | null>(null);
   const [adminPopAberto, setAdminPopAberto] = useState(false);
@@ -318,13 +339,13 @@ export default function AppNavigation({
       {/* PC: menu lateral azul */}
       <aside className={`pc-side${visitaMenu ? " pc-side--visita" : ""}`} aria-label="Menu lateral">
         <div className="pc-side-brand">
-          <LogoHorizontal size={38} showSubtitle={!visitaMenu} textClassName="text-xl" />
+          <LogoHorizontal size={38} showSubtitle={false} textClassName="text-xl" />
         </div>
 
         {temRegistrar && (
           <button type="button" className="pc-register-line" onClick={() => onSelecionar("registrar")}>
             <span className="pc-register-orb">
-              <NavIcon name="registrar" size={22} strokeWidth={2.2} />
+              <NavIcon name="registrar" size={18} strokeWidth={2.4} />
             </span>
             <span className="pc-register-label">Registrar agora</span>
           </button>
@@ -335,61 +356,48 @@ export default function AppNavigation({
 
           {visitaMenu && (
             <section className="pc-vcard" aria-label="Visita atual">
-              <button type="button" className="pc-vcard-head" aria-expanded={grupoVisitaAberto} onClick={alternarGrupoVisita}>
-                <span className="pc-vcard-tile">
-                  <NavIcon name="visitas" size={20} strokeWidth={1.9} />
-                </span>
-                <span className="pc-vgroup-text">
-                  <span className="pc-vcard-title">Visita atual</span>
-                  <span className="pc-vcard-company">{visitaMenu.empresa}</span>
-                </span>
-                <span className="pc-chev" aria-hidden="true">{grupoVisitaAberto ? "⌃" : "⌄"}</span>
-              </button>
-              {grupoVisitaAberto && (
+              <div className="pc-vcard-rotulo">VISITA ATUAL</div>
+              <div className="pc-vcard-corpo">
+                <button
+                  type="button"
+                  className={`pc-vcard-head${visitaMenu.atual === "central" ? " is-active" : ""}`}
+                  aria-label={`Central da visita de ${visitaMenu.empresa}`}
+                  onClick={() => onIrPasso?.("central")}
+                >
+                  <span className="pc-vcard-mono" aria-hidden="true">
+                    {iniciaisDaEmpresa(visitaMenu.empresa)}
+                  </span>
+                  <span className="pc-vgroup-text">
+                    <span className="pc-vcard-company">{visitaMenu.empresa}</span>
+                    <span className="pc-vcard-sub">{visitaMenu.data}</span>
+                  </span>
+                </button>
                 <div className="pc-vcard-steps">
-                  {visitaMenu.passos.map((passo) => {
-                    const ehAtivo = visitaMenu.atual === passo.chave;
-                    return (
-                      <button
-                        key={passo.chave}
-                        type="button"
-                        className={`pc-link pc-link--step${ehAtivo ? " is-active" : ""}`}
-                        aria-current={ehAtivo ? "page" : undefined}
-                        onClick={() => onIrPasso?.(passo.chave)}
-                      >
-                        <span className="pc-link-icon">
-                          <NavIcon name={ICONE_DO_PASSO[passo.chave]} size={15} strokeWidth={1.9} />
-                        </span>
-                        <span className="pc-link-label">{passo.rotulo}</span>
-                        {passo.contador && <span className="pc-link-count">{passo.contador}</span>}
-                      </button>
-                    );
-                  })}
+                  {visitaMenu.passos
+                    .filter((passo) => passo.chave !== "central")
+                    .map((passo) => {
+                      const ehAtivo = visitaMenu.atual === passo.chave;
+                      return (
+                        <button
+                          key={passo.chave}
+                          type="button"
+                          className={`pc-step${ehAtivo ? " is-active" : ""}`}
+                          aria-current={ehAtivo ? "page" : undefined}
+                          onClick={() => onIrPasso?.(passo.chave)}
+                        >
+                          <span className="pc-step-label">{passo.chave === "pops" ? "POPs desta visita" : passo.rotulo}</span>
+                          {passo.contador && <span className={`pc-step-count${passo.chave === "correcoes" ? " is-badge" : ""}`}>{passo.contador}</span>}
+                        </button>
+                      );
+                    })}
                 </div>
-              )}
+              </div>
             </section>
-          )}
-
-          {!visitaMenu && (lateral.apoio.length > 0 || lateral.admin.length > 0) && <div className="pc-side-sep" role="separator" />}
-          {!visitaMenu && lateral.apoio.map((item) => linkLateral(item, false))}
-          {!visitaMenu && lateral.admin.length > 0 && (
-            <div className="pc-agroup">
-              <button
-                type="button"
-                className="pc-agroup-head"
-                aria-expanded={grupoAdminAberto}
-                onClick={() => setGrupoAdminAberto((aberto) => !aberto)}
-              >
-                <span className="pc-link-label">Administração</span>
-                <span className="pc-chev" aria-hidden="true">{grupoAdminAberto ? "⌄" : "›"}</span>
-              </button>
-              {grupoAdminAberto && <div className="pc-vsteps">{lateral.admin.map((item) => linkLateral(item, true))}</div>}
-            </div>
           )}
         </nav>
 
         <div className="pc-side-foot">
-          {visitaMenu && (lateral.apoio.length > 0 || lateral.admin.length > 0) && (
+          {(lateral.apoio.length > 0 || lateral.admin.length > 0) && (
             <div className="pc-mini-row">
               {lateral.apoio.map((item) => (
                 <button
@@ -400,7 +408,7 @@ export default function AppNavigation({
                   onClick={() => onSelecionar(item.key)}
                 >
                   <NavIcon name={item.key} size={16} strokeWidth={1.9} />
-                  Ajuda
+                  Ajuda e guias
                 </button>
               ))}
               {lateral.admin.length > 0 && (
@@ -413,7 +421,7 @@ export default function AppNavigation({
                     onClick={() => setAdminPopAberto((aberto) => !aberto)}
                   >
                     <NavIcon name="acessos" size={16} strokeWidth={1.9} />
-                    Admin
+                    Administração
                   </button>
                   {adminPopAberto && (
                     <div className="pc-admin-pop" role="menu">
@@ -438,32 +446,40 @@ export default function AppNavigation({
             </div>
           )}
           {usuario && (
-            <div className="pc-user-card">
-              <div className="pc-user-line">
+            <div className="pc-user-wrap" ref={perfilRef}>
+              {perfilPopAberto && (
+                <div className="pc-user-pop" role="menu">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="pc-user-pop-item"
+                    onClick={() => {
+                      setPerfilPopAberto(false);
+                      onMeuPerfil?.();
+                    }}
+                  >
+                    <NavIcon name="acessos" size={16} strokeWidth={1.9} />
+                    Meu perfil
+                  </button>
+                  <button type="button" role="menuitem" className="pc-user-pop-item is-sair" onClick={onSair} disabled={saindo}>
+                    <NavIcon name="sair" size={16} strokeWidth={2} />
+                    Sair
+                  </button>
+                </div>
+              )}
+              <button type="button" className="pc-user-card" aria-haspopup="menu" aria-expanded={perfilPopAberto} onClick={() => setPerfilPopAberto((aberto) => !aberto)}>
                 <span className="pc-user-avatar">
                   {usuario.iniciais}
-                  {visitaMenu && (
-                    <button
-                      type="button"
-                      className={`pc-avatar-dot is-${sincronizacao.estado}`}
-                      title={sincronizacao.rotulo}
-                      aria-label={sincronizacao.rotulo}
-                      onClick={sincronizacao.onClick}
-                    />
-                  )}
+                  <span className={`pc-avatar-dot is-${sincronizacao.estado}`} title={sincronizacao.rotulo} aria-hidden="true" />
                 </span>
                 <span className="pc-user-text">
-                  <span className="pc-user-role">{usuario.perfil}</span>
                   <span className="pc-user-name">{usuario.nome}</span>
+                  <span className="pc-user-role">{usuario.perfil}</span>
                 </span>
-              </div>
-              <button type="button" className="pc-logout" onClick={onSair} disabled={saindo}>
-                <NavIcon name="sair" size={16} strokeWidth={2} />
-                Sair
+                <span className="pc-chev" aria-hidden="true">{perfilPopAberto ? "⌄" : "⌃"}</span>
               </button>
             </div>
           )}
-          {versao && !visitaMenu && <div className="pc-version">v{versao}</div>}
         </div>
       </aside>
 

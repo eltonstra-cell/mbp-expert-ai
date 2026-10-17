@@ -341,3 +341,10 @@ export function chaveAtiva(view: string): NavKey | null {
 export function itemDoMenu(key: NavKey): NavItem | undefined {
   return POR_CHAVE.get(key);
 }
+
+/** Monograma da empresa no cartão "Visita atual" (ex.: "Churrascaria do Chico" → "CC"). */
+export function iniciaisDaEmpresa(nome: string): string {
+  const palavras = (nome || "").split(/\s+/).filter((palavra) => palavra.length > 2);
+  const letras = palavras.slice(0, 2).map((palavra) => palavra[0]).join("");
+  return (letras || (nome || "").trim().slice(0, 2)).toUpperCase();
+}
