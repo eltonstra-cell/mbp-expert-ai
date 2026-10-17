@@ -9,7 +9,12 @@ import { cssDoRodapeDeImpressao, suportaCaixasDeMargem, textoParaCss } from "../
 test("nome do arquivo do PDF: empresa e data da visita do relatório, mais o tipo", () => {
   assert.equal(nomeDoArquivoPdf("Churrascaria do Chico", "2026-08-10", "parcial"), "relatorio-tecnico-churrascaria-do-chico-2026-08-10-parcial.pdf");
   assert.equal(nomeDoArquivoPdf("Padaria Pão Quente", "10/08/2026", "previa"), "relatorio-tecnico-padaria-pao-quente-2026-08-10-previa.pdf");
-  assert.equal(nomeDoArquivoPdf("44.150.273 Maria LTDA", "2026-09-06T10:00:00.000Z", "oficial"), "relatorio-tecnico-44-150-273-maria-ltda-2026-09-06-oficial.pdf");
+  assert.equal(nomeDoArquivoPdf("44.150.273 Maria LTDA", "2026-09-06T10:00:00.000Z", "oficial"), "relatorio-tecnico-maria-ltda-2026-09-06-oficial.pdf");
+});
+
+test("nome do arquivo: CNPJ/número no começo do nome não entra", () => {
+  assert.equal(nomeDoArquivoPdf("44.150.273 Elton Volmir Strapazon", "2026-08-10", "parcial"), "relatorio-tecnico-elton-volmir-strapazon-2026-08-10-parcial.pdf");
+  assert.equal(nomeDoArquivoPdf("44.150.273", "2026-08-10", "previa"), "relatorio-tecnico-44-150-273-2026-08-10-previa.pdf");
 });
 
 test("nome do arquivo: duas empresas ou datas diferentes nunca geram o mesmo nome", () => {
@@ -108,4 +113,17 @@ test("nome do ambiente: 'Câmara fria' e variações aparecem como 'Câmara refr
   assert.equal(infos[0].nome, "Câmara Fria");
   assert.equal(infos[0].rotulo, "Câmara refrigerada");
   assert.equal(linhaDaCorrecao({ titulo: "x", ambiente: "Câmara Fria", numero: 1 }).ambiente, "Câmara refrigerada");
+});
+
+test("plano de correção: mensagem de campos faltantes e foco no primeiro", async () => {
+  const { mensagemDeFaltas, primeiroCampoComProblema } = await import("../lib/correcaoRotulos.ts");
+  assert.equal(mensagemDeFaltas([]), "");
+  assert.equal(mensagemDeFaltas(["prazo"]), "Falta informar: prazo");
+  assert.equal(mensagemDeFaltas(["prazo", "responsavel"]), "Falta informar: responsável e prazo");
+  assert.equal(mensagemDeFaltas(["prazo", "acao", "responsavel"]), "Falta informar: o que será feito, responsável e prazo");
+  assert.equal(mensagemDeFaltas([], ["prazo"]), "Corrija: prazo");
+  assert.equal(mensagemDeFaltas(["acao"], ["prazo"]), "Falta informar: o que será feito. Corrija: prazo");
+  assert.equal(primeiroCampoComProblema(["prazo", "responsavel"]), "responsavel");
+  assert.equal(primeiroCampoComProblema([], ["prazo"]), "prazo");
+  assert.equal(primeiroCampoComProblema([]), null);
 });

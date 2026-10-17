@@ -1,3 +1,5 @@
+import { nomeSemNumerosNoInicio } from "./navigation.ts";
+
 // Rótulos do relatório que dependem da situação da visita e do tipo de emissão.
 
 export type TipoDeEmissao = "previa" | "parcial" | "oficial";
@@ -30,7 +32,7 @@ export function dataParaArquivo(data: string): string {
 
 /** relatorio-tecnico-{empresa}-{data da visita}-{parcial|previa|oficial}.pdf */
 export function nomeDoArquivoPdf(empresa: string, dataDaVisita: string, tipo: TipoDeEmissao): string {
-  const nome = semAcentos(empresa || "")
+  const nome = semAcentos(nomeSemNumerosNoInicio(empresa || ""))
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");

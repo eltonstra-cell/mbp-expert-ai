@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type CSSProperties } from "react";
+import { useRef, useState, type CSSProperties } from "react";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
 import { LoteJanela, type CorrecaoItem } from "@/components/pc/PcCorrecoes";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
@@ -8,7 +8,7 @@ import { LogoSymbol } from "@/components/BrandLogo";
 import { NavIcon, type NavIconName } from "@/components/NavIcons";
 import { RowMenu, type ItemMenu } from "@/components/ui/RowMenu";
 import { contarEtapas, etapaDaCorrecao, ordenarCorrecoes, prazoSugerido, validarPlano, type EtapaCorrecao, type GravidadeNc } from "@/lib/actionPlan";
-import { NOME_DA_GRAVIDADE, linhaDaCorrecao } from "@/lib/correcaoRotulos";
+import { NOME_DA_GRAVIDADE, linhaDaCorrecao, mensagemDeFaltas, primeiroCampoComProblema, type CampoDoPlano } from "@/lib/correcaoRotulos";
 
 export type TelaCampo = "inicio" | "checklist" | "correcoes" | "mais";
 
@@ -198,7 +198,11 @@ export function CampoCorrecoes({
   onDesfazerFeita,
   onLote,
   onVerNoChecklist,
+  responsavelPadrao = "",
+  onAbrirPop,
 }: {
+  responsavelPadrao?: string;
+  onAbrirPop?: () => void;
   itens: CorrecaoItem[];
   hoje: string;
   podeEditar: boolean;
@@ -219,7 +223,6 @@ export function CampoCorrecoes({
 
   const contagem = contarEtapas(itens);
   const abertas = itens.filter((item) => item.status !== "Resolvida").length;
-  const semPlano = contagem.identificadas;
   const filtrados = ordenarCorrecoes(itens.filter((item) => !etapa || etapaDaCorrecao(item) === etapa));
   const grupos =
     agrupar === "gravidade"
@@ -260,6 +263,8 @@ export function CampoCorrecoes({
         onMarcarFeita={() => onMarcarFeita(atual.id)}
         onDesfazerFeita={() => onDesfazerFeita(atual.id)}
         onVerNoChecklist={onVerNoChecklist}
+        responsavelPadrao={responsavelPadrao}
+        onAbrirPop={onAbrirPop}
       />
     );
   }
@@ -270,7 +275,7 @@ export function CampoCorrecoes({
         <h1 className="campo-h1">Correções</h1>
         <p className="campo-sub">
           {abertas} não conformidade{abertas === 1 ? "" : "s"} aberta{abertas === 1 ? "" : "s"} ·{" "}
-          {abertas === 0 ? "nada pendente" : semPlano === 0 ? "todas com plano" : semPlano === abertas ? "nenhuma com plano ainda" : `${abertas - semPlano} com plano`}
+          {abertas === 0 ? "nada pendente" : contagem.plano === 0 ? "nenhuma com plano ainda" : `${contagem.plano} com plano`}
         </p>
       </div>
 
@@ -406,7 +411,11 @@ function DetalheCampo({
   onMarcarFeita,
   onDesfazerFeita,
   onVerNoChecklist,
+  responsavelPadrao,
+  onAbrirPop,
 }: {
+  responsavelPadrao: string;
+  onAbrirPop?: () => void;
   nc: CorrecaoItem;
   hoje: string;
   podeEditar: boolean;
@@ -420,20 +429,35 @@ function DetalheCampo({
   onVerNoChecklist: (checklistItemId: string, ambiente: string) => void;
 }) {
   const [acao, setAcao] = useState(nc.acaoCorretiva);
-  const [responsavel, setResponsavel] = useState(nc.responsavelAcao);
+  const [responsavel, setResponsavel] = useState(nc.responsavelAcao || responsavelPadrao);
   const [prazo, setPrazo] = useState(nc.prazo);
   const [tentou, setTentou] = useState(false);
+  const [tocado, setTocado] = useState<Record<CampoDoPlano, boolean>>({ acao: false, responsavel: false, prazo: false });
+  const [faltas, setFaltas] = useState("");
+  const acaoRef = useRef<HTMLTextAreaElement | null>(null);
+  const responsavelRef = useRef<HTMLInputElement | null>(null);
+  const prazoRef = useRef<HTMLInputElement | null>(null);
   const resolvida = nc.status === "Resolvida";
   const bloqueado = resolvida || !podeEditar;
   const sugestao = prazoSugerido(nc.gravidade, hoje);
   const erros = validarPlano({ acaoCorretiva: acao, responsavelAcao: responsavel, prazo }, hoje, true);
-  const mostrar = (campo: "acao" | "responsavel" | "prazo") => (tentou || Boolean(prazo && campo === "prazo")) && erros[campo];
+  const mostrar = (campo: CampoDoPlano) => (tentou || tocado[campo] || Boolean(prazo && campo === "prazo")) && erros[campo];
+  const marcarTocado = (campo: CampoDoPlano) => setTocado((atual) => ({ ...atual, [campo]: true }));
   const linha = linhaDaCorrecao(nc);
   const etapaAlvo: EtapaCorrecao = etapaDaCorrecao(nc) === "acompanhamento" ? "acompanhamento" : "plano";
 
   const salvar = () => {
     setTentou(true);
-    if (Object.keys(erros).length > 0) return;
+    const vazios: Record<CampoDoPlano, boolean> = { acao: !acao.trim(), responsavel: !responsavel.trim(), prazo: !prazo };
+    const faltando = (Object.keys(vazios) as CampoDoPlano[]).filter((campo) => vazios[campo]);
+    const invalidos = (Object.keys(erros) as CampoDoPlano[]).filter((campo) => !vazios[campo]);
+    if (faltando.length > 0 || invalidos.length > 0) {
+      setFaltas(mensagemDeFaltas(faltando, invalidos));
+      const primeiro = primeiroCampoComProblema(faltando, invalidos);
+      (primeiro === "acao" ? acaoRef.current : primeiro === "responsavel" ? responsavelRef.current : prazoRef.current)?.focus();
+      return;
+    }
+    setFaltas("");
     onSalvar({ acao: acao.trim(), responsavel: responsavel.trim(), prazo, etapa: etapaAlvo });
   };
 
@@ -465,6 +489,11 @@ function DetalheCampo({
             {linha.ambiente}
           </span>
           {nc.itemNumero > 0 && <span className="campo-sub">item {nc.itemNumero}</span>}
+          {nc.pop?.existe && onAbrirPop && (
+            <button type="button" className="pc-chip-btn" title={`${nc.pop.codigo ? nc.pop.codigo + " · " : ""}${nc.pop.titulo}`} onClick={onAbrirPop}>
+              POP
+            </button>
+          )}
           {nc.checklistItemId && (
             <button type="button" className="pc-chip-btn pc-chip-btn--soft" onClick={() => onVerNoChecklist(nc.checklistItemId, nc.ambiente)}>
               Ver no checklist ›
@@ -474,8 +503,18 @@ function DetalheCampo({
 
         {nc.observacao.trim() && (
           <div className="pc-registrado">
-            <span className="ui-eyebrow">No checklist · {quandoCurtoCampo(nc.registradoEm)}</span>
+            <span className="ui-eyebrow">Registrado no checklist · {quandoCurtoCampo(nc.registradoEm)}</span>
             <p className="pc-registrado-texto">“{nc.observacao.trim()}”</p>
+          </div>
+        )}
+
+        {nc.ultimaOcorrencia && (
+          <div className="pc-ultima">
+            <span className="ui-eyebrow">Como foi nesse critério na última visita</span>
+            <p className="pc-registrado-texto">
+              {nc.ultimaOcorrencia.data} · {nc.ultimaOcorrencia.situacao}
+              {nc.ultimaOcorrencia.acao ? ` · ${nc.ultimaOcorrencia.acao}` : ""}
+            </p>
           </div>
         )}
 
@@ -493,22 +532,16 @@ function DetalheCampo({
             O que será feito <span className="pc-obrig">· obrigatório</span>
           </span>
           <textarea
+            ref={acaoRef}
             className={`ui-input campo-acao-area${mostrar("acao") ? " is-invalid" : ""}`}
             value={acao}
             disabled={bloqueado}
             placeholder="Descreva a ação corretiva"
             aria-invalid={Boolean(mostrar("acao"))}
             onChange={(evento) => setAcao(evento.target.value)}
+            onBlur={() => marcarTocado("acao")}
           />
-          {mostrar("acao") ? (
-            <span className="campo-erro">{erros.acao}</span>
-          ) : (
-            !bloqueado && !acao.trim() && (
-              <span className="pc-field-hint" role="note">
-                Obrigatório para salvar o plano.
-              </span>
-            )
-          )}
+          {mostrar("acao") && <span className="campo-erro">{erros.acao}</span>}
         </label>
         {!bloqueado && (
           <div className="campo-voz-tools">
@@ -516,33 +549,17 @@ function DetalheCampo({
           </div>
         )}
 
-        {(nc.pop || nc.ultimaOcorrencia) && (
-          <details className="campo-recolhido">
-            <summary>{nc.ultimaOcorrencia ? "Última visita e POP" : "POP relacionado"}</summary>
-            {nc.ultimaOcorrencia && (
-              <p className="pc-registrado-texto">
-                {nc.ultimaOcorrencia.data} · {nc.ultimaOcorrencia.situacao}
-                {nc.ultimaOcorrencia.acao ? ` · ${nc.ultimaOcorrencia.acao}` : ""}
-              </p>
-            )}
-            {nc.pop && (
-              <p className="pc-registrado-texto">
-                {nc.pop.codigo ? `${nc.pop.codigo} · ` : ""}
-                {nc.pop.titulo}
-              </p>
-            )}
-          </details>
-        )}
-
         <div className="campo-duplo">
           <label className="campo-field">
             <span className="ui-eyebrow">Responsável</span>
             <input
-              className={`ui-input${mostrar("responsavel") ? " is-invalid" : ""}`}
+              ref={responsavelRef}
+              className={`ui-input ui-input--lista${mostrar("responsavel") ? " is-invalid" : ""}`}
               value={responsavel}
               list={`campo-pessoas-${nc.id}`}
               disabled={bloqueado}
               onChange={(evento) => setResponsavel(evento.target.value)}
+              onBlur={() => marcarTocado("responsavel")}
               aria-invalid={Boolean(mostrar("responsavel"))}
             />
             <datalist id={`campo-pessoas-${nc.id}`}>
@@ -556,6 +573,7 @@ function DetalheCampo({
             <span className="ui-eyebrow">Prazo</span>
             <span className="pc-prazo-campo">
               <input
+                ref={prazoRef}
                 type="date"
                 className={`ui-input${mostrar("prazo") ? " is-invalid" : ""}`}
                 value={prazo}
@@ -563,6 +581,7 @@ function DetalheCampo({
                 disabled={bloqueado}
                 aria-invalid={Boolean(mostrar("prazo"))}
                 onChange={(evento) => setPrazo(evento.target.value)}
+                onBlur={() => marcarTocado("prazo")}
               />
               {!bloqueado && (
                 <button type="button" className="pc-prazo-sugerido" onClick={() => setPrazo(sugestao.data)}>
@@ -575,6 +594,11 @@ function DetalheCampo({
         </div>
       </div>
 
+      {faltas && (
+        <div className="campo-falta" role="alert">
+          {faltas}
+        </div>
+      )}
       <footer className="campo-detalhe-rodape">
         {podeEditar && !resolvida ? (
           <>

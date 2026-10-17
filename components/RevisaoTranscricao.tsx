@@ -20,6 +20,11 @@ export default function RevisaoTranscricao({ texto, onUsar, onDescartar, onDitar
       <div className="voz-revisao">
         <h2 className="ui-card-title">Revisar o que você disse</h2>
         <p className="ui-row-sub">Toque no texto para corrigir antes de usar. Nada foi colocado no campo ainda.</p>
+        <div className="voz-onda" aria-hidden="true">
+          {Array.from({ length: 16 }, (_, indice) => (
+            <i key={indice} style={{ animationDelay: `${(indice % 8) * 90}ms` }} />
+          ))}
+        </div>
         <textarea className={`ui-input${vazio ? " is-invalid" : ""}`} rows={4} value={editado} aria-label="Texto ouvido" onChange={(evento) => setEditado(evento.target.value)} />
         {vazio && <span className="ui-field-error">O texto não pode ficar vazio.</span>}
         <div className="voz-revisao-acoes">

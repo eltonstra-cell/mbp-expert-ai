@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
 import { NavIcon } from "@/components/NavIcons";
 import { Pill, type Tom } from "@/components/ui/Pill";
-import { NOME_DA_GRAVIDADE, linhaDaCorrecao } from "@/lib/correcaoRotulos";
+import { NOME_DA_GRAVIDADE, linhaDaCorrecao, mensagemDeFaltas, primeiroCampoComProblema, type CampoDoPlano } from "@/lib/correcaoRotulos";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import {
   contarEtapas,
@@ -75,6 +75,8 @@ type Props = {
   /** Pessoas da empresa, para sugerir o responsável. */
   pessoas: string[];
   onVerNoChecklist: (checklistItemId: string, ambiente: string) => void;
+  /** Quem está logado: vem pré-preenchido como responsável (editável). */
+  responsavelPadrao?: string;
 };
 
 const ETAPAS: { chave: EtapaCorrecao; rotulo: string; tom: Tom; classe: string }[] = [
@@ -127,6 +129,7 @@ export default function PcCorrecoes({
   onLote,
   pessoas,
   onVerNoChecklist,
+  responsavelPadrao = "",
 }: Props) {
   const [etapa, setEtapa] = useState<EtapaCorrecao | null>(null);
   const [agrupar, setAgrupar] = useState<Agrupar>("gravidade");
@@ -185,7 +188,7 @@ export default function PcCorrecoes({
   const abertas = itens.filter((nc) => nc.status !== "Resolvida").length;
   const semPlano = contagem.identificadas;
   const subtitulo = `${abertas} não conformidade${abertas === 1 ? "" : "s"} aberta${abertas === 1 ? "" : "s"} · ${
-    abertas === 0 ? "nada pendente" : semPlano === 0 ? "todas com plano" : semPlano === abertas ? "nenhuma com plano ainda" : `${abertas - semPlano} com plano`
+    abertas === 0 ? "nada pendente" : contagem.plano === 0 ? "nenhuma com plano ainda" : `${contagem.plano} com plano`
   }`;
   const etapaAtiva = etapa ?? (selecionada ? etapaDaCorrecao(selecionada) : null);
   const filtrosAtivos = Number(rapidos.recorrentes) + Number(rapidos.semResp) + Number(rapidos.atrasadas);
@@ -208,7 +211,7 @@ export default function PcCorrecoes({
         </div>
         <div className="ui-head-actions">
           {podeEditar && (
-            <button type="button" className="ui-btn ui-btn--soft" onClick={() => setLote(true)} disabled={itens.every((nc) => nc.status === "Resolvida")}>
+            <button type="button" className="ui-btn ui-btn--creme" onClick={() => setLote(true)} disabled={itens.every((nc) => nc.status === "Resolvida")}>
               Definir em lote
             </button>
           )}
@@ -299,15 +302,17 @@ export default function PcCorrecoes({
                             onClick={() => setEscolhidaId(nc.id)}
                           >
                             <span className="pc-cor-topo">
-                              <span className="pc-cor-pino">
-                                <IconePino />
-                                {linha.ambiente}
-                              </span>
+                              {agrupar === "gravidade" && (
+                                <span className="pc-cor-pino">
+                                  <IconePino />
+                                  {linha.ambiente}
+                                </span>
+                              )}
                               {nc.reincidente && <span className="pc-cor-aviso">Reincidente</span>}
                               {nc.marcadaFeita && nc.status !== "Resolvida" && <span className="pc-cor-aviso">Feita, aguardando confirmação</span>}
+                              <span className="pc-cor-grav">{NOME_DA_GRAVIDADE[nc.gravidade]}</span>
                             </span>
                             <span className="pc-cor-titulo">{linha.titulo}</span>
-                            <span className="pc-cor-grav">{NOME_DA_GRAVIDADE[nc.gravidade]}</span>
                           </button>
                         );
                       })}
@@ -337,6 +342,7 @@ export default function PcCorrecoes({
                 onCriarPop={onCriarPop}
                 onAbrirPop={onAbrirPop}
                 onVerNoChecklist={onVerNoChecklist}
+                responsavelPadrao={responsavelPadrao}
                 onProxima={irParaProxima}
                 temOutras={ordenados.length > 1}
               />
@@ -396,7 +402,9 @@ function Detalhe({
   onVerNoChecklist,
   onProxima,
   temOutras,
+  responsavelPadrao,
 }: {
+  responsavelPadrao: string;
   pessoas: string[];
   onVerNoChecklist: Props["onVerNoChecklist"];
   onProxima: () => void;
@@ -417,11 +425,16 @@ function Detalhe({
   onAbrirPop: Props["onAbrirPop"];
 }) {
   const [acao, setAcao] = useState(nc.acaoCorretiva);
-  const [responsavel, setResponsavel] = useState(nc.responsavelAcao);
+  const [responsavel, setResponsavel] = useState(nc.responsavelAcao || responsavelPadrao);
   const [prazo, setPrazo] = useState(nc.prazo);
   // Salvar o plano leva a correção para "Com plano"; quem já está em acompanhamento continua lá.
   const etapaAlvo: EtapaCorrecao = etapaDaCorrecao(nc) === "acompanhamento" ? "acompanhamento" : "plano";
   const [tentou, setTentou] = useState(false);
+  const [tocado, setTocado] = useState<Record<CampoDoPlano, boolean>>({ acao: false, responsavel: false, prazo: false });
+  const [faltas, setFaltas] = useState("");
+  const acaoRef = useRef<HTMLTextAreaElement | null>(null);
+  const responsavelRef = useRef<HTMLInputElement | null>(null);
+  const prazoRef = useRef<HTMLInputElement | null>(null);
   const [notaFeita, setNotaFeita] = useState("");
   const [texto, setTexto] = useState("");
   const [statusNovo, setStatusNovo] = useState<StatusNc>(nc.status);
@@ -429,14 +442,31 @@ function Detalhe({
   const bloqueado = resolvida || !podeEditar;
   const sugestao = prazoSugerido(nc.gravidade, hoje);
   const erros = validarPlano({ acaoCorretiva: acao, responsavelAcao: responsavel, prazo }, hoje, true);
-  const mostrarErro = (campo: "acao" | "responsavel" | "prazo") => (tentou || Boolean(prazo && campo === "prazo")) && erros[campo];
+  // Nenhum erro ao abrir: o campo só acusa depois de sair dele vazio (ou ao tentar salvar).
+  const mostrarErro = (campo: CampoDoPlano) => (tentou || tocado[campo] || Boolean(prazo && campo === "prazo")) && erros[campo];
+  const marcarTocado = (campo: CampoDoPlano) => setTocado((atual) => ({ ...atual, [campo]: true }));
+  const vazioNoPlano: Record<CampoDoPlano, boolean> = { acao: !acao.trim(), responsavel: !responsavel.trim(), prazo: !prazo };
 
   function salvar() {
     setTentou(true);
-    if (Object.keys(erros).length > 0) return;
+    const faltando = (Object.keys(vazioNoPlano) as CampoDoPlano[]).filter((campo) => vazioNoPlano[campo]);
+    const invalidos = (Object.keys(erros) as CampoDoPlano[]).filter((campo) => !vazioNoPlano[campo]);
+    if (faltando.length > 0 || invalidos.length > 0) {
+      setFaltas(mensagemDeFaltas(faltando, invalidos));
+      const primeiro = primeiroCampoComProblema(faltando, invalidos);
+      const alvo = primeiro === "acao" ? acaoRef.current : primeiro === "responsavel" ? responsavelRef.current : prazoRef.current;
+      alvo?.focus();
+      return;
+    }
+    setFaltas("");
     onSalvarPlano(nc.id, { acao, responsavel, prazo, etapa: etapaAlvo });
     setTentou(false);
   }
+
+  // A mensagem do botão some assim que tudo é preenchido.
+  useEffect(() => {
+    if (faltas && Object.keys(erros).length === 0) setFaltas("");
+  }, [faltas, erros]);
 
   const vazio = (valor: string) => !valor.trim();
 
@@ -462,9 +492,9 @@ function Detalhe({
             {nc.criterio ? ` · ${nc.criterio}` : ""}
             {nc.reincidente ? ` · também na visita de ${dataMes(nc.dataAnterior)}` : ""}
           </span>
-          {nc.pop && (
-            <button type="button" className="pc-chip-btn" title={`${nc.pop.codigo ? nc.pop.codigo + " · " : ""}${nc.pop.titulo}`} onClick={nc.pop.existe ? onAbrirPop : podeEditar ? () => onCriarPop(nc.pop!.codigo) : onAbrirPop}>
-              {nc.pop.existe ? "POP" : "Criar POP"}
+          {nc.pop?.existe && (
+            <button type="button" className="pc-chip-btn" title={`${nc.pop.codigo ? nc.pop.codigo + " · " : ""}${nc.pop.titulo}`} onClick={onAbrirPop}>
+              POP
             </button>
           )}
           {nc.checklistItemId && (
@@ -531,103 +561,101 @@ function Detalhe({
                 <span className="ui-row-sub">O Consultor/RT confirma antes de resolver.</span>
               </div>
             )}
-            <div className="pc-plan-cols">
-              <div className="pc-plan-col pc-plan-col--main">
-                {!bloqueado && nc.acaoSugerida && acao.trim() !== nc.acaoSugerida.trim() && (
-                  <div className="pc-acao-padrao">
-                    <span className="ui-row-sub">Ação padrão do critério: “{nc.acaoSugerida}”</span>
-                    <button type="button" className="pc-chip-btn pc-chip-btn--soft" onClick={() => setAcao(nc.acaoSugerida || "")}>
-                      Usar
-                    </button>
-                  </div>
-                )}
-                <div className="pc-plan-block pc-plan-acao">
-                  <span className="ui-eyebrow">
-                    O que será feito <span className="pc-obrig">· obrigatório</span>
-                  </span>
-                  <span className="ui-field-wrap ui-field-wrap--area">
-                    <textarea
-                      className={`ui-input pc-input-tools pc-acao-area${vazio(acao) ? " pc-empty" : ""}${mostrarErro("acao") ? " is-invalid" : ""}`}
-                      value={acao}
-                      disabled={bloqueado}
-                      onChange={(evento) => setAcao(evento.target.value)}
-                      placeholder="Descreva a ação corretiva"
-                      aria-label="O que será feito (ação corretiva)"
-                      aria-invalid={Boolean(mostrarErro("acao"))}
-                    />
-                    {!bloqueado && (
-                      <span className="ui-field-tools">
-                        <FieldVoiceTools fieldKey={`acao-${nc.id}`} value={acao} onChange={setAcao} rotuloIa="Sugerir com IA" contexto="Ação corretiva para uma não conformidade em segurança dos alimentos." />
-                      </span>
-                    )}
-                  </span>
-                  {mostrarErro("acao") ? (
-                    <span className="ui-field-error">{erros.acao}</span>
-                  ) : (
-                    !bloqueado && vazio(acao) && (
-                      <span className="pc-field-hint" role="note">
-                        Obrigatório para salvar o plano.
-                      </span>
-                    )
+            <div className="pc-plan-stack">
+              {(nc.observacao.trim() || nc.ultimaOcorrencia) && (
+                <div className="pc-plan-info">
+                  {nc.observacao.trim() && (
+                    <div className="pc-registrado">
+                      <span className="ui-eyebrow">Registrado no checklist · {quandoCurto(nc.registradoEm)}</span>
+                      <p className="pc-registrado-texto">“{nc.observacao.trim()}”</p>
+                    </div>
+                  )}
+                  {nc.ultimaOcorrencia && (
+                    <div className="pc-ultima">
+                      <span className="ui-eyebrow">Como foi nesse critério na última visita</span>
+                      <p className="pc-registrado-texto">
+                        {nc.ultimaOcorrencia.data} · {nc.ultimaOcorrencia.situacao}
+                        {nc.ultimaOcorrencia.acao ? ` · ${nc.ultimaOcorrencia.acao}` : ""}
+                      </p>
+                    </div>
                   )}
                 </div>
-              </div>
-              <div className="pc-plan-col">
-                {nc.observacao.trim() && (
-                  <div className="pc-registrado">
-                    <span className="ui-eyebrow">Registrado no checklist · {quandoCurto(nc.registradoEm)}</span>
-                    <p className="pc-registrado-texto">“{nc.observacao.trim()}”</p>
-                  </div>
-                )}
-                {nc.ultimaOcorrencia && (
-                  <div className="pc-ultima">
-                    <span className="ui-eyebrow">Como foi nesse critério na última visita</span>
-                    <p className="pc-registrado-texto">
-                      {nc.ultimaOcorrencia.data} · {nc.ultimaOcorrencia.situacao}
-                      {nc.ultimaOcorrencia.acao ? ` · ${nc.ultimaOcorrencia.acao}` : ""}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="pc-plan-two">
-              <label className="pc-plan-block">
-                <span className="ui-eyebrow">Responsável</span>
-                <input
-                  className={`ui-input${vazio(responsavel) ? " pc-empty" : ""}${mostrarErro("responsavel") ? " is-invalid" : ""}`}
-                  value={responsavel}
-                  list={`pessoas-${nc.id}`}
-                  disabled={bloqueado}
-                  onChange={(evento) => setResponsavel(evento.target.value)}
-                  placeholder="Quem vai fazer"
-                  aria-invalid={Boolean(mostrarErro("responsavel"))}
-                />
-                <datalist id={`pessoas-${nc.id}`}>
-                  {pessoas.map((pessoa) => (
-                    <option key={pessoa} value={pessoa} />
-                  ))}
-                </datalist>
-                {mostrarErro("responsavel") && <span className="ui-field-error">{erros.responsavel}</span>}
-              </label>
-              <label className="pc-plan-block">
-                <span className="ui-eyebrow">Prazo</span>
-                <span className="pc-prazo-campo">
-                  <input
-                    type="date"
-                    className={`ui-input${!prazo ? " pc-empty" : ""}${mostrarErro("prazo") ? " is-invalid" : ""}`}
-                    value={prazo}
+              )}
+              {!bloqueado && nc.acaoSugerida && acao.trim() !== nc.acaoSugerida.trim() && (
+                <div className="pc-acao-padrao">
+                  <span className="ui-row-sub">Ação padrão do critério: “{nc.acaoSugerida}”</span>
+                  <button type="button" className="pc-chip-btn pc-chip-btn--soft" onClick={() => setAcao(nc.acaoSugerida || "")}>
+                    Usar
+                  </button>
+                </div>
+              )}
+              <div className="pc-plan-block pc-plan-acao">
+                <span className="ui-eyebrow">
+                  O que será feito <span className="pc-obrig">· obrigatório</span>
+                </span>
+                <span className="ui-field-wrap ui-field-wrap--area">
+                  <textarea
+                    ref={acaoRef}
+                    className={`ui-input pc-input-tools pc-acao-area${mostrarErro("acao") ? " is-invalid" : ""}`}
+                    value={acao}
                     disabled={bloqueado}
-                    onChange={(evento) => setPrazo(evento.target.value)}
-                    aria-invalid={Boolean(mostrarErro("prazo"))}
+                    onChange={(evento) => setAcao(evento.target.value)}
+                    onBlur={() => marcarTocado("acao")}
+                    placeholder="Descreva a ação corretiva"
+                    aria-label="O que será feito (ação corretiva)"
+                    aria-invalid={Boolean(mostrarErro("acao"))}
                   />
                   {!bloqueado && (
-                    <button type="button" className="pc-prazo-sugerido" title={`Usar ${dataMes(sugestao.data)}`} onClick={() => setPrazo(sugestao.data)}>
-                      {sugestao.dias} dias · {nc.gravidade === "Rotina" ? "leve" : nc.gravidade.toLocaleLowerCase("pt-BR")}
-                    </button>
+                    <span className="ui-field-tools">
+                      <FieldVoiceTools fieldKey={`acao-${nc.id}`} value={acao} onChange={setAcao} rotuloIa="Sugerir com IA" contexto="Ação corretiva para uma não conformidade em segurança dos alimentos." />
+                    </span>
                   )}
                 </span>
-                {mostrarErro("prazo") && <span className="ui-field-error">{erros.prazo}</span>}
-              </label>
+                {mostrarErro("acao") && <span className="ui-field-error">{erros.acao}</span>}
+              </div>
+              <div className="pc-plan-two">
+                <label className="pc-plan-block">
+                  <span className="ui-eyebrow">Responsável</span>
+                  <input
+                    ref={responsavelRef}
+                    className={`ui-input ui-input--lista${mostrarErro("responsavel") ? " is-invalid" : ""}`}
+                    value={responsavel}
+                    list={`pessoas-${nc.id}`}
+                    disabled={bloqueado}
+                    onChange={(evento) => setResponsavel(evento.target.value)}
+                    onBlur={() => marcarTocado("responsavel")}
+                    placeholder="Quem vai fazer"
+                    aria-invalid={Boolean(mostrarErro("responsavel"))}
+                  />
+                  <datalist id={`pessoas-${nc.id}`}>
+                    {pessoas.map((pessoa) => (
+                      <option key={pessoa} value={pessoa} />
+                    ))}
+                  </datalist>
+                  {mostrarErro("responsavel") && <span className="ui-field-error">{erros.responsavel}</span>}
+                </label>
+                <label className="pc-plan-block">
+                  <span className="ui-eyebrow">Prazo</span>
+                  <span className="pc-prazo-campo">
+                    <input
+                      ref={prazoRef}
+                      type="date"
+                      className={`ui-input${mostrarErro("prazo") ? " is-invalid" : ""}`}
+                      value={prazo}
+                      disabled={bloqueado}
+                      onChange={(evento) => setPrazo(evento.target.value)}
+                      onBlur={() => marcarTocado("prazo")}
+                      aria-invalid={Boolean(mostrarErro("prazo"))}
+                    />
+                    {!bloqueado && (
+                      <button type="button" className="pc-prazo-sugerido" title={`Usar ${dataMes(sugestao.data)}`} onClick={() => setPrazo(sugestao.data)}>
+                        {sugestao.dias} dias · {nc.gravidade === "Rotina" ? "leve" : nc.gravidade.toLocaleLowerCase("pt-BR")}
+                      </button>
+                    )}
+                  </span>
+                  {mostrarErro("prazo") && <span className="ui-field-error">{erros.prazo}</span>}
+                </label>
+              </div>
             </div>
             {resolvida && <div className="ui-note">Correção resolvida: o plano está protegido. Novas atualizações ou reabertura ficam na aba Atualizações.</div>}
           </>
@@ -710,6 +738,11 @@ function Detalhe({
 
       {aba === "plano" && !bloqueado && (
         <div className="pc-detail-foot pc-detail-foot--plano">
+          {faltas && (
+            <span className="pc-falta" role="alert">
+              {faltas}
+            </span>
+          )}
           {temOutras && (
             <button type="button" className="ui-btn ui-btn--secondary" onClick={onProxima}>
               Próxima correção →

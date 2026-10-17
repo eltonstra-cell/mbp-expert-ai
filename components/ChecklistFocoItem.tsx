@@ -19,6 +19,8 @@ type Props = {
   semCabecalhoDeAmbiente?: boolean;
   /** Mostra "O que verificar" e "Base legal" abaixo da observação (no PC eles ficam no painel de apoio). */
   mostrarApoio?: boolean;
+  /** Destaque rápido do item (ao chegar por "Ver no checklist"). */
+  destaque?: boolean;
   podeEditar: boolean;
   temAnterior: boolean;
   temProximo: boolean;
@@ -44,6 +46,7 @@ export default function ChecklistFocoItem({
   respondidosAmbiente,
   semCabecalhoDeAmbiente = false,
   mostrarApoio = true,
+  destaque = false,
   podeEditar,
   temAnterior,
   temProximo,
@@ -87,7 +90,7 @@ export default function ChecklistFocoItem({
           </span>
         </div>
       )}
-      <div className="chk-foco-card">
+      <div className={`chk-foco-card${destaque ? " is-destaque" : ""}`}>
         <h2 className="chk-foco-title">{item.titulo}</h2>
       </div>
 

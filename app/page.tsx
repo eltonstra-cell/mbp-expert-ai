@@ -655,6 +655,7 @@ function VisitAreaIcon({ name }: { name: VisitAreaIconName }) {
 }
 
 function nomeEmFormatoNatural(nome?: string) {
+  if (nome) nome = nomeSemNumerosNoInicio(nome);
   if (!nome || nome !== nome.toUpperCase()) return nome;
   const conectores = new Set(["da", "das", "de", "do", "dos", "e"]);
   return nome.toLocaleLowerCase("pt-BR").split(" ").map((palavra, indice) =>
@@ -1002,6 +1003,12 @@ export default function Home() {
   const [itemFocoId, setItemFocoId] = useState<string | null>(null);
   const [revisaoVoz, setRevisaoVoz] = useState<{ texto: string; aplicar: (texto: string) => void } | null>(null);
   const [avisoVoz, setAvisoVoz] = useState("");
+  const [destaqueItemId, setDestaqueItemId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!destaqueItemId) return;
+    const tempo = window.setTimeout(() => setDestaqueItemId(null), 2600);
+    return () => window.clearTimeout(tempo);
+  }, [destaqueItemId]);
   const [perfilAberto, setPerfilAberto] = useState(false);
   useEffect(() => {
     if (!avisoVoz) return;
@@ -2690,10 +2697,7 @@ export default function Home() {
         pdf.setFontSize(7.5);
         pdf.setTextColor(100, 116, 139);
 
-        const empresaRodape =
-          empresaVisita.nomeFantasia ||
-          empresaVisita.razaoSocial ||
-          "Visita técnica";
+        const empresaRodape = nomeParaExibir(empresaVisita) || "Visita técnica";
 
         pdf.text(
           empresaRodape.slice(0, 62),
@@ -4094,6 +4098,21 @@ export default function Home() {
     setView("evidencias");
   }
 
+  // "Ver no checklist": abre exatamente o item da não conformidade (nunca outro item).
+  function verItemNoChecklist(itemId: string) {
+    const item = (visitaAtual?.checklist || []).find((registro) => registro.id === itemId);
+    if (!item) {
+      setAvisoVoz("Esse item do checklist não existe mais nesta visita.");
+      return;
+    }
+    setFiltroChecklistRapido("Todos");
+    setAmbienteChecklistAtivo(item.ambiente);
+    setItemFocoId(item.id);
+    setUltimoItemChecklistId(item.id);
+    setDestaqueItemId(item.id);
+    setView("checklist");
+  }
+
   // Mesmo critério, no mesmo ambiente, na visita anterior da empresa (só devolve se existir de verdade).
   function ultimaOcorrenciaDaNc(nc: NaoConformidade): { data: string; situacao: string; acao: string } | null {
     if (!visitaAtual) return null;
@@ -4125,6 +4144,30 @@ export default function Home() {
           .map((usuario) => usuario.nome)
           .filter(Boolean)
       )
+    );
+  }
+
+  // Correções em tela cheia (celular e tablet em pé): lista -> plano com a barra "Pular | Salvar plano".
+  function correcoesDoCelular() {
+    if (!visitaAtual) return null;
+    return (
+    <CampoCorrecoes
+      hoje={hojeISO()}
+      podeEditar={permitido("ncs.acompanhar", visitaAtual.empresaId)}
+      podeMarcar={permitido("ncs.marcar_feita", visitaAtual.empresaId)}
+      itens={montarItensDeCorrecao()}
+      pessoas={nomesDasPessoasDaEmpresa(visitaAtual.empresaId)}
+      subtituloDaLista={`${nomeSemNumerosNoInicio(nomeParaExibir(empresaVisita))}`}
+      onSalvarPlano={(id, dados) =>
+        atualizarNC(id, { acaoCorretiva: dados.acao, responsavelAcao: dados.responsavel, prazo: dados.prazo, status: dados.etapa === "acompanhamento" ? "Em tratamento" : "Aberta" })
+      }
+      onMarcarFeita={(id) => marcarCorrecaoComoFeita(id, "")}
+      onDesfazerFeita={desfazerCorrecaoFeita}
+      onLote={(ids, valores) => alteracoesEmLote(ncsVisita, ids, valores).forEach((alteracao) => atualizarNC(alteracao.id, alteracao.patch))}
+      onVerNoChecklist={(itemId) => verItemNoChecklist(itemId)}
+      responsavelPadrao={usuarioDaSessao?.nome || ""}
+      onAbrirPop={abrirPopsPeloAtalho}
+    />
     );
   }
 
@@ -6061,6 +6104,7 @@ export default function Home() {
                 {foco ? (
                   <ChecklistFocoItem
                     item={foco}
+                    destaque={destaqueItemId === foco.id}
                     {...dadosDoAmbienteEmFoco(foco, lista)}
                     onGravidade={(gravidade) => { setItemFocoId(foco.id); atualizarChecklistItem(foco.id, { criticidade: gravidade }); }}
                     posicao={posicao + 1}
@@ -6081,26 +6125,7 @@ export default function Home() {
             );
           })()
         ) : modo === "campo" && view === "correcoes" && visitaAtual ? (
-          <CampoCorrecoes
-            hoje={hojeISO()}
-            podeEditar={permitido("ncs.acompanhar", visitaAtual.empresaId)}
-            podeMarcar={permitido("ncs.marcar_feita", visitaAtual.empresaId)}
-            itens={montarItensDeCorrecao()}
-            pessoas={nomesDasPessoasDaEmpresa(visitaAtual.empresaId)}
-            subtituloDaLista={`${nomeSemNumerosNoInicio(nomeParaExibir(empresaVisita))}`}
-            onSalvarPlano={(id, dados) =>
-              atualizarNC(id, { acaoCorretiva: dados.acao, responsavelAcao: dados.responsavel, prazo: dados.prazo, status: dados.etapa === "acompanhamento" ? "Em tratamento" : "Aberta" })
-            }
-            onMarcarFeita={(id) => marcarCorrecaoComoFeita(id, "")}
-            onDesfazerFeita={desfazerCorrecaoFeita}
-            onLote={(ids, valores) => alteracoesEmLote(ncsVisita, ids, valores).forEach((alteracao) => atualizarNC(alteracao.id, alteracao.patch))}
-            onVerNoChecklist={(itemId, ambiente) => {
-              setAmbienteChecklistAtivo(ambiente);
-              setItemFocoId(itemId);
-              setUltimoItemChecklistId(itemId);
-              setView("checklist");
-            }}
-          />
+          correcoesDoCelular()
         ) : view === "acessos" && permitido("usuarios.gerenciar") ? (
           <AccessPreparationPanel
             pc={ehPC}
@@ -6419,7 +6444,7 @@ export default function Home() {
                   Nova visita
                 </div>
                 <h2 className="mt-1 text-2xl font-extrabold">
-                  {atual?.nomeFantasia}
+                  {nomeSemNumerosNoInicio(atual?.nomeFantasia || "")}
                 </h2>
                 <p className="text-sm text-slate-500">
                   Esta visita ficará vinculada automaticamente à empresa ativa.
@@ -6546,7 +6571,7 @@ export default function Home() {
                     Defina os setores desta visita
                   </h1>
                   <p className="text-sm text-slate-500">
-                    {empresaVisita?.nomeFantasia} • {fdata(visitaAtual.data)}
+                    {nomeSemNumerosNoInicio(empresaVisita?.nomeFantasia || "")} • {fdata(visitaAtual.data)}
                   </p>
                 </div>
                 <button
@@ -6788,7 +6813,7 @@ export default function Home() {
                   </div>
                   <h1 className="mt-1 text-2xl font-extrabold">Fotos e áudio</h1>
                   <p className="text-sm text-slate-500">
-                    {empresaVisita?.nomeFantasia} • {fdata(visitaAtual.data)}
+                    {nomeSemNumerosNoInicio(empresaVisita?.nomeFantasia || "")} • {fdata(visitaAtual.data)}
                   </p>
                 </div>
                 <button
@@ -7226,6 +7251,8 @@ export default function Home() {
               </div>
             </div>
           </section>)
+        ) : modo === "equilibrado" && telaModo.larguraDoAparelho < 900 && view === "correcoes" && visitaAtual ? (
+          correcoesDoCelular()
         ) : view === "correcoes" && visitaAtual ? (
             <PcCorrecoes
               empresa={nomeParaExibir(empresaVisita)}
@@ -7266,12 +7293,8 @@ export default function Home() {
                     .filter(Boolean)
                 )
               )}
-              onVerNoChecklist={(itemId, ambiente) => {
-                setAmbienteChecklistAtivo(ambiente);
-                setItemFocoId(itemId);
-                setUltimoItemChecklistId(itemId);
-                setView("checklist");
-              }}
+              onVerNoChecklist={(itemId) => verItemNoChecklist(itemId)}
+              responsavelPadrao={usuarioDaSessao?.nome || ""}
             />
         ) : view === "popsvisita" && visitaAtual ? (
             <PcPopsVisita
@@ -7345,7 +7368,7 @@ export default function Home() {
                   </div>
                   <h1 className="mt-1 text-xl font-medium text-[color:var(--ink)] sm:text-2xl">Plano de ação</h1>
                   <p className="mt-0.5 break-words text-xs text-[color:var(--ink-2)] sm:text-sm">
-                    {empresaVisita?.nomeFantasia} · {fdata(visitaAtual.data)}
+                    {nomeSemNumerosNoInicio(empresaVisita?.nomeFantasia || "")} · {fdata(visitaAtual.data)}
                   </p>
                 </div>
                 <button
@@ -7596,7 +7619,7 @@ export default function Home() {
                 <div>
                   <div className="text-xs font-extrabold uppercase text-emerald-700">Pós-visita</div>
                   <h1 className="mt-1 text-2xl font-extrabold">Acompanhamento das ações</h1>
-                  <p className="text-sm text-slate-500">{empresaVisita?.nomeFantasia} • {fdata(visitaAtual.data)}</p>
+                  <p className="text-sm text-slate-500">{nomeSemNumerosNoInicio(empresaVisita?.nomeFantasia || "")} • {fdata(visitaAtual.data)}</p>
                 </div>
                 <button onClick={() => setView("visita")} className="rounded-xl bg-slate-100 px-4 py-2 font-bold">Voltar à Central</button>
               </div>
@@ -7936,7 +7959,7 @@ export default function Home() {
                 <div className="min-w-0">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.15em] text-red-600">Resultado da inspeção</div>
                   <h1 className="mt-1 text-xl font-medium text-[color:var(--ink)] sm:text-2xl">Não conformidades</h1>
-                  <p className="mt-0.5 truncate text-xs text-slate-500 sm:text-sm">{empresaVisita?.nomeFantasia} • {fdata(visitaAtual.data)}</p>
+                  <p className="mt-0.5 truncate text-xs text-slate-500 sm:text-sm">{nomeSemNumerosNoInicio(empresaVisita?.nomeFantasia || "")} • {fdata(visitaAtual.data)}</p>
                 </div>
                 <button onClick={() => setView("visita")} aria-label="Voltar à Central da visita" className="nc-back-button">
                   <span className="sm:hidden">←</span><span className="hidden sm:inline">← Central da visita</span>
@@ -8068,6 +8091,7 @@ export default function Home() {
                   foco ? (
                     <ChecklistFocoItem
                       item={foco}
+                      destaque={destaqueItemId === foco.id}
                       semCabecalhoDeAmbiente
                       mostrarApoio={false}
                       {...dadosDoAmbienteEmFoco(foco, lista)}
@@ -8129,6 +8153,7 @@ export default function Home() {
                   foco ? (
                     <ChecklistFocoItem
                       item={foco}
+                      destaque={destaqueItemId === foco.id}
                       semCabecalhoDeAmbiente
                       {...dadosDoAmbienteEmFoco(foco, lista)}
                       onGravidade={(gravidade) => {
@@ -9045,7 +9070,7 @@ export default function Home() {
                   Identificação
                 </div>
                 <h2 className="mt-1 text-xl font-extrabold">
-                  {empresaVisita?.nomeFantasia || empresaVisita?.razaoSocial || "Empresa"}
+                  {nomeSemNumerosNoInicio(empresaVisita?.nomeFantasia || empresaVisita?.razaoSocial || "Empresa")}
                 </h2>
                 <div className="mt-4 grid gap-3 text-sm md:grid-cols-2">
                   <div>
@@ -9275,7 +9300,7 @@ export default function Home() {
                   Nenhuma não conformidade registrada nesta visita.
                 </div>
               ) : (
-                <div className="mt-4 space-y-3">
+                <div className="rep-nc-grid mt-4 space-y-3">
                   {ncsVisita.map((nc, idx) => (
                     <div
                       key={nc.id}
@@ -9380,7 +9405,7 @@ export default function Home() {
                   Nenhuma evidência registrada nesta visita.
                 </p>
               ) : (
-                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                <div className="rep-ev-grid mt-4 grid gap-4 md:grid-cols-2">
                   {evidenciasVisita.map((ev) => {
                     const ncRelacionadaRelatorio = ncsVisita.find((nc) => nc.id === ev.ncId);
                     const itemChecklistRelatorio = checklistAtual.find((item) => item.id === ev.checklistItemId);
@@ -9619,7 +9644,7 @@ export default function Home() {
               <div className="mt-5 rounded-xl border border-slate-200 bg-white p-4 text-xs text-slate-600">
                 <div className="font-extrabold uppercase text-slate-700">Rastreabilidade do relatório</div>
                 <div className="mt-2 grid gap-2 md:grid-cols-2">
-                  <div><strong>Empresa:</strong> {empresaVisita?.cnpj || "CNPJ não informado"} — {empresaVisita?.nomeFantasia || empresaVisita?.razaoSocial || "Empresa"}</div>
+                  <div><strong>Empresa:</strong> {empresaVisita?.cnpj || "CNPJ não informado"} — {nomeSemNumerosNoInicio(empresaVisita?.nomeFantasia || empresaVisita?.razaoSocial || "Empresa")}</div>
                   <div><strong>Visita:</strong> {fdata(visitaAtual.data)} — {visitaAtual.id}</div>
                   <div><strong>Status:</strong> {visitaAtual.status}</div>
                   <div><strong>Último encerramento:</strong> {visitaAtual.encerradaEm ? new Date(visitaAtual.encerradaEm).toLocaleString("pt-BR") : "Não registrado"}</div>
@@ -9903,7 +9928,7 @@ export default function Home() {
                   {visitaEmAndamentoDestaque ? (
                     <div className="mt-2">
                       <div className="text-xs font-bold text-blue-100">Visita em andamento</div>
-                      <div className="mt-1 text-lg font-extrabold lg:text-xl">{db.empresas[visitaEmAndamentoDestaque.empresaId]?.nomeFantasia || "Empresa"}</div>
+                      <div className="mt-1 text-lg font-extrabold lg:text-xl">{nomeSemNumerosNoInicio(db.empresas[visitaEmAndamentoDestaque.empresaId]?.nomeFantasia || "Empresa")}</div>
                       <div className="mt-1 text-xs text-blue-100">{progressoVisitaDestaque}% concluída • {fdata(visitaEmAndamentoDestaque.data)}</div>
                       <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/15 lg:mt-4"><div className="h-full rounded-full bg-cyan-300" style={{ width: `${progressoVisitaDestaque}%` }} /></div>
                       <button type="button" onClick={() => { setDb((estado) => ({ ...estado, empresaAtualId: visitaEmAndamentoDestaque.empresaId })); setVisitaAtualId(visitaEmAndamentoDestaque.id); setView("visita"); }} className="mt-3 w-full rounded-xl bg-white px-4 py-2.5 text-sm font-extrabold text-[#0b2d72] shadow-lg transition hover:bg-[var(--brand-soft)] lg:mt-4 lg:py-3">Continuar visita →</button>
@@ -9911,7 +9936,7 @@ export default function Home() {
                   ) : (
                     <div className="mt-2">
                       <div className="text-lg font-extrabold">Nenhuma visita em andamento</div>
-                      <p className="mt-1 text-xs text-blue-100">{atual ? `A próxima visita será criada para ${atual.nomeFantasia}.` : "Selecione uma empresa para começar."}</p>
+                      <p className="mt-1 text-xs text-blue-100">{atual ? `A próxima visita será criada para ${nomeSemNumerosNoInicio(atual.nomeFantasia)}.` : "Selecione uma empresa para começar."}</p>
                       <button type="button" onClick={atual ? novaVisita : () => setView("empresas")} className="mt-3 w-full rounded-xl bg-white px-4 py-2.5 text-sm font-extrabold text-[#0b2d72] lg:mt-4 lg:py-3">{atual ? "Iniciar nova visita →" : "Selecionar empresa →"}</button>
                     </div>
                   )}
@@ -9986,7 +10011,7 @@ export default function Home() {
                         {visita.status === "Concluída" ? "✓" : "◷"}
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-xs font-extrabold text-slate-950">{db.empresas[visita.empresaId]?.nomeFantasia || "Empresa"}</span>
+                        <span className="block truncate text-xs font-extrabold text-slate-950">{nomeSemNumerosNoInicio(db.empresas[visita.empresaId]?.nomeFantasia || "Empresa")}</span>
                         <span className="block truncate text-[11px] text-slate-500">{fdata(visita.data)} • {visita.responsavel || "Responsável não informado"}</span>
                       </span>
                       <span className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-bold ${visita.status === "Concluída" ? "bg-[var(--ok-bg)] text-[color:var(--ink)]" : "bg-[var(--pend-bg)] text-[color:var(--ink)]"}`}>{visita.status}</span>
@@ -10112,7 +10137,7 @@ export default function Home() {
                       : ""
                   }`}
                 >
-                  <div className="font-extrabold">{e.nomeFantasia}</div>
+                  <div className="font-extrabold">{nomeSemNumerosNoInicio(e.nomeFantasia)}</div>
                   <div className="text-sm text-slate-500">{e.razaoSocial}</div>
                   {e.responsavel && (
                     <div className="mt-1 text-xs text-slate-500">Responsável: {e.responsavel}</div>
@@ -10188,7 +10213,7 @@ export default function Home() {
                     Evolução das visitas
                   </h1>
                   <p className="mt-1 text-sm text-slate-500">
-                    {atual.nomeFantasia} • acompanhamento consolidado ao longo do tempo
+                    {nomeSemNumerosNoInicio(atual.nomeFantasia)} • acompanhamento consolidado ao longo do tempo
                   </p>
                 </div>
                 <button
@@ -10531,7 +10556,7 @@ export default function Home() {
                     Visitas técnicas
                   </h1>
                   <p className="mt-1 text-sm text-slate-500">
-                    Visão geral de todas as empresas • empresa ativa: {atual?.nomeFantasia || "nenhuma"}
+                    Visão geral de todas as empresas • empresa ativa: {nomeSemNumerosNoInicio(atual?.nomeFantasia || "") || "nenhuma"}
                   </p>
                   <div className="visits-summary-chips mt-3 flex flex-wrap gap-2">
                     <span><strong>{visitas.length}</strong> visitas</span>
@@ -10602,7 +10627,7 @@ export default function Home() {
                           )}
                         </div>
                         <h2 className="mt-2 truncate text-lg font-extrabold">
-                          {e?.nomeFantasia}
+                          {nomeSemNumerosNoInicio(e?.nomeFantasia || "")}
                         </h2>
                         <p className="text-sm text-slate-500">
                           {v.responsavel || "Responsável não informado"}

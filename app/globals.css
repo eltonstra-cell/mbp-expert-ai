@@ -2518,3 +2518,96 @@ html[data-modo="completo"] .pc-side{width:18.25rem;gap:10px;padding:14px 14px 12
 @media (max-width:767px){.voz-revisao-camada{align-items:end;padding:0}.voz-revisao{width:100%;border-radius:20px 20px 0 0}}
 .pc-cor .pc-input-tools.pc-acao-area{padding-right:12px}
 .pc-cor .ui-field-wrap--area .ui-field-tools{right:8px;bottom:8px}
+
+/* ===== Ajustes do Bloco 2 (parte A) ===== */
+.ui-btn--creme{background:#FEF6E6;color:var(--ink)}
+.pc-plan-stack{display:flex;flex:1;min-height:0;flex-direction:column;gap:8px}
+.pc-plan-info{display:grid;flex:none;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px}
+.pc-cor .pc-plan-stack .pc-plan-two{grid-template-columns:1fr 1fr}
+.pc-cor .ui-input:focus,.campo-detalhe .ui-input:focus{border:2px solid var(--brand);outline:none;box-shadow:none}
+.pc-cor .ui-input.is-invalid,.campo-detalhe .ui-input.is-invalid{border:2px solid #D93A3A;border-style:solid}
+.pc-cor .ui-tab-count,.campo-detalhe .ui-tab-count{background:#EEF1F5;color:#3D5160}
+.pc-falta{margin-right:auto;color:#B42318;font-size:.88rem}
+.ui-input--lista{padding-right:34px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%233D5160' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
+.ui-input--lista::-webkit-calendar-picker-indicator{opacity:0}
+.pc-cor-topo{align-items:center}
+.pc-cor-topo .pc-cor-grav{margin-left:auto}
+.chk-foco-card.is-destaque{animation:chk-destaque 2.4s ease-out}
+@keyframes chk-destaque{0%,60%{box-shadow:0 0 0 4px #E8760A}100%{box-shadow:0 0 0 0 rgba(232,118,10,0)}}
+
+/* Celular: campo "O que será feito" com 3 a 4 linhas; o resto do espaço vira informação */
+.campo-field--acao{flex:none}
+.campo-acao-area{flex:none;height:96px;min-height:96px}
+.campo-detalhe-corpo{overflow:hidden}
+.campo-falta{flex:none;padding:6px 14px;border-top:1px solid var(--border);background:#fff;color:#B42318;font-size:.86rem}
+.campo-detalhe .pc-registrado,.campo-detalhe .pc-ultima{padding:6px 10px}
+.campo-detalhe .pc-registrado-texto{-webkit-line-clamp:2}
+
+/* Onda sonora da folha de revisão (celular) */
+.voz-onda{display:none;align-items:center;justify-content:center;gap:4px;height:34px;padding:0 12px;border-radius:12px;background:#FEF6E6}
+.voz-onda i{display:block;width:4px;height:8px;border-radius:2px;background:#2456D6;animation:voz-onda 1s ease-in-out infinite}
+@keyframes voz-onda{0%,100%{height:6px}50%{height:24px}}
+@media (max-width:767px){.voz-onda{display:flex}}
+@media (prefers-reduced-motion:reduce){.voz-onda i{animation:none;height:14px}}
+
+/* Tablet em pé usa o fluxo do celular, dentro da área ao lado do trilho */
+html[data-modo="equilibrado"] .campo-detalhe{left:6.75rem}
+html[data-modo="equilibrado"] .campo-tela{height:calc(100dvh - 190px);padding-bottom:0}
+html[data-modo="equilibrado"] .campo-tela--lista{gap:10px}
+
+/* Cabeçalho do tablet numa linha só */
+html[data-modo="equilibrado"] .pc-topbar{flex-wrap:nowrap;gap:8px}
+html[data-modo="equilibrado"] .pc-back-link,html[data-modo="equilibrado"] .pc-mode-chip,html[data-modo="equilibrado"] .pc-sync-chip{flex:none;white-space:nowrap}
+html[data-modo="equilibrado"] .pc-back-link{min-height:36px;padding:0 12px}
+html[data-modo="equilibrado"] .pc-topbar-end{flex:1 1 auto;justify-content:flex-end;gap:8px}
+@media (max-width:899px){html[data-modo="equilibrado"] .pc-company-chip{display:none}}
+
+/* ===== Relatório impresso (PDF com texto selecionável): páginas mais cheias ===== */
+@media print {
+  /* indicadores do resumo em grade, não empilhados */
+  #relatorio-visita > div[data-rep="resumo"].grid { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 2.5mm !important; }
+  #relatorio-visita [data-rep="resumo"] .grid,
+  #relatorio-visita [data-rep="ambientes"] .grid { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; gap: 2.5mm !important; }
+  #relatorio-visita [data-rep="ambientes"] .grid { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+  #relatorio-visita .print-block.grid { grid-template-columns: 2fr 1fr !important; gap: 3mm !important; }
+  #relatorio-visita .print-block.grid > article { grid-column: auto !important; }
+  #relatorio-visita [data-rep="resumo"] .p-4, #relatorio-visita [data-rep="ambientes"] .p-4 { padding: 2.5mm 3mm !important; }
+  #relatorio-visita .p-5 { padding: 4mm !important; }
+  #relatorio-visita .p-4 { padding: 3mm !important; }
+  #relatorio-visita .text-2xl { font-size: 15pt !important; }
+  #relatorio-visita .text-xl { font-size: 12pt !important; }
+
+  /* seções longas podem continuar na página seguinte; só os cartões não se partem */
+  #relatorio-visita [data-pdf-section="nao-conformidades"],
+  #relatorio-visita [data-pdf-section="evidencias"] { break-inside: auto !important; page-break-inside: auto !important; }
+  #relatorio-visita [data-pdf-section] > div:first-child { break-after: avoid; page-break-after: avoid; }
+
+  /* não conformidades em duas colunas */
+  #relatorio-visita article .rep-nc-grid { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3mm !important; }
+  #relatorio-visita article .rep-nc-grid > * { margin-top: 0 !important; }
+  #relatorio-visita .rep-nc-grid .print-card { margin-bottom: 0 !important; }
+  #relatorio-visita .rep-nc-grid .md\:grid-cols-2 { grid-template-columns: 1fr !important; }
+
+  /* fotos: três por linha */
+  #relatorio-visita .rep-ev-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 3mm !important; }
+  #relatorio-visita .rep-ev-grid .print-card { margin-bottom: 0 !important; }
+  #relatorio-visita .rep-ev-grid img { max-height: 36mm !important; }
+}
+.pc-cor .ui-input:focus,.pc-cor .ui-input:focus-visible,.campo-detalhe .ui-input:focus,.campo-detalhe .ui-input:focus-visible{border:2px solid var(--brand)!important;border-style:solid!important;outline:none!important;box-shadow:none!important}
+.pc-cor .ui-list{gap:6px}
+.pc-cor-card{gap:3px;padding:6px 12px 6px 18px}
+.pc-cor-titulo{font-size:.9rem;line-height:1.2}
+.pc-cor .ui-group-title{margin:2px 0}
+@media (max-height:700px){
+  .campo-acao-area{height:72px;min-height:72px}
+  .campo-detalhe .pc-registrado-texto{-webkit-line-clamp:1}
+  .campo-voz-tools .field-assist-tools button{min-height:36px}
+  .campo-detalhe-corpo{gap:5px}
+  .campo-detalhe-h2{font-size:1.02rem}
+}
+@media (max-height:780px){
+  .pc-cor .pc-registrado-texto{-webkit-line-clamp:1}
+  .pc-cor .pc-plan-acao .ui-field-wrap--area,.pc-cor .pc-acao-area{min-height:54px}
+  .pc-cor .pc-plan-stack{gap:6px}
+  .pc-cor .pc-registrado,.pc-cor .pc-ultima{padding:5px 10px}
+}

@@ -13,3 +13,26 @@ export function linhaDaCorrecao(nc: { titulo: string; ambiente: string; numero: 
 }
 
 export const NOME_DA_GRAVIDADE: Record<"Crítica" | "Importante" | "Rotina", string> = { Crítica: "Crítica", Importante: "Importante", Rotina: "Leve" };
+
+export type CampoDoPlano = "acao" | "responsavel" | "prazo";
+const ROTULO_DA_FALTA: Record<CampoDoPlano, string> = { acao: "o que será feito", responsavel: "responsável", prazo: "prazo" };
+const ORDEM_DOS_CAMPOS: CampoDoPlano[] = ["acao", "responsavel", "prazo"];
+
+function listaComE(itens: string[]): string {
+  return itens.length <= 1 ? itens.join("") : `${itens.slice(0, -1).join(", ")} e ${itens[itens.length - 1]}`;
+}
+
+/** "Falta informar: responsável e prazo" (vazio quando nada falta). Campos com valor inválido entram como "Corrija". */
+export function mensagemDeFaltas(faltando: CampoDoPlano[], invalidos: CampoDoPlano[] = []): string {
+  const falta = ORDEM_DOS_CAMPOS.filter((campo) => faltando.includes(campo)).map((campo) => ROTULO_DA_FALTA[campo]);
+  const corrigir = ORDEM_DOS_CAMPOS.filter((campo) => invalidos.includes(campo) && !faltando.includes(campo)).map((campo) => ROTULO_DA_FALTA[campo]);
+  const partes: string[] = [];
+  if (falta.length > 0) partes.push(`Falta informar: ${listaComE(falta)}`);
+  if (corrigir.length > 0) partes.push(`Corrija: ${listaComE(corrigir)}`);
+  return partes.join(". ");
+}
+
+/** Primeiro campo que precisa de atenção (para levar o foco até ele). */
+export function primeiroCampoComProblema(faltando: CampoDoPlano[], invalidos: CampoDoPlano[] = []): CampoDoPlano | null {
+  return ORDEM_DOS_CAMPOS.find((campo) => faltando.includes(campo) || invalidos.includes(campo)) ?? null;
+}
