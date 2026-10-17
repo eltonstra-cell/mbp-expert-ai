@@ -83,11 +83,29 @@ test("rodapé de impressão: texto escapado e caixas de margem só no Chromium 1
   assert.equal(cssDoRodapeDeImpressao({ empresa: "X", selo: "PRÉVIA", comCaixasDeMargem: false }), "");
 });
 
-test("monograma da empresa no menu: duas iniciais das palavras principais", async () => {
-  const { iniciaisDaEmpresa } = await import("../lib/navigation.ts");
+test("monograma da empresa no menu: só letras, sem número no começo, com reserva", async () => {
+  const { iniciaisDaEmpresa, nomeSemNumerosNoInicio } = await import("../lib/navigation.ts");
   assert.equal(iniciaisDaEmpresa("Churrascaria do Chico"), "CC");
   assert.equal(iniciaisDaEmpresa("Beyond Nutri"), "BN");
+  assert.equal(iniciaisDaEmpresa("44.150.273 Elton Volmir Strapazon"), "EV");
+  assert.equal(iniciaisDaEmpresa("Elton Volmir"), "EV");
   assert.equal(iniciaisDaEmpresa("Padaria"), "P");
-  assert.equal(iniciaisDaEmpresa("44.150.273 Maria"), "4M");
-  assert.equal(iniciaisDaEmpresa(""), "");
+  assert.equal(iniciaisDaEmpresa("44.150.273", "Élton"), "É");
+  assert.equal(iniciaisDaEmpresa("", ""), "?");
+  assert.equal(nomeSemNumerosNoInicio("44.150.273 Elton Volmir Strapazon"), "Elton Volmir Strapazon");
+  assert.equal(nomeSemNumerosNoInicio("12.345.678/0001-90 Padaria X"), "Padaria X");
+  assert.equal(nomeSemNumerosNoInicio("44.150.273"), "44.150.273");
+});
+
+test("nome do ambiente: 'Câmara fria' e variações aparecem como 'Câmara refrigerada'; o resto não muda", async () => {
+  const { nomeDeExibicaoDoAmbiente, resumoAmbientes } = await import("../lib/checklistEnvs.ts");
+  for (const nome of ["Câmara Fria", "Câmara fria", "câmara  fria", "CÂMARA FRIA", "Camara refrigerada", "Câmara frigorífica"]) {
+    assert.equal(nomeDeExibicaoDoAmbiente(nome), "Câmara refrigerada", nome);
+  }
+  for (const nome of ["Cozinha", "Câmara de congelamento", "Estoque seco", ""]) assert.equal(nomeDeExibicaoDoAmbiente(nome), nome);
+  // o dado salvo (nome) não muda; só o rótulo exibido
+  const infos = resumoAmbientes(["Câmara Fria"], [{ ambiente: "Câmara Fria", status: "Pendente" }]);
+  assert.equal(infos[0].nome, "Câmara Fria");
+  assert.equal(infos[0].rotulo, "Câmara refrigerada");
+  assert.equal(linhaDaCorrecao({ titulo: "x", ambiente: "Câmara Fria", numero: 1 }).ambiente, "Câmara refrigerada");
 });

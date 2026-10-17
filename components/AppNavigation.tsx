@@ -345,7 +345,7 @@ export default function AppNavigation({
         {temRegistrar && (
           <button type="button" className="pc-register-line" onClick={() => onSelecionar("registrar")}>
             <span className="pc-register-orb">
-              <NavIcon name="registrar" size={18} strokeWidth={2.4} />
+              <span className="pc-register-mais" aria-hidden="true">+</span>
             </span>
             <span className="pc-register-label">Registrar agora</span>
           </button>
@@ -365,7 +365,7 @@ export default function AppNavigation({
                   onClick={() => onIrPasso?.("central")}
                 >
                   <span className="pc-vcard-mono" aria-hidden="true">
-                    {iniciaisDaEmpresa(visitaMenu.empresa)}
+                    {iniciaisDaEmpresa(visitaMenu.empresa, usuario?.iniciais || "?")}
                   </span>
                   <span className="pc-vgroup-text">
                     <span className="pc-vcard-company">{visitaMenu.empresa}</span>
@@ -420,7 +420,7 @@ export default function AppNavigation({
                     aria-expanded={adminPopAberto}
                     onClick={() => setAdminPopAberto((aberto) => !aberto)}
                   >
-                    <NavIcon name="acessos" size={16} strokeWidth={1.9} />
+                    <NavIcon name="escudo" size={16} strokeWidth={1.9} />
                     Administração
                   </button>
                   {adminPopAberto && (

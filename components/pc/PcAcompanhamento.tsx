@@ -1,5 +1,7 @@
 "use client";
 
+import { nomeDeExibicaoDoAmbiente } from "@/lib/checklistEnvs";
+
 import { useState } from "react";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
 import { Pill, type Tom } from "@/components/ui/Pill";
@@ -154,7 +156,7 @@ export default function PcAcompanhamento({
                         <span className="ui-row-title-text">
                           NC {String(nc.numero).padStart(2, "0")} · {nc.titulo}
                         </span>
-                        <span className="ui-row-sub">{nc.ambiente}</span>
+                        <span className="ui-row-sub">{nomeDeExibicaoDoAmbiente(nc.ambiente)}</span>
                       </span>
                       <Pontos status={nc.status} />
                     </button>
@@ -174,7 +176,7 @@ export default function PcAcompanhamento({
                   {selecionada.vencida && <Pill tom="nc">Vencida</Pill>}
                 </div>
                 <h2 className="pc-detail-title">{selecionada.titulo}</h2>
-                <p className="ui-row-sub">{selecionada.ambiente}</p>
+                <p className="ui-row-sub">{nomeDeExibicaoDoAmbiente(selecionada.ambiente)}</p>
 
                 <div className="pc-detail-fields">
                   <div className={`pc-detail-field${selecionada.responsavel ? "" : " is-empty"}`}>

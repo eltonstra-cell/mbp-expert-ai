@@ -342,9 +342,21 @@ export function itemDoMenu(key: NavKey): NavItem | undefined {
   return POR_CHAVE.get(key);
 }
 
-/** Monograma da empresa no cartão "Visita atual" (ex.: "Churrascaria do Chico" → "CC"). */
-export function iniciaisDaEmpresa(nome: string): string {
-  const palavras = (nome || "").split(/\s+/).filter((palavra) => palavra.length > 2);
-  const letras = palavras.slice(0, 2).map((palavra) => palavra[0]).join("");
-  return (letras || (nome || "").trim().slice(0, 2)).toUpperCase();
+/** Nome para exibir sem números/CNPJ no começo ("44.150.273 Elton Volmir" → "Elton Volmir"). Não altera o dado salvo. */
+export function nomeSemNumerosNoInicio(nome: string): string {
+  const original = (nome || "").trim();
+  const limpo = original.replace(/^[\d.\-\/\s]+/, "").trim();
+  return limpo || original;
+}
+
+/** Monograma só com letras: primeiras letras das duas primeiras palavras ("Elton Volmir" → "EV"). */
+export function iniciaisDaEmpresa(nome: string, reserva = "?"): string {
+  const palavras = nomeSemNumerosNoInicio(nome)
+    .split(/\s+/)
+    .map((palavra) => palavra.replace(/[^\p{L}]/gu, ""))
+    .filter(Boolean);
+  const principais = palavras.filter((palavra) => palavra.length > 2);
+  const escolhidas = (principais.length >= 2 ? principais : palavras).slice(0, 2);
+  const letras = escolhidas.map((palavra) => palavra[0]).join("").toUpperCase();
+  return letras || (reserva || "?").slice(0, 1).toUpperCase() || "?";
 }

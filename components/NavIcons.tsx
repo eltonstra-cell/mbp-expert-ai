@@ -24,7 +24,8 @@ export type NavIconName =
   | "raio"
   | "microfone"
   | "lupa"
-  | "modo";
+  | "modo"
+  | "escudo";
 
 const TRACADOS: Record<NavIconName, ReactNode> = {
   inicio: (
@@ -146,6 +147,12 @@ const TRACADOS: Record<NavIconName, ReactNode> = {
       <path d="M3.5 6.5h13v9h-13z" />
       <path d="M7 19h6" />
       <path d="M18 9h2.5v10H18z" />
+    </>
+  ),
+  escudo: (
+    <>
+      <path d="M12 3l7 2.8v5.4c0 4.4-2.8 8.1-7 9.8-4.2-1.7-7-5.4-7-9.8V5.8z" />
+      <path d="M8.8 12.2l2.3 2.3 4.1-4.5" />
     </>
   ),
   sair: (

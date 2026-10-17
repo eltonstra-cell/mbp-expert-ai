@@ -12,6 +12,10 @@ type Props = {
   onChange: (value: string) => void;
   contexto?: string;
   somenteVoz?: boolean;
+  /** Texto do botão de IA (padrão "IA"). */
+  rotuloIa?: string;
+  /** Texto do botão de voz (padrão "Falar"). */
+  rotuloVoz?: string;
 };
 
 function juntarTexto(atual: string, novo: string) {
@@ -39,6 +43,8 @@ export default function FieldVoiceTools({
   onChange,
   contexto = "",
   somenteVoz = false,
+  rotuloIa = "IA",
+  rotuloVoz = "Falar",
 }: Props) {
   const iaPermitida = useIaPermitida();
   const [gravando, setGravando] = useState(false);
@@ -203,7 +209,7 @@ export default function FieldVoiceTools({
           title="Melhorar texto com IA"
         >
           <span aria-hidden="true">✦</span>
-          <span>{melhorando ? "Ajustando" : "IA"}</span>
+          <span>{melhorando ? "Ajustando" : rotuloIa}</span>
         </button>
       )}
       <button
@@ -218,7 +224,7 @@ export default function FieldVoiceTools({
           <path d="M6 10a6 6 0 0 0 12 0" />
           <path d="M12 16v5M9 21h6" />
         </svg>
-        <span>{transcrevendo ? "Transcrevendo" : gravando ? "Parar" : "Falar"}</span>
+        <span>{transcrevendo ? "Transcrevendo" : gravando ? "Parar" : rotuloVoz}</span>
       </button>
     </div>
     {aviso && (
@@ -230,6 +236,10 @@ export default function FieldVoiceTools({
       <RevisaoTranscricao
         texto={proposta}
         onDescartar={() => setProposta(null)}
+        onDitarDeNovo={() => {
+          setProposta(null);
+          void iniciarOuParar();
+        }}
         onUsar={(texto) => {
           onChange(juntarTexto(value, texto));
           setProposta(null);

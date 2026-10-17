@@ -1,10 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, type CSSProperties } from "react";
+import FieldVoiceTools from "@/components/FieldVoiceTools";
+import { LoteJanela, type CorrecaoItem } from "@/components/pc/PcCorrecoes";
+import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import { LogoSymbol } from "@/components/BrandLogo";
 import { NavIcon, type NavIconName } from "@/components/NavIcons";
 import { RowMenu, type ItemMenu } from "@/components/ui/RowMenu";
-import { prazoSugerido } from "@/lib/actionPlan";
+import { contarEtapas, etapaDaCorrecao, ordenarCorrecoes, prazoSugerido, validarPlano, type EtapaCorrecao, type GravidadeNc } from "@/lib/actionPlan";
+import { NOME_DA_GRAVIDADE, linhaDaCorrecao } from "@/lib/correcaoRotulos";
 
 export type TelaCampo = "inicio" | "checklist" | "correcoes" | "mais";
 
@@ -160,163 +164,447 @@ export function CampoInicio({
   );
 }
 
-export type CorrecaoCampo = {
-  id: string;
-  numero: number;
-  titulo: string;
-  ambiente: string;
-  gravidade: string;
-  status: string;
-  acaoCorretiva: string;
-  responsavelAcao: string;
-  prazo: string;
-  /** Ação corretiva real do critério; ainda não existe nos dados, então fica vazio. */
-  acaoSugerida?: string;
-  marcadaFeita: boolean;
-};
+type EtapaChave = "identificadas" | "plano" | "acompanhamento" | "resolvidas";
+const ETAPAS_CAMPO: { chave: EtapaChave; curto: string; tom: string }[] = [
+  { chave: "identificadas", curto: "Identificadas", tom: "nc" },
+  { chave: "plano", curto: "Com plano", tom: "pend" },
+  { chave: "acompanhamento", curto: "Acomp.", tom: "info" },
+  { chave: "resolvidas", curto: "Resolvidas", tom: "ok" },
+];
+const COR_DA_GRAVIDADE_CAMPO: Record<GravidadeNc, string> = { Crítica: "#D93A3A", Importante: "#F5A623", Rotina: "#3AA6D9" };
+const GRUPOS_CAMPO: { gravidade: GravidadeNc; rotulo: string }[] = [
+  { gravidade: "Crítica", rotulo: "CRÍTICAS" },
+  { gravidade: "Importante", rotulo: "IMPORTANTES" },
+  { gravidade: "Rotina", rotulo: "LEVES" },
+];
+
+function PinoCampo() {
+  return (
+    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 21s-6-5.2-6-10a6 6 0 0 1 12 0c0 4.8-6 10-6 10z" />
+      <circle cx="12" cy="11" r="2.2" />
+    </svg>
+  );
+}
 
 export function CampoCorrecoes({
   itens,
   hoje,
   podeEditar,
   podeMarcar,
+  pessoas,
   onSalvarPlano,
   onMarcarFeita,
   onDesfazerFeita,
+  onLote,
+  onVerNoChecklist,
 }: {
-  itens: CorrecaoCampo[];
+  itens: CorrecaoItem[];
   hoje: string;
   podeEditar: boolean;
   podeMarcar: boolean;
-  onSalvarPlano: (id: string, dados: { acao: string; responsavel: string; prazo: string }) => void;
+  pessoas: string[];
+  subtituloDaLista?: string;
+  onSalvarPlano: (id: string, dados: { acao: string; responsavel: string; prazo: string; etapa: EtapaCorrecao }) => void;
   onMarcarFeita: (id: string) => void;
   onDesfazerFeita: (id: string) => void;
+  onLote: (ids: string[], valores: { responsavel: string; prazo: string }) => void;
+  onVerNoChecklist: (checklistItemId: string, ambiente: string) => void;
 }) {
-  const [editando, setEditando] = useState<CorrecaoCampo | null>(null);
-  const [acao, setAcao] = useState("");
-  const [responsavel, setResponsavel] = useState("");
-  const [prazo, setPrazo] = useState("");
-  const [tocou, setTocou] = useState(false);
-  const [aviso, setAviso] = useState("");
+  const [agrupar, setAgrupar] = useState<"gravidade" | "ambiente">("gravidade");
+  const [etapa, setEtapa] = useState<EtapaChave | null>(null);
+  const [aberta, setAberta] = useState<string | null>(null);
+  const [lote, setLote] = useState(false);
+  const [salvoAgora, setSalvoAgora] = useState<{ proximaId: string | null; proximaTitulo: string } | null>(null);
 
-  useEffect(() => {
-    if (!aviso) return;
-    const tempo = window.setTimeout(() => setAviso(""), 2600);
-    return () => window.clearTimeout(tempo);
-  }, [aviso]);
+  const contagem = contarEtapas(itens);
+  const abertas = itens.filter((item) => item.status !== "Resolvida").length;
+  const semPlano = contagem.identificadas;
+  const filtrados = ordenarCorrecoes(itens.filter((item) => !etapa || etapaDaCorrecao(item) === etapa));
+  const grupos =
+    agrupar === "gravidade"
+      ? GRUPOS_CAMPO.map((grupo) => ({ rotulo: grupo.rotulo, itens: filtrados.filter((item) => item.gravidade === grupo.gravidade) }))
+      : Array.from(new Set(filtrados.map((item) => linhaDaCorrecao(item).ambiente))).map((ambiente) => ({
+          rotulo: ambiente.toLocaleUpperCase("pt-BR"),
+          itens: filtrados.filter((item) => linhaDaCorrecao(item).ambiente === ambiente),
+        }));
+  const atual = itens.find((item) => item.id === aberta) || null;
 
-  const abrir = (item: CorrecaoCampo) => {
-    setEditando(item);
-    setAcao(item.acaoCorretiva);
-    setResponsavel(item.responsavelAcao);
-    setPrazo(item.prazo);
-    setTocou(false);
+  const proximaSemPlano = (depoisDe: string) => {
+    const ordem = ordenarCorrecoes(itens);
+    const posicao = ordem.findIndex((item) => item.id === depoisDe);
+    const seguintes = [...ordem.slice(posicao + 1), ...ordem.slice(0, Math.max(0, posicao))];
+    return seguintes.find((item) => etapaDaCorrecao(item) === "identificadas") || null;
   };
-  const erroAcao = tocou && !acao.trim() ? "Escreva o que será feito." : "";
-  const erroPrazo = prazo && prazo < hoje ? "O prazo não pode ser anterior a hoje." : "";
-  const podeSalvar = !!acao.trim() && !erroPrazo;
-  const sugestaoPrazo = prazoSugerido(editando?.gravidade === "Crítica" || editando?.gravidade === "Importante" ? editando.gravidade : "Rotina", hoje);
-  const abertas = itens.filter((item) => item.status !== "Resolvida");
+
+  if (atual) {
+    return (
+      <DetalheCampo
+        key={atual.id}
+        nc={atual}
+        hoje={hoje}
+        podeEditar={podeEditar}
+        podeMarcar={podeMarcar}
+        pessoas={pessoas}
+        onVoltar={() => setAberta(null)}
+        onPular={() => {
+          const proxima = proximaSemPlano(atual.id) || ordenarCorrecoes(itens).find((item) => item.id !== atual.id) || null;
+          setAberta(proxima ? proxima.id : null);
+        }}
+        onSalvar={(dados) => {
+          onSalvarPlano(atual.id, dados);
+          const proxima = proximaSemPlano(atual.id);
+          setSalvoAgora({ proximaId: proxima?.id || null, proximaTitulo: proxima ? linhaDaCorrecao(proxima).titulo : "" });
+          setAberta(null);
+        }}
+        onMarcarFeita={() => onMarcarFeita(atual.id)}
+        onDesfazerFeita={() => onDesfazerFeita(atual.id)}
+        onVerNoChecklist={onVerNoChecklist}
+      />
+    );
+  }
 
   return (
-    <section className="campo-tela" aria-label="Correções">
+    <section className="campo-tela campo-tela--lista" aria-label="Correções">
       <div>
         <h1 className="campo-h1">Correções</h1>
-        <p className="campo-sub">{abertas.length} para fazer · toque para combinar o plano</p>
+        <p className="campo-sub">
+          {abertas} não conformidade{abertas === 1 ? "" : "s"} aberta{abertas === 1 ? "" : "s"} ·{" "}
+          {abertas === 0 ? "nada pendente" : semPlano === 0 ? "todas com plano" : semPlano === abertas ? "nenhuma com plano ainda" : `${abertas - semPlano} com plano`}
+        </p>
       </div>
-      {itens.length === 0 && (
-        <div className="campo-card">
-          <div className="campo-card-title">Nenhuma correção nesta visita</div>
-          <div className="campo-sub">As não conformes do checklist aparecem aqui.</div>
-        </div>
-      )}
-      {itens.map((item) => (
-        <article key={item.id} className={`campo-card campo-nc is-${item.gravidade === "Crítica" ? "nc" : item.gravidade === "Importante" ? "amber" : "na"}`}>
-          <div className="campo-nc-top">
-            <span className="campo-nc-n">{item.numero}</span>
-            <span className="campo-chip">{item.status}</span>
-            {item.marcadaFeita && <span className="campo-chip campo-chip--ok">Feita</span>}
-          </div>
-          <div className="campo-card-title">{item.titulo}</div>
-          <div className="campo-sub">
-            {item.ambiente}
-            {item.prazo ? ` · prazo ${item.prazo.split("-").reverse().join("/")}` : ""}
-          </div>
-          <div className="campo-acoes">
-            <button type="button" className="campo-btn campo-btn--soft" onClick={() => abrir(item)}>
-              {item.acaoCorretiva ? "Ver plano" : "Combinar plano"}
+
+      {salvoAgora && (
+        <div className="campo-salvo" role="status">
+          <span aria-hidden="true">✓</span>
+          <span className="campo-salvo-texto">
+            Plano salvo.{salvoAgora.proximaId ? ` Próxima sem plano: ${salvoAgora.proximaTitulo}` : " Não há mais correções sem plano."}
+          </span>
+          {salvoAgora.proximaId && (
+            <button
+              type="button"
+              className="pc-chip-btn pc-chip-btn--soft"
+              onClick={() => {
+                setAberta(salvoAgora.proximaId);
+                setSalvoAgora(null);
+              }}
+            >
+              Abrir
             </button>
-            {podeMarcar && item.status !== "Resolvida" && (
-              <button type="button" className="campo-btn campo-btn--outline" onClick={() => (item.marcadaFeita ? onDesfazerFeita(item.id) : onMarcarFeita(item.id))}>
-                {item.marcadaFeita ? "Desfazer feita" : "Marcar como feita"}
-              </button>
-            )}
-          </div>
-        </article>
-      ))}
-
-      {aviso && (
-        <div className="pc-toast pc-toast--ok campo-toast" role="status">
-          <span>{aviso}</span>
+          )}
+          <button type="button" className="campo-salvo-fechar" aria-label="Fechar aviso" onClick={() => setSalvoAgora(null)}>
+            ×
+          </button>
         </div>
       )}
 
-      {editando && (
-        <div className="campo-sheet-layer" role="dialog" aria-modal="true" aria-label="Plano de correção">
-          <button type="button" className="campo-sheet-fundo" aria-label="Fechar" onClick={() => setEditando(null)} />
-          <div className="campo-sheet">
-            <div className="campo-sheet-body">
-              <h2 className="campo-card-title">Plano da correção {editando.numero}</h2>
-              <p className="campo-sub">{editando.titulo}</p>
-              <label className="campo-field">
-                <span className="ui-eyebrow">O que será feito (ação corretiva)</span>
-                <textarea className={`ui-input${erroAcao ? " is-invalid" : ""}`} rows={3} value={acao} disabled={!podeEditar} aria-invalid={!!erroAcao} onChange={(e) => { setAcao(e.target.value); setTocou(true); }} onBlur={() => setTocou(true)} />
-                {erroAcao ? <span className="campo-erro">{erroAcao}</span> : !acao.trim() && <span className="pc-field-hint" role="note">Obrigatório para salvar o plano.</span>}
-                {podeEditar && editando.acaoSugerida && acao.trim() !== editando.acaoSugerida.trim() && (
-                  <button type="button" className="campo-sugestao" onClick={() => setAcao(editando.acaoSugerida || "")}>
-                    Ação sugerida: {editando.acaoSugerida} · toque para usar
-                  </button>
-                )}
-              </label>
-              <label className="campo-field">
-                <span className="ui-eyebrow">Quem faz</span>
-                <input className="ui-input" value={responsavel} disabled={!podeEditar} onChange={(e) => setResponsavel(e.target.value)} />
-              </label>
-              <label className="campo-field">
-                <span className="ui-eyebrow">Prazo</span>
-                <input className={`ui-input${erroPrazo ? " is-invalid" : ""}`} type="date" min={hoje} value={prazo} disabled={!podeEditar} aria-invalid={!!erroPrazo} onChange={(e) => setPrazo(e.target.value)} />
-                {erroPrazo && <span className="campo-erro">{erroPrazo}</span>}
-                {podeEditar && (
-                  <button type="button" className="campo-sugestao" onClick={() => setPrazo(sugestaoPrazo.data)}>
-                    Prazo sugerido: {sugestaoPrazo.dias} dias · {sugestaoPrazo.data.split("-").reverse().join("/")} · toque para usar
-                  </button>
-                )}
-              </label>
-            </div>
-            <div className="campo-sheet-foot">
-              <button type="button" className="campo-btn campo-btn--outline" onClick={() => setEditando(null)}>
-                Cancelar
-              </button>
-              <button
-                type="button"
-                className="campo-btn campo-btn--save"
-                disabled={!podeEditar || !podeSalvar}
-                onClick={() => {
-                  setTocou(true);
-                  if (!podeSalvar) return;
-                  onSalvarPlano(editando.id, { acao: acao.trim(), responsavel: responsavel.trim(), prazo });
-                  setAviso("Plano salvo");
-                  setEditando(null);
-                }}
-              >
-                Salvar
-              </button>
-            </div>
+      <div className="campo-fluxo" role="group" aria-label="Etapas das correções">
+        {ETAPAS_CAMPO.map((passo) => {
+          const ativa = (etapa ?? "identificadas") === passo.chave && contagem[passo.chave] > 0;
+          return (
+            <button
+              key={passo.chave}
+              type="button"
+              className={`campo-fluxo-item campo-fluxo-item--${passo.tom}${ativa ? " is-ativa" : ""}${contagem[passo.chave] === 0 ? " is-zero" : ""}`}
+              aria-pressed={etapa === passo.chave}
+              onClick={() => setEtapa((valor) => (valor === passo.chave ? null : passo.chave))}
+            >
+              <span className="campo-fluxo-num">{contagem[passo.chave]}</span>
+              <span className="campo-fluxo-rotulo">{passo.curto}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="campo-lista-barra">
+        <span className="campo-sub">Agrupar</span>
+        <SegmentedTabs<"gravidade" | "ambiente">
+          rotulo="Agrupar correções"
+          valor={agrupar}
+          onChange={setAgrupar}
+          abas={[
+            { id: "gravidade", rotulo: "Gravidade" },
+            { id: "ambiente", rotulo: "Ambiente" },
+          ]}
+        />
+        {podeEditar && (
+          <button type="button" className="pc-chip-btn pc-chip-btn--soft campo-lote" onClick={() => setLote(true)} disabled={abertas === 0}>
+            Definir em lote
+          </button>
+        )}
+      </div>
+
+      <div className="campo-grupos">
+        {itens.length === 0 && (
+          <div className="campo-card">
+            <div className="campo-card-title">Nenhuma correção nesta visita</div>
+            <div className="campo-sub">As não conformes do checklist aparecem aqui.</div>
           </div>
-        </div>
+        )}
+        {grupos
+          .filter((grupo) => grupo.itens.length > 0)
+          .map((grupo) => (
+            <div key={grupo.rotulo} className="campo-grupo">
+              <div className="ui-group-title">
+                {grupo.rotulo} · {grupo.itens.length}
+              </div>
+              {grupo.itens.map((item) => {
+                const linha = linhaDaCorrecao(item);
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className="pc-cor-card"
+                    style={{ "--grav": COR_DA_GRAVIDADE_CAMPO[item.gravidade] } as CSSProperties}
+                    onClick={() => {
+                      setSalvoAgora(null);
+                      setAberta(item.id);
+                    }}
+                  >
+                    <span className="pc-cor-topo">
+                      <span className="pc-cor-pino">
+                        <PinoCampo />
+                        {linha.ambiente}
+                      </span>
+                      {item.reincidente && <span className="pc-cor-aviso">Reincidente</span>}
+                      {item.marcadaFeita && item.status !== "Resolvida" && <span className="pc-cor-aviso">Feita, aguardando confirmação</span>}
+                    </span>
+                    <span className="pc-cor-titulo">{linha.titulo}</span>
+                    <span className="pc-cor-grav">{NOME_DA_GRAVIDADE[item.gravidade]}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+      </div>
+
+      {lote && (
+        <LoteJanela
+          itens={itens.filter((item) => item.status !== "Resolvida")}
+          hoje={hoje}
+          onFechar={() => setLote(false)}
+          onAplicar={(ids, valores) => {
+            onLote(ids, valores);
+            setLote(false);
+          }}
+        />
       )}
     </section>
   );
+}
+
+// Plano numa tela só (sem rolagem), com a barra de baixo "Pular | Salvar plano".
+function DetalheCampo({
+  nc,
+  hoje,
+  podeEditar,
+  podeMarcar,
+  pessoas,
+  onVoltar,
+  onPular,
+  onSalvar,
+  onMarcarFeita,
+  onDesfazerFeita,
+  onVerNoChecklist,
+}: {
+  nc: CorrecaoItem;
+  hoje: string;
+  podeEditar: boolean;
+  podeMarcar: boolean;
+  pessoas: string[];
+  onVoltar: () => void;
+  onPular: () => void;
+  onSalvar: (dados: { acao: string; responsavel: string; prazo: string; etapa: EtapaCorrecao }) => void;
+  onMarcarFeita: () => void;
+  onDesfazerFeita: () => void;
+  onVerNoChecklist: (checklistItemId: string, ambiente: string) => void;
+}) {
+  const [acao, setAcao] = useState(nc.acaoCorretiva);
+  const [responsavel, setResponsavel] = useState(nc.responsavelAcao);
+  const [prazo, setPrazo] = useState(nc.prazo);
+  const [tentou, setTentou] = useState(false);
+  const resolvida = nc.status === "Resolvida";
+  const bloqueado = resolvida || !podeEditar;
+  const sugestao = prazoSugerido(nc.gravidade, hoje);
+  const erros = validarPlano({ acaoCorretiva: acao, responsavelAcao: responsavel, prazo }, hoje, true);
+  const mostrar = (campo: "acao" | "responsavel" | "prazo") => (tentou || Boolean(prazo && campo === "prazo")) && erros[campo];
+  const linha = linhaDaCorrecao(nc);
+  const etapaAlvo: EtapaCorrecao = etapaDaCorrecao(nc) === "acompanhamento" ? "acompanhamento" : "plano";
+
+  const salvar = () => {
+    setTentou(true);
+    if (Object.keys(erros).length > 0) return;
+    onSalvar({ acao: acao.trim(), responsavel: responsavel.trim(), prazo, etapa: etapaAlvo });
+  };
+
+  return (
+    <section className="campo-detalhe" aria-label={`Correção ${linha.codigo}`}>
+      <header className="campo-detalhe-topo">
+        <button type="button" className="campo-voltar" aria-label="Voltar para a lista de correções" onClick={onVoltar}>
+          ‹
+        </button>
+        <div className="campo-detalhe-topo-texto">
+          <span className="campo-sub">{linha.ambiente}</span>
+          <span className="campo-detalhe-titulo">Correção {linha.codigo}</span>
+        </div>
+      </header>
+
+      <div className="campo-detalhe-corpo">
+        <div className="campo-detalhe-chips">
+          <span className="pc-grav-chip" style={{ "--grav": COR_DA_GRAVIDADE_CAMPO[nc.gravidade] } as CSSProperties}>
+            <i aria-hidden="true" />
+            {NOME_DA_GRAVIDADE[nc.gravidade]}
+          </span>
+          <span className="pc-codigo-chip">{linha.codigo}</span>
+          {nc.referencia && <span className="campo-norma">{nc.referencia}</span>}
+        </div>
+        <h2 className="campo-detalhe-h2">{linha.titulo}</h2>
+        <div className="campo-detalhe-chips">
+          <span className="pc-cor-pino">
+            <PinoCampo />
+            {linha.ambiente}
+          </span>
+          {nc.itemNumero > 0 && <span className="campo-sub">item {nc.itemNumero}</span>}
+          {nc.checklistItemId && (
+            <button type="button" className="pc-chip-btn pc-chip-btn--soft" onClick={() => onVerNoChecklist(nc.checklistItemId, nc.ambiente)}>
+              Ver no checklist ›
+            </button>
+          )}
+        </div>
+
+        {nc.observacao.trim() && (
+          <div className="pc-registrado">
+            <span className="ui-eyebrow">No checklist · {quandoCurtoCampo(nc.registradoEm)}</span>
+            <p className="pc-registrado-texto">“{nc.observacao.trim()}”</p>
+          </div>
+        )}
+
+        {nc.acaoSugerida && !bloqueado && acao.trim() !== nc.acaoSugerida.trim() && (
+          <div className="pc-acao-padrao">
+            <span className="ui-row-sub">Ação padrão do critério: “{nc.acaoSugerida}”</span>
+            <button type="button" className="pc-chip-btn pc-chip-btn--soft" onClick={() => setAcao(nc.acaoSugerida || "")}>
+              Usar
+            </button>
+          </div>
+        )}
+
+        <label className="campo-field campo-field--acao">
+          <span className="ui-eyebrow">
+            O que será feito <span className="pc-obrig">· obrigatório</span>
+          </span>
+          <textarea
+            className={`ui-input campo-acao-area${mostrar("acao") ? " is-invalid" : ""}`}
+            value={acao}
+            disabled={bloqueado}
+            placeholder="Descreva a ação corretiva"
+            aria-invalid={Boolean(mostrar("acao"))}
+            onChange={(evento) => setAcao(evento.target.value)}
+          />
+          {mostrar("acao") ? (
+            <span className="campo-erro">{erros.acao}</span>
+          ) : (
+            !bloqueado && !acao.trim() && (
+              <span className="pc-field-hint" role="note">
+                Obrigatório para salvar o plano.
+              </span>
+            )
+          )}
+        </label>
+        {!bloqueado && (
+          <div className="campo-voz-tools">
+            <FieldVoiceTools fieldKey={`acao-${nc.id}`} value={acao} onChange={setAcao} rotuloIa="Sugerir com IA" rotuloVoz="Ditar ação" contexto="Ação corretiva para uma não conformidade em segurança dos alimentos." />
+          </div>
+        )}
+
+        {(nc.pop || nc.ultimaOcorrencia) && (
+          <details className="campo-recolhido">
+            <summary>{nc.ultimaOcorrencia ? "Última visita e POP" : "POP relacionado"}</summary>
+            {nc.ultimaOcorrencia && (
+              <p className="pc-registrado-texto">
+                {nc.ultimaOcorrencia.data} · {nc.ultimaOcorrencia.situacao}
+                {nc.ultimaOcorrencia.acao ? ` · ${nc.ultimaOcorrencia.acao}` : ""}
+              </p>
+            )}
+            {nc.pop && (
+              <p className="pc-registrado-texto">
+                {nc.pop.codigo ? `${nc.pop.codigo} · ` : ""}
+                {nc.pop.titulo}
+              </p>
+            )}
+          </details>
+        )}
+
+        <div className="campo-duplo">
+          <label className="campo-field">
+            <span className="ui-eyebrow">Responsável</span>
+            <input
+              className={`ui-input${mostrar("responsavel") ? " is-invalid" : ""}`}
+              value={responsavel}
+              list={`campo-pessoas-${nc.id}`}
+              disabled={bloqueado}
+              onChange={(evento) => setResponsavel(evento.target.value)}
+              aria-invalid={Boolean(mostrar("responsavel"))}
+            />
+            <datalist id={`campo-pessoas-${nc.id}`}>
+              {pessoas.map((pessoa) => (
+                <option key={pessoa} value={pessoa} />
+              ))}
+            </datalist>
+            {mostrar("responsavel") && <span className="campo-erro">{erros.responsavel}</span>}
+          </label>
+          <label className="campo-field">
+            <span className="ui-eyebrow">Prazo</span>
+            <span className="pc-prazo-campo">
+              <input
+                type="date"
+                className={`ui-input${mostrar("prazo") ? " is-invalid" : ""}`}
+                value={prazo}
+                min={hoje}
+                disabled={bloqueado}
+                aria-invalid={Boolean(mostrar("prazo"))}
+                onChange={(evento) => setPrazo(evento.target.value)}
+              />
+              {!bloqueado && (
+                <button type="button" className="pc-prazo-sugerido" onClick={() => setPrazo(sugestao.data)}>
+                  {sugestao.dias} dias · {nc.gravidade === "Rotina" ? "leve" : nc.gravidade.toLocaleLowerCase("pt-BR")}
+                </button>
+              )}
+            </span>
+            {mostrar("prazo") && <span className="campo-erro">{erros.prazo}</span>}
+          </label>
+        </div>
+      </div>
+
+      <footer className="campo-detalhe-rodape">
+        {podeEditar && !resolvida ? (
+          <>
+            <button type="button" className="campo-btn campo-btn--outline" onClick={onPular}>
+              Pular
+            </button>
+            <button type="button" className="campo-btn campo-btn--save" onClick={salvar}>
+              Salvar plano
+            </button>
+          </>
+        ) : podeMarcar && !resolvida ? (
+          <button type="button" className="campo-btn campo-btn--save" onClick={nc.marcadaFeita ? onDesfazerFeita : onMarcarFeita}>
+            {nc.marcadaFeita ? "Desfazer \"feita\"" : "Marcar como feita"}
+          </button>
+        ) : (
+          <button type="button" className="campo-btn campo-btn--outline" onClick={onVoltar}>
+            Voltar
+          </button>
+        )}
+      </footer>
+    </section>
+  );
+}
+
+function quandoCurtoCampo(iso: string) {
+  const data = new Date(iso);
+  if (Number.isNaN(data.getTime())) return "";
+  const mesmoDia = data.toDateString() === new Date().toDateString();
+  const hora = data.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  return mesmoDia ? `hoje ${hora}` : `${data.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} ${hora}`;
 }
 
 export type CartaoMais = { id: string; rotulo: string; icone: NavIconName; tom: string; onClick: () => void };

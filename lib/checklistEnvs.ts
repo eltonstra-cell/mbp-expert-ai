@@ -44,6 +44,11 @@ export function situacaoDoAmbiente(
  * UMA fonte para o menu e para a lista: os ambientes reais vêm de `ordem` (a ordem da visita,
  * nunca reordenada) e as verificações gerais entram depois, marcadas como `geral`.
  */
+/** Nome padronizado para exibir ("Câmara fria" e variações viram "Câmara refrigerada"); não altera o dado salvo. */
+export function nomeDeExibicaoDoAmbiente(nome: string): string {
+  return /^c[aâ]mara\s+(fria|refrigerada|frigor[ií]fica)$/i.test((nome || "").trim()) ? "Câmara refrigerada" : nome;
+}
+
 export function resumoAmbientes(
   ordem: string[],
   itens: ItemParaResumo[],
@@ -56,7 +61,7 @@ export function resumoAmbientes(
     const naoConformes = doAmbiente.filter((item) => item.status === "Não Conforme").length;
     return {
       nome,
-      rotulo,
+      rotulo: nomeDeExibicaoDoAmbiente(rotulo),
       total: doAmbiente.length,
       respondidos,
       naoConformes,

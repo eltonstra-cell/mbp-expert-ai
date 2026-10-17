@@ -1,5 +1,7 @@
 "use client";
 
+import { nomeDeExibicaoDoAmbiente } from "@/lib/checklistEnvs";
+
 import { useState } from "react";
 
 type Props = {
@@ -96,7 +98,7 @@ export default function PcAmbientes({
                     onClick={() => onToggle(nome)}
                   >
                     <span className="pc-choice-dot" aria-hidden="true">{ativo ? "✓" : ""}</span>
-                    <span className="pc-choice-name">{nome}</span>
+                    <span className="pc-choice-name">{nomeDeExibicaoDoAmbiente(nome)}</span>
                   </button>
                 );
               })}
@@ -154,7 +156,7 @@ export default function PcAmbientes({
                   ocultos.map((oculto) => (
                     <div key={oculto.ambiente} className="pc-hidden-row">
                       <span className="pc-hidden-name">
-                        {oculto.ambiente}
+                        {nomeDeExibicaoDoAmbiente(oculto.ambiente)}
                         <span className="ui-row-sub">
                           {oculto.respostas} {oculto.respostas === 1 ? "resposta guardada" : "respostas guardadas"}
                         </span>

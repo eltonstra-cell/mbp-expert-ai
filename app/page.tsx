@@ -7,7 +7,7 @@ import AppNavigation, { type CartaoVisita, type ContagemEtapa } from "@/componen
 import AppTopbar from "@/components/AppTopbar";
 import PcInicio from "@/components/pc/PcInicio";
 import RegistrarAgoraModal from "@/components/pc/RegistrarAgoraModal";
-import PcCorrecoes from "@/components/pc/PcCorrecoes";
+import PcCorrecoes, { type CorrecaoItem } from "@/components/pc/PcCorrecoes";
 import PcPopsVisita from "@/components/pc/PcPopsVisita";
 import PcRelatorio, { type SecaoRelatorio } from "@/components/pc/PcRelatorio";
 import PcAjuda from "@/components/pc/PcAjuda";
@@ -41,6 +41,7 @@ import MeuPerfilModal from "@/components/pc/MeuPerfilModal";
 import { iniciarMedidorDeVolume } from "@/components/useNivelDeAudio";
 import { MENSAGEM_SEM_FALA, ehSilencio } from "@/lib/transcricao";
 import { nomeDoArquivoPdf, rotuloDoRelatorio, seloDoPdf } from "@/lib/reportLabels";
+import { nomeDeExibicaoDoAmbiente } from "@/lib/checklistEnvs";
 import { calcularCortes } from "@/lib/pdfPaginacao";
 import { cssDoRodapeDeImpressao, suportaCaixasDeMargem } from "@/lib/printFooter";
 import { sincronizarNcDoItem } from "@/lib/checklistNcs";
@@ -53,7 +54,7 @@ import CommandPalette from "@/components/CommandPalette";
 import { construirDestinos, type Destino } from "@/lib/commandSearch";
 import { quantidadeDeAmbientes, resumoAmbientes, vizinhoDoAmbiente } from "@/lib/checklistEnvs";
 import { NavIcon } from "@/components/NavIcons";
-import { chaveAtiva, itemDoMenu, itensVisiveis, type NavContexto, type NavKey } from "@/lib/navigation";
+import { chaveAtiva, itemDoMenu, itensVisiveis, nomeSemNumerosNoInicio, type NavContexto, type NavKey } from "@/lib/navigation";
 import ManualBaseFields from "@/components/ManualBaseFields";
 import OperationalFlowsFields from "@/components/OperationalFlowsFields";
 import QualityProgramsFields from "@/components/QualityProgramsFields";
@@ -64,6 +65,7 @@ import pacote from "../package.json";
 import { LogoHorizontal, LogoSymbol, LogoWordmark } from "@/components/BrandLogo";
 import { IaPermitidaContext, useIaPermitida } from "@/components/IaPermissionContext";
 import type {
+  NaoConformidade,
   AppDB,
   AcaoPermissao,
   AnaliseFotoIA,
@@ -4092,6 +4094,82 @@ export default function Home() {
     setView("evidencias");
   }
 
+  // Mesmo critério, no mesmo ambiente, na visita anterior da empresa (só devolve se existir de verdade).
+  function ultimaOcorrenciaDaNc(nc: NaoConformidade): { data: string; situacao: string; acao: string } | null {
+    if (!visitaAtual) return null;
+    const anteriores = (db.ncs || [])
+      .filter(
+        (outra) =>
+          outra.visitaId !== nc.visitaId &&
+          outra.empresaId === nc.empresaId &&
+          outra.ambiente === nc.ambiente &&
+          outra.titulo === nc.titulo
+      )
+      .map((outra) => ({ outra, visita: db.visitas.find((visita) => visita.id === outra.visitaId) }))
+      .filter((par): par is { outra: NaoConformidade; visita: Visita } => Boolean(par.visita) && par.visita!.data < visitaAtual.data)
+      .sort((a, b) => b.visita.data.localeCompare(a.visita.data));
+    const ultima = anteriores[0];
+    if (!ultima) return null;
+    return {
+      data: fdata(ultima.visita.data),
+      situacao: ultima.outra.status === "Em tratamento" ? "Em acompanhamento" : ultima.outra.status,
+      acao: (ultima.outra.acaoCorretiva || "").trim(),
+    };
+  }
+
+  function nomesDasPessoasDaEmpresa(empresaId: string): string[] {
+    return Array.from(
+      new Set(
+        db.usuarios
+          .filter((usuario) => usuario.status !== "Suspenso" && (usuario.perfil === "Administrador" || usuario.empresaIds.includes(empresaId)))
+          .map((usuario) => usuario.nome)
+          .filter(Boolean)
+      )
+    );
+  }
+
+  // Itens da tela de Correções (PC, tablet e celular usam a mesma montagem).
+  function montarItensDeCorrecao(): CorrecaoItem[] {
+    if (!visitaAtual) return [];
+    return ncsVisita.map((nc, indice) => {
+        const rein = reincidenciaDaNc(
+          nc,
+          (db.ncs || []).filter((outra) => !outra.inativaNoChecklist),
+          (id) => db.visitas.find((visita) => visita.id === id)?.data || ""
+        );
+        const linhaPop = resumoPopsVisita.linhas.find((linha) => linha.ncs.includes(indice + 1));
+        return {
+          id: nc.id,
+          numero: indice + 1,
+          titulo: nc.titulo,
+          ambiente: nc.ambiente,
+          criterio: nc.categoria,
+          referencia: nc.referencia,
+          gravidade: nc.criticidade,
+          status: nc.status,
+          acaoCorretiva: nc.acaoCorretiva || "",
+          responsavelAcao: nc.responsavelAcao || "",
+          prazo: nc.prazo || "",
+          reincidente: rein.reincidente,
+          dataAnterior: rein.dataAnterior,
+          orientacao: nc.orientacao || "",
+          pop: linhaPop ? { codigo: linhaPop.sugestao.codigo, titulo: linhaPop.sugestao.titulo, existe: linhaPop.situacao !== "a-criar" } : null,
+          marcadaFeita: nc.marcadaFeita || null,
+          checklistItemId: nc.checklistItemId,
+          itemNumero: (visitaAtual.checklist || []).filter((item) => item.ambiente === nc.ambiente).findIndex((item) => item.id === nc.checklistItemId) + 1,
+          observacao: nc.observacao || "",
+          registradoEm: nc.criadoEm || "",
+          ultimaOcorrencia: ultimaOcorrenciaDaNc(nc),
+          evidencias: (db.evidencias || [])
+            .filter((ev) => ev.ncId === nc.id)
+            .map((ev) => ({ id: ev.id, tipo: ev.tipo, nome: ev.descricao?.trim() || ev.nomeArquivo, quando: new Date(ev.criadoEm).toLocaleString("pt-BR"), url: urlEvidencia(ev) })),
+          historico: [...(nc.historicoAcompanhamento || [])]
+            .sort((a, b) => b.criadoEm.localeCompare(a.criadoEm))
+            .map((item) => ({ id: item.id, quando: new Date(item.criadoEm).toLocaleString("pt-BR"), status: item.status, observacao: item.observacao })),
+        };
+    });
+  }
+
   function marcarCorrecaoComoFeita(ncId: string, observacao: string) {
     const nc = (db.ncs || []).find((registro) => registro.id === ncId);
     if (!nc || !exigirPermissao("ncs.marcar_feita", nc.empresaId)) return;
@@ -5531,7 +5609,7 @@ export default function Home() {
         contagens={contagensMenu}
         visita={cartaoVisita}
         onSair={() => void sairDoSistema()}
-        visitaMenu={ehPC && visitaAbertaNoMenu ? { empresa: nomeParaExibir(empresaVisita), data: `${visitaAtual ? fdata(visitaAtual.data).slice(0, 5) : ""} · ${visitaAtual?.status === "Concluída" ? "concluída" : "em andamento"}`, passos: passosDaTrilha(dadosTrilha).filter((passo) => telaVisivel(passo.chave === "pops" ? "popsVisita" : (passo.chave as TelaKey))), atual: passoAtualDaTrilha, emTelaDaVisita: VISIT_VIEWS.includes(view) } : null}
+        visitaMenu={ehPC && visitaAbertaNoMenu ? { empresa: nomeSemNumerosNoInicio(nomeParaExibir(empresaVisita)), data: `${visitaAtual ? fdata(visitaAtual.data).slice(0, 5) : ""} · ${visitaAtual?.status === "Concluída" ? "concluída" : "em andamento"}`, passos: passosDaTrilha(dadosTrilha).filter((passo) => telaVisivel(passo.chave === "pops" ? "popsVisita" : (passo.chave as TelaKey))), atual: passoAtualDaTrilha, emTelaDaVisita: VISIT_VIEWS.includes(view) } : null}
         onIrPasso={irParaPasso}
         onMeuPerfil={() => setPerfilAberto(true)}
         usuario={usuarioDaSessao ? { nome: usuarioDaSessao.nome, perfil: usuarioDaSessao.perfil, iniciais: iniciaisUsuario || "" } : null}
@@ -6007,23 +6085,21 @@ export default function Home() {
             hoje={hojeISO()}
             podeEditar={permitido("ncs.acompanhar", visitaAtual.empresaId)}
             podeMarcar={permitido("ncs.marcar_feita", visitaAtual.empresaId)}
-            itens={ncsVisita.map((nc, indice) => ({
-              id: nc.id,
-              numero: indice + 1,
-              titulo: nc.titulo,
-              ambiente: nc.ambiente,
-              gravidade: nc.criticidade,
-              status: nc.status,
-              acaoCorretiva: nc.acaoCorretiva || "",
-              responsavelAcao: nc.responsavelAcao || "",
-              prazo: nc.prazo || "",
-              marcadaFeita: !!nc.marcadaFeita,
-            }))}
+            itens={montarItensDeCorrecao()}
+            pessoas={nomesDasPessoasDaEmpresa(visitaAtual.empresaId)}
+            subtituloDaLista={`${nomeSemNumerosNoInicio(nomeParaExibir(empresaVisita))}`}
             onSalvarPlano={(id, dados) =>
-              atualizarNC(id, { acaoCorretiva: dados.acao, responsavelAcao: dados.responsavel, prazo: dados.prazo, status: "Aberta" })
+              atualizarNC(id, { acaoCorretiva: dados.acao, responsavelAcao: dados.responsavel, prazo: dados.prazo, status: dados.etapa === "acompanhamento" ? "Em tratamento" : "Aberta" })
             }
             onMarcarFeita={(id) => marcarCorrecaoComoFeita(id, "")}
             onDesfazerFeita={desfazerCorrecaoFeita}
+            onLote={(ids, valores) => alteracoesEmLote(ncsVisita, ids, valores).forEach((alteracao) => atualizarNC(alteracao.id, alteracao.patch))}
+            onVerNoChecklist={(itemId, ambiente) => {
+              setAmbienteChecklistAtivo(ambiente);
+              setItemFocoId(itemId);
+              setUltimoItemChecklistId(itemId);
+              setView("checklist");
+            }}
           />
         ) : view === "acessos" && permitido("usuarios.gerenciar") ? (
           <AccessPreparationPanel
@@ -6516,7 +6592,7 @@ export default function Home() {
                             : "border-slate-200 bg-white"
                         }`}
                       >
-                        <span className="min-w-0 flex-1 break-words pr-2">{nome}</span>
+                        <span className="min-w-0 flex-1 break-words pr-2">{nomeDeExibicaoDoAmbiente(nome)}</span>
                         <span className="shrink-0">{ativo ? "✓" : "+"}</span>
                       </button>
                     );
@@ -6584,7 +6660,7 @@ export default function Home() {
                             <div className="text-xs font-extrabold text-slate-400">
                               {String(idx + 1).padStart(2, "0")}
                             </div>
-                            <div className="font-extrabold leading-snug">{nome}</div>
+                            <div className="font-extrabold leading-snug">{nomeDeExibicaoDoAmbiente(nome)}</div>
                           </div>
                           <button
                             onClick={() => toggleAmbiente(nome)}
@@ -6639,7 +6715,7 @@ export default function Home() {
               itens={checklistAtual
                 .filter((item) => !evidenciaAmbiente || item.ambiente === evidenciaAmbiente)
                 .map((item) => ({ id: item.id, rotulo: `${item.categoria} — ${item.titulo}` }))}
-              ncs={ncsVisita.map((nc, idx) => ({ id: nc.id, rotulo: `NC ${idx + 1} — ${nc.ambiente} — ${nc.titulo}` }))}
+              ncs={ncsVisita.map((nc, idx) => ({ id: nc.id, rotulo: `NC ${idx + 1} — ${nomeDeExibicaoDoAmbiente(nc.ambiente)} — ${nc.titulo}` }))}
               ambienteSel={evidenciaAmbiente}
               itemSel={evidenciaChecklistItemId}
               ncSel={evidenciaNcId}
@@ -6799,7 +6875,7 @@ export default function Home() {
                     <option value="">Nenhuma NC específica</option>
                     {ncsVisita.map((nc, idx) => (
                       <option key={nc.id} value={nc.id}>
-                        NC {idx + 1} — {nc.ambiente} — {nc.titulo}
+                        NC {idx + 1} — {nomeDeExibicaoDoAmbiente(nc.ambiente)} — {nc.titulo}
                       </option>
                     ))}
                   </select>
@@ -6918,7 +6994,7 @@ export default function Home() {
                         <div className="flex items-start justify-between gap-3">
                           <div>
                             <div className="text-xs font-extrabold uppercase text-slate-400">
-                              {ev.tipo} • {ev.ambiente || "Sem ambiente específico"}
+                              {ev.tipo} • {nomeDeExibicaoDoAmbiente(ev.ambiente) || "Sem ambiente específico"}
                             </div>
                             <div className="mt-1 font-extrabold">
                               {ev.descricao || ev.nomeArquivo}
@@ -7161,38 +7237,7 @@ export default function Home() {
               podeMarcar={permitido("ncs.marcar_feita", visitaAtual.empresaId)}
               onMarcarFeita={marcarCorrecaoComoFeita}
               onDesfazerFeita={desfazerCorrecaoFeita}
-              itens={ncsVisita.map((nc, indice) => {
-                const rein = reincidenciaDaNc(
-                  nc,
-                  (db.ncs || []).filter((outra) => !outra.inativaNoChecklist),
-                  (id) => db.visitas.find((visita) => visita.id === id)?.data || ""
-                );
-                const linhaPop = resumoPopsVisita.linhas.find((linha) => linha.ncs.includes(indice + 1));
-                return {
-                  id: nc.id,
-                  numero: indice + 1,
-                  titulo: nc.titulo,
-                  ambiente: nc.ambiente,
-                  criterio: nc.categoria,
-                  referencia: nc.referencia,
-                  gravidade: nc.criticidade,
-                  status: nc.status,
-                  acaoCorretiva: nc.acaoCorretiva || "",
-                  responsavelAcao: nc.responsavelAcao || "",
-                  prazo: nc.prazo || "",
-                  reincidente: rein.reincidente,
-                  dataAnterior: rein.dataAnterior,
-                  orientacao: nc.orientacao || "",
-                  pop: linhaPop ? { codigo: linhaPop.sugestao.codigo, titulo: linhaPop.sugestao.titulo, existe: linhaPop.situacao !== "a-criar" } : null,
-                  marcadaFeita: nc.marcadaFeita || null,
-                  evidencias: (db.evidencias || [])
-                    .filter((ev) => ev.ncId === nc.id)
-                    .map((ev) => ({ id: ev.id, tipo: ev.tipo, nome: ev.descricao?.trim() || ev.nomeArquivo, quando: new Date(ev.criadoEm).toLocaleString("pt-BR"), url: urlEvidencia(ev) })),
-                  historico: [...(nc.historicoAcompanhamento || [])]
-                    .sort((a, b) => b.criadoEm.localeCompare(a.criadoEm))
-                    .map((item) => ({ id: item.id, quando: new Date(item.criadoEm).toLocaleString("pt-BR"), status: item.status, observacao: item.observacao })),
-                };
-              })}
+              itens={montarItensDeCorrecao()}
               onSalvarPlano={(id, dados) =>
                 atualizarNC(id, {
                   acaoCorretiva: dados.acao,
@@ -7213,6 +7258,20 @@ export default function Home() {
               onAbrirPop={abrirPopsPeloAtalho}
               onLote={(ids, valores) => alteracoesEmLote(ncsVisita, ids, valores).forEach((alteracao) => atualizarNC(alteracao.id, alteracao.patch))}
               onVoltar={() => setView("visita")}
+              pessoas={Array.from(
+                new Set(
+                  db.usuarios
+                    .filter((usuario) => usuario.status !== "Suspenso" && (usuario.perfil === "Administrador" || usuario.empresaIds.includes(visitaAtual.empresaId)))
+                    .map((usuario) => usuario.nome)
+                    .filter(Boolean)
+                )
+              )}
+              onVerNoChecklist={(itemId, ambiente) => {
+                setAmbienteChecklistAtivo(ambiente);
+                setItemFocoId(itemId);
+                setUltimoItemChecklistId(itemId);
+                setView("checklist");
+              }}
             />
         ) : view === "popsvisita" && visitaAtual ? (
             <PcPopsVisita
@@ -7335,7 +7394,7 @@ export default function Home() {
                     <summary className="plan-action-summary">
                       <div className="min-w-0 flex-1">
                         <div className="plan-action-eyebrow">
-                          Ação {String(idx + 1).padStart(2, "0")} • {nc.ambiente} • {nc.categoria}
+                          Ação {String(idx + 1).padStart(2, "0")} • {nomeDeExibicaoDoAmbiente(nc.ambiente)} • {nc.categoria}
                         </div>
                         <h2 className="plan-action-title">{nc.titulo}</h2>
                         <div className="plan-action-meta">
@@ -7606,7 +7665,7 @@ export default function Home() {
                             {!nc.acaoCorretiva?.trim() && nc.status !== "Resolvida" && <span className="rounded-full bg-[var(--brand)] px-3 py-1 text-xs font-medium text-white">Ação não definida</span>}
                           </div>
                           <h2 className="mt-3 text-lg font-extrabold">{nc.titulo}</h2>
-                          <p className="mt-1 text-sm text-slate-500">{nc.ambiente} • {nc.categoria}</p>
+                          <p className="mt-1 text-sm text-slate-500">{nomeDeExibicaoDoAmbiente(nc.ambiente)} • {nc.categoria}</p>
                         </div>
                         <button onClick={() => { setPlanoNcAbertaId(nc.id); setView("plano"); }} className="rounded-xl bg-[var(--brand)] px-4 py-2 text-sm font-medium text-white">Editar plano</button>
                       </div>
@@ -7921,7 +7980,7 @@ export default function Home() {
                     <article key={nc.id} className={`nc-card ${resolvida ? "is-resolved" : "is-open"}`}>
                       <div className="nc-card-topline">
                         <div className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400">
-                          NC {String(numeroOriginal).padStart(2, "0")} · {nc.ambiente} · {nc.categoria}
+                          NC {String(numeroOriginal).padStart(2, "0")} · {nomeDeExibicaoDoAmbiente(nc.ambiente)} · {nc.categoria}
                         </div>
                         <span className={`nc-status ${resolvida ? "is-resolved" : nc.status === "Em tratamento" ? "is-progress" : "is-open"}`}>{nc.status}</span>
                       </div>
@@ -8671,7 +8730,7 @@ export default function Home() {
                       .map((nc) => ({
                         id: nc.id,
                         titulo: nc.titulo,
-                        detalhe: `${nc.ambiente} · ${nc.categoria}`,
+                        detalhe: `${nomeDeExibicaoDoAmbiente(nc.ambiente)} · ${nc.categoria}`,
                         status: nc.status,
                         onAbrir: () => { setPlanoNcAbertaId(nc.id); setView("plano"); },
                       }))
@@ -8774,7 +8833,7 @@ export default function Home() {
                       >
                         <span className="min-w-0">
                           <span className="block truncate text-sm font-medium text-[color:var(--ink)]">{nc.titulo}</span>
-                          <span className="block truncate text-xs text-[color:var(--ink-2)]">{nc.ambiente} · {nc.status}</span>
+                          <span className="block truncate text-xs text-[color:var(--ink-2)]">{nomeDeExibicaoDoAmbiente(nc.ambiente)} · {nc.status}</span>
                         </span>
                         <span className="shrink-0 text-sm text-[color:var(--ink)]">Acompanhar →</span>
                       </button>
@@ -9028,7 +9087,7 @@ export default function Home() {
                         key={ambiente}
                         className="rep-chip rounded-full bg-[var(--brand-soft)] px-3 py-1 text-xs text-[color:var(--ink)]"
                       >
-                        {ambiente}
+                        {nomeDeExibicaoDoAmbiente(ambiente)}
                       </span>
                     ))
                   ) : (
@@ -9182,7 +9241,7 @@ export default function Home() {
                     <tbody>
                       {equipamentosRelatorio.map((equipamento) => (
                         <tr key={equipamento.id} className="border-t border-slate-200 align-top">
-                          <td className="p-3 font-bold">{equipamento.ambiente}</td>
+                          <td className="p-3 font-bold">{nomeDeExibicaoDoAmbiente(equipamento.ambiente)}</td>
                           <td className="p-3">{equipamento.nome}</td>
                           <td className="p-3 font-bold">{equipamento.quantidade}</td>
                         </tr>
@@ -9225,7 +9284,7 @@ export default function Home() {
                       <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
                         <div>
                           <div className="text-xs font-extrabold uppercase text-slate-400">
-                            NC {String(idx + 1).padStart(2, "0")} • {nc.ambiente}
+                            NC {String(idx + 1).padStart(2, "0")} • {nomeDeExibicaoDoAmbiente(nc.ambiente)}
                           </div>
                           <div className="mt-1 font-extrabold">{nc.titulo}</div>
                         </div>
@@ -9333,7 +9392,7 @@ export default function Home() {
                     >
                       <div className="p-4">
                         <div className="text-xs font-extrabold uppercase text-slate-400">
-                          {ev.tipo} • {ev.ambiente || "Sem ambiente"}
+                          {ev.tipo} • {nomeDeExibicaoDoAmbiente(ev.ambiente) || "Sem ambiente"}
                         </div>
                         <div className="mt-1 font-extrabold">
                           {ev.descricao || ev.nomeArquivo}
@@ -10256,7 +10315,7 @@ export default function Home() {
                           {comparacaoVisitas.reincidentes.length ? comparacaoVisitas.reincidentes.slice(0, 5).map((nc) => (
                             <div key={nc.id} className="rounded-xl bg-[var(--pend-bg)] p-3 text-sm">
                               <div className="font-extrabold">{nc.titulo}</div>
-                              <div className="mt-1 text-xs text-amber-800">{nc.ambiente}</div>
+                              <div className="mt-1 text-xs text-amber-800">{nomeDeExibicaoDoAmbiente(nc.ambiente)}</div>
                             </div>
                           )) : <div className="text-sm text-slate-500">Nenhuma reincidência.</div>}
                         </div>
@@ -10267,7 +10326,7 @@ export default function Home() {
                           {comparacaoVisitas.novas.length ? comparacaoVisitas.novas.slice(0, 5).map((nc) => (
                             <div key={nc.id} className="rounded-xl bg-[var(--nc-bg)] p-3 text-sm">
                               <div className="font-extrabold">{nc.titulo}</div>
-                              <div className="mt-1 text-xs text-red-800">{nc.ambiente}</div>
+                              <div className="mt-1 text-xs text-red-800">{nomeDeExibicaoDoAmbiente(nc.ambiente)}</div>
                             </div>
                           )) : <div className="text-sm text-slate-500">Nenhuma nova não conformidade.</div>}
                         </div>
@@ -10278,7 +10337,7 @@ export default function Home() {
                           {comparacaoVisitas.corrigidas.length ? comparacaoVisitas.corrigidas.slice(0, 5).map((nc) => (
                             <div key={nc.id} className="rounded-xl bg-[var(--ok-bg)] p-3 text-sm">
                               <div className="font-extrabold">{nc.titulo}</div>
-                              <div className="mt-1 text-xs text-emerald-800">{nc.ambiente}</div>
+                              <div className="mt-1 text-xs text-emerald-800">{nomeDeExibicaoDoAmbiente(nc.ambiente)}</div>
                             </div>
                           )) : <div className="text-sm text-slate-500">Nenhum item confirmado como corrigido.</div>}
                         </div>
