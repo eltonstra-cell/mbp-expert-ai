@@ -32,7 +32,7 @@ const MENU_PREVIA: { tela: TelaKey; cor: string }[] = [
   { tela: "evidencias", cor: "#0EA5E9" },
   { tela: "correcoes", cor: "#D93A3A" },
   { tela: "popsVisita", cor: "#F5A623" },
-  { tela: "relatorio", cor: "#7C3AED" },
+  { tela: "relatorio", cor: "#475569" },
   { tela: "pops", cor: "#E8760A" },
   { tela: "empresas", cor: "#0D9488" },
   { tela: "ambientes", cor: "#14B8A6" },

@@ -70,7 +70,7 @@ export async function POST(request: Request) {
     );
 
     if (!existente) {
-      // A senha temporária nunca é mostrada nem armazenada pelo MBP. O usuário
+      // A senha temporária nunca é mostrada nem armazenada pelo Ponto Certo. O usuário
       // recebe imediatamente um link seguro para definir a própria senha.
       const senhaTemporaria = `${randomUUID()}-Aa1!`;
       const { error: erroCriacao } = await auth.admin.createUser({

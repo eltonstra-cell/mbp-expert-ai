@@ -20,7 +20,7 @@ export async function GET(_request: Request, contexto: { params: Promise<{ nome:
     return new NextResponse(new Uint8Array(bytes), {
       headers: {
         "content-type": "application/pdf",
-        "content-disposition": `inline; filename="${decisao.arquivo}"`,
+        "content-disposition": `inline; filename="${decisao.nomeDeDownload}"`,
         "cache-control": "private, no-store",
       },
     });

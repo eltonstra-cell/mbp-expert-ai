@@ -163,6 +163,8 @@ export type ChecklistItem = {
   status: ChecklistStatus;
   observacao: string;
   criticidade?: ChecklistCriticidade;
+  /** Gravidade que veio do critério, guardada na primeira vez que o profissional a troca. */
+  criticidadeSugerida?: ChecklistCriticidade;
   referencia?: string;
   orientacao?: string;
 };

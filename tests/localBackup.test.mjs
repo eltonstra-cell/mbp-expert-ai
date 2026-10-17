@@ -24,7 +24,7 @@ test("backup local preserva integralmente o banco e identifica a versão", () =>
 
 test("nome do arquivo não contém caracteres inválidos do Windows", () => {
   const nome = localBackupFilename(new Date("2026-09-01T13:40:00.000Z"));
-  assert.match(nome, /^mbp-expert-ai-backup-local_/);
+  assert.match(nome, /^ponto-certo-backup-local_/);
   assert.match(nome, /\.json$/);
   assert.doesNotMatch(nome, /:/);
 });

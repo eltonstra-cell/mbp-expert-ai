@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
 import { NavIcon } from "@/components/NavIcons";
-import { estadosDosBotoes } from "@/lib/checklistUi";
+import { estadosDosBotoes, gravidadeSugerida } from "@/lib/checklistUi";
 import type { ChecklistCriticidade, ChecklistItem, ChecklistStatus } from "@/types";
 
 type Props = {
@@ -70,6 +70,7 @@ export default function ChecklistFocoItem({
   };
   const naoConforme = item.status === "Não Conforme";
   const gravidade = item.criticidade || "Rotina";
+  const sugerida = gravidadeSugerida(item);
   const estados = estadosDosBotoes(item.status);
 
   return (
@@ -133,6 +134,7 @@ export default function ChecklistFocoItem({
                 onClick={() => onGravidade(nivel)}
               >
                 {NOME_GRAVIDADE[nivel]}
+                {sugerida === nivel && <span className="chk-grav-sug">sugerida</span>}
               </button>
             ))}
           </div>

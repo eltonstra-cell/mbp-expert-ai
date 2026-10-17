@@ -101,7 +101,7 @@ async function tryCnpjWs(cnpj: string) {
     cache: "no-store",
     headers: {
       Accept: "application/json",
-      "User-Agent": "MBP-Expert-AI/2.0",
+      "User-Agent": "PontoCerto/2.0",
     },
   });
 

@@ -316,7 +316,7 @@
 .checklist-item-card:hover{box-shadow:0 8px 24px rgba(6,27,79,.065)}
 .checklist-item-card.is-conforming{border-left-color:#10b981}
 .checklist-item-card.is-nonconforming{border-color:#fecaca;border-left-color:#ef4444}
-.checklist-item-card.is-chapter-two{border-left-color:#8b5cf6}
+.checklist-item-card.is-chapter-two{border-left-color:var(--pend)}
 .checklist-item-card.is-chapter-three{border-left-color:#3b82f6}
 .checklist-item-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:.75rem}
 .checklist-status-pill{flex:0 0 auto;border-radius:999px;padding:.28rem .6rem;font-size:.68rem;font-weight:600;white-space:nowrap}
@@ -825,7 +825,7 @@
 .help-card-icon.is-blue{background:#e9efff;color:var(--brand)}
 .help-card-icon.is-green{background:#eafaf1;color:#059669}
 .help-card-icon.is-red{background:#fff0f0;color:#dc2626}
-.help-card-icon.is-purple{background:#f3edff;color:#7c3aed}
+.help-card-icon.is-purple{background:var(--lilas-bg);color:var(--ink)}
 .help-card-icon.is-cyan{background:#e9fbfd;color:#0891b2}
 .help-card-icon.is-amber{background:#fff8e6;color:#c65a00}
 .help-steps{margin-top:.55rem;display:grid;gap:.36rem}
@@ -1367,7 +1367,7 @@ html[data-modo="completo"] .pc-side{display:flex}
 .ui-btn--save{background:var(--ok);color:#fff}
 .ui-btn--secondary{background:var(--na-bg);color:var(--ink)}
 .ui-btn--outline{border:1.5px solid var(--outline);background:#fff;color:var(--ink)}
-.ui-btn--ai{background:#7C3AED;color:#fff}
+.ui-btn--ai{background:var(--lilas-bg);color:var(--ink);border:1px solid var(--pill-border)}
 .ui-btn--soft{background:var(--info-bg);color:var(--ink)}
 .ui-btn--orange{background:var(--register-gradient);color:var(--ink);box-shadow:var(--register-shadow)}
 .ui-btn--small{min-height:34px;padding:0 12px;font-size:.84rem}
@@ -1879,7 +1879,7 @@ html[data-modo="completo"] .pc-side{display:flex}
 
 /* ===== Registrar agora: medidor de áudio ===== */
 .pc-reg-meter{display:flex;align-items:flex-end;gap:3px;width:100%;height:34px;padding:4px 6px;border-radius:10px;background:#fff}
-.pc-reg-meter i{flex:1;min-height:3px;border-radius:2px;background:#7C3AED;transition:height .08s linear}
+.pc-reg-meter i{flex:1;min-height:3px;border-radius:2px;background:var(--brand);transition:height .08s linear}
 .pc-reg-stop{width:100%;min-height:44px;font-size:1rem}
 
 /* Correções compactas em telas baixas */
@@ -2611,3 +2611,104 @@ html[data-modo="equilibrado"] .pc-topbar-end{flex:1 1 auto;justify-content:flex-
   .pc-cor .pc-plan-stack{gap:6px}
   .pc-cor .pc-registrado,.pc-cor .pc-ultima{padding:5px 10px}
 }
+
+/* ===== Pacote 4 · Bloco 3: Evidências ===== */
+.pc-ev-main .pc-ev-thumb,:is(html[data-modo="completo"],html[data-modo="equilibrado"]) .pc-ev-main .pc-ev-thumb{display:grid;place-items:center;flex:none;width:44px;height:44px;padding:0;border:0;border-radius:13px;background:linear-gradient(135deg,#7C8A78,#A88660);color:#fff;cursor:zoom-in}
+.pc-ev-thumb svg{width:20px;height:20px}
+.pc-ev-ai-strip,.pc-ev-ai-box{background:var(--lilas-bg)}
+.pc-ai-btn{border:1px solid var(--border);background:#fff;color:var(--ink);font-weight:600}
+.pc-ai-btn:hover:not(:disabled){background:var(--lilas-bg)}
+
+/* ===== Pacote 4 · Bloco 3: menos cor — cartões brancos com um ponto pequeno de função ===== */
+.ui-stat,.pc-help-cat,.pc-step-card,.pc-reg-card,.chk-tool{position:relative;border:1px solid var(--border);background:#fff}
+.ui-stat--ok,.ui-stat--nc,.ui-stat--pend,.ui-stat--amber,.ui-stat--info,.ui-stat--brand,.ui-stat--lilas,
+.pc-help-cat--azul,.pc-help-cat--verde,.pc-help-cat--ceu,.pc-help-cat--ambar,.pc-help-cat--violeta,.pc-help-cat--rosa,
+.pc-step-card--ok,.pc-step-card--info,.pc-step-card--nc,.pc-step-card--pend,.pc-step-card--lilas,
+.pc-reg-card--foto,.pc-reg-card--arq,.pc-reg-card--audio,
+.chk-tool--foto,.chk-tool--ditar,.chk-tool--digitar{background:#fff}
+.ui-stat::after,.pc-help-cat::after,.pc-reg-card::after{content:"";position:absolute;top:10px;right:10px;width:8px;height:8px;border-radius:50%;background:var(--dot,transparent)}
+.ui-stat--ok{--dot:var(--ok)}.ui-stat--nc{--dot:var(--nc)}.ui-stat--pend,.ui-stat--amber{--dot:var(--pend)}.ui-stat--info{--dot:var(--info,#3AA6D9)}.ui-stat--brand{--dot:var(--brand)}.ui-stat--lilas{--dot:var(--lilas)}
+.pc-help-cat--azul{--dot:var(--brand)}.pc-help-cat--verde{--dot:var(--ok)}.pc-help-cat--ceu{--dot:var(--info,#3AA6D9)}.pc-help-cat--ambar{--dot:var(--pend)}.pc-help-cat--violeta{--dot:var(--lilas)}.pc-help-cat--rosa{--dot:var(--nc)}
+.pc-reg-card--foto{--dot:var(--orange)}.pc-reg-card--arq{--dot:var(--brand)}.pc-reg-card--audio{--dot:var(--lilas)}
+.pc-step-card:hover{border-color:var(--brand)}
+.chk-apoio-cartao--azul,.chk-apoio-cartao--ambar,.chk-apoio-cartao--violeta,.chk-apoio-cartao--turquesa,.chk-apoio-cartao--verde{background:#fff;border:1px solid var(--border)}
+.chk-tool:hover:not(:disabled){background:var(--lilas-bg)}
+
+/* ===== Pacote 4 · Bloco 3: painel de ambientes (uma linha por ambiente) ===== */
+.pc-env-pill.is-active{border-color:var(--brand);background:var(--lilas-bg);color:var(--ink)}
+.pc-env-panel .pc-env-grid{grid-template-columns:minmax(0,1fr);gap:6px}
+.pc-env-panel .pc-env-cell{min-height:40px;padding:6px 12px;border-radius:12px}
+.pc-env-panel .pc-env-cell.is-active{border-color:var(--brand);background:var(--lilas-bg)}
+.pc-env-panel .pc-env-cell-name{font-size:.9rem}
+.pc-env-panel .pc-env-cell-count{padding:2px 10px;border-radius:999px;background:var(--na-bg);font-size:.78rem;color:var(--ink)}
+
+/* ===== Pacote 4 · Bloco 3: "Quão grave é?" sem contorno preto; gravidade sugerida ===== */
+.chk-grav-linha .chk-grav,.chk-grav-linha .chk-grav.is-on{box-shadow:none;outline:0}
+.chk-grav-linha .chk-grav:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
+.chk-grav-sug{margin-left:6px;font-size:.72rem;opacity:.85}
+
+/* ===== Pacote 4 · Bloco 3: caixa de cor forte (laranja) = texto branco, simples ===== */
+.ui-btn--orange,.pc-orange-btn,.campo-btn--orange,.pc-capture--photo,.pc-capture--photo *{color:#fff;font-weight:400}
+.pc-link.is-active .pc-link-icon,.pc-rail-item.is-active .pc-rail-icon,.pc-rail-register-orb,.campo-register-orb{color:#fff}
+
+/* ===== Pacote 4 · Bloco 3: avatares, botões suaves e miniaturas sem cor sem função ===== */
+.ui-avatar{background:var(--brand)!important;color:#fff}
+.ui-btn--soft{background:var(--na-bg);color:var(--ink)}
+.mini-grade i,.mini-grade i:nth-child(2),.mini-grade i:nth-child(3){background:var(--na-bg)}
+.mini-bloco--claro{background:var(--na-bg)!important}
+.pc-pill-mini--ok{background:var(--na-bg)}
+
+/* ===== Pacote 4 · Bloco 3: folha "Mais" (celular/tablet) branca, ícones neutros ===== */
+.pc-sheet{background:#fff;border-color:var(--border)}
+.pc-sheet .pc-tile{background:var(--na-bg)!important;color:var(--ink);box-shadow:none}
+.pc-sheet .pc-tile.is-active{background:var(--lilas-bg)!important;box-shadow:inset 0 0 0 1.5px var(--brand)}
+
+/* Evidências no celular: um painel por vez, tudo numa tela */
+.pc-ev-painel-troca{display:none}
+html[data-modo="campo"] .ui-screen[aria-label="Evidências da visita"]{gap:8px}
+html[data-modo="campo"] .ui-screen[aria-label="Evidências da visita"] :is(.ui-stats,.ui-subtitle,.ui-head-actions){display:none}
+html[data-modo="campo"] .ui-screen[aria-label="Evidências da visita"] .ui-title{font-size:1.4rem}
+html[data-modo="campo"] .pc-ev-painel-troca{display:flex;flex:none;gap:4px;padding:3px;border-radius:12px;background:var(--tabs-bg)}
+html[data-modo="campo"] .pc-ev-painel-troca button{flex:1;min-height:40px;border:0;border-radius:9px;background:transparent;font-size:.92rem;color:var(--ink)}
+html[data-modo="campo"] .pc-ev-painel-troca button.is-active{background:#fff;box-shadow:0 1px 2px rgba(18,32,43,.14)}
+html[data-modo="campo"] .pc-ev-cols{display:flex;flex:1;min-height:0;flex-direction:column}
+html[data-modo="campo"] .pc-ev-cols.is-painel-nova .pc-ev-list,html[data-modo="campo"] .pc-ev-cols.is-painel-lista .pc-ev-new{display:none}
+html[data-modo="campo"] .pc-ev-cols.is-single .pc-ev-new{display:none}
+html[data-modo="campo"] .pc-ev-cols.is-single .pc-ev-list{display:flex}
+html[data-modo="campo"] .pc-ev-new,html[data-modo="campo"] .pc-ev-list{flex:1;min-height:0}
+html[data-modo="campo"] .pc-ev-scroll{flex:1;min-height:0;overflow-y:auto}
+
+/* ===== Celular: telas compactas cabem numa tela; só a lista central rola por dentro ===== */
+html[data-modo="campo"] .pc-help-cats{grid-template-columns:repeat(2,minmax(0,1fr))}
+html[data-modo="campo"] .pc-rep-cols{display:flex;flex:1;min-height:0;flex-direction:column;gap:10px;overflow-y:auto}
+html[data-modo="campo"] .pc-rep-cols>.ui-card{flex:none}
+html[data-modo="campo"] .ui-screen .ui-footer{flex-wrap:wrap;gap:8px}
+html[data-modo="campo"] .ui-screen .ui-footer-actions{flex-wrap:wrap;width:100%}
+html[data-modo="campo"] .ui-screen .ui-footer-actions .ui-btn{flex:1 1 140px}
+html[data-modo="campo"] .pc-add-row{flex-direction:column;align-items:stretch}
+html[data-modo="campo"] .pc-add-row>*{width:100%;min-width:0}
+html[data-modo="campo"] .pc-check-row{flex-wrap:wrap}
+html[data-modo="campo"] .ui-screen .ui-head{flex-wrap:wrap;gap:8px}
+html[data-modo="campo"] .ui-screen .ui-head-actions{flex-wrap:wrap}
+html[data-modo="campo"] .pc-add-row{display:flex}
+html[data-modo="campo"] .ui-screen .ui-subtitle{display:none}
+html[data-modo="campo"] .ui-screen .ui-title{font-size:1.4rem}
+html[data-modo="campo"] .ui-screen .ui-head-actions .ui-btn{min-height:38px;padding:0 12px;font-size:.88rem}
+html[data-modo="campo"] .ui-screen .ui-footer{padding:8px 10px}
+html[data-modo="campo"] .ui-screen .ui-footer-actions{gap:6px}
+html[data-modo="campo"] .ui-screen .ui-footer-actions .ui-btn{flex:1 1 30%;min-height:40px;padding:0 8px;font-size:.84rem}
+html[data-modo="campo"] .pc-rep-banner{padding:8px 12px;font-size:.88rem}
+
+/* Campo: cartões de resumo brancos com ponto de função; ícones do "Mais" neutros */
+.campo-tile{position:relative;border:1px solid var(--border);background:#fff}
+.campo-tile--nc,.campo-tile--amber{background:#fff}
+.campo-tile::after{content:"";position:absolute;top:12px;right:12px;width:9px;height:9px;border-radius:50%;background:var(--dot,transparent)}
+.campo-tile--nc{--dot:var(--nc)}.campo-tile--amber{--dot:var(--pend)}
+.campo-mais-tile{background:var(--na-bg)!important;color:var(--ink)}
+.campo-mais-card:has(.campo-mais-tile){background:#fff}
+
+/* Tablet: "Continue de onde parou" não espreme o nome da empresa */
+html[data-modo="equilibrado"] .pc-continue{flex-wrap:wrap;gap:8px 16px}
+html[data-modo="equilibrado"] .pc-continue-text{flex:1 1 100%}
+html[data-modo="equilibrado"] .pc-continue-progress{flex:1 1 240px}
+html[data-modo="equilibrado"] .pc-continue .ui-btn{flex:none}

@@ -35,6 +35,7 @@ import PcEmpresas from "@/components/pc/PcEmpresas";
 import { useScreenMode } from "@/components/useScreenMode";
 import PcModoTela from "@/components/pc/PcModoTela";
 import ChecklistFocoItem from "@/components/ChecklistFocoItem";
+import { trocaDeGravidade } from "@/lib/checklistUi";
 import PcChecklist, { type ApoioDoItem } from "@/components/pc/PcChecklist";
 import RevisaoTranscricao from "@/components/RevisaoTranscricao";
 import MeuPerfilModal from "@/components/pc/MeuPerfilModal";
@@ -721,6 +722,8 @@ export default function Home() {
   const modo = telaModo.modo;
   // Completo e Equilibrado usam o kit de telas do PC; Campo tem apresentação própria.
   const ehPC = modo !== "campo";
+  // Evidências, Ambientes, Ajuda, Empresas e Visitas usam as mesmas telas compactas no celular (cabem numa tela, a lista rola por dentro).
+  const telaEmLista = true;
   useEffect(() => {
     if (modo !== "campo" && view === "campomais") setView("inicio");
   }, [modo, view]);
@@ -3795,7 +3798,7 @@ export default function Home() {
 
   function atualizarChecklistItem(
     itemId: string,
-    patch: Partial<Pick<ChecklistItem, "status" | "observacao" | "criticidade">>
+    patch: Partial<Pick<ChecklistItem, "status" | "observacao" | "criticidade" | "criticidadeSugerida">>
   ) {
     if (!visitaAtual) return;
     if (!exigirPermissao("visitas.executar", visitaAtual.empresaId)) return;
@@ -5892,7 +5895,7 @@ export default function Home() {
               type="button"
               disabled={recuperandoDados}
               onClick={() => void confirmarRecuperacaoLocal()}
-              className="mt-3 rounded-xl bg-amber-800 px-4 py-2 font-bold text-white disabled:opacity-60"
+              className="mt-3 rounded-xl bg-[var(--orange)] px-4 py-2 font-normal text-white disabled:opacity-60"
             >
               {recuperandoDados
                 ? "Recuperando..."
@@ -5914,7 +5917,7 @@ export default function Home() {
                 : "Continue trabalhando normalmente. As alterações ficam neste aparelho e serão sincronizadas quando a conexão voltar."}
             </p>
             {estaOnline && (
-              <button type="button" onClick={baixarBackupLocal} className="mt-3 rounded-xl bg-red-800 px-4 py-2 font-bold text-white">
+              <button type="button" onClick={baixarBackupLocal} className="mt-3 rounded-xl bg-[var(--nc)] px-4 py-2 font-bold text-white">
                 Baixar backup local
               </button>
             )}
@@ -6106,7 +6109,7 @@ export default function Home() {
                     item={foco}
                     destaque={destaqueItemId === foco.id}
                     {...dadosDoAmbienteEmFoco(foco, lista)}
-                    onGravidade={(gravidade) => { setItemFocoId(foco.id); atualizarChecklistItem(foco.id, { criticidade: gravidade }); }}
+                    onGravidade={(gravidade) => { setItemFocoId(foco.id); atualizarChecklistItem(foco.id, trocaDeGravidade(foco, gravidade)); }}
                     posicao={posicao + 1}
                     total={lista.length}
                     podeEditar={permitido("visitas.executar", visitaAtual.empresaId)}
@@ -6128,7 +6131,7 @@ export default function Home() {
           correcoesDoCelular()
         ) : view === "acessos" && permitido("usuarios.gerenciar") ? (
           <AccessPreparationPanel
-            pc={ehPC}
+            pc={telaEmLista}
             usuarios={db.usuarios}
             empresas={db.empresas}
             registrosAuditoria={db.registrosAuditoria}
@@ -6140,7 +6143,7 @@ export default function Home() {
             motivoNaoExcluir={(usuario) => motivoParaNaoExcluir(usuario, contextoExclusaoUsuario())}
           />
         ) : view === "empresas" && showEmpresaForm && permitido("empresas.editar") ? (
-          ehPC && !!editingEmpresaId && empresaSecao === "pops" ? (
+          telaEmLista && !!editingEmpresaId && empresaSecao === "pops" ? (
             <PcPops
               pops={popsEmpresa}
               onChange={setPopsEmpresa}
@@ -6533,7 +6536,7 @@ export default function Home() {
             </button>
           </section>
         ) : view === "ambientes" && visitaAtual ? (
-          ehPC ? (
+          telaEmLista ? (
             <PcAmbientes
               empresa={nomeParaExibir(empresaVisita)}
               data={fdata(visitaAtual.data)}
@@ -6721,7 +6724,7 @@ export default function Home() {
             </div>
           </section>)
         ) : view === "evidencias" && visitaAtual ? (
-          ehPC ? (
+          telaEmLista ? (
             <PcEvidencias
               empresa={nomeParaExibir(empresaVisita)}
               data={fdata(visitaAtual.data)}
@@ -7069,7 +7072,7 @@ export default function Home() {
                                     type="button"
                                     onClick={() => void analisarFotoComIA(ev)}
                                     disabled={analisando || analiseIAEmAndamentoId !== null}
-                                    className="rounded-xl bg-violet-700 px-4 py-2 text-sm font-extrabold text-white disabled:opacity-50"
+                                    className="rounded-xl bg-[var(--brand)] px-4 py-2 text-sm font-extrabold text-white disabled:opacity-50"
                                   >
                                     {analisando ? "Analisando..." : analises.length ? "Analisar novamente" : "Analisar foto com IA"}
                                   </button>
@@ -7192,7 +7195,7 @@ export default function Home() {
                                         <button
                                           type="button"
                                           onClick={() => confirmarAnaliseFoto(ev, ultimaAnalise)}
-                                          className="rounded-xl bg-emerald-700 px-4 py-3 text-sm font-extrabold text-white"
+                                          className="rounded-xl bg-[var(--brand)] px-4 py-3 text-sm font-extrabold text-white"
                                         >
                                           Confirmar
                                         </button>
@@ -7747,7 +7750,7 @@ export default function Home() {
                               setEvidenciaAmbiente(nc.ambiente || "");
                               setView("evidencias");
                             }}
-                            className="rounded-xl bg-violet-700 px-4 py-2 text-sm font-extrabold text-white"
+                            className="rounded-xl bg-[var(--brand)] px-4 py-2 text-sm font-extrabold text-white"
                           >
                             + Adicionar evidência
                           </button>
@@ -8097,7 +8100,7 @@ export default function Home() {
                       {...dadosDoAmbienteEmFoco(foco, lista)}
                       onGravidade={(gravidade) => {
                         setItemFocoId(foco.id);
-                        atualizarChecklistItem(foco.id, { criticidade: gravidade });
+                        atualizarChecklistItem(foco.id, trocaDeGravidade(foco, gravidade));
                       }}
                       posicao={posicao + 1}
                       total={lista.length}
@@ -8158,7 +8161,7 @@ export default function Home() {
                       {...dadosDoAmbienteEmFoco(foco, lista)}
                       onGravidade={(gravidade) => {
                         setItemFocoId(foco.id);
-                        atualizarChecklistItem(foco.id, { criticidade: gravidade });
+                        atualizarChecklistItem(foco.id, trocaDeGravidade(foco, gravidade));
                       }}
                       posicao={posicao + 1}
                       total={lista.length}
@@ -8698,7 +8701,7 @@ export default function Home() {
             )}
           </section>
         ) : view === "visita" && visitaAtual ? (
-          ehPC ? (
+          telaEmLista ? (
             <PcCentral
               passos={([
                 { chave: "checklist", rotulo: "Checklist", resumo: `${respondidos} de ${totalChecklist} respondidos`, icone: "checklist", tom: "ok" },
@@ -8870,7 +8873,7 @@ export default function Home() {
           </section>)
         ) : view === "relatorio" && visitaAtual ? (
           <>
-            {ehPC && (
+            {telaEmLista && (
               <PcRelatorio
                 empresa={nomeParaExibir(empresaVisita)}
                 data={fdata(visitaAtual.data)}
@@ -8898,7 +8901,7 @@ export default function Home() {
                 onVoltar={() => setView("visita")}
               />
             )}
-          <section id="relatorio-visita" data-empresa={nomeParaExibir(empresaVisita)} data-data-visita={visitaAtual.data} data-visita-id={visitaAtual.id} className={`report-print space-y-4${ehPC ? ` rep-offscreen ${classesSecoesRelatorio}` : ""}`}>
+          <section id="relatorio-visita" data-empresa={nomeParaExibir(empresaVisita)} data-data-visita={visitaAtual.data} data-visita-id={visitaAtual.id} className={`report-print space-y-4${telaEmLista ? ` rep-offscreen ${classesSecoesRelatorio}` : ""}`}>
             {emissaoParcial && <div className="print-only report-partial">RELATÓRIO PARCIAL</div>}
             {rodapeImpressao?.fixo && (
               <div className="print-only rep-rodape-fixo">
@@ -8954,7 +8957,7 @@ export default function Home() {
                     )}
                   </div>
                 ) : permitido("visitas.concluir", visitaAtual.empresaId) ? (
-                  <button type="button" onClick={finalizarInspecao} className="w-full rounded-xl bg-emerald-700 px-5 py-4 text-base font-extrabold text-white shadow-md">
+                  <button type="button" onClick={finalizarInspecao} className="w-full rounded-xl bg-[var(--brand)] px-5 py-4 text-base font-extrabold text-white shadow-md">
                     ✓ Finalizar inspeção
                   </button>
                 ) : null}
@@ -9725,7 +9728,7 @@ export default function Home() {
             onCancelar={() => setView("ajuda")}
           />
         ) : view === "ajuda" ? (
-          ehPC ? (
+          telaEmLista ? (
             <PcAjuda
               onVoltar={() => setView("inicio")}
               onModoDeTela={() => setView("modotela")}
@@ -10030,7 +10033,7 @@ export default function Home() {
             </section>
           </div>)
         ) : view === "empresas" ? (
-          ehPC ? (
+          telaEmLista ? (
             <PcEmpresas
               totalClientes={empresasVisiveis.length}
               busca={buscaEmpresas}
@@ -10504,7 +10507,7 @@ export default function Home() {
             )}
           </section>
         ) : (
-          ehPC ? (
+          telaEmLista ? (
             <PcVisitas
               empresaAtiva={atual ? nomeParaExibir(atual) : "nenhuma"}
               filtro={filtroListaVisitas}

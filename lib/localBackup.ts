@@ -15,5 +15,5 @@ export function localBackupFilename(exportadoEm = new Date()) {
     .replace(/[:.]/g, "-")
     .replace("T", "_")
     .replace("Z", "");
-  return `mbp-expert-ai-backup-local_${stamp}.json`;
+  return `ponto-certo-backup-local_${stamp}.json`;
 }

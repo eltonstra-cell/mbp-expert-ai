@@ -96,9 +96,8 @@ function Cartao({ ev, onAmpliar }: { ev: CartaoEvidencia; onAmpliar: (url: strin
     <article className="pc-ev-card">
       <div className="pc-ev-main">
         {ev.tipo === "Foto" ? (
-          <button type="button" className="pc-ev-thumb" onClick={() => onAmpliar(ev.url, ev.descricao || ev.nome)} aria-label="Ampliar foto">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            {ev.url ? <img src={ev.url} alt={ev.descricao || "Evidência fotográfica"} /> : null}
+          <button type="button" className="pc-ev-thumb" onClick={() => onAmpliar(ev.url, ev.descricao || ev.nome)} aria-label="Ampliar foto" title="Ampliar foto">
+            <CameraIcon />
           </button>
         ) : (
           <div className="pc-ev-audio">
@@ -222,6 +221,8 @@ export default function PcEvidencias({
   onVoltar,
 }: Props) {
   const [aba, setAba] = useState<Aba>("todas");
+  // No celular só um painel aparece por vez: registrar ou ver a lista.
+  const [painelCampo, setPainelCampo] = useState<"nova" | "lista">("nova");
   const [trocando, setTrocando] = useState(false);
   const [pendente, setPendente] = useState<{ arquivo: File; tipo: "Foto" | "Áudio" } | null>(null);
   const [salvando, setSalvando] = useState(false);
@@ -279,7 +280,18 @@ export default function PcEvidencias({
       />
 
 
-      <div className={`pc-ev-cols${podeAdicionar ? "" : " is-single"}`}>
+      {podeAdicionar && (
+        <div className="pc-ev-painel-troca" role="group" aria-label="Registrar ou ver evidências">
+          <button type="button" className={painelCampo === "nova" ? "is-active" : ""} aria-pressed={painelCampo === "nova"} onClick={() => setPainelCampo("nova")}>
+            Registrar
+          </button>
+          <button type="button" className={painelCampo === "lista" ? "is-active" : ""} aria-pressed={painelCampo === "lista"} onClick={() => setPainelCampo("lista")}>
+            Evidências ({totais.evidencias})
+          </button>
+        </div>
+      )}
+
+      <div className={`pc-ev-cols${podeAdicionar ? "" : " is-single"} is-painel-${painelCampo}`}>
         {podeAdicionar && (
           <div className="ui-card pc-ev-new">
             <h2 className="ui-card-title">Nova evidência</h2>
