@@ -22,7 +22,6 @@ type Props = {
   onSecao: (chave: SecaoRelatorio, valor: boolean) => void;
   podeGerar: boolean;
   podeOficial: boolean;
-  gerando: boolean;
   concluida: boolean;
   podeConcluir: boolean;
   onIr: (destino: DestinoConferencia) => void;
@@ -41,7 +40,6 @@ export default function PcRelatorio({
   onSecao,
   podeGerar,
   podeOficial,
-  gerando,
   concluida,
   podeConcluir,
   onIr,
@@ -66,7 +64,7 @@ export default function PcRelatorio({
         <div className="ui-head-actions">
           {podeGerar && (
             <div className="pc-sel-pdf">
-              <button type="button" className="ui-btn ui-btn--soft" aria-haspopup="menu" aria-expanded={menuSel} disabled={gerando} onClick={() => setMenuSel((valor) => !valor)}>
+              <button type="button" className="ui-btn ui-btn--soft" aria-haspopup="menu" aria-expanded={menuSel} onClick={() => setMenuSel((valor) => !valor)}>
                 Gerar PDF ▾
               </button>
               {menuSel && (

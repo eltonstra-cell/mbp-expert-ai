@@ -1024,7 +1024,6 @@ export default function Home() {
   const [novoEquipamentoVisitaQuantidade, setNovoEquipamentoVisitaQuantidade] = useState("1");
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
-  const [gerandoPdf, setGerandoPdf] = useState(false);
   const [evidenciaDescricao, setEvidenciaDescricao] = useState("");
   const [evidenciaAmbiente, setEvidenciaAmbiente] = useState("");
   const [evidenciaChecklistItemId, setEvidenciaChecklistItemId] = useState("");
@@ -2473,289 +2472,6 @@ export default function Home() {
     ncsSemAcao === 0 &&
     ncsSemResponsavel === 0 &&
     ncsSemPrazo === 0;
-
-  async function baixarPdfRelatorio(opcoes?: { parcial?: boolean; previa?: boolean }) {
-    if (!visitaAtual || !empresaVisita || gerandoPdf) return;
-    if (!exigirPermissao("relatorios.exportar", visitaAtual.empresaId)) return;
-
-    const elemento = document.getElementById("relatorio-visita");
-    if (!elemento) return;
-
-    setGerandoPdf(true);
-    const marcadores: HTMLElement[] = [];
-    const imagensOcultas: HTMLImageElement[] = [];
-
-    try {
-      // Aguarda as evidências fotográficas carregarem (no máximo 8 s por foto).
-      const imagens = Array.from(
-        elemento.querySelectorAll("img")
-      ) as HTMLImageElement[];
-
-      await Promise.all(
-        imagens.map(
-          (img) =>
-            new Promise<void>((resolve) => {
-              if (img.complete) {
-                resolve();
-                return;
-              }
-              const limite = window.setTimeout(() => resolve(), 8000);
-              const concluir = () => {
-                window.clearTimeout(limite);
-                resolve();
-              };
-              img.addEventListener("load", concluir, { once: true });
-              img.addEventListener("error", concluir, { once: true });
-            })
-        )
-      );
-
-      // Foto que não carregou: troca por um aviso, para o PDF não ficar esperando.
-      imagens.forEach((img) => {
-        if (img.complete && img.naturalWidth > 0) return;
-        const aviso = document.createElement("div");
-        aviso.textContent = "Imagem indisponível";
-        aviso.style.cssText =
-          "display:flex;align-items:center;justify-content:center;min-height:90px;border:1px dashed #94a3b8;border-radius:8px;background:#f1f5f9;color:#12202B;font-size:12px";
-        img.parentElement?.insertBefore(aviso, img);
-        marcadores.push(aviso);
-        img.style.display = "none";
-        imagensOcultas.push(img);
-      });
-
-      elemento.classList.add("pdf-export");
-
-      // Aguarda o navegador aplicar o layout da exportação. Usa temporizador (e não
-      // requestAnimationFrame, que pausa com a aba oculta e travava a geração).
-      await new Promise<void>((resolve) => window.setTimeout(resolve, 160));
-
-      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
-        import("html2canvas-pro"),
-        import("jspdf"),
-      ]);
-
-      // Blocos que não devem ser cortados no meio entre páginas.
-      // Medidos no MESMO layout que o html2canvas desenha (clone), para as posições baterem.
-      const medirBlocos = (raiz: HTMLElement) => {
-        const base = raiz.getBoundingClientRect();
-        const blocos: { topCss: number; bottomCss: number; heightCss: number; sintetico?: boolean }[] = [];
-        raiz.querySelectorAll(".print-card, .print-block").forEach((node) => {
-          const rect = (node as HTMLElement).getBoundingClientRect();
-          blocos.push({
-            topCss: Math.max(0, rect.top - base.top),
-            bottomCss: Math.max(0, rect.bottom - base.top),
-            heightCss: rect.height,
-          });
-        });
-
-        // Abertura da seção Evidências: título + contador + primeira linha de fotos juntos.
-        const secaoEvidencias = raiz.querySelector('[data-pdf-section="evidencias"]') as HTMLElement | null;
-        const cardsEvidencia = secaoEvidencias ? (Array.from(secaoEvidencias.querySelectorAll(".print-card")) as HTMLElement[]) : [];
-        if (secaoEvidencias && cardsEvidencia.length > 0) {
-          const secaoRect = secaoEvidencias.getBoundingClientRect();
-          const primeiroRect = cardsEvidencia[0].getBoundingClientRect();
-          const segundoRect = cardsEvidencia.length > 1 ? cardsEvidencia[1].getBoundingClientRect() : null;
-          const mesmaLinha = segundoRect && Math.abs(segundoRect.top - primeiroRect.top) < 20;
-          const fimProtegido = mesmaLinha ? Math.max(primeiroRect.bottom, segundoRect!.bottom) : primeiroRect.bottom;
-          blocos.push({
-            topCss: Math.max(0, secaoRect.top - base.top),
-            bottomCss: Math.max(0, fimProtegido - base.top),
-            heightCss: Math.max(0, fimProtegido - secaoRect.top),
-            sintetico: true,
-          });
-        }
-
-        // Título de Não Conformidades junto da primeira NC.
-        const secaoNCs = raiz.querySelector('[data-pdf-section="nao-conformidades"]') as HTMLElement | null;
-        const primeiraNC = secaoNCs?.querySelector(".print-card") as HTMLElement | null;
-        if (secaoNCs && primeiraNC) {
-          const secaoRect = secaoNCs.getBoundingClientRect();
-          const primeiraRect = primeiraNC.getBoundingClientRect();
-          blocos.push({
-            topCss: Math.max(0, secaoRect.top - base.top),
-            bottomCss: Math.max(0, primeiraRect.bottom - base.top),
-            heightCss: Math.max(0, primeiraRect.bottom - secaoRect.top),
-            sintetico: true,
-          });
-        }
-        return blocos.sort((a, b) => a.topCss - b.topCss);
-      };
-
-      let blocosProtegidos = medirBlocos(elemento);
-
-      const ESCALA_PDF = 1.6;
-      const canvas = await html2canvas(elemento, {
-        scale: ESCALA_PDF,
-        useCORS: true,
-        backgroundColor: "#ffffff",
-        logging: false,
-        windowWidth: 1100,
-        imageTimeout: 8000,
-        onclone: (documentoClone) => {
-          const raizClone = documentoClone.getElementById("relatorio-visita");
-          if (raizClone) blocosProtegidos = medirBlocos(raizClone);
-        },
-        ignoreElements: (node) =>
-          node instanceof HTMLElement &&
-          node.classList.contains("print-control"),
-      });
-
-      const pdf = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: "a4",
-        compress: true,
-      });
-
-      const paginaLargura = 210;
-      const paginaAltura = 297;
-      const margemX = 10;
-      const margemTopo = 11;
-      const margemRodape = 12;
-      const larguraUtil = paginaLargura - margemX * 2;
-      const alturaUtil = paginaAltura - margemTopo - margemRodape;
-
-      const mmPorCanvasPx = larguraUtil / canvas.width;
-      const alturaPaginaPx = Math.floor(alturaUtil / mmPorCanvasPx);
-
-      // Converte as posições dos cards (CSS) para pixels do canvas.
-      const protegidosPx = blocosProtegidos.map((bloco) => ({
-        top: Math.round(bloco.topCss * ESCALA_PDF),
-        bottom: Math.round(bloco.bottomCss * ESCALA_PDF),
-        height: Math.round(bloco.heightCss * ESCALA_PDF),
-        sintetico: bloco.sintetico,
-      }));
-
-      const folgaPx = Math.max(10, Math.round(5 / mmPorCanvasPx));
-      const cortes = calcularCortes({ alturaTotal: canvas.height, alturaPagina: alturaPaginaPx, folga: folgaPx, blocos: protegidosPx });
-
-      const totalPaginas = cortes.length;
-
-      cortes.forEach((corte, indice) => {
-        const alturaRecorte = corte.fim - corte.inicio;
-
-        const paginaCanvas = document.createElement("canvas");
-        paginaCanvas.width = canvas.width;
-        paginaCanvas.height = alturaRecorte;
-
-        const ctx = paginaCanvas.getContext("2d");
-        if (!ctx) {
-          throw new Error("Falha ao preparar uma página do PDF.");
-        }
-
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(
-          0,
-          0,
-          paginaCanvas.width,
-          paginaCanvas.height
-        );
-
-        ctx.drawImage(
-          canvas,
-          0,
-          corte.inicio,
-          canvas.width,
-          alturaRecorte,
-          0,
-          0,
-          canvas.width,
-          alturaRecorte
-        );
-
-        const imagem = paginaCanvas.toDataURL(
-          "image/jpeg",
-          0.9
-        );
-        const alturaMm = alturaRecorte * mmPorCanvasPx;
-
-        if (indice > 0) pdf.addPage();
-
-        pdf.addImage(
-          imagem,
-          "JPEG",
-          margemX,
-          margemTopo,
-          larguraUtil,
-          alturaMm,
-          undefined,
-          "FAST"
-        );
-
-        // Cabeçalho discreto a partir da segunda página.
-        if (indice > 0) {
-          pdf.setFont("helvetica", "bold");
-          pdf.setFontSize(8);
-          pdf.setTextColor(23, 54, 93);
-          pdf.text(
-            `${BRAND.name} • Relatório Técnico de Inspeção`,
-            margemX,
-            6.5
-          );
-        }
-
-        // Rodapé profissional em todas as páginas.
-        pdf.setDrawColor(210, 218, 229);
-        pdf.line(
-          margemX,
-          paginaAltura - 8.5,
-          paginaLargura - margemX,
-          paginaAltura - 8.5
-        );
-
-        pdf.setFont("helvetica", "normal");
-        pdf.setFontSize(7.5);
-        pdf.setTextColor(100, 116, 139);
-
-        const empresaRodape = nomeParaExibir(empresaVisita) || "Visita técnica";
-
-        pdf.text(
-          empresaRodape.slice(0, 62),
-          margemX,
-          paginaAltura - 4.5
-        );
-
-        // O selo (parcial ou prévia) vai no rodapé de todas as páginas.
-        const selo = seloDoPdf(opcoes?.parcial ? "parcial" : opcoes?.previa ? "previa" : "oficial");
-        if (selo) {
-          pdf.setFont("helvetica", "bold");
-          pdf.setFontSize(8);
-          pdf.setTextColor(18, 32, 43);
-          pdf.text(selo, paginaLargura / 2, paginaAltura - 4.5, { align: "center" });
-          pdf.setFont("helvetica", "normal");
-          pdf.setFontSize(7.5);
-          pdf.setTextColor(100, 116, 139);
-        }
-
-        pdf.text(
-          `Página ${indice + 1} de ${totalPaginas}`,
-          paginaLargura - margemX,
-          paginaAltura - 4.5,
-          { align: "right" }
-        );
-      });
-
-      // O nome do arquivo vem do próprio relatório que está na tela (empresa e data da visita dele).
-      const empresaDoRelatorio = elemento.dataset.empresa || nomeParaExibir(empresaVisita);
-      const dataDoRelatorio = elemento.dataset.dataVisita || visitaAtual.data || "";
-      const tipoDoArquivo = opcoes?.parcial ? "parcial" : opcoes?.previa ? "previa" : "oficial";
-      pdf.save(nomeDoArquivoPdf(empresaDoRelatorio, dataDoRelatorio, tipoDoArquivo));
-    } catch (error) {
-      console.error("Falha ao gerar PDF:", error);
-      const detalhe =
-        error instanceof Error ? error.message : "erro desconhecido";
-      void avisar(
-        `Não foi possível gerar o PDF automaticamente. Detalhe: ${detalhe}. Use “Imprimir” como alternativa enquanto corrigimos.`
-      );
-    } finally {
-      elemento.classList.remove("pdf-export");
-      marcadores.forEach((marcador) => marcador.remove());
-      imagensOcultas.forEach((img) => {
-        img.style.display = "";
-      });
-      setGerandoPdf(false);
-    }
-  }
 
   function gerarConclusaoAutomatica() {
     const partes: string[] = [];
@@ -7411,7 +7127,6 @@ export default function Home() {
                 onSecao={(chave, valor) => setSecoesRelatorio((atual) => ({ ...atual, [chave]: valor }))}
                 podeGerar={permitido("relatorios.exportar", visitaAtual.empresaId)}
                 podeOficial={permitido("relatorios.aprovar", visitaAtual.empresaId)}
-                gerando={gerandoPdf}
                 concluida={visitaAtual.status === "Concluída"}
                 podeConcluir={permitido("visitas.concluir", visitaAtual.empresaId)}
                 onIr={(destino) => {
@@ -7469,7 +7184,7 @@ export default function Home() {
                 </button>
               </div>
 
-              <div className="print-control mt-5" data-html2canvas-ignore="true">
+              <div className="print-control mt-5">
                 {visitaAtual.status === "Concluída" ? (
                   <div className="flex flex-col gap-3 rounded-xl border border-emerald-200 bg-[var(--ok-bg)] p-4 md:flex-row md:items-center md:justify-between">
                     <div>
@@ -7489,33 +7204,6 @@ export default function Home() {
                 ) : null}
               </div>
 
-              {permitido("relatorios.exportar", visitaAtual.empresaId) && (
-              <div
-                className="print-control mt-5 grid gap-2 md:grid-cols-[1fr_auto]"
-                data-html2canvas-ignore="true"
-              >
-                <button
-                  type="button"
-                  onClick={() => void baixarPdfRelatorio({ parcial: visitaAtual.status !== "Concluída" })}
-                  disabled={gerandoPdf}
-                  className="w-full rounded-xl bg-[var(--brand)] px-5 py-4 text-base font-medium text-white shadow-md transition hover:brightness-95 disabled:cursor-wait disabled:opacity-70"
-                >
-                  {gerandoPdf ? "Gerando PDF..." : "Baixar relatório em PDF"}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => window.print()}
-                  className="rounded-xl bg-slate-100 px-5 py-4 text-base font-bold text-slate-900"
-                >
-                  Imprimir
-                </button>
-
-                <p className="text-center text-xs text-slate-500 md:col-span-2">
-                  O PDF é gerado diretamente. Use “Imprimir” apenas se quiser enviar para uma impressora.
-                </p>
-              </div>
-              )}
 
               {pendentesVisita > 0 && (
                 <div className="mt-5 rounded-xl border border-amber-200 bg-[var(--pend-bg)] p-4 text-sm text-[color:var(--ink)]">
