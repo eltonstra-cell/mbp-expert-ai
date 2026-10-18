@@ -113,7 +113,7 @@ function Cartao({ ev, onAmpliar }: { ev: CartaoEvidencia; onAmpliar: (url: strin
           </div>
           <div className="pc-ev-title">{ev.descricao || ev.nome}</div>
           <div className="ui-row-sub">
-            {ev.nome} · {ev.quando}
+            {ev.quando}
           </div>
         </div>
         {ev.podeExcluir && (
@@ -431,7 +431,7 @@ export default function PcEvidencias({
                 { id: "todas", rotulo: "Todas", contagem: totais.evidencias },
                 { id: "fotos", rotulo: "Fotos", contagem: totais.fotos },
                 { id: "audios", rotulo: "Áudios", contagem: totais.audios },
-                { id: "revisar", rotulo: "IA para revisar", contagem: totais.revisar },
+                { id: "revisar", rotulo: "IA para revisar", contagem: totais.revisar, acao: true },
               ]}
             />
           </div>

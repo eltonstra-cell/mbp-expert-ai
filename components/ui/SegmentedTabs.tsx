@@ -1,4 +1,4 @@
-export type AbaSegmentada<T extends string> = { id: T; rotulo: string; contagem?: number };
+export type AbaSegmentada<T extends string> = { id: T; rotulo: string; contagem?: number; /** Laranja só quando a contagem pede uma ação da pessoa. */ acao?: boolean };
 
 // Abas pequenas em fundo bege; a ativa fica branca.
 export function SegmentedTabs<T extends string>({
@@ -24,7 +24,7 @@ export function SegmentedTabs<T extends string>({
           onClick={() => onChange(aba.id)}
         >
           {aba.rotulo}
-          {aba.contagem !== undefined && <span className="ui-tab-count">{aba.contagem}</span>}
+          {aba.contagem !== undefined && <span className={`ui-tab-count${aba.acao && aba.contagem > 0 ? " is-acao" : ""}`}>{aba.contagem}</span>}
         </button>
       ))}
     </div>

@@ -52,6 +52,8 @@ export default function PcAmbientes({
   const [verTodosRoteiro, setVerTodosRoteiro] = useState(false);
   const [tocado, setTocado] = useState(false);
   const [verOcultos, setVerOcultos] = useState(false);
+  // No celular só um painel aparece por vez: escolher os ambientes ou ver o roteiro.
+  const [painelCampo, setPainelCampo] = useState<"escolher" | "roteiro">("escolher");
 
   const mostrarSugeridos = verTodosSugeridos ? sugeridos : sugeridos.slice(0, LIMITE_SUGERIDOS);
   const mostrarRoteiro = verTodosRoteiro ? selecionados : selecionados.slice(0, LIMITE_ROTEIRO);
@@ -80,7 +82,16 @@ export default function PcAmbientes({
         </div>
       </div>
 
-      <div className="pc-amb-cols">
+      <div className="pc-amb-painel-troca" role="group" aria-label="Escolher ambientes ou ver o roteiro">
+        <button type="button" className={painelCampo === "escolher" ? "is-active" : ""} aria-pressed={painelCampo === "escolher"} onClick={() => setPainelCampo("escolher")}>
+          Escolher
+        </button>
+        <button type="button" className={painelCampo === "roteiro" ? "is-active" : ""} aria-pressed={painelCampo === "roteiro"} onClick={() => setPainelCampo("roteiro")}>
+          Roteiro ({selecionados.length})
+        </button>
+      </div>
+
+      <div className={`pc-amb-cols is-painel-${painelCampo}`}>
         <div className="ui-card pc-amb-left">
           <div className="ui-head">
             <h2 className="ui-card-title">Ambientes sugeridos</h2>

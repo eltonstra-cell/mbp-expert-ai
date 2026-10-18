@@ -1,6 +1,6 @@
 import type { Tom } from "@/components/ui/Pill";
 
-export type Estatistica = { rotulo: string; valor: number | string; tom: Tom };
+export type Estatistica = { rotulo: string; valor: number | string; tom: Tom; detalhe?: string };
 
 // Faixas baixas de contadores pastel; número em Outfit.
 export function StatStrip({ itens, rotulo }: { itens: Estatistica[]; rotulo?: string }) {
@@ -14,7 +14,10 @@ export function StatStrip({ itens, rotulo }: { itens: Estatistica[]; rotulo?: st
       {itens.map((item) => (
         <div key={item.rotulo} className={`ui-stat ui-stat--${item.tom}`}>
           <span className="ui-stat-num">{item.valor}</span>
-          <span className="ui-stat-label">{item.rotulo}</span>
+          <span className="ui-stat-text">
+            <span className="ui-stat-label">{item.rotulo}</span>
+            {item.detalhe && <span className="ui-stat-sub">{item.detalhe}</span>}
+          </span>
         </div>
       ))}
     </div>

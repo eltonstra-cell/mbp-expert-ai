@@ -173,7 +173,7 @@ export default function PcPlano({
               onChange={setAba}
               abas={[
                 { id: "todas", rotulo: "Todas", contagem: ncs.length },
-                { id: "definir", rotulo: "A definir", contagem: ncs.filter(planoPorDefinir).length },
+                { id: "definir", rotulo: "A definir", contagem: ncs.filter(planoPorDefinir).length, acao: true },
                 { id: "andamento", rotulo: "Em andamento", contagem: ncs.filter((nc) => nc.status === "Em tratamento").length },
                 { id: "resolvidas", rotulo: "Resolvidas", contagem: ncs.filter((nc) => nc.status === "Resolvida").length },
               ]}

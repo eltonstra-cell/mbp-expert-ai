@@ -162,21 +162,23 @@ export default function ChecklistFocoItem({
             <span aria-hidden="true">✎</span> Digitar
           </button>
         </div>
-        <textarea
-          ref={areaRef}
-          className="ui-input chk-obs-area"
-          value={texto}
-          disabled={!podeEditar}
-          placeholder="Ex.: termômetro a 9 °C"
-          aria-label="Observação do item"
-          onChange={(evento) => setTexto(evento.target.value)}
-          onBlur={salvarTexto}
-        />
-        {podeEditar && (
-          <div className="chk-obs-voz">
-            <FieldVoiceTools fieldKey={`checklist-${item.id}`} value={texto} onChange={setTexto} contexto="Observação de um item de checklist de boas práticas em segurança dos alimentos." />
-          </div>
-        )}
+        <div className="chk-obs-campo">
+          <textarea
+            ref={areaRef}
+            className="ui-input chk-obs-area"
+            value={texto}
+            disabled={!podeEditar}
+            placeholder="Ex.: termômetro a 9 °C"
+            aria-label="Observação do item"
+            onChange={(evento) => setTexto(evento.target.value)}
+            onBlur={salvarTexto}
+          />
+          {podeEditar && (
+            <div className="chk-obs-voz">
+              <FieldVoiceTools fieldKey={`checklist-${item.id}`} value={texto} onChange={setTexto} contexto="Observação de um item de checklist de boas práticas em segurança dos alimentos." />
+            </div>
+          )}
+        </div>
       </div>
 
       {mostrarApoio && (item.orientacao || item.referencia) && (

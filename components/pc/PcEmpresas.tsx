@@ -5,6 +5,7 @@ import { Pill } from "@/components/ui/Pill";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import type { ItemMenu } from "@/components/ui/RowMenu";
 import { acoesDaEmpresa } from "@/lib/menuActions";
+import { nomeSemNumerosNoInicio } from "@/lib/navigation";
 import { TILE_GRADIENTS } from "@/lib/brand";
 
 export type LinhaEmpresa = {
@@ -156,7 +157,7 @@ export default function PcEmpresas({
                 }
                 titulo={empresa.nome}
                 chip={empresa.arquivada ? <Pill tom="na">Arquivada</Pill> : empresa.ativa ? <Pill tom="brand">Empresa ativa</Pill> : undefined}
-                secundario={`${empresa.razaoSocial} · ${detalhes}`}
+                secundario={<span className="pc-sub-quebra">{`${nomeSemNumerosNoInicio(empresa.razaoSocial)} · ${detalhes}`}</span>}
                 meio={
                   <>
                     <ProgressBar percentual={empresa.preparacao} largura={120} rotulo={`Preparação ${empresa.preparacao}%`} />

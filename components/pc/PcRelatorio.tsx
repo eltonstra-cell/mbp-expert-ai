@@ -26,9 +26,6 @@ type Props = {
   concluida: boolean;
   podeConcluir: boolean;
   onIr: (destino: DestinoConferencia) => void;
-  onPrevia: () => void;
-  onParcial: () => void;
-  onOficial: () => void;
   /** PDF pela impressão do navegador (texto selecionável). */
   onSelecionavel: (tipo: "previa" | "parcial" | "oficial") => void;
   onFinalizar: () => void;
@@ -48,9 +45,6 @@ export default function PcRelatorio({
   concluida,
   podeConcluir,
   onIr,
-  onPrevia,
-  onParcial,
-  onOficial,
   onSelecionavel,
   onFinalizar,
   onReabrir,
@@ -73,7 +67,7 @@ export default function PcRelatorio({
           {podeGerar && (
             <div className="pc-sel-pdf">
               <button type="button" className="ui-btn ui-btn--soft" aria-haspopup="menu" aria-expanded={menuSel} disabled={gerando} onClick={() => setMenuSel((valor) => !valor)}>
-                Gerar PDF (texto selecionável) ▾
+                Gerar PDF ▾
               </button>
               {menuSel && (
                 <div className="pc-sel-pdf-menu" role="menu">
@@ -81,7 +75,7 @@ export default function PcRelatorio({
                     [
                       ["previa", "Prévia"],
                       ["parcial", "Parcial"],
-                      ["oficial", "Versão oficial"],
+                      ["oficial", "Oficial"],
                     ] as ["previa" | "parcial" | "oficial", string][]
                   ).map(([tipo, rotulo]) => (
                     <button
@@ -171,31 +165,8 @@ export default function PcRelatorio({
 
       <div className="ui-footer">
         <span className="ui-row-sub">
-          {podeGerar ? "O PDF é gerado a partir do relatório completo da visita." : "Seu perfil não pode gerar o PDF."}
+          {podeGerar ? "Use \"Gerar PDF\" para a prévia, o parcial ou a versão oficial (texto selecionável)." : "Seu perfil não pode gerar o PDF."}
         </span>
-        <div className="ui-footer-actions">
-          {podeGerar && (
-            <>
-              <button type="button" className="ui-btn ui-btn--secondary" disabled={gerando} onClick={onPrevia}>
-                {gerando ? "Gerando PDF..." : "Gerar prévia em PDF"}
-              </button>
-              <button type="button" className="ui-btn ui-btn--secondary" disabled={gerando} onClick={onParcial}>
-                Emitir como parcial
-              </button>
-              {podeOficial && (
-                <button
-                  type="button"
-                  className="ui-btn ui-btn--save"
-                  disabled={gerando || pendencias > 0}
-                  title={pendencias > 0 ? "Resolva as pendências para emitir a versão oficial" : undefined}
-                  onClick={onOficial}
-                >
-                  Emitir versão oficial
-                </button>
-              )}
-            </>
-          )}
-        </div>
       </div>
     </section>
   );

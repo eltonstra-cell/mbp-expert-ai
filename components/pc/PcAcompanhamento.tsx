@@ -136,7 +136,7 @@ export default function PcAcompanhamento({
                 { id: "abertas", rotulo: "Abertas", contagem: abertas },
                 { id: "tratamento", rotulo: "Em tratamento", contagem: tratamento },
                 { id: "resolvidas", rotulo: "Resolvidas", contagem: resolvidas },
-                { id: "vencidas", rotulo: "Vencidas", contagem: vencidas },
+                { id: "vencidas", rotulo: "Vencidas", contagem: vencidas, acao: true },
               ]}
             />
             <div className="ui-scroll">

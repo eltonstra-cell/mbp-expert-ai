@@ -1669,7 +1669,7 @@ html[data-modo="completo"] .pc-side{display:flex}
 .pc-trail-step{display:flex;align-items:center;gap:7px;padding:6px 10px;border:0;border-radius:12px;background:transparent;color:var(--ink);font-size:.88rem;font-weight:400;white-space:nowrap;cursor:pointer}
 .pc-trail-step:hover{background:var(--brand-soft)}
 .pc-trail-step:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
-.pc-trail-num{display:inline-grid;flex:none;place-items:center;width:22px;height:22px;border-radius:50%;background:#EFE8D8;font-size:.76rem;color:var(--ink)}
+.pc-trail-num{display:inline-grid;flex:none;place-items:center;width:22px;height:22px;border-radius:50%;background:#EEF1F5;font-size:.76rem;color:var(--ink)}
 .pc-trail-step.is-current{background:var(--brand);color:#fff}
 .pc-trail-step.is-current:hover{background:var(--brand)}
 .pc-trail-step.is-current .pc-trail-num{background:#fff;color:var(--ink)}
@@ -2712,3 +2712,64 @@ html[data-modo="equilibrado"] .pc-continue{flex-wrap:wrap;gap:8px 16px}
 html[data-modo="equilibrado"] .pc-continue-text{flex:1 1 100%}
 html[data-modo="equilibrado"] .pc-continue-progress{flex:1 1 240px}
 html[data-modo="equilibrado"] .pc-continue .ui-btn{flex:none}
+
+/* ===== Pacote 4 · Parte C ===== */
+.ui-stat-text{display:flex;min-width:0;flex-direction:column;gap:1px}
+.ui-stat-sub{font-size:.72rem;color:var(--ink-2)}
+.ui-tab-count{background:var(--outline);color:var(--ink-2)}
+.ui-tab-count.is-acao{background:var(--count);color:#fff}
+.pc-ev-new .pc-field:has(textarea){flex:1;min-height:0}
+.pc-ev-new .pc-field:has(textarea) .ui-field-wrap--area{display:flex;flex:1;min-height:0}
+.pc-ev-new .pc-field:has(textarea) textarea{flex:1;height:auto;min-height:7.5em;resize:none}
+.pc-ev-new .pc-field:has(textarea){grid-template-rows:auto minmax(0,1fr)}
+.ui-tab-count{color:#3D5160}.ui-tab-count.is-acao{color:#fff}
+
+/* Observação do checklist: "IA" e "Falar" dentro do campo, no canto inferior direito */
+.chk-obs-campo{position:relative;display:flex;flex:none;flex-direction:column}
+.chk-obs-campo .chk-obs-area{flex:1;width:100%;padding-bottom:46px}
+.chk-obs-campo .chk-obs-voz{position:absolute;right:8px;bottom:8px;display:flex;flex:none}
+.chk-obs-campo .field-assist-tools{position:static;margin:0;flex-wrap:nowrap}
+html[data-modo="completo"] .chk-pc .chk-obs-campo{flex:1;min-height:0}
+html[data-modo="completo"] .chk-pc .chk-obs-campo .chk-obs-area{height:auto}
+
+/* Gravidade: o escolhido em creme com borda na cor da gravidade; os outros bem fracos */
+.chk-grav-linha .chk-grav{border:2px solid transparent;color:#3D5160;opacity:1}
+.chk-grav-linha .chk-grav--leve{background:rgba(58,166,217,.35)}
+.chk-grav-linha .chk-grav--amber{background:rgba(245,166,35,.35)}
+.chk-grav-linha .chk-grav--nc{background:rgba(217,58,58,.35)}
+.chk-grav-linha .chk-grav.is-on{background:#FEF6E6;color:var(--ink)}
+.chk-grav-linha .chk-grav.is-on.chk-grav--leve{background:#FEF6E6;border-color:#3AA6D9;color:var(--ink)}
+.chk-grav-linha .chk-grav.is-on.chk-grav--amber{background:#FEF6E6;border-color:#F5A623;color:var(--ink)}
+.chk-grav-linha .chk-grav.is-on.chk-grav--nc{background:#FEF6E6;border-color:#D93A3A;color:var(--ink)}
+
+/* Empresas: empresa ativa em creme; subtítulo quebra em até 2 linhas, sem reticências no meio da frase */
+.ui-row.is-selected{background:#FEF6E6}
+.ui-row-sub:has(.pc-sub-quebra){display:-webkit-box;overflow:hidden;white-space:normal;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+
+/* ===== Celular: Ambientes e Central da visita numa tela ===== */
+.pc-amb-painel-troca{display:none}
+html[data-modo="campo"] .pc-amb-painel-troca{display:flex;flex:none;gap:4px;padding:3px;border-radius:12px;background:var(--tabs-bg)}
+html[data-modo="campo"] .pc-amb-painel-troca button{flex:1;min-height:40px;border:0;border-radius:9px;background:transparent;font-size:.92rem;color:var(--ink)}
+html[data-modo="campo"] .pc-amb-painel-troca button.is-active{background:#fff;box-shadow:0 1px 2px rgba(18,32,43,.14)}
+html[data-modo="campo"] .pc-amb-cols{display:flex;flex:1;min-height:0;flex-direction:column}
+html[data-modo="campo"] .pc-amb-cols>.ui-card{flex:1;min-height:0}
+html[data-modo="campo"] .pc-amb-cols.is-painel-escolher .pc-amb-right,html[data-modo="campo"] .pc-amb-cols.is-painel-roteiro .pc-amb-left{display:none}
+html[data-modo="campo"] .ui-screen[aria-label="Ambientes da visita"] .pc-steps{display:none}
+html[data-modo="campo"] .pc-amb-add{flex-wrap:wrap}
+html[data-modo="campo"] .pc-route-row{flex-wrap:wrap}
+html[data-modo="campo"] .pc-route-model select{max-width:100%}
+html[data-modo="campo"] .ui-screen[aria-label="Central da visita"]{gap:8px}
+html[data-modo="campo"] .ui-screen[aria-label="Central da visita"] .ui-head{align-items:center}
+html[data-modo="campo"] .ui-screen[aria-label="Central da visita"] .ui-title{font-size:1.25rem}
+html[data-modo="campo"] .ui-screen[aria-label="Central da visita"] .pc-continue{padding:10px 12px}
+html[data-modo="campo"] .ui-screen[aria-label="Central da visita"] .pc-continue .ui-btn{width:100%}
+html[data-modo="campo"] .ui-screen[aria-label="Central da visita"] .ui-stats{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:6px}
+html[data-modo="campo"] .ui-screen[aria-label="Central da visita"] .ui-stat{padding:6px 10px}
+html[data-modo="campo"] .ui-screen[aria-label="Central da visita"] .pc-steps-row{display:flex;flex:1;min-height:0;flex-direction:column;gap:6px;overflow-y:auto}
+html[data-modo="campo"] .ui-screen[aria-label="Central da visita"] .pc-step-card{flex:none;padding:8px 10px}
+html[data-modo="campo"] .ui-screen[aria-label="Central da visita"] .pc-three,html[data-modo="campo"] .ui-screen[aria-label="Central da visita"] .pc-open-block{display:none}
+html[data-modo="campo"] .pc-continue{flex-wrap:wrap;gap:6px 12px}
+html[data-modo="campo"] .pc-continue-text,html[data-modo="campo"] .pc-continue-progress{flex:1 1 100%}
+html[data-modo="campo"] .pc-choice-name{white-space:normal;line-height:1.15}
+.pc-ev-new .pc-field:has(textarea) .ui-field-wrap--area{flex-direction:column;align-items:stretch;position:relative}
+.pc-ev-new .pc-field:has(textarea) textarea{padding-bottom:44px}

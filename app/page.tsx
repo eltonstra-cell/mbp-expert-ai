@@ -4367,21 +4367,6 @@ export default function Home() {
     window.print();
   }
 
-  async function emitirRelatorioPc(modo: "previa" | "parcial" | "oficial") {
-    if (!visitaAtual) return;
-    if (modo === "oficial" && !exigirPermissao("relatorios.aprovar", visitaAtual.empresaId)) return;
-    if (!exigirPermissao("relatorios.exportar", visitaAtual.empresaId)) return;
-    if (modo === "parcial") {
-      setEmissaoParcial(true);
-      await new Promise((resolver) => window.setTimeout(resolver, 80));
-    }
-    try {
-      await baixarPdfRelatorio({ parcial: modo === "parcial", previa: modo === "previa" });
-    } finally {
-      setEmissaoParcial(false);
-    }
-  }
-
   function irParaMenu(key: NavKey) {
     setMenuMaisAberto(false);
     switch (key) {
@@ -8892,9 +8877,6 @@ export default function Home() {
                   else if (destino === "pops") setView("popsvisita");
                   else abrirSecaoEmpresaPeloMenu("dados");
                 }}
-                onPrevia={() => void emitirRelatorioPc("previa")}
-                onParcial={() => void emitirRelatorioPc("parcial")}
-                onOficial={() => void emitirRelatorioPc("oficial")}
                 onSelecionavel={(tipo) => void gerarPdfSelecionavel(tipo)}
                 onFinalizar={finalizarInspecao}
                 onReabrir={reabrirInspecao}
@@ -9903,7 +9885,7 @@ export default function Home() {
                   : null
               }
               pendencias={{
-                texto: ncsEmpresaAbertas ? `${ncsEmpresaAbertas} não conformidade(s) em acompanhamento` : "Nenhuma não conformidade aberta",
+                texto: ncsEmpresaAbertas ? `${ncsEmpresaAbertas} não conformidade(s) em acompanhamento nesta empresa` : "Nenhuma não conformidade aberta nesta empresa",
                 onVer: permitido("ncs.acompanhar", atual?.id) ? () => irParaMenu("ncs") : null,
               }}
               filtro={filtroInicio}

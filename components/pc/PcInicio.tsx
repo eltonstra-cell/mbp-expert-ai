@@ -108,7 +108,7 @@ export default function PcInicio({
         rotulo="Indicadores"
         itens={[
           { rotulo: "Em andamento", valor: indicadores.emAndamento, tom: "pend" },
-          { rotulo: "Não conformidades em acompanhamento", valor: indicadores.ncAcompanhamento, tom: "nc" },
+          { rotulo: "Não conformidades em acompanhamento", valor: indicadores.ncAcompanhamento, tom: "nc", detalhe: "em todas as empresas" },
           { rotulo: "Concluídas este mês", valor: indicadores.concluidasMes, tom: "ok" },
           { rotulo: "Empresas ativas", valor: indicadores.empresasAtivas, tom: "brand" },
         ]}
@@ -129,7 +129,7 @@ export default function PcInicio({
         )}
         <div className="ui-card pc-card-btn">
           <div className="pc-card-head">
-            <span className="ui-eyebrow">Pendências técnicas</span>
+            <span className="ui-eyebrow">Pendências técnicas · empresa ativa</span>
           </div>
           <div className="ui-row-sub">{pendencias.texto}</div>
           {pendencias.onVer && (
