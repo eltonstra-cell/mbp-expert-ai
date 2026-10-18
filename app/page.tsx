@@ -37,6 +37,7 @@ import PcModoTela from "@/components/pc/PcModoTela";
 import ChecklistFocoItem from "@/components/ChecklistFocoItem";
 import { trocaDeGravidade } from "@/lib/checklistUi";
 import { avisar, confirmar, perguntar } from "@/lib/dialogos";
+import { comprimirFoto as comprimirFotoParaEnvio, dependenciasDoNavegador } from "@/lib/fotoCompressao";
 import PcChecklist, { type ApoioDoItem } from "@/components/pc/PcChecklist";
 import RevisaoTranscricao from "@/components/RevisaoTranscricao";
 import MeuPerfilModal from "@/components/pc/MeuPerfilModal";
@@ -4459,74 +4460,6 @@ export default function Home() {
     });
   }
 
-  async function comprimirFoto(file: File): Promise<string> {
-    const maxDim = 1600;
-    const alvo = 700 * 1024;
-
-    // Object URL tende a ser mais confiável no Safari/iPhone para fotos
-    // recém-capturadas pela câmera do que carregar uma data URL diretamente.
-    const objectUrl = URL.createObjectURL(file);
-
-    try {
-      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-        const el = new Image();
-
-        el.onload = () => resolve(el);
-        el.onerror = () =>
-          reject(new Error("O navegador não conseguiu abrir a foto capturada."));
-
-        el.src = objectUrl;
-      });
-
-      let width = img.naturalWidth || img.width;
-      let height = img.naturalHeight || img.height;
-
-      if (!width || !height) {
-        throw new Error("A foto não possui dimensões válidas.");
-      }
-
-      if (width > maxDim || height > maxDim) {
-        const escala = Math.min(maxDim / width, maxDim / height);
-        width = Math.max(1, Math.round(width * escala));
-        height = Math.max(1, Math.round(height * escala));
-      }
-
-      const canvas = document.createElement("canvas");
-      canvas.width = width;
-      canvas.height = height;
-
-      const ctx = canvas.getContext("2d");
-      if (!ctx) throw new Error("Não foi possível preparar a foto.");
-
-      ctx.drawImage(img, 0, 0, width, height);
-
-      let qualidade = 0.82;
-      let resultado = canvas.toDataURL("image/jpeg", qualidade);
-
-      while (
-        Math.ceil((resultado.length * 3) / 4) > alvo &&
-        qualidade > 0.5
-      ) {
-        qualidade = Math.max(0.5, qualidade - 0.08);
-        resultado = canvas.toDataURL("image/jpeg", qualidade);
-      }
-
-      if (!resultado || resultado === "data:,") {
-        throw new Error("A conversão da foto falhou.");
-      }
-
-      return resultado;
-    } finally {
-      URL.revokeObjectURL(objectUrl);
-    }
-  }
-
-  async function dataUrlParaBlob(dataUrl: string): Promise<Blob> {
-    const response = await fetch(dataUrl);
-    if (!response.ok) throw new Error("Não foi possível preparar a foto para envio.");
-    return await response.blob();
-  }
-
   async function enviarArquivoParaBlob(
     conteudo: Blob | File,
     nomeArquivo: string,
@@ -4737,7 +4670,7 @@ export default function Home() {
 
       const conteudo: Blob | File =
         tipo === "Foto"
-          ? await dataUrlParaBlob(await comprimirFoto(file))
+          ? (await comprimirFotoParaEnvio(file, dependenciasDoNavegador)).arquivo
           : file;
 
       setEvidenciaMsg("Enviando evidência para o armazenamento seguro...");
