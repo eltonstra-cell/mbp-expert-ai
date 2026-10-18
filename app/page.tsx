@@ -36,6 +36,7 @@ import { useScreenMode } from "@/components/useScreenMode";
 import PcModoTela from "@/components/pc/PcModoTela";
 import ChecklistFocoItem from "@/components/ChecklistFocoItem";
 import { trocaDeGravidade } from "@/lib/checklistUi";
+import { avisar, confirmar, perguntar } from "@/lib/dialogos";
 import PcChecklist, { type ApoioDoItem } from "@/components/pc/PcChecklist";
 import RevisaoTranscricao from "@/components/RevisaoTranscricao";
 import MeuPerfilModal from "@/components/pc/MeuPerfilModal";
@@ -782,11 +783,11 @@ export default function Home() {
   ) {
     const texto = (textoAtual || "").trim();
     if (!texto) {
-      window.alert("Primeiro escreva ou dite algum texto para a IA melhorar.");
+      void avisar("Primeiro escreva ou dite algum texto para a IA melhorar.");
       return;
     }
     if (!navigator.onLine) {
-      window.alert("A melhoria de texto com IA precisa de internet.");
+      void avisar("A melhoria de texto com IA precisa de internet.");
       return;
     }
     if (campoIaAtivo) return;
@@ -807,7 +808,7 @@ export default function Home() {
       if (!melhorado) throw new Error("A IA não retornou um texto utilizável.");
       aoMelhorar(melhorado);
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : "Não foi possível melhorar o texto agora.");
+      void avisar(error instanceof Error ? error.message : "Não foi possível melhorar o texto agora.");
     } finally {
       setCampoIaAtivo(null);
     }
@@ -829,12 +830,12 @@ export default function Home() {
     }
 
     if (!navigator.onLine) {
-      window.alert("O ditado por voz precisa de internet para transformar a fala em texto.");
+      void avisar("O ditado por voz precisa de internet para transformar a fala em texto.");
       return;
     }
 
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
-      window.alert("Este aparelho não liberou a gravação pelo navegador. Verifique a permissão do microfone nas configurações do Safari/app.");
+      void avisar("Este aparelho não liberou a gravação pelo navegador. Verifique a permissão do microfone nas configurações do Safari/app.");
       return;
     }
 
@@ -888,7 +889,7 @@ export default function Home() {
         stream.getTracks().forEach((track) => track.stop());
         streamVozRef.current = null;
         gravadorVozRef.current = null;
-        window.alert("Não foi possível gravar o áudio. Verifique a permissão do microfone e tente novamente.");
+        void avisar("Não foi possível gravar o áudio. Verifique a permissão do microfone e tente novamente.");
       };
 
       gravador.onstop = async () => {
@@ -913,7 +914,7 @@ export default function Home() {
           return;
         }
         if (!audio.size) {
-          window.alert("Não detectei áudio. Toque em Falar, dite o texto e toque novamente para encerrar.");
+          void avisar("Não detectei áudio. Toque em Falar, dite o texto e toque novamente para encerrar.");
           return;
         }
 
@@ -951,7 +952,7 @@ export default function Home() {
           // O texto ouvido só entra no campo depois da revisão.
           setRevisaoVoz({ texto, aplicar: aoTranscrever });
         } catch (error) {
-          window.alert(error instanceof Error ? error.message : "Não foi possível transcrever o áudio.");
+          void avisar(error instanceof Error ? error.message : "Não foi possível transcrever o áudio.");
         }
       };
 
@@ -969,9 +970,9 @@ export default function Home() {
       gravadorVozRef.current = null;
 
       if (error?.name === "NotAllowedError" || error?.name === "PermissionDeniedError") {
-        window.alert("O acesso ao microfone foi bloqueado. Libere o microfone para este app/site nas configurações do iPhone e tente novamente.");
+        void avisar("O acesso ao microfone foi bloqueado. Libere o microfone para este app/site nas configurações do iPhone e tente novamente.");
       } else {
-        window.alert("Não foi possível iniciar o microfone neste momento.");
+        void avisar("Não foi possível iniciar o microfone neste momento.");
       }
     }
   }
@@ -1734,7 +1735,7 @@ export default function Home() {
       window.location.replace("/auth/sign-in");
     } catch {
       setSaindo(false);
-      window.alert("Não foi possível encerrar a sessão. Tente novamente.");
+      void avisar("Não foi possível encerrar a sessão. Tente novamente.");
     }
   }
 
@@ -1752,7 +1753,7 @@ export default function Home() {
 
   function exigirPermissao(acao: AcaoPermissao, empresaId?: string): boolean {
     if (permitido(acao, empresaId)) return true;
-    window.alert("Seu perfil não possui permissão para executar esta ação.");
+    void avisar("Seu perfil não possui permissão para executar esta ação.");
     return false;
   }
 
@@ -1935,7 +1936,7 @@ export default function Home() {
     if (!recuperacaoPendente || recuperandoDados) return;
 
     if (!recuperacaoPendente.cloudUpdatedAt) {
-      window.alert(
+      void avisar(
         "A versão atual da nuvem não pôde ser confirmada. Mantenha o sistema fechado e tente novamente mais tarde."
       );
       return;
@@ -1954,7 +1955,7 @@ export default function Home() {
       });
 
       if (response.status === 409) {
-        window.alert(
+        void avisar(
           "A nuvem mudou enquanto a recuperação estava aberta. Nenhum dado local foi apagado. Atualize a página para recalcular a mesclagem."
         );
         return;
@@ -1971,12 +1972,12 @@ export default function Home() {
       syncBloqueadaRef.current = false;
       setProtecaoLocalAtiva(false);
       setRecuperacaoPendente(null);
-      window.alert(
+      void avisar(
         "Registros locais mesclados com a nuvem. Nenhuma empresa, visita, não conformidade ou evidência foi removida."
       );
     } catch {
       setSyncStatus("recuperacao");
-      window.alert(
+      void avisar(
         "A recuperação ainda não pôde ser gravada. Os dados locais continuam preservados neste computador."
       );
     } finally {
@@ -2737,7 +2738,7 @@ export default function Home() {
       console.error("Falha ao gerar PDF:", error);
       const detalhe =
         error instanceof Error ? error.message : "erro desconhecido";
-      window.alert(
+      void avisar(
         `Não foi possível gerar o PDF automaticamente. Detalhe: ${detalhe}. Use “Imprimir” como alternativa enquanto corrigimos.`
       );
     } finally {
@@ -2924,7 +2925,7 @@ export default function Home() {
               );
             }
 
-            window.alert(
+            void avisar(
               "Outro dispositivo alterou estes dados antes desta ação. A versão mais recente da nuvem foi carregada. Confira a visita e repita a ação."
             );
             return false;
@@ -2965,7 +2966,7 @@ export default function Home() {
         ultimoErro
       );
       registrarFalhaSincronizacao();
-      window.alert(
+      void avisar(
         "A alteração foi salva neste dispositivo e continua pendente de sincronização. O sistema tentou confirmar a gravação na nuvem mais de uma vez, mas ainda não conseguiu. Mantenha esta página aberta e verifique a conexão."
       );
       return false;
@@ -2982,7 +2983,7 @@ export default function Home() {
     // do checklist dos ambientes selecionados tiverem sido avaliados.
     // Não conformidades podem permanecer abertas, pois seguem para o pós-visita.
     if (pendentesVisita > 0) {
-      window.alert(
+      void avisar(
         `Não é possível finalizar esta inspeção ainda.\n\n` +
         `Existem ${pendentesVisita} item(ns) pendente(s) no checklist.\n\n` +
         `Avalie todos os itens selecionados como Conforme, Não conforme ou Não se aplica. ` +
@@ -3000,7 +3001,7 @@ export default function Home() {
     const ressalvas = alertas.length
       ? `\n\nAtenção:\n• ${alertas.join("\n• ")}\n\nEssas pendências não impedem o encerramento da inspeção e continuarão disponíveis no pós-visita.`
       : "";
-    if (!window.confirm(`Finalizar esta inspeção?${ressalvas}\n\nA visita ficará marcada como Concluída.`)) return;
+    if (!(await confirmar(`Finalizar esta inspeção?${ressalvas}\n\nA visita ficará marcada como Concluída.`, { titulo: "Finalizar inspeção", confirmarRotulo: "Finalizar" }))) return;
 
     const agora = new Date().toISOString();
     const novo: AppDB = {
@@ -3030,10 +3031,11 @@ export default function Home() {
     if (!visitaAtual) return;
     if (!exigirPermissao("visitas.concluir", visitaAtual.empresaId)) return;
 
-    const confirmado = window.confirm(
+    const confirmado = await confirmar(
       "Reabrir esta inspeção?\n\n" +
       "A visita voltará para Em andamento e poderá ser alterada novamente. " +
-      "O encerramento anterior permanecerá registrado no histórico de rastreabilidade."
+      "O encerramento anterior permanecerá registrado no histórico de rastreabilidade.",
+      { titulo: "Reabrir inspeção", confirmarRotulo: "Reabrir" }
     );
     if (!confirmado) return;
 
@@ -3225,7 +3227,7 @@ export default function Home() {
     if (!atual || criandoVisita || criandoVisitaRef.current) return;
     if (!exigirPermissao("visitas.criar", atual.id)) return;
     if (!vf.responsavel.trim()) {
-      window.alert("Informe o responsável pela visita antes de criar a inspeção.");
+      void avisar("Informe o responsável pela visita antes de criar a inspeção.");
       return;
     }
     criandoVisitaRef.current = true;
@@ -3271,7 +3273,7 @@ export default function Home() {
     const v = original ? migrarVisitaParaChecklistManual(original, CHECKLIST_VERSAO_ATUAL, true) : undefined;
     if (!v) return;
     if (!podeAbrirVisita(v.empresaId)) {
-      window.alert("Seu perfil não possui permissão para abrir esta visita.");
+      void avisar("Seu perfil não possui permissão para abrir esta visita.");
       return;
     }
     const empresaDaVisita = db.empresas[v.empresaId];
@@ -3394,7 +3396,7 @@ export default function Home() {
     setStatusAmbientes("Ambientes atualizados");
   }
 
-  function toggleAmbiente(nome: string) {
+  async function toggleAmbiente(nome: string) {
     const removendo = ambientesSelecionados.includes(nome);
     if (removendo) {
       const possuiRegistro = (visitaAtual?.checklist || []).some(
@@ -3404,7 +3406,7 @@ export default function Home() {
       );
       if (
         possuiRegistro &&
-        !window.confirm(`O ambiente “${nome}” possui respostas. Remover mesmo assim?`)
+        !(await confirmar(`O ambiente “${nome}” possui respostas. Remover mesmo assim?`, { titulo: "Remover ambiente", confirmarRotulo: "Remover", perigoso: true }))
       ) return;
     }
     atualizarAmbientesDaVisita(
@@ -3430,7 +3432,7 @@ export default function Home() {
       (visitaAtual.checklist || []).filter((item) => item.ambiente === ambiente)
     );
     if (possuiRespostas) {
-      window.alert("Este ambiente já possui respostas. O modelo não pode ser trocado sem preservar a avaliação realizada.");
+      void avisar("Este ambiente já possui respostas. O modelo não pode ser trocado sem preservar a avaliação realizada.");
       return;
     }
     setModelosAmbientesSelecionados(proximosModelos);
@@ -3448,7 +3450,7 @@ export default function Home() {
   function aplicarModeloDetalhadoRestaurante() {
     if (!visitaAtual || !empresaVisita) return;
     if (checklistPossuiRespostas(visitaAtual.checklist)) {
-      window.alert("Esta visita já possui respostas. Crie uma nova visita para aplicar a lista detalhada sem perder registros.");
+      void avisar("Esta visita já possui respostas. Crie uma nova visita para aplicar a lista detalhada sem perder registros.");
       return;
     }
     const ambientes = [...AMBIENTES_DETALHADOS_RESTAURANTE];
@@ -3487,7 +3489,7 @@ export default function Home() {
   function abrirChecklistNoAmbiente(ambienteInicial?: string) {
     if (!visitaAtual || !(visitaAtual.ambientes || []).length) return;
     if (!(permitido("visitas.executar", visitaAtual.empresaId) || (!!usuarioDaSessao && telaVisivel("checklist")))) {
-      window.alert("Seu perfil não possui permissão para abrir o checklist.");
+      void avisar("Seu perfil não possui permissão para abrir o checklist.");
       return;
     }
 
@@ -3558,7 +3560,7 @@ export default function Home() {
       (item) => item.status === "Pendente"
     );
     if (pendentes.length === 0) {
-      window.alert("Não há perguntas pendentes nesta visita.");
+      void avisar("Não há perguntas pendentes nesta visita.");
       return;
     }
 
@@ -3704,12 +3706,13 @@ export default function Home() {
     setNovoEquipamentoVisitaQuantidade("1");
   }
 
-  function avancarParaProximoAmbiente() {
+  async function avancarParaProximoAmbiente() {
     if (
       pendentesAmbienteAtivo > 0 &&
-      !window.confirm(
-        `Ainda há ${pendentesAmbienteAtivo} pergunta(s) pendente(s) neste ambiente. Deseja avançar mesmo assim?`
-      )
+      !(await confirmar(
+        `Ainda há ${pendentesAmbienteAtivo} pergunta(s) pendente(s) neste ambiente. Deseja avançar mesmo assim?`,
+        { titulo: "Perguntas pendentes", confirmarRotulo: "Avançar" }
+      ))
     ) return;
     const indiceAtual = ambientesChecklistVisita.findIndex(
       (ambiente) => ambiente === ambienteChecklistAtivo
@@ -3720,20 +3723,21 @@ export default function Home() {
     window.setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 120);
   }
 
-  function limparRespostaChecklist(itemId: string) {
+  async function limparRespostaChecklist(itemId: string) {
     if (!visitaAtual) return;
     const item = (visitaAtual.checklist || []).find((registro) => registro.id === itemId);
     if (!item || item.status === "Pendente") return;
 
-    const confirmou = window.confirm(
-      `Deseja limpar a resposta deste item?\n\nO item voltará para Pendente. A resposta e a observação atual serão removidas.`
+    const confirmou = await confirmar(
+      `Deseja limpar a resposta deste item?\n\nO item voltará para Pendente. A resposta e a observação atual serão removidas.`,
+      { titulo: "Limpar resposta", confirmarRotulo: "Limpar", perigoso: true }
     );
     if (!confirmou) return;
 
     atualizarChecklistItem(itemId, { status: "Pendente", observacao: "" });
   }
 
-  function zerarAmbienteChecklist() {
+  async function zerarAmbienteChecklist() {
     if (!visitaAtual || !ambienteChecklistAtivo) return;
     if (!exigirPermissao("visitas.executar", visitaAtual.empresaId)) return;
 
@@ -3743,15 +3747,16 @@ export default function Home() {
     const respondidos = itensDoAmbiente.filter((item) => item.status !== "Pendente");
 
     if (!respondidos.length) {
-      window.alert("Este ambiente já está zerado.");
+      void avisar("Este ambiente já está zerado.");
       return;
     }
 
-    const confirmou = window.confirm(
+    const confirmou = await confirmar(
       `Zerar o ambiente “${ambienteChecklistAtivo}”?\n\n` +
       `${respondidos.length} resposta(s) voltarão para Pendente. ` +
       `As respostas e observações desses itens serão removidas.\n\n` +
-      `Esta ação não apaga a visita nem as evidências já registradas.`
+      `Esta ação não apaga a visita nem as evidências já registradas.`,
+      { titulo: "Zerar ambiente", confirmarRotulo: "Zerar", perigoso: true }
     );
     if (!confirmou) return;
 
@@ -3999,7 +4004,7 @@ export default function Home() {
     const alvo = visitaAtual?.status === "Em andamento" ? visitaAtual : visitaEmAndamentoDestaque;
     if (!alvo) {
       setView("visitas");
-      window.alert("Escolha a visita em que deseja registrar ou inicie uma nova visita.");
+      void avisar("Escolha a visita em que deseja registrar ou inicie uma nova visita.");
       return;
     }
     if (!exigirPermissao("evidencias.adicionar", alvo.empresaId)) return;
@@ -4303,12 +4308,12 @@ export default function Home() {
     setStatusAmbientes(`“${nome}” voltou para a visita`);
   }
 
-  function excluirAmbienteOcultoDaVisita(nome: string) {
+  async function excluirAmbienteOcultoDaVisita(nome: string) {
     if (!visitaAtual) return;
     const guardado = (visitaAtual.ambientesOcultos || []).find((registro) => registro.ambiente === nome);
     if (!guardado) return;
     const respostas = resumoOcultos(visitaAtual).find((registro) => registro.ambiente === nome)?.respostas || 0;
-    if (!window.confirm(`Excluir definitivamente “${nome}”? ${respostas} ${respostas === 1 ? "resposta será perdida" : "respostas serão perdidas"} e não poderão ser recuperadas.`)) return;
+    if (!(await confirmar(`Excluir definitivamente “${nome}”? ${respostas} ${respostas === 1 ? "resposta será perdida" : "respostas serão perdidas"} e não poderão ser recuperadas.`, { titulo: "Excluir ambiente", confirmarRotulo: "Excluir definitivamente", perigoso: true }))) return;
     setDb((o) => {
       const visita = o.visitas.find((registro) => registro.id === visitaAtual.id);
       if (!visita) return o;
@@ -4603,8 +4608,9 @@ export default function Home() {
       return;
     }
 
-    const privacidadeConfirmada = window.confirm(
-      "Antes de enviar esta foto para análise por IA, confirme que você a revisou e que ela não contém rostos, crachás, documentos ou outros dados pessoais desnecessários.\n\nContinuar com a análise?"
+    const privacidadeConfirmada = await confirmar(
+      "Antes de enviar esta foto para análise por IA, confirme que você a revisou e que ela não contém rostos, crachás, documentos ou outros dados pessoais desnecessários.\n\nContinuar com a análise?",
+      { titulo: "Enviar foto para a IA", confirmarRotulo: "Continuar" }
     );
     if (!privacidadeConfirmada) return;
 
@@ -4685,9 +4691,9 @@ export default function Home() {
     }
   }
 
-  function descartarAnaliseFoto(ev: Evidencia, analise: AnaliseFotoIA) {
+  async function descartarAnaliseFoto(ev: Evidencia, analise: AnaliseFotoIA) {
     if (!exigirPermissao("ia.analisar", ev.empresaId)) return;
-    if (!window.confirm("Descartar esta sugestão da IA? Ela permanecerá registrada no histórico como descartada.")) {
+    if (!(await confirmar("Descartar esta sugestão da IA? Ela permanecerá registrada no histórico como descartada.", { titulo: "Descartar sugestão", confirmarRotulo: "Descartar", perigoso: true }))) {
       return;
     }
     const descartada = descartarSugestaoFotoIA(
@@ -4793,7 +4799,7 @@ export default function Home() {
     }
   }
 
-  function excluirEvidencia(id: string) {
+  async function excluirEvidencia(id: string) {
     const evidencia = (db.evidencias || []).find((ev) => ev.id === id);
     if (!evidencia) return;
     if (!exigirPermissao("evidencias.adicionar", evidencia.empresaId)) return;
@@ -4803,7 +4809,7 @@ export default function Home() {
       : undefined;
 
     if (ncRelacionada?.status === "Resolvida") {
-      window.alert(
+      void avisar(
         "Esta evidência está vinculada a uma Não Conformidade resolvida e faz parte da rastreabilidade do fechamento.\n\n" +
         "Para alterá-la, reabra primeiro a Não Conformidade pelo Acompanhamento."
       );
@@ -4812,9 +4818,10 @@ export default function Home() {
 
     const descricao = evidencia.descricao || evidencia.nomeArquivo || "evidência";
     if (
-      !window.confirm(
-        `Remover esta evidência do registro da visita?\n\n${descricao}\n\nEssa ação altera a documentação da inspeção.`
-      )
+      !(await confirmar(
+        `Remover esta evidência do registro da visita?\n\n${descricao}\n\nEssa ação altera a documentação da inspeção.`,
+        { titulo: "Remover evidência", confirmarRotulo: "Remover", perigoso: true }
+      ))
     ) return;
 
     setDb((o) => ({
@@ -4848,7 +4855,7 @@ export default function Home() {
           !fusao.prazo?.trim() ? "Prazo" : "",
         ].filter(Boolean);
         if (faltantes.length) {
-          window.alert(
+          void avisar(
             `Antes de colocar esta Não Conformidade em tratamento, preencha: ${faltantes.join(", ")}.`
           );
           return;
@@ -4870,7 +4877,7 @@ export default function Home() {
     const texto = (textoOverride ?? textoAcompanhamento[ncId] ?? "").trim();
 
     if (!texto) {
-      window.alert("Digite uma atualização antes de registrar.");
+      void avisar("Digite uma atualização antes de registrar.");
       return;
     }
 
@@ -4888,7 +4895,7 @@ export default function Home() {
       ].filter(Boolean);
 
       if (faltantes.length) {
-        window.alert(
+        void avisar(
           `Antes de colocar esta Não Conformidade em tratamento, preencha: ${faltantes.join(", ")}.`
         );
         return;
@@ -4928,7 +4935,7 @@ export default function Home() {
       ].filter(Boolean);
 
       if (faltantes.length) {
-        window.alert(
+        void avisar(
           `Não é possível concluir esta Não Conformidade. Preencha/vincule: ${faltantes.join(", ")}.`
         );
         return;
@@ -4993,10 +5000,11 @@ export default function Home() {
       );
     if (
       pendentesIA > 0 &&
-      !window.confirm(
+      !(await confirmar(
         `Esta visita possui ${pendentesIA} sugestão(ões) de análise fotográfica por IA ainda sem revisão.\n\n` +
-        "Elas não serão apresentadas como conclusão técnica no relatório. Deseja concluir mesmo assim?"
-      )
+        "Elas não serão apresentadas como conclusão técnica no relatório. Deseja concluir mesmo assim?",
+        { titulo: "Concluir visita", confirmarRotulo: "Concluir" }
+      ))
     ) {
       return;
     }
@@ -5054,7 +5062,7 @@ export default function Home() {
     await salvarEstadoImediato(novo);
   }
 
-  function excluir(id: string) {
+  async function excluir(id: string) {
     const visita = db.visitas.find((v) => v.id === id);
     if (!visita) return;
     if (!exigirPermissao("visitas.concluir", visita.empresaId)) return;
@@ -5073,7 +5081,7 @@ export default function Home() {
       evidenciasLigadas > 0 ||
       visita.status === "Concluída"
     ) {
-      window.alert(
+      void avisar(
         "Esta visita já possui registros e foi protegida contra exclusão acidental.\n\n" +
         `Respostas: ${respostas}\nNão conformidades: ${ncsLigadas}\nEvidências: ${evidenciasLigadas}\n\n` +
         "Nesta versão, somente visitas vazias podem ser excluídas."
@@ -5081,8 +5089,9 @@ export default function Home() {
       return;
     }
 
-    const digitado = window.prompt(
-      'Esta visita ainda está vazia. Para excluí-la definitivamente, digite EXCLUIR:'
+    const digitado = await perguntar(
+      "Esta visita ainda está vazia. Para excluí-la definitivamente, digite EXCLUIR:",
+      { titulo: "Excluir visita", confirmarRotulo: "Excluir", perigoso: true }
     );
 
     if (digitado !== "EXCLUIR") return;
@@ -5131,7 +5140,7 @@ export default function Home() {
       setDb(novo);
       return true;
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : "Não foi possível preparar o usuário.");
+      void avisar(error instanceof Error ? error.message : "Não foi possível preparar o usuário.");
       return false;
     }
   }
@@ -5150,7 +5159,7 @@ export default function Home() {
     if (!alvo) return false;
     const motivo = motivoParaNaoExcluir(alvo, contextoExclusaoUsuario());
     if (motivo) {
-      window.alert(motivo);
+      void avisar(motivo);
       return false;
     }
     const agora = new Date().toISOString();
@@ -5183,12 +5192,12 @@ export default function Home() {
     const alvo = db.usuarios.find((usuario) => usuario.id === usuarioId);
     if (!alvo) return false;
     if (dados.perfil !== "Administrador" && dados.empresaIds.length === 0) {
-      window.alert("Escolha pelo menos uma empresa para este perfil.");
+      void avisar("Escolha pelo menos uma empresa para este perfil.");
       return false;
     }
     const outrosAdministradores = db.usuarios.filter((usuario) => usuario.id !== alvo.id && usuario.perfil === "Administrador" && usuario.status !== "Suspenso");
     if (alvo.perfil === "Administrador" && dados.perfil !== "Administrador" && outrosAdministradores.length === 0) {
-      window.alert("Não é possível tirar o perfil do único Administrador.");
+      void avisar("Não é possível tirar o perfil do único Administrador.");
       return false;
     }
     const agora = new Date().toISOString();
@@ -5259,7 +5268,7 @@ export default function Home() {
       setDb(novo);
       return true;
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : "Não foi possível alterar este usuário.");
+      void avisar(error instanceof Error ? error.message : "Não foi possível alterar este usuário.");
       return false;
     }
   }
@@ -5268,7 +5277,7 @@ export default function Home() {
     if (!exigirPermissao("usuarios.gerenciar")) return false;
     const usuario = db.usuarios.find((item) => item.id === usuarioId);
     if (!usuario) {
-      window.alert("Usuário preparado não encontrado.");
+      void avisar("Usuário preparado não encontrado.");
       return false;
     }
 
@@ -5299,23 +5308,24 @@ export default function Home() {
         ...atual,
         registrosAuditoria: [...atual.registrosAuditoria, registro],
       }));
-      window.alert(result.message || "Acesso enviado com sucesso.");
+      void avisar(result.message || "Acesso enviado com sucesso.");
       return true;
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : "Não foi possível enviar o acesso.");
+      void avisar(error instanceof Error ? error.message : "Não foi possível enviar o acesso.");
       return false;
     }
   }
 
-  function confirmarSaidaDaEdicao() {
+  async function confirmarSaidaDaEdicao() {
     if (!empresaTemAlteracoes) return true;
-    return window.confirm(
-      "Há alterações ainda não salvas nesta área. Deseja sair e descartá-las?"
+    return confirmar(
+      "Há alterações ainda não salvas nesta área. Deseja sair e descartá-las?",
+      { titulo: "Alterações não salvas", confirmarRotulo: "Sair e descartar", cancelarRotulo: "Continuar editando", perigoso: true }
     );
   }
 
-  function navegarPrincipal(destino: View) {
-    if (!confirmarSaidaDaEdicao()) return;
+  async function navegarPrincipal(destino: View) {
+    if (!(await confirmarSaidaDaEdicao())) return;
     if (showEmpresaForm) {
       setShowEmpresaForm(false);
       setEditingEmpresaId(null);
@@ -5324,10 +5334,10 @@ export default function Home() {
     setView(destino);
   }
 
-  function abrirSecaoEmpresaPeloMenu(secao: EmpresaSecao) {
+  async function abrirSecaoEmpresaPeloMenu(secao: EmpresaSecao) {
     if (!atual || !permitido("empresas.editar", atual.id)) return;
     if (showEmpresaForm && editingEmpresaId === atual.id) {
-      if (!confirmarSaidaDaEdicao()) return;
+      if (!(await confirmarSaidaDaEdicao())) return;
       setEmpresaSecao(secao);
       setMsg("");
       setView("empresas");
@@ -5629,7 +5639,7 @@ export default function Home() {
           { id: "texto", rotulo: "Texto", onClick: () => { setTamanhoTextoRascunho(tamanhoTexto); setPainelTamanhoTextoAberto(true); } },
           { id: "sincronizar", rotulo: "Sincronizar", onClick: () => { setMenuMaisAberto(false); void atualizarNuvemManualmente(); } },
           { id: "modo", rotulo: "Modo de tela", onClick: () => { setMenuMaisAberto(false); setView("modotela"); } },
-          { id: "sobre", rotulo: "Sobre", onClick: () => window.alert(`${BRAND.name}\n${BRAND.subtitle}`) },
+          { id: "sobre", rotulo: "Sobre", onClick: () => void avisar(`${BRAND.name}\n${BRAND.subtitle}`, { titulo: "Sobre" }) },
           { id: "sair", rotulo: "Sair", desabilitado: saindo, onClick: () => { setMenuMaisAberto(false); void sairDoSistema(); } },
         ]}
         sincronizacao={{
@@ -6135,7 +6145,7 @@ export default function Home() {
               temAlteracoes={empresaTemAlteracoes}
               mensagem={msg}
               onSalvar={salvarEmpresa}
-              onVoltar={() => { if (confirmarSaidaDaEdicao()) setEmpresaSecao(null); }}
+              onVoltar={async () => { if (await confirmarSaidaDaEdicao()) setEmpresaSecao(null); }}
             />
           ) : (
           <section className="rounded-2xl bg-white p-5 shadow-sm">
@@ -6170,14 +6180,14 @@ export default function Home() {
                 </p>
               </div>
               <button
-                onClick={() => {
+                onClick={async () => {
                   if (editingEmpresaId && empresaSecao !== null) {
-                    if (!confirmarSaidaDaEdicao()) return;
+                    if (!(await confirmarSaidaDaEdicao())) return;
                     setEmpresaSecao(null);
                     setMsg("");
                     return;
                   }
-                  if (!confirmarSaidaDaEdicao()) return;
+                  if (!(await confirmarSaidaDaEdicao())) return;
                   setShowEmpresaForm(false);
                   setEditingEmpresaId(null);
                   setEmpresaSecao(null);

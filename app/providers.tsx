@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { NeonAuthUIProvider } from "@neondatabase/auth/react/ui";
 import { authClient } from "@/lib/auth/client";
+import DialogHost from "@/components/DialogHost";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -18,6 +19,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       )}
     >
       {children}
+      <DialogHost />
     </NeonAuthUIProvider>
   );
 }

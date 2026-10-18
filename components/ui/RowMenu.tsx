@@ -1,5 +1,6 @@
 "use client";
 
+import { confirmar } from "@/lib/dialogos";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -94,10 +95,10 @@ export function RowMenu({ itens, rotulo = "Mais ações" }: { itens: ItemMenu[];
               role="menuitem"
               disabled={item.desabilitado}
               className={`ui-menu-item${item.perigo ? " is-danger" : ""}`}
-              onClick={(evento) => {
+              onClick={async (evento) => {
                 evento.stopPropagation();
                 setAberto(false);
-                if (item.confirmar && !window.confirm(item.confirmar)) return;
+                if (item.confirmar && !(await confirmar(item.confirmar, { confirmarRotulo: item.rotulo, perigoso: item.perigo }))) return;
                 item.onClick();
               }}
             >

@@ -1,5 +1,6 @@
 "use client";
 
+import { confirmar } from "@/lib/dialogos";
 import { useEffect, useMemo, useRef, useState } from "react";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
 import { NavIcon } from "@/components/NavIcons";
@@ -791,10 +792,10 @@ export function LoteJanela({
   const semValores = !responsavel.trim() && !prazo;
   const prazoPassado = Boolean(prazo && prazo < hoje);
 
-  function aplicar() {
+  async function aplicar() {
     setTentou(true);
     if (marcadas.length === 0 || semValores || prazoPassado) return;
-    if (!window.confirm(`Aplicar a ${marcadas.length} ${marcadas.length === 1 ? "não conformidade" : "não conformidades"}?`)) return;
+    if (!(await confirmar(`Aplicar a ${marcadas.length} ${marcadas.length === 1 ? "não conformidade" : "não conformidades"}?`, { titulo: "Aplicar a várias", confirmarRotulo: "Aplicar" }))) return;
     onAplicar(marcadas, { responsavel, prazo });
   }
 

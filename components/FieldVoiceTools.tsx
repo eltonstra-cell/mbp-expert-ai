@@ -1,5 +1,6 @@
 "use client";
 
+import { avisar } from "@/lib/dialogos";
 import { useEffect, useRef, useState } from "react";
 import { useIaPermitida } from "@/components/IaPermissionContext";
 import RevisaoTranscricao from "@/components/RevisaoTranscricao";
@@ -75,7 +76,7 @@ export default function FieldVoiceTools({
     }
 
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
-      window.alert("Este dispositivo não oferece gravação de áudio compatível.");
+      void avisar("Este dispositivo não oferece gravação de áudio compatível.");
       return;
     }
 
@@ -97,7 +98,7 @@ export default function FieldVoiceTools({
         setGravando(false);
         setTranscrevendo(false);
         stream.getTracks().forEach((track) => track.stop());
-        window.alert("Não foi possível gravar o áudio.");
+        void avisar("Não foi possível gravar o áudio.");
       };
 
       recorder.onstop = async () => {
@@ -147,7 +148,7 @@ export default function FieldVoiceTools({
           // O texto ouvido só entra no campo depois da revisão.
           setProposta(texto);
         } catch (error) {
-          window.alert(error instanceof Error ? error.message : "Não foi possível transcrever o áudio.");
+          void avisar(error instanceof Error ? error.message : "Não foi possível transcrever o áudio.");
         } finally {
           setTranscrevendo(false);
           chunksRef.current = [];
@@ -160,18 +161,18 @@ export default function FieldVoiceTools({
       setGravando(true);
     } catch (error) {
       setGravando(false);
-      window.alert("Não consegui acessar o microfone. Verifique a permissão do navegador.");
+      void avisar("Não consegui acessar o microfone. Verifique a permissão do navegador.");
     }
   }
 
   async function melhorar() {
     const texto = (value || "").trim();
     if (!texto) {
-      window.alert("Primeiro escreva ou dite algum texto.");
+      void avisar("Primeiro escreva ou dite algum texto.");
       return;
     }
     if (!navigator.onLine) {
-      window.alert("A melhoria de texto com IA precisa de internet.");
+      void avisar("A melhoria de texto com IA precisa de internet.");
       return;
     }
 
@@ -189,7 +190,7 @@ export default function FieldVoiceTools({
       if (!melhorado) throw new Error("A IA não retornou um texto utilizável.");
       onChange(melhorado);
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : "Não foi possível melhorar o texto.");
+      void avisar(error instanceof Error ? error.message : "Não foi possível melhorar o texto.");
     } finally {
       setMelhorando(false);
     }

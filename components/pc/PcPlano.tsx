@@ -1,5 +1,6 @@
 "use client";
 
+import { confirmar } from "@/lib/dialogos";
 import { useState } from "react";
 import { Pill, type Tom } from "@/components/ui/Pill";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
@@ -86,9 +87,9 @@ export default function PcPlano({
     setSelecionadas((atual) => (atual.includes(id) ? atual.filter((item) => item !== id) : [...atual, id]));
   }
 
-  function aplicar() {
+  async function aplicar() {
     if (ativas.length === 0 || semValores) return;
-    if (!window.confirm(`Aplicar a ${ativas.length} ${ativas.length === 1 ? "não conformidade" : "não conformidades"}?`)) return;
+    if (!(await confirmar(`Aplicar a ${ativas.length} ${ativas.length === 1 ? "não conformidade" : "não conformidades"}?`, { titulo: "Aplicar a várias", confirmarRotulo: "Aplicar" }))) return;
     onAplicar(ativas, { responsavel: respLote, prazo: prazoLote });
     setRespLote("");
     setPrazoLote("");
