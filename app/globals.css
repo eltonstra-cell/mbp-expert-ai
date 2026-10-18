@@ -2777,3 +2777,15 @@ html[data-modo="campo"] .pc-choice-name{white-space:normal;line-height:1.15}
 /* Janelas do app (avisar / confirmar / perguntar) */
 .dialogo-app{z-index:200}
 .dialogo-texto{margin:0;white-space:pre-line;color:var(--ink);line-height:1.4}
+
+/* ===== Pacote 5 · Tema A: checklist no celular ===== */
+.chk-foco-botoes{grid-template-columns:repeat(3,minmax(0,1fr))}
+html[data-modo="campo"] .chk-resp{height:auto;min-height:48px;padding:4px 6px;gap:4px;font-size:.84rem;line-height:1.1;white-space:normal;text-align:center;overflow-wrap:anywhere}
+html[data-modo="campo"] .chk-resp>span:first-child{flex:none;font-size:.8rem}
+html[data-modo="campo"] .chk-resp>span:last-child{min-width:0}
+html[data-modo="campo"] .chk-foco-amb-nome{display:-webkit-box;min-width:0;flex:1;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:2;font-size:1.05rem;font-weight:500;line-height:1.2}
+html[data-modo="campo"] .chk-foco-amb-pos{flex:none;font-size:1.2rem}
+.chk-foco-apoio{position:relative;flex:none;gap:4px;overflow:visible}
+.chk-apoio-linha{position:relative;border:1px solid var(--border);border-radius:12px;background:#fff}
+.chk-apoio-toggle{display:flex;width:100%;min-height:38px;align-items:center;justify-content:space-between;gap:8px;padding:0 12px;border:0;background:transparent;font-size:.9rem;color:var(--ink);cursor:pointer}
+.chk-apoio-linha.is-aberta .chk-apoio-corpo{position:absolute;right:-1px;bottom:calc(100% + 6px);left:-1px;z-index:30;margin:0;padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:#fff;box-shadow:0 8px 24px rgba(18,32,43,.18);font-size:.86rem;line-height:1.35;color:var(--ink)}

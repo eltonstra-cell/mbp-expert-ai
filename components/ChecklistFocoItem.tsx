@@ -35,6 +35,20 @@ type Props = {
 const NOME_GRAVIDADE: Record<string, string> = { Crítica: "Crítica", Importante: "Importante", Rotina: "Leve" };
 const CLASSE_GRAVIDADE: Record<string, string> = { Crítica: "nc", Importante: "amber", Rotina: "leve" };
 
+// Linha recolhível: o texto abre sobre o checklist, sem criar rolagem nem ficar atrás do rodapé.
+function LinhaDeApoio({ titulo, texto }: { titulo: string; texto: string }) {
+  const [aberta, setAberta] = useState(false);
+  return (
+    <div className={`chk-apoio-linha${aberta ? " is-aberta" : ""}`}>
+      <button type="button" className="chk-apoio-toggle" aria-expanded={aberta} onClick={() => setAberta((valor) => !valor)}>
+        <span>{titulo}</span>
+        <span aria-hidden="true">{aberta ? "▴" : "▾"}</span>
+      </button>
+      {aberta && <p className="chk-apoio-corpo">{texto}</p>}
+    </div>
+  );
+}
+
 // Um item por vez, com botões de resposta, gravidade (só se não conforme) e observação.
 export default function ChecklistFocoItem({
   item,
@@ -182,19 +196,9 @@ export default function ChecklistFocoItem({
       </div>
 
       {mostrarApoio && (item.orientacao || item.referencia) && (
-        <div className="chk-foco-apoio">
-          {item.orientacao && (
-            <section className="chk-foco-apoio-card chk-foco-apoio-card--azul">
-              <h3 className="chk-apoio-titulo">O que verificar</h3>
-              <p className="chk-apoio-texto">{item.orientacao}</p>
-            </section>
-          )}
-          {item.referencia && (
-            <section className="chk-foco-apoio-card chk-foco-apoio-card--ambar">
-              <h3 className="chk-apoio-titulo">Base legal</h3>
-              <p className="chk-apoio-texto">{item.referencia}</p>
-            </section>
-          )}
+        <div className="chk-foco-apoio" key={item.id}>
+          {item.orientacao && <LinhaDeApoio titulo="O que verificar" texto={item.orientacao} />}
+          {item.referencia && <LinhaDeApoio titulo="Base legal" texto={item.referencia} />}
         </div>
       )}
 
