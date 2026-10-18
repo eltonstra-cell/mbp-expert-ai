@@ -2789,3 +2789,11 @@ html[data-modo="campo"] .chk-foco-amb-pos{flex:none;font-size:1.2rem}
 .chk-apoio-linha{position:relative;border:1px solid var(--border);border-radius:12px;background:#fff}
 .chk-apoio-toggle{display:flex;width:100%;min-height:38px;align-items:center;justify-content:space-between;gap:8px;padding:0 12px;border:0;background:transparent;font-size:.9rem;color:var(--ink);cursor:pointer}
 .chk-apoio-linha.is-aberta .chk-apoio-corpo{position:absolute;right:-1px;bottom:calc(100% + 6px);left:-1px;z-index:30;margin:0;padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:#fff;box-shadow:0 8px 24px rgba(18,32,43,.18);font-size:.86rem;line-height:1.35;color:var(--ink)}
+
+/* ===== Pacote 5 · Tema B: trocar empresa no Campo ===== */
+.campo-head-troca{display:block;min-width:0;flex:1;padding:0;border:0;background:transparent;text-align:left;cursor:pointer}
+.campo-head-troca:disabled{cursor:default}
+.campo-head-troca .campo-head-sub::after{content:" ▾";color:var(--ink-2)}
+.campo-empresa-opcao{display:flex;width:100%;min-height:48px;align-items:center;justify-content:space-between;gap:8px}
+.campo-empresa-opcao.is-ativa{border-color:var(--brand);background:#FEF6E6}
+.campo-empresa-ativa{flex:none;padding:2px 10px;border-radius:999px;background:#fff;font-size:.78rem;color:var(--ink)}

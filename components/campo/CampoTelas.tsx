@@ -24,14 +24,14 @@ type Chrome = {
 };
 
 // Cabeçalho e barra de baixo do modo Campo (celular): 4 telas + Registrar no centro.
-export function CampoCabecalho({ empresa, sincronizacao, menuModo }: Pick<Chrome, "empresa" | "sincronizacao" | "menuModo">) {
+export function CampoCabecalho({ empresa, sincronizacao, menuModo, onTrocarEmpresa }: Pick<Chrome, "empresa" | "sincronizacao" | "menuModo"> & { onTrocarEmpresa?: () => void }) {
   return (
     <header className="campo-head">
       <LogoSymbol size={34} />
-      <div className="campo-head-text">
+      <button type="button" className="campo-head-text campo-head-troca" aria-label="Trocar empresa" onClick={onTrocarEmpresa} disabled={!onTrocarEmpresa}>
         <div className="campo-head-title">Ponto Certo</div>
         <div className="campo-head-sub">{empresa || "Nenhuma empresa ativa"}</div>
-      </div>
+      </button>
       <button type="button" className={`campo-sync is-${sincronizacao.estado}`} aria-label={sincronizacao.rotulo} title={sincronizacao.rotulo} onClick={sincronizacao.onClick}>
         <span aria-hidden="true" />
       </button>

@@ -37,6 +37,8 @@ import PcModoTela from "@/components/pc/PcModoTela";
 import ChecklistFocoItem from "@/components/ChecklistFocoItem";
 import { trocaDeGravidade } from "@/lib/checklistUi";
 import { avisar, confirmar, perguntar } from "@/lib/dialogos";
+import { opcoesDeEmpresa } from "@/lib/trocarEmpresa";
+import TrocarEmpresaPainel from "@/components/campo/TrocarEmpresaPainel";
 import { comprimirFoto as comprimirFotoParaEnvio, dependenciasDoNavegador } from "@/lib/fotoCompressao";
 import PcChecklist, { type ApoioDoItem } from "@/components/pc/PcChecklist";
 import RevisaoTranscricao from "@/components/RevisaoTranscricao";
@@ -2001,6 +2003,11 @@ export default function Home() {
         podeAcessarEmpresa(usuarioDaSessao, empresa.id)
       ),
     [db.empresas, usuarioDaSessao]
+  );
+  const [trocarEmpresaAberto, setTrocarEmpresaAberto] = useState(false);
+  const opcoesTrocaDeEmpresa = useMemo(
+    () => opcoesDeEmpresa(Object.values(db.empresas), usuarioDaSessao, db.empresaAtualId),
+    [db.empresas, usuarioDaSessao, db.empresaAtualId]
   );
   const empresasFiltradas = useMemo(() => {
     const termo = buscaEmpresas.trim().toLocaleLowerCase("pt-BR");
@@ -5877,6 +5884,7 @@ export default function Home() {
                 onClick: () => void atualizarNuvemManualmente(),
               }}
               menuModo={itensMenuModo}
+              onTrocarEmpresa={() => setTrocarEmpresaAberto(true)}
             />
             <CampoBarra
               tela={view === "inicio" ? "inicio" : view === "checklist" ? "checklist" : view === "correcoes" ? "correcoes" : view === "campomais" ? "mais" : null}
@@ -5960,6 +5968,20 @@ export default function Home() {
           )}
         </nav>
 
+        {modo === "campo" && trocarEmpresaAberto && (
+          <TrocarEmpresaPainel
+            opcoes={opcoesTrocaDeEmpresa}
+            onFechar={() => setTrocarEmpresaAberto(false)}
+            onEscolher={(id) => {
+              setTrocarEmpresaAberto(false);
+              if (id !== db.empresaAtualId) {
+                setDb((o) => ({ ...o, empresaAtualId: id }));
+                setVisitaAtualId(null);
+              }
+              setView("inicio");
+            }}
+          />
+        )}
         {modo === "campo" && view === "campomais" ? (
           <CampoMais
             daVisita={
@@ -5975,6 +5997,7 @@ export default function Home() {
             }
             gerais={[
               { id: "visitas", rotulo: "Visitas", icone: "visitas", tom: "indigo", onClick: () => irParaMenu("visitas") },
+              { id: "trocar-empresa", rotulo: "Trocar empresa", icone: "empresas", tom: "turquesa", onClick: () => setTrocarEmpresaAberto(true) },
               { id: "ajuda", rotulo: "Ajuda", icone: "ajuda", tom: "laranja", onClick: () => irParaMenu("ajuda") },
               { id: "modo", rotulo: "Modo de tela", icone: "modo", tom: "roxo", onClick: () => setView("modotela") },
               { id: "sincronizar", rotulo: "Sincronizar", icone: "sincronizar", tom: "verde", onClick: () => void atualizarNuvemManualmente() },
