@@ -22,10 +22,7 @@ import { maisRecentesPrimeiro, visitaPadraoParaRegistro } from "@/lib/registerTa
 import { listaSemArquivadas, marcarArquivada } from "@/lib/menuActions";
 import { adicionarSugestaoPop, criarRascunhosFaltantes, popsDaVisita } from "@/lib/pops";
 import UpdateNotice from "@/components/UpdateNotice";
-import PcAcompanhamento from "@/components/pc/PcAcompanhamento";
-import PcPlano from "@/components/pc/PcPlano";
 import { alteracoesEmLote, contarNcsPorGravidade, resumoDoPlano } from "@/lib/actionPlan";
-import PcNcs from "@/components/pc/PcNcs";
 import PcEvidencias from "@/components/pc/PcEvidencias";
 import PcAmbientes from "@/components/pc/PcAmbientes";
 import PcCentral, { type PassoCentral } from "@/components/pc/PcCentral";
@@ -6495,729 +6492,118 @@ export default function Home() {
             </button>
           </section>
         ) : view === "ambientes" && visitaAtual ? (
-          telaEmLista ? (
-            <PcAmbientes
-              empresa={nomeParaExibir(empresaVisita)}
-              data={fdata(visitaAtual.data)}
-              sugeridos={ambientesSugeridosVisita}
-              selecionados={ambientesSelecionados}
-              opcoesModelo={[...OPCOES_MODELO_QUESTIONARIO]}
-              modeloDoAmbiente={(nome) => modelosAmbientesSelecionados[nome] || obterModeloQuestionarioParaAmbiente(nome)}
-              personalizado={ambientePersonalizado}
-              onPersonalizado={setAmbientePersonalizado}
-              statusSalvo={statusAmbientes}
-              onToggle={alternarAmbientePc}
-              ocultos={resumoOcultos(visitaAtual)}
-              onMostrar={mostrarAmbienteDaVisita}
-              onExcluirOculto={excluirAmbienteOcultoDaVisita}
-              onDetalhado={aplicarModeloDetalhadoRestaurante}
-              onAdicionar={adicionarPersonalizado}
-              onModelo={atualizarModeloQuestionarioAmbiente}
-              onVoltar={() => setView("visita")}
-              onIniciar={() => {
-                if (JSON.stringify(visitaAtual.ambientes || []) !== JSON.stringify(ambientesSelecionados)) {
-                  atualizarAmbientesDaVisita(ambientesSelecionados);
-                }
-                setIniciarChecklistPendente(true);
-              }}
-            />
-          ) : (
-          <section className="ambientes-screen space-y-4">
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <div className="ambientes-top-row flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                <div>
-                  <div className="text-xs font-extrabold uppercase tracking-wider text-[color:var(--brand)]">
-                    Ambientes
-                  </div>
-                  <h1 className="mt-1 text-2xl font-extrabold">
-                    Defina os setores desta visita
-                  </h1>
-                  <p className="text-sm text-slate-500">
-                    {nomeSemNumerosNoInicio(empresaVisita?.nomeFantasia || "")} • {fdata(visitaAtual.data)}
-                  </p>
-                </div>
-                <button
-                  onClick={() => setView("visita")}
-                  className="rounded-xl bg-[var(--na-bg)] px-3 py-2 text-sm font-bold text-[color:var(--ink)]"
-                >
-                  Voltar à Central
-                </button>
-              </div>
-
-              <div className="mt-4 rounded-xl bg-[var(--brand-soft)] p-3 text-sm text-[color:var(--ink)]">
-                Selecione apenas os ambientes que realmente serão avaliados. O
-                checklist será montado a partir desta seleção.
-              </div>
-            </div>
-
-            <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
-              <div className="rounded-2xl bg-white p-5 shadow-sm">
-                <div className="ambientes-list-head flex items-center justify-between gap-3">
-                  <div>
-                    <h2 className="text-xl font-extrabold">
-                      Ambientes sugeridos
-                    </h2>
-                    <p className="text-sm text-slate-500">
-                      Clique para incluir ou remover da visita.
-                    </p>
-                  </div>
-                  <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold">
-                    {ambientesSelecionados.length} selecionados
-                  </div>
-                </div>
-
-                <div className="mt-4 grid gap-3 md:grid-cols-2">
-                  {ambientesSugeridosVisita.map((nome) => {
-                    const ativo = ambientesSelecionados.includes(nome);
-                    return (
-                      <button
-                        key={nome}
-                        onClick={() => toggleAmbiente(nome)}
-                        className={`ambiente-choice flex min-w-0 items-center justify-between rounded-xl border p-4 text-left font-extrabold transition ${
-                          ativo
-                            ? "border-[var(--brand)] bg-[var(--brand-soft)] text-[color:var(--ink)]"
-                            : "border-slate-200 bg-white"
-                        }`}
-                      >
-                        <span className="min-w-0 flex-1 break-words pr-2">{nomeDeExibicaoDoAmbiente(nome)}</span>
-                        <span className="shrink-0">{ativo ? "✓" : "+"}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div className="mt-5 rounded-xl border border-blue-200 bg-[var(--brand-soft)] p-4">
-                  <div className="font-extrabold text-[color:var(--ink)]">Lista detalhada do restaurante</div>
-                  <p className="mt-1 text-xs text-slate-600">
-                    Aplica os 18 ambientes enviados pela empresa e inclui a Central de Gás como item 19. Os nomes reais são preservados e cada um recebe o questionário correspondente.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={aplicarModeloDetalhadoRestaurante}
-                    className="mt-3 w-full rounded-xl bg-[var(--brand)] px-4 py-3 text-sm font-medium text-white"
-                  >
-                    Aplicar lista detalhada de 19 ambientes
-                  </button>
-                </div>
-
-                <div className="mt-6 border-t pt-5">
-                  <h3 className="font-extrabold">
-                    Adicionar ambiente personalizado
-                  </h3>
-                  <div className="ambientes-custom-row mt-2 flex gap-2">
-                    <input
-                      className="w-full rounded-xl border p-3"
-                      placeholder="Ex.: Padaria, Açougue, Sushi bar..."
-                      value={ambientePersonalizado}
-                      onChange={(e) =>
-                        setAmbientePersonalizado(e.target.value)
-                      }
-                    />
-                    <button
-                      onClick={adicionarPersonalizado}
-                      className="rounded-xl bg-[var(--brand)] px-4 font-medium text-white"
-                    >
-                      Adicionar
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-2xl bg-white p-5 shadow-sm">
-                <div className="ambientes-route-head flex items-center justify-between gap-2">
-                  <h2 className="text-xl font-extrabold">Roteiro da visita</h2>
-                  <span className={`text-xs font-bold ${statusAmbientes ? "text-emerald-700" : "text-slate-400"}`}>
-                    {statusAmbientes || "salvamento automático"}
-                  </span>
-                </div>
-
-                <div className="mt-4 space-y-2">
-                  {ambientesSelecionados.length === 0 ? (
-                    <div className="rounded-xl border border-dashed p-5 text-center text-sm text-slate-500">
-                      Nenhum ambiente selecionado ainda.
-                    </div>
-                  ) : (
-                    ambientesSelecionados.map((nome, idx) => (
-                      <div
-                        key={nome}
-                        className="rounded-xl bg-slate-50 p-3"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="text-xs font-extrabold text-slate-400">
-                              {String(idx + 1).padStart(2, "0")}
-                            </div>
-                            <div className="font-extrabold leading-snug">{nomeDeExibicaoDoAmbiente(nome)}</div>
-                          </div>
-                          <button
-                            onClick={() => toggleAmbiente(nome)}
-                            className="shrink-0 rounded-lg bg-[var(--nc-bg)] px-3 py-2 text-xs font-bold text-[color:var(--ink)]"
-                          >
-                            Remover
-                          </button>
-                        </div>
-                        <label className="mt-3 block text-[10px] font-bold uppercase tracking-wide text-slate-500">
-                          Questionário baseado em
-                        </label>
-                        <select
-                          value={modelosAmbientesSelecionados[nome] || obterModeloQuestionarioParaAmbiente(nome)}
-                          onChange={(event) => atualizarModeloQuestionarioAmbiente(nome, event.target.value)}
-                          className="mt-1 min-w-0 w-full rounded-lg border border-slate-200 bg-white p-2 text-xs"
-                        >
-                          {OPCOES_MODELO_QUESTIONARIO.map((modelo) => (
-                            <option key={modelo} value={modelo}>{modelo}</option>
-                          ))}
-                        </select>
-                      </div>
-                    ))
-                  )}
-                </div>
-
-                <button
-                  onClick={salvarAmbientes}
-                  className="mt-5 w-full rounded-xl bg-[var(--brand)] p-3 font-medium text-white"
-                >
-                  Concluir e voltar à Central
-                </button>
-              </div>
-            </div>
-          </section>)
+          <PcAmbientes
+            empresa={nomeParaExibir(empresaVisita)}
+            data={fdata(visitaAtual.data)}
+            sugeridos={ambientesSugeridosVisita}
+            selecionados={ambientesSelecionados}
+            opcoesModelo={[...OPCOES_MODELO_QUESTIONARIO]}
+            modeloDoAmbiente={(nome) => modelosAmbientesSelecionados[nome] || obterModeloQuestionarioParaAmbiente(nome)}
+            personalizado={ambientePersonalizado}
+            onPersonalizado={setAmbientePersonalizado}
+            statusSalvo={statusAmbientes}
+            onToggle={alternarAmbientePc}
+            ocultos={resumoOcultos(visitaAtual)}
+            onMostrar={mostrarAmbienteDaVisita}
+            onExcluirOculto={excluirAmbienteOcultoDaVisita}
+            onDetalhado={aplicarModeloDetalhadoRestaurante}
+            onAdicionar={adicionarPersonalizado}
+            onModelo={atualizarModeloQuestionarioAmbiente}
+            onVoltar={() => setView("visita")}
+            onIniciar={() => {
+              if (JSON.stringify(visitaAtual.ambientes || []) !== JSON.stringify(ambientesSelecionados)) {
+                atualizarAmbientesDaVisita(ambientesSelecionados);
+              }
+              setIniciarChecklistPendente(true);
+            }}
+          />
         ) : view === "evidencias" && visitaAtual ? (
-          telaEmLista ? (
-            <PcEvidencias
-              empresa={nomeParaExibir(empresaVisita)}
-              data={fdata(visitaAtual.data)}
-              totais={{ evidencias: evidenciasVisita.length, fotos: fotosVisita, audios: audiosVisita, revisar: analisesIAPendentes }}
-              podeAdicionar={permitido("evidencias.adicionar", visitaAtual.empresaId)}
-              onTirarFoto={() => {
-                if (evidenciaChecklistItemId) setUltimoItemChecklistId(evidenciaChecklistItemId);
-                setRegistrarComCamera(true);
-                setRegistrarAberto(true);
-              }}
-              vinculo={(() => {
-                const item = checklistAtual.find((registro) => registro.id === evidenciaChecklistItemId);
-                const posicao = item ? checklistAtual.filter((registro) => registro.ambiente === item.ambiente).findIndex((registro) => registro.id === item.id) + 1 : 0;
-                return {
-                  ambiente: evidenciaAmbiente,
-                  temItem: Boolean(item),
-                  item: item ? `Item ${posicao} · ${item.titulo}` : "",
-                };
-              })()}
-              ambientes={visitaAtual.ambientes || []}
-              itens={checklistAtual
-                .filter((item) => !evidenciaAmbiente || item.ambiente === evidenciaAmbiente)
-                .map((item) => ({ id: item.id, rotulo: `${item.categoria} — ${item.titulo}` }))}
-              ncs={ncsVisita.map((nc, idx) => ({ id: nc.id, rotulo: `NC ${idx + 1} — ${nomeDeExibicaoDoAmbiente(nc.ambiente)} — ${nc.titulo}` }))}
-              ambienteSel={evidenciaAmbiente}
-              itemSel={evidenciaChecklistItemId}
-              ncSel={evidenciaNcId}
-              onAmbiente={(valor) => { setEvidenciaAmbiente(valor); setEvidenciaChecklistItemId(""); }}
-              onItem={(itemId) => {
-                setEvidenciaChecklistItemId(itemId);
-                const item = checklistAtual.find((registro) => registro.id === itemId);
-                if (item) {
-                  setEvidenciaAmbiente(item.ambiente);
-                  const ncDoItem = ncsVisita.find((nc) => nc.checklistItemId === item.id);
-                  if (ncDoItem) setEvidenciaNcId(ncDoItem.id);
-                }
-              }}
-              onNc={setEvidenciaNcId}
-              descricao={evidenciaDescricao}
-              onDescricao={setEvidenciaDescricao}
-              mensagem={evidenciaMsg}
-              onFoto={async (arquivo) => {
-                if (!arquivo) {
-                  setEvidenciaMsg("Nenhuma foto foi recebida da câmera.");
-                  return;
-                }
-                await adicionarEvidencia(arquivo, "Foto");
-              }}
-              onAudio={(arquivo) => void adicionarEvidencia(arquivo, "Áudio")}
-              onVoltar={() => setView("visita")}
-              evidencias={evidenciasVisita.map((ev) => {
-                const analises = ev.analisesIA || [];
-                const ultima = analises.length ? analises[analises.length - 1] : undefined;
-                return {
-                  id: ev.id,
-                  tipo: ev.tipo,
-                  nome: ev.nomeArquivo,
-                  descricao: ev.descricao || "",
-                  ambiente: ev.ambiente || "",
-                  quando: new Date(ev.criadoEm).toLocaleString("pt-BR"),
-                  url: urlEvidencia(ev),
-                  possivelNc: ultima?.situacao === "Possível não conformidade",
-                  analise: ultima
-                    ? {
-                        id: ultima.id,
-                        status: ultima.status,
-                        situacao: ultima.situacao || ultima.classificacao || "",
-                        resumo: ultima.resumo,
-                        acao: ultima.achados[0]?.acaoSugerida || "",
-                        textoRevisado: ultima.textoRevisado,
-                        revisadoPor: ultima.revisadaPor || "",
-                        podeRevisar: permitido("ia.analisar", ev.empresaId),
-                      }
-                    : null,
-                  podeAnalisar: ev.tipo === "Foto" && permitido("ia.analisar", ev.empresaId),
-                  analisando: analiseIAEmAndamentoId === ev.id,
-                  bloqueioIA: analiseIAEmAndamentoId !== null,
-                  mensagemIA: analiseIAMensagens[ev.id] || "",
-                  podeExcluir: permitido("evidencias.adicionar", ev.empresaId),
-                  onAnalisar: () => void analisarFotoComIA(ev),
-                  onConfirmar: (texto: string) => ultima && confirmarAnaliseFoto(ev, ultima, texto),
-                  onDescartar: () => ultima && descartarAnaliseFoto(ev, ultima),
-                  onExcluir: () => excluirEvidencia(ev.id),
-                };
-              })}
-            />
-          ) : (
-          <section className="space-y-4">
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                <div>
-                  <div className="text-xs font-extrabold uppercase tracking-wider text-[color:var(--brand)]">
-                    Evidências da inspeção
-                  </div>
-                  <h1 className="mt-1 text-2xl font-extrabold">Fotos e áudio</h1>
-                  <p className="text-sm text-slate-500">
-                    {nomeSemNumerosNoInicio(empresaVisita?.nomeFantasia || "")} • {fdata(visitaAtual.data)}
-                  </p>
-                </div>
-                <button
-                  onClick={() => setView("visita")}
-                  className="rounded-xl bg-[var(--na-bg)] px-3 py-2 text-sm font-bold text-[color:var(--ink)]"
-                >
-                  Voltar à Central
-                </button>
-              </div>
-
-              <div className="mt-5 grid gap-3 md:grid-cols-4">
-                <MetricCard label="Evidências" value={evidenciasVisita.length} />
-                <MetricCard label="Fotos" value={fotosVisita} />
-                <MetricCard label="Áudios" value={audiosVisita} />
-                <MetricCard label="IA para revisar" value={analisesIAPendentes} />
-              </div>
-            </div>
-
-            <div className={`grid gap-4 ${permitido("evidencias.adicionar", visitaAtual.empresaId) ? "lg:grid-cols-[380px_1fr]" : "grid-cols-1"}`}>
-              {permitido("evidencias.adicionar", visitaAtual.empresaId) && (
-              <div className="rounded-2xl bg-white p-5 shadow-sm">
-                <h2 className="text-xl font-extrabold">Nova evidência</h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  Registre a situação observada e vincule ao ambiente ou à NC quando necessário.
-                </p>
-
-                <label className="mt-5 block">
-                  <span className="mb-1 block text-xs font-extrabold text-slate-500">
-                    Ambiente
-                  </span>
-                  <select
-                    value={evidenciaAmbiente}
-                    onChange={(e) => {
-                      setEvidenciaAmbiente(e.target.value);
-                      setEvidenciaChecklistItemId("");
-                    }}
-                    className="w-full rounded-xl border bg-white p-3"
-                  >
-                    <option value="">Sem ambiente específico</option>
-                    {(visitaAtual.ambientes || []).map((amb) => (
-                      <option key={amb} value={amb}>{amb}</option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className="mt-3 block">
-                  <span className="mb-1 block text-xs font-extrabold text-slate-500">
-                    Item do checklist (opcional)
-                  </span>
-                  <select
-                    value={evidenciaChecklistItemId}
-                    onChange={(e) => {
-                      const itemId = e.target.value;
-                      setEvidenciaChecklistItemId(itemId);
-                      const item = checklistAtual.find((registro) => registro.id === itemId);
-                      if (item) {
-                        setEvidenciaAmbiente(item.ambiente);
-                        const ncDoItem = ncsVisita.find((nc) => nc.checklistItemId === item.id);
-                        if (ncDoItem) setEvidenciaNcId(ncDoItem.id);
-                      }
-                    }}
-                    className="w-full rounded-xl border bg-white p-3"
-                  >
-                    <option value="">Nenhum item específico</option>
-                    {checklistAtual
-                      .filter((item) => !evidenciaAmbiente || item.ambiente === evidenciaAmbiente)
-                      .map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.categoria} — {item.titulo}
-                        </option>
-                      ))}
-                  </select>
-                </label>
-
-                <label className="mt-3 block">
-                  <span className="mb-1 block text-xs font-extrabold text-slate-500">
-                    Vincular à Não Conformidade
-                  </span>
-                  <select
-                    value={evidenciaNcId}
-                    onChange={(e) => setEvidenciaNcId(e.target.value)}
-                    className="w-full rounded-xl border bg-white p-3"
-                  >
-                    <option value="">Nenhuma NC específica</option>
-                    {ncsVisita.map((nc, idx) => (
-                      <option key={nc.id} value={nc.id}>
-                        NC {idx + 1} — {nomeDeExibicaoDoAmbiente(nc.ambiente)} — {nc.titulo}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className="mt-3 block">
-                  <span className="mb-1 block text-xs font-extrabold text-slate-500">
-                    Descrição
-                  </span>
-                  <div className="mbp-voice-wrap">
-                    <textarea
-                      rows={3}
-                      value={evidenciaDescricao}
-                      onChange={(e) => setEvidenciaDescricao(e.target.value)}
-                      placeholder="Ex.: embalagem avariada identificada no recebimento..."
-                      className="w-full rounded-xl border p-3"
-                    />
-                    <VoiceDictationButton
-                      ativo={campoVozAtivo === "evidencia-descricao"}
-                      melhorando={campoIaAtivo === "evidencia-descricao"}
-                      onIniciar={() => iniciarDitado("evidencia-descricao", (texto) => setEvidenciaDescricao((atual) => juntarTextoDitado(atual, texto)))}
-                      onMelhorar={() => melhorarTextoComIa("evidencia-descricao", evidenciaDescricao, setEvidenciaDescricao, "Descrição curta de uma evidência registrada durante inspeção de Boas Práticas.")}
-                    />
-                  </div>
-                </label>
-
-                <div className="mt-5 grid gap-3">
-                  <label className="cursor-pointer rounded-xl bg-[var(--brand)] p-4 text-center font-medium text-white">
-                    📷 Tirar ou adicionar foto
-                    <input
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      className="hidden"
-                      onChange={async (e) => {
-                        const input = e.currentTarget;
-                        const file = input.files?.[0];
-
-                        if (!file) {
-                          setEvidenciaMsg("Nenhuma foto foi recebida da câmera.");
-                          return;
-                        }
-
-                        await adicionarEvidencia(file, "Foto");
-                        input.value = "";
-                      }}
-                    />
-                  </label>
-
-                  <label className="cursor-pointer rounded-xl bg-[var(--brand)] p-4 text-center font-medium text-white">
-                    🎙️ Adicionar áudio
-                    <input
-                      type="file"
-                      accept="audio/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        void adicionarEvidencia(file, "Áudio");
-                        e.currentTarget.value = "";
-                      }}
-                    />
-                  </label>
-                </div>
-
-                {evidenciaMsg && (
-                  <div className="mt-4 rounded-xl bg-[var(--brand-soft)] p-3 text-sm text-[color:var(--ink)]">
-                    {evidenciaMsg}
-                  </div>
-                )}
-
-                <div className="mt-4 rounded-xl bg-[var(--pend-bg)] p-3 text-xs text-[color:var(--ink)]">
-                  Fotos e áudios novos são armazenados no Blob privado.
-                  O Neon guarda apenas os dados e a referência da evidência.
-                </div>
-                <div className="mt-3 rounded-xl bg-violet-50 p-3 text-xs text-violet-900">
-                  A análise por IA é opcional. Antes do envio, retire do enquadramento
-                  rostos, crachás e documentos pessoais desnecessários. Toda sugestão
-                  exige confirmação profissional.
-                </div>
-              </div>
-              )}
-
-              <div className="space-y-3">
-                <div className="rounded-2xl bg-white p-5 shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h2 className="text-xl font-extrabold">Registros da visita</h2>
-                      <p className="text-sm text-slate-500">
-                        Evidências organizadas da mais recente para a mais antiga.
-                      </p>
-                    </div>
-                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold">
-                      {evidenciasVisita.length}
-                    </span>
-                  </div>
-                </div>
-
-                {evidenciasVisita.length === 0 ? (
-                  <div className="rounded-2xl bg-white p-8 text-center shadow-sm">
-                    <div className="text-xl font-extrabold">Nenhuma evidência registrada</div>
-                    <p className="mt-2 text-sm text-slate-500">
-                      Adicione uma foto ou áudio durante a inspeção.
-                    </p>
-                  </div>
-                ) : (
-                  evidenciasVisita.map((ev) => {
-                    const ncRelacionada = ncsVisita.find((nc) => nc.id === ev.ncId);
-                    const itemChecklistRelacionado = checklistAtual.find(
-                      (item) => item.id === ev.checklistItemId
-                    );
-                    const analises = ev.analisesIA || [];
-                    const ultimaAnalise = analises.length ? analises[analises.length - 1] : undefined;
-                    const analisando = analiseIAEmAndamentoId === ev.id;
-                    return (
-                      <article key={ev.id} className="rounded-2xl bg-white p-5 shadow-sm">
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <div className="text-xs font-extrabold uppercase text-slate-400">
-                              {ev.tipo} • {nomeDeExibicaoDoAmbiente(ev.ambiente) || "Sem ambiente específico"}
-                            </div>
-                            <div className="mt-1 font-extrabold">
-                              {ev.descricao || ev.nomeArquivo}
-                            </div>
-                            {ncRelacionada && (
-                              <div className="mt-2 inline-block rounded-full bg-[var(--nc-bg)] px-3 py-1 text-xs font-extrabold text-[color:var(--ink)]">
-                                Vinculada à NC — {ncRelacionada.categoria}
-                              </div>
-                            )}
-                            {itemChecklistRelacionado && (
-                              <div className="mt-2 rounded-xl bg-[var(--brand-soft)] p-3 text-xs text-[color:var(--ink)]">
-                                <span className="font-extrabold">Item vinculado:</span>{" "}
-                                {itemChecklistRelacionado.categoria} — {itemChecklistRelacionado.titulo}
-                              </div>
-                            )}
-                          </div>
-                          {permitido("evidencias.adicionar", ev.empresaId) && (
-                            <button
-                              onClick={() => excluirEvidencia(ev.id)}
-                              className="rounded-lg bg-[var(--nc-bg)] px-3 py-2 text-xs font-bold text-[color:var(--ink)]"
-                            >
-                              Excluir
-                            </button>
-                          )}
-                        </div>
-
-                        {ev.tipo === "Foto" ? (
-                          <>
-                            <img
-                              src={urlEvidencia(ev)}
-                              alt={ev.descricao || "Evidência fotográfica"}
-                              className="mt-4 max-h-[520px] w-full rounded-xl border object-contain"
-                            />
-
-                            <div className="mt-4 rounded-xl border border-violet-200 bg-violet-50 p-4">
-                              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                                <div>
-                                  <div className="text-xs font-extrabold uppercase text-violet-700">
-                                    Análise assistida por IA
-                                  </div>
-                                  <p className="mt-1 text-xs text-violet-900">
-                                    Sugestão visual; não cria nem altera uma NC automaticamente.
-                                  </p>
-                                </div>
-                                {permitido("ia.analisar", ev.empresaId) && (!ultimaAnalise || ultimaAnalise.status !== "Aguardando revisão") && (
-                                  <button
-                                    type="button"
-                                    onClick={() => void analisarFotoComIA(ev)}
-                                    disabled={analisando || analiseIAEmAndamentoId !== null}
-                                    className="rounded-xl bg-[var(--brand)] px-4 py-2 text-sm font-extrabold text-white disabled:opacity-50"
-                                  >
-                                    {analisando ? "Analisando..." : analises.length ? "Analisar novamente" : "Analisar foto com IA"}
-                                  </button>
-                                )}
-                              </div>
-
-                              {analiseIAMensagens[ev.id] && (
-                                <div className="mt-3 rounded-lg bg-white p-3 text-xs text-slate-700">
-                                  {analiseIAMensagens[ev.id]}
-                                </div>
-                              )}
-
-                              {ultimaAnalise && (
-                                <div className="mt-4 rounded-xl bg-white p-4">
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${
-                                      ultimaAnalise.status === "Confirmada"
-                                        ? "bg-[var(--ok-bg)] text-[color:var(--ink)]"
-                                        : ultimaAnalise.status === "Descartada"
-                                        ? "bg-[var(--na-bg)] text-[color:var(--ink)]"
-                                        : "bg-[var(--pend-bg)] text-[color:var(--ink)]"
-                                    }`}>
-                                      {ultimaAnalise.status}
-                                    </span>
-                                    <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${
-                                      ultimaAnalise.situacao === "Conforme"
-                                        ? "bg-[var(--ok-bg)] text-[color:var(--ink)]"
-                                        : ultimaAnalise.situacao === "Atenção"
-                                        ? "bg-[var(--pend-bg)] text-[color:var(--ink)]"
-                                        : ultimaAnalise.situacao === "Possível não conformidade"
-                                        ? "bg-[var(--nc-bg)] text-[color:var(--ink)]"
-                                        : "bg-[var(--na-bg)] text-[color:var(--ink)]"
-                                    }`}>
-                                      {ultimaAnalise.situacao || ultimaAnalise.classificacao}
-                                    </span>
-                                  </div>
-
-                                  <p className="mt-3 font-bold text-slate-800">{ultimaAnalise.resumo}</p>
-
-                                  {ultimaAnalise.achados[0]?.acaoSugerida && (
-                                    <p className="mt-3 rounded-lg bg-[var(--ok-bg)] p-3 text-sm text-[color:var(--ink)]">
-                                      <span className="font-extrabold">Ação:</span>{" "}
-                                      {ultimaAnalise.achados[0].acaoSugerida}
-                                    </p>
-                                  )}
-
-                                  {ultimaAnalise.achados.length > 0 && (
-                                    <details className="mt-3 rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
-                                      <summary className="cursor-pointer font-extrabold text-slate-700">
-                                        Ver detalhes técnicos
-                                      </summary>
-                                      <div className="mt-3 space-y-2">
-                                        {ultimaAnalise.achados.map((achado, indice) => (
-                                          <div key={`${ultimaAnalise.id}-${indice}`} className="rounded-lg border border-slate-200 bg-white p-3 text-sm">
-                                            <div className="flex flex-wrap items-center justify-between gap-2">
-                                              <span className="font-extrabold text-slate-800">{achado.titulo}</span>
-                                              <span className="text-[11px] font-bold text-slate-400">
-                                                Confiança {achado.confianca.toLowerCase()}
-                                              </span>
-                                            </div>
-                                            <p className="mt-1">{achado.descricao}</p>
-                                            {achado.acaoSugerida && (
-                                              <p className="mt-2 text-emerald-800">
-                                                <span className="font-extrabold">Ação:</span> {achado.acaoSugerida}
-                                              </p>
-                                            )}
-                                          </div>
-                                        ))}
-                                      </div>
-                                      {ultimaAnalise.alertasPrivacidade.length > 0 && (
-                                        <p className="mt-2 text-red-800">
-                                          <span className="font-extrabold">Privacidade:</span>{" "}
-                                          {ultimaAnalise.alertasPrivacidade.join(" • ")}
-                                        </p>
-                                      )}
-                                      {ultimaAnalise.observacoesLimitacoes.length > 0 && (
-                                        <p className="mt-2">
-                                          <span className="font-extrabold">Limitações:</span>{" "}
-                                          {ultimaAnalise.observacoesLimitacoes.join(" • ")}
-                                        </p>
-                                      )}
-                                    </details>
-                                  )}
-
-                                  {ultimaAnalise.status === "Aguardando revisão" && permitido("ia.analisar", ev.empresaId) ? (
-                                    <div className="mt-4">
-                                      <details className="rounded-lg border border-slate-200 p-3">
-                                        <summary className="cursor-pointer text-xs font-extrabold text-slate-600">
-                                          Editar texto antes de confirmar
-                                        </summary>
-                                        <div className="mbp-voice-wrap mt-3">
-                                          <textarea
-                                            rows={3}
-                                            value={analiseIATextos[ultimaAnalise.id] ?? ultimaAnalise.textoRevisado}
-                                            onChange={(e) =>
-                                              setAnaliseIATextos((atual) => ({
-                                                ...atual,
-                                                [ultimaAnalise.id]: e.target.value,
-                                              }))
-                                            }
-                                            className="w-full rounded-xl border p-3 text-sm"
-                                          />
-                                          <VoiceDictationButton
-                                            ativo={campoVozAtivo === `analise-${ultimaAnalise.id}`}
-                                            melhorando={campoIaAtivo === `analise-${ultimaAnalise.id}`}
-                                            onIniciar={() => iniciarDitado(`analise-${ultimaAnalise.id}`, (texto) => setAnaliseIATextos((atual) => ({
-                                              ...atual,
-                                              [ultimaAnalise.id]: juntarTextoDitado(atual[ultimaAnalise.id] ?? ultimaAnalise.textoRevisado, texto),
-                                            })))}
-                                            onMelhorar={() => melhorarTextoComIa(
-                                              `analise-${ultimaAnalise.id}`,
-                                              analiseIATextos[ultimaAnalise.id] ?? ultimaAnalise.textoRevisado,
-                                              (texto) => setAnaliseIATextos((atual) => ({ ...atual, [ultimaAnalise.id]: texto })),
-                                              "Texto técnico de análise de evidência fotográfica em segurança dos alimentos."
-                                            )}
-                                          />
-                                        </div>
-                                      </details>
-                                      <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                                        <button
-                                          type="button"
-                                          onClick={() => confirmarAnaliseFoto(ev, ultimaAnalise)}
-                                          className="rounded-xl bg-[var(--brand)] px-4 py-3 text-sm font-extrabold text-white"
-                                        >
-                                          Confirmar
-                                        </button>
-                                        <button
-                                          type="button"
-                                          onClick={() => descartarAnaliseFoto(ev, ultimaAnalise)}
-                                          className="rounded-xl bg-slate-200 px-4 py-3 text-sm font-extrabold text-slate-800"
-                                        >
-                                          Descartar sugestão
-                                        </button>
-                                      </div>
-                                    </div>
-                                  ) : ultimaAnalise.status === "Confirmada" ? (
-                                    <div className="mt-4 rounded-lg bg-[var(--ok-bg)] p-3 text-sm text-[color:var(--ink)]">
-                                      <div className="font-extrabold">Análise confirmada pelo profissional</div>
-                                      <div className="mt-2 text-xs">
-                                        {ultimaAnalise.revisadaPor} • {ultimaAnalise.revisadaEm ? new Date(ultimaAnalise.revisadaEm).toLocaleString("pt-BR") : ""}
-                                      </div>
-                                      <details className="mt-2">
-                                        <summary className="cursor-pointer text-xs font-extrabold">
-                                          Ver texto confirmado
-                                        </summary>
-                                        <div className="mt-2 whitespace-pre-wrap">{ultimaAnalise.textoRevisado}</div>
-                                      </details>
-                                    </div>
-                                  ) : ultimaAnalise.status === "Descartada" ? (
-                                    <div className="mt-4 text-xs text-slate-500">
-                                      Sugestão descartada por {ultimaAnalise.revisadaPor || "profissional"}. Ela não integra o registro técnico confirmado.
-                                    </div>
-                                  ) : (
-                                    <div className="mt-4 rounded-lg bg-[var(--pend-bg)] p-3 text-xs text-[color:var(--ink)]">
-                                      Esta sugestão aguarda revisão de um Administrador ou Consultor/RT.
-                                    </div>
-                                  )}
-
-                                  {analises.length > 1 && (
-                                    <div className="mt-3 text-xs text-slate-400">
-                                      {analises.length} análises preservadas no histórico desta foto.
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          </>
-                        ) : (
-                          <audio controls src={urlEvidencia(ev)} className="mt-4 w-full" />
-                        )}
-
-                        <div className="mt-3 text-xs text-slate-400">
-                          {new Date(ev.criadoEm).toLocaleString("pt-BR")}
-                        </div>
-                      </article>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-          </section>)
+          <PcEvidencias
+            empresa={nomeParaExibir(empresaVisita)}
+            data={fdata(visitaAtual.data)}
+            totais={{ evidencias: evidenciasVisita.length, fotos: fotosVisita, audios: audiosVisita, revisar: analisesIAPendentes }}
+            podeAdicionar={permitido("evidencias.adicionar", visitaAtual.empresaId)}
+            onTirarFoto={() => {
+              if (evidenciaChecklistItemId) setUltimoItemChecklistId(evidenciaChecklistItemId);
+              setRegistrarComCamera(true);
+              setRegistrarAberto(true);
+            }}
+            vinculo={(() => {
+              const item = checklistAtual.find((registro) => registro.id === evidenciaChecklistItemId);
+              const posicao = item ? checklistAtual.filter((registro) => registro.ambiente === item.ambiente).findIndex((registro) => registro.id === item.id) + 1 : 0;
+              return {
+                ambiente: evidenciaAmbiente,
+                temItem: Boolean(item),
+                item: item ? `Item ${posicao} · ${item.titulo}` : "",
+              };
+            })()}
+            ambientes={visitaAtual.ambientes || []}
+            itens={checklistAtual
+              .filter((item) => !evidenciaAmbiente || item.ambiente === evidenciaAmbiente)
+              .map((item) => ({ id: item.id, rotulo: `${item.categoria} — ${item.titulo}` }))}
+            ncs={ncsVisita.map((nc, idx) => ({ id: nc.id, rotulo: `NC ${idx + 1} — ${nomeDeExibicaoDoAmbiente(nc.ambiente)} — ${nc.titulo}` }))}
+            ambienteSel={evidenciaAmbiente}
+            itemSel={evidenciaChecklistItemId}
+            ncSel={evidenciaNcId}
+            onAmbiente={(valor) => { setEvidenciaAmbiente(valor); setEvidenciaChecklistItemId(""); }}
+            onItem={(itemId) => {
+              setEvidenciaChecklistItemId(itemId);
+              const item = checklistAtual.find((registro) => registro.id === itemId);
+              if (item) {
+                setEvidenciaAmbiente(item.ambiente);
+                const ncDoItem = ncsVisita.find((nc) => nc.checklistItemId === item.id);
+                if (ncDoItem) setEvidenciaNcId(ncDoItem.id);
+              }
+            }}
+            onNc={setEvidenciaNcId}
+            descricao={evidenciaDescricao}
+            onDescricao={setEvidenciaDescricao}
+            mensagem={evidenciaMsg}
+            onFoto={async (arquivo) => {
+              if (!arquivo) {
+                setEvidenciaMsg("Nenhuma foto foi recebida da câmera.");
+                return;
+              }
+              await adicionarEvidencia(arquivo, "Foto");
+            }}
+            onAudio={(arquivo) => void adicionarEvidencia(arquivo, "Áudio")}
+            onVoltar={() => setView("visita")}
+            evidencias={evidenciasVisita.map((ev) => {
+              const analises = ev.analisesIA || [];
+              const ultima = analises.length ? analises[analises.length - 1] : undefined;
+              return {
+                id: ev.id,
+                tipo: ev.tipo,
+                nome: ev.nomeArquivo,
+                descricao: ev.descricao || "",
+                ambiente: ev.ambiente || "",
+                quando: new Date(ev.criadoEm).toLocaleString("pt-BR"),
+                url: urlEvidencia(ev),
+                possivelNc: ultima?.situacao === "Possível não conformidade",
+                analise: ultima
+                  ? {
+                      id: ultima.id,
+                      status: ultima.status,
+                      situacao: ultima.situacao || ultima.classificacao || "",
+                      resumo: ultima.resumo,
+                      acao: ultima.achados[0]?.acaoSugerida || "",
+                      textoRevisado: ultima.textoRevisado,
+                      revisadoPor: ultima.revisadaPor || "",
+                      podeRevisar: permitido("ia.analisar", ev.empresaId),
+                    }
+                  : null,
+                podeAnalisar: ev.tipo === "Foto" && permitido("ia.analisar", ev.empresaId),
+                analisando: analiseIAEmAndamentoId === ev.id,
+                bloqueioIA: analiseIAEmAndamentoId !== null,
+                mensagemIA: analiseIAMensagens[ev.id] || "",
+                podeExcluir: permitido("evidencias.adicionar", ev.empresaId),
+                onAnalisar: () => void analisarFotoComIA(ev),
+                onConfirmar: (texto: string) => ultima && confirmarAnaliseFoto(ev, ultima, texto),
+                onDescartar: () => ultima && descartarAnaliseFoto(ev, ultima),
+                onExcluir: () => excluirEvidencia(ev.id),
+              };
+            })}
+          />
         ) : modo === "equilibrado" && telaModo.larguraDoAparelho < 900 && view === "correcoes" && visitaAtual ? (
           correcoesDoCelular()
         ) : view === "correcoes" && visitaAtual ? (
@@ -7284,723 +6670,6 @@ export default function Home() {
               onTodosPops={abrirPopsPeloAtalho}
               onVoltar={() => setView("visita")}
             />
-        ) : view === "plano" && visitaAtual ? (
-          ehPC ? (
-            <PcPlano
-              empresa={nomeParaExibir(empresaVisita)}
-              data={fdata(visitaAtual.data)}
-              hoje={hojeISO()}
-              podeEditar={permitido("ncs.acompanhar", visitaAtual.empresaId)}
-              responsaveis={Array.from(
-                new Set(
-                  [
-                    visitaAtual.responsavel,
-                    ...(db.usuarios || []).map((usuario) => usuario.nome),
-                    ...ncsVisita.map((nc) => nc.responsavelAcao || ""),
-                  ]
-                    .map((nome) => (nome || "").trim())
-                    .filter(Boolean)
-                )
-              )}
-              resumo={resumoDoPlano(ncsVisita, hojeISO())}
-              ncs={ncsVisita.map((nc, indice) => ({
-                id: nc.id,
-                numero: indice + 1,
-                titulo: nc.titulo,
-                ambiente: nc.ambiente,
-                gravidade: nc.criticidade,
-                status: nc.status,
-                acaoCorretiva: nc.acaoCorretiva || "",
-                responsavelAcao: nc.responsavelAcao || "",
-                prazo: nc.prazo || "",
-                realce: planoNcAbertaId === nc.id,
-              }))}
-              onAcao={(id, valor) => atualizarNC(id, { acaoCorretiva: valor })}
-              onResponsavel={(id, valor) => atualizarNC(id, { responsavelAcao: valor })}
-              onPrazo={(id, valor) => atualizarNC(id, { prazo: valor })}
-              onIniciar={(id) => atualizarNC(id, { status: "Em tratamento" })}
-              onAplicar={(ids, valores) => {
-                alteracoesEmLote(ncsVisita, ids, valores).forEach((alteracao) => atualizarNC(alteracao.id, alteracao.patch));
-              }}
-              onVoltar={() => setView("visita")}
-              onChecklist={abrirChecklist}
-            />
-          ) : (
-          <section className="plan-center space-y-3">
-            <div className="plan-page-head">
-              <div className="plan-title-row">
-                <div className="min-w-0">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[#315da8]">
-                    Gestão das correções
-                  </div>
-                  <h1 className="mt-1 text-xl font-medium text-[color:var(--ink)] sm:text-2xl">Plano de ação</h1>
-                  <p className="mt-0.5 break-words text-xs text-[color:var(--ink-2)] sm:text-sm">
-                    {nomeSemNumerosNoInicio(empresaVisita?.nomeFantasia || "")} · {fdata(visitaAtual.data)}
-                  </p>
-                </div>
-                <button
-                  onClick={() => setView("visita")}
-                  aria-label="Voltar à Central da visita"
-                  className="plan-back-button"
-                >
-                  <span className="sm:hidden">←</span><span className="hidden sm:inline">← Central da visita</span>
-                </button>
-              </div>
-
-              <div className="plan-summary-grid">
-                <MetricCard label="Não conformidades" value={ncsVisita.length} />
-                <MetricCard label="Ações definidas" value={acoesDefinidas} />
-                <MetricCard label="Em aberto" value={ncsAbertas} />
-                <MetricCard label="Resolvidas" value={acoesConcluidas} />
-              </div>
-            </div>
-
-            {ncsVisita.length === 0 ? (
-              <div className="rounded-2xl bg-white p-8 text-center shadow-sm">
-                <div className="text-xl font-extrabold">Nenhuma ação necessária</div>
-                <p className="mt-2 text-sm text-slate-500">
-                  O plano de ação será formado a partir das não conformidades da visita.
-                </p>
-                <button
-                  onClick={() => setView("checklist")}
-                  className="mt-5 rounded-xl bg-[var(--brand)] px-5 py-3 font-medium text-white"
-                >
-                  Abrir checklist
-                </button>
-              </div>
-            ) : (
-              <div className="plan-action-list">
-                {ncsVisita.map((nc, idx) => (
-                  <details
-                    key={nc.id}
-                    open={planoNcAbertaId === nc.id ? true : undefined}
-                    onToggle={(event) => {
-                      if (event.currentTarget.open && planoNcAbertaId === nc.id) {
-                        setPlanoNcAbertaId("");
-                      }
-                    }}
-                    className={`plan-action-card ${nc.status === "Resolvida" ? "is-resolved" : ""}`}
-                  >
-                    <summary className="plan-action-summary">
-                      <div className="min-w-0 flex-1">
-                        <div className="plan-action-eyebrow">
-                          Ação {String(idx + 1).padStart(2, "0")} • {nomeDeExibicaoDoAmbiente(nc.ambiente)} • {nc.categoria}
-                        </div>
-                        <h2 className="plan-action-title">{nc.titulo}</h2>
-                        <div className="plan-action-meta">
-                          <span className={`plan-status ${nc.status === "Resolvida" ? "is-resolved" : nc.status === "Em tratamento" ? "is-progress" : "is-open"}`}>{nc.status}</span>
-                          <span>{nc.responsavelAcao || "Responsável não definido"}</span>
-                          <span>{nc.prazo ? `Prazo ${fdata(nc.prazo)}` : "Sem prazo"}</span>
-                        </div>
-                      </div>
-                      <span className="plan-chevron" aria-hidden="true">⌄</span>
-                    </summary>
-
-                    <div className="plan-action-content">
-                      <div className="plan-editor-toolbar">
-                        <div className="plan-chips">
-                          <span className={nc.criticidade === "Crítica" ? "is-critical" : nc.criticidade === "Importante" ? "is-important" : "is-routine"}>{nc.criticidade}</span>
-                          {nc.referencia && <span className="is-reference">{nc.referencia}</span>}
-                        </div>
-                        {nc.status === "Resolvida" ? (
-                          <span className="plan-protected">Resolvida · edição protegida</span>
-                        ) : (
-                          <label className="plan-status-select"><span>Status</span><select
-                          value={nc.status}
-                          onChange={(e) =>
-                            atualizarNC(nc.id, {
-                              status: e.target.value as "Aberta" | "Em tratamento",
-                            })
-                          }
-                        >
-                          <option value="Aberta">Aberta</option>
-                          <option value="Em tratamento">Em tratamento</option>
-                          </select></label>
-                        )}
-                      </div>
-
-                    {nc.observacao && (
-                      <div className="mt-4 rounded-xl bg-[var(--nc-bg)] p-4">
-                        <div className="text-xs font-extrabold uppercase text-red-700">
-                          Constatação em campo
-                        </div>
-                        <p className="mt-1 text-sm text-red-900">{nc.observacao}</p>
-                      </div>
-                    )}
-
-                    <div className="plan-form-grid">
-                      <label className="plan-field plan-action-field">
-                        <span>
-                          Ação corretiva
-                        </span>
-                        <div className="mbp-voice-wrap">
-                          <textarea
-                            rows={3}
-                            value={(nc as any).acaoCorretiva || ""}
-                            disabled={nc.status === "Resolvida"}
-                            onChange={(e) =>
-                              atualizarNC(nc.id, { acaoCorretiva: e.target.value })
-                            }
-                            placeholder="Descreva o que deverá ser feito para corrigir a não conformidade..."
-                          />
-                          {nc.status !== "Resolvida" && (
-                            <VoiceDictationButton
-                              ativo={campoVozAtivo === `acao-${nc.id}`}
-                              melhorando={campoIaAtivo === `acao-${nc.id}`}
-                              onIniciar={() => iniciarDitado(`acao-${nc.id}`, (texto) => atualizarNC(nc.id, { acaoCorretiva: juntarTextoDitado((nc as any).acaoCorretiva || "", texto) }))}
-                              onMelhorar={() => melhorarTextoComIa(`acao-${nc.id}`, (nc as any).acaoCorretiva || "", (texto) => atualizarNC(nc.id, { acaoCorretiva: texto }), "Ação corretiva para uma não conformidade em Boas Práticas. Escreva como ação prática e executável.")}
-                            />
-                          )}
-                        </div>
-                      </label>
-
-                      <label className="plan-field">
-                        <span>
-                          Responsável
-                        </span>
-                        <input
-                          value={(nc as any).responsavelAcao || ""}
-                          disabled={nc.status === "Resolvida"}
-                          onChange={(e) =>
-                            atualizarNC(nc.id, { responsavelAcao: e.target.value })
-                          }
-                          placeholder="Nome do responsável pela correção"
-                        />
-                      </label>
-
-                      <label className="plan-field">
-                        <span>
-                          Prazo
-                        </span>
-                        <input
-                          type="date"
-                          value={(nc as any).prazo || ""}
-                          disabled={nc.status === "Resolvida"}
-                          onChange={(e) =>
-                            atualizarNC(nc.id, { prazo: e.target.value })
-                          }
-                        />
-                      </label>
-
-                      <details className="plan-followup-details">
-                        <summary>
-                          <span>Acompanhamento / verificação</span>
-                          <span>{nc.acompanhamento?.trim() ? "Registro preenchido" : "Adicionar depois"} · ⌄</span>
-                        </summary>
-                        <label className="plan-field">
-                          <div className="mbp-voice-wrap">
-                            <textarea
-                              rows={2}
-                              value={(nc as any).acompanhamento || ""}
-                              disabled={nc.status === "Resolvida"}
-                              onChange={(e) =>
-                                atualizarNC(nc.id, { acompanhamento: e.target.value })
-                              }
-                              placeholder="Registre retorno, evidência de correção ou observações..."
-                            />
-                            {nc.status !== "Resolvida" && (
-                              <VoiceDictationButton
-                                ativo={campoVozAtivo === `acompanhamento-${nc.id}`}
-                                melhorando={campoIaAtivo === `acompanhamento-${nc.id}`}
-                                onIniciar={() => iniciarDitado(`acompanhamento-${nc.id}`, (texto) => atualizarNC(nc.id, { acompanhamento: juntarTextoDitado((nc as any).acompanhamento || "", texto) }))}
-                                onMelhorar={() => melhorarTextoComIa(`acompanhamento-${nc.id}`, (nc as any).acompanhamento || "", (texto) => atualizarNC(nc.id, { acompanhamento: texto }), "Registro de acompanhamento de uma ação corretiva em Boas Práticas.")}
-                              />
-                            )}
-                          </div>
-                        </label>
-                      </details>
-                    </div>
-
-                    {nc.status !== "Resolvida" && (
-                      <div className="plan-editor-footer">
-                        <span>O conteúdo é salvo enquanto você digita.</span>
-                        <button
-                          type="button"
-                          disabled={!nc.acaoCorretiva?.trim()}
-                          onClick={() => {
-                            atualizarNC(nc.id, { status: "Em tratamento" });
-                          }}
-                        >
-                          {nc.acaoCorretiva?.trim() ? "Salvar e iniciar tratamento →" : "Defina a ação corretiva"}
-                        </button>
-                      </div>
-                    )}
-
-                    {nc.status === "Resolvida" ? (
-                      <div className="plan-save-note is-protected">
-                        Registro protegido. Reaberturas são feitas no acompanhamento.
-                      </div>
-                    ) : (
-                      <div className="plan-save-note">✓ Salvamento automático ativo</div>
-                    )}
-                    </div>
-                  </details>
-                ))}
-              </div>
-            )}
-          </section>)
-        ) : view === "acompanhamento" && visitaAtual ? (
-          ehPC ? (
-            <PcAcompanhamento
-              empresa={nomeParaExibir(empresaVisita)}
-              data={fdata(visitaAtual.data)}
-              podeAcompanhar={permitido("ncs.acompanhar", visitaAtual.empresaId)}
-              podeEvidenciar={permitido("evidencias.adicionar", visitaAtual.empresaId)}
-              ncs={ncsVisita.map((nc, indice) => ({
-                id: nc.id,
-                numero: indice + 1,
-                titulo: nc.titulo,
-                ambiente: nc.ambiente,
-                gravidade: nc.criticidade,
-                status: nc.status,
-                vencida: situacaoPrazoNC(nc.prazo, nc.status).label === "Vencida",
-                acaoCorretiva: nc.acaoCorretiva || "",
-                responsavel: nc.responsavelAcao || "",
-                prazo: nc.prazo || "",
-                resolvidaEm: nc.resolvidaEm || "",
-                evidencias: (db.evidencias || [])
-                  .filter((ev) => ev.ncId === nc.id)
-                  .map((ev) => ({ id: ev.id, tipo: ev.tipo, nome: ev.descricao?.trim() || ev.nomeArquivo, quando: new Date(ev.criadoEm).toLocaleString("pt-BR"), url: urlEvidencia(ev) })),
-                historico: [...(nc.historicoAcompanhamento || [])]
-                  .sort((a, b) => b.criadoEm.localeCompare(a.criadoEm))
-                  .map((item) => ({ id: item.id, quando: new Date(item.criadoEm).toLocaleString("pt-BR"), status: item.status, observacao: item.observacao })),
-                texto: textoAcompanhamento[nc.id] || "",
-                statusEscolhido: statusAcompanhamento[nc.id] || nc.status,
-              }))}
-              onTexto={(id, valor) => setTextoAcompanhamento((o) => ({ ...o, [id]: valor }))}
-              onStatus={(id, status) => setStatusAcompanhamento((o) => ({ ...o, [id]: status }))}
-              onRegistrar={registrarAcompanhamento}
-              onAdicionarEvidencia={(id) => {
-                const nc = ncsVisita.find((registro) => registro.id === id);
-                setEvidenciaNcId(id);
-                setEvidenciaAmbiente(nc?.ambiente || "");
-                setView("evidencias");
-              }}
-              onPlano={(id) => { setPlanoNcAbertaId(id); setView("plano"); }}
-              onVoltar={() => setView("visita")}
-            />
-          ) : (
-          <section className="space-y-4">
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                <div>
-                  <div className="text-xs font-extrabold uppercase text-emerald-700">Pós-visita</div>
-                  <h1 className="mt-1 text-2xl font-extrabold">Acompanhamento das ações</h1>
-                  <p className="text-sm text-slate-500">{nomeSemNumerosNoInicio(empresaVisita?.nomeFantasia || "")} • {fdata(visitaAtual.data)}</p>
-                </div>
-                <button onClick={() => setView("visita")} className="rounded-xl bg-slate-100 px-4 py-2 font-bold">Voltar à Central</button>
-              </div>
-              <div className="mt-5 grid gap-3 md:grid-cols-4">
-                <MetricCard label="Não conformidades" value={ncsVisita.length} />
-                <MetricCard label="Em aberto" value={ncsVisita.filter((nc) => nc.status !== "Resolvida").length} />
-                <MetricCard label="Resolvidas" value={ncsVisita.filter((nc) => nc.status === "Resolvida").length} />
-                <MetricCard label="Vencidas" value={ncsVisita.filter((nc) => situacaoPrazoNC(nc.prazo, nc.status).label === "Vencida").length} />
-              </div>
-            </div>
-            {ncsVisita.length === 0 ? (
-              <div className="rounded-2xl bg-white p-8 text-center shadow-sm">
-                <div className="text-xl font-extrabold">Nenhuma ação para acompanhar</div>
-                <p className="mt-2 text-sm text-slate-500">As não conformidades identificadas na visita aparecerão aqui.</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <div className="rounded-2xl bg-white p-4 shadow-sm">
-                  <div className="flex flex-wrap gap-2">
-                    {(["Todos", "Abertas", "Em tratamento", "Resolvidas", "Vencidas"] as const).map((filtro) => (
-                      <button key={filtro} onClick={() => setFiltroAcompanhamento(filtro)}
-                        className={`rounded-full px-4 py-2 text-sm font-extrabold ${filtroAcompanhamento === filtro ? "bg-[var(--brand)] text-white" : "bg-[var(--na-bg)] text-[color:var(--ink)]"}`}>
-                        {filtro}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                {[...ncsVisita].filter((nc) => {
-                  if (filtroAcompanhamento === "Todos") return true;
-                  if (filtroAcompanhamento === "Abertas") return nc.status === "Aberta";
-                  if (filtroAcompanhamento === "Em tratamento") return nc.status === "Em tratamento";
-                  if (filtroAcompanhamento === "Resolvidas") return nc.status === "Resolvida";
-                  return situacaoPrazoNC(nc.prazo, nc.status).label === "Vencida";
-                }).sort((a,b) => {
-                  if (a.status === "Resolvida" && b.status !== "Resolvida") return 1;
-                  if (a.status !== "Resolvida" && b.status === "Resolvida") return -1;
-                  return (a.prazo || "9999-12-31").localeCompare(b.prazo || "9999-12-31");
-                }).map((nc) => {
-                  const situacaoPrazo = situacaoPrazoNC(nc.prazo, nc.status);
-                  const vencida = situacaoPrazo.label === "Vencida";
-                  const evidenciasDaNc = (db.evidencias || []).filter((ev) => ev.ncId === nc.id);
-                  return (
-                    <div
-                      key={nc.id}
-                      className={`rounded-2xl p-5 shadow-sm ${
-                        nc.status === "Resolvida"
-                          ? "border border-emerald-200 bg-[var(--ok-bg)]/40"
-                          : "bg-white"
-                      }`}
-                    >
-                      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                        <div>
-                          <div className="flex flex-wrap gap-2">
-                            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold">{nc.criticidade}</span>
-                            <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${nc.status === "Resolvida" ? "bg-[var(--ok-bg)] text-[color:var(--ink)]" : nc.status === "Em tratamento" ? "bg-[var(--pend-bg)] text-[color:var(--ink)]" : "bg-[var(--nc-bg)] text-[color:var(--ink)]"}`}>{nc.status}</span>
-                            <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${situacaoPrazo.classe}`}>{situacaoPrazo.label}</span>
-                            <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${
-                              evidenciasDaNc.length > 0
-                                ? "bg-violet-100 text-violet-800"
-                                : "bg-[var(--na-bg)] text-[color:var(--ink)]"
-                            }`}>
-                              {evidenciasDaNc.length > 0
-                                ? `${evidenciasDaNc.length} evidência(s)`
-                                : "Sem evidência"}
-                            </span>
-                            {!nc.acaoCorretiva?.trim() && nc.status !== "Resolvida" && <span className="rounded-full bg-[var(--brand)] px-3 py-1 text-xs font-medium text-white">Ação não definida</span>}
-                          </div>
-                          <h2 className="mt-3 text-lg font-extrabold">{nc.titulo}</h2>
-                          <p className="mt-1 text-sm text-slate-500">{nomeDeExibicaoDoAmbiente(nc.ambiente)} • {nc.categoria}</p>
-                        </div>
-                        <button onClick={() => { setPlanoNcAbertaId(nc.id); setView("plano"); }} className="rounded-xl bg-[var(--brand)] px-4 py-2 text-sm font-medium text-white">Editar plano</button>
-                      </div>
-                      <div className="mt-4 grid gap-3 md:grid-cols-3">
-                        <div className="rounded-xl bg-slate-50 p-3"><div className="text-xs font-extrabold uppercase text-slate-500">Responsável</div><div className="mt-1 font-bold">{nc.responsavelAcao || "Não definido"}</div></div>
-                        <div className="rounded-xl bg-slate-50 p-3"><div className="text-xs font-extrabold uppercase text-slate-500">Prazo</div><div className={`mt-1 font-bold ${vencida ? "text-red-700" : ""}`}>{nc.prazo ? fdata(nc.prazo) : "Não definido"}</div></div>
-                        <div className="rounded-xl bg-slate-50 p-3"><div className="text-xs font-extrabold uppercase text-slate-500">Situação do prazo</div><div className="mt-1 font-bold">{situacaoPrazo.label}</div></div>
-                        {nc.status === "Resolvida" && nc.resolvidaEm && (
-                          <div className="rounded-xl bg-[var(--ok-bg)] p-3 md:col-span-3">
-                            <div className="text-xs font-extrabold uppercase text-emerald-700">Resolvida em</div>
-                            <div className="mt-1 font-bold text-emerald-900">
-                              {new Date(nc.resolvidaEm).toLocaleString("pt-BR")}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                      <div className="mt-3 rounded-xl border border-slate-200 p-3"><div className="text-xs font-extrabold uppercase text-slate-500">Ação corretiva</div><div className="mt-1 text-sm">{nc.acaoCorretiva?.trim() || "Ainda não definida no plano de ação."}</div></div>
-                      {nc.status === "Resolvida" && (
-                        <div className="mt-3 grid gap-3 md:grid-cols-3">
-                          <div className="rounded-xl border border-emerald-200 bg-[var(--ok-bg)] p-3">
-                            <div className="text-xs font-extrabold uppercase text-emerald-700">Fechamento</div>
-                            <div className="mt-1 font-bold text-emerald-950">
-                              {nc.resolvidaEm ? new Date(nc.resolvidaEm).toLocaleString("pt-BR") : "Data não registrada"}
-                            </div>
-                          </div>
-                          <div className="rounded-xl border border-violet-200 bg-violet-50 p-3">
-                            <div className="text-xs font-extrabold uppercase text-violet-700">Evidências</div>
-                            <div className="mt-1 font-bold text-violet-950">{evidenciasDaNc.length} vinculada(s)</div>
-                          </div>
-                          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                            <div className="text-xs font-extrabold uppercase text-slate-500">Registros de acompanhamento</div>
-                            <div className="mt-1 font-bold text-slate-900">{nc.historicoAcompanhamento?.length || 0} registro(s)</div>
-                          </div>
-                        </div>
-                      )}
-                      {nc.status === "Resolvida" && evidenciasDaNc.length === 0 && (
-                        <div className="mt-3 rounded-xl border border-amber-200 bg-[var(--pend-bg)] p-3 text-sm text-[color:var(--ink)]">
-                          <span className="font-extrabold">Atenção:</span> esta ação está marcada como resolvida, mas ainda não possui evidência vinculada.
-                        </div>
-                      )}
-                      <div className="mt-4 rounded-xl border border-violet-100 bg-violet-50 p-4">
-                        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                          <div>
-                            <div className="text-xs font-extrabold uppercase text-violet-800">
-                              Evidências da correção
-                            </div>
-                            <div className="mt-1 text-sm text-violet-950">
-                              {evidenciasDaNc.length > 0
-                                ? `${evidenciasDaNc.length} registro(s) vinculado(s) a esta não conformidade.`
-                                : "Nenhuma evidência vinculada a esta não conformidade."}
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => {
-                              setEvidenciaNcId(nc.id);
-                              setEvidenciaAmbiente(nc.ambiente || "");
-                              setView("evidencias");
-                            }}
-                            className="rounded-xl bg-[var(--brand)] px-4 py-2 text-sm font-extrabold text-white"
-                          >
-                            + Adicionar evidência
-                          </button>
-                        </div>
-
-                        {evidenciasDaNc.length > 0 && (
-                          <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-                            {evidenciasDaNc.slice(0, 6).map((ev) => (
-                              <div key={ev.id} className="rounded-xl border border-violet-100 bg-white p-3">
-                                <div className="text-xs font-extrabold uppercase text-violet-700">
-                                  {ev.tipo}
-                                </div>
-                                <div className="mt-1 truncate text-sm font-bold">
-                                  {ev.descricao?.trim() || ev.nomeArquivo}
-                                </div>
-                                <div className="mt-1 text-xs text-slate-500">
-                                  {new Date(ev.criadoEm).toLocaleString("pt-BR")}
-                                </div>
-                                {ev.tipo === "Foto" && urlEvidencia(ev) && (
-                                  <a
-                                    href={urlEvidencia(ev)}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="block"
-                                  >
-                                    <img
-                                      src={urlEvidencia(ev)}
-                                      alt={ev.descricao || ev.nomeArquivo}
-                                      className="mt-3 h-28 w-full rounded-lg object-cover"
-                                    />
-                                  </a>
-                                )}
-                                {ev.tipo === "Áudio" && urlEvidencia(ev) && (
-                                  <audio
-                                    controls
-                                    className="mt-3 w-full"
-                                    src={urlEvidencia(ev)}
-                                  />
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        {evidenciasDaNc.length > 6 && (
-                          <button
-                            onClick={() => {
-                              setEvidenciaNcId(nc.id);
-                              setView("evidencias");
-                            }}
-                            className="mt-3 text-sm font-extrabold text-violet-800"
-                          >
-                            Ver todas as evidências →
-                          </button>
-                        )}
-                      </div>
-
-                      {nc.status === "Resolvida" && (
-                        <div className="mt-4 rounded-xl border border-emerald-200 bg-[var(--ok-bg)] p-4">
-                          <div className="text-sm font-extrabold text-emerald-900">
-                            ✓ Não conformidade resolvida
-                          </div>
-                          <div className="mt-1 text-sm text-emerald-800">
-                            O histórico e as evidências permanecem disponíveis para rastreabilidade.
-                          </div>
-                          {nc.historicoAcompanhamento?.length ? (
-                            <div className="mt-3 rounded-xl bg-white/70 p-3">
-                              <div className="text-xs font-extrabold uppercase text-emerald-700">Registro final</div>
-                              <div className="mt-1 text-sm font-medium text-emerald-950">
-                                {[...nc.historicoAcompanhamento].sort((a, b) => b.criadoEm.localeCompare(a.criadoEm))[0].observacao}
-                              </div>
-                            </div>
-                          ) : null}
-                        </div>
-                      )}
-
-                      <div className="mt-4 rounded-xl border border-blue-100 bg-[var(--brand-soft)] p-4">
-                        <div className="text-xs font-extrabold uppercase text-[color:var(--brand)]">
-                          {nc.status === "Resolvida" ? "Registrar nova atualização / reabrir" : "Registrar atualização"}
-                        </div>
-                        <div className="mt-3 grid gap-3 md:grid-cols-[1fr_190px]">
-                          <div className="mbp-voice-wrap">
-                            <textarea
-                              rows={3}
-                              className="w-full rounded-xl border bg-white p-3 text-sm"
-                              placeholder="Ex.: piso comprado; aguardando instalação; correção concluída..."
-                              value={textoAcompanhamento[nc.id] || ""}
-                              onChange={(e) =>
-                                setTextoAcompanhamento((o) => ({
-                                  ...o,
-                                  [nc.id]: e.target.value,
-                                }))
-                              }
-                            />
-                            <VoiceDictationButton
-                              ativo={campoVozAtivo === `atualizacao-${nc.id}`}
-                              melhorando={campoIaAtivo === `atualizacao-${nc.id}`}
-                              onIniciar={() => iniciarDitado(`atualizacao-${nc.id}`, (texto) => setTextoAcompanhamento((o) => ({ ...o, [nc.id]: juntarTextoDitado(o[nc.id] || "", texto) })))}
-                              onMelhorar={() => melhorarTextoComIa(`atualizacao-${nc.id}`, textoAcompanhamento[nc.id] || "", (texto) => setTextoAcompanhamento((o) => ({ ...o, [nc.id]: texto })), "Atualização objetiva sobre andamento ou conclusão de uma correção em inspeção de Boas Práticas.")}
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <select
-                              className="w-full rounded-xl border bg-white p-3 text-sm font-bold"
-                              value={statusAcompanhamento[nc.id] || nc.status}
-                              onChange={(e) =>
-                                setStatusAcompanhamento((o) => ({
-                                  ...o,
-                                  [nc.id]: e.target.value as "Aberta" | "Em tratamento" | "Resolvida",
-                                }))
-                              }
-                            >
-                              <option value="Aberta">Aberta</option>
-                              <option value="Em tratamento">Em tratamento</option>
-                              <option value="Resolvida">Resolvida</option>
-                            </select>
-                            <button
-                              onClick={() => registrarAcompanhamento(nc.id)}
-                              className="w-full rounded-xl bg-[var(--brand)] p-3 text-sm font-medium text-white"
-                            >
-                              {statusAcompanhamento[nc.id] === "Resolvida"
-                                ? "Concluir e registrar"
-                                : "Registrar atualização"}
-                            </button>
-                            {statusAcompanhamento[nc.id] === "Resolvida" && (
-                              <div className="rounded-lg bg-[var(--pend-bg)] p-2 text-xs font-bold text-[color:var(--ink)]">
-                                Para concluir, é necessário ter pelo menos uma evidência vinculada.
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {(nc.historicoAcompanhamento?.length || nc.acompanhamento?.trim()) && (
-                        <div className="mt-4 rounded-xl border border-slate-200 p-4">
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="text-xs font-extrabold uppercase text-slate-500">Histórico de acompanhamento</div>
-                            <div className="rounded-full bg-[var(--na-bg)] px-3 py-1 text-xs font-bold text-[color:var(--ink)]">
-                              {nc.historicoAcompanhamento?.length || 1} registro(s)
-                            </div>
-                          </div>
-
-                          <div className="mt-3 space-y-3">
-                            {nc.historicoAcompanhamento?.length ? (
-                              [...nc.historicoAcompanhamento]
-                                .sort((a, b) => b.criadoEm.localeCompare(a.criadoEm))
-                                .map((item) => (
-                                  <div key={item.id} className="rounded-xl bg-slate-50 p-3">
-                                    <div className="flex flex-wrap items-center justify-between gap-2">
-                                      <div className="text-xs font-bold text-slate-500">
-                                        {new Date(item.criadoEm).toLocaleString("pt-BR")}
-                                      </div>
-                                      <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${
-                                        item.status === "Resolvida"
-                                          ? "bg-[var(--ok-bg)] text-[color:var(--ink)]"
-                                          : item.status === "Em tratamento"
-                                            ? "bg-[var(--pend-bg)] text-[color:var(--ink)]"
-                                            : "bg-[var(--nc-bg)] text-[color:var(--ink)]"
-                                      }`}>
-                                        {item.status}
-                                      </span>
-                                    </div>
-                                    <div className="mt-2 whitespace-pre-wrap text-sm text-slate-800">
-                                      {item.observacao}
-                                    </div>
-                                  </div>
-                                ))
-                            ) : (
-                              <div className="rounded-xl bg-slate-50 p-3">
-                                <div className="text-xs font-bold text-slate-500">Registro anterior</div>
-                                <div className="mt-2 whitespace-pre-wrap text-sm text-slate-800">
-                                  {nc.acompanhamento}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </section>)
-        ) : view === "ncs" && visitaAtual ? (
-          ehPC ? (
-            <PcNcs
-              empresa={nomeParaExibir(empresaVisita)}
-              data={fdata(visitaAtual.data)}
-              ncs={ncsVisita.map((nc, indice) => ({
-                id: nc.id,
-                numero: indice + 1,
-                titulo: nc.titulo,
-                ambiente: nc.ambiente,
-                item: nc.categoria,
-                referencia: nc.referencia,
-                gravidade: nc.criticidade,
-                status: nc.status,
-                onAcompanhar: () => { setPlanoNcAbertaId(nc.id); setView("plano"); },
-              }))}
-              onPlano={permitido("ncs.acompanhar", visitaAtual.empresaId) ? () => setView("plano") : null}
-              onVoltar={() => setView("visita")}
-              onChecklist={abrirChecklist}
-            />
-          ) : (
-          <section className="nc-center space-y-3">
-            <div className="nc-page-head">
-              <div className="nc-title-row">
-                <div className="min-w-0">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.15em] text-red-600">Resultado da inspeção</div>
-                  <h1 className="mt-1 text-xl font-medium text-[color:var(--ink)] sm:text-2xl">Não conformidades</h1>
-                  <p className="mt-0.5 truncate text-xs text-slate-500 sm:text-sm">{nomeSemNumerosNoInicio(empresaVisita?.nomeFantasia || "")} • {fdata(visitaAtual.data)}</p>
-                </div>
-                <button onClick={() => setView("visita")} aria-label="Voltar à Central da visita" className="nc-back-button">
-                  <span className="sm:hidden">←</span><span className="hidden sm:inline">← Central da visita</span>
-                </button>
-              </div>
-
-              <div className="nc-summary" aria-label="Resumo das não conformidades">
-                <div><span>Total</span><strong>{ncsVisita.length}</strong></div>
-                <div><span>Abertas</span><strong className="text-red-600">{ncsAbertas}</strong></div>
-                <div><span>Resolvidas</span><strong className="text-emerald-700">{ncsVisita.filter((nc) => nc.status === "Resolvida").length}</strong></div>
-              </div>
-
-              {ncsVisita.length > 0 && (
-                <div className="nc-filter-tabs" aria-label="Filtrar não conformidades">
-                  {(["Todas", "Abertas", "Resolvidas"] as const).map((filtro) => (
-                    <button key={filtro} type="button" onClick={() => setFiltroNcs(filtro)} className={filtroNcs === filtro ? "is-active" : ""}>
-                      {filtro}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {ncsVisita.length === 0 ? (
-              <div className="nc-empty-state">
-                <div className="text-lg font-medium text-[color:var(--ink)]">Nenhuma não conformidade registrada</div>
-                <p className="mt-1 text-sm text-slate-500">Itens marcados como Não Conforme no checklist aparecerão aqui automaticamente.</p>
-                <button onClick={abrirChecklist}>Abrir checklist →</button>
-              </div>
-            ) : ncsVisiveis.length === 0 ? (
-              <div className="nc-empty-state">
-                <div className="text-lg font-medium text-[color:var(--ink)]">Nenhum resultado neste filtro</div>
-                <button onClick={() => setFiltroNcs("Todas")}>Ver todas</button>
-              </div>
-            ) : (
-              <div className="nc-card-grid">
-                {ncsVisiveis.map((nc) => {
-                  const numeroOriginal = ncsVisita.findIndex((item) => item.id === nc.id) + 1;
-                  const resolvida = nc.status === "Resolvida";
-                  return (
-                    <article key={nc.id} className={`nc-card ${resolvida ? "is-resolved" : "is-open"}`}>
-                      <div className="nc-card-topline">
-                        <div className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400">
-                          NC {String(numeroOriginal).padStart(2, "0")} · {nomeDeExibicaoDoAmbiente(nc.ambiente)} · {nc.categoria}
-                        </div>
-                        <span className={`nc-status ${resolvida ? "is-resolved" : nc.status === "Em tratamento" ? "is-progress" : "is-open"}`}>{nc.status}</span>
-                      </div>
-
-                      <h2>{nc.titulo}</h2>
-
-                      <div className="nc-chips">
-                        <span className={nc.criticidade === "Crítica" ? "is-critical" : nc.criticidade === "Importante" ? "is-important" : "is-routine"}>{nc.criticidade}</span>
-                        {nc.referencia && <span className="is-reference">{nc.referencia}</span>}
-                      </div>
-
-                      {(nc.observacao || nc.orientacao) && (
-                        <details className="nc-details">
-                          <summary>Ver detalhes técnicos <span>⌄</span></summary>
-                          <div>
-                            {nc.observacao && <p><strong>Constatação:</strong> {nc.observacao}</p>}
-                            {nc.orientacao && <p><strong>Orientação:</strong> {nc.orientacao}</p>}
-                          </div>
-                        </details>
-                      )}
-
-                      <button type="button" onClick={() => { setPlanoNcAbertaId(nc.id); setView("plano"); }} className="nc-follow-button">
-                        {resolvida ? "Consultar tratamento" : "Acompanhar correção"} <span>→</span>
-                      </button>
-                    </article>
-                  );
-                })}
-              </div>
-            )}
-          </section>)
         ) : view === "checklist" && visitaAtual && modo === "completo" ? (
           (() => {
             const lista = itensEmOrdem();
@@ -8665,176 +7334,72 @@ export default function Home() {
             )}
           </section>
         ) : view === "visita" && visitaAtual ? (
-          telaEmLista ? (
-            <PcCentral
-              passos={([
-                { chave: "checklist", rotulo: "Checklist", resumo: `${respondidos} de ${totalChecklist} respondidos`, icone: "checklist", tom: "ok" },
-                { chave: "evidencias", rotulo: "Evidências", resumo: `${fotosVisita} ${fotosVisita === 1 ? "foto" : "fotos"} · ${audiosVisita} ${audiosVisita === 1 ? "áudio" : "áudios"}`, icone: "evidencias", tom: "info" },
-                { chave: "correcoes", rotulo: "Correções", resumo: `${ncsAbertas} em aberto`, icone: "ncs", tom: "nc" },
-                { chave: "pops", rotulo: "POPs da visita", resumo: `${resumoPopsVisita.pendentes} a criar ou em rascunho`, icone: "pops", tom: "pend" },
-                { chave: "relatorio", rotulo: "Relatório", resumo: `${linhasConferenciaRel.filter((linha) => !linha.ok).length} pendências`, icone: "relatorio", tom: "lilas" },
-              ] as PassoCentral[]).filter((passo) => telaVisivel(passo.chave === "pops" ? "popsVisita" : (passo.chave as TelaKey)))}
-              onIrPasso={(chave) => irParaPasso(chave as PassoVisita)}
-              empresa={nomeParaExibir(empresaVisita)}
-              detalhe={`${fdata(visitaAtual.data)} · ${visitaAtual.responsavel || "Responsável não informado"}`}
-              proxima={{
-                titulo: proximoAmbienteVisita || ((visitaAtual.ambientes || []).length ? "Revisar a inspeção" : "Definir os ambientes da visita"),
-                respondidos,
-                total: totalChecklist,
-                percentual: percentualChecklist,
-                conformes: conformesChecklist,
-                naoConformes: naoConformesChecklist,
-                naoSeAplica: naoSeAplicaChecklist,
-                pendentes: pendentesChecklist,
-                botao: (visitaAtual.ambientes || []).length ? "Continuar inspeção →" : "Selecionar ambientes →",
-                desabilitado: !(permitido("visitas.executar", visitaAtual.empresaId) || (!!usuarioDaSessao && telaVisivel("checklist"))),
-                onContinuar: () => ((visitaAtual.ambientes || []).length ? abrirChecklist() : abrirAmbientes()),
-              }}
-              indicadores={{
-                conformes: conformesVisita,
-                naoConformidades: ncsVisita.length,
-                evidencias: evidenciasVisita.length,
-                pendencias: pendentesVisita,
-              }}
-              equipamentos={{
-                texto: `${equipamentosDaVisita.length} tipos · ${totalUnidadesEquipamentos} unidades`,
-                desabilitado: (visitaAtual.ambientes || []).length === 0,
-                onAbrir: () => abrirChecklistNoAmbiente(equipamentosDaVisita[0]?.setor || (visitaAtual.ambientes || [])[0]),
-              }}
-              programas={
-                programasChecklistAtivos.length > 0
-                  ? {
-                      texto: `${respondidosProgramasCentral} de ${itensProgramasCentral.length} · ${statusProgramasCentral}`,
-                      onAbrir: () => abrirChecklistNoAmbiente(AMBIENTE_PROGRAMAS_CONTROLE),
-                    }
-                  : null
-              }
-              atividade={{
-                texto: `${respondidos} itens respondidos · ${ncsVisita.length} não conformidades`,
-                onAcompanhar: permitido("ncs.acompanhar", visitaAtual.empresaId) ? () => setView("acompanhamento") : null,
-              }}
-              ncsAbertas={
-                permitido("ncs.acompanhar", visitaAtual.empresaId)
-                  ? [...ncsVisita]
-                      .filter((nc) => nc.status !== "Resolvida")
-                      .sort((a, b) => String(a.criadoEm).localeCompare(String(b.criadoEm)))
-                      .slice(0, 4)
-                      .map((nc) => ({
-                        id: nc.id,
-                        titulo: nc.titulo,
-                        detalhe: `${nomeDeExibicaoDoAmbiente(nc.ambiente)} · ${nc.categoria}`,
-                        status: nc.status,
-                        onAbrir: () => { setPlanoNcAbertaId(nc.id); setView("plano"); },
-                      }))
-                  : null
-              }
-              onVerNcs={() => setView("ncs")}
-              onEditarAmbientes={permitido("visitas.executar", visitaAtual.empresaId) ? () => abrirAmbientes() : null}
-              onTodasVisitas={() => navegarPrincipal("visitas")}
-            />
-          ) : (
-          <section className="visit-central space-y-2.5 lg:space-y-4">
-            <div className="flex items-center justify-between gap-2 border-b border-slate-200 pb-2.5 lg:items-end lg:gap-3 lg:pb-4">
-              <div className="min-w-0 flex-1">
-                <div className="text-[10px] font-medium text-slate-400"><span className="text-[color:var(--brand)]">Visitas</span><span className="mx-1.5">›</span>Central da visita</div>
-                <h1 className="mt-1 truncate text-xl font-medium tracking-tight text-[color:var(--ink)] sm:text-2xl">{nomeEmFormatoNatural(empresaVisita?.nomeFantasia)}</h1>
-                <div className="mt-0.5 truncate text-xs font-normal text-slate-500 sm:text-sm">{fdata(visitaAtual.data)} • {visitaAtual.responsavel || "Responsável não informado"}</div>
-              </div>
-              <button onClick={() => setView("visitas")} aria-label="Voltar para todas as visitas" className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-slate-200 bg-white text-lg font-medium text-[color:var(--ink)] shadow-sm transition hover:border-blue-200 hover:text-[color:var(--brand)] sm:flex sm:h-auto sm:w-fit sm:px-4 sm:py-2 sm:text-sm"><span className="sm:hidden">←</span><span className="hidden sm:inline">← Todas as visitas</span></button>
-            </div>
-
-            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_8px_28px_rgba(6,27,79,0.06)]">
-              <div className="grid gap-2.5 p-3 sm:gap-3 sm:p-4 lg:grid-cols-[minmax(250px,.8fr)_minmax(320px,1.2fr)_auto] lg:items-center lg:gap-7">
-                <div className="min-w-0">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand)]">Próxima etapa</div>
-                  <h2 className="mt-1 truncate text-base font-medium text-[color:var(--ink)] sm:text-lg">{proximoAmbienteVisita || ((visitaAtual.ambientes || []).length ? "Revisar a inspeção" : "Definir os ambientes da visita")}</h2>
-                  <p className="mt-1 hidden text-xs text-slate-500 sm:block">Retome exatamente do ponto em que parou.</p>
-                </div>
-                <div>
-                <div className="flex items-center justify-between text-[13px] text-slate-500"><span>{respondidos} de {totalChecklist} respondidos</span><span className="font-semibold text-[color:var(--brand)]">{percentualChecklist}%</span></div>
-                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
-                    <div className="h-full rounded-full bg-gradient-to-r from-[var(--info)] to-[var(--brand)] transition-all" style={{ width: `${percentualChecklist}%` }} />
-                  </div>
-                </div>
-                <button type="button" onClick={() => (visitaAtual.ambientes || []).length ? abrirChecklist() : abrirAmbientes()} disabled={!permitido("visitas.executar", visitaAtual.empresaId)} className="w-full whitespace-nowrap rounded-full bg-[var(--brand)] px-5 py-2 text-sm font-medium text-white shadow-[0_8px_18px_rgba(22,78,232,.2)] transition hover:brightness-95 disabled:opacity-50 sm:py-2.5 lg:w-auto">
-                  {(visitaAtual.ambientes || []).length ? "Continuar inspeção →" : "Selecionar ambientes →"}
-                </button>
-              </div>
-            </div>
-
-            <div className="pc-kpi-grid">
-              <button type="button" onClick={abrirChecklist} className="pc-kpi is-ok">
-                <div className="pc-kpi-label"><i style={{ background: "var(--ok)" }} aria-hidden="true" />Conformes</div><div className="pc-kpi-num">{conformesVisita}</div><div className="pc-kpi-sub">{percentualConformidade}% dos avaliados</div>
-              </button>
-              <button type="button" onClick={() => setView("ncs")} disabled={!permitido("ncs.acompanhar", visitaAtual.empresaId)} className="pc-kpi is-nc disabled:opacity-50">
-                <div className="pc-kpi-label"><i style={{ background: "var(--nc)" }} aria-hidden="true" />Não conformidades</div><div className="pc-kpi-num">{ncsVisita.length}</div><div className="pc-kpi-sub">{ncsAbertas} em acompanhamento</div>
-              </button>
-              <button type="button" onClick={abrirEvidencias} className="pc-kpi is-info">
-                <div className="pc-kpi-label"><i style={{ background: "var(--info)" }} aria-hidden="true" />Evidências</div><div className="pc-kpi-num">{evidenciasVisita.length}</div><div className="pc-kpi-sub">{fotosVisita} fotos · {audiosVisita} áudios</div>
-              </button>
-              <button type="button" onClick={abrirChecklist} className="pc-kpi is-pend">
-                <div className="pc-kpi-label"><i style={{ background: "var(--pend)" }} aria-hidden="true" />Pendências</div><div className="pc-kpi-num">{pendentesVisita}</div><div className="pc-kpi-sub">Itens não verificados</div>
-              </button>
-            </div>
-
-            <div>
-              <h2 className="mb-2 text-base font-medium text-[color:var(--ink)]">Áreas da visita</h2>
-              <div className="visit-area-grid grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                <button type="button" onClick={abrirAmbientes} className="visit-area-card group flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-blue-200 hover:bg-[var(--brand-soft)]/30"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-cyan-50 text-cyan-700"><CompanySectionIcon name="ambientes" /></span><span className="min-w-0 flex-1"><span className="block text-sm font-medium text-[color:var(--ink)]">Ambientes da visita</span><span className="mt-0.5 block truncate text-xs text-slate-500">{(visitaAtual.ambientes || []).length} selecionados</span></span><span className="text-sm text-[color:var(--brand)]">›</span></button>
-                <button type="button" onClick={abrirEvidencias} className="visit-area-card flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-blue-200 hover:bg-[var(--brand-soft)]/30"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-violet-50 text-violet-700"><VisitAreaIcon name="evidencias" /></span><span className="min-w-0 flex-1"><span className="block text-sm font-medium text-[color:var(--ink)]">Evidências</span><span className="mt-0.5 block truncate text-xs text-slate-500"><span className="sm:hidden">{evidenciasVisita.length} registros</span><span className="hidden sm:inline">Fotos, áudios e registros</span></span></span><span className="text-sm text-[color:var(--brand)]">›</span></button>
-                <button type="button" onClick={() => setView("plano")} disabled={!ncsVisita.length || !permitido("ncs.acompanhar", visitaAtual.empresaId)} className="visit-area-card flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-blue-200 hover:bg-[var(--brand-soft)]/30 disabled:opacity-40"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[var(--pend-bg)] text-[color:var(--ink)]"><VisitAreaIcon name="plano" /></span><span className="min-w-0 flex-1"><span className="block text-sm font-medium text-[color:var(--ink)]">Plano de ação</span><span className="mt-0.5 block truncate text-xs text-slate-500"><span className="sm:hidden">{ncsVisita.length} achados</span><span className="hidden sm:inline">Tratamento dos achados</span></span></span><span className="text-sm text-[color:var(--brand)]">›</span></button>
-                <button type="button" onClick={() => setView("relatorio")} disabled={!permitido("relatorios.exportar", visitaAtual.empresaId) && !permitido("relatorios.aprovar", visitaAtual.empresaId)} className="visit-area-card flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-blue-200 hover:bg-[var(--brand-soft)]/30 disabled:opacity-40"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[var(--brand-soft)] text-[color:var(--brand)]"><VisitAreaIcon name="relatorio" /></span><span className="min-w-0 flex-1"><span className="block text-sm font-medium text-[color:var(--ink)]">Relatório</span><span className="mt-0.5 block truncate text-xs text-slate-500">Resumo e exportação</span></span><span className="text-sm text-[color:var(--brand)]">›</span></button>
-                <button type="button" onClick={() => abrirChecklistNoAmbiente(equipamentosDaVisita[0]?.setor || (visitaAtual.ambientes || [])[0])} disabled={(visitaAtual.ambientes || []).length === 0} className="visit-area-card flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-blue-200 hover:bg-[var(--brand-soft)]/30 disabled:opacity-40"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[var(--ok-bg)] text-[color:var(--ink)]"><VisitAreaIcon name="equipamentos" /></span><span className="min-w-0 flex-1"><span className="block text-sm font-medium text-[color:var(--ink)]">Equipamentos e móveis</span><span className="mt-0.5 block truncate text-xs text-slate-500">{equipamentosDaVisita.length} tipos • {totalUnidadesEquipamentos} unidades</span></span><span className="text-sm text-[color:var(--brand)]">›</span></button>
-                {programasChecklistAtivos.length > 0 && <button type="button" onClick={() => abrirChecklistNoAmbiente(AMBIENTE_PROGRAMAS_CONTROLE)} className="visit-area-card flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-blue-200 hover:bg-[var(--brand-soft)]/30"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-indigo-50 text-indigo-700"><VisitAreaIcon name="programas" /></span><span className="min-w-0 flex-1"><span className="block text-sm font-medium text-[color:var(--ink)]">Programas de Controle</span><span className="mt-0.5 block truncate text-xs text-slate-500">{respondidosProgramasCentral} de {itensProgramasCentral.length} • {statusProgramasCentral}</span></span><span className="text-sm text-[color:var(--brand)]">›</span></button>}
-              </div>
-            </div>
-
-            <div className="grid items-start gap-3 lg:grid-cols-2">
-            <details className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-4"><div><div className="font-medium text-[color:var(--ink)]">Mapa e situação dos ambientes</div><div className="mt-1 text-xs text-slate-500">Consulte os ambientes e seus estados</div></div><span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[var(--brand-soft)] font-medium text-[color:var(--ink)] transition group-open:rotate-90">→</span></summary>
-              <div className="border-t border-slate-100">
-                <div className="relative hidden aspect-[16/5] overflow-hidden bg-slate-50 sm:block"><img src="/images/mapa-inspecao.webp" alt="Ilustração de uma área de produção de alimentos" className="h-full w-full object-cover" /><div className="absolute bottom-3 left-3 rounded-full bg-white/95 px-3 py-1.5 text-[10px] font-bold text-slate-500 shadow-sm">Imagem ilustrativa</div></div>
-                {resumoAmbientesVisita.length === 0 ? <div className="p-5"><button type="button" onClick={abrirAmbientes} className="w-full rounded-xl bg-[var(--brand)] px-4 py-3 text-sm font-medium text-white">Selecionar ambientes →</button></div> : <div className="space-y-5 p-4 sm:p-5">{ambientesAgrupadosCentral.map((grupo) => <div key={grupo.titulo}><div className="mb-2 text-[10px] font-extrabold uppercase tracking-wide text-[color:var(--brand)]">{grupo.titulo}</div><div className="grid gap-2 sm:grid-cols-2">{grupo.ambientes.map((resumo) => <button key={resumo.ambiente} type="button" onClick={() => abrirChecklistNoAmbiente(resumo.ambiente)} className="flex min-w-0 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-left transition hover:border-blue-200 hover:bg-[var(--brand-soft)]"><span className={`h-3 w-3 shrink-0 rounded-full ${resumo.status === "Conforme" ? "bg-[var(--ok-bg)]0" : resumo.status === "Atenção" ? "bg-[var(--pend-bg)]0" : resumo.status === "Não conforme" ? "bg-[var(--nc-bg)]0" : "bg-slate-400"}`} /><span className="min-w-0 flex-1"><span className="block text-sm font-bold text-slate-800">{resumo.ambiente}</span><span className="mt-0.5 block text-[10px] text-slate-500">{resumo.respondidos} de {resumo.itens} perguntas • {resumo.status}</span></span><span className="text-[color:var(--brand)]">→</span></button>)}</div></div>)}</div>}
-              </div>
-            </details>
-
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div className="flex items-center justify-between gap-3"><div><div className="font-medium text-[color:var(--ink)]">Atividade da visita</div><div className="mt-1 text-xs text-slate-500">{respondidos} itens respondidos • {ncsVisita.length} não conformidades</div></div><button type="button" onClick={() => setView("acompanhamento")} disabled={!permitido("ncs.acompanhar", visitaAtual.empresaId)} className="shrink-0 whitespace-nowrap rounded-full bg-[var(--brand-soft)] px-3 py-2 text-xs font-medium text-[color:var(--ink)] disabled:opacity-40">Acompanhar →</button></div></div>
-            </div>
-
-            {permitido("ncs.acompanhar", visitaAtual.empresaId) && (() => {
-              const abertas = [...ncsVisita]
-                .filter((nc) => nc.status !== "Resolvida")
-                .sort((a, b) => String(a.criadoEm).localeCompare(String(b.criadoEm)))
-                .slice(0, 3);
-              if (abertas.length === 0) return null;
-              return (
-                <div className="pc-open-ncs">
-                  <div className="flex items-center justify-between gap-3">
-                    <h2 className="text-base font-medium text-[color:var(--ink)]">Não conformidades em aberto</h2>
-                    <button type="button" onClick={() => setView("ncs")} className="text-sm text-[color:var(--ink)] underline decoration-[var(--brand)] underline-offset-4">
-                      Ver todas
-                    </button>
-                  </div>
-                  <div className="mt-2 grid gap-2">
-                    {abertas.map((nc) => (
-                      <button
-                        key={nc.id}
-                        type="button"
-                        onClick={() => { setPlanoNcAbertaId(nc.id); setView("plano"); }}
-                        className="pc-open-nc"
-                      >
-                        <span className="min-w-0">
-                          <span className="block truncate text-sm font-medium text-[color:var(--ink)]">{nc.titulo}</span>
-                          <span className="block truncate text-xs text-[color:var(--ink-2)]">{nomeDeExibicaoDoAmbiente(nc.ambiente)} · {nc.status}</span>
-                        </span>
-                        <span className="shrink-0 text-sm text-[color:var(--ink)]">Acompanhar →</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              );
-            })()}
-          </section>)
+          <PcCentral
+            passos={([
+              { chave: "checklist", rotulo: "Checklist", resumo: `${respondidos} de ${totalChecklist} respondidos`, icone: "checklist", tom: "ok" },
+              { chave: "evidencias", rotulo: "Evidências", resumo: `${fotosVisita} ${fotosVisita === 1 ? "foto" : "fotos"} · ${audiosVisita} ${audiosVisita === 1 ? "áudio" : "áudios"}`, icone: "evidencias", tom: "info" },
+              { chave: "correcoes", rotulo: "Correções", resumo: `${ncsAbertas} em aberto`, icone: "ncs", tom: "nc" },
+              { chave: "pops", rotulo: "POPs da visita", resumo: `${resumoPopsVisita.pendentes} a criar ou em rascunho`, icone: "pops", tom: "pend" },
+              { chave: "relatorio", rotulo: "Relatório", resumo: `${linhasConferenciaRel.filter((linha) => !linha.ok).length} pendências`, icone: "relatorio", tom: "lilas" },
+            ] as PassoCentral[]).filter((passo) => telaVisivel(passo.chave === "pops" ? "popsVisita" : (passo.chave as TelaKey)))}
+            onIrPasso={(chave) => irParaPasso(chave as PassoVisita)}
+            empresa={nomeParaExibir(empresaVisita)}
+            detalhe={`${fdata(visitaAtual.data)} · ${visitaAtual.responsavel || "Responsável não informado"}`}
+            proxima={{
+              titulo: proximoAmbienteVisita || ((visitaAtual.ambientes || []).length ? "Revisar a inspeção" : "Definir os ambientes da visita"),
+              respondidos,
+              total: totalChecklist,
+              percentual: percentualChecklist,
+              conformes: conformesChecklist,
+              naoConformes: naoConformesChecklist,
+              naoSeAplica: naoSeAplicaChecklist,
+              pendentes: pendentesChecklist,
+              botao: (visitaAtual.ambientes || []).length ? "Continuar inspeção →" : "Selecionar ambientes →",
+              desabilitado: !(permitido("visitas.executar", visitaAtual.empresaId) || (!!usuarioDaSessao && telaVisivel("checklist"))),
+              onContinuar: () => ((visitaAtual.ambientes || []).length ? abrirChecklist() : abrirAmbientes()),
+            }}
+            indicadores={{
+              conformes: conformesVisita,
+              naoConformidades: ncsVisita.length,
+              evidencias: evidenciasVisita.length,
+              pendencias: pendentesVisita,
+            }}
+            equipamentos={{
+              texto: `${equipamentosDaVisita.length} tipos · ${totalUnidadesEquipamentos} unidades`,
+              desabilitado: (visitaAtual.ambientes || []).length === 0,
+              onAbrir: () => abrirChecklistNoAmbiente(equipamentosDaVisita[0]?.setor || (visitaAtual.ambientes || [])[0]),
+            }}
+            programas={
+              programasChecklistAtivos.length > 0
+                ? {
+                    texto: `${respondidosProgramasCentral} de ${itensProgramasCentral.length} · ${statusProgramasCentral}`,
+                    onAbrir: () => abrirChecklistNoAmbiente(AMBIENTE_PROGRAMAS_CONTROLE),
+                  }
+                : null
+            }
+            atividade={{
+              texto: `${respondidos} itens respondidos · ${ncsVisita.length} não conformidades`,
+              onAcompanhar: permitido("ncs.acompanhar", visitaAtual.empresaId) ? () => setView("acompanhamento") : null,
+            }}
+            ncsAbertas={
+              permitido("ncs.acompanhar", visitaAtual.empresaId)
+                ? [...ncsVisita]
+                    .filter((nc) => nc.status !== "Resolvida")
+                    .sort((a, b) => String(a.criadoEm).localeCompare(String(b.criadoEm)))
+                    .slice(0, 4)
+                    .map((nc) => ({
+                      id: nc.id,
+                      titulo: nc.titulo,
+                      detalhe: `${nomeDeExibicaoDoAmbiente(nc.ambiente)} · ${nc.categoria}`,
+                      status: nc.status,
+                      onAbrir: () => { setPlanoNcAbertaId(nc.id); setView("plano"); },
+                    }))
+                : null
+            }
+            onVerNcs={() => setView("ncs")}
+            onEditarAmbientes={permitido("visitas.executar", visitaAtual.empresaId) ? () => abrirAmbientes() : null}
+            onTodasVisitas={() => navegarPrincipal("visitas")}
+          />
         ) : view === "relatorio" && visitaAtual ? (
           <>
             {telaEmLista && (
@@ -9689,150 +8254,11 @@ export default function Home() {
             onCancelar={() => setView("ajuda")}
           />
         ) : view === "ajuda" ? (
-          telaEmLista ? (
-            <PcAjuda
-              onVoltar={() => setView("inicio")}
-              onModoDeTela={() => setView("modotela")}
-              guiasLiberados={{ guiaRapido: telaVisivel("guiaRapido"), manualCompleto: telaVisivel("manualCompleto") }}
-            />
-          ) : (
-          <section className="help-page space-y-4">
-            <div className="help-hero">
-              <div>
-                <div className="help-kicker">AJUDA • GUIAS DO SISTEMA</div>
-                <h1>Como usar o {BRAND.name}</h1>
-                <p>Respostas rápidas para o trabalho em campo e acesso ao manual completo quando precisar de mais detalhes.</p>
-              </div>
-              <button type="button" onClick={() => setView("inicio")} className="help-back-button">← Voltar ao Início</button>
-            </div>
-
-            <div className="help-grid">
-              <article className="help-card">
-                <div className="help-card-icon is-blue">✓</div>
-                <div>
-                  <h2>Fluxo rápido da visita</h2>
-                  <ol className="help-steps">
-                    <li><span>1</span>Selecione a empresa.</li>
-                    <li><span>2</span>Abra ou inicie uma visita.</li>
-                    <li><span>3</span>Escolha o ambiente e responda o checklist.</li>
-                    <li><span>4</span>Registre observações, evidências e NCs.</li>
-                    <li><span>5</span>Acompanhe o plano de ação e revise o relatório.</li>
-                  </ol>
-                </div>
-              </article>
-
-              <article className="help-card">
-                <div className="help-card-icon is-green">●</div>
-                <div>
-                  <h2>Entenda as cores</h2>
-                  <div className="help-color-list">
-                    <div><span className="help-color-dot is-green" /><strong>Verde</strong><small>Conforme, concluído ou sem pendência ativa.</small></div>
-                    <div><span className="help-color-dot is-red" /><strong>Rosa / vermelho</strong><small>Existe pelo menos uma não conformidade ou ponto que exige atenção.</small></div>
-                    <div><span className="help-color-dot is-amber" /><strong>Amarelo / laranja</strong><small>Em andamento, atenção ou etapa intermediária.</small></div>
-                    <div><span className="help-color-dot is-gray" /><strong>Cinza</strong><small>Pendente, neutro ou ainda não avaliado.</small></div>
-                  </div>
-                </div>
-              </article>
-            </div>
-
-            <article className="help-card help-highlight">
-              <div className="help-card-icon is-red">!</div>
-              <div>
-                <h2>Por que o ambiente ficou rosa?</h2>
-                <p>Isso não é erro. O ambiente fica rosa/vermelho quando existe pelo menos um item marcado como <strong>Não Conforme</strong>. Abra o setor para localizar o item que precisa de atenção.</p>
-                <div className="help-example"><strong>Exemplo:</strong> se “Copa” tiver um item Não Conforme, a lateral mostra o setor em rosa. Quando todos os itens estiverem avaliados e não houver NC ativa, o setor aparece em verde.</div>
-              </div>
-            </article>
-
-            <div className="help-grid">
-              <article className="help-card">
-                <div className="help-card-icon is-purple">≡</div>
-                <div>
-                  <h2>Por que alguns itens “somem”?</h2>
-                  <p>Na maioria das vezes, eles não foram apagados. Um filtro está ocultando o que não corresponde à seleção atual.</p>
-                  <ul className="help-bullets">
-                    <li><strong>Todos:</strong> mostra todos os itens.</li>
-                    <li><strong>Pendentes:</strong> esconde os que já foram respondidos.</li>
-                    <li><strong>Não conformes:</strong> mostra somente os itens com problema.</li>
-                  </ul>
-                </div>
-              </article>
-
-              <article className="help-card">
-                <div className="help-card-icon is-cyan">🎙</div>
-                <div>
-                  <h2>Voz e IA</h2>
-                  <p><strong>Falar:</strong> toque, dite e depois toque em Parar. O áudio é convertido em texto.</p>
-                  <p className="mt-2"><strong>IA:</strong> depois de escrever ou ditar, use IA para corrigir gramática, organizar a frase e deixá-la mais técnica e objetiva.</p>
-                  <div className="help-note">A IA melhora a redação, mas o usuário deve revisar o texto antes de salvar.</div>
-                </div>
-              </article>
-            </div>
-
-            <article className="help-card">
-              <div className="help-card-icon is-amber">↻</div>
-              <div>
-                <h2>Offline e sincronização</h2>
-                <p>Sem internet, os registros compatíveis com o modo offline permanecem no aparelho. Quando a conexão volta, o sistema sincroniza com a nuvem.</p>
-                <div className="help-note is-amber">Transcrição de voz, melhoria de texto com IA e análise de fotos por IA precisam de internet.</div>
-              </div>
-            </article>
-
-            <div>
-              <div className="help-section-title">O que significa quando...</div>
-              <div className="help-faq">
-                <details open>
-                  <summary>O ambiente ficou rosa/vermelho</summary>
-                  <p>Há pelo menos uma não conformidade naquele ambiente. Abra o setor e confira os itens marcados como Não Conforme.</p>
-                </details>
-                <details>
-                  <summary>O ambiente ficou verde</summary>
-                  <p>Os itens daquele ambiente foram avaliados e não há não conformidade ativa.</p>
-                </details>
-                <details>
-                  <summary>Um item desapareceu da tela</summary>
-                  <p>Confira o filtro. Volte para “Todos” para visualizar novamente os itens ocultos.</p>
-                </details>
-                <details>
-                  <summary>Não consigo editar um registro</summary>
-                  <p>A visita pode estar concluída, o item pode estar resolvido ou o perfil do usuário pode não ter permissão para editar.</p>
-                </details>
-                <details>
-                  <summary>Apareceu “Somente local” ou modo offline</summary>
-                  <p>O aparelho está sem comunicação com a nuvem. Continue o trabalho normalmente e sincronize quando a conexão voltar.</p>
-                </details>
-                <details>
-                  <summary>O microfone não transcreveu</summary>
-                  <p>Verifique a internet e a permissão do microfone. Fale por alguns segundos e toque em Parar para enviar o áudio à transcrição.</p>
-                </details>
-                <details>
-                  <summary>A IA não respondeu</summary>
-                  <p>Pode haver falta de internet ou indisponibilidade temporária do serviço. O registro manual continua funcionando.</p>
-                </details>
-              </div>
-            </div>
-
-            <div className="help-documents">
-              <div>
-                <div className="help-section-title">Guias completos</div>
-                <p>Abra o material em PDF quando quiser consultar o passo a passo com mais detalhes.</p>
-              </div>
-              <div className="help-document-actions">
-                {telaVisivel("guiaRapido") && (
-                <a href="/api/guias/guia-rapido" target="_blank" rel="noreferrer" className="help-doc-button is-primary">
-                  <span>⚡</span>
-                  <span><strong>Guia rápido</strong><small>Consulta prática para o dia a dia</small></span>
-                </a>
-                )}
-                {telaVisivel("manualCompleto") && (
-                <a href="/api/guias/manual-completo" target="_blank" rel="noreferrer" className="help-doc-button">
-                  <span>📘</span>
-                  <span><strong>Manual completo</strong><small>Explicação detalhada do sistema</small></span>
-                </a>
-                )}
-              </div>
-            </div>
-          </section>)
+          <PcAjuda
+            onVoltar={() => setView("inicio")}
+            onModoDeTela={() => setView("modotela")}
+            guiasLiberados={{ guiaRapido: telaVisivel("guiaRapido"), manualCompleto: telaVisivel("manualCompleto") }}
+          />
         ) : view === "inicio" ? (
           ehPC ? (
             <PcInicio
@@ -9994,178 +8420,49 @@ export default function Home() {
             </section>
           </div>)
         ) : view === "empresas" ? (
-          telaEmLista ? (
-            <PcEmpresas
-              totalClientes={empresasVisiveis.length}
-              busca={buscaEmpresas}
-              onBusca={setBuscaEmpresas}
-              podeCriar={permitido("empresas.editar")}
-              onNova={iniciarNovaEmpresa}
-              onSelecionar={(id) => { setDb((o) => ({ ...o, empresaAtualId: id })); setVisitaAtualId(null); }}
-              onGerenciar={(id) => { const alvo = db.empresas[id]; if (alvo) editarEmpresa(alvo); }}
-              onNovaVisita={novaVisita}
-              onHistorico={(id) => {
-                setDb((o) => ({ ...o, empresaAtualId: id }));
-                setVisitaAtualId(null);
-                setView("historico");
-              }}
-              onAcessos={() => navegarPrincipal("acessos")}
-              onArquivar={(id, arquivar) => {
-                if (!exigirPermissao("empresas.editar", id)) return;
-                setDb((o) => (o.empresas[id] ? { ...o, empresas: { ...o.empresas, [id]: marcarArquivada(o.empresas[id], arquivar, new Date().toISOString()) } } : o));
-              }}
-              arquivadasTotal={empresasVisiveis.filter((e) => e.arquivada).length}
-              mostrarArquivadas={mostrarEmpresasArquivadas}
-              onMostrarArquivadas={setMostrarEmpresasArquivadas}
-              empresas={empresasFiltradas.map((e) => {
-                const prep = preparacaoDaEmpresa(e);
-                return {
-                  id: e.id,
-                  nome: nomeParaExibir(e),
-                  razaoSocial: e.razaoSocial || "",
-                  ativa: db.empresaAtualId === e.id,
-                  setores: prep.contagens.setores,
-                  equipamentos: prep.contagens.equipamentos,
-                  programas: prep.contagens.programas,
-                  pops: prep.contagens.pops,
-                  preparacao: prep.percentual,
-                  completo: prep.completo,
-                  faltas: faltasDoCadastro(e),
-                  podeGerenciar: permitido("empresas.editar", e.id),
-                  podeAcessos: permitido("usuarios.gerenciar"),
-                  arquivada: Boolean(e.arquivada),
-                  podeNovaVisita: permitido("visitas.criar", e.id),
-                };
-              })}
-            />
-          ) : (
-          <section className="rounded-2xl bg-white p-5 shadow-sm">
-            <div className="flex justify-between gap-4">
-              <div>
-                <h1 className="text-2xl font-extrabold">Empresas</h1>
-                <p className="text-sm text-slate-500">
-                  Cadastre e selecione seus clientes.
-                </p>
-              </div>
-
-              {permitido("empresas.editar") && (
-                <button
-                  onClick={() => {
-                    const responsabilidadesIniciais = criarResponsabilidadesPadrao();
-                    const fluxosIniciais = criarFluxosOperacionaisPadrao();
-                    const programasIniciais = criarProgramasControlePadrao();
-                    setEditingEmpresaId(null);
-                    setForm(formEmpresaVazio);
-                    setResponsabilidadesEmpresa(responsabilidadesIniciais);
-                    setSetoresEmpresa([]);
-                    setEquipamentosEmpresa([]);
-                    setFluxosEmpresa(fluxosIniciais);
-                    setProgramasEmpresa(programasIniciais);
-                    setPopsEmpresa([]);
-                    setAssinaturaEmpresaSalva(assinaturaEdicaoEmpresa({
-                      form: formEmpresaVazio,
-                      responsabilidades: responsabilidadesIniciais,
-                      setores: [],
-                      equipamentos: [],
-                      fluxos: fluxosIniciais,
-                      programas: programasIniciais,
-                      pops: [],
-                    }));
-                    setEmpresaSecao("dados");
-                    setMsg("");
-                    setShowEmpresaForm(true);
-                  }}
-                  className="rounded-xl bg-[var(--brand)] px-4 py-3 font-medium text-white"
-                >
-                  + Nova empresa
-                </button>
-              )}
-            </div>
-
-            <label className="mt-4 block">
-              <span className="sr-only">Buscar empresa</span>
-              <input
-                value={buscaEmpresas}
-                onChange={(event) => setBuscaEmpresas(event.target.value)}
-                placeholder="Buscar por nome, CNPJ ou município"
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm outline-none focus:border-blue-300 focus:bg-white"
-              />
-            </label>
-
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
-              {empresasFiltradas.map((e) => (
-                <div
-                  key={e.id}
-                  className={`rounded-xl border p-4 ${
-                    db.empresaAtualId === e.id
-                      ? "border-[var(--brand)] bg-[var(--brand-soft)]"
-                      : ""
-                  }`}
-                >
-                  <div className="font-extrabold">{nomeSemNumerosNoInicio(e.nomeFantasia)}</div>
-                  <div className="text-sm text-slate-500">{e.razaoSocial}</div>
-                  {e.responsavel && (
-                    <div className="mt-1 text-xs text-slate-500">Responsável: {e.responsavel}</div>
-                  )}
-                  <div className="mt-2 text-xs text-slate-500">
-                    <span className="font-bold">Horário:</span>{" "}
-                    {e.horarioFuncionamento ||
-                      (e.horariosFuncionamento?.some((item) => item.aberto)
-                        ? resumirHorarioFuncionamento(e.horariosFuncionamento)
-                        : "Não informado")}
-                  </div>
-                  <div className="mt-1 text-xs text-slate-500">
-                    {(e.setoresManual || []).length} setor(es) • {(e.equipamentosSetores || []).length} equipamento(s) e móvel(is)
-                  </div>
-                  <div className="mt-1 text-xs text-slate-500">
-                    {(e.fluxosOperacionais || []).filter((fluxo) => fluxo.aplicavel).length} fluxo(s) operacional(is)
-                  </div>
-                  <div className="mt-1 text-xs text-slate-500">
-                    {(e.programasControleQualidade || []).filter((programa) => programa.status === "Implantado" || programa.status === "Em implantação").length} programa(s) de controle ativo(s)
-                  </div>
-                  <div className="mt-1 text-xs text-slate-500">
-                    {(e.pops || []).length} POP(s) cadastrado(s)
-                  </div>
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <button
-                      onClick={() => {
-                        setDb((o) => ({ ...o, empresaAtualId: e.id }));
-                        setVisitaAtualId(null);
-                      }}
-                      className="flex-1 rounded-xl bg-slate-100 px-4 py-2 font-bold"
-                    >
-                      {db.empresaAtualId === e.id
-                        ? "Empresa ativa"
-                        : "Selecionar"}
-                    </button>
-
-                    {permitido("empresas.editar", e.id) && (
-                      <button
-                        onClick={() => editarEmpresa(e)}
-                        className="rounded-xl bg-slate-100 px-4 py-2 font-bold"
-                      >
-                        Gerenciar
-                      </button>
-                    )}
-
-                    {db.empresaAtualId === e.id && permitido("visitas.criar", e.id) && (
-                      <button
-                        onClick={novaVisita}
-                        className="rounded-xl bg-[var(--brand)] px-4 py-2 font-medium text-white"
-                      >
-                        Nova visita
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {empresasFiltradas.length === 0 && (
-                <div className="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500 md:col-span-2">
-                  Nenhuma empresa encontrada com esse termo.
-                </div>
-              )}
-            </div>
-          </section>)
+          <PcEmpresas
+            totalClientes={empresasVisiveis.length}
+            busca={buscaEmpresas}
+            onBusca={setBuscaEmpresas}
+            podeCriar={permitido("empresas.editar")}
+            onNova={iniciarNovaEmpresa}
+            onSelecionar={(id) => { setDb((o) => ({ ...o, empresaAtualId: id })); setVisitaAtualId(null); }}
+            onGerenciar={(id) => { const alvo = db.empresas[id]; if (alvo) editarEmpresa(alvo); }}
+            onNovaVisita={novaVisita}
+            onHistorico={(id) => {
+              setDb((o) => ({ ...o, empresaAtualId: id }));
+              setVisitaAtualId(null);
+              setView("historico");
+            }}
+            onAcessos={() => navegarPrincipal("acessos")}
+            onArquivar={(id, arquivar) => {
+              if (!exigirPermissao("empresas.editar", id)) return;
+              setDb((o) => (o.empresas[id] ? { ...o, empresas: { ...o.empresas, [id]: marcarArquivada(o.empresas[id], arquivar, new Date().toISOString()) } } : o));
+            }}
+            arquivadasTotal={empresasVisiveis.filter((e) => e.arquivada).length}
+            mostrarArquivadas={mostrarEmpresasArquivadas}
+            onMostrarArquivadas={setMostrarEmpresasArquivadas}
+            empresas={empresasFiltradas.map((e) => {
+              const prep = preparacaoDaEmpresa(e);
+              return {
+                id: e.id,
+                nome: nomeParaExibir(e),
+                razaoSocial: e.razaoSocial || "",
+                ativa: db.empresaAtualId === e.id,
+                setores: prep.contagens.setores,
+                equipamentos: prep.contagens.equipamentos,
+                programas: prep.contagens.programas,
+                pops: prep.contagens.pops,
+                preparacao: prep.percentual,
+                completo: prep.completo,
+                faltas: faltasDoCadastro(e),
+                podeGerenciar: permitido("empresas.editar", e.id),
+                podeAcessos: permitido("usuarios.gerenciar"),
+                arquivada: Boolean(e.arquivada),
+                podeNovaVisita: permitido("visitas.criar", e.id),
+              };
+            })}
+          />
         ) : view === "historico" && atual ? (
           <section className="space-y-4">
             <div className="rounded-2xl bg-white p-5 shadow-sm">
@@ -10469,202 +8766,45 @@ export default function Home() {
             )}
           </section>
         ) : (
-          telaEmLista ? (
-            <PcVisitas
-              empresaAtiva={atual ? nomeParaExibir(atual) : "nenhuma"}
-              filtro={filtroListaVisitas}
-              onFiltro={setFiltroListaVisitas}
-              historicoDesabilitado={!atual}
-              novaDesabilitada={!atual || !permitido("visitas.criar", atual.id)}
-              onHistorico={() => setView("historico")}
-              onNova={novaVisita}
-              onContinuar={(id) => continuar(id)}
-              onConcluir={(id) => void concluir(id)}
-              onReabrir={(id) => void reabrir(id)}
-              onExcluir={(id) => excluir(id)}
-              onRelatorio={(id) => {
-                const alvo = db.visitas.find((visita) => visita.id === id);
-                if (!alvo) return;
-                setDb((estado) => ({ ...estado, empresaAtualId: alvo.empresaId }));
-                setVisitaAtualId(id);
-                setView("relatorio");
-              }}
-              visitas={visitas.map((v) => {
-                const itens = v.checklist || [];
-                const respondidosV = itens.filter((item) => item.status !== "Pendente").length;
-                return {
-                  id: v.id,
-                  empresa: nomeParaExibir(db.empresas[v.empresaId]),
-                  empresaAtiva: v.empresaId === db.empresaAtualId,
-                  numero: numeroVisitaPorId.get(v.id) || "—",
-                  data: fdata(v.data),
-                  responsavel: v.responsavel || "Responsável não informado",
-                  percentual: itens.length ? Math.round((respondidosV / itens.length) * 100) : 0,
-                  status: v.status,
-                  podeContinuar: podeAbrirVisita(v.empresaId),
-                  podeConcluir: permitido("visitas.concluir", v.empresaId),
-                  podeReabrir: permitido("visitas.concluir", v.empresaId),
-                  podeRelatorio: permitido("relatorios.exportar", v.empresaId),
-                  podeExcluir: usuarioDaSessao?.perfil === "Administrador",
-                };
-              })}
-            />
-          ) : (
-          <section className="visits-list-page space-y-3 sm:space-y-4">
-            <div className="visits-list-header rounded-2xl bg-white p-4 shadow-sm sm:p-5">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div className="min-w-0">
-                  <div className="text-xs font-extrabold uppercase text-[color:var(--brand)]">
-                    Módulo Visitas
-                  </div>
-                  <h1 className="mt-1 text-2xl font-extrabold">
-                    Visitas técnicas
-                  </h1>
-                  <p className="mt-1 text-sm text-slate-500">
-                    Visão geral de todas as empresas • empresa ativa: {nomeSemNumerosNoInicio(atual?.nomeFantasia || "") || "nenhuma"}
-                  </p>
-                  <div className="visits-summary-chips mt-3 flex flex-wrap gap-2">
-                    <span><strong>{visitas.length}</strong> visitas</span>
-                    <span className="is-progress"><strong>{visitas.filter((item) => item.status === "Em andamento").length}</strong> em andamento</span>
-                    <span className="is-done"><strong>{visitas.filter((item) => item.status === "Concluída").length}</strong> concluídas</span>
-                  </div>
-                </div>
-
-                <div className="grid shrink-0 grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-                  <button
-                    onClick={() => setView("historico")}
-                    disabled={!atual}
-                    className="rounded-xl bg-slate-100 px-4 py-3 font-extrabold text-[color:var(--ink)] disabled:opacity-40"
-                  >
-                    <span className="sm:hidden">Histórico</span><span className="hidden sm:inline">Histórico da empresa</span>
-                  </button>
-                  <button
-                    onClick={novaVisita}
-                    disabled={!atual || !permitido("visitas.criar", atual.id)}
-                    className="rounded-xl bg-[var(--brand)] px-4 py-3 font-medium text-white disabled:opacity-40"
-                  >
-                    + Nova visita
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="visits-filter-bar grid grid-cols-3 gap-1.5 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm sm:gap-2 sm:p-2">
-              {(["Todas", "Em andamento", "Concluída"] as const).map((filtro) => (
-                <button
-                  key={filtro}
-                  type="button"
-                  onClick={() => setFiltroListaVisitas(filtro)}
-                  className={`min-w-0 rounded-xl px-1.5 py-2.5 text-xs font-semibold sm:px-3 sm:text-sm ${
-                    filtroListaVisitas === filtro
-                      ? "bg-[var(--brand-soft)] text-[color:var(--ink)]"
-                      : "bg-slate-50 text-slate-600"
-                  }`}
-                >
-                  {filtro === "Todas" ? "Todas" : filtro === "Concluída" ? "Concluídas" : "Em andamento"}
-                </button>
-              ))}
-            </div>
-
-            <div className="grid gap-4 lg:grid-cols-2">
-              {visitasFiltradas.map((v) => {
-                const e = db.empresas[v.empresaId];
-                return (
-                  <article
-                    key={v.id}
-                    className={`visits-list-card min-w-0 rounded-2xl border bg-white p-4 shadow-sm transition ${
-                      v.id === visitaAtualId ? "border-blue-200" : "border-slate-200"
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="rounded-full bg-[var(--na-bg)] px-2.5 py-1 text-xs font-extrabold text-[color:var(--ink)]">
-                            Visita {numeroVisitaPorId.get(v.id) || "—"}
-                          </span>
-                          <span className="text-xs font-extrabold uppercase text-slate-400">
-                            {fdata(v.data)}
-                          </span>
-                          {v.id === visitaAtualId && (
-                            <span className="rounded-full bg-[var(--brand-soft)] px-2.5 py-1 text-xs font-extrabold text-[color:var(--ink)]">
-                              Selecionada
-                            </span>
-                          )}
-                        </div>
-                        <h2 className="mt-2 truncate text-lg font-extrabold">
-                          {nomeSemNumerosNoInicio(e?.nomeFantasia || "")}
-                        </h2>
-                        <p className="text-sm text-slate-500">
-                          {v.responsavel || "Responsável não informado"}
-                        </p>
-                      </div>
-
-                      <span className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-extrabold ${v.status === "Concluída" ? "bg-[var(--ok-bg)] text-[color:var(--ink)]" : "bg-[var(--pend-bg)] text-[color:var(--ink)]"}`}>
-                        {v.status}
-                      </span>
-                    </div>
-
-                    <div className="visits-card-actions mt-4 grid grid-cols-2 gap-2 text-sm sm:flex">
-                      {v.status === "Em andamento" ? (
-                        <>
-                          {permitido("visitas.executar", v.empresaId) && (
-                            <button
-                              onClick={() => continuar(v.id)}
-                              className="visits-primary-action rounded-xl bg-[var(--brand)] px-4 py-2.5 font-medium text-white sm:flex-1"
-                            >
-                              Continuar visita
-                            </button>
-                          )}
-                          {permitido("visitas.concluir", v.empresaId) && (
-                            <button
-                              onClick={() => concluir(v.id)}
-                              className="rounded-xl bg-[var(--ok-bg)] px-3 py-2.5 font-semibold text-[color:var(--ink)] sm:px-4"
-                            >
-                              Concluir
-                            </button>
-                          )}
-                        </>
-                      ) : (
-                        permitido("visitas.concluir", v.empresaId) ? (
-                          <button
-                            onClick={() => reabrir(v.id)}
-                            className="rounded-xl bg-slate-100 px-4 py-2.5 font-semibold sm:flex-1"
-                          >
-                            Reabrir visita
-                          </button>
-                        ) : permitido("relatorios.exportar", v.empresaId) ? (
-                          <button
-                            onClick={() => {
-                              setDb((estado) => ({ ...estado, empresaAtualId: v.empresaId }));
-                              setVisitaAtualId(v.id);
-                              setView("relatorio");
-                            }}
-                            className="rounded-xl bg-[var(--brand)] px-4 py-2.5 font-medium text-white sm:flex-1"
-                          >
-                            Abrir relatório
-                          </button>
-                        ) : null
-                      )}
-
-                      {usuarioDaSessao?.perfil === "Administrador" && (
-                        <button
-                          onClick={() => excluir(v.id)}
-                          className="rounded-xl bg-[var(--nc)] px-3 py-2.5 text-white sm:px-4"
-                        >
-                          Excluir visita
-                        </button>
-                      )}
-                    </div>
-                  </article>
-                );
-              })}
-              {visitasFiltradas.length === 0 && (
-                <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500 lg:col-span-2">
-                  Nenhuma visita nesta situação.
-                </div>
-              )}
-            </div>
-          </section>)
+          <PcVisitas
+            empresaAtiva={atual ? nomeParaExibir(atual) : "nenhuma"}
+            filtro={filtroListaVisitas}
+            onFiltro={setFiltroListaVisitas}
+            historicoDesabilitado={!atual}
+            novaDesabilitada={!atual || !permitido("visitas.criar", atual.id)}
+            onHistorico={() => setView("historico")}
+            onNova={novaVisita}
+            onContinuar={(id) => continuar(id)}
+            onConcluir={(id) => void concluir(id)}
+            onReabrir={(id) => void reabrir(id)}
+            onExcluir={(id) => excluir(id)}
+            onRelatorio={(id) => {
+              const alvo = db.visitas.find((visita) => visita.id === id);
+              if (!alvo) return;
+              setDb((estado) => ({ ...estado, empresaAtualId: alvo.empresaId }));
+              setVisitaAtualId(id);
+              setView("relatorio");
+            }}
+            visitas={visitas.map((v) => {
+              const itens = v.checklist || [];
+              const respondidosV = itens.filter((item) => item.status !== "Pendente").length;
+              return {
+                id: v.id,
+                empresa: nomeParaExibir(db.empresas[v.empresaId]),
+                empresaAtiva: v.empresaId === db.empresaAtualId,
+                numero: numeroVisitaPorId.get(v.id) || "—",
+                data: fdata(v.data),
+                responsavel: v.responsavel || "Responsável não informado",
+                percentual: itens.length ? Math.round((respondidosV / itens.length) * 100) : 0,
+                status: v.status,
+                podeContinuar: podeAbrirVisita(v.empresaId),
+                podeConcluir: permitido("visitas.concluir", v.empresaId),
+                podeReabrir: permitido("visitas.concluir", v.empresaId),
+                podeRelatorio: permitido("relatorios.exportar", v.empresaId),
+                podeExcluir: usuarioDaSessao?.perfil === "Administrador",
+              };
+            })}
+          />
         )}
       </div>
     </div>
