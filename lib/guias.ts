@@ -3,7 +3,7 @@ import { podeVerTela, type TelaKey } from "./screenAccess.ts";
 import type { PerfilUsuario } from "../types/index.ts";
 
 export const GUIAS: Record<string, { arquivo: string; nomeDeDownload: string; tela: TelaKey }> = {
-  "guia-rapido": { arquivo: "guia-rapido-mbp-expert-ai.pdf", nomeDeDownload: "guia-rapido-ponto-certo.pdf", tela: "guiaRapido" },
+  "guia-rapido": { arquivo: "guia-rapido-ponto-certo.pdf", nomeDeDownload: "guia-rapido-ponto-certo.pdf", tela: "guiaRapido" },
   "manual-completo": { arquivo: "manual-completo-mbp-expert-ai.pdf", nomeDeDownload: "manual-completo-ponto-certo.pdf", tela: "manualCompleto" },
 };
 

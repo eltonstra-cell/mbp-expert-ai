@@ -26,6 +26,6 @@ test("Manual completo: bloqueado quando desligado; sem sessão negado; sem contr
 });
 
 test("o arquivo devolvido é sempre o da lista (nunca montado a partir do nome recebido)", () => {
-  assert.equal(autorizarGuia("guia-rapido", "nao-aplicado").arquivo, "guia-rapido-mbp-expert-ai.pdf");
+  assert.equal(autorizarGuia("guia-rapido", "nao-aplicado").arquivo, "guia-rapido-ponto-certo.pdf");
   assert.equal(autorizarGuia("manual-completo", "nao-aplicado").arquivo, "manual-completo-mbp-expert-ai.pdf");
 });
