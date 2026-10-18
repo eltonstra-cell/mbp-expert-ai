@@ -96,3 +96,42 @@ export const dependenciasDoNavegador: DependenciasDeFoto = {
     }
   },
 };
+
+export type PreparoDaFoto =
+  | { ok: true; arquivo: Blob; nome: string; comprimida: boolean }
+  | { ok: false; motivo: string };
+
+function ehHeic(arquivo: Blob & { name?: string }) {
+  return /image\/hei[cf]/i.test(arquivo.type) || /\.hei[cf]$/i.test(arquivo.name || "");
+}
+
+/** Troca a extensão por .jpg (a foto convertida sai sempre em JPEG). */
+export function nomeComoJpeg(nome?: string) {
+  const base = (nome || "").trim().replace(/\.[A-Za-z0-9]+$/, "");
+  return `${base || "foto"}.jpg`;
+}
+
+/**
+ * Prepara a foto para o envio: comprime ou converte para JPEG (PNG, WebP e, quando o navegador abre, HEIC).
+ * JPEG que não pôde ser recomprimido segue como está. Se não for JPEG e a conversão falhar,
+ * devolve o motivo em texto claro para o app mostrar; nunca falha em silêncio.
+ */
+export async function prepararFotoParaEnvio(arquivo: Blob & { name?: string }, deps: DependenciasDeFoto): Promise<PreparoDaFoto> {
+  const r = await comprimirFoto(arquivo, deps);
+  if (r.comprimida) {
+    return { ok: true, arquivo: r.arquivo, nome: nomeComoJpeg(arquivo.name), comprimida: true };
+  }
+  if (ehJpeg(arquivo)) {
+    return { ok: true, arquivo, nome: arquivo.name || "foto.jpg", comprimida: false };
+  }
+  if (ehHeic(arquivo)) {
+    return {
+      ok: false,
+      motivo: "Este navegador não consegue abrir fotos no formato HEIC/HEIF. Tire a foto de novo pela câmera do app ou converta para JPEG e envie outra vez.",
+    };
+  }
+  if (arquivo.type.startsWith("image/") || /\.(png|webp|gif|bmp)$/i.test(arquivo.name || "")) {
+    return { ok: false, motivo: "Não foi possível converter a imagem para JPEG. Tente outra foto ou salve a imagem como JPEG." };
+  }
+  return { ok: false, motivo: "O arquivo escolhido não é uma foto. Escolha uma imagem JPEG, PNG ou WebP." };
+}

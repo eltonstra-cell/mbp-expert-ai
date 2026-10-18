@@ -129,3 +129,18 @@ export function preparacaoDaEmpresa(empresa?: Empresa) {
     contagens: { setores, equipamentos, programas, pops },
   };
 }
+
+/**
+ * Campos obrigatórios do cadastro para a empresa estar "pronta para visita": nome, CNPJ, responsável e
+ * pelo menos 1 ambiente (as etapas essenciais de resumoConfiguracaoEmpresa). Devolve os que faltam.
+ * Já a "Preparação" (preparacaoDaEmpresa) mede 6 itens, inclusive os opcionais; as duas medidas são diferentes.
+ */
+export function faltasDoCadastro(empresa?: Empresa): string[] {
+  if (!empresa) return ["nome", "CNPJ", "responsável", "ambientes"];
+  const faltas: string[] = [];
+  if (!preenchido(empresa.nomeFantasia || empresa.razaoSocial)) faltas.push("nome");
+  if (!preenchido(empresa.cnpj)) faltas.push("CNPJ");
+  if (!preenchido(empresa.responsavel)) faltas.push("responsável");
+  if ((empresa.setoresManual || []).length === 0) faltas.push("ambientes");
+  return faltas;
+}

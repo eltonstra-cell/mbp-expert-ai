@@ -141,3 +141,13 @@ test("preparação da empresa: horário fechado em todos os dias não conta", as
   );
   assert.equal(r.itens.find((item) => item.id === "horario").ok, false);
 });
+
+test("faltasDoCadastro: só os obrigatórios (nome, CNPJ, responsável, ambientes) e na ordem da tela", async () => {
+  const { faltasDoCadastro } = await import("../lib/companyReadiness.ts");
+  assert.deepEqual(faltasDoCadastro(empresaBase({ responsavel: "", setoresManual: [] })), ["responsável", "ambientes"]);
+  assert.deepEqual(faltasDoCadastro(empresaBase({ cnpj: "", responsavel: "Ana", setoresManual: ["Cozinha"] })), ["CNPJ"]);
+  assert.deepEqual(faltasDoCadastro(empresaBase({ nomeFantasia: "", razaoSocial: "", cnpj: "", responsavel: "", setoresManual: [] })), ["nome", "CNPJ", "responsável", "ambientes"]);
+  // completo para visita mesmo sem equipamento, programa, POP ou horário (esses entram só na Preparação)
+  assert.deepEqual(faltasDoCadastro(empresaBase({ responsavel: "Ana", setoresManual: ["Cozinha"] })), []);
+  assert.equal(faltasDoCadastro(undefined).length, 4);
+});

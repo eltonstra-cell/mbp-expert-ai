@@ -25,6 +25,8 @@ type Props = {
   }) => Promise<void> | void;
   onFechar: () => void;
   onIrVisitas: () => void;
+  /** Abre já com a câmera ligada (usado pelo "Tirar foto" de Evidências). */
+  iniciarCamera?: boolean;
 };
 
 const LIMITE_AUDIO = 3 * 1024 * 1024;
@@ -48,7 +50,7 @@ function pararTrilhas(stream: MediaStream | null) {
 import { iniciarMedidorDeVolume } from "@/components/useNivelDeAudio";
 import { MENSAGEM_SEM_FALA, ehSilencio } from "@/lib/transcricao";
 
-export default function RegistrarAgoraModal({ aparelho = "computador", visitas, visitaInicialId, itemInicialId, onSalvar, onFechar, onIrVisitas }: Props) {
+export default function RegistrarAgoraModal({ aparelho = "computador", visitas, visitaInicialId, itemInicialId, onSalvar, onFechar, onIrVisitas, iniciarCamera = false }: Props) {
   const [visitaId, setVisitaId] = useState(visitaInicialId);
   const [trocando, setTrocando] = useState(false);
   const [itemId, setItemId] = useState(itemInicialId);
@@ -137,6 +139,11 @@ export default function RegistrarAgoraModal({ aparelho = "computador", visitas, 
     liberarMidia();
     onFechar();
   }
+
+  useEffect(() => {
+    if (iniciarCamera) void abrirCamera();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const aoTeclar = (evento: KeyboardEvent) => {

@@ -39,7 +39,7 @@ import { trocaDeGravidade } from "@/lib/checklistUi";
 import { avisar, confirmar, perguntar } from "@/lib/dialogos";
 import { opcoesDeEmpresa } from "@/lib/trocarEmpresa";
 import TrocarEmpresaPainel from "@/components/campo/TrocarEmpresaPainel";
-import { comprimirFoto as comprimirFotoParaEnvio, dependenciasDoNavegador } from "@/lib/fotoCompressao";
+import { prepararFotoParaEnvio, dependenciasDoNavegador } from "@/lib/fotoCompressao";
 import PcChecklist, { type ApoioDoItem } from "@/components/pc/PcChecklist";
 import RevisaoTranscricao from "@/components/RevisaoTranscricao";
 import MeuPerfilModal from "@/components/pc/MeuPerfilModal";
@@ -53,7 +53,7 @@ import { sincronizarNcDoItem } from "@/lib/checklistNcs";
 import { CampoBarra, CampoCabecalho, CampoCorrecoes, CampoInicio, CampoMais, type TelaCampo } from "@/components/campo/CampoTelas";
 import type { ItemMenu } from "@/components/ui/RowMenu";
 import { ROTULO_DE_USO, descreverAparelho } from "@/lib/screenMode";
-import { preparacaoDaEmpresa } from "@/lib/companyReadiness";
+import { preparacaoDaEmpresa, faltasDoCadastro } from "@/lib/companyReadiness";
 import ChecklistEnvStrip from "@/components/ChecklistEnvStrip";
 import CommandPalette from "@/components/CommandPalette";
 import { construirDestinos, type Destino } from "@/lib/commandSearch";
@@ -712,6 +712,7 @@ export default function Home() {
   const registrarInputRef = useRef<HTMLInputElement | null>(null);
   const criandoVisitaRef = useRef(false);
   const [registrarAberto, setRegistrarAberto] = useState(false);
+  const [registrarComCamera, setRegistrarComCamera] = useState(false);
   const [mostrarEmpresasArquivadas, setMostrarEmpresasArquivadas] = useState(false);
   const [aviso, setAviso] = useState<{ texto: string; visitaId: string } | null>(null);
   useEffect(() => {
@@ -4670,15 +4671,21 @@ export default function Home() {
       );
 
       const evidenciaId = crypto.randomUUID();
-      const nomeArquivo =
-        file.name || (tipo === "Foto" ? "foto.jpg" : "audio");
+      let nomeArquivo = file.name || (tipo === "Foto" ? "foto.jpg" : "audio");
       const mimeType =
         tipo === "Foto" ? "image/jpeg" : file.type || "audio/mpeg";
 
-      const conteudo: Blob | File =
-        tipo === "Foto"
-          ? (await comprimirFotoParaEnvio(file, dependenciasDoNavegador)).arquivo
-          : file;
+      let conteudo: Blob | File = file;
+      if (tipo === "Foto") {
+        const preparo = await prepararFotoParaEnvio(file, dependenciasDoNavegador);
+        if (!preparo.ok) {
+          setEvidenciaMsg(preparo.motivo);
+          void avisar(preparo.motivo, { titulo: "Foto não aceita" });
+          return false;
+        }
+        conteudo = preparo.arquivo;
+        nomeArquivo = preparo.nome;
+      }
 
       setEvidenciaMsg("Enviando evidência para o armazenamento seguro...");
 
@@ -5545,8 +5552,9 @@ export default function Home() {
             visitas={visitas}
             visitaInicialId={inicial?.id || ""}
             itemInicialId={itemInicial}
-            onFechar={() => setRegistrarAberto(false)}
-            onIrVisitas={() => { setRegistrarAberto(false); navegarPrincipal("visitas"); }}
+            iniciarCamera={registrarComCamera}
+            onFechar={() => { setRegistrarAberto(false); setRegistrarComCamera(false); }}
+            onIrVisitas={() => { setRegistrarAberto(false); setRegistrarComCamera(false); navegarPrincipal("visitas"); }}
             onSalvar={async ({ visitaId, arquivo, tipo, origem, descricao, item }) => {
               const alvo = db.visitas.find((visita) => visita.id === visitaId);
               if (!alvo) throw new Error("visita não encontrada");
@@ -6681,6 +6689,11 @@ export default function Home() {
               data={fdata(visitaAtual.data)}
               totais={{ evidencias: evidenciasVisita.length, fotos: fotosVisita, audios: audiosVisita, revisar: analisesIAPendentes }}
               podeAdicionar={permitido("evidencias.adicionar", visitaAtual.empresaId)}
+              onTirarFoto={() => {
+                if (evidenciaChecklistItemId) setUltimoItemChecklistId(evidenciaChecklistItemId);
+                setRegistrarComCamera(true);
+                setRegistrarAberto(true);
+              }}
               vinculo={(() => {
                 const item = checklistAtual.find((registro) => registro.id === evidenciaChecklistItemId);
                 const posicao = item ? checklistAtual.filter((registro) => registro.ambiente === item.ambiente).findIndex((registro) => registro.id === item.id) + 1 : 0;
@@ -10017,6 +10030,7 @@ export default function Home() {
                   pops: prep.contagens.pops,
                   preparacao: prep.percentual,
                   completo: prep.completo,
+                  faltas: faltasDoCadastro(e),
                   podeGerenciar: permitido("empresas.editar", e.id),
                   podeAcessos: permitido("usuarios.gerenciar"),
                   arquivada: Boolean(e.arquivada),

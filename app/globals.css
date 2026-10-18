@@ -2797,3 +2797,21 @@ html[data-modo="campo"] .chk-foco-amb-pos{flex:none;font-size:1.2rem}
 .campo-empresa-opcao{display:flex;width:100%;min-height:48px;align-items:center;justify-content:space-between;gap:8px}
 .campo-empresa-opcao.is-ativa{border-color:var(--brand);background:#FEF6E6}
 .campo-empresa-ativa{flex:none;padding:2px 10px;border-radius:999px;background:#fff;font-size:.78rem;color:var(--ink)}
+
+/* ===== Pacote 5 · Tema C ===== */
+.pc-ev-new .pc-field:has(textarea){flex:none}
+.pc-ev-new .pc-field:has(textarea) .ui-field-wrap--area{flex:none;display:block}
+.pc-ev-new .pc-field:has(textarea) textarea.pc-ev-descricao{display:block;width:100%;min-height:calc(1.4em * 4 + 24px);height:auto;padding-bottom:44px;resize:none;overflow-y:hidden}
+.pc-capture--arquivo{background:#fff;border:1px solid var(--border);color:var(--ink);font-weight:400}
+.pc-ev-capture{flex-wrap:wrap}
+.pc-cadastro-status{display:flex;flex-direction:column;align-items:flex-start;gap:2px}
+.pc-cadastro-status .ui-row-sub{margin:0;white-space:normal;max-width:180px}
+.chk-grav-linha .chk-grav--leve{--grav:#3AA6D9}.chk-grav-linha .chk-grav--amber{--grav:#F5A623}.chk-grav-linha .chk-grav--nc{--grav:#D93A3A}
+.chk-grav-linha .chk-grav:not(.is-on){background:color-mix(in srgb,var(--grav) 30%,#fff);color:#3D5160}
+.pc-ev-capture{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.pc-ev-new .pc-capture{flex-direction:column;gap:2px;min-height:52px;padding:6px 4px;font-size:.82rem;line-height:1.15;text-align:center}
+.pc-ev-new .pc-capture svg{width:18px;height:18px}
+.pc-ev-link-text{display:-webkit-box;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+.pc-ev-new .pc-field:has(textarea) textarea.pc-ev-descricao{min-height:calc(1.4em * 3 + 56px)}
+@media (max-height:760px){.pc-ev-new .pc-field:has(textarea) textarea.pc-ev-descricao{min-height:calc(1.4em * 2 + 52px)}.pc-ev-new .pc-ev-privacy{margin:0;font-size:.78rem}}
+@media (max-height:760px){.pc-ev-link-text{-webkit-line-clamp:1}.pc-ev-new .pc-ev-link .ui-eyebrow{margin:0}}

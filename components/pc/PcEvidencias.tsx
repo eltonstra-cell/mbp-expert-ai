@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState, type ReactNode, useEffect, useRef } from "react";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
 import { RowMenu } from "@/components/ui/RowMenu";
 import { Pill } from "@/components/ui/Pill";
@@ -63,6 +63,8 @@ type Props = {
   onFoto: (arquivo: File | undefined) => void | Promise<void>;
   onAudio: (arquivo: File | undefined) => void;
   onVoltar: () => void;
+  /** "Tirar foto": abre a mesma câmera do Registrar agora. Sem isso, usa o seletor do aparelho. */
+  onTirarFoto?: () => void;
 };
 
 type Aba = "todas" | "fotos" | "audios" | "revisar";
@@ -72,6 +74,14 @@ function CameraIcon() {
     <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
       <path d="M4 8h3l1.6-2h6.8L17 8h3v11H4z" />
       <circle cx="12" cy="13" r="3.4" />
+    </svg>
+  );
+}
+
+function FolderIcon() {
+  return (
+    <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 7h6l2 2h10v10H3z" />
     </svg>
   );
 }
@@ -219,6 +229,7 @@ export default function PcEvidencias({
   onFoto,
   onAudio,
   onVoltar,
+  onTirarFoto,
 }: Props) {
   const [aba, setAba] = useState<Aba>("todas");
   // No celular só um painel aparece por vez: registrar ou ver a lista.
@@ -226,7 +237,18 @@ export default function PcEvidencias({
   const [trocando, setTrocando] = useState(false);
   const [pendente, setPendente] = useState<{ arquivo: File; tipo: "Foto" | "Áudio" } | null>(null);
   const [salvando, setSalvando] = useState(false);
+  const descricaoRef = useRef<HTMLTextAreaElement | null>(null);
   const [ampliada, setAmpliada] = useState<{ url: string; legenda: string } | null>(null);
+
+  // A caixa cresce com o texto até 10 linhas; a barra só aparece depois disso.
+  useEffect(() => {
+    const campo = descricaoRef.current;
+    if (!campo) return;
+    campo.style.height = "auto";
+    const limite = parseFloat(getComputedStyle(campo).lineHeight || "20") * 10 + 24;
+    campo.style.height = `${Math.min(campo.scrollHeight, limite)}px`;
+    campo.style.overflowY = campo.scrollHeight > limite ? "auto" : "hidden";
+  }, [descricao, painelCampo]);
 
   const visiveis = evidencias.filter((ev) =>
     aba === "todas" ? true : aba === "fotos" ? ev.tipo === "Foto" : aba === "audios" ? ev.tipo === "Áudio" : ev.analise?.status === "Aguardando revisão"
@@ -235,7 +257,8 @@ export default function PcEvidencias({
   const campoDescricao: ReactNode = (
     <span className="ui-field-wrap ui-field-wrap--area">
       <textarea
-        className="ui-input pc-input-tools"
+        ref={descricaoRef}
+        className="ui-input pc-input-tools pc-ev-descricao"
         rows={2}
         value={descricao}
         onChange={(evento) => onDescricao(evento.target.value)}
@@ -297,21 +320,27 @@ export default function PcEvidencias({
             <h2 className="ui-card-title">Nova evidência</h2>
             <div className="pc-ev-new-body scroll-fino">
             <div className="pc-ev-capture">
-              <label className="pc-capture pc-capture--photo">
-                <CameraIcon /> Tirar foto
-                <input
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  className="sr-only"
-                  onChange={(evento) => {
-                    const entrada = evento.currentTarget;
-                    const arquivo = entrada.files?.[0];
-                    setPendente(arquivo ? { arquivo, tipo: "Foto" } : null);
-                    entrada.value = "";
-                  }}
-                />
-              </label>
+              {onTirarFoto ? (
+                <button type="button" className="pc-capture pc-capture--photo" onClick={onTirarFoto}>
+                  <CameraIcon /> Tirar foto
+                </button>
+              ) : (
+                <label className="pc-capture pc-capture--photo">
+                  <CameraIcon /> Tirar foto
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="sr-only"
+                    onChange={(evento) => {
+                      const entrada = evento.currentTarget;
+                      const arquivo = entrada.files?.[0];
+                      setPendente(arquivo ? { arquivo, tipo: "Foto" } : null);
+                      entrada.value = "";
+                    }}
+                  />
+                </label>
+              )}
               <label className="pc-capture pc-capture--audio">
                 <MicIcon /> Gravar áudio
                 <input
@@ -322,6 +351,20 @@ export default function PcEvidencias({
                     const entrada = evento.currentTarget;
                     const arquivo = entrada.files?.[0];
                     setPendente(arquivo ? { arquivo, tipo: "Áudio" } : null);
+                    entrada.value = "";
+                  }}
+                />
+              </label>
+              <label className="pc-capture pc-capture--arquivo">
+                <FolderIcon /> Enviar arquivo
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="sr-only"
+                  onChange={(evento) => {
+                    const entrada = evento.currentTarget;
+                    const arquivo = entrada.files?.[0];
+                    setPendente(arquivo ? { arquivo, tipo: "Foto" } : null);
                     entrada.value = "";
                   }}
                 />

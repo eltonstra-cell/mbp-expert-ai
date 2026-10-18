@@ -86,3 +86,50 @@ test("falha em qualquer passo: devolve o original e o envio segue", async () => 
   const invalida = await comprimirFoto(original, { decodificar: async () => ({ largura: 0, altura: 0 }), codificar: async () => new Blob([1]) });
   assert.equal(invalida.motivo, "falhou");
 });
+
+import { prepararFotoParaEnvio, nomeComoJpeg } from "../lib/fotoCompressao.ts";
+
+function arquivoComNome(bytes, tipo, nome) {
+  const arquivo = fotoDeExemplo(bytes.largura, bytes.altura, tipo);
+  arquivo.name = nome;
+  return arquivo;
+}
+const dimensoesDe = async (a) => ({ largura: a.largura, altura: a.altura });
+const codificaOk = async (a, l, h, q) => new Blob([new Uint8Array(Math.max(16, Math.floor((l * h) / 40)))], { type: "image/jpeg" });
+
+test("PNG e WebP viram JPEG com nome .jpg", async () => {
+  for (const [tipo, nome] of [["image/png", "etiqueta.png"], ["image/webp", "termometro.webp"]]) {
+    const r = await prepararFotoParaEnvio(arquivoComNome({ largura: 1200, altura: 900 }, tipo, nome), { decodificar: dimensoesDe, codificar: codificaOk });
+    assert.equal(r.ok, true);
+    assert.equal(r.comprimida, true);
+    assert.equal(r.arquivo.type, "image/jpeg");
+    assert.match(r.nome, /\.jpg$/);
+  }
+  assert.equal(nomeComoJpeg("foto.PNG"), "foto.jpg");
+  assert.equal(nomeComoJpeg(""), "foto.jpg");
+});
+
+test("HEIC que o navegador não abre: recusa com mensagem clara (nunca em silêncio)", async () => {
+  const heic = arquivoComNome({ largura: 1200, altura: 900 }, "image/heic", "IMG_0001.HEIC");
+  const r = await prepararFotoParaEnvio(heic, { decodificar: async () => { throw new Error("não abre"); }, codificar: codificaOk });
+  assert.equal(r.ok, false);
+  assert.match(r.motivo, /HEIC/);
+});
+
+test("imagem que não converte e arquivo que não é foto: mensagens diferentes e claras", async () => {
+  const falha = { decodificar: async () => { throw new Error("x"); }, codificar: codificaOk };
+  const png = await prepararFotoParaEnvio(arquivoComNome({ largura: 10, altura: 10 }, "image/png", "a.png"), falha);
+  assert.equal(png.ok, false);
+  assert.match(png.motivo, /converter a imagem para JPEG/);
+  const pdf = await prepararFotoParaEnvio(arquivoComNome({ largura: 10, altura: 10 }, "application/pdf", "a.pdf"), falha);
+  assert.equal(pdf.ok, false);
+  assert.match(pdf.motivo, /não é uma foto/);
+});
+
+test("JPEG que não pôde ser recomprimido segue como está", async () => {
+  const jpeg = arquivoComNome({ largura: 800, altura: 600 }, "image/jpeg", "foto.jpg");
+  const r = await prepararFotoParaEnvio(jpeg, { decodificar: async () => { throw new Error("x"); }, codificar: codificaOk });
+  assert.equal(r.ok, true);
+  assert.equal(r.comprimida, false);
+  assert.equal(r.arquivo, jpeg);
+});

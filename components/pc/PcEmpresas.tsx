@@ -19,6 +19,7 @@ export type LinhaEmpresa = {
   pops: number;
   preparacao: number;
   completo: boolean;
+  faltas: string[];
   podeGerenciar: boolean;
   podeAcessos: boolean;
   arquivada: boolean;
@@ -161,13 +162,16 @@ export default function PcEmpresas({
                 meio={
                   <>
                     <ProgressBar percentual={empresa.preparacao} largura={120} rotulo={`Preparação ${empresa.preparacao}%`} />
-                    <span className="ui-row-sub">Preparação {empresa.preparacao}%</span>
+                    <span className="ui-row-sub" title="Preparação mede 6 itens: responsável, horário, setor, equipamento, programa e POP">Preparação {empresa.preparacao}%</span>
                   </>
                 }
                 pilulas={
-                  <Pill tom={empresa.completo ? "ok" : "pend"}>
-                    {empresa.completo ? "Cadastro completo" : "Cadastro incompleto"}
-                  </Pill>
+                  <span className="pc-cadastro-status">
+                    <Pill tom={empresa.faltas.length === 0 ? "ok" : "pend"}>
+                      {empresa.faltas.length === 0 ? "Cadastro completo" : "Cadastro incompleto"}
+                    </Pill>
+                    {empresa.faltas.length > 0 && <span className="ui-row-sub">Falta: {empresa.faltas.join(", ")}</span>}
+                  </span>
                 }
                 acao={
                   <>
