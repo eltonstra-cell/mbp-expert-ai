@@ -27,6 +27,8 @@ type Props = {
   onEscolherModo?: (modo: ModoTela) => void;
   onVoltarAoAutomatico?: () => void;
   onAbrirConfigModo?: () => void;
+  /** Abre o painel de trocar empresa sobre a tela atual (o chip vira botão). */
+  onTrocarEmpresa?: () => void;
 };
 
 export default function AppTopbar({
@@ -44,6 +46,7 @@ export default function AppTopbar({
   onEscolherModo,
   onVoltarAoAutomatico,
   onAbrirConfigModo,
+  onTrocarEmpresa,
 }: Props) {
   const itensModo: ItemMenu[] =
     modo && onEscolherModo
@@ -98,10 +101,10 @@ export default function AppTopbar({
           </button>
         )}
         {empresaAtiva && (
-          <span className="pc-company-chip" title={empresaAtiva}>
+          <button type="button" className="pc-company-chip" title={empresaAtiva} aria-label={`Trocar empresa. Empresa ativa: ${empresaAtiva}`} onClick={onTrocarEmpresa} disabled={!onTrocarEmpresa}>
             <span className="pc-company-chip-label">Empresa ativa</span>
             <span className="pc-company-chip-name">{empresaAtiva}</span>
-          </span>
+          </button>
         )}
         {modo && onAbrirConfigModo && (
           <button type="button" className="pc-mode-chip" onClick={onAbrirConfigModo} title="Configurar o modo de tela">

@@ -5707,6 +5707,7 @@ export default function Home() {
           onEscolherModo={telaModo.escolherModo}
           onVoltarAoAutomatico={telaModo.voltarAoAutomatico}
           onAbrirConfigModo={() => setView("modotela")}
+          onTrocarEmpresa={() => setTrocarEmpresaAberto(true)}
         />
         <nav className="hidden">
           <button
@@ -5762,7 +5763,7 @@ export default function Home() {
           )}
         </nav>
 
-        {modo === "campo" && trocarEmpresaAberto && (
+        {trocarEmpresaAberto && (
           <TrocarEmpresaPainel
             opcoes={opcoesTrocaDeEmpresa}
             onFechar={() => setTrocarEmpresaAberto(false)}

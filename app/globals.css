@@ -2815,3 +2815,9 @@ html[data-modo="campo"] .amb-lista{gap:4px}
 .chk-foco-amb-botao{width:100%;border:0;background:transparent;padding:0;text-align:left;color:inherit;cursor:pointer}
 .chk-foco-amb-seta{flex:none;color:var(--ink-2)}
 html[data-modo="campo"] .chk-foco-amb-top{align-items:center}
+
+/* ===== Pacote 7 · Tema A: chip da empresa ativa abre o painel de trocar ===== */
+button.pc-company-chip{border:0;cursor:pointer;font:inherit;font-size:.8rem}
+button.pc-company-chip:disabled{cursor:default}
+button.pc-company-chip:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
+@media (min-width:768px){.campo-sheet-layer{align-items:center;justify-content:center}.campo-sheet{max-width:520px;border-radius:20px}}
