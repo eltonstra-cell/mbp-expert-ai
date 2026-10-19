@@ -72,7 +72,7 @@ function SeletorDeAmbiente({
         <button type="button" className="chk-sel-botao" aria-haspopup="dialog" aria-expanded={aberto} onClick={alternar}>
           <span className="chk-sel-nome">{info?.rotulo || atual}</span>
           <span className="chk-sel-pos">
-            {posicao}/{total}
+            {info ? `${info.respondidos}/${info.total}` : `${posicao}/${total}`} respondidos
           </span>
           <span aria-hidden="true">▾</span>
         </button>

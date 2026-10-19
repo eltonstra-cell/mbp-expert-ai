@@ -101,8 +101,8 @@ export default function ChecklistFocoItem({
     <div className="chk-foco">
       {!semCabecalhoDeAmbiente && (() => {
         const posicaoNoAmbiente = (
-          <span className="chk-foco-amb-pos" aria-label={`Item ${posAmbiente} de ${totalAmbiente} neste ambiente`}>
-            {posAmbiente}/{totalAmbiente}
+          <span className="chk-foco-amb-pos" aria-label={`${respondidosAmbiente} de ${totalAmbiente} respondidos neste ambiente`}>
+            {respondidosAmbiente}/{totalAmbiente} respondidos
           </span>
         );
         const corpo = (aberto: boolean, alternar?: () => void) => (
@@ -123,7 +123,7 @@ export default function ChecklistFocoItem({
               <span style={{ width: `${totalAmbiente ? Math.round((respondidosAmbiente / totalAmbiente) * 100) : 0}%` }} />
             </div>
             <span className="chk-foco-count">
-              {respondidosAmbiente} de {totalAmbiente} respondidos · item {posicao} de {total} na visita
+              Item {posicao} de {total} na visita
             </span>
           </div>
         );

@@ -57,6 +57,12 @@ export default function AmbientesCortina({ ambientes, atual, onSelecionar, rende
       {renderBotao({ aberto, alternar: () => setAberto((valor) => !valor) })}
       {aberto && (
         <div className="amb-cortina" role="dialog" aria-label="Escolher ambiente" ref={cortinaRef}>
+          <div className="amb-topo">
+            <span className="amb-topo-titulo">Ambientes</span>
+            <button type="button" className="amb-topo-fechar" onClick={() => setAberto(false)}>
+              Fechar
+            </button>
+          </div>
           <ul className="amb-lista">
             {ambientes.map((ambiente) => {
               const percentual = ambiente.total ? Math.round((ambiente.respondidos / ambiente.total) * 100) : 0;
