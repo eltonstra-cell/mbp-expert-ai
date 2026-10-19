@@ -47,6 +47,7 @@ import { nomeDeExibicaoDoAmbiente } from "@/lib/checklistEnvs";
 import { calcularCortes } from "@/lib/pdfPaginacao";
 import { cssDoRodapeDeImpressao, suportaCaixasDeMargem } from "@/lib/printFooter";
 import { sincronizarNcDoItem } from "@/lib/checklistNcs";
+import { visitaDaEmpresaAtiva } from "@/lib/trocarEmpresa";
 import { dadosExtrasDoItem, desfazerLimpeza, limparResposta, listaEmTexto, type InstantaneoDaResposta } from "@/lib/limparResposta";
 import { CampoBarra, CampoCabecalho, CampoCorrecoes, CampoInicio, CampoMais, type TelaCampo } from "@/components/campo/CampoTelas";
 import type { ItemMenu } from "@/components/ui/RowMenu";
@@ -2181,10 +2182,8 @@ export default function Home() {
     .filter((visita) => visita.status === filtroInicio)
     .slice(0, 4);
 
-  // "Continue de onde parou" segue a visita aberta no momento; sem uma, a mais recente em andamento.
-  const visitaEmAndamentoDestaque =
-    (visitaAtual && visitaAtual.status === "Em andamento" ? visitas.find((visita) => visita.id === visitaAtual.id) : undefined) ||
-    visitas.find((visita) => visita.status === "Em andamento");
+  // "Continue de onde parou" segue a visita aberta no momento; sem uma, a mais recente em andamento da empresa ativa.
+  const visitaEmAndamentoDestaque = visitaDaEmpresaAtiva(visitas, db.empresaAtualId, visitaAtual?.id);
   const progressoVisitaDestaque = visitaEmAndamentoDestaque?.checklist?.length
     ? Math.round(
         (visitaEmAndamentoDestaque.checklist.filter(
@@ -5757,10 +5756,9 @@ export default function Home() {
             onFechar={() => setTrocarEmpresaAberto(false)}
             onEscolher={(id) => {
               setTrocarEmpresaAberto(false);
-              if (id !== db.empresaAtualId) {
-                setDb((o) => ({ ...o, empresaAtualId: id }));
-                setVisitaAtualId(null);
-              }
+              if (id === db.empresaAtualId) return;
+              setDb((o) => ({ ...o, empresaAtualId: id }));
+              setVisitaAtualId(null);
               setView("inicio");
             }}
           />
@@ -5790,12 +5788,13 @@ export default function Home() {
           />
         ) : modo === "campo" && view === "inicio" ? (
           (() => {
-            const alvo = visitaAtual?.status === "Em andamento" ? visitaAtual : visitaEmAndamentoDestaque;
+            const alvo = visitaEmAndamentoDestaque;
             const lista = alvo?.checklist || [];
             const abertasDoAlvo = alvo ? (db.ncs || []).filter((nc) => nc.visitaId === alvo.id && !nc.inativaNoChecklist && nc.status !== "Resolvida").length : 0;
             return (
               <CampoInicio
                 usuario={usuarioDaSessao?.nome || ""}
+                empresa={atual ? nomeParaExibir(atual) : ""}
                 visitaAtiva={alvo ? { empresa: nomeParaExibir(db.empresas[alvo.empresaId]), data: fdata(alvo.data) } : null}
                 respondidos={lista.filter((item) => item.status !== "Pendente").length}
                 total={lista.length}
@@ -5810,6 +5809,7 @@ export default function Home() {
                 onCorrecoes={() => irParaTelaCampo("correcoes")}
                 onAbrirVisita={(id) => continuar(id, true)}
                 onVisitas={() => irParaMenu("visitas")}
+                onIniciar={permitido("visitas.criar", atual?.id) && atual ? novaVisita : undefined}
               />
             );
           })()

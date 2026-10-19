@@ -74,6 +74,7 @@ type Visita = { id: string; rotulo: string };
 
 export function CampoInicio({
   usuario,
+  empresa,
   visitaAtiva,
   respondidos,
   total,
@@ -86,8 +87,10 @@ export function CampoInicio({
   onCorrecoes,
   onAbrirVisita,
   onVisitas,
+  onIniciar,
 }: {
   usuario: string;
+  empresa?: string;
   visitaAtiva: { empresa: string; data: string } | null;
   respondidos: number;
   total: number;
@@ -100,6 +103,7 @@ export function CampoInicio({
   onCorrecoes: () => void;
   onAbrirVisita: (id: string) => void;
   onVisitas: () => void;
+  onIniciar?: () => void;
 }) {
   const percentual = total > 0 ? Math.round((respondidos / total) * 100) : 0;
   return (
@@ -125,9 +129,14 @@ export function CampoInicio({
         </div>
       ) : (
         <div className="campo-card">
-          <div className="campo-card-title">Comece por uma visita</div>
-          <div className="campo-sub">Escolha uma visita para registrar e responder o checklist.</div>
-          <button type="button" className="campo-btn campo-btn--brand" onClick={onVisitas}>
+          <div className="campo-card-title">{empresa || "Nenhuma empresa ativa"}</div>
+          <div className="campo-sub">Esta empresa não tem visita aberta. Inicie uma ou veja as visitas anteriores.</div>
+          {onIniciar && (
+            <button type="button" className="campo-btn campo-btn--brand" onClick={onIniciar}>
+              Iniciar visita
+            </button>
+          )}
+          <button type="button" className="campo-btn campo-btn--outline" onClick={onVisitas}>
             Ver visitas
           </button>
         </div>

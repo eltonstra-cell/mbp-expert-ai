@@ -20,8 +20,9 @@ test("Registrar agora: sem visita ativa, a mais recente da empresa ativa (nunca 
   assert.equal(visitaPadraoParaRegistro(abertas, "inexistente", "e1")?.id, "v3");
 });
 
-test("Registrar agora: empresa ativa sem visita aberta cai na mais recente de todas; sem visitas, nada", () => {
-  assert.equal(visitaPadraoParaRegistro(abertas, null, "e9")?.id, "v2");
+test("Registrar agora: empresa ativa sem visita aberta não sugere a de outra empresa; sem empresa ativa, a mais recente; sem visitas, nada", () => {
+  assert.equal(visitaPadraoParaRegistro(abertas, null, "e9"), undefined);
+  assert.equal(visitaPadraoParaRegistro(abertas, null, null)?.id, "v2");
   assert.equal(visitaPadraoParaRegistro([], "v1", "e1"), undefined);
   assert.deepEqual(maisRecentesPrimeiro(abertas).map((v) => v.id), ["v2", "v3", "v1"]);
 });

@@ -22,5 +22,7 @@ export function visitaPadraoParaRegistro<T extends VisitaAberta>(
   if (emTrabalho) return emTrabalho;
   const daEmpresa = maisRecentesPrimeiro(abertas.filter((visita) => visita.empresaId === empresaAtivaId));
   if (daEmpresa.length > 0) return daEmpresa[0];
+  // Com empresa ativa e sem visita aberta nela, não sugere a visita de outra empresa: a pessoa escolhe.
+  if (empresaAtivaId) return undefined;
   return maisRecentesPrimeiro(abertas)[0];
 }

@@ -32,3 +32,28 @@ test("empresa arquivada só aparece se for a ativa; sem nome usa a razão social
   assert.ok(lista.some((o) => o.id === "e4" && o.ativa));
   assert.ok(lista.some((o) => o.nome === "Razão Social LTDA"));
 });
+
+import { visitaDaEmpresaAtiva } from "../lib/trocarEmpresa.ts";
+
+const visitasDeTeste = [
+  { id: "a1", empresaId: "A", status: "Em andamento", criadoEm: "2026-10-01T10:00:00Z" },
+  { id: "a2", empresaId: "A", status: "Em andamento", criadoEm: "2026-10-05T10:00:00Z" },
+  { id: "b1", empresaId: "B", status: "Em andamento", criadoEm: "2026-10-10T10:00:00Z" },
+  { id: "b0", empresaId: "B", status: "Concluída", criadoEm: "2026-10-11T10:00:00Z" },
+];
+
+test("Início: mostra a visita em andamento da empresa ativa, a mais recente se houver mais de uma", () => {
+  assert.equal(visitaDaEmpresaAtiva(visitasDeTeste, "A", null)?.id, "a2");
+  assert.equal(visitaDaEmpresaAtiva(visitasDeTeste, "B", null)?.id, "b1");
+  assert.equal(visitaDaEmpresaAtiva(visitasDeTeste, "A", "a1")?.id, "a1");
+});
+
+test("Início: a visita aberta de outra empresa não vale; sem visita na empresa ativa, nada", () => {
+  assert.equal(visitaDaEmpresaAtiva(visitasDeTeste, "A", "b1")?.id, "a2");
+  assert.equal(visitaDaEmpresaAtiva(visitasDeTeste, "C", "b1"), undefined);
+  assert.equal(visitaDaEmpresaAtiva(visitasDeTeste.filter((v) => v.status === "Concluída"), "B", null), undefined);
+});
+
+test("Início: sem empresa ativa, a mais recente em andamento de todas", () => {
+  assert.equal(visitaDaEmpresaAtiva(visitasDeTeste, null, null)?.id, "b1");
+});
