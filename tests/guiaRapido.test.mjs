@@ -32,3 +32,8 @@ test("Guia rápido: cabeçalho claro (sem tarja escura) e sem conteúdo regulat�
   assert.ok(!/#0b2d72|#061b4f|#0f172a|navy|marinho/i.test(html));
   assert.ok(!/ANVISA|RDC|\bIN\s?\d|Resolução/i.test(texto));
 });
+
+test("Guia rápido: fala do seletor de ambientes e de Limpar resposta, sem a faixa que rola", () => {
+  assert.ok(!/faixa de ambientes|rola para os lados/i.test(texto));
+  assert.ok(texto.includes("Limpar resposta") && texto.includes("Desfazer") && texto.includes("Cancelada pelo usuário"));
+});
