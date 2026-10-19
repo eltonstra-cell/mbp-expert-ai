@@ -34,14 +34,16 @@ test("voltar o item para conforme tira a NC dos módulos ativos sem apagá-la", 
 });
 
 test("rótulo do relatório: visita em andamento nunca é 'Encerramento da inspeção'", () => {
-  assert.equal(rotuloDoRelatorio("Em andamento"), "Relatório parcial");
+  assert.equal(rotuloDoRelatorio("Em andamento"), "Relatório técnico");
   assert.equal(rotuloDoRelatorio("Concluída"), "Encerramento da inspeção");
 });
 
-test("selo do PDF: parcial e prévia têm marca própria; a oficial não tem", () => {
+test("selo do PDF: cada modo tem o seu, e o rótulo da visita nunca repete o texto de um selo", () => {
   assert.equal(seloDoPdf("parcial"), "RELATÓRIO PARCIAL");
   assert.equal(seloDoPdf("previa"), "PRÉVIA");
-  assert.equal(seloDoPdf("oficial"), "");
+  assert.equal(seloDoPdf("oficial"), "VERSÃO OFICIAL");
+  const selos = ["parcial", "previa", "oficial"].map((tipo) => seloDoPdf(tipo).toLowerCase());
+  for (const status of ["Em andamento", "Concluída"]) assert.ok(!selos.includes(rotuloDoRelatorio(status).toLowerCase()));
 });
 
 test("confirmação de exclusão só vale com a palavra exata", () => {

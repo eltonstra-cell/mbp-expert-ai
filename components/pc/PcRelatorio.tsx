@@ -9,7 +9,7 @@ export type SecaoRelatorio = "resumo" | "ambientes" | "ncs" | "evidencias" | "po
 export const SECOES_RELATORIO: { chave: SecaoRelatorio; rotulo: string; texto: string }[] = [
   { chave: "resumo", rotulo: "Resumo e indicadores", texto: "Panorama da inspeção e números principais" },
   { chave: "ambientes", rotulo: "Resultado por ambiente", texto: "Resumo do checklist por ambiente" },
-  { chave: "ncs", rotulo: "Não conformidades e plano de ação", texto: "Achados com ação, responsável e prazo" },
+  { chave: "ncs", rotulo: "Correções", texto: "Achados com ação, responsável e prazo" },
   { chave: "evidencias", rotulo: "Evidências", texto: "Fotos e registros de campo" },
   { chave: "pops", rotulo: "POPs relacionados", texto: "Programas de controle e POPs" },
 ];

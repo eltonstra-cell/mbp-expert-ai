@@ -4,16 +4,19 @@ import { nomeSemNumerosNoInicio } from "./navigation.ts";
 
 export type TipoDeEmissao = "previa" | "parcial" | "oficial";
 
-/** Rótulo pequeno acima do título do relatório. Visita em andamento nunca é "encerramento". */
+/**
+ * Rótulo pequeno acima do título do relatório. Visita em andamento nunca é "encerramento".
+ * Não usa as palavras do selo (Prévia, Parcial, Oficial): o modo da emissão é só o selo; a situação da inspeção é outra etiqueta.
+ */
 export function rotuloDoRelatorio(statusDaVisita: "Em andamento" | "Concluída"): string {
-  return statusDaVisita === "Concluída" ? "Encerramento da inspeção" : "Relatório parcial";
+  return statusDaVisita === "Concluída" ? "Encerramento da inspeção" : "Relatório técnico";
 }
 
-/** Selo impresso no rodapé de TODAS as páginas do PDF; vazio na versão oficial. */
+/** Selo do modo da emissão: o MESMO texto no cabeçalho e no rodapé de todas as páginas do PDF. */
 export function seloDoPdf(tipo: TipoDeEmissao): string {
   if (tipo === "parcial") return "RELATÓRIO PARCIAL";
   if (tipo === "previa") return "PRÉVIA";
-  return "";
+  return "VERSÃO OFICIAL";
 }
 
 function semAcentos(texto: string): string {

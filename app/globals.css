@@ -1685,7 +1685,7 @@ html[data-modo="completo"] .pc-side{display:flex}
 .rep-offscreen{position:absolute;left:-12000px;top:0;width:1100px;pointer-events:none}
 @media print{.rep-offscreen{position:static;width:auto;pointer-events:auto}}
 .rep-off-resumo [data-rep="resumo"],.rep-off-ambientes [data-rep="ambientes"],.rep-off-pops [data-rep="pops"],.rep-off-ncs [data-pdf-section="nao-conformidades"],.rep-off-evidencias [data-pdf-section="evidencias"]{display:none!important}
-.report-partial{margin:0 0 10px;padding:8px 12px;border:2px solid #E89A0C;border-radius:8px;background:#FFF3D6;text-align:center;font-family:var(--font-display),"Outfit",sans-serif;font-size:1.1rem;letter-spacing:.12em;color:#12202B}
+.report-selo{margin:0 0 10px;padding:8px 12px;border:2px solid #E89A0C;border-radius:8px;background:#FFF3D6;text-align:center;font-family:var(--font-display),"Outfit",sans-serif;font-size:1.1rem;letter-spacing:.12em;color:#12202B}
 .pc-help-scroll{display:flex;flex-direction:column;gap:12px}
 .pc-help-cats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
 .pc-help-cat{display:flex;flex-direction:column;gap:4px;padding:14px;border:2px solid transparent;border-radius:14px;color:var(--ink);text-align:left;cursor:pointer}
@@ -2773,3 +2773,14 @@ html[data-modo="campo"] .pc-toast{bottom:calc(92px + env(safe-area-inset-bottom)
 @media (max-height:760px){.pc-ev-new .pc-field:has(textarea) textarea.pc-ev-descricao{min-height:calc(1.4em * 2 + 14px)}}
 .pc-ev-foot-text{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .pc-ev-foot-text.is-aviso{color:var(--ink)}
+
+/* ===== Pacote 6 · Tema D: relatório ===== */
+.report-selo[data-modo="oficial"]{border-color:#15803D;background:var(--ok-bg)}
+@media print {
+  /* título de seção nunca fica sozinho no fim da página */
+  #relatorio-visita h1, #relatorio-visita h2, #relatorio-visita h3 { break-after: avoid; page-break-after: avoid; }
+  #relatorio-visita div:has(> h2), #relatorio-visita div:has(> div > h2) { break-after: avoid; page-break-after: avoid; break-inside: avoid; page-break-inside: avoid; }
+  #relatorio-visita [data-pdf-section] > div:first-child + * { break-before: avoid; page-break-before: avoid; }
+  /* cartões de NC não se partem */
+  #relatorio-visita .rep-nc-grid > *, #relatorio-visita .rep-nc-grid .print-card { break-inside: avoid; page-break-inside: avoid; }
+}

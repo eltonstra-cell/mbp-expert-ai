@@ -720,7 +720,7 @@ export default function Home() {
     return () => window.clearTimeout(timer);
   }, [aviso]);
   const [secoesRelatorio, setSecoesRelatorio] = useState<Record<SecaoRelatorio, boolean>>({ resumo: true, ambientes: true, ncs: true, evidencias: true, pops: true });
-  const [emissaoParcial, setEmissaoParcial] = useState(false);
+  const [emissaoSelo, setEmissaoSelo] = useState<{ texto: string; modo: "previa" | "parcial" | "oficial" } | null>(null);
   const [rodapeImpressao, setRodapeImpressao] = useState<{ empresa: string; selo: string; fixo: boolean } | null>(null);
   const telaModo = useScreenMode();
   const modo = telaModo.modo;
@@ -4130,7 +4130,7 @@ export default function Home() {
     if (!elemento) return;
     const empresa = elemento.dataset.empresa || nomeParaExibir(empresaVisita);
     const dataVisita = elemento.dataset.dataVisita || visitaAtual.data || "";
-    const selo = seloDoPdf(tipo) || "VERSÃO OFICIAL";
+    const selo = seloDoPdf(tipo);
     const marcas = (navigator as Navigator & { userAgentData?: { brands: { brand: string; version: string }[] } }).userAgentData?.brands;
     const comCaixasDeMargem = suportaCaixasDeMargem(marcas, navigator.userAgent);
     const estilo = document.createElement("style");
@@ -4140,12 +4140,12 @@ export default function Home() {
     setRodapeImpressao({ empresa, selo, fixo: !comCaixasDeMargem });
     const tituloAntes = document.title;
     document.title = nomeDoArquivoPdf(empresa, dataVisita, tipo).replace(/\.pdf$/, "");
-    if (tipo === "parcial") setEmissaoParcial(true);
+    setEmissaoSelo({ texto: selo, modo: tipo });
     const limpar = () => {
       estilo.remove();
       document.title = tituloAntes;
       setRodapeImpressao(null);
-      setEmissaoParcial(false);
+      setEmissaoSelo(null);
       window.removeEventListener("afterprint", limpar);
     };
     window.addEventListener("afterprint", limpar);
@@ -6915,7 +6915,7 @@ export default function Home() {
                               type="button"
                               className="pc-btn-amber"
                               disabled={!ncDoItem || !permitido("ncs.acompanhar", visitaAtual.empresaId)}
-                              title={ncDoItem ? "Abrir o plano de ação desta não conformidade" : "A não conformidade é criada ao registrar o achado"}
+                              title={ncDoItem ? "Abrir a correção desta não conformidade" : "A não conformidade é criada ao registrar o achado"}
                               onClick={() => {
                                 if (!ncDoItem) return;
                                 setPlanoNcAbertaId(ncDoItem.id);
@@ -7221,7 +7221,7 @@ export default function Home() {
               />
             )}
           <section id="relatorio-visita" data-empresa={nomeParaExibir(empresaVisita)} data-data-visita={visitaAtual.data} data-visita-id={visitaAtual.id} className={`report-print space-y-4${telaEmLista ? ` rep-offscreen ${classesSecoesRelatorio}` : ""}`}>
-            {emissaoParcial && <div className="print-only report-partial">RELATÓRIO PARCIAL</div>}
+            {emissaoSelo && <div className="print-only report-selo" data-modo={emissaoSelo.modo}>{emissaoSelo.texto}</div>}
             {rodapeImpressao?.fixo && (
               <div className="print-only rep-rodape-fixo">
                 <span>{rodapeImpressao.empresa}</span>
