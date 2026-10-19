@@ -72,7 +72,7 @@ type Props = {
 };
 
 type Aba = "todas" | "fotos" | "audios" | "revisar";
-type Anexo = { arquivo: File; tipo: "Foto" | "Áudio"; duracao?: number };
+type Anexo = { arquivo: File; tipo: "Foto" | "Áudio"; duracao?: number; origem?: "camera" | "arquivo" };
 
 const PRAZO_DESFAZER_MS = 6000;
 
@@ -298,6 +298,9 @@ export default function PcEvidencias({
   const [aviso, setAviso] = useState<{ texto: string; desfazer: () => void } | null>(null);
   const [previaUrl, setPreviaUrl] = useState("");
   const [previaAberta, setPreviaAberta] = useState(false);
+  const [tocandoPrevia, setTocandoPrevia] = useState(false);
+  const [posicaoPrevia, setPosicaoPrevia] = useState(0);
+  const audioPreviaRef = useRef<HTMLAudioElement | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [ampliadaId, setAmpliadaId] = useState<string | null>(null);
   const descricaoRef = useRef<HTMLTextAreaElement | null>(null);
@@ -311,7 +314,7 @@ export default function PcEvidencias({
 
   const camera = useCapturaCamera({
     alternativa: "Escolher arquivo",
-    aoCapturar: (foto) => colocarAnexo({ arquivo: foto, tipo: "Foto" }),
+    aoCapturar: (foto) => colocarAnexo({ arquivo: foto, tipo: "Foto", origem: "camera" }),
   });
   const audio = useCapturaAudio({
     alternativa: "",
@@ -319,8 +322,8 @@ export default function PcEvidencias({
   });
   const avisoMidia = camera.aviso || audio.aviso;
 
-  const temFoto = Boolean(pendente && pendente.tipo === "Foto" && !removendo);
   const temAnexo = Boolean(pendente && !removendo);
+  const precisaAnexo = !temAnexo && descricao.trim() !== "";
 
   useEffect(() => {
     const consulta = window.matchMedia("(max-width: 767px)");
@@ -338,9 +341,11 @@ export default function PcEvidencias({
     };
   }, []);
 
-  // Miniatura local: só vive no navegador, nunca vira endereço público.
+  // Prévia local (miniatura da foto ou áudio gravado): só vive no navegador e a URL é liberada ao trocar, remover ou sair.
   useEffect(() => {
-    if (!pendente || pendente.tipo !== "Foto") {
+    setTocandoPrevia(false);
+    setPosicaoPrevia(0);
+    if (!pendente) {
       setPreviaUrl("");
       return;
     }
@@ -450,7 +455,8 @@ export default function PcEvidencias({
     return arquivo;
   }
 
-  // Uma evidência é foto OU áudio: quem chega depois substitui o anterior, com Desfazer por 6 s.
+  // Uma evidência é foto, áudio ou arquivo. Com algo anexado os botões de captura ficam travados:
+  // só "Trocar foto", "Gravar de novo", "Trocar arquivo" e "Remover" mexem no anexo (Desfazer por 6 s).
   function colocarAnexo(novo: Anexo) {
     const anterior = pendente && !removendo ? pendente : null;
     camera.setAviso("");
@@ -461,16 +467,13 @@ export default function PcEvidencias({
       limparAviso();
       return;
     }
-    const texto =
-      anterior.tipo === novo.tipo
-        ? novo.tipo === "Foto" ? "Foto trocada." : "Áudio regravado."
-        : novo.tipo === "Áudio" ? "Foto substituída pelo áudio." : "Áudio substituído pela foto.";
+    const texto = novo.tipo === "Áudio" ? "Áudio regravado." : novo.origem === "arquivo" ? "Arquivo trocado." : "Foto trocada.";
     avisarComDesfazer(texto, () => setPendente(anterior));
   }
 
   async function escolherArquivo(arquivo: File | undefined) {
     const valido = await validar(arquivo);
-    if (valido) colocarAnexo({ arquivo: valido, tipo: "Foto" });
+    if (valido) colocarAnexo({ arquivo: valido, tipo: "Foto", origem: "arquivo" });
   }
 
   async function abrirCamera() {
@@ -488,11 +491,18 @@ export default function PcEvidencias({
   }
 
   // A remoção só vale depois do prazo: até lá o anexo fica guardado e dá para desfazer.
+  function alternarPrevia() {
+    const player = audioPreviaRef.current;
+    if (!player) return;
+    if (player.paused) void player.play().catch(() => undefined);
+    else player.pause();
+  }
+
   function removerAnexo() {
     if (!pendente) return;
     setRemovendo(true);
     avisarComDesfazer(
-      pendente.tipo === "Foto" ? "Foto removida." : "Áudio removido.",
+      pendente.tipo === "Áudio" ? "Áudio removido." : pendente.origem === "arquivo" ? "Arquivo removido." : "Foto removida.",
       () => setRemovendo(false),
       () => {
         setPendente(null);
@@ -751,13 +761,13 @@ export default function PcEvidencias({
 
             <div className="ev7-corpo">
               <div className="ev7-capturas">
-                <button type="button" className="ev7-cap ev7-cap--foto" disabled={temFoto} onClick={() => void abrirCamera()}>
+                <button type="button" className="ev7-cap ev7-cap--foto" disabled={temAnexo} onClick={() => void abrirCamera()}>
                   <CameraIcon /> Tirar foto
                 </button>
-                <button type="button" className="ev7-cap ev7-cap--audio" onClick={() => void gravarAudio()}>
+                <button type="button" className="ev7-cap ev7-cap--audio" disabled={temAnexo} onClick={() => void gravarAudio()}>
                   <MicIcon /> Áudio
                 </button>
-                <button type="button" className="ev7-cap ev7-cap--arquivo" onClick={() => arquivoRef.current?.click()}>
+                <button type="button" className="ev7-cap ev7-cap--arquivo" disabled={temAnexo} onClick={() => arquivoRef.current?.click()}>
                   <FolderIcon /> Arquivo
                 </button>
                 <input
@@ -790,13 +800,49 @@ export default function PcEvidencias({
                   )}
                   <div className="ev7-anexo-lado">
                     {pendente.tipo === "Áudio" && (
-                      <span className="ev7-anexo-info">Áudio gravado{pendente.duracao ? ` · ${formatarTempo(pendente.duracao)}` : ""}</span>
+                      <div className="ev7-audio-previa">
+                        <button
+                          type="button"
+                          className="ev7-chip ev7-chip--botao ev7-ouvir"
+                          disabled={!previaUrl}
+                          onClick={alternarPrevia}
+                          aria-label={tocandoPrevia ? "Pausar a gravação" : "Ouvir a gravação"}
+                        >
+                          {tocandoPrevia ? <PauseIcon /> : <PlayIcon />} {tocandoPrevia ? "Pausar" : "Ouvir"}
+                        </button>
+                        <span className="ev7-anexo-info">
+                          Áudio gravado
+                          {pendente.duracao
+                            ? ` · ${tocandoPrevia ? `${formatarTempo(Math.min(Math.floor(posicaoPrevia), pendente.duracao))} de ` : ""}${formatarTempo(pendente.duracao)}`
+                            : ""}
+                        </span>
+                        {previaUrl && (
+                          <audio
+                            ref={audioPreviaRef}
+                            src={previaUrl}
+                            preload="metadata"
+                            onPlay={() => setTocandoPrevia(true)}
+                            onPause={() => setTocandoPrevia(false)}
+                            onEnded={() => {
+                              setTocandoPrevia(false);
+                              setPosicaoPrevia(0);
+                            }}
+                            onTimeUpdate={(evento) => setPosicaoPrevia(evento.currentTarget.currentTime)}
+                          />
+                        )}
+                      </div>
                     )}
                     <div className="ev7-anexo-acoes">
                       {pendente.tipo === "Foto" ? (
-                        <button type="button" className="ev7-mini-btn" onClick={() => void abrirCamera()}>
-                          Trocar foto
-                        </button>
+                        pendente.origem === "arquivo" ? (
+                          <button type="button" className="ev7-mini-btn" onClick={() => arquivoRef.current?.click()}>
+                            Trocar arquivo
+                          </button>
+                        ) : (
+                          <button type="button" className="ev7-mini-btn" onClick={() => void abrirCamera()}>
+                            Trocar foto
+                          </button>
+                        )
                       ) : (
                         <button type="button" className="ev7-mini-btn" onClick={() => void gravarAudio()}>
                           Gravar de novo
@@ -883,7 +929,12 @@ export default function PcEvidencias({
                   )}
                 </div>
               )}
-              <div className="ev7-botoes">
+              <div className={`ev7-botoes${precisaAnexo ? " ev7-botoes--precisa" : ""}`}>
+                {precisaAnexo && (
+                  <span className="ev7-precisa" role="status">
+                    Anexe uma foto, um áudio ou um arquivo para salvar
+                  </span>
+                )}
                 <button type="button" className="ui-btn ui-btn--secondary ui-btn--small ev7-cancelar" onClick={cancelar}>
                   Cancelar
                 </button>
