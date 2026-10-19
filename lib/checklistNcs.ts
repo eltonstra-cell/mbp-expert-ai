@@ -25,6 +25,7 @@ export function sincronizarNcDoItem(
       prioridade: item.criticidade || "Rotina",
       status: existente?.status || ("Aberta" as const),
       inativaNoChecklist: false,
+      canceladaPeloUsuarioEm: undefined,
       criadoEm: existente?.criadoEm || agoraIso,
     } as NaoConformidade;
     return existente ? ncs.map((x) => (x.id === idNc ? { ...x, ...nc } : x)) : [nc, ...ncs];

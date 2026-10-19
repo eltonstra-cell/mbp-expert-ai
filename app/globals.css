@@ -2726,7 +2726,8 @@ html[data-modo="campo"] .pc-choice-name{white-space:normal;line-height:1.15}
 html[data-modo="campo"] .chk-resp{height:auto;min-height:48px;padding:4px 6px;gap:4px;font-size:.84rem;line-height:1.1;white-space:normal;text-align:center;overflow-wrap:anywhere}
 html[data-modo="campo"] .chk-resp>span:first-child{flex:none;font-size:.8rem}
 html[data-modo="campo"] .chk-resp>span:last-child{min-width:0}
-html[data-modo="campo"] .chk-foco-amb-nome{display:-webkit-box;min-width:0;flex:1;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:2;font-size:1.05rem;font-weight:500;line-height:1.2}
+html[data-modo="campo"] .chk-foco-amb-nome{min-width:0;flex:1;overflow-wrap:anywhere;font-size:1.05rem;font-weight:500;line-height:1.2}
+html[data-modo="campo"] .chk-foco-amb-top{align-items:flex-start}
 html[data-modo="campo"] .chk-foco-amb-pos{flex:none;font-size:1.2rem}
 .chk-foco-apoio{position:relative;flex:none;gap:4px;overflow:visible}
 .chk-apoio-linha{position:relative;border:1px solid var(--border);border-radius:12px;background:#fff}
@@ -2758,3 +2759,9 @@ html[data-modo="campo"] .chk-foco-amb-pos{flex:none;font-size:1.2rem}
 .pc-ev-new .pc-field:has(textarea) textarea.pc-ev-descricao{min-height:calc(1.4em * 3 + 56px)}
 @media (max-height:760px){.pc-ev-new .pc-field:has(textarea) textarea.pc-ev-descricao{min-height:calc(1.4em * 2 + 52px)}.pc-ev-new .pc-ev-privacy{margin:0;font-size:.78rem}}
 @media (max-height:760px){.pc-ev-link-text{-webkit-line-clamp:1}.pc-ev-new .pc-ev-link .ui-eyebrow{margin:0}}
+
+/* ===== Pacote 6 · Tema A ===== */
+.chk-obs-titulo{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.chk-limpar{flex:none;min-height:28px;padding:0 10px;border:1px solid var(--border);border-radius:999px;background:#fff;color:var(--ink-2);font-size:.8rem;font-weight:400;cursor:pointer}
+.chk-limpar:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
+html[data-modo="campo"] .pc-toast{bottom:calc(92px + env(safe-area-inset-bottom))}

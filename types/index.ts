@@ -232,6 +232,8 @@ export type NaoConformidade = {
   marcadaFeita?: { em: string; por: string; observacao?: string };
   /** Mantém a NC para restauração caso o checklist seja temporariamente alterado para Conforme/Não se aplica. */
   inativaNoChecklist?: boolean;
+  /** O usuário limpou a resposta do item: a Correção fica guardada como "Cancelada pelo usuário" e sai das abertas. */
+  canceladaPeloUsuarioEm?: string;
   criadoEm: string;
 };
 

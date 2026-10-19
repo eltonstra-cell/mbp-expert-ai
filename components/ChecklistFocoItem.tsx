@@ -28,6 +28,8 @@ type Props = {
   onObservacao: (texto: string) => void;
   onGravidade: (gravidade: ChecklistCriticidade) => void;
   onFoto: () => void;
+  /** Volta o item a "Pendente"; quem chama decide se pergunta antes. */
+  onLimpar?: () => void;
   onAnterior: () => void;
   onProximo: () => void;
 };
@@ -68,6 +70,7 @@ export default function ChecklistFocoItem({
   onObservacao,
   onGravidade,
   onFoto,
+  onLimpar,
   onAnterior,
   onProximo,
 }: Props) {
@@ -125,7 +128,10 @@ export default function ChecklistFocoItem({
               disabled={!podeEditar}
               aria-pressed={estado === "marcado"}
               className={`chk-resp chk-resp--${tom} is-${estado}`}
-              onClick={() => onStatus(resposta)}
+              onClick={() => {
+                if (estado === "marcado") return;
+                onStatus(resposta);
+              }}
             >
               <span aria-hidden="true">{estado === "marcado" ? "✓" : simbolo}</span>
               <span>{rotulo}</span>
@@ -156,7 +162,14 @@ export default function ChecklistFocoItem({
       )}
 
       <div className="chk-foco-obs" ref={caixaRef}>
-        <span className="ui-eyebrow">{naoConforme ? "Registrar a não conformidade" : "Observação (opcional)"}</span>
+        <div className="chk-obs-titulo">
+          <span className="ui-eyebrow">{naoConforme ? "Registrar a não conformidade" : "Observação (opcional)"}</span>
+          {podeEditar && onLimpar && item.status !== "Pendente" && (
+            <button type="button" className="chk-limpar" onClick={onLimpar}>
+              Limpar resposta
+            </button>
+          )}
+        </div>
         <div className="chk-foco-tools">
           <button type="button" className="chk-tool chk-tool--foto" onClick={onFoto}>
             <NavIcon name="registrar" size={18} strokeWidth={1.9} /> Foto

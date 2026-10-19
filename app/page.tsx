@@ -47,6 +47,7 @@ import { nomeDeExibicaoDoAmbiente } from "@/lib/checklistEnvs";
 import { calcularCortes } from "@/lib/pdfPaginacao";
 import { cssDoRodapeDeImpressao, suportaCaixasDeMargem } from "@/lib/printFooter";
 import { sincronizarNcDoItem } from "@/lib/checklistNcs";
+import { dadosExtrasDoItem, desfazerLimpeza, limparResposta, listaEmTexto, type InstantaneoDaResposta } from "@/lib/limparResposta";
 import { CampoBarra, CampoCabecalho, CampoCorrecoes, CampoInicio, CampoMais, type TelaCampo } from "@/components/campo/CampoTelas";
 import type { ItemMenu } from "@/components/ui/RowMenu";
 import { ROTULO_DE_USO, descreverAparelho } from "@/lib/screenMode";
@@ -2002,6 +2003,8 @@ export default function Home() {
     [db.empresas, usuarioDaSessao]
   );
   const [trocarEmpresaAberto, setTrocarEmpresaAberto] = useState(false);
+  const [respostaLimpa, setRespostaLimpa] = useState<InstantaneoDaResposta | null>(null);
+  const respostaLimpaTimerRef = useRef<number | null>(null);
   const opcoesTrocaDeEmpresa = useMemo(
     () => opcoesDeEmpresa(Object.values(db.empresas), usuarioDaSessao, db.empresaAtualId),
     [db.empresas, usuarioDaSessao, db.empresaAtualId]
@@ -3610,6 +3613,57 @@ export default function Home() {
       }
 
       return { ...o, visitas: visitasAtualizadas, ncs };
+    });
+  }
+
+  async function limparRespostaDoItem(itemId: string) {
+    if (!visitaAtual) return;
+    if (!exigirPermissao("visitas.executar", visitaAtual.empresaId)) return;
+    const item = (visitaAtual.checklist || []).find((registro) => registro.id === itemId);
+    if (!item || item.status === "Pendente") return;
+    const nc = (db.ncs || []).find((registro) => registro.id === `${visitaAtual.id}:${item.id}`);
+    const evidenciasDoItem = (db.evidencias || []).filter((evidencia) => evidencia.visitaId === visitaAtual.id && evidencia.checklistItemId === item.id);
+    const extras = dadosExtrasDoItem(item, evidenciasDoItem, nc);
+    if (extras.length > 0) {
+      const confirmado = await confirmar(
+        `Esta resposta tem ${listaEmTexto(extras)}. Ao limpar, o item volta a "Pendente"${nc && !nc.inativaNoChecklist ? " e a Correção ligada a ele fica como \"Cancelada pelo usuário\"" : ""}. As fotos e os áudios continuam nas Evidências da visita.`,
+        { titulo: "Limpar a resposta?", confirmarRotulo: "Limpar resposta", cancelarRotulo: "Manter", perigoso: true }
+      );
+      if (!confirmado) return;
+    }
+    const visitaId = visitaAtual.id;
+    setDb((o) => {
+      const atualNoEstado = (o.visitas.find((v) => v.id === visitaId)?.checklist || []).find((registro) => registro.id === itemId);
+      if (!atualNoEstado) return o;
+      const resultado = limparResposta(o.ncs || [], { id: visitaId }, atualNoEstado, new Date().toISOString());
+      const visitas = o.visitas.map((v) => {
+        if (v.id !== visitaId) return v;
+        const checklist = (v.checklist || []).map((registro) => (registro.id === itemId ? resultado.item : registro));
+        const pct = checklist.length ? Math.round((checklist.filter((i) => i.status !== "Pendente").length / checklist.length) * 100) : 0;
+        return { ...v, checklist, progresso: Math.max(15, Math.min(55, 15 + Math.round(pct * 0.4))) };
+      });
+      return { ...o, visitas, ncs: resultado.ncs };
+    });
+    setItemFocoId(itemId);
+    setRespostaLimpa({ visitaId, item: { ...item }, nc: nc ? { ...nc } : undefined });
+    if (respostaLimpaTimerRef.current) window.clearTimeout(respostaLimpaTimerRef.current);
+    respostaLimpaTimerRef.current = window.setTimeout(() => setRespostaLimpa(null), 6000);
+  }
+
+  function desfazerLimparResposta() {
+    const instantaneo = respostaLimpa;
+    if (!instantaneo) return;
+    if (respostaLimpaTimerRef.current) window.clearTimeout(respostaLimpaTimerRef.current);
+    setRespostaLimpa(null);
+    setDb((o) => {
+      const volta = desfazerLimpeza(o.ncs || [], instantaneo);
+      const visitas = o.visitas.map((v) => {
+        if (v.id !== instantaneo.visitaId) return v;
+        const checklist = (v.checklist || []).map((registro) => (registro.id === instantaneo.item.id ? volta.item : registro));
+        const pct = checklist.length ? Math.round((checklist.filter((i) => i.status !== "Pendente").length / checklist.length) * 100) : 0;
+        return { ...v, checklist, progresso: Math.max(15, Math.min(55, 15 + Math.round(pct * 0.4))) };
+      });
+      return { ...o, visitas, ncs: volta.ncs };
     });
   }
 
@@ -5238,6 +5292,14 @@ export default function Home() {
           <span>{avisoVoz}</span>
         </div>
       )}
+      {respostaLimpa && (
+        <div className="pc-toast" role="status">
+          <span>Resposta limpa</span>
+          <button type="button" className="pc-link-btn" onClick={desfazerLimparResposta}>
+            Desfazer
+          </button>
+        </div>
+      )}
       {aviso && (
         <div className="pc-toast" role="status">
           <span>{aviso.texto}</span>
@@ -5790,7 +5852,8 @@ export default function Home() {
                     onStatus={(status) => { setItemFocoId(foco.id); atualizarChecklistItem(foco.id, { status, ...(status !== "Não Conforme" ? { observacao: "" } : {}) }); }}
                     onObservacao={(texto) => atualizarChecklistItem(foco.id, { observacao: texto })}
                     onFoto={() => { setUltimoItemChecklistId(foco.id); setRegistrarAberto(true); }}
-                    onAnterior={() => moverItemFoco(-1)}
+                    onLimpar={() => void limparRespostaDoItem(foco.id)}
+                      onAnterior={() => moverItemFoco(-1)}
                     onProximo={() => moverItemFoco(1)}
                   />
                 ) : (
@@ -6465,6 +6528,7 @@ export default function Home() {
                         setUltimoItemChecklistId(foco.id);
                         registrarRapido();
                       }}
+                      onLimpar={() => void limparRespostaDoItem(foco.id)}
                       onAnterior={() => moverItemFoco(-1)}
                       onProximo={() => moverItemFoco(1)}
                     />
@@ -6526,6 +6590,7 @@ export default function Home() {
                         setUltimoItemChecklistId(foco.id);
                         registrarRapido();
                       }}
+                      onLimpar={() => void limparRespostaDoItem(foco.id)}
                       onAnterior={() => moverItemFoco(-1)}
                       onProximo={() => moverItemFoco(1)}
                     />
