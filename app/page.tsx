@@ -5803,6 +5803,9 @@ export default function Home() {
           (() => {
             const alvo = visitaEmAndamentoDestaque;
             const lista = alvo?.checklist || [];
+            const ordemAmbientes = alvo?.ambientes?.length ? alvo.ambientes : [...new Set(lista.map((item) => item.ambiente))];
+            const proximoItem = ordemAmbientes.flatMap((nome) => lista.filter((item) => item.ambiente === nome)).find((item) => item.status === "Pendente");
+            const itensDoAmbiente = proximoItem ? lista.filter((item) => item.ambiente === proximoItem.ambiente) : [];
             const abertasDoAlvo = alvo ? (db.ncs || []).filter((nc) => nc.visitaId === alvo.id && !nc.inativaNoChecklist && nc.status !== "Resolvida").length : 0;
             return (
               <CampoInicio
@@ -5823,6 +5826,23 @@ export default function Home() {
                 onAbrirVisita={(id) => continuar(id, true)}
                 onVisitas={() => irParaMenu("visitas")}
                 onIniciar={permitido("visitas.criar", atual?.id) && atual ? novaVisita : undefined}
+                proxima={
+                  proximoItem
+                    ? {
+                        ambiente: infosAmbientes.find((info) => info.nome === proximoItem.ambiente)?.rotulo || proximoItem.ambiente,
+                        numero: itensDoAmbiente.findIndex((item) => item.id === proximoItem.id) + 1,
+                        total: itensDoAmbiente.length,
+                        texto: proximoItem.titulo,
+                      }
+                    : null
+                }
+                onProxima={() => {
+                  if (!alvo || !proximoItem) return;
+                  continuar(alvo.id, true);
+                  setItemFocoId(proximoItem.id);
+                  setAmbienteChecklistAtivo(proximoItem.ambiente);
+                  setUltimoItemChecklistId(proximoItem.id);
+                }}
               />
             );
           })()

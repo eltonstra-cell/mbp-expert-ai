@@ -88,6 +88,8 @@ export function CampoInicio({
   onAbrirVisita,
   onVisitas,
   onIniciar,
+  proxima,
+  onProxima,
 }: {
   usuario: string;
   empresa?: string;
@@ -104,6 +106,9 @@ export function CampoInicio({
   onAbrirVisita: (id: string) => void;
   onVisitas: () => void;
   onIniciar?: () => void;
+  /** Próximo item pendente do checklist ativo. */
+  proxima?: { ambiente: string; numero: number; total: number; texto: string } | null;
+  onProxima?: () => void;
 }) {
   const percentual = total > 0 ? Math.round((respondidos / total) * 100) : 0;
   return (
@@ -123,9 +128,6 @@ export function CampoInicio({
           <div className="campo-sub">
             {respondidos} de {total} itens · {percentual}%
           </div>
-          <button type="button" className="campo-btn campo-btn--brand" onClick={onContinuar}>
-            Continuar checklist
-          </button>
         </div>
       ) : (
         <div className="campo-card">
@@ -142,6 +144,33 @@ export function CampoInicio({
         </div>
       )}
 
+      {visitaAtiva && (
+        <div className="campo-acoes-inicio">
+          <button type="button" className="campo-btn campo-btn--brand" onClick={onContinuar}>
+            Continuar checklist
+          </button>
+          {podeRegistrar && (
+            <button type="button" className="campo-btn campo-btn--outline" onClick={onRegistrar}>
+              Registrar agora
+            </button>
+          )}
+        </div>
+      )}
+
+      {visitaAtiva && proxima && onProxima && (
+        <button type="button" className="campo-proxima" onClick={onProxima} aria-label={`Próxima etapa: ${proxima.ambiente}, item ${proxima.numero}. ${proxima.texto}`}>
+          <span className="campo-proxima-corpo">
+            <span className="ui-eyebrow">Próxima etapa</span>
+            <span className="campo-proxima-titulo">
+              <span className="campo-proxima-amb">{proxima.ambiente}</span>
+              <span className="campo-proxima-item"> · Item {proxima.numero} de {proxima.total}</span>
+            </span>
+            <span className="campo-proxima-texto">{proxima.texto}</span>
+          </span>
+          <span className="campo-proxima-seta" aria-hidden="true">›</span>
+        </button>
+      )}
+
       <div className="campo-tiles">
         <button type="button" className="campo-tile campo-tile--nc" onClick={onCorrecoes}>
           <span className="campo-tile-n">{correcoesAbertas}</span>
@@ -152,12 +181,6 @@ export function CampoInicio({
           <span>Não conformes</span>
         </button>
       </div>
-
-      {podeRegistrar && visitaAtiva && (
-        <button type="button" className="campo-btn campo-btn--orange" onClick={onRegistrar}>
-          Registrar agora
-        </button>
-      )}
 
       {outras.length > 0 && (
         <div className="campo-lista">

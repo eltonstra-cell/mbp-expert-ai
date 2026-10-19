@@ -2836,3 +2836,17 @@ button.pc-company-chip:focus-visible{outline:3px solid var(--brand);outline-offs
   html[data-modo="campo"] .amb-lista{gap:2px}
   html[data-modo="campo"] .amb-nome{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;font-size:.82rem;line-height:1.15}
 }
+
+/* ===== Pacote 7 · Tema C: Início do celular ===== */
+.campo-acoes-inicio{display:flex;flex:none;gap:8px}
+.campo-acoes-inicio .campo-btn{flex:1 1 0;min-width:0;min-height:42px;padding:0 8px;border-radius:12px;font-size:.9rem;white-space:nowrap}
+.campo-proxima{display:flex;flex:none;align-items:center;gap:10px;width:100%;padding:10px 14px;border:2px solid var(--border);border-radius:16px;background:#fff;text-align:left;color:var(--ink);cursor:pointer}
+.campo-proxima:active{background:#FEF6E6}
+.campo-proxima:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
+.campo-proxima-corpo{display:flex;min-width:0;flex:1;flex-direction:column;gap:2px}
+.campo-proxima-titulo{font-family:var(--font-display),"Outfit",sans-serif;font-size:1rem;font-weight:500;line-height:1.2}
+.campo-proxima-texto{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;font-size:.9rem;line-height:1.25;color:var(--ink-2)}
+.campo-proxima-seta{flex:none;font-size:1.6rem;line-height:1;color:var(--ink-2)}
+.campo-proxima-titulo{display:flex;min-width:0}
+.campo-proxima-amb{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.campo-proxima-item{flex:none;white-space:nowrap}
