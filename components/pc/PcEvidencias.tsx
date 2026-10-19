@@ -107,6 +107,7 @@ const PinIcon = () => (
     <circle cx="12" cy="11" r="2.2" />
   </Icone>
 );
+const LARGURA_DUAS_COLUNAS = 900;
 const ExpandIcon = ({ tamanho = 12 }: { tamanho?: number }) => (
   <Icone tamanho={tamanho}>
     <path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7" />
@@ -301,9 +302,12 @@ export default function PcEvidencias({
   const [ampliadaId, setAmpliadaId] = useState<string | null>(null);
   const descricaoRef = useRef<HTMLTextAreaElement | null>(null);
   const arquivoRef = useRef<HTMLInputElement | null>(null);
+  const vinculoRef = useRef<HTMLButtonElement | null>(null);
   const timerAviso = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pickerRef = useRef<HTMLDivElement | null>(null);
   const [celular, setCelular] = useState(false);
+  const [duasColunas, setDuasColunas] = useState(false);
+  const [etapa, setEtapa] = useState<1 | 2>(1);
 
   const camera = useCapturaCamera({
     alternativa: "Escolher arquivo",
@@ -320,10 +324,18 @@ export default function PcEvidencias({
 
   useEffect(() => {
     const consulta = window.matchMedia("(max-width: 767px)");
-    const atualizar = () => setCelular(consulta.matches);
+    const largura = window.matchMedia(`(min-width: ${LARGURA_DUAS_COLUNAS}px)`);
+    const atualizar = () => {
+      setCelular(consulta.matches);
+      setDuasColunas(largura.matches);
+    };
     atualizar();
     consulta.addEventListener("change", atualizar);
-    return () => consulta.removeEventListener("change", atualizar);
+    largura.addEventListener("change", atualizar);
+    return () => {
+      consulta.removeEventListener("change", atualizar);
+      largura.removeEventListener("change", atualizar);
+    };
   }, []);
 
   // Miniatura local: só vive no navegador, nunca vira endereço público.
@@ -341,22 +353,40 @@ export default function PcEvidencias({
     if (timerAviso.current) clearTimeout(timerAviso.current);
   }, []);
 
-  // No PC a lista de vínculos nunca passa da borda de baixo do formulário (no celular ela é uma folha fixa).
+  // Em 900 px ou mais a caixa fica ancorada no vínculo, sem sair da tela; abaixo disso é uma folha fixa por baixo.
   useLayoutEffect(() => {
     if (!trocando) return;
     const ajustar = () => {
-      const lista = pickerRef.current;
-      const formulario = lista?.closest<HTMLElement>(".ev7-form");
-      if (!lista || !formulario) return;
-      lista.style.maxHeight = "";
-      if (getComputedStyle(lista).position !== "absolute") return;
-      const espaco = formulario.getBoundingClientRect().bottom - lista.getBoundingClientRect().top - 8;
-      lista.style.maxHeight = `${Math.max(160, Math.min(espaco, 460))}px`;
+      const caixa = pickerRef.current;
+      const ancora = vinculoRef.current;
+      if (!caixa || !ancora) return;
+      if (!duasColunas) {
+        caixa.style.cssText = "";
+        return;
+      }
+      const margem = 8;
+      const largura = Math.min(760, window.innerWidth - margem * 2);
+      const alvo = ancora.getBoundingClientRect();
+      caixa.style.width = `${largura}px`;
+      caixa.style.left = `${Math.max(margem, Math.min(alvo.left, window.innerWidth - largura - margem))}px`;
+      caixa.style.maxHeight = `${window.innerHeight - margem * 2}px`;
+      caixa.style.top = `${alvo.bottom + 6}px`;
+      const altura = caixa.offsetHeight;
+      if (alvo.bottom + 6 + altura > window.innerHeight - margem) caixa.style.top = `${Math.max(margem, window.innerHeight - margem - altura)}px`;
     };
     ajustar();
     window.addEventListener("resize", ajustar);
     return () => window.removeEventListener("resize", ajustar);
-  }, [trocando, ambienteAberto]);
+  }, [trocando, ambienteAberto, duasColunas, etapa]);
+
+  useEffect(() => {
+    if (!trocando) return;
+    const aoTeclar = (evento: KeyboardEvent) => {
+      if (evento.key === "Escape") setTrocando(false);
+    };
+    window.addEventListener("keydown", aoTeclar);
+    return () => window.removeEventListener("keydown", aoTeclar);
+  }, [trocando]);
 
   function limparAviso() {
     if (timerAviso.current) clearTimeout(timerAviso.current);
@@ -528,10 +558,13 @@ export default function PcEvidencias({
   }, [ampliada?.id, previaAberta, fotosVisiveis.length]);
 
   function abrirSeletor() {
-    setTrocando((aberto) => {
-      if (!aberto) setAmbienteAberto(ambienteSel || grupos[0]?.nome || "");
-      return !aberto;
-    });
+    if (trocando) {
+      setTrocando(false);
+      return;
+    }
+    setAmbienteAberto(ambienteSel || grupos[0]?.nome || "");
+    setEtapa(1);
+    setTrocando(true);
   }
 
   function escolherAmbiente(nome: string) {
@@ -543,6 +576,48 @@ export default function PcEvidencias({
     onItem(id);
     setTrocando(false);
   }
+
+  const grupoFoco = grupos.find((grupo) => grupo.nome === ambienteAberto) || grupos[0];
+  const focoEhAtual = Boolean(grupoFoco) && ambienteSel === grupoFoco.nome;
+  const listaItens: ReactNode = grupoFoco ? (
+    <>
+      <button type="button" className={`ev7-pk-item${focoEhAtual && !itemSel ? " is-atual" : ""}`} onClick={() => escolherAmbiente(grupoFoco.nome)}>
+        <span className="ev7-pk-bola" aria-hidden="true" />
+        <span className="ev7-pk-item-txt">Sem item específico</span>
+        {focoEhAtual && !itemSel && <span className="ev7-chip-atual">vínculo atual</span>}
+      </button>
+      {grupoFoco.itens.map((item) => (
+        <button key={item.id} type="button" className={`ev7-pk-item${itemSel === item.id ? " is-atual" : ""}`} onClick={() => escolherItem(item.id)}>
+          <span className="ev7-pk-bola" aria-hidden="true" />
+          <span className="ev7-pk-item-txt">
+            Item {item.numero} · {item.titulo}
+          </span>
+          {itemSel === item.id && <span className="ev7-chip-atual">vínculo atual</span>}
+        </button>
+      ))}
+    </>
+  ) : null;
+  const listaItensSemAmbiente: ReactNode = (
+    <button type="button" className="ev7-pk-item is-atual" onClick={() => escolherAmbiente("")}>
+      <span className="ev7-pk-bola" aria-hidden="true" />
+      <span className="ev7-pk-item-txt">Sem ambiente específico</span>
+    </button>
+  );
+  const listaAmbientes: ReactNode = grupos.map((grupo) => (
+    <button
+      key={grupo.nome}
+      type="button"
+      className={`ev7-pk-amb${ambienteSel === grupo.nome ? " is-atual" : ""}${duasColunas && grupoFoco?.nome === grupo.nome ? " is-foco" : ""}`}
+      aria-current={ambienteSel === grupo.nome ? "true" : undefined}
+      onClick={() => {
+        setAmbienteAberto(grupo.nome);
+        if (!duasColunas) setEtapa(2);
+      }}
+    >
+      <span className="ev7-pk-amb-nome">{grupo.rotulo}</span>
+      <span className="ev7-pk-seta" aria-hidden="true">›</span>
+    </button>
+  ));
 
   const campoDescricao: ReactNode = (
     <span className="ui-field-wrap ui-field-wrap--area">
@@ -597,7 +672,7 @@ export default function PcEvidencias({
                 <span className="ev7-ey-pc">Nova evidência</span>
                 <span className="ev7-ey-campo">Vinculada a</span>
               </span>
-              <button type="button" className="ev7-vinculo" aria-haspopup="dialog" aria-expanded={trocando} onClick={abrirSeletor}>
+              <button type="button" ref={vinculoRef} className="ev7-vinculo" aria-haspopup="dialog" aria-expanded={trocando} onClick={abrirSeletor}>
                 <span className="ev7-vinculo-pino"><PinIcon /></span>
                 <span className="ev7-vinculo-txt">
                   <span className="ev7-vinculo-amb">{vinculo.ambiente || "Sem ambiente"}</span>
@@ -608,56 +683,67 @@ export default function PcEvidencias({
 
               {trocando && (
                 <>
-                  <div className="ev7-fundo" onClick={() => setTrocando(false)} />
-                  <div className="ev7-picker" role="dialog" aria-label="Vincular evidência a" ref={pickerRef}>
-                    <div className="ev7-picker-topo">
-                      <span className="ev7-picker-titulo">Vincular evidência a</span>
-                      <button type="button" className="ev7-picker-fechar" onClick={() => setTrocando(false)} aria-label="Fechar">
-                        ✕
-                      </button>
-                    </div>
-                    <div className="ev7-picker-lista">
-                      {grupos.length === 0 && (
-                        <button type="button" className="ev7-sem-item is-atual" onClick={() => escolherAmbiente("")}>
-                          Sem ambiente específico
-                        </button>
-                      )}
-                      {grupos.map((grupo) => {
-                        const aberto = ambienteAberto === grupo.nome;
-                        const atual = ambienteSel === grupo.nome;
-                        return (
-                          <div key={grupo.nome} className="ev7-grupo">
-                            <button
-                              type="button"
-                              className={`ev7-amb${atual ? " is-atual" : ""}`}
-                              aria-expanded={aberto}
-                              onClick={() => setAmbienteAberto(aberto ? "" : grupo.nome)}
-                            >
-                              <span className="ev7-amb-nome">{grupo.rotulo}</span>
-                              <span className="ev7-amb-cnt">
-                                {grupo.itens.length} {grupo.itens.length === 1 ? "item" : "itens"} {aberto ? "▴" : "▾"}
-                              </span>
-                            </button>
-                            {aberto && (
-                              <div className="ev7-itens">
-                                <button type="button" className={`ev7-sem-item${atual && !itemSel ? " is-atual" : ""}`} onClick={() => escolherAmbiente(grupo.nome)}>
-                                  <span>Sem item específico</span>
-                                  {atual && !itemSel && <span className="ev7-chip-atual">vínculo atual</span>}
-                                </button>
-                                {grupo.itens.map((item) => (
-                                  <button key={item.id} type="button" className={`ev7-sem-item${itemSel === item.id ? " is-atual" : ""}`} onClick={() => escolherItem(item.id)}>
-                                    <span>
-                                      Item {item.numero} · {item.titulo}
-                                    </span>
-                                    {itemSel === item.id && <span className="ev7-chip-atual">vínculo atual</span>}
-                                  </button>
-                                ))}
-                              </div>
-                            )}
+                  <div className={`ev7-fundo${duasColunas ? "" : " ev7-fundo--folha"}`} onClick={() => setTrocando(false)} />
+                  <div className={`ev7-picker ${duasColunas ? "ev7-picker--pc" : "ev7-picker--etapas"}`} role="dialog" aria-label="Vincular evidência a" ref={pickerRef}>
+                    {duasColunas ? (
+                      <>
+                        <div className="ev7-pk-topo">
+                          <span className="ev7-picker-titulo">Vincular evidência a</span>
+                          <span className="ev7-pk-dica">Escolha o ambiente e depois o item</span>
+                        </div>
+                        {grupos.length === 0 ? (
+                          <div className="ev7-pk-itens ev7-pk-itens--so">{listaItensSemAmbiente}</div>
+                        ) : (
+                          <div className="ev7-pk-cols">
+                            <div className="ev7-pk-col ev7-pk-col--amb">
+                              <div className="ev7-pk-rotulo">Ambiente</div>
+                              <div className="ev7-pk-painel">{listaAmbientes}</div>
+                            </div>
+                            <div className="ev7-pk-col">
+                              <div className="ev7-pk-rotulo">Item · {grupoFoco?.rotulo}</div>
+                              <div className="ev7-pk-itens">{listaItens}</div>
+                            </div>
                           </div>
-                        );
-                      })}
-                    </div>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        {etapa === 1 || grupos.length === 0 ? (
+                          <div className="ev7-pk-topo">
+                            <span className="ev7-picker-titulo">Vincular evidência a</span>
+                            <button type="button" className="ev7-picker-fechar" onClick={() => setTrocando(false)} aria-label="Fechar">
+                              ✕
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="ev7-pk-topo ev7-pk-topo--volta">
+                            <button type="button" className="ev7-picker-fechar" onClick={() => setEtapa(1)} aria-label="Voltar para os ambientes">
+                              ‹
+                            </button>
+                            <span className="ev7-pk-quem">
+                              <span className="ev7-pk-quem-sub">Ambiente</span>
+                              <span className="ev7-picker-titulo">{grupoFoco?.rotulo}</span>
+                            </span>
+                            <button type="button" className="ev7-picker-fechar" onClick={() => setTrocando(false)} aria-label="Fechar">
+                              ✕
+                            </button>
+                          </div>
+                        )}
+                        {grupos.length === 0 ? (
+                          <div className="ev7-pk-itens ev7-pk-itens--so">{listaItensSemAmbiente}</div>
+                        ) : etapa === 1 ? (
+                          <>
+                            <div className="ev7-pk-rotulo">1 · Escolha o ambiente</div>
+                            <div className="ev7-pk-painel ev7-pk-painel--lista">{listaAmbientes}</div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="ev7-pk-rotulo">2 · Escolha o item</div>
+                            <div className="ev7-pk-itens">{listaItens}</div>
+                          </>
+                        )}
+                      </>
+                    )}
                   </div>
                 </>
               )}
