@@ -8091,8 +8091,9 @@ export default function Home() {
             modoEmUso={modo}
             modoRecomendado={telaModo.modoRecomendado}
             larguraDoAparelho={telaModo.larguraDoAparelho}
-            onSalvar={(preferencia) => { telaModo.salvar(preferencia); setView("inicio"); }}
-            onCancelar={() => setView("ajuda")}
+            onEscolherModo={telaModo.escolherModo}
+            onAutomatico={telaModo.alternarAutomatico}
+            onNome={telaModo.nomearAparelho}
           />
         ) : view === "ajuda" ? (
           <PcAjuda

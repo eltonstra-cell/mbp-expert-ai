@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   CHAVE_MODO_TELA,
   PREFERENCIA_PADRAO,
@@ -36,6 +36,8 @@ export function useScreenMode() {
   const [preferencia, setPreferencia] = useState<PreferenciaDeTela>(PREFERENCIA_PADRAO);
   const [largura, setLargura] = useState(1280);
   const [pronto, setPronto] = useState(false);
+  const atualRef = useRef<PreferenciaDeTela>(PREFERENCIA_PADRAO);
+  atualRef.current = preferencia;
 
   useEffect(() => {
     setPreferencia(lerSalvo());
@@ -68,6 +70,7 @@ export function useScreenMode() {
   }, [modo, pronto, largura]);
 
   const salvar = useCallback((proxima: PreferenciaDeTela) => {
+    atualRef.current = proxima;
     setPreferencia(proxima);
     try {
       window.localStorage.setItem(CHAVE_MODO_TELA, serializarPreferencia(proxima));
@@ -76,8 +79,10 @@ export function useScreenMode() {
     }
   }, []);
 
-  const escolherModo = useCallback((novo: ModoTela) => salvar({ ...preferencia, automatico: false, modo: novo }), [preferencia, salvar]);
-  const voltarAoAutomatico = useCallback(() => salvar({ ...preferencia, automatico: true }), [preferencia, salvar]);
+  const escolherModo = useCallback((novo: ModoTela) => salvar({ ...atualRef.current, automatico: false, modo: novo }), [salvar]);
+  const voltarAoAutomatico = useCallback(() => salvar({ ...atualRef.current, automatico: true }), [salvar]);
+  const alternarAutomatico = useCallback((automatico: boolean) => salvar({ ...atualRef.current, automatico }), [salvar]);
+  const nomearAparelho = useCallback((nome: string) => salvar({ ...atualRef.current, nome: nome.trim().slice(0, 40) }), [salvar]);
 
-  return { modo, modoRecomendado, preferencia, larguraDoAparelho: largura, pronto, salvar, escolherModo, voltarAoAutomatico };
+  return { modo, modoRecomendado, preferencia, larguraDoAparelho: largura, pronto, salvar, escolherModo, voltarAoAutomatico, alternarAutomatico, nomearAparelho };
 }

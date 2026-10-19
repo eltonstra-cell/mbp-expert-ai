@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ROTULO_DE_USO, ROTULO_DO_MODO, descreverAparelho, type ModoTela, type PreferenciaDeTela } from "@/lib/screenMode";
 
 type Props = {
@@ -8,8 +8,10 @@ type Props = {
   modoEmUso: ModoTela;
   modoRecomendado: ModoTela;
   larguraDoAparelho: number;
-  onSalvar: (preferencia: PreferenciaDeTela) => void;
-  onCancelar: () => void;
+  /** Cada toque vale na hora e fica guardado neste aparelho. */
+  onEscolherModo: (modo: ModoTela) => void;
+  onAutomatico: (automatico: boolean) => void;
+  onNome: (nome: string) => void;
 };
 
 const CARTOES: { modo: ModoTela; subtitulo: string; itens: string[] }[] = [
@@ -50,9 +52,13 @@ function Miniatura({ modo }: { modo: ModoTela }) {
   );
 }
 
-export default function PcModoTela({ preferencia, modoEmUso, modoRecomendado, larguraDoAparelho, onSalvar, onCancelar }: Props) {
-  const [rascunho, setRascunho] = useState<PreferenciaDeTela>(preferencia);
-  const modoSelecionado: ModoTela = rascunho.automatico ? modoRecomendado : rascunho.modo;
+export default function PcModoTela({ preferencia, modoEmUso, modoRecomendado, larguraDoAparelho, onEscolherModo, onAutomatico, onNome }: Props) {
+  const [nome, setNome] = useState(preferencia.nome);
+  const modoSelecionado: ModoTela = preferencia.automatico ? modoRecomendado : preferencia.modo;
+
+  useEffect(() => {
+    setNome(preferencia.nome);
+  }, [preferencia.nome]);
 
   return (
     <section className="ui-screen" aria-label="Modo de tela">
@@ -67,17 +73,17 @@ export default function PcModoTela({ preferencia, modoEmUso, modoRecomendado, la
         <button
           type="button"
           role="switch"
-          aria-checked={rascunho.automatico}
+          aria-checked={preferencia.automatico}
           aria-label="Escolher automaticamente pelo aparelho"
-          className={`pc-switch${rascunho.automatico ? " is-on" : ""}`}
-          onClick={() => setRascunho((atual) => ({ ...atual, automatico: !atual.automatico }))}
+          className={`pc-switch${preferencia.automatico ? " is-on" : ""}`}
+          onClick={() => onAutomatico(!preferencia.automatico)}
         >
           <i />
         </button>
         <div className="pc-modo-auto-text">
           <div className="pc-modo-auto-title">Escolher automaticamente pelo aparelho</div>
           <div className="ui-row-sub">
-            {rascunho.automatico
+            {preferencia.automatico
               ? "Ligado: o celular usa Campo, o tablet Equilibrado e o PC Completo."
               : "Desligado: você definiu o modo manualmente. Ligue para voltar a celular em Campo, tablet em Equilibrado e PC em Completo."}
           </div>
@@ -98,7 +104,7 @@ export default function PcModoTela({ preferencia, modoEmUso, modoRecomendado, la
               role="radio"
               aria-checked={selecionado}
               className={`pc-modo-card${selecionado ? " is-on" : ""}`}
-              onClick={() => setRascunho((atual) => ({ ...atual, automatico: false, modo: cartao.modo }))}
+              onClick={() => onEscolherModo(cartao.modo)}
             >
               <span className={`pc-modo-radio${selecionado ? " is-on" : ""}`} aria-hidden="true">
                 {selecionado ? "✓" : ""}
@@ -129,14 +135,20 @@ export default function PcModoTela({ preferencia, modoEmUso, modoRecomendado, la
             <span className="ui-eyebrow">Nome do aparelho</span>
             <input
               className="ui-input"
-              value={rascunho.nome}
+              value={nome}
               maxLength={40}
               placeholder="Ex.: Tablet do Élton"
-              onChange={(evento) => setRascunho((atual) => ({ ...atual, nome: evento.target.value }))}
+              onChange={(evento) => setNome(evento.target.value)}
+              onBlur={(evento) => {
+                if (evento.currentTarget.value.trim() !== preferencia.nome) onNome(evento.currentTarget.value);
+              }}
+              onKeyDown={(evento) => {
+                if (evento.key === "Enter") evento.currentTarget.blur();
+              }}
             />
           </label>
           <p className="ui-row-sub">
-            A escolha vale só para este aparelho e fica salva nele. O celular e o PC continuam no modo deles. Dados da visita não mudam entre os modos.
+            A escolha vale na hora, só para este aparelho, e fica salva nele. O celular e o PC continuam no modo deles. Dados da visita não mudam entre os modos.
           </p>
         </div>
         <div className="ui-card pc-modo-quick">
@@ -150,23 +162,15 @@ export default function PcModoTela({ preferencia, modoEmUso, modoRecomendado, la
               </li>
             ))}
           </ul>
-          <span className="pc-link-btn">Voltar ao automático</span>
+          <button type="button" className="pc-link-btn" disabled={preferencia.automatico} onClick={() => onAutomatico(true)}>
+            Voltar ao automático
+          </button>
         </div>
       </div>
 
       </div>
 
-      <div className="ui-footer">
-        <span className="ui-row-sub">A mudança vale na hora e não perde nada do que está aberto.</span>
-        <div className="ui-footer-actions">
-          <button type="button" className="ui-btn ui-btn--secondary" onClick={onCancelar}>
-            Cancelar
-          </button>
-          <button type="button" className="ui-btn ui-btn--save" onClick={() => onSalvar(rascunho)}>
-            Salvar
-          </button>
-        </div>
-      </div>
+      <p className="ui-row-sub pc-modo-nota">A mudança vale na hora e não perde nada do que está aberto.</p>
     </section>
   );
 }

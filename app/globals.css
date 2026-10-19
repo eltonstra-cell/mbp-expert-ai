@@ -3048,6 +3048,8 @@ html[data-modo="campo"] .ev7-lista-topo .ui-tab{flex:1 1 auto;justify-content:ce
 .ev7-filtro-seta{position:absolute;right:12px;font-size:.75rem;pointer-events:none;color:var(--ink-2)}
 html[data-modo="campo"] .ev7-filtro{width:100%}
 html[data-modo="campo"] .ev7-filtro-select{max-width:none;flex:1}
+.pc-modo-nota{flex:none;margin:0}
+.pc-link-btn:disabled{opacity:.5;cursor:default;text-decoration:none}
 @media (max-height:780px){
   html:not([data-modo="campo"]) .ev7-campo-descricao{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:8px;row-gap:4px}
   html:not([data-modo="campo"]) .ev7-campo-descricao > .ui-eyebrow{grid-column:1;grid-row:1}
@@ -3056,3 +3058,7 @@ html[data-modo="campo"] .ev7-filtro-select{max-width:none;flex:1}
   html:not([data-modo="campo"]) .ev7 .ev7-descricao.pc-input-tools{grid-column:1 / -1;grid-row:2}
   html:not([data-modo="campo"]) .ev7-privacidade{font-size:.72rem;line-height:1.25}
 }
+.pc-modo-card.is-on{border-color:#E8B04B;background:#FEF6E6}
+.pc-modo-radio.is-on{border-color:#E8782A;background:#F28C28}
+.pc-modo-quick-list li.is-on{background:#FEF6E6}
+@media (max-height:820px){.pc-modo-quick-list{display:none}}
