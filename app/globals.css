@@ -2765,3 +2765,11 @@ html[data-modo="campo"] .chk-foco-amb-pos{flex:none;font-size:1.2rem}
 .chk-limpar{flex:none;min-height:28px;padding:0 10px;border:1px solid var(--border);border-radius:999px;background:#fff;color:var(--ink-2);font-size:.8rem;font-weight:400;cursor:pointer}
 .chk-limpar:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
 html[data-modo="campo"] .pc-toast{bottom:calc(92px + env(safe-area-inset-bottom))}
+
+/* ===== Pacote 6 · Tema C: Evidências ===== */
+.pc-ev-new .pc-field:has(textarea) .ui-field-wrap--area{display:flex;flex:none;flex-direction:column;gap:6px;position:static}
+.pc-ev-new .pc-field:has(textarea) .ui-field-wrap--area .ui-field-tools{position:static;top:auto;bottom:auto;right:auto;align-self:flex-end;transform:none}
+.pc-ev-new .pc-field:has(textarea) textarea.pc-ev-descricao{flex:none;width:100%;min-height:calc(1.4em * 2 + 14px);padding:6px 12px;resize:none}
+@media (max-height:760px){.pc-ev-new .pc-field:has(textarea) textarea.pc-ev-descricao{min-height:calc(1.4em * 2 + 14px)}}
+.pc-ev-foot-text{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.pc-ev-foot-text.is-aviso{color:var(--ink)}

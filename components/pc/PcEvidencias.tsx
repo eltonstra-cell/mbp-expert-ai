@@ -6,6 +6,8 @@ import { RowMenu } from "@/components/ui/RowMenu";
 import { Pill } from "@/components/ui/Pill";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import { StatStrip } from "@/components/ui/StatStrip";
+import { avisar } from "@/lib/dialogos";
+import { dependenciasDoNavegador, validarFotoEscolhida } from "@/lib/fotoCompressao";
 
 export type AnaliseEvidencia = {
   id: string;
@@ -65,6 +67,8 @@ type Props = {
   onVoltar: () => void;
   /** "Tirar foto": abre a mesma câmera do Registrar agora. Sem isso, usa o seletor do aparelho. */
   onTirarFoto?: () => void;
+  /** Apaga o aviso curto do rodapé (ao cancelar). */
+  onLimparMensagem?: () => void;
 };
 
 type Aba = "todas" | "fotos" | "audios" | "revisar";
@@ -230,6 +234,7 @@ export default function PcEvidencias({
   onAudio,
   onVoltar,
   onTirarFoto,
+  onLimparMensagem,
 }: Props) {
   const [aba, setAba] = useState<Aba>("todas");
   // No celular só um painel aparece por vez: registrar ou ver a lista.
@@ -240,15 +245,48 @@ export default function PcEvidencias({
   const descricaoRef = useRef<HTMLTextAreaElement | null>(null);
   const [ampliada, setAmpliada] = useState<{ url: string; legenda: string } | null>(null);
 
-  // A caixa cresce com o texto até 10 linhas; a barra só aparece depois disso.
+  // A caixa cresce com o texto até o espaço livre do formulário, para o formulário não ganhar barra de rolagem.
   useEffect(() => {
-    const campo = descricaoRef.current;
-    if (!campo) return;
-    campo.style.height = "auto";
-    const limite = parseFloat(getComputedStyle(campo).lineHeight || "20") * 10 + 24;
-    campo.style.height = `${Math.min(campo.scrollHeight, limite)}px`;
-    campo.style.overflowY = campo.scrollHeight > limite ? "auto" : "hidden";
-  }, [descricao, painelCampo]);
+    const ajustar = () => {
+      const campo = descricaoRef.current;
+      const corpo = campo?.closest<HTMLElement>(".pc-ev-new-body");
+      if (!campo || !corpo || corpo.clientHeight === 0) return;
+      campo.style.height = "auto";
+      const minimo = campo.offsetHeight;
+      const filhos = Array.from(corpo.children) as HTMLElement[];
+      const espaco = parseFloat(getComputedStyle(corpo).rowGap) || 0;
+      const usado = filhos.reduce((soma, filho) => soma + filho.offsetHeight, 0) + espaco * Math.max(0, filhos.length - 1);
+      const maximo = Math.max(minimo, corpo.clientHeight - (usado - minimo) - 2);
+      const altura = Math.min(Math.max(campo.scrollHeight, minimo), maximo);
+      campo.style.height = `${altura}px`;
+      campo.style.overflowY = campo.scrollHeight > altura + 1 ? "auto" : "hidden";
+    };
+    ajustar();
+    window.addEventListener("resize", ajustar);
+    // Faixas que aparecem ou somem acima (por exemplo o aviso de conexão) mudam o espaço sem mudar a janela.
+    const corpo = descricaoRef.current?.closest<HTMLElement>(".pc-ev-new-body");
+    const observador = corpo && typeof ResizeObserver !== "undefined" ? new ResizeObserver(ajustar) : null;
+    if (corpo) observador?.observe(corpo);
+    return () => {
+      window.removeEventListener("resize", ajustar);
+      observador?.disconnect();
+    };
+  }, [descricao, painelCampo, trocando]);
+
+  // Só entra no formulário o que é mesmo uma foto: o tipo real vale mais que a extensão.
+  async function escolherFoto(arquivo: File | undefined) {
+    if (!arquivo) {
+      setPendente(null);
+      return;
+    }
+    const validacao = await validarFotoEscolhida(arquivo, dependenciasDoNavegador);
+    if (!validacao.ok) {
+      setPendente(null);
+      void avisar(validacao.motivo, { titulo: "Arquivo não aceito" });
+      return;
+    }
+    setPendente({ arquivo, tipo: "Foto" });
+  }
 
   const visiveis = evidencias.filter((ev) =>
     aba === "todas" ? true : aba === "fotos" ? ev.tipo === "Foto" : aba === "audios" ? ev.tipo === "Áudio" : ev.analise?.status === "Aguardando revisão"
@@ -335,7 +373,7 @@ export default function PcEvidencias({
                     onChange={(evento) => {
                       const entrada = evento.currentTarget;
                       const arquivo = entrada.files?.[0];
-                      setPendente(arquivo ? { arquivo, tipo: "Foto" } : null);
+                      void escolherFoto(arquivo);
                       entrada.value = "";
                     }}
                   />
@@ -364,7 +402,7 @@ export default function PcEvidencias({
                   onChange={(evento) => {
                     const entrada = evento.currentTarget;
                     const arquivo = entrada.files?.[0];
-                    setPendente(arquivo ? { arquivo, tipo: "Foto" } : null);
+                    void escolherFoto(arquivo);
                     entrada.value = "";
                   }}
                 />
@@ -428,16 +466,11 @@ export default function PcEvidencias({
             </label>
 
             <p className="pc-ev-privacy">Antes de usar a IA, evite enquadrar rostos, crachás e documentos pessoais.</p>
-            {mensagem && (
-              <div className="ui-note" role="status">
-                {mensagem}
-              </div>
-            )}
             </div>
             <div className="pc-ev-new-foot">
-              <span className="ui-row-sub">{pendente ? `${pendente.tipo}: ${pendente.arquivo.name}` : "Escolha uma foto ou um áudio para salvar."}</span>
+              <span className={`ui-row-sub pc-ev-foot-text${mensagem ? " is-aviso" : ""}`} role="status">{mensagem || (pendente ? `${pendente.tipo}: ${pendente.arquivo.name}` : "Escolha uma foto ou áudio.")}</span>
               <div className="ui-footer-actions">
-                <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" disabled={!pendente && !descricao} onClick={() => { setPendente(null); onDescricao(""); }}>
+                <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" disabled={!pendente && !descricao && !mensagem} onClick={() => { setPendente(null); onDescricao(""); onLimparMensagem?.(); }}>
                   Cancelar
                 </button>
                 <button

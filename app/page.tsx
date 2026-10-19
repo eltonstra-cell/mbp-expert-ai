@@ -36,7 +36,7 @@ import { trocaDeGravidade } from "@/lib/checklistUi";
 import { avisar, confirmar, perguntar } from "@/lib/dialogos";
 import { opcoesDeEmpresa } from "@/lib/trocarEmpresa";
 import TrocarEmpresaPainel from "@/components/campo/TrocarEmpresaPainel";
-import { prepararFotoParaEnvio, dependenciasDoNavegador } from "@/lib/fotoCompressao";
+import { prepararFotoParaEnvio, dependenciasDoNavegador, validarFotoEscolhida } from "@/lib/fotoCompressao";
 import PcChecklist, { type ApoioDoItem } from "@/components/pc/PcChecklist";
 import RevisaoTranscricao from "@/components/RevisaoTranscricao";
 import MeuPerfilModal from "@/components/pc/MeuPerfilModal";
@@ -2004,6 +2004,12 @@ export default function Home() {
     [db.empresas, usuarioDaSessao]
   );
   const [trocarEmpresaAberto, setTrocarEmpresaAberto] = useState(false);
+  // O aviso curto de Evidências some sozinho; só os que terminam em "..." (em andamento) esperam o resultado.
+  useEffect(() => {
+    if (!evidenciaMsg || evidenciaMsg.endsWith("...")) return;
+    const timer = window.setTimeout(() => setEvidenciaMsg(""), 4000);
+    return () => window.clearTimeout(timer);
+  }, [evidenciaMsg]);
   const [respostaLimpa, setRespostaLimpa] = useState<InstantaneoDaResposta | null>(null);
   const respostaLimpaTimerRef = useRef<number | null>(null);
   const opcoesTrocaDeEmpresa = useMemo(
@@ -4443,6 +4449,12 @@ export default function Home() {
 
       let conteudo: Blob | File = file;
       if (tipo === "Foto") {
+        const validacao = await validarFotoEscolhida(file, dependenciasDoNavegador);
+        if (!validacao.ok) {
+          setEvidenciaMsg("Arquivo não aceito.");
+          void avisar(validacao.motivo, { titulo: "Arquivo não aceito" });
+          return false;
+        }
         const preparo = await prepararFotoParaEnvio(file, dependenciasDoNavegador);
         if (!preparo.ok) {
           setEvidenciaMsg(preparo.motivo);
@@ -4453,7 +4465,7 @@ export default function Home() {
         nomeArquivo = preparo.nome;
       }
 
-      setEvidenciaMsg("Enviando evidência para o armazenamento seguro...");
+      setEvidenciaMsg("Enviando...");
 
       const blob = await enviarArquivoParaBlob(
         conteudo,
@@ -4497,8 +4509,8 @@ export default function Home() {
       setEvidenciaDescricao("");
       setEvidenciaMsg(
         tipo === "Foto"
-          ? "Foto enviada ao armazenamento e registrada. Sincronizando dados..."
-          : "Áudio enviado ao armazenamento e registrado. Sincronizando dados..."
+          ? "Foto registrada."
+          : "Áudio registrado."
       );
       return true;
     } catch (error) {
@@ -6338,6 +6350,7 @@ export default function Home() {
             descricao={evidenciaDescricao}
             onDescricao={setEvidenciaDescricao}
             mensagem={evidenciaMsg}
+            onLimparMensagem={() => setEvidenciaMsg("")}
             onFoto={async (arquivo) => {
               if (!arquivo) {
                 setEvidenciaMsg("Nenhuma foto foi recebida da câmera.");

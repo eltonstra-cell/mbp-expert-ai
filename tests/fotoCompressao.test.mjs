@@ -133,3 +133,56 @@ test("JPEG que não pôde ser recomprimido segue como está", async () => {
   assert.equal(r.comprimida, false);
   assert.equal(r.arquivo, jpeg);
 });
+
+import { validarFotoEscolhida, tipoRealDaImagem, MOTIVO_NAO_E_FOTO } from "../lib/fotoCompressao.ts";
+
+const bytes = (...partes) => Uint8Array.from(partes.flatMap((p) => (typeof p === "string" ? [...p].map((c) => c.charCodeAt(0)) : p)));
+const arquivoDe = (conteudo, name, type) => Object.assign(new Blob([conteudo], { type }), { name });
+const abre = { decodificar: async () => ({ largura: 800, altura: 600 }) };
+const naoAbre = { decodificar: async () => { throw new Error("não abre"); } };
+
+const JPEG = bytes([0xff, 0xd8, 0xff, 0xe0], "JFIF", new Array(12).fill(0));
+const PNG = bytes([0x89], "PNG", [0x0d, 0x0a, 0x1a, 0x0a], new Array(8).fill(0));
+const WEBP = bytes("RIFF", [0, 0, 0, 0], "WEBP", "VP8 ");
+const HEIC = bytes([0, 0, 0, 24], "ftyp", "heic", new Array(8).fill(0));
+const PDF = bytes("%PDF-1.7\n", new Array(20).fill(0x20));
+
+test("reconhece o tipo real da imagem pelos bytes", () => {
+  assert.equal(tipoRealDaImagem(JPEG), "jpeg");
+  assert.equal(tipoRealDaImagem(PNG), "png");
+  assert.equal(tipoRealDaImagem(WEBP), "webp");
+  assert.equal(tipoRealDaImagem(HEIC), "heic");
+  assert.equal(tipoRealDaImagem(PDF), null);
+});
+
+test("foto JPEG, PNG e WebP são aceitas", async () => {
+  assert.deepEqual(await validarFotoEscolhida(arquivoDe(JPEG, "a.jpg", "image/jpeg"), abre), { ok: true, tipo: "jpeg" });
+  assert.deepEqual(await validarFotoEscolhida(arquivoDe(PNG, "a.png", "image/png"), abre), { ok: true, tipo: "png" });
+  assert.deepEqual(await validarFotoEscolhida(arquivoDe(WEBP, "a.webp", "image/webp"), abre), { ok: true, tipo: "webp" });
+});
+
+test("PDF é recusado com o motivo, mesmo escolhido como imagem", async () => {
+  const r = await validarFotoEscolhida(arquivoDe(PDF, "recibo-online.pdf", "application/pdf"), abre);
+  assert.equal(r.ok, false);
+  assert.equal(r.motivo, MOTIVO_NAO_E_FOTO);
+  assert.equal(MOTIVO_NAO_E_FOTO, "Este arquivo não é uma foto. Envie uma imagem JPEG, PNG ou WebP.");
+});
+
+test(".txt renomeado para .jpg é recusado: vale o conteúdo, não a extensão nem o tipo informado", async () => {
+  const r = await validarFotoEscolhida(arquivoDe("isto é só um texto, não uma imagem", "foto.jpg", "image/jpeg"), abre);
+  assert.equal(r.ok, false);
+  assert.equal(r.motivo, MOTIVO_NAO_E_FOTO);
+});
+
+test("imagem corrompida (cabeçalho certo, mas o navegador não abre) é recusada", async () => {
+  const r = await validarFotoEscolhida(arquivoDe(JPEG, "a.jpg", "image/jpeg"), naoAbre);
+  assert.equal(r.ok, false);
+  assert.equal(r.motivo, MOTIVO_NAO_E_FOTO);
+});
+
+test("HEIC só entra se o navegador abrir; senão explica", async () => {
+  assert.deepEqual(await validarFotoEscolhida(arquivoDe(HEIC, "a.heic", "image/heic"), abre), { ok: true, tipo: "heic" });
+  const r = await validarFotoEscolhida(arquivoDe(HEIC, "a.heic", "image/heic"), naoAbre);
+  assert.equal(r.ok, false);
+  assert.match(r.motivo, /HEIC/);
+});
