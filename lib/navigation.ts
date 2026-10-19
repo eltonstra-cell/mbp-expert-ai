@@ -114,8 +114,8 @@ const CATALOGO: NavItem[] = [
   },
   {
     key: "ncs",
-    rotulo: "Não conformidades",
-    curto: "Não conf.",
+    rotulo: "Correções",
+    curto: "Correções",
     tom: "vermelho",
     grupo: "acompanhamento",
     requer: (pode) => pode("ncs.acompanhar"),
@@ -273,17 +273,17 @@ export function barraInferior(ctx: NavContexto): NavSlot[] {
 /**
  * Trilho do tablet (sem o Registrar, que fica em destaque no topo).
  * Fora da visita: Início, Visitas, Empresas e Acessos (ou Ajuda, quando o perfil não tem Acessos).
- * Dentro: Central, Checklist, Evidências, Não conf. e Plano; o resto vai para o "Mais".
+ * Dentro: Central, Checklist, Evidências, Correções e Relatório (Plano de ação abre a mesma tela das Correções); o resto vai para o "Mais".
  */
 export function trilhoDoTablet(ctx: NavContexto): NavItem[] {
   const visiveis = itensVisiveis(ctx);
   const existe = (key: NavKey) => visiveis.find((item) => item.key === key);
   const alvo = ctx.dentroDeVisita ? 5 : 4;
   const preferidos: NavKey[] = ctx.dentroDeVisita
-    ? ["central", "checklist", "evidencias", "ncs", "plano"]
+    ? ["central", "checklist", "evidencias", "ncs", "relatorio"]
     : ["inicio", "visitas", "empresas", "acessos"];
   const reserva: NavKey[] = ctx.dentroDeVisita
-    ? ["relatorio", "acompanhamento", "ambientes"]
+    ? ["acompanhamento", "ambientes"]
     : ["ajuda", "ncs", "relatorio"];
   const escolhidos: NavItem[] = [];
   for (const key of preferidos) {

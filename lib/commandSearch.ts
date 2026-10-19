@@ -168,7 +168,7 @@ const SINONIMOS_NAV: Partial<Record<NavKey, string[]>> = {
   ambientes: ["setores", "locais"],
   checklist: ["avaliacao", "perguntas", "itens"],
   evidencias: ["fotos", "audios", "anexos"],
-  ncs: ["nc", "nao conformidade", "achados", "problemas"],
+  ncs: ["nc", "nao conformidade", "nao conformidades", "conformidades", "achados", "problemas"],
   plano: ["acoes", "acao corretiva", "prazos"],
   acompanhamento: ["acompanhar", "correcao"],
   relatorio: ["pdf", "imprimir", "exportar"],

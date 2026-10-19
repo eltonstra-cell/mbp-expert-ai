@@ -61,15 +61,15 @@ test("distância de edição conta transposição como 1 erro", () => {
 
 test("busca sem acento e sem diferença de maiúsculas", () => {
   const destinos = construirDestinos(entrada("Administrador"));
-  assert.ok(titulos(buscar("NAO CONFORMIDADES", destinos)).includes("Não conformidades"));
+  assert.ok(titulos(buscar("NAO CONFORMIDADES", destinos)).includes("Correções"));
   assert.ok(titulos(buscar("camara", destinos)).includes("Câmara fria"));
   assert.ok(titulos(buscar("relatório", destinos)).includes("Relatório"));
 });
 
 test("busca por prefixo e por palavras fora de ordem", () => {
   const destinos = construirDestinos(entrada("Administrador"));
-  assert.ok(titulos(buscar("conform", destinos)).includes("Não conformidades"));
-  assert.ok(titulos(buscar("conformidades nao", destinos)).includes("Não conformidades"));
+  assert.ok(titulos(buscar("conform", destinos)).includes("Correções"));
+  assert.ok(titulos(buscar("conformidades nao", destinos)).includes("Correções"));
   assert.ok(titulos(buscar("fria camara", destinos)).includes("Câmara fria"));
   assert.equal(titulos(buscar("temperatura paredes", destinos)).length, 0, "todos os termos precisam casar no mesmo destino");
 });
@@ -83,7 +83,7 @@ test("tolera 1 erro de digitação, mas não 2", () => {
 
 test("sinônimos encontram o destino (nc, pdf, fotos)", () => {
   const destinos = construirDestinos(entrada("Administrador"));
-  assert.equal(titulos(buscar("nc", destinos))[0], "Não conformidades");
+  assert.equal(titulos(buscar("nc", destinos))[0], "Correções");
   assert.ok(titulos(buscar("pdf", destinos)).includes("Relatório"));
   assert.ok(titulos(buscar("fotos", destinos)).includes("Evidências"));
 });
@@ -113,7 +113,7 @@ test("Cliente Gestor só encontra o que o menu dele mostra", () => {
   assert.equal(destinos.filter((d) => d.grupo === "itens").length, 0, "sem itens do checklist");
   assert.equal(buscar("checklist", destinos).length, 0);
   assert.equal(buscar("registrar", destinos).length, 0);
-  assert.ok(titulos(buscar("nao conformidades", destinos)).includes("Não conformidades"));
+  assert.ok(titulos(buscar("nao conformidades", destinos)).includes("Correções"));
 });
 
 test("Administrador encontra Registrar, Continuar inspeção e itens do checklist", () => {

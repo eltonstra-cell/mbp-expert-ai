@@ -22,7 +22,7 @@ const semUsuario = (dentroDeVisita) => ({ dentroDeVisita, pode: () => false });
 const chaves = (itens) => itens.map((item) => item.key);
 const rotulosDaBarra = (slots) => slots.map((slot) => (slot.tipo === "mais" ? "mais" : slot.item.key));
 
-test("consultor dentro da visita: Central, Checklist, Registrar no centro, Não conf. e Mais", () => {
+test("consultor dentro da visita: Central, Checklist, Registrar no centro, Correções e Mais", () => {
   const barra = barraInferior(contexto("Consultor/RT", true));
   assert.deepEqual(rotulosDaBarra(barra), ["central", "checklist", "registrar", "ncs", "mais"]);
 });
@@ -145,12 +145,13 @@ test("tablet fora da visita: Início, Visitas, Empresas e Acessos (Ajuda no luga
   assert.deepEqual(chaves(trilhoDoTablet(semUsuario(false))), ["inicio", "visitas", "empresas", "ajuda"]);
 });
 
-test("tablet dentro da visita: Central, Checklist, Evidências, Não conf. e Plano", () => {
+test("tablet dentro da visita: Central, Checklist, Evidências, Correções e Relatório", () => {
   const ctx = contexto("Consultor/RT", true);
   const trilho = trilhoDoTablet(ctx);
-  assert.deepEqual(chaves(trilho), ["central", "checklist", "evidencias", "ncs", "plano"]);
+  assert.deepEqual(chaves(trilho), ["central", "checklist", "evidencias", "ncs", "relatorio"]);
+  assert.equal(trilho.find((item) => item.key === "ncs").curto, "Correções");
   const resto = chaves(itensDaFolhaMais(ctx, trilho));
-  for (const key of ["ambientes", "acompanhamento", "relatorio", "empresas", "pops", "ajuda", "inicio", "visitas"]) {
+  for (const key of ["ambientes", "acompanhamento", "plano", "empresas", "pops", "ajuda", "inicio", "visitas"]) {
     assert.ok(resto.includes(key), key);
   }
   for (const key of chaves(trilho)) assert.ok(!resto.includes(key));
@@ -159,7 +160,7 @@ test("tablet dentro da visita: Central, Checklist, Evidências, Não conf. e Pla
 
 test("tablet dentro da visita para Cliente Gestor: sem Checklist e Evidências, completa com Relatório e Acompanhamento", () => {
   const trilho = trilhoDoTablet(contexto("Cliente Gestor", true));
-  assert.deepEqual(chaves(trilho), ["central", "ncs", "plano", "relatorio", "acompanhamento"]);
+  assert.deepEqual(chaves(trilho), ["central", "ncs", "relatorio", "acompanhamento"]);
   assert.ok(trilho.length <= 5);
 });
 

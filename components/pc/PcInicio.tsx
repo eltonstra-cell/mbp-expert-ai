@@ -134,7 +134,7 @@ export default function PcInicio({
           <div className="ui-row-sub">{pendencias.texto}</div>
           {pendencias.onVer && (
             <button type="button" className="pc-link-btn" onClick={pendencias.onVer}>
-              Ver não conformidades →
+              Ver correções
             </button>
           )}
         </div>
