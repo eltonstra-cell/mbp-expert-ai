@@ -62,6 +62,7 @@ Projeto separado do FoodControl. **Atenção:** o projeto Neon "mbp-expert-ai" t
 - LGPD / dados sensíveis (tratar como dados de saúde, por precaução): o sistema guarda dados de empresas, responsáveis (nome, e-mail, telefone), usuários e fotos de inspeção (podem conter pessoas/documentos). Tratar como dados pessoais; não enviar dados reais a serviços externos nem logar conteúdo.
 - Análises por IA são apoio: devem seguir "Aguardando revisão" e nunca criar/resolver NC automaticamente.
 - Manter o estilo do código existente (nomes em português, sem comentários desnecessários).
+- Guia rápido: sempre que uma mudança alterar menus, nomes, botões, fluxos ou cores, atualizar `conteudo-privado/guias/fonte/guia-rapido.html` e regenerar o PDF com `node scripts/gerar-guia-rapido.mjs`.
 
 ## Identidade visual "Ponto Certo"
 - Nome, subtítulo e cores ficam em `lib/brand.ts` (único ponto; `app/layout.tsx` injeta as variáveis CSS `--brand`, `--ink`, `--ok`, `--nc` etc.). Fontes em `lib/fonts.ts` (Outfit para títulos, Nunito Sans para texto). Logo em `components/BrandLogo.tsx`; ícone em `app/icon.svg` e `public/icons/icon.svg`; manifest em `app/manifest.ts` (substitui o antigo `public/manifest.webmanifest`).

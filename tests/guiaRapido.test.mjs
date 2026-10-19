@@ -37,3 +37,10 @@ test("Guia rápido: fala do seletor de ambientes e de Limpar resposta, sem a fai
   assert.ok(!/faixa de ambientes|rola para os lados/i.test(texto));
   assert.ok(texto.includes("Limpar resposta") && texto.includes("Desfazer") && texto.includes("Cancelada pelo usuário"));
 });
+
+test("guia rápido descreve o Início, o painel de empresa e as Evidências novas", () => {
+  assert.ok(texto.includes("Próxima etapa") && texto.includes("Registrar agora"));
+  assert.ok(texto.includes("Empresa ativa") && texto.includes("sobre a tela em que você está"));
+  assert.ok(texto.includes("+ Nova evidência") && texto.includes("Trocar foto") && texto.includes("Desfazer"));
+  assert.ok(texto.includes("respondidos”"));
+});
