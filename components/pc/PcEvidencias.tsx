@@ -23,6 +23,9 @@ export type AnaliseEvidencia = {
 export type CartaoEvidencia = {
   id: string;
   tipo: "Foto" | "Áudio";
+  /** Nome do ambiente como está na visita ("" = sem ambiente) e o rótulo para exibir. */
+  ambiente: string;
+  ambienteRotulo: string;
   /** "Ambiente · Item N" (ou só o ambiente). */
   titulo: string;
   descricao: string;
@@ -73,6 +76,8 @@ type Props = {
 
 type Aba = "todas" | "fotos" | "audios" | "revisar";
 type Anexo = { arquivo: File; tipo: "Foto" | "Áudio"; duracao?: number; origem?: "camera" | "arquivo" };
+
+const SEM_AMBIENTE = "__sem_ambiente__";
 
 const PRAZO_DESFAZER_MS = 6000;
 
@@ -289,6 +294,7 @@ export default function PcEvidencias({
   onLimparMensagem,
 }: Props) {
   const [aba, setAba] = useState<Aba>("todas");
+  const [filtroAmbiente, setFiltroAmbiente] = useState("");
   // No celular o formulário é uma tela própria; no tablet e no PC fica sempre ao lado da lista.
   const [formAberto, setFormAberto] = useState(false);
   const [trocando, setTrocando] = useState(false);
@@ -541,7 +547,25 @@ export default function PcEvidencias({
     }
   }
 
-  const visiveis = evidencias.filter((ev) =>
+  const opcoesAmbiente = (() => {
+    const lista = grupos.map((grupo) => ({ valor: grupo.nome, rotulo: grupo.rotulo }));
+    for (const ev of evidencias) {
+      if (ev.ambiente && !lista.some((opcao) => opcao.valor === ev.ambiente)) lista.push({ valor: ev.ambiente, rotulo: ev.ambienteRotulo || ev.ambiente });
+    }
+    return lista;
+  })();
+  const doAmbiente = filtroAmbiente
+    ? evidencias.filter((ev) => (filtroAmbiente === SEM_AMBIENTE ? !ev.ambiente : ev.ambiente === filtroAmbiente))
+    : evidencias;
+  const contagens = filtroAmbiente
+    ? {
+        evidencias: doAmbiente.length,
+        fotos: doAmbiente.filter((ev) => ev.tipo === "Foto").length,
+        audios: doAmbiente.filter((ev) => ev.tipo === "Áudio").length,
+        revisar: doAmbiente.filter((ev) => ev.analise?.status === "Aguardando revisão").length,
+      }
+    : totais;
+  const visiveis = doAmbiente.filter((ev) =>
     aba === "todas" ? true : aba === "fotos" ? ev.tipo === "Foto" : aba === "audios" ? ev.tipo === "Áudio" : ev.analise?.status === "Aguardando revisão"
   );
   const fotosVisiveis = visiveis.filter((ev) => ev.tipo === "Foto" && ev.url);
@@ -958,18 +982,31 @@ export default function PcEvidencias({
               valor={aba}
               onChange={setAba}
               abas={[
-                { id: "todas", rotulo: "Todas", contagem: totais.evidencias },
-                { id: "fotos", rotulo: "Fotos", contagem: totais.fotos },
-                { id: "audios", rotulo: "Áudios", contagem: totais.audios },
-                { id: "revisar", rotulo: celular ? "IA p/ revisar" : "IA para revisar", contagem: totais.revisar, acao: true },
+                { id: "todas", rotulo: "Todas", contagem: contagens.evidencias },
+                { id: "fotos", rotulo: "Fotos", contagem: contagens.fotos },
+                { id: "audios", rotulo: "Áudios", contagem: contagens.audios },
+                { id: "revisar", rotulo: celular ? "IA p/ revisar" : "IA para revisar", contagem: contagens.revisar, acao: true },
               ]}
             />
+            <label className="ev7-filtro">
+              <span className="ev7-filtro-rotulo">Ambiente:</span>
+              <select className="ev7-filtro-select" value={filtroAmbiente} onChange={(evento) => setFiltroAmbiente(evento.target.value)} aria-label="Filtrar por ambiente">
+                <option value="">Todos</option>
+                {opcoesAmbiente.map((opcao) => (
+                  <option key={opcao.valor} value={opcao.valor}>
+                    {opcao.rotulo}
+                  </option>
+                ))}
+                <option value={SEM_AMBIENTE}>Sem ambiente</option>
+              </select>
+              <span className="ev7-filtro-seta" aria-hidden="true">▾</span>
+            </label>
             <p className="ev7-aviso-ia">A IA só sugere. Nada vira NC sem a sua confirmação.</p>
           </div>
           <div className="ui-scroll ev7-scroll">
             {visiveis.length === 0 ? (
               <div className="ui-empty">
-                {evidencias.length === 0 ? "Nenhuma evidência registrada. Adicione uma foto ou áudio durante a inspeção." : "Nenhuma evidência neste filtro."}
+                {evidencias.length === 0 ? "Nenhuma evidência registrada. Adicione uma foto ou áudio durante a inspeção." : filtroAmbiente ? "Nenhuma evidência neste ambiente e filtro." : "Nenhuma evidência neste filtro."}
               </div>
             ) : (
               visiveis.map((ev) => <Cartao key={ev.id} ev={ev} onAmpliar={setAmpliadaId} />)

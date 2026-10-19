@@ -3042,6 +3042,12 @@ html[data-modo="campo"] .ev7-lista-topo .ui-tab{flex:1 1 auto;justify-content:ce
 .ev7-botoes--precisa{align-items:center}
 .ev7-precisa{min-width:0;flex:1 1 0;font-size:.76rem;line-height:1.2;color:var(--ink)}
 .ev7-botoes--precisa .ui-btn--save{flex:none}
+.ev7-filtro{position:relative;display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:3px 3px 3px 12px;border-radius:12px;background:var(--tabs-bg);font-size:.84rem;color:var(--ink)}
+.ev7-filtro-select{min-width:0;max-width:210px;min-height:32px;padding:0 26px 0 10px;border:0;border-radius:9px;background:#fff;box-shadow:0 1px 2px rgba(18,32,43,.14);font-size:.84rem;color:var(--ink);cursor:pointer;appearance:none;text-overflow:ellipsis}
+.ev7-filtro-select:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
+.ev7-filtro-seta{position:absolute;right:12px;font-size:.75rem;pointer-events:none;color:var(--ink-2)}
+html[data-modo="campo"] .ev7-filtro{width:100%}
+html[data-modo="campo"] .ev7-filtro-select{max-width:none;flex:1}
 @media (max-height:780px){
   html:not([data-modo="campo"]) .ev7-campo-descricao{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:8px;row-gap:4px}
   html:not([data-modo="campo"]) .ev7-campo-descricao > .ui-eyebrow{grid-column:1;grid-row:1}

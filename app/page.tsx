@@ -6440,6 +6440,8 @@ export default function Home() {
               return {
                 id: ev.id,
                 tipo: ev.tipo,
+                ambiente: ev.ambiente || "",
+                ambienteRotulo: ev.ambiente ? nomeDeExibicaoDoAmbiente(ev.ambiente) : "",
                 titulo,
                 descricao: ev.descricao || "",
                 vinculo: itemDaEvidencia ? `${titulo} · ${itemDaEvidencia.titulo}` : titulo,
