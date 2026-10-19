@@ -2061,8 +2061,8 @@ export default function Home() {
     if (view === "ncs" || view === "plano" || view === "acompanhamento") setView("correcoes");
   }, [ehPC, view]);
   useEffect(() => {
-    // PC: a nova evidência já nasce vinculada ao último item tocado (mesma regra do Registrar).
-    if (!ehPC || view !== "evidencias" || !visitaAtual || evidenciaChecklistItemId || !ultimoItemChecklistId) return;
+    // A nova evidência já nasce vinculada ao último item tocado (mesma regra do Registrar).
+    if (view !== "evidencias" || !visitaAtual || evidenciaChecklistItemId || !ultimoItemChecklistId) return;
     const item = (visitaAtual.checklist || []).find((registro) => registro.id === ultimoItemChecklistId);
     if (!item) return;
     setEvidenciaChecklistItemId(item.id);
@@ -6323,39 +6323,33 @@ export default function Home() {
             data={fdata(visitaAtual.data)}
             totais={{ evidencias: evidenciasVisita.length, fotos: fotosVisita, audios: audiosVisita, revisar: analisesIAPendentes }}
             podeAdicionar={permitido("evidencias.adicionar", visitaAtual.empresaId)}
-            onTirarFoto={() => {
-              if (evidenciaChecklistItemId) setUltimoItemChecklistId(evidenciaChecklistItemId);
-              setRegistrarComCamera(true);
-              setRegistrarAberto(true);
-            }}
             vinculo={(() => {
               const item = checklistAtual.find((registro) => registro.id === evidenciaChecklistItemId);
-              const posicao = item ? checklistAtual.filter((registro) => registro.ambiente === item.ambiente).findIndex((registro) => registro.id === item.id) + 1 : 0;
               return {
-                ambiente: evidenciaAmbiente,
+                ambiente: evidenciaAmbiente ? nomeDeExibicaoDoAmbiente(evidenciaAmbiente) : "",
                 temItem: Boolean(item),
-                item: item ? `Item ${posicao} · ${item.titulo}` : "",
+                item: item ? item.titulo : "",
               };
             })()}
-            ambientes={visitaAtual.ambientes || []}
-            itens={checklistAtual
-              .filter((item) => !evidenciaAmbiente || item.ambiente === evidenciaAmbiente)
-              .map((item) => ({ id: item.id, rotulo: `${item.categoria} — ${item.titulo}` }))}
-            ncs={ncsVisita.map((nc, idx) => ({ id: nc.id, rotulo: `NC ${idx + 1} — ${nomeDeExibicaoDoAmbiente(nc.ambiente)} — ${nc.titulo}` }))}
+            grupos={(visitaAtual.ambientes || []).map((nome) => ({
+              nome,
+              rotulo: nomeDeExibicaoDoAmbiente(nome),
+              itens: checklistAtual
+                .filter((item) => item.ambiente === nome)
+                .map((item, indice) => ({ id: item.id, numero: indice + 1, titulo: item.titulo })),
+            }))}
             ambienteSel={evidenciaAmbiente}
             itemSel={evidenciaChecklistItemId}
-            ncSel={evidenciaNcId}
-            onAmbiente={(valor) => { setEvidenciaAmbiente(valor); setEvidenciaChecklistItemId(""); }}
+            onAmbiente={(valor) => { setEvidenciaAmbiente(valor); setEvidenciaChecklistItemId(""); setEvidenciaNcId(""); }}
             onItem={(itemId) => {
               setEvidenciaChecklistItemId(itemId);
               const item = checklistAtual.find((registro) => registro.id === itemId);
               if (item) {
                 setEvidenciaAmbiente(item.ambiente);
                 const ncDoItem = ncsVisita.find((nc) => nc.checklistItemId === item.id);
-                if (ncDoItem) setEvidenciaNcId(ncDoItem.id);
+                setEvidenciaNcId(ncDoItem ? ncDoItem.id : "");
               }
             }}
-            onNc={setEvidenciaNcId}
             descricao={evidenciaDescricao}
             onDescricao={setEvidenciaDescricao}
             mensagem={evidenciaMsg}
@@ -6363,22 +6357,28 @@ export default function Home() {
             onFoto={async (arquivo) => {
               if (!arquivo) {
                 setEvidenciaMsg("Nenhuma foto foi recebida da câmera.");
-                return;
+                return false;
               }
-              await adicionarEvidencia(arquivo, "Foto");
+              return adicionarEvidencia(arquivo, "Foto");
             }}
-            onAudio={(arquivo) => void adicionarEvidencia(arquivo, "Áudio")}
-            onVoltar={() => setView("visita")}
+            onAudio={(arquivo) => adicionarEvidencia(arquivo, "Áudio")}
             evidencias={evidenciasVisita.map((ev) => {
               const analises = ev.analisesIA || [];
               const ultima = analises.length ? analises[analises.length - 1] : undefined;
+              const itemDaEvidencia = ev.checklistItemId ? checklistAtual.find((registro) => registro.id === ev.checklistItemId) : undefined;
+              const numeroDoItem = itemDaEvidencia ? checklistAtual.filter((registro) => registro.ambiente === itemDaEvidencia.ambiente).findIndex((registro) => registro.id === itemDaEvidencia.id) + 1 : 0;
+              const ambienteDaEvidencia = ev.ambiente ? nomeDeExibicaoDoAmbiente(ev.ambiente) : "Sem ambiente";
+              const titulo = numeroDoItem ? `${ambienteDaEvidencia} · Item ${numeroDoItem}` : ambienteDaEvidencia;
+              const criada = new Date(ev.criadoEm);
+              const hora = criada.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
               return {
                 id: ev.id,
                 tipo: ev.tipo,
-                nome: ev.nomeArquivo,
+                titulo,
                 descricao: ev.descricao || "",
-                ambiente: ev.ambiente || "",
-                quando: new Date(ev.criadoEm).toLocaleString("pt-BR"),
+                vinculo: itemDaEvidencia ? `${titulo} · ${itemDaEvidencia.titulo}` : titulo,
+                dataCurta: `${criada.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} · ${hora}`,
+                dataCompleta: `${criada.toLocaleDateString("pt-BR")} · ${hora}`,
                 url: urlEvidencia(ev),
                 possivelNc: ultima?.situacao === "Possível não conformidade",
                 analise: ultima
