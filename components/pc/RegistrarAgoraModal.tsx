@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { NavIcon } from "@/components/NavIcons";
+import { LIMITE_AUDIO, formatarTempo, restanteDoLimite, useCapturaAudio, useCapturaCamera } from "@/components/useCapturaMidia";
 
 export type VisitaParaRegistro = {
   id: string;
@@ -29,27 +30,6 @@ type Props = {
   iniciarCamera?: boolean;
 };
 
-const LIMITE_AUDIO = 3 * 1024 * 1024;
-
-function restanteDoLimite(bytes: number, segundos: number) {
-  if (segundos < 2 || bytes <= 0) return "—";
-  const porSegundo = bytes / segundos;
-  const restantes = Math.max(0, Math.floor((LIMITE_AUDIO - bytes) / Math.max(1, porSegundo)));
-  return formatarTempo(restantes);
-}
-
-function formatarTempo(total: number) {
-  const minutos = Math.floor(total / 60);
-  return `${minutos}:${String(total % 60).padStart(2, "0")}`;
-}
-
-function pararTrilhas(stream: MediaStream | null) {
-  stream?.getTracks().forEach((trilha) => trilha.stop());
-}
-
-import { iniciarMedidorDeVolume } from "@/components/useNivelDeAudio";
-import { MENSAGEM_SEM_FALA, ehSilencio } from "@/lib/transcricao";
-
 export default function RegistrarAgoraModal({ aparelho = "computador", visitas, visitaInicialId, itemInicialId, onSalvar, onFechar, onIrVisitas, iniciarCamera = false }: Props) {
   const [visitaId, setVisitaId] = useState(visitaInicialId);
   const [trocando, setTrocando] = useState(false);
@@ -58,59 +38,15 @@ export default function RegistrarAgoraModal({ aparelho = "computador", visitas, 
   const [descricao, setDescricao] = useState("");
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [previa, setPrevia] = useState("");
-  const [cameraAtiva, setCameraAtiva] = useState(false);
-  const [avisoCamera, setAvisoCamera] = useState("");
-  const [gravando, setGravando] = useState(false);
-  const [avisoAudio, setAvisoAudio] = useState("");
   const [avisoArquivo, setAvisoArquivo] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
   const [origem, setOrigem] = useState<"camera" | "arquivo" | "audio">("camera");
-  const [segundos, setSegundos] = useState(0);
   const arquivoInputRef = useRef<HTMLInputElement | null>(null);
-  const relogioRef = useRef<number | null>(null);
-  const [bytesGravados, setBytesGravados] = useState(0);
-  const [niveis, setNiveis] = useState<number[]>(() => Array.from({ length: 14 }, () => 0));
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const medidorRef = useRef<number | null>(null);
-  const volumeRef = useRef<{ pico: () => number; parar: () => void } | null>(null);
-
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const streamCameraRef = useRef<MediaStream | null>(null);
-  const streamAudioRef = useRef<MediaStream | null>(null);
-  const gravadorRef = useRef<MediaRecorder | null>(null);
-  const trechosRef = useRef<Blob[]>([]);
   const previaRef = useRef("");
 
   const visita = visitas.find((registro) => registro.id === visitaId);
   const semVisita = visitas.length === 0 || !visita;
-
-  const liberarMidia = useCallback(() => {
-    pararTrilhas(streamCameraRef.current);
-    streamCameraRef.current = null;
-    pararTrilhas(streamAudioRef.current);
-    streamAudioRef.current = null;
-    const gravador = gravadorRef.current;
-    if (gravador && gravador.state !== "inactive") {
-      gravador.ondataavailable = null;
-      gravador.onstop = null;
-      try {
-        gravador.stop();
-      } catch {
-        // gravador já encerrado
-      }
-    }
-    gravadorRef.current = null;
-    if (relogioRef.current) window.clearInterval(relogioRef.current);
-    relogioRef.current = null;
-    if (medidorRef.current) window.clearInterval(medidorRef.current);
-    medidorRef.current = null;
-    void audioCtxRef.current?.close().catch(() => undefined);
-    audioCtxRef.current = null;
-    volumeRef.current?.parar();
-    volumeRef.current = null;
-    if (videoRef.current) videoRef.current.srcObject = null;
-  }, []);
 
   const trocarPrevia = useCallback((url: string) => {
     if (previaRef.current) URL.revokeObjectURL(previaRef.current);
@@ -118,22 +54,36 @@ export default function RegistrarAgoraModal({ aparelho = "computador", visitas, 
     setPrevia(url);
   }, []);
 
+  const camera = useCapturaCamera({
+    aoCapturar: (foto) => {
+      setOrigem("camera");
+      setArquivo(foto);
+      trocarPrevia(URL.createObjectURL(foto));
+    },
+  });
+  const audio = useCapturaAudio({
+    aoGravar: (gravado) => {
+      setOrigem("audio");
+      setArquivo(gravado);
+      trocarPrevia(URL.createObjectURL(gravado));
+    },
+  });
+  const { ativa: cameraAtiva, aviso: avisoCamera, videoRef, cancelar: cancelarCamera } = camera;
+  const { gravando, aviso: avisoAudio, segundos, bytes: bytesGravados, niveis } = audio;
+  const { liberar: liberarCamera } = camera;
+  const { liberar: liberarAudio } = audio;
+
+  const liberarMidia = useCallback(() => {
+    liberarCamera();
+    liberarAudio();
+  }, [liberarCamera, liberarAudio]);
+
   // Fechar por qualquer caminho (Cancelar, Salvar, Esc, desmontar) para a câmera e o microfone.
   useEffect(() => {
     return () => {
-      liberarMidia();
       if (previaRef.current) URL.revokeObjectURL(previaRef.current);
     };
-  }, [liberarMidia]);
-
-  // Liga a prévia só depois que o <video> existe (evita corrida entre o estado e a renderização).
-  useEffect(() => {
-    const video = videoRef.current;
-    const stream = streamCameraRef.current;
-    if (!cameraAtiva || !video || !stream) return;
-    video.srcObject = stream;
-    void video.play().catch(() => undefined);
-  }, [cameraAtiva]);
+  }, []);
 
   function fechar() {
     liberarMidia();
@@ -155,61 +105,15 @@ export default function RegistrarAgoraModal({ aparelho = "computador", visitas, 
   }, []);
 
   async function abrirCamera() {
-    setAvisoCamera("");
     setErro("");
-    if (!navigator.mediaDevices?.getUserMedia) {
-      setAvisoCamera("Este navegador não permite usar a câmera. Use “Enviar arquivo”.");
-      return;
-    }
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
-      streamCameraRef.current = stream;
+    if (await camera.abrir()) {
       setArquivo(null);
       trocarPrevia("");
-      setCameraAtiva(true);
-    } catch (falha) {
-      const negada = falha instanceof DOMException && (falha.name === "NotAllowedError" || falha.name === "SecurityError");
-      setAvisoCamera(
-        negada
-          ? "A permissão da câmera foi negada. Libere no navegador ou use “Enviar arquivo”."
-          : "Não encontramos uma câmera neste aparelho. Use “Enviar arquivo”."
-      );
     }
   }
 
   function capturar() {
-    const video = videoRef.current;
-    if (!video || !video.videoWidth) {
-      setAvisoCamera("A câmera ainda está iniciando. Tente de novo em instantes.");
-      return;
-    }
-    const canvas = document.createElement("canvas");
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    canvas.getContext("2d")?.drawImage(video, 0, 0);
-    canvas.toBlob(
-      (blob) => {
-        pararTrilhas(streamCameraRef.current);
-        streamCameraRef.current = null;
-        setCameraAtiva(false);
-        if (!blob) {
-          setAvisoCamera("Não foi possível capturar a foto. Tente de novo.");
-          return;
-        }
-        const foto = new File([blob], `foto-${Date.now()}.jpg`, { type: "image/jpeg" });
-        setOrigem("camera");
-        setArquivo(foto);
-        trocarPrevia(URL.createObjectURL(foto));
-      },
-      "image/jpeg",
-      0.9
-    );
-  }
-
-  function cancelarCamera() {
-    pararTrilhas(streamCameraRef.current);
-    streamCameraRef.current = null;
-    setCameraAtiva(false);
+    camera.capturar();
   }
 
   function escolherArquivo(lista: FileList | null) {
@@ -232,96 +136,15 @@ export default function RegistrarAgoraModal({ aparelho = "computador", visitas, 
   }
 
   async function alternarGravacao() {
-    setAvisoAudio("");
     setErro("");
-    if (gravando && gravadorRef.current) {
-      gravadorRef.current.stop();
+    if (gravando) {
+      audio.parar();
       return;
     }
-    if (typeof MediaRecorder === "undefined" || !navigator.mediaDevices?.getUserMedia) {
-      setAvisoAudio("Este navegador não grava áudio. Use “Enviar arquivo”.");
-      return;
-    }
-    try {
-      cancelarCamera();
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamAudioRef.current = stream;
-      volumeRef.current = iniciarMedidorDeVolume(stream);
-      const gravador = new MediaRecorder(stream);
-      trechosRef.current = [];
-      setBytesGravados(0);
-      gravador.ondataavailable = (evento) => {
-        if (evento.data.size > 0) {
-          trechosRef.current.push(evento.data);
-          const total = trechosRef.current.reduce((soma, trecho) => soma + trecho.size, 0);
-          setBytesGravados(total);
-          // Para sozinho perto do limite de 3 MB, sem estourar o arquivo.
-          if (total >= LIMITE_AUDIO * 0.97 && gravador.state === "recording") gravador.stop();
-        }
-      };
-      gravador.onstop = () => {
-        pararTrilhas(streamAudioRef.current);
-        streamAudioRef.current = null;
-        if (relogioRef.current) window.clearInterval(relogioRef.current);
-        relogioRef.current = null;
-        if (medidorRef.current) window.clearInterval(medidorRef.current);
-        medidorRef.current = null;
-        void audioCtxRef.current?.close().catch(() => undefined);
-        audioCtxRef.current = null;
-        setNiveis(Array.from({ length: 14 }, () => 0));
-        setGravando(false);
-        const picoDoVolume = volumeRef.current?.pico() ?? 1;
-        volumeRef.current?.parar();
-        volumeRef.current = null;
-        const tipo = gravador.mimeType || "audio/webm";
-        const blob = new Blob(trechosRef.current, { type: tipo });
-        if (blob.size === 0) return;
-        // Gravação sem som não vira registro.
-        if (ehSilencio(picoDoVolume)) {
-          setAvisoAudio(MENSAGEM_SEM_FALA);
-          return;
-        }
-        if (blob.size > LIMITE_AUDIO) {
-          setAvisoAudio("A gravação passou de 3 MB. Grave um trecho mais curto.");
-          return;
-        }
-        const extensao = tipo.includes("mp4") ? "m4a" : tipo.includes("ogg") ? "ogg" : "webm";
-        const audio = new File([blob], `audio-${Date.now()}.${extensao}`, { type: tipo });
-        setOrigem("audio");
-        setArquivo(audio);
-        trocarPrevia(URL.createObjectURL(audio));
-      };
-      gravadorRef.current = gravador;
+    cancelarCamera();
+    if (await audio.iniciar()) {
       setArquivo(null);
       trocarPrevia("");
-      // Medidor de som ao vivo (Web Audio): mostra que o microfone está captando.
-      try {
-        const Contexto = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-        if (Contexto) {
-          const contexto = new Contexto();
-          const analisador = contexto.createAnalyser();
-          analisador.fftSize = 64;
-          contexto.createMediaStreamSource(stream).connect(analisador);
-          audioCtxRef.current = contexto;
-          const dados = new Uint8Array(analisador.frequencyBinCount);
-          if (medidorRef.current) window.clearInterval(medidorRef.current);
-          medidorRef.current = window.setInterval(() => {
-            analisador.getByteFrequencyData(dados);
-            const passo = Math.max(1, Math.floor(dados.length / 14));
-            setNiveis(Array.from({ length: 14 }, (_, i) => Math.min(1, (dados[i * passo] || 0) / 200)));
-          }, 80);
-        }
-      } catch {
-        // sem medidor: a gravação continua normalmente
-      }
-      gravador.start(500);
-      setSegundos(0);
-      if (relogioRef.current) window.clearInterval(relogioRef.current);
-      relogioRef.current = window.setInterval(() => setSegundos((atual) => atual + 1), 1000);
-      setGravando(true);
-    } catch (falha) {
-      const negada = falha instanceof DOMException && (falha.name === "NotAllowedError" || falha.name === "SecurityError");
-      setAvisoAudio(negada ? "A permissão do microfone foi negada. Libere no navegador ou use “Enviar arquivo”." : "Não encontramos um microfone neste aparelho.");
     }
   }
 

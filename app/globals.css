@@ -2976,3 +2976,23 @@ html[data-modo="campo"] .ev7-lb-bloco--vinculo,html[data-modo="campo"] .ev7-lb-i
 html[data-modo="campo"] .ev7-nova-campo{display:inline-flex;flex:none;width:100%}
 html[data-modo="campo"] .ev7-lista-topo .ui-tabs{width:100%}
 html[data-modo="campo"] .ev7-lista-topo .ui-tab{flex:1 1 auto;justify-content:center;padding:0 6px;font-size:.8rem;white-space:nowrap}
+
+/* ===== Pacote 7.1 · Evidências: captura ao vivo (câmera e microfone) ===== */
+.ev7-anexo-lado{display:flex;min-width:0;flex-direction:column;gap:6px}
+.ev7-anexo-info{font-size:.86rem;color:var(--ink)}
+.ev7-midia{position:absolute;inset:0;z-index:8;display:flex;flex-direction:column;gap:10px;padding:14px;border-radius:inherit;background:#fff}
+.ev7-midia-titulo{flex:none;font-family:var(--font-display),"Outfit",sans-serif;font-size:1.1rem;font-weight:500;color:var(--ink)}
+.ev7-video{min-height:0;width:100%;flex:1;border-radius:12px;background:#F6F8FA;object-fit:contain}
+.ev7-gravacao{display:flex;min-height:0;flex:1;flex-direction:column;align-items:center;justify-content:center;gap:10px}
+.ev7-gravacao-tempo{font-family:var(--font-display),"Outfit",sans-serif;font-size:2.2rem;font-weight:500;line-height:1;color:var(--ink)}
+.ev7-gravacao-resta{font-size:.84rem;color:var(--ink-2)}
+.ev7-medidor{display:flex;align-items:flex-end;gap:4px;height:48px}
+.ev7-medidor i{display:block;width:6px;border-radius:3px;background:#2AA7E8}
+.ev7-midia .ev7-botoes{flex:none}
+.ev7-midia .ev7-botoes .ui-btn--primary{flex:1}
+.ev7-rodape{position:relative}
+.ev7-rodape .ev7-aviso{position:absolute;right:0;bottom:100%;left:0;z-index:2;padding:6px 14px;border-top:1px solid var(--border);background:#FEF6E6}
+@media (max-height:780px){
+  html:not([data-modo="campo"]) .ev7-corpo{padding-block:8px;gap:8px}
+  html:not([data-modo="campo"]) .ev7 .ev7-descricao.pc-input-tools{min-height:40px}
+}

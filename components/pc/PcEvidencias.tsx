@@ -7,6 +7,7 @@ import { Pill } from "@/components/ui/Pill";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import { avisar } from "@/lib/dialogos";
 import { dependenciasDoNavegador, validarFotoEscolhida } from "@/lib/fotoCompressao";
+import { formatarTempo, restanteDoLimite, useCapturaAudio, useCapturaCamera } from "@/components/useCapturaMidia";
 
 export type AnaliseEvidencia = {
   id: string;
@@ -71,7 +72,7 @@ type Props = {
 };
 
 type Aba = "todas" | "fotos" | "audios" | "revisar";
-type Anexo = { arquivo: File; tipo: "Foto" | "Áudio" };
+type Anexo = { arquivo: File; tipo: "Foto" | "Áudio"; duracao?: number };
 
 const PRAZO_DESFAZER_MS = 6000;
 
@@ -299,13 +300,20 @@ export default function PcEvidencias({
   const [salvando, setSalvando] = useState(false);
   const [ampliadaId, setAmpliadaId] = useState<string | null>(null);
   const descricaoRef = useRef<HTMLTextAreaElement | null>(null);
-  const cameraRef = useRef<HTMLInputElement | null>(null);
   const arquivoRef = useRef<HTMLInputElement | null>(null);
-  const audioRef = useRef<HTMLInputElement | null>(null);
-  const trocarRef = useRef<HTMLInputElement | null>(null);
   const timerAviso = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pickerRef = useRef<HTMLDivElement | null>(null);
   const [celular, setCelular] = useState(false);
+
+  const camera = useCapturaCamera({
+    alternativa: "Escolher arquivo",
+    aoCapturar: (foto) => colocarAnexo({ arquivo: foto, tipo: "Foto" }),
+  });
+  const audio = useCapturaAudio({
+    alternativa: "",
+    aoGravar: (gravado, segundos) => colocarAnexo({ arquivo: gravado, tipo: "Áudio", duracao: segundos }),
+  });
+  const avisoMidia = camera.aviso || audio.aviso;
 
   const temFoto = Boolean(pendente && pendente.tipo === "Foto" && !removendo);
   const temAnexo = Boolean(pendente && !removendo);
@@ -399,7 +407,7 @@ export default function PcEvidencias({
       window.removeEventListener("resize", ajustar);
       observador?.disconnect();
     };
-  }, [descricao, formAberto, temAnexo, aviso, mensagem]);
+  }, [descricao, formAberto, temAnexo, aviso, mensagem, avisoMidia]);
 
   // Só entra no formulário o que é mesmo uma foto: o tipo real vale mais que a extensão.
   async function validar(arquivo: File | undefined): Promise<File | null> {
@@ -412,21 +420,41 @@ export default function PcEvidencias({
     return arquivo;
   }
 
-  async function escolherFoto(arquivo: File | undefined) {
-    const valido = await validar(arquivo);
-    if (!valido) return;
-    limparAviso();
+  // Uma evidência é foto OU áudio: quem chega depois substitui o anterior, com Desfazer por 6 s.
+  function colocarAnexo(novo: Anexo) {
+    const anterior = pendente && !removendo ? pendente : null;
+    camera.setAviso("");
+    audio.setAviso("");
     setRemovendo(false);
-    setPendente({ arquivo: valido, tipo: "Foto" });
+    setPendente(novo);
+    if (!anterior) {
+      limparAviso();
+      return;
+    }
+    const texto =
+      anterior.tipo === novo.tipo
+        ? novo.tipo === "Foto" ? "Foto trocada." : "Áudio regravado."
+        : novo.tipo === "Áudio" ? "Foto substituída pelo áudio." : "Áudio substituído pela foto.";
+    avisarComDesfazer(texto, () => setPendente(anterior));
   }
 
-  async function trocarFoto(arquivo: File | undefined) {
+  async function escolherArquivo(arquivo: File | undefined) {
     const valido = await validar(arquivo);
-    if (!valido) return;
-    const anterior = pendente;
-    setRemovendo(false);
-    setPendente({ arquivo: valido, tipo: "Foto" });
-    avisarComDesfazer("Foto trocada.", () => setPendente(anterior));
+    if (valido) colocarAnexo({ arquivo: valido, tipo: "Foto" });
+  }
+
+  async function abrirCamera() {
+    setTrocando(false);
+    audio.liberar();
+    audio.setAviso("");
+    await camera.abrir();
+  }
+
+  async function gravarAudio() {
+    setTrocando(false);
+    camera.cancelar();
+    camera.setAviso("");
+    await audio.iniciar();
   }
 
   // A remoção só vale depois do prazo: até lá o anexo fica guardado e dá para desfazer.
@@ -444,6 +472,10 @@ export default function PcEvidencias({
   }
 
   function cancelar() {
+    camera.liberar();
+    audio.liberar();
+    camera.setAviso("");
+    audio.setAviso("");
     limparAviso();
     setPendente(null);
     setRemovendo(false);
@@ -517,10 +549,10 @@ export default function PcEvidencias({
       <textarea
         ref={descricaoRef}
         className="ui-input pc-input-tools ev7-descricao"
-        rows={2}
+        rows={1}
         value={descricao}
         onChange={(evento) => onDescricao(evento.target.value)}
-        placeholder="Ex.: embalagem avariada identificada no recebimento..."
+        placeholder="Ex.: embalagem avariada no recebimento"
         aria-label="Descrição da evidência"
       />
       <span className="ui-field-tools">
@@ -633,29 +665,15 @@ export default function PcEvidencias({
 
             <div className="ev7-corpo">
               <div className="ev7-capturas">
-                <button type="button" className="ev7-cap ev7-cap--foto" disabled={temFoto} onClick={() => cameraRef.current?.click()}>
+                <button type="button" className="ev7-cap ev7-cap--foto" disabled={temFoto} onClick={() => void abrirCamera()}>
                   <CameraIcon /> Tirar foto
                 </button>
-                <button type="button" className="ev7-cap ev7-cap--audio" onClick={() => audioRef.current?.click()}>
+                <button type="button" className="ev7-cap ev7-cap--audio" onClick={() => void gravarAudio()}>
                   <MicIcon /> Áudio
                 </button>
                 <button type="button" className="ev7-cap ev7-cap--arquivo" onClick={() => arquivoRef.current?.click()}>
                   <FolderIcon /> Arquivo
                 </button>
-                <input
-                  ref={cameraRef}
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  className="sr-only"
-                  tabIndex={-1}
-                  onChange={(evento) => {
-                    const entrada = evento.currentTarget;
-                    const arquivo = entrada.files?.[0];
-                    void escolherFoto(arquivo);
-                    entrada.value = "";
-                  }}
-                />
                 <input
                   ref={arquivoRef}
                   type="file"
@@ -665,37 +683,7 @@ export default function PcEvidencias({
                   onChange={(evento) => {
                     const entrada = evento.currentTarget;
                     const arquivo = entrada.files?.[0];
-                    void escolherFoto(arquivo);
-                    entrada.value = "";
-                  }}
-                />
-                <input
-                  ref={audioRef}
-                  type="file"
-                  accept="audio/*"
-                  className="sr-only"
-                  tabIndex={-1}
-                  onChange={(evento) => {
-                    const entrada = evento.currentTarget;
-                    const arquivo = entrada.files?.[0];
-                    entrada.value = "";
-                    if (!arquivo) return;
-                    limparAviso();
-                    setRemovendo(false);
-                    setPendente({ arquivo, tipo: "Áudio" });
-                  }}
-                />
-                <input
-                  ref={trocarRef}
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  className="sr-only"
-                  tabIndex={-1}
-                  onChange={(evento) => {
-                    const entrada = evento.currentTarget;
-                    const arquivo = entrada.files?.[0];
-                    void trocarFoto(arquivo);
+                    void escolherArquivo(arquivo);
                     entrada.value = "";
                   }}
                 />
@@ -714,15 +702,24 @@ export default function PcEvidencias({
                   ) : (
                     <span className="ev7-miniatura ev7-miniatura--audio" aria-hidden="true"><MicIcon /></span>
                   )}
-                  <div className="ev7-anexo-acoes">
-                    {pendente.tipo === "Foto" && (
-                      <button type="button" className="ev7-mini-btn" onClick={() => trocarRef.current?.click()}>
-                        Trocar foto
-                      </button>
+                  <div className="ev7-anexo-lado">
+                    {pendente.tipo === "Áudio" && (
+                      <span className="ev7-anexo-info">Áudio gravado{pendente.duracao ? ` · ${formatarTempo(pendente.duracao)}` : ""}</span>
                     )}
-                    <button type="button" className="ev7-mini-btn" onClick={removerAnexo}>
-                      Remover
-                    </button>
+                    <div className="ev7-anexo-acoes">
+                      {pendente.tipo === "Foto" ? (
+                        <button type="button" className="ev7-mini-btn" onClick={() => void abrirCamera()}>
+                          Trocar foto
+                        </button>
+                      ) : (
+                        <button type="button" className="ev7-mini-btn" onClick={() => void gravarAudio()}>
+                          Gravar de novo
+                        </button>
+                      )}
+                      <button type="button" className="ev7-mini-btn" onClick={removerAnexo}>
+                        Remover
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -735,7 +732,61 @@ export default function PcEvidencias({
               <p className="ev7-privacidade">Antes de usar a IA, evite enquadrar rostos, crachás e documentos pessoais.</p>
             </div>
 
+            {camera.ativa && (
+              <div className="ev7-midia" role="dialog" aria-label="Tirar foto">
+                <span className="ev7-midia-titulo">Tirar foto</span>
+                <video ref={camera.videoRef} className="ev7-video" muted playsInline aria-label="Prévia da câmera" />
+                <div className="ev7-botoes">
+                  <button type="button" className="ui-btn ui-btn--secondary ui-btn--small ev7-cancelar" onClick={camera.cancelar}>
+                    Cancelar
+                  </button>
+                  <button type="button" className="ui-btn ui-btn--primary ui-btn--small" onClick={camera.capturar}>
+                    Capturar
+                  </button>
+                </div>
+              </div>
+            )}
+            {audio.gravando && (
+              <div className="ev7-midia" role="dialog" aria-label="Gravar áudio">
+                <span className="ev7-midia-titulo">Gravando...</span>
+                <div className="ev7-gravacao">
+                  <span className="ev7-gravacao-tempo">{formatarTempo(audio.segundos)}</span>
+                  <span className="ev7-gravacao-resta">restam {restanteDoLimite(audio.bytes, audio.segundos)}</span>
+                  <span className="ev7-medidor" role="img" aria-label="Nível do som captado">
+                    {audio.niveis.map((nivel, indice) => (
+                      <i key={indice} style={{ height: `${Math.max(8, Math.round(nivel * 100))}%` }} />
+                    ))}
+                  </span>
+                </div>
+                <div className="ev7-botoes">
+                  <button type="button" className="ui-btn ui-btn--secondary ui-btn--small ev7-cancelar" onClick={audio.liberar}>
+                    Cancelar
+                  </button>
+                  <button type="button" className="ui-btn ui-btn--primary ui-btn--small" onClick={audio.parar}>
+                    Parar
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="ev7-rodape">
+              {avisoMidia && !aviso && (
+                <div className="ev7-aviso" role="alert">
+                  <span className="ev7-aviso-texto">{avisoMidia}</span>
+                  {camera.aviso && (
+                    <button
+                      type="button"
+                      className="ev7-link"
+                      onClick={() => {
+                        camera.setAviso("");
+                        arquivoRef.current?.click();
+                      }}
+                    >
+                      Escolher arquivo
+                    </button>
+                  )}
+                </div>
+              )}
               {(aviso || mensagem) && (
                 <div className={`ev7-aviso${aviso ? " is-desfazer" : ""}`} role="status">
                   <span className="ev7-aviso-texto">{aviso ? aviso.texto : mensagem}</span>
