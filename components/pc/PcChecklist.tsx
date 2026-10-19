@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
+import AmbientesCortina from "@/components/AmbientesCortina";
 import type { InfoAmbiente } from "@/lib/checklistEnvs";
 import type { ChecklistStatus } from "@/types";
 
@@ -46,14 +47,7 @@ const SITUACAO_DO_POP: Record<string, string> = {
   aprovado: "aprovado",
 };
 
-// Um único seletor ("Recebimento 9/12 ▾") que abre o painel com todos os ambientes em cartões.
-function classeDoAmbiente(info: InfoAmbiente): string {
-  if (info.naoConformes > 0) return "nc";
-  if (info.total > 0 && info.respondidos >= info.total) return "ok";
-  if (info.respondidos > 0) return "pend";
-  return "info";
-}
-
+// Um único seletor ("Recebimento 9/12 ▾") que abre a cortina com uma linha por ambiente.
 function SeletorDeAmbiente({
   ambientes,
   atual,
@@ -67,64 +61,23 @@ function SeletorDeAmbiente({
   total: number;
   onSelecionar: (nome: string) => void;
 }) {
-  const [aberto, setAberto] = useState(false);
-  const raizRef = useRef<HTMLDivElement | null>(null);
   const info = ambientes.find((ambiente) => ambiente.nome === atual);
-
-  useEffect(() => {
-    if (!aberto) return;
-    const aoClicarFora = (evento: MouseEvent) => {
-      if (raizRef.current && !raizRef.current.contains(evento.target as Node)) setAberto(false);
-    };
-    const aoTeclar = (evento: KeyboardEvent) => {
-      if (evento.key === "Escape") setAberto(false);
-    };
-    window.addEventListener("mousedown", aoClicarFora);
-    window.addEventListener("keydown", aoTeclar);
-    return () => {
-      window.removeEventListener("mousedown", aoClicarFora);
-      window.removeEventListener("keydown", aoTeclar);
-    };
-  }, [aberto]);
-
   return (
-    <div className="chk-sel" ref={raizRef}>
-      <button type="button" className="chk-sel-botao" aria-haspopup="dialog" aria-expanded={aberto} onClick={() => setAberto((valor) => !valor)}>
-        <span className="chk-sel-nome">{info?.rotulo || atual}</span>
-        <span className="chk-sel-pos">
-          {posicao}/{total}
-        </span>
-        <span aria-hidden="true">▾</span>
-      </button>
-      {aberto && (
-        <div className="chk-sel-painel" role="dialog" aria-label="Escolher ambiente">
-          {ambientes.map((ambiente) => {
-            const percentual = ambiente.total ? Math.round((ambiente.respondidos / ambiente.total) * 100) : 0;
-            return (
-              <button
-                key={ambiente.nome}
-                type="button"
-                className={`chk-sel-cartao chk-sel-cartao--${classeDoAmbiente(ambiente)}${ambiente.nome === atual ? " is-on" : ""}`}
-                aria-current={ambiente.nome === atual ? "true" : undefined}
-                onClick={() => {
-                  setAberto(false);
-                  onSelecionar(ambiente.nome);
-                }}
-              >
-                <span className="chk-sel-cartao-nome">{ambiente.rotulo}</span>
-                <span className="chk-sel-cartao-info">
-                  {ambiente.respondidos}/{ambiente.total} respondidos
-                </span>
-                <span className="chk-sel-cartao-barra" aria-hidden="true">
-                  <span style={{ width: `${percentual}%` }} />
-                </span>
-                <span className="chk-sel-cartao-nc">{ambiente.naoConformes > 0 ? `${ambiente.naoConformes} NC${ambiente.naoConformes === 1 ? "" : "s"}` : "Sem NCs"}</span>
-              </button>
-            );
-          })}
-        </div>
+    <AmbientesCortina
+      ambientes={ambientes}
+      atual={atual}
+      onSelecionar={onSelecionar}
+      classe="amb-seletor--pc"
+      renderBotao={({ aberto, alternar }) => (
+        <button type="button" className="chk-sel-botao" aria-haspopup="dialog" aria-expanded={aberto} onClick={alternar}>
+          <span className="chk-sel-nome">{info?.rotulo || atual}</span>
+          <span className="chk-sel-pos">
+            {posicao}/{total}
+          </span>
+          <span aria-hidden="true">▾</span>
+        </button>
       )}
-    </div>
+    />
   );
 }
 

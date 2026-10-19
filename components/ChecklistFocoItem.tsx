@@ -2,7 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
+import AmbientesCortina from "@/components/AmbientesCortina";
 import { NavIcon } from "@/components/NavIcons";
+import type { InfoAmbiente } from "@/lib/checklistEnvs";
 import { estadosDosBotoes, gravidadeSugerida } from "@/lib/checklistUi";
 import type { ChecklistCriticidade, ChecklistItem, ChecklistStatus } from "@/types";
 
@@ -19,6 +21,9 @@ type Props = {
   semCabecalhoDeAmbiente?: boolean;
   /** Mostra "O que verificar" e "Base legal" abaixo da observação (no PC eles ficam no painel de apoio). */
   mostrarApoio?: boolean;
+  /** Celular: o cabeçalho do ambiente vira o seletor que abre a cortina com todos os ambientes. */
+  ambientes?: InfoAmbiente[];
+  onAmbiente?: (nome: string) => void;
   /** Destaque rápido do item (ao chegar por "Ver no checklist"). */
   destaque?: boolean;
   podeEditar: boolean;
@@ -63,6 +68,8 @@ export default function ChecklistFocoItem({
   semCabecalhoDeAmbiente = false,
   mostrarApoio = true,
   destaque = false,
+  ambientes,
+  onAmbiente,
   podeEditar,
   temAnterior,
   temProximo,
@@ -92,22 +99,40 @@ export default function ChecklistFocoItem({
 
   return (
     <div className="chk-foco">
-      {!semCabecalhoDeAmbiente && (
-        <div className="chk-foco-amb">
-          <div className="chk-foco-amb-top">
-            <span className="chk-foco-amb-nome">{ambienteRotulo}</span>
-            <span className="chk-foco-amb-pos" aria-label={`Item ${posAmbiente} de ${totalAmbiente} neste ambiente`}>
-              {posAmbiente}/{totalAmbiente}
+      {!semCabecalhoDeAmbiente && (() => {
+        const posicaoNoAmbiente = (
+          <span className="chk-foco-amb-pos" aria-label={`Item ${posAmbiente} de ${totalAmbiente} neste ambiente`}>
+            {posAmbiente}/{totalAmbiente}
+          </span>
+        );
+        const corpo = (aberto: boolean, alternar?: () => void) => (
+          <div className="chk-foco-amb">
+            {alternar ? (
+              <button type="button" className="chk-foco-amb-top chk-foco-amb-botao" aria-haspopup="dialog" aria-expanded={aberto} onClick={alternar}>
+                <span className="chk-foco-amb-nome">{ambienteRotulo}</span>
+                {posicaoNoAmbiente}
+                <span className="chk-foco-amb-seta" aria-hidden="true">▾</span>
+              </button>
+            ) : (
+              <div className="chk-foco-amb-top">
+                <span className="chk-foco-amb-nome">{ambienteRotulo}</span>
+                {posicaoNoAmbiente}
+              </div>
+            )}
+            <div className="chk-foco-bar" role="img" aria-label={`${respondidosAmbiente} de ${totalAmbiente} respondidos`}>
+              <span style={{ width: `${totalAmbiente ? Math.round((respondidosAmbiente / totalAmbiente) * 100) : 0}%` }} />
+            </div>
+            <span className="chk-foco-count">
+              {respondidosAmbiente} de {totalAmbiente} respondidos · item {posicao} de {total} na visita
             </span>
           </div>
-          <div className="chk-foco-bar" role="img" aria-label={`${respondidosAmbiente} de ${totalAmbiente} respondidos`}>
-            <span style={{ width: `${totalAmbiente ? Math.round((respondidosAmbiente / totalAmbiente) * 100) : 0}%` }} />
-          </div>
-          <span className="chk-foco-count">
-            {respondidosAmbiente} de {totalAmbiente} respondidos · item {posicao} de {total} na visita
-          </span>
-        </div>
-      )}
+        );
+        return ambientes && onAmbiente ? (
+          <AmbientesCortina ambientes={ambientes} atual={item.ambiente} onSelecionar={onAmbiente} renderBotao={({ aberto, alternar }) => corpo(aberto, alternar)} />
+        ) : (
+          corpo(false)
+        );
+      })()}
       <div className={`chk-foco-card${destaque ? " is-destaque" : ""}`}>
         <h2 className="chk-foco-title">{item.titulo}</h2>
       </div>

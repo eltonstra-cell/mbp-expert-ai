@@ -5832,28 +5832,16 @@ export default function Home() {
             const posicao = foco ? lista.findIndex((item) => item.id === foco.id) : -1;
             return (
               <section className="campo-tela campo-tela--fixa" aria-label="Checklist">
-                <div className="campo-chips" role="tablist" aria-label="Ambientes">
-                  {infosAmbientes.map((info) => (
-                    <button
-                      key={info.nome}
-                      type="button"
-                      role="tab"
-                      aria-selected={foco?.ambiente === info.nome}
-                      className={`campo-chip-env${foco?.ambiente === info.nome ? " is-on" : ""}`}
-                      onClick={() => {
-                        const primeiro = lista.find((item) => item.ambiente === info.nome && item.status === "Pendente") || lista.find((item) => item.ambiente === info.nome);
-                        setAmbienteChecklistAtivo(info.nome);
-                        if (primeiro) setItemFocoId(primeiro.id);
-                      }}
-                    >
-                      {info.rotulo} {info.respondidos}/{info.total}
-                    </button>
-                  ))}
-                </div>
                 {foco ? (
                   <ChecklistFocoItem
                     item={foco}
                     destaque={destaqueItemId === foco.id}
+                    ambientes={infosAmbientes}
+                    onAmbiente={(nome) => {
+                      const primeiro = lista.find((item) => item.ambiente === nome && item.status === "Pendente") || lista.find((item) => item.ambiente === nome);
+                      setAmbienteChecklistAtivo(nome);
+                      if (primeiro) setItemFocoId(primeiro.id);
+                    }}
                     {...dadosDoAmbienteEmFoco(foco, lista)}
                     onGravidade={(gravidade) => { setItemFocoId(foco.id); atualizarChecklistItem(foco.id, trocaDeGravidade(foco, gravidade)); }}
                     posicao={posicao + 1}
