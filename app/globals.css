@@ -3023,3 +3023,16 @@ html[data-modo="campo"] .ev7-lista-topo .ui-tab{flex:1 1 auto;justify-content:ce
   html:not([data-modo="campo"]) .ev7-corpo{padding-block:8px;gap:8px}
   html:not([data-modo="campo"]) .ev7 .ev7-descricao.pc-input-tools{min-height:40px}
 }
+
+/* ===== Pacote 8 · Checklist (Foto e Ditar), Evidências (áudio, tipo protegido, filtro) e Modo de tela ===== */
+.chk-foco-tools,.campo-tela .chk-foco-tools{grid-template-columns:repeat(2,minmax(0,1fr));justify-content:stretch}
+.chk-foto-linha{display:flex;flex:none;align-items:center;gap:8px;min-height:32px;font-size:.84rem;color:var(--ink)}
+.chk-foto-mini{flex:none;width:32px;height:32px;border:1px solid var(--border);border-radius:8px;object-fit:cover}
+.chk-foto-aviso{min-width:0;flex:1;line-height:1.2}
+.chk-foto-link{flex:none;padding:0 4px;border:0;background:none;font-size:.84rem;text-decoration:underline;color:var(--ink);cursor:pointer}
+.chk-cam-fundo{position:fixed;inset:0;z-index:120;display:grid;place-items:center;padding:12px;background:rgba(255,255,255,.8)}
+.chk-cam{display:flex;width:min(520px,100%);max-height:calc(100dvh - 24px);flex-direction:column;gap:10px;padding:14px;border:2px solid #B4C2CE;border-radius:18px;background:#fff;box-shadow:0 14px 36px rgba(18,32,43,.22)}
+.chk-cam-titulo{font-family:var(--font-display),"Outfit",sans-serif;font-size:1.1rem;font-weight:500;color:var(--ink)}
+.chk-cam-video{width:100%;min-height:0;aspect-ratio:4/3;max-height:62dvh;border-radius:12px;background:#F6F8FA;object-fit:contain}
+.chk-cam-botoes{display:flex;flex:none;gap:8px}
+.chk-cam-botoes .ui-btn--primary{flex:1}

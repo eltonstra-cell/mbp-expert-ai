@@ -172,6 +172,8 @@ type EmpresaSecao = "dados" | "manual" | "ambientes" | "fluxos" | "programas" | 
 type FiltroChecklistRapido = "Todos" | "Pendentes" | "Não conformes";
 
 const NAV_STORAGE_KEY = "mbp-expert-ai:navegacao:v1";
+// Último item aberto no checklist, por visita, só neste aparelho.
+const ULTIMO_ITEM_STORAGE_KEY = "mbp-expert-ai:checklist-ultimo-item:v1";
 const CHECKLIST_VERSAO_ATUAL = 10;
 const VISIT_VIEWS: View[] = ["visita", "ambientes", "checklist", "ncs", "plano", "acompanhamento", "historico", "evidencias", "relatorio", "correcoes", "popsvisita"];
 
@@ -2320,6 +2322,41 @@ export default function Home() {
   }, [visitasEmpresaAtual, db.ncs]);
 
   const checklistAtual = visitaAtual?.checklist || [];
+
+  function lerUltimosItensDoChecklist(): Record<string, string> {
+    try {
+      const bruto = JSON.parse(window.localStorage.getItem(scopedStorageKey(ULTIMO_ITEM_STORAGE_KEY, storageIdentityRef.current)) || "{}");
+      return bruto && typeof bruto === "object" && !Array.isArray(bruto) ? bruto : {};
+    } catch {
+      return {};
+    }
+  }
+
+  // Guarda o item em foco de cada visita; ao voltar ao checklist (menu, outra tela ou recarregar), abre nele.
+  useEffect(() => {
+    if (!ready || !visitaAtualId || !itemFocoId || !checklistAtual.some((item) => item.id === itemFocoId)) return;
+    try {
+      const guardados = lerUltimosItensDoChecklist();
+      if (guardados[visitaAtualId] === itemFocoId) return;
+      window.localStorage.setItem(
+        scopedStorageKey(ULTIMO_ITEM_STORAGE_KEY, storageIdentityRef.current),
+        JSON.stringify({ ...guardados, [visitaAtualId]: itemFocoId })
+      );
+    } catch {
+      // sem armazenamento local: abre como antes
+    }
+  }, [ready, visitaAtualId, itemFocoId, checklistAtual]);
+
+  useEffect(() => {
+    if (!ready || view !== "checklist" || !visitaAtualId) return;
+    if (itemFocoId && checklistAtual.some((item) => item.id === itemFocoId)) return;
+    const guardado = lerUltimosItensDoChecklist()[visitaAtualId];
+    const item = guardado ? checklistAtual.find((registro) => registro.id === guardado) : undefined;
+    if (!item) return;
+    setItemFocoId(item.id);
+    setAmbienteChecklistAtivo(item.ambiente);
+    setUltimoItemChecklistId(item.id);
+  }, [ready, view, visitaAtualId, itemFocoId, checklistAtual]);
   const pendentesAmbienteAtivo = checklistAtual.filter(
     (item) =>
       item.ambiente === ambienteChecklistAtivo &&
@@ -3828,6 +3865,33 @@ export default function Home() {
     });
   }
 
+  // Foto tirada dentro do item do checklist: vira evidência já ligada a este ambiente e item (e à NC dele, se houver).
+  async function salvarFotoDoItem(item: ChecklistItem, arquivo: File): Promise<string | null> {
+    if (!visitaAtual) return null;
+    const ncDoItem = (db.ncs || []).find(
+      (nc) => nc.visitaId === visitaAtual.id && nc.checklistItemId === item.id && !nc.inativaNoChecklist
+    );
+    const evidenciaId = crypto.randomUUID();
+    const ok = await adicionarEvidencia(
+      arquivo,
+      "Foto",
+      { ambiente: item.ambiente, checklistItemId: item.id, ncId: ncDoItem?.id || "" },
+      { descricao: "", evidenciaId }
+    );
+    if (!ok) return null;
+    setUltimoItemChecklistId(item.id);
+    return evidenciaId;
+  }
+
+  // Desfazer da foto do item: tira só a evidência recém-criada (um único id), sem mexer nas demais.
+  function desfazerFotoDoItem(evidenciaId: string) {
+    setDb((o) => {
+      const atualizado: AppDB = { ...o, evidencias: (o.evidencias || []).filter((ev) => ev.id !== evidenciaId) };
+      salvarDBLocal(atualizado);
+      return atualizado;
+    });
+  }
+
   function vincularFotoAguardandoAoItem(item: ChecklistItem, ncId: string) {
     if (!fotoAguardando) return;
     const arquivo = fotoAguardando;
@@ -4424,7 +4488,7 @@ export default function Home() {
     file: File | undefined,
     tipo: "Foto" | "Áudio",
     vinculo?: { ambiente: string; checklistItemId: string; ncId: string },
-    opcoes?: { visita?: Visita; descricao?: string }
+    opcoes?: { visita?: Visita; descricao?: string; evidenciaId?: string }
   ): Promise<boolean> {
     const alvoVisita = opcoes?.visita || visitaAtual;
     if (!file || !alvoVisita) return false;
@@ -4442,7 +4506,7 @@ export default function Home() {
         tipo === "Foto" ? "Otimizando foto..." : "Processando áudio..."
       );
 
-      const evidenciaId = crypto.randomUUID();
+      const evidenciaId = opcoes?.evidenciaId || crypto.randomUUID();
       let nomeArquivo = file.name || (tipo === "Foto" ? "foto.jpg" : "audio");
       const mimeType =
         tipo === "Foto" ? "image/jpeg" : file.type || "audio/mpeg";
@@ -5872,7 +5936,9 @@ export default function Home() {
                     temProximo={posicao < lista.length - 1}
                     onStatus={(status) => { setItemFocoId(foco.id); atualizarChecklistItem(foco.id, { status, ...(status !== "Não Conforme" ? { observacao: "" } : {}) }); }}
                     onObservacao={(texto) => atualizarChecklistItem(foco.id, { observacao: texto })}
-                    onFoto={() => { setUltimoItemChecklistId(foco.id); setRegistrarAberto(true); }}
+                    podeFotografar={permitido("evidencias.adicionar", visitaAtual.empresaId)}
+                    onFotoCapturada={(arquivo) => salvarFotoDoItem(foco, arquivo)}
+                    onDesfazerFoto={desfazerFotoDoItem}
                     onLimpar={() => void limparRespostaDoItem(foco.id)}
                       onAnterior={() => moverItemFoco(-1)}
                     onProximo={() => moverItemFoco(1)}
@@ -6546,10 +6612,9 @@ export default function Home() {
                         atualizarChecklistItem(foco.id, { status, ...(status !== "Não Conforme" ? { observacao: "" } : {}) });
                       }}
                       onObservacao={(texto) => atualizarChecklistItem(foco.id, { observacao: texto })}
-                      onFoto={() => {
-                        setUltimoItemChecklistId(foco.id);
-                        registrarRapido();
-                      }}
+                      podeFotografar={permitido("evidencias.adicionar", visitaAtual.empresaId)}
+                      onFotoCapturada={(arquivo) => salvarFotoDoItem(foco, arquivo)}
+                      onDesfazerFoto={desfazerFotoDoItem}
                       onLimpar={() => void limparRespostaDoItem(foco.id)}
                       onAnterior={() => moverItemFoco(-1)}
                       onProximo={() => moverItemFoco(1)}
@@ -6608,10 +6673,9 @@ export default function Home() {
                         atualizarChecklistItem(foco.id, { status, ...(status !== "Não Conforme" ? { observacao: "" } : {}) });
                       }}
                       onObservacao={(texto) => atualizarChecklistItem(foco.id, { observacao: texto })}
-                      onFoto={() => {
-                        setUltimoItemChecklistId(foco.id);
-                        registrarRapido();
-                      }}
+                      podeFotografar={permitido("evidencias.adicionar", visitaAtual.empresaId)}
+                      onFotoCapturada={(arquivo) => salvarFotoDoItem(foco, arquivo)}
+                      onDesfazerFoto={desfazerFotoDoItem}
                       onLimpar={() => void limparRespostaDoItem(foco.id)}
                       onAnterior={() => moverItemFoco(-1)}
                       onProximo={() => moverItemFoco(1)}

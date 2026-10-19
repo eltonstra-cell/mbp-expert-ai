@@ -1,11 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
 import AmbientesCortina from "@/components/AmbientesCortina";
 import { NavIcon } from "@/components/NavIcons";
 import type { InfoAmbiente } from "@/lib/checklistEnvs";
+import { useCapturaCamera } from "@/components/useCapturaMidia";
 import { estadosDosBotoes, gravidadeSugerida } from "@/lib/checklistUi";
+import { dependenciasDoNavegador, validarFotoEscolhida } from "@/lib/fotoCompressao";
 import type { ChecklistCriticidade, ChecklistItem, ChecklistStatus } from "@/types";
 
 type Props = {
@@ -32,7 +35,12 @@ type Props = {
   onStatus: (status: ChecklistStatus) => void;
   onObservacao: (texto: string) => void;
   onGravidade: (gravidade: ChecklistCriticidade) => void;
-  onFoto: () => void;
+  /** Pode registrar foto (evidências.adicionar). */
+  podeFotografar?: boolean;
+  /** Salva a foto como evidência ligada a este item. Devolve o id da evidência criada, ou null se falhou. */
+  onFotoCapturada: (arquivo: File) => Promise<string | null>;
+  /** Remove somente a evidência recém-criada por este item. */
+  onDesfazerFoto: (evidenciaId: string) => void;
   /** Volta o item a "Pendente"; quem chama decide se pergunta antes. */
   onLimpar?: () => void;
   onAnterior: () => void;
@@ -71,12 +79,14 @@ export default function ChecklistFocoItem({
   ambientes,
   onAmbiente,
   podeEditar,
+  podeFotografar = true,
   temAnterior,
   temProximo,
   onStatus,
   onObservacao,
   onGravidade,
-  onFoto,
+  onFotoCapturada,
+  onDesfazerFoto,
   onLimpar,
   onAnterior,
   onProximo,
@@ -88,6 +98,70 @@ export default function ChecklistFocoItem({
   useEffect(() => {
     setTexto(item.observacao || "");
   }, [item.id, item.observacao]);
+
+  // Foto do item: a câmera abre por cima, a foto vira evidência deste item e dá para desfazer por 6 s.
+  const [salvandoFoto, setSalvandoFoto] = useState(false);
+  const [recente, setRecente] = useState<{ id: string; url: string } | null>(null);
+  const [avisoFoto, setAvisoFoto] = useState<{ texto: string; id?: string } | null>(null);
+  const arquivoRef = useRef<HTMLInputElement | null>(null);
+  const timerFoto = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const recenteRef = useRef<{ id: string; url: string } | null>(null);
+  recenteRef.current = recente;
+
+  const guardarFoto = useCallback(
+    async (arquivo: File) => {
+      if (timerFoto.current) clearTimeout(timerFoto.current);
+      setAvisoFoto(null);
+      setSalvandoFoto(true);
+      const url = URL.createObjectURL(arquivo);
+      const id = await onFotoCapturada(arquivo);
+      setSalvandoFoto(false);
+      if (!id) {
+        URL.revokeObjectURL(url);
+        setAvisoFoto({ texto: "Não foi possível salvar a foto. Tente de novo." });
+        return;
+      }
+      if (recenteRef.current) URL.revokeObjectURL(recenteRef.current.url);
+      setRecente({ id, url });
+      setAvisoFoto({ texto: "Foto salva em Evidências", id });
+      timerFoto.current = setTimeout(() => setAvisoFoto(null), 6000);
+    },
+    [onFotoCapturada]
+  );
+
+  const camera = useCapturaCamera({ alternativa: "Escolher arquivo", aoCapturar: (foto) => void guardarFoto(foto) });
+  const { liberar: liberarCamera, setAviso: limparAvisoCamera } = camera;
+
+  // Ao trocar de item (ou sair) a câmera fecha e a miniatura temporária é liberada.
+  useEffect(() => {
+    return () => {
+      liberarCamera();
+      limparAvisoCamera("");
+      if (timerFoto.current) clearTimeout(timerFoto.current);
+      if (recenteRef.current) URL.revokeObjectURL(recenteRef.current.url);
+      setRecente(null);
+      setAvisoFoto(null);
+    };
+  }, [item.id, liberarCamera, limparAvisoCamera]);
+
+  async function escolherArquivoDeFoto(arquivo: File | undefined) {
+    if (!arquivo) return;
+    const validacao = await validarFotoEscolhida(arquivo, dependenciasDoNavegador);
+    if (!validacao.ok) {
+      setAvisoFoto({ texto: validacao.motivo });
+      return;
+    }
+    await guardarFoto(arquivo);
+  }
+
+  function desfazerFoto() {
+    if (!recente) return;
+    if (timerFoto.current) clearTimeout(timerFoto.current);
+    onDesfazerFoto(recente.id);
+    URL.revokeObjectURL(recente.url);
+    setRecente(null);
+    setAvisoFoto(null);
+  }
 
   const salvarTexto = () => {
     if (podeEditar && texto !== (item.observacao || "")) onObservacao(texto);
@@ -196,8 +270,16 @@ export default function ChecklistFocoItem({
           )}
         </div>
         <div className="chk-foco-tools">
-          <button type="button" className="chk-tool chk-tool--foto" onClick={onFoto}>
-            <NavIcon name="registrar" size={18} strokeWidth={1.9} /> Foto
+          <button
+            type="button"
+            className="chk-tool chk-tool--foto"
+            disabled={!podeFotografar || salvandoFoto || camera.ativa}
+            onClick={() => {
+              setAvisoFoto(null);
+              void camera.abrir();
+            }}
+          >
+            <NavIcon name="registrar" size={18} strokeWidth={1.9} /> {salvandoFoto ? "Salvando..." : "Foto"}
           </button>
           <button
             type="button"
@@ -210,10 +292,67 @@ export default function ChecklistFocoItem({
           >
             <NavIcon name="microfone" size={18} strokeWidth={1.9} /> Ditar
           </button>
-          <button type="button" className="chk-tool chk-tool--digitar" disabled={!podeEditar} onClick={() => areaRef.current?.focus()}>
-            <span aria-hidden="true">✎</span> Digitar
-          </button>
         </div>
+        {(recente || avisoFoto || camera.aviso) && (
+          <div className="chk-foto-linha" role="status">
+            {recente && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img className="chk-foto-mini" src={recente.url} alt="Última foto deste item" />
+            )}
+            {(avisoFoto || camera.aviso) && (
+              <span className="chk-foto-aviso">{camera.aviso || avisoFoto?.texto}</span>
+            )}
+            {camera.aviso ? (
+              <button
+                type="button"
+                className="chk-foto-link"
+                onClick={() => {
+                  camera.setAviso("");
+                  arquivoRef.current?.click();
+                }}
+              >
+                Escolher arquivo
+              </button>
+            ) : (
+              avisoFoto?.id && (
+                <button type="button" className="chk-foto-link" onClick={desfazerFoto}>
+                  Desfazer
+                </button>
+              )
+            )}
+          </div>
+        )}
+        <input
+          ref={arquivoRef}
+          type="file"
+          accept="image/*"
+          className="sr-only"
+          tabIndex={-1}
+          onChange={(evento) => {
+            const entrada = evento.currentTarget;
+            const arquivo = entrada.files?.[0];
+            void escolherArquivoDeFoto(arquivo);
+            entrada.value = "";
+          }}
+        />
+        {camera.ativa &&
+          createPortal(
+            <div className="chk-cam-fundo">
+              <div className="chk-cam" role="dialog" aria-label="Tirar foto do item">
+                <span className="chk-cam-titulo">Foto do item</span>
+                <video ref={camera.videoRef} className="chk-cam-video" muted playsInline aria-label="Prévia da câmera" />
+                <div className="chk-cam-botoes">
+                  <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={camera.cancelar}>
+                    Cancelar
+                  </button>
+                  <button type="button" className="ui-btn ui-btn--primary ui-btn--small" onClick={camera.capturar}>
+                    Capturar
+                  </button>
+                </div>
+              </div>
+            </div>,
+            document.body
+          )}
         <div className="chk-obs-campo">
           <textarea
             ref={areaRef}
