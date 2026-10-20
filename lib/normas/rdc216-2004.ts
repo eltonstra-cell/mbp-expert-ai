@@ -22,6 +22,7 @@ export const RDC_216_2004: Norma = {
       rotulo: "4.11.3",
       orientacao: "Registros dos POPs guardados por 30 dias, a contar da data de preparação.",
       conferir: true,
+      prazoDias: 30,
     },
     "lista-de-pops": {
       rotulo: "4.11.4",
@@ -55,6 +56,7 @@ export const RDC_216_2004: Norma = {
       rotulo: "4.4.4",
       orientacao: "Reservatório higienizado em intervalo máximo de seis meses, com registro.",
       conferir: true,
+      prazoMeses: 6,
     },
   },
 };

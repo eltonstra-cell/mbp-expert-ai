@@ -20,6 +20,9 @@ import PcNormaAplicavel, { type DadosDaNorma } from "@/components/pc/PcNormaApli
 import { normasDaEmpresa } from "@/lib/normas";
 import PopLeituraFolha from "@/components/PopLeituraFolha";
 import PcFilaDeEnvio from "@/components/pc/PcFilaDeEnvio";
+import PcComprovantes, { type DadosDoFormulario } from "@/components/pc/PcComprovantes";
+import { RegistrosEmpresaContext, type RegistrosEmpresaValor } from "@/components/RegistrosEmpresaContext";
+import { criarRegistroPop, podeCriarRegistroPop, podeGerenciarComprovantes, podeVerComprovantes } from "@/lib/registrosEmpresa";
 import { useFilaDeEvidencias } from "@/components/useFilaDeEvidencias";
 import { useOnline } from "@/components/useOnline";
 import { FalhaDeEnvio, LIMITE_AVISO_FILA_BYTES, causaDaResposta, textoDeEspaco, type ItemSemArquivo } from "@/lib/filaEvidencias";
@@ -99,6 +102,7 @@ import pacote from "../package.json";
 import { LogoHorizontal, LogoSymbol, LogoWordmark } from "@/components/BrandLogo";
 import { IaPermitidaContext, useIaPermitida } from "@/components/IaPermissionContext";
 import type {
+  ComprovanteTerceiro,
   NaoConformidade,
   AppDB,
   AcaoPermissao,
@@ -199,7 +203,7 @@ import {
 } from "@/lib/userManagement";
 import { resumoConfiguracaoEmpresa } from "@/lib/companyReadiness";
 
-type View = "inicio" | "pops" | "ajuda" | "empresas" | "visitas" | "visita" | "ambientes" | "checklist" | "ncs" | "plano" | "acompanhamento" | "historico" | "evidencias" | "relatorio" | "acessos" | "correcoes" | "popsvisita" | "modotela" | "campomais" | "fila";
+type View = "inicio" | "pops" | "ajuda" | "empresas" | "visitas" | "visita" | "ambientes" | "checklist" | "ncs" | "plano" | "acompanhamento" | "historico" | "evidencias" | "relatorio" | "acessos" | "correcoes" | "popsvisita" | "modotela" | "campomais" | "fila" | "comprovantes";
 type EmpresaSecao = "dados" | "manual" | "ambientes" | "fluxos" | "programas" | "pops" | "privacidade" | "norma";
 type FiltroChecklistRapido = "Todos" | "Pendentes" | "Não conformes";
 
@@ -1638,6 +1642,8 @@ export default function Home() {
       registrosAuditoria: Array.isArray((s as any).registrosAuditoria)
         ? (s as any).registrosAuditoria
         : [],
+      registrosPop: Array.isArray((s as any).registrosPop) ? (s as any).registrosPop : [],
+      comprovantes: Array.isArray((s as any).comprovantes) ? (s as any).comprovantes : [],
       configuracaoAcesso:
         (s as any).configuracaoAcesso && typeof (s as any).configuracaoAcesso === "object"
           ? (s as any).configuracaoAcesso
@@ -1790,6 +1796,99 @@ export default function Home() {
         : `Há ${plural} neste aparelho.\n\nElas continuam na fila e serão enviadas normalmente, com qualquer empresa aberta.`,
       { titulo: "Evidências na fila", confirmarRotulo: acao === "sair" ? "Sair mesmo assim" : "Trocar mesmo assim" }
     );
+  }
+
+  // ===== Registros por POP e comprovantes de terceiros =====
+  function abrirComprovantes() {
+    setOrigemDosRegistros({ view, secao: empresaSecao });
+    if (view === "empresas" && editingEmpresaId) setDb((o) => ({ ...o, empresaAtualId: editingEmpresaId }));
+    setView("comprovantes");
+  }
+
+  function voltarDosComprovantes() {
+    const origem = origemDosRegistros;
+    setOrigemDosRegistros(null);
+    if (origem) {
+      setView(origem.view);
+      setEmpresaSecao(origem.secao);
+    } else {
+      setView("inicio");
+    }
+  }
+
+  // Comprovante: o arquivo vai para o armazenamento (exige internet; não entra na fila offline) e só então o registro é salvo.
+  async function salvarComprovante(dados: DadosDoFormulario, arquivo: File | null): Promise<string> {
+    const empresaId = atual?.id;
+    if (!empresaId) return "Escolha uma empresa.";
+    if (!podeGerenciarComprovantesAqui) return "Seu perfil não permite anexar comprovantes.";
+    const anterior = dados.id ? (db.comprovantes || []).find((item) => item.id === dados.id) : undefined;
+    const id = dados.id || crypto.randomUUID();
+    let blob: { pathname: string; url: string } | null = null;
+    let nomeArquivo = anterior?.nomeArquivo;
+    let mimeType = anterior?.mimeType;
+    if (arquivo) {
+      if (!navigator.onLine) return "Precisa de internet para enviar o arquivo.";
+      let conteudo: Blob = arquivo;
+      nomeArquivo = arquivo.name || "comprovante";
+      mimeType = arquivo.type || "application/pdf";
+      if (arquivo.type.startsWith("image/")) {
+        const preparo = await prepararFotoParaEnvio(arquivo, dependenciasDoNavegador);
+        if (!preparo.ok) return preparo.motivo;
+        conteudo = preparo.arquivo;
+        nomeArquivo = preparo.nome;
+        mimeType = "image/jpeg";
+      }
+      const form = new FormData();
+      form.append("file", conteudo, nomeArquivo);
+      form.append("empresaId", empresaId);
+      form.append("comprovanteId", id);
+      try {
+        const resposta = await fetch("/api/comprovantes/upload", { method: "POST", body: form });
+        const corpo = (resposta.headers.get("content-type") || "").includes("application/json") ? await resposta.json().catch(() => null) : null;
+        if (!resposta.ok || !corpo?.pathname) return corpo?.error || "Não foi possível enviar o comprovante. Tente de novo com internet.";
+        blob = { pathname: String(corpo.pathname), url: String(corpo.url || "") };
+      } catch {
+        return "Sem conexão para enviar o arquivo. Precisa de internet.";
+      }
+    }
+    const comprovante: ComprovanteTerceiro = {
+      id,
+      empresaId,
+      tipo: dados.tipo,
+      emissor: dados.emissor.trim(),
+      dataServico: dados.dataServico,
+      validade: dados.validade,
+      observacao: dados.observacao.trim(),
+      ...(blob ? { blobPathname: blob.pathname } : anterior?.blobPathname ? { blobPathname: anterior.blobPathname } : {}),
+      ...(nomeArquivo ? { nomeArquivo } : {}),
+      ...(mimeType ? { mimeType } : {}),
+      ...(dados.renovaId || anterior?.renovaId ? { renovaId: dados.renovaId || anterior?.renovaId } : {}),
+      criadoPorId: anterior?.criadoPorId || usuarioDaSessao?.id,
+      criadoEm: anterior?.criadoEm || new Date().toISOString(),
+    };
+    setDb((o) => {
+      const lista = o.comprovantes || [];
+      const atualizado: AppDB = { ...o, comprovantes: anterior ? lista.map((item) => (item.id === id ? comprovante : item)) : [...lista, comprovante] };
+      salvarDBLocal(atualizado);
+      return atualizado;
+    });
+    // Trocou o arquivo de um comprovante existente: o arquivo antigo sai do armazenamento.
+    if (blob && anterior?.blobPathname && anterior.blobPathname !== blob.pathname) {
+      void fetch(`/api/comprovantes/file?pathname=${encodeURIComponent(anterior.blobPathname)}`, { method: "DELETE" }).catch(() => undefined);
+    }
+    return "";
+  }
+
+  function removerComprovante(item: ComprovanteTerceiro) {
+    if (!exigirPermissao("empresas.ver", item.empresaId) || !podeGerenciarComprovantesAqui) return;
+    if (item.blobPathname) {
+      void fetch(`/api/comprovantes/file?pathname=${encodeURIComponent(item.blobPathname)}`, { method: "DELETE" }).catch(() => undefined);
+    }
+    setDb((o) => {
+      const atualizado: AppDB = { ...o, comprovantes: (o.comprovantes || []).filter((registro) => registro.id !== item.id) };
+      salvarDBLocal(atualizado);
+      return atualizado;
+    });
   }
 
   // Arquivo enviado pela fila: a evidência passa a apontar para ele e mostra "Enviada".
@@ -2156,6 +2255,60 @@ export default function Home() {
   const configuracaoEmpresaAtual = resumoConfiguracaoEmpresa(atual);
   // O RT é avisado no Início quando a norma citada por um POP aprovado mudou no catálogo.
   const avisoPopsDoInicio = atual && usuarioDaSessao && permitido("empresas.editar", atual.id) ? avisoDePopsComNormaAlterada(atual.pops || []) : null;
+
+  const [origemDosRegistros, setOrigemDosRegistros] = useState<{ view: View; secao: typeof empresaSecao } | null>(null);
+  const empresaDosRegistros = view === "empresas" && editingEmpresaId ? db.empresas[editingEmpresaId] : atual;
+  const podeCriarRegistro = !usuarioDaSessao || podeCriarRegistroPop(usuarioDaSessao);
+  const podeGerenciarComprovantesAqui = !usuarioDaSessao || podeGerenciarComprovantes(usuarioDaSessao);
+  const podeVerComprovantesAqui = !usuarioDaSessao || podeVerComprovantes(usuarioDaSessao);
+
+  function atualizarEmpresaDosRegistros(empresaId: string, mudar: (empresa: Empresa) => Empresa) {
+    setDb((o) => {
+      const empresa = o.empresas[empresaId];
+      if (!empresa) return o;
+      const atualizado: AppDB = { ...o, empresas: { ...o.empresas, [empresaId]: mudar(empresa) } };
+      salvarDBLocal(atualizado);
+      return atualizado;
+    });
+  }
+
+  const registrosDaEmpresa: RegistrosEmpresaValor | null = empresaDosRegistros
+    ? {
+        empresaId: empresaDosRegistros.id,
+        empresa: empresaDosRegistros,
+        usuario: usuarioDaSessao,
+        registros: (db.registrosPop || []).filter((registro) => registro.empresaId === empresaDosRegistros.id),
+        comprovantes: podeVerComprovantesAqui ? (db.comprovantes || []).filter((item) => item.empresaId === empresaDosRegistros.id) : [],
+        podeCriarRegistro,
+        podeEditarEmpresa: permitido("empresas.editar", empresaDosRegistros.id),
+        novoRegistro: (dados) => {
+          const resultado = criarRegistroPop({
+            ...dados,
+            id: crypto.randomUUID(),
+            empresaId: empresaDosRegistros.id,
+            responsavel: usuarioDaSessao?.nome || sessaoAtual?.name || "",
+            responsavelId: usuarioDaSessao?.id,
+          });
+          if (resultado.ok) {
+            setDb((o) => {
+              const atualizado: AppDB = { ...o, registrosPop: [...(o.registrosPop || []), resultado.registro] };
+              salvarDBLocal(atualizado);
+              return atualizado;
+            });
+          }
+          return resultado;
+        },
+        definirGuarda: (dias) => {
+          if (!exigirPermissao("empresas.editar", empresaDosRegistros.id)) return;
+          atualizarEmpresaDosRegistros(empresaDosRegistros.id, (empresa) => ({ ...empresa, guardaRegistrosDias: dias }));
+        },
+        definirProva: (popId, registroId) => {
+          if (!exigirPermissao("empresas.editar", empresaDosRegistros.id)) return;
+          atualizarEmpresaDosRegistros(empresaDosRegistros.id, (empresa) => ({ ...empresa, registroProvaPorPop: { ...(empresa.registroProvaPorPop || {}), [popId]: registroId } }));
+        },
+      }
+    : null;
+
   const empresaGerenciada = editingEmpresaId
     ? db.empresas[editingEmpresaId]
     : atual;
@@ -3005,6 +3158,8 @@ export default function Home() {
             normasAplicadas: anterior.normasAplicadas,
             normasConfirmadasPeloRt: anterior.normasConfirmadasPeloRt,
             responsavelEstabelecimento: anterior.responsavelEstabelecimento,
+            guardaRegistrosDias: anterior.guardaRegistrosDias,
+            registroProvaPorPop: anterior.registroProvaPorPop,
           }
         : {}),
     };
@@ -5754,6 +5909,7 @@ export default function Home() {
 
   return (
     <IaPermitidaContext.Provider value={deveExibirRecursosDeIa(usuarioDaSessao)}>
+    <RegistrosEmpresaContext.Provider value={registrosDaEmpresa}>
     <AvisoFotoProvider visitaId={visitaAtual?.id ?? visitaEmAndamentoDestaque?.id ?? null}>
     <AvisoFotoPonte alvo={pedirAvisoDeFotoRef} />
     <div className="min-h-screen bg-[var(--bg)]">
@@ -6443,6 +6599,17 @@ export default function Home() {
             onEncerrarAcesso={encerrarAcessoDoFiscal}
             motivoNaoExcluir={(usuario) => motivoParaNaoExcluir(usuario, contextoExclusaoUsuario())}
           />
+        ) : view === "comprovantes" && atual && podeVerComprovantesAqui && (!usuarioDaSessao || usuarioDaSessao.perfil !== "Executor de campo") ? (
+          <PcComprovantes
+            empresa={nomeParaExibir(atual)}
+            comprovantes={(db.comprovantes || []).filter((item) => item.empresaId === atual.id)}
+            podeGerenciar={podeGerenciarComprovantesAqui}
+            online={online}
+            onSalvar={salvarComprovante}
+            onRemover={removerComprovante}
+            urlDoArquivo={(item) => `/api/comprovantes/file?pathname=${encodeURIComponent(item.blobPathname || "")}`}
+            onVoltar={voltarDosComprovantes}
+          />
         ) : view === "fila" ? (
           <PcFilaDeEnvio
             itens={fila.itens}
@@ -6476,6 +6643,7 @@ export default function Home() {
             usuario={usuarioDaSessao}
             podeEditar={false}
             onPersistir={(novos) => persistirPopsDaEmpresa(atual.id, novos)}
+            onAbrirComprovantes={podeVerComprovantesAqui ? abrirComprovantes : undefined}
             temAlteracoes={false}
             onSalvar={() => undefined}
             onVoltar={() => setView("inicio")}
@@ -6488,6 +6656,7 @@ export default function Home() {
               empresa={empresaGerenciada ? { ...empresaGerenciada, normasAplicadas: empresaGerenciada.normasAplicadas } : undefined}
               usuario={usuarioDaSessao}
               onPersistir={(novos) => empresaGerenciada && persistirPopsDaEmpresa(empresaGerenciada.id, novos)}
+              onAbrirComprovantes={podeVerComprovantesAqui ? abrirComprovantes : undefined}
               temAlteracoes={empresaTemAlteracoes}
               mensagem={msg}
               onSalvar={salvarEmpresa}
@@ -8703,6 +8872,7 @@ export default function Home() {
             popsAprovados={(atual?.pops || [])
               .filter((pop) => pop.status === "Aprovado" && !pop.arquivado)
               .map((pop) => ({ id: pop.id, codigo: pop.codigo, titulo: pop.titulo, versao: pop.versao }))}
+            onAbrirComprovantes={abrirComprovantes}
           />
         ) : view === "inicio" ? (
           ehPC ? (
@@ -9261,6 +9431,7 @@ export default function Home() {
       </div>
     </div>
     </AvisoFotoProvider>
+    </RegistrosEmpresaContext.Provider>
     </IaPermitidaContext.Provider>
   );
 }

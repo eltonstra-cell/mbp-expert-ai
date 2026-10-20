@@ -60,6 +60,8 @@ type Props = {
   podeEditar?: boolean;
   /** Grava os POPs na hora (sem esperar o "Salvar" da empresa). */
   onPersistir?: (pops: ProcedimentoOperacionalPadronizado[]) => void;
+  /** Abre "Comprovantes e documentos com validade" (só para quem pode ver comprovantes). */
+  onAbrirComprovantes?: () => void;
 };
 
 function dataCurta(iso: string) {
@@ -68,7 +70,7 @@ function dataCurta(iso: string) {
   return `revisão ${dia}/${mes}/${ano}`;
 }
 
-export default function PcPops({ pops, onChange, temAlteracoes, mensagem, onSalvar, onVoltar, empresa, usuario = null, podeEditar = true, onPersistir }: Props) {
+export default function PcPops({ pops, onChange, temAlteracoes, mensagem, onSalvar, onVoltar, empresa, usuario = null, podeEditar = true, onPersistir, onAbrirComprovantes }: Props) {
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [mensagemEditor, setMensagemEditor] = useState("");
   const [codigo, setCodigo] = useState("");
@@ -154,9 +156,16 @@ export default function PcPops({ pops, onChange, temAlteracoes, mensagem, onSalv
           <h1 className="ui-title">POPs</h1>
           <p className="ui-subtitle">Procedimentos Operacionais Padronizados: cadastro, aprovação e revisão.</p>
         </div>
-        <button type="button" className="ui-btn ui-btn--secondary" onClick={onVoltar}>
-          ← Central
-        </button>
+        <div className="ui-head-actions">
+          {onAbrirComprovantes && (
+            <button type="button" className="ui-btn ui-btn--secondary" onClick={onAbrirComprovantes}>
+              Comprovantes e documentos
+            </button>
+          )}
+          <button type="button" className="ui-btn ui-btn--secondary" onClick={onVoltar}>
+            ← Central
+          </button>
+        </div>
       </div>
 
       <StatStrip

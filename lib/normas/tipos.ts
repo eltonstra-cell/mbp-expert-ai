@@ -8,6 +8,10 @@ export type ItemDeNorma = {
   orientacao: string;
   /** Citação ainda não conferida no texto oficial: o app mostra "conferir". */
   conferir?: boolean;
+  /** Prazo em dias citado no item (ex.: guarda dos registros). Vale o que o item diz; o app só o exibe. */
+  prazoDias?: number;
+  /** Prazo em meses citado no item (ex.: intervalo da limpeza do reservatório). */
+  prazoMeses?: number;
 };
 
 export type Norma = {

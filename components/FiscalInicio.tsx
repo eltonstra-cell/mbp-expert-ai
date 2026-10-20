@@ -9,10 +9,13 @@ export default function FiscalInicio({
   nome,
   empresa,
   popsAprovados,
+  onAbrirComprovantes,
 }: {
   nome: string;
   empresa: string;
   popsAprovados: PopAprovadoLinha[];
+  /** Comprovantes de terceiros com validade (só leitura). */
+  onAbrirComprovantes?: () => void;
 }) {
   return (
     <section className="ui-screen fiscal-inicio" aria-label="Início do Fiscal">
@@ -38,6 +41,17 @@ export default function FiscalInicio({
             </div>
             <p className="ui-row-sub">O dossiê reunido da empresa vai aparecer aqui.</p>
           </article>
+          {onAbrirComprovantes && (
+            <article className="ui-card fiscal-cartao">
+              <div className="pc-card-head">
+                <h2 className="ui-card-title">Comprovantes e documentos</h2>
+                <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={onAbrirComprovantes}>
+                  Abrir
+                </button>
+              </div>
+              <p className="ui-row-sub">Certificados de terceiros com validade (somente leitura).</p>
+            </article>
+          )}
           <article className="ui-card fiscal-cartao">
             <div className="pc-card-head">
               <h2 className="ui-card-title">POPs aprovados</h2>

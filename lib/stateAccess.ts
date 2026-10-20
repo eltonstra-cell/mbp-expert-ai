@@ -1,4 +1,5 @@
-import type { AcaoPermissao, AppDB, UsuarioSistema } from "@/types";
+import type { AcaoPermissao, AppDB, RegistroPop, UsuarioSistema } from "@/types";
+import { podeCriarRegistroPop, podeGerenciarComprovantes, podeVerComprovantes } from "./registrosEmpresa.ts";
 import { permissoesEfetivas } from "./screenAccess.ts";
 import { acessoVigente } from "./validadeDeAcesso.ts";
 
@@ -61,6 +62,9 @@ export function filtrarEstadoPorUsuario(
     (evidencia) =>
       empresaIds.has(evidencia.empresaId) && visitaIds.has(evidencia.visitaId)
   );
+  // Registros por POP: quem vê o POP vê os registros. Comprovantes: não vão para o Executor de campo.
+  const registrosPop = (data.registrosPop || []).filter((registro) => empresaIds.has(registro.empresaId));
+  const comprovantes = podeVerComprovantes(efetivo) ? (data.comprovantes || []).filter((item) => empresaIds.has(item.empresaId)) : [];
   // Fiscal: só empresas e POPs aprovados; nada de visitas, correções, evidências ou rascunhos.
   if (usuario.perfil === "Fiscal") {
     const somenteAprovados = Object.fromEntries(
@@ -78,6 +82,8 @@ export function filtrarEstadoPorUsuario(
       evidencias: [],
       usuarios: [usuario],
       registrosAuditoria: [],
+      registrosPop,
+      comprovantes,
     };
   }
   // Executor de campo: não recebe correções; dos POPs recebe só os aprovados, para ler no checklist ("Ver POP").
@@ -104,6 +110,8 @@ export function filtrarEstadoPorUsuario(
     evidencias,
     usuarios: [usuario],
     registrosAuditoria,
+    registrosPop,
+    comprovantes,
   };
 }
 
@@ -193,6 +201,29 @@ function aplicarSomenteAprovacoes(
   return resultado;
 }
 
+/**
+ * Registros por POP: só acrescentam. Registro que já existe nunca muda nem some; o novo precisa ser de uma empresa
+ * do usuário e de um POP que existe nela; o servidor grava o responsável que está logado.
+ */
+export function mesclarRegistrosPop(
+  atuais: RegistroPop[],
+  recebidos: RegistroPop[],
+  empresas: AppDB["empresas"],
+  empresaIds: Set<string>,
+  usuarioId: string
+): RegistroPop[] {
+  const existentes = new Set(atuais.map((registro) => registro.id));
+  const novos: RegistroPop[] = [];
+  for (const registro of recebidos) {
+    if (existentes.has(registro.id) || !empresaIds.has(registro.empresaId)) continue;
+    if (!(empresas[registro.empresaId]?.pops || []).some((pop) => pop.id === registro.popId)) continue;
+    if (typeof registro.descricao !== "string" || !registro.descricao.trim()) continue;
+    existentes.add(registro.id);
+    novos.push({ ...registro, descricao: registro.descricao.slice(0, 2000), responsavelId: usuarioId });
+  }
+  return novos.length ? [...atuais, ...novos] : atuais;
+}
+
 function mesclarPorEscopo<T extends { id: string; empresaId: string }>(
   colecao: string,
   atuais: T[],
@@ -250,6 +281,15 @@ export function mesclarEstadoPorUsuario(
   let visitas = atual.visitas;
   let ncs = atual.ncs;
   let evidencias = atual.evidencias;
+  let registrosPop = atual.registrosPop;
+  let comprovantes = atual.comprovantes;
+
+  if (podeCriarRegistroPop(efetivo)) {
+    registrosPop = mesclarRegistrosPop(atual.registrosPop || [], recebido.registrosPop || [], atual.empresas, empresaIds, usuario.id);
+  }
+  if (podeGerenciarComprovantes(efetivo)) {
+    comprovantes = mesclarPorEscopo("comprovantes", atual.comprovantes || [], recebido.comprovantes || [], empresaIds, true).map((item) => ({ ...item, criadoPorId: item.criadoPorId || usuario.id }));
+  }
 
   if (possuiPermissao(efetivo, "empresas.editar")) {
     empresas = { ...atual.empresas };
@@ -335,6 +375,8 @@ export function mesclarEstadoPorUsuario(
     visitas,
     ncs,
     evidencias,
+    registrosPop,
+    comprovantes,
     usuarios: atual.usuarios.map((item) =>
       item.id === usuario.id ? usuarioVinculado : item
     ),

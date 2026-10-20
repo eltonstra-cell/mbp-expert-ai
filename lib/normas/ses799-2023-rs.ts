@@ -25,6 +25,7 @@ export const SES_799_2023_RS: Norma = {
     "guarda-de-registros": {
       rotulo: "Anexo I, 13.2",
       orientacao: "Registros guardados por 90 dias.",
+      prazoDias: 90,
     },
     "lista-de-pops": {
       rotulo: "Anexo II, 13.7 (a–d)",
@@ -56,6 +57,17 @@ export const SES_799_2023_RS: Norma = {
     "reservatorio-intervalo": {
       rotulo: MESMO_ITEM_DA_RDC,
       orientacao: "Reservatório higienizado em intervalo máximo de seis meses, com registro.",
+      conferir: true,
+    },
+    // Referências de capacitação trazidas da pesquisa do responsável do projeto: sem número de item confirmado.
+    "capacitacao-admissional-anual": {
+      rotulo: MESMO_ITEM_DA_RDC,
+      orientacao: "Capacitação dos manipuladores na admissão e todos os anos.",
+      conferir: true,
+    },
+    "curso-do-responsavel": {
+      rotulo: MESMO_ITEM_DA_RDC,
+      orientacao: "Curso do responsável pelas atividades com carga horária mínima de 12 h e atualização anual.",
       conferir: true,
     },
     "acao-corretiva": {

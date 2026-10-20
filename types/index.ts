@@ -52,6 +52,10 @@ export type Empresa = {
   normasAplicadas?: string[];
   /** O RT confirmou as normas aplicadas (quem e quando). */
   normasConfirmadasPeloRt?: { nome: string; usuarioId?: string; em: string };
+  /** Guarda dos registros por POP, em dias, quando nenhuma norma estadual aplicada fixa o prazo: quem define é o RT. */
+  guardaRegistrosDias?: number;
+  /** Registro que prova a execução de cada POP (popId -> id do registro), escolhido pelo RT. */
+  registroProvaPorPop?: Record<string, string>;
   /** Responsável do estabelecimento (RDC 216, 4.11.2): só a pessoa vinculada em Acessos aprova POPs. */
   responsavelEstabelecimento?: { nome: string; cargo: string; usuarioId?: string };
 };
@@ -466,6 +470,46 @@ export type ConfiguracaoAcesso = {
   atualizadoEm: string;
 };
 
+/** Registro de execução de um POP. Nunca é editado: a correção vira um novo registro que cita o anterior. */
+export type RegistroPop = {
+  id: string;
+  empresaId: string;
+  popId: string;
+  /** Versão do POP vigente quando o registro foi feito. */
+  popVersao: string;
+  /** Data e hora do que foi feito (ISO); editável na hora de criar. */
+  dataHora: string;
+  responsavel: string;
+  /** Quem estava no app (o servidor grava o dele). */
+  responsavelId?: string;
+  descricao: string;
+  ambiente?: string;
+  corrigeRegistroId?: string;
+  criadoEm: string;
+};
+
+export type TipoComprovante = "pragas" | "reservatorio" | "contrato-rt" | "outro";
+
+/** Documento de terceiros com validade (certificado de pragas, limpeza do reservatório, contrato do RT...). */
+export type ComprovanteTerceiro = {
+  id: string;
+  empresaId: string;
+  tipo: TipoComprovante;
+  emissor: string;
+  /** AAAA-MM-DD */
+  dataServico: string;
+  /** AAAA-MM-DD */
+  validade: string;
+  blobPathname?: string;
+  nomeArquivo?: string;
+  mimeType?: string;
+  observacao: string;
+  /** Comprovante que este renovou. */
+  renovaId?: string;
+  criadoPorId?: string;
+  criadoEm: string;
+};
+
 export type AppDB = {
   empresas: Record<string, Empresa>;
   empresaAtualId: string | null;
@@ -475,4 +519,7 @@ export type AppDB = {
   usuarios: UsuarioSistema[];
   registrosAuditoria: RegistroAuditoria[];
   configuracaoAcesso: ConfiguracaoAcesso;
+  /** Coleções novas, opcionais no JSON do estado (sem migration). */
+  registrosPop?: RegistroPop[];
+  comprovantes?: ComprovanteTerceiro[];
 };

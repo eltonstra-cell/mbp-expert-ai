@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { ConteudoPop, Empresa, PassoPop, ProcedimentoOperacionalPadronizado, UsuarioSistema } from "@/types";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
 import { Pill } from "@/components/ui/Pill";
+import PcRegistrosDoPop from "@/components/pc/PcRegistrosDoPop";
+import { useRegistrosDaEmpresa } from "@/components/RegistrosEmpresaContext";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import {
   CONJUNTO_DA_NORMA,
@@ -19,7 +21,7 @@ import {
 } from "@/lib/popsNorma";
 import { normasDaEmpresa } from "@/lib/normas";
 
-type Aba = "procedimento" | "versoes";
+type Aba = "procedimento" | "versoes" | "registros";
 type Secao = "identificacao" | "objetivo" | "referencias" | "responsavel" | "passos" | "acao" | "registro" | "extra" | "extra2";
 
 type Props = {
@@ -74,6 +76,7 @@ const passosPorPagina = (largo: boolean) => (largo ? 4 : 2);
 // POP em campos: Procedimento e Versões. Registros e Treinamento aparecem como "em breve".
 export default function PcPopEditor({ pop, empresa, usuario, podeEditar, onSalvarRascunho, onEnviar, onAprovar, onNovaVersao, onVoltar, mensagem }: Props) {
   const [rascunho, setRascunho] = useState<ProcedimentoOperacionalPadronizado>(pop);
+  const temRegistros = Boolean(useRegistrosDaEmpresa());
   const [aba, setAba] = useState<Aba>("procedimento");
   const [secao, setSecao] = useState<Secao | null>("passos");
   const [emBreve, setEmBreve] = useState("");
@@ -171,11 +174,9 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, onSalva
           abas={[
             { id: "procedimento", rotulo: "Procedimento" },
             { id: "versoes", rotulo: "Versões", contagem: versoes.length },
+            ...(temRegistros ? [{ id: "registros" as const, rotulo: "Registros" }] : []),
           ]}
         />
-        <button type="button" className="pop-aba-breve" onClick={() => setEmBreve("Registros")}>
-          Registros <span className="em-breve">em breve</span>
-        </button>
         <button type="button" className="pop-aba-breve" onClick={() => setEmBreve("Treinamento")}>
           Treinamento <span className="em-breve">em breve</span>
         </button>
@@ -363,6 +364,12 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, onSalva
             </SecaoRecolhivel>
             </>
           )}
+        </div>
+      )}
+
+      {aba === "registros" && temRegistros && (
+        <div className="pop-registros-area">
+          <PcRegistrosDoPop pop={rascunho} />
         </div>
       )}
 

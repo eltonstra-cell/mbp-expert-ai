@@ -22,12 +22,14 @@ const CHAVES_CONHECIDAS = new Set([
   "usuarios",
   "registrosAuditoria",
   "configuracaoAcesso",
+  "registrosPop",
+  "comprovantes",
 ]);
 
 // Coleções que a mesclagem do servidor percorre: precisam existir como lista
 // (ou mapa, no caso de empresas), senão a gravação falharia no meio.
 const COLECOES_OBRIGATORIAS = ["visitas", "ncs", "evidencias"] as const;
-const COLECOES_OPCIONAIS = ["usuarios", "registrosAuditoria"] as const;
+const COLECOES_OPCIONAIS = ["usuarios", "registrosAuditoria", "registrosPop", "comprovantes"] as const;
 
 export type ValidacaoEstado =
   | { ok: true; estado: Record<string, unknown> }
