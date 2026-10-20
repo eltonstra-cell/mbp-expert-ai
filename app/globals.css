@@ -3444,3 +3444,34 @@ html[data-modo="equilibrado"] .campo-tela{height:calc(100dvh - 190px - var(--fai
 .comp-solta.is-invalida{border-color:#B42318}
 .comp-form-acoes{display:flex;justify-content:flex-end;gap:8px}
 @media (min-width:900px){.comp-cols{grid-template-columns:minmax(0,1fr) 380px}.comp-cols.is-single{grid-template-columns:minmax(0,1fr)}.comp-form{display:flex}}
+/* Pessoas, capacitação e treinamento por POP */
+.pess-cols{display:grid;grid-template-columns:1fr;gap:12px;min-height:0;flex:1}
+.pess-lista{min-width:0;min-height:0;overflow-y:auto}
+.pess-form{display:flex;flex-direction:column;gap:8px;padding:12px 14px}
+@media (min-width:900px){.pess-cols{grid-template-columns:minmax(0,1fr) 380px}}
+.pess-tabela{width:100%;border-collapse:collapse;font-size:.9rem}
+.pess-tabela th{padding:6px 8px;border-bottom:1.5px solid #DDE6EA;text-align:left;font-weight:500;font-size:.78rem;color:var(--ink-2)}
+.pess-tabela td{padding:6px 8px;border-bottom:1px solid #EEF1F5;vertical-align:middle;color:var(--ink)}
+.pess-tabela tr.is-antiga td{opacity:.6}
+.pess-apoio{display:flex;flex-direction:column;gap:2px;padding:6px 10px;border:1px solid #DDE6EA;border-radius:12px;background:#fff}
+.pess-ref{overflow-wrap:anywhere}
+.pop-treino{display:flex;flex-direction:column;gap:8px}
+.pop-treino-topo{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:8px}
+.pop-treino-data{max-width:200px}
+.pop-treino-linha{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:6px 10px;border:1px solid #DDE6EA;border-radius:12px;background:#fff}
+.pop-treino-nome{flex:1 1 180px;min-width:0;color:var(--ink)}
+.pess-linha{display:grid;gap:8px}
+.pess-linha--2-1{grid-template-columns:minmax(0,2fr) minmax(0,1fr)}
+.pess-linha--3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.pess-apoio summary{cursor:pointer}
+.pess-apoio .ui-row-sub{white-space:normal;overflow:visible;text-overflow:clip}
+.pess-tabela td:first-child{white-space:nowrap}
+@media (min-width:900px){.pess-cols{grid-template-columns:minmax(0,1fr) 520px}}
+.pess-form{gap:6px}
+.pess-form .comp-sugestao{flex-wrap:nowrap;align-items:center;gap:8px;padding:4px 10px;font-size:.8rem;line-height:1.25}
+.pess-form .comp-sugestao .ui-btn{flex:none}
+.pess-form>.ui-row-sub{font-size:.8rem}
+@media (min-width:900px){.pess-cols{grid-template-columns:minmax(0,1fr) 440px}}
+.pess-tabela{font-size:.8rem}
+.pess-tabela th,.pess-tabela td{padding:5px 5px}
+.pess-tabela td:first-child{white-space:normal}

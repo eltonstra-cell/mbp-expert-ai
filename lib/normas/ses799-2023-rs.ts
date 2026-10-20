@@ -64,11 +64,13 @@ export const SES_799_2023_RS: Norma = {
       rotulo: MESMO_ITEM_DA_RDC,
       orientacao: "Capacitação dos manipuladores na admissão e todos os anos.",
       conferir: true,
+      prazoMeses: 12,
     },
     "curso-do-responsavel": {
       rotulo: MESMO_ITEM_DA_RDC,
       orientacao: "Curso do responsável pelas atividades com carga horária mínima de 12 h e atualização anual.",
       conferir: true,
+      prazoMeses: 12,
     },
     "acao-corretiva": {
       rotulo: "Anexo II, 13.2",

@@ -510,6 +510,44 @@ export type ComprovanteTerceiro = {
   criadoEm: string;
 };
 
+/** Pessoa da equipe da empresa para o treinamento nominal. Não é conta de acesso: só nome, cargo e se está ativa. */
+export type Colaborador = {
+  id: string;
+  empresaId: string;
+  nome: string;
+  cargo: string;
+  ativo: boolean;
+  criadoEm: string;
+};
+
+/** Capacitação nominal: só nome (pelo colaborador), conteúdo, horas e datas. Nada de saúde, CPF, foto ou nascimento. */
+export type Capacitacao = {
+  id: string;
+  empresaId: string;
+  colaboradorId: string;
+  conteudo: string;
+  cargaHoraria: number;
+  /** AAAA-MM-DD */
+  data: string;
+  /** AAAA-MM-DD; vazio = sem vencimento. Sempre editável. */
+  venceEm: string;
+  instrutor?: string;
+  criadoEm: string;
+};
+
+/** Leitura de uma versão de POP por um colaborador. Nova versão do POP começa sem leituras. */
+export type LeituraPop = {
+  id: string;
+  empresaId: string;
+  popId: string;
+  popVersao: string;
+  colaboradorId: string;
+  /** AAAA-MM-DD */
+  data: string;
+  registradoPorId?: string;
+  criadoEm: string;
+};
+
 export type AppDB = {
   empresas: Record<string, Empresa>;
   empresaAtualId: string | null;
@@ -522,4 +560,7 @@ export type AppDB = {
   /** Coleções novas, opcionais no JSON do estado (sem migration). */
   registrosPop?: RegistroPop[];
   comprovantes?: ComprovanteTerceiro[];
+  colaboradores?: Colaborador[];
+  capacitacoes?: Capacitacao[];
+  leiturasPop?: LeituraPop[];
 };

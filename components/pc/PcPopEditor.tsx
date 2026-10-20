@@ -5,6 +5,7 @@ import type { ConteudoPop, Empresa, PassoPop, ProcedimentoOperacionalPadronizado
 import FieldVoiceTools from "@/components/FieldVoiceTools";
 import { Pill } from "@/components/ui/Pill";
 import PcRegistrosDoPop from "@/components/pc/PcRegistrosDoPop";
+import PcTreinamentoDoPop from "@/components/pc/PcTreinamentoDoPop";
 import { useRegistrosDaEmpresa } from "@/components/RegistrosEmpresaContext";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import {
@@ -21,7 +22,7 @@ import {
 } from "@/lib/popsNorma";
 import { normasDaEmpresa } from "@/lib/normas";
 
-type Aba = "procedimento" | "versoes" | "registros";
+type Aba = "procedimento" | "versoes" | "registros" | "treinamento";
 type Secao = "identificacao" | "objetivo" | "referencias" | "responsavel" | "passos" | "acao" | "registro" | "extra" | "extra2";
 
 type Props = {
@@ -76,7 +77,10 @@ const passosPorPagina = (largo: boolean) => (largo ? 4 : 2);
 // POP em campos: Procedimento e Versões. Registros e Treinamento aparecem como "em breve".
 export default function PcPopEditor({ pop, empresa, usuario, podeEditar, onSalvarRascunho, onEnviar, onAprovar, onNovaVersao, onVoltar, mensagem }: Props) {
   const [rascunho, setRascunho] = useState<ProcedimentoOperacionalPadronizado>(pop);
-  const temRegistros = Boolean(useRegistrosDaEmpresa());
+  const contextoDaEmpresa = useRegistrosDaEmpresa();
+  const temRegistros = Boolean(contextoDaEmpresa);
+  // Treinamento nominal: só para quem gerencia pessoas (nem Fiscal nem Executor).
+  const temTreinamento = Boolean(contextoDaEmpresa?.podeGerenciarPessoas);
   const [aba, setAba] = useState<Aba>("procedimento");
   const [secao, setSecao] = useState<Secao | null>("passos");
   const [emBreve, setEmBreve] = useState("");
@@ -175,11 +179,9 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, onSalva
             { id: "procedimento", rotulo: "Procedimento" },
             { id: "versoes", rotulo: "Versões", contagem: versoes.length },
             ...(temRegistros ? [{ id: "registros" as const, rotulo: "Registros" }] : []),
+            ...(temTreinamento ? [{ id: "treinamento" as const, rotulo: "Treinamento" }] : []),
           ]}
         />
-        <button type="button" className="pop-aba-breve" onClick={() => setEmBreve("Treinamento")}>
-          Treinamento <span className="em-breve">em breve</span>
-        </button>
       </div>
       {emBreve && <p className="ui-row-sub pop-breve-nota">{emBreve} ainda não está disponível: fica para um próximo pacote.</p>}
 
@@ -364,6 +366,12 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, onSalva
             </SecaoRecolhivel>
             </>
           )}
+        </div>
+      )}
+
+      {aba === "treinamento" && temTreinamento && (
+        <div className="pop-registros-area">
+          <PcTreinamentoDoPop pop={rascunho} />
         </div>
       )}
 

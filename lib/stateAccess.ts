@@ -1,5 +1,5 @@
 import type { AcaoPermissao, AppDB, RegistroPop, UsuarioSistema } from "@/types";
-import { podeCriarRegistroPop, podeGerenciarComprovantes, podeVerComprovantes } from "./registrosEmpresa.ts";
+import { podeCriarRegistroPop, podeGerenciarComprovantes, podeGerenciarPessoas, podeVerComprovantes } from "./registrosEmpresa.ts";
 import { permissoesEfetivas } from "./screenAccess.ts";
 import { acessoVigente } from "./validadeDeAcesso.ts";
 
@@ -65,6 +65,12 @@ export function filtrarEstadoPorUsuario(
   // Registros por POP: quem vê o POP vê os registros. Comprovantes: não vão para o Executor de campo.
   const registrosPop = (data.registrosPop || []).filter((registro) => empresaIds.has(registro.empresaId));
   const comprovantes = podeVerComprovantes(efetivo) ? (data.comprovantes || []).filter((item) => empresaIds.has(item.empresaId)) : [];
+  // Pessoas, capacitações e leituras de POP: só para Administrador, RT, Gestor e Gerente (nem Fiscal nem Executor).
+  const verPessoas = podeGerenciarPessoas(efetivo);
+  const doEscopo = <T extends { empresaId: string }>(lista: T[] | undefined) => (verPessoas ? (lista || []).filter((item) => empresaIds.has(item.empresaId)) : []);
+  const colaboradores = doEscopo(data.colaboradores);
+  const capacitacoes = doEscopo(data.capacitacoes);
+  const leiturasPop = doEscopo(data.leiturasPop);
   // Fiscal: só empresas e POPs aprovados; nada de visitas, correções, evidências ou rascunhos.
   if (usuario.perfil === "Fiscal") {
     const somenteAprovados = Object.fromEntries(
@@ -84,6 +90,9 @@ export function filtrarEstadoPorUsuario(
       registrosAuditoria: [],
       registrosPop,
       comprovantes,
+      colaboradores,
+      capacitacoes,
+      leiturasPop,
     };
   }
   // Executor de campo: não recebe correções; dos POPs recebe só os aprovados, para ler no checklist ("Ver POP").
@@ -112,6 +121,9 @@ export function filtrarEstadoPorUsuario(
     registrosAuditoria,
     registrosPop,
     comprovantes,
+    colaboradores,
+    capacitacoes,
+    leiturasPop,
   };
 }
 
@@ -283,12 +295,21 @@ export function mesclarEstadoPorUsuario(
   let evidencias = atual.evidencias;
   let registrosPop = atual.registrosPop;
   let comprovantes = atual.comprovantes;
+  let colaboradores = atual.colaboradores;
+  let capacitacoes = atual.capacitacoes;
+  let leiturasPop = atual.leiturasPop;
 
   if (podeCriarRegistroPop(efetivo)) {
     registrosPop = mesclarRegistrosPop(atual.registrosPop || [], recebido.registrosPop || [], atual.empresas, empresaIds, usuario.id);
   }
   if (podeGerenciarComprovantes(efetivo)) {
     comprovantes = mesclarPorEscopo("comprovantes", atual.comprovantes || [], recebido.comprovantes || [], empresaIds, true).map((item) => ({ ...item, criadoPorId: item.criadoPorId || usuario.id }));
+  }
+
+  if (podeGerenciarPessoas(efetivo)) {
+    colaboradores = mesclarPorEscopo("colaboradores", atual.colaboradores || [], recebido.colaboradores || [], empresaIds, true);
+    capacitacoes = mesclarPorEscopo("capacitacoes", atual.capacitacoes || [], recebido.capacitacoes || [], empresaIds, true);
+    leiturasPop = mesclarPorEscopo("leiturasPop", atual.leiturasPop || [], recebido.leiturasPop || [], empresaIds, true);
   }
 
   if (possuiPermissao(efetivo, "empresas.editar")) {
@@ -377,6 +398,9 @@ export function mesclarEstadoPorUsuario(
     evidencias,
     registrosPop,
     comprovantes,
+    colaboradores,
+    capacitacoes,
+    leiturasPop,
     usuarios: atual.usuarios.map((item) =>
       item.id === usuario.id ? usuarioVinculado : item
     ),

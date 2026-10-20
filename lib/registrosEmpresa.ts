@@ -1,7 +1,7 @@
 // Registros por POP, comprovantes de terceiros com validade e a lista de pendências da empresa.
 // Lógica pura (testável fora do navegador). Nenhum prazo de norma é escrito aqui: os prazos vêm de lib/normas/
 // (todos marcados "conferir") ou do RT. Nada é apagado: registro fora do prazo de guarda só vai para a lista "Revisar".
-import type { ComprovanteTerceiro, Empresa, PerfilUsuario, RegistroPop, TipoComprovante, UsuarioSistema } from "../types/index.ts";
+import type { Capacitacao, Colaborador, ComprovanteTerceiro, Empresa, LeituraPop, PerfilUsuario, RegistroPop, TipoComprovante, UsuarioSistema } from "../types/index.ts";
 import { CATALOGO_DE_NORMAS, normasDaEmpresa, type Norma } from "./normas/index.ts";
 import { hojeISO } from "./popsNorma.ts";
 import { acessoVigente } from "./validadeDeAcesso.ts";
@@ -24,6 +24,10 @@ export function podeVerRegistrosPop(usuario: Quem): boolean {
 /** Criar, editar e renovar comprovantes: Administrador, RT, Gestor e Gerente. */
 export function podeGerenciarComprovantes(usuario: Quem): boolean {
   return ativo(usuario) && PERFIS_DE_GESTAO.includes(usuario.perfil);
+}
+/** Pessoas, capacitações e leituras de POP: Administrador, RT, Gestor e Gerente (nem Fiscal nem Executor). */
+export function podeGerenciarPessoas(usuario: Quem): boolean {
+  return podeGerenciarComprovantes(usuario);
 }
 /** O Executor não vê comprovantes; o Fiscal lê. */
 export function podeVerComprovantes(usuario: Quem): boolean {
@@ -250,6 +254,96 @@ export function comprovantesVigentes(comprovantes: ComprovanteTerceiro[]): Compr
 
 // ===== Pendências da empresa (base do painel "Hoje"; o painel vem em outro pacote) =====
 
+// ===== Treinamento nominal (Pacote 18) =====
+// Guardado: só nome, cargo e datas. Nada de CPF, saúde, foto ou data de nascimento.
+
+export type DadosDoColaborador = { nome: string; cargo: string };
+
+export function validarColaborador(dados: DadosDoColaborador): Partial<Record<"nome" | "cargo", string>> {
+  const erros: Partial<Record<"nome" | "cargo", string>> = {};
+  if (!dados.nome.trim()) erros.nome = "Informe o nome.";
+  if (!dados.cargo.trim()) erros.cargo = "Informe o cargo.";
+  return erros;
+}
+
+export type LinhaDeLeitura = { colaborador: Colaborador; lido: boolean; data?: string };
+
+/** Quem leu a versão vigente do POP: só os colaboradores ativos. Leitura de versão anterior não conta (nova versão zera). */
+export function leituraDaVersao(popId: string, popVersao: string, colaboradores: Colaborador[], leituras: LeituraPop[]): { linhas: LinhaDeLeitura[]; lidos: number; total: number } {
+  const ativos = colaboradores.filter((colaborador) => colaborador.ativo).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+  const linhas = ativos.map((colaborador) => {
+    const leitura = leituras.filter((item) => item.popId === popId && item.popVersao === popVersao && item.colaboradorId === colaborador.id).sort((a, b) => b.data.localeCompare(a.data))[0];
+    return { colaborador, lido: Boolean(leitura), data: leitura?.data };
+  });
+  return { linhas, lidos: linhas.filter((linha) => linha.lido).length, total: linhas.length };
+}
+
+export const ROTULO_DA_CAPACITACAO: Record<SituacaoDaValidade, string> = {
+  "em-dia": "Em dia",
+  "vence-em-breve": "Vence em breve",
+  vencido: "Vencida",
+  "sem-validade": "Sem vencimento",
+};
+
+export type ErrosDaCapacitacao = Partial<Record<"colaboradorId" | "conteudo" | "cargaHoraria" | "data" | "venceEm", string>>;
+
+export function validarCapacitacao(dados: { colaboradorId: string; conteudo: string; cargaHoraria: number | string; data: string; venceEm: string }): ErrosDaCapacitacao {
+  const erros: ErrosDaCapacitacao = {};
+  if (!dados.colaboradorId) erros.colaboradorId = "Escolha a pessoa.";
+  if (!dados.conteudo.trim()) erros.conteudo = "Informe o conteúdo do treinamento.";
+  const horas = Number(String(dados.cargaHoraria).replace(",", "."));
+  if (!Number.isFinite(horas) || horas <= 0) erros.cargaHoraria = "Informe a carga horária em horas.";
+  else if (horas > 1000) erros.cargaHoraria = "Carga horária alta demais.";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dados.data)) erros.data = "Informe a data.";
+  if (dados.venceEm) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dados.venceEm)) erros.venceEm = "Data de vencimento inválida.";
+    else if (!erros.data && dados.venceEm < dados.data) erros.venceEm = "O vencimento não pode ser antes da data do treinamento.";
+  }
+  return erros;
+}
+
+export type ReferenciaDeCapacitacao = { norma: string; rotulo: string; orientacao: string; conferir: boolean };
+
+const ITENS_DE_CAPACITACAO = ["capacitacao-admissional-anual", "curso-do-responsavel", "manipuladores"] as const;
+
+/** Texto de apoio: o que a norma cadastrada da empresa cita sobre capacitação (todas as citações marcadas conferir). */
+export function referenciasDeCapacitacao(empresa: Pick<Empresa, "normasAplicadas">, catalogo: Norma[] = CATALOGO_DE_NORMAS): ReferenciaDeCapacitacao[] {
+  const lista: ReferenciaDeCapacitacao[] = [];
+  for (const norma of normasDaEmpresa(empresa, catalogo)) {
+    for (const id of ITENS_DE_CAPACITACAO) {
+      const item = norma.itens[id];
+      if (!item) continue;
+      lista.push({ norma: norma.nome, rotulo: item.rotulo, orientacao: item.orientacao, conferir: Boolean(item.conferir) || norma.conferidoEm === null });
+    }
+  }
+  return lista;
+}
+
+export const AVISO_PRAZO_DE_CAPACITACAO = "Vale o que a norma cadastrada da empresa disser; o vencimento é sempre editável.";
+
+/** Sugestão de vencimento: só quando a norma cadastrada da empresa traz prazo em meses para capacitação; o campo continua editável. */
+export function sugerirVencimentoDaCapacitacao(empresa: Pick<Empresa, "normasAplicadas">, data: string, catalogo: Norma[] = CATALOGO_DE_NORMAS): { venceEm: string; texto: string } | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) return null;
+  for (const norma of normasDaEmpresa(empresa, catalogo)) {
+    const item = norma.itens["capacitacao-admissional-anual"];
+    if (item?.prazoMeses) {
+      return { venceEm: somarMeses(data, item.prazoMeses), texto: `Sugestão: ${item.prazoMeses} meses depois (${norma.nome} · ${item.rotulo}, conferir). Confira no texto oficial.` };
+    }
+  }
+  return null;
+}
+
+/** Só a capacitação mais recente de cada pessoa e treinamento conta: a que foi renovada deixa de gerar pendência. */
+export function capacitacoesVigentes(capacitacoes: Capacitacao[]): Capacitacao[] {
+  const chave = (item: Capacitacao) => `${item.colaboradorId}|${item.conteudo.trim().toLocaleLowerCase("pt-BR")}`;
+  const maisRecente = new Map<string, Capacitacao>();
+  for (const item of capacitacoes) {
+    const atual = maisRecente.get(chave(item));
+    if (!atual || item.data > atual.data || (item.data === atual.data && item.criadoEm > atual.criadoEm)) maisRecente.set(chave(item), item);
+  }
+  return [...maisRecente.values()];
+}
+
 export type PendenciaDaEmpresa = {
   origem: "comprovante" | "capacitacao";
   id: string;
@@ -263,7 +357,7 @@ export type PendenciaDaEmpresa = {
 
 export function pendenciasDaEmpresa(
   empresaId: string,
-  dados: { comprovantes?: ComprovanteTerceiro[] },
+  dados: { comprovantes?: ComprovanteTerceiro[]; capacitacoes?: Capacitacao[]; colaboradores?: Colaborador[] },
   hoje: string = hojeISO()
 ): PendenciaDaEmpresa[] {
   const lista: PendenciaDaEmpresa[] = [];
@@ -278,6 +372,21 @@ export function pendenciasDaEmpresa(
       validade: item.validade,
       situacao,
       dias: diasEntre(hoje, item.validade),
+    });
+  }
+  const ativos = new Map((dados.colaboradores || []).filter((pessoa) => pessoa.empresaId === empresaId && pessoa.ativo).map((pessoa) => [pessoa.id, pessoa]));
+  for (const item of capacitacoesVigentes((dados.capacitacoes || []).filter((capacitacao) => capacitacao.empresaId === empresaId))) {
+    const pessoa = ativos.get(item.colaboradorId);
+    const situacao = situacaoDaValidade(item.venceEm, hoje);
+    if (!pessoa || (situacao !== "vencido" && situacao !== "vence-em-breve")) continue;
+    lista.push({
+      origem: "capacitacao",
+      id: item.id,
+      empresaId,
+      titulo: `${pessoa.nome} · ${item.conteudo}`,
+      validade: item.venceEm,
+      situacao,
+      dias: diasEntre(hoje, item.venceEm),
     });
   }
   return lista.sort((a, b) => a.dias - b.dias);

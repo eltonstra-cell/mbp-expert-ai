@@ -22,7 +22,8 @@ import PopLeituraFolha from "@/components/PopLeituraFolha";
 import PcFilaDeEnvio from "@/components/pc/PcFilaDeEnvio";
 import PcComprovantes, { type DadosDoFormulario } from "@/components/pc/PcComprovantes";
 import { RegistrosEmpresaContext, type RegistrosEmpresaValor } from "@/components/RegistrosEmpresaContext";
-import { criarRegistroPop, podeCriarRegistroPop, podeGerenciarComprovantes, podeVerComprovantes } from "@/lib/registrosEmpresa";
+import { criarRegistroPop, podeCriarRegistroPop, podeGerenciarComprovantes, podeGerenciarPessoas, podeVerComprovantes } from "@/lib/registrosEmpresa";
+import PcPessoas from "@/components/pc/PcPessoas";
 import { useFilaDeEvidencias } from "@/components/useFilaDeEvidencias";
 import { useOnline } from "@/components/useOnline";
 import { FalhaDeEnvio, LIMITE_AVISO_FILA_BYTES, causaDaResposta, textoDeEspaco, type ItemSemArquivo } from "@/lib/filaEvidencias";
@@ -103,6 +104,9 @@ import { LogoHorizontal, LogoSymbol, LogoWordmark } from "@/components/BrandLogo
 import { IaPermitidaContext, useIaPermitida } from "@/components/IaPermissionContext";
 import type {
   ComprovanteTerceiro,
+  Capacitacao,
+  Colaborador,
+  LeituraPop,
   NaoConformidade,
   AppDB,
   AcaoPermissao,
@@ -203,7 +207,7 @@ import {
 } from "@/lib/userManagement";
 import { resumoConfiguracaoEmpresa } from "@/lib/companyReadiness";
 
-type View = "inicio" | "pops" | "ajuda" | "empresas" | "visitas" | "visita" | "ambientes" | "checklist" | "ncs" | "plano" | "acompanhamento" | "historico" | "evidencias" | "relatorio" | "acessos" | "correcoes" | "popsvisita" | "modotela" | "campomais" | "fila" | "comprovantes";
+type View = "inicio" | "pops" | "ajuda" | "empresas" | "visitas" | "visita" | "ambientes" | "checklist" | "ncs" | "plano" | "acompanhamento" | "historico" | "evidencias" | "relatorio" | "acessos" | "correcoes" | "popsvisita" | "modotela" | "campomais" | "fila" | "comprovantes" | "pessoas";
 type EmpresaSecao = "dados" | "manual" | "ambientes" | "fluxos" | "programas" | "pops" | "privacidade" | "norma";
 type FiltroChecklistRapido = "Todos" | "Pendentes" | "Não conformes";
 
@@ -1644,6 +1648,9 @@ export default function Home() {
         : [],
       registrosPop: Array.isArray((s as any).registrosPop) ? (s as any).registrosPop : [],
       comprovantes: Array.isArray((s as any).comprovantes) ? (s as any).comprovantes : [],
+      colaboradores: Array.isArray((s as any).colaboradores) ? (s as any).colaboradores : [],
+      capacitacoes: Array.isArray((s as any).capacitacoes) ? (s as any).capacitacoes : [],
+      leiturasPop: Array.isArray((s as any).leiturasPop) ? (s as any).leiturasPop : [],
       configuracaoAcesso:
         (s as any).configuracaoAcesso && typeof (s as any).configuracaoAcesso === "object"
           ? (s as any).configuracaoAcesso
@@ -1803,6 +1810,65 @@ export default function Home() {
     setOrigemDosRegistros({ view, secao: empresaSecao });
     if (view === "empresas" && editingEmpresaId) setDb((o) => ({ ...o, empresaAtualId: editingEmpresaId }));
     setView("comprovantes");
+  }
+
+  function abrirPessoas() {
+    setOrigemDosRegistros({ view, secao: empresaSecao });
+    if (view === "empresas" && editingEmpresaId) setDb((o) => ({ ...o, empresaAtualId: editingEmpresaId }));
+    setView("pessoas");
+  }
+
+  function salvarColaborador(dados: { id?: string; nome: string; cargo: string }) {
+    if (!atual || !podeGerenciarPessoasAqui) return;
+    setDb((o) => {
+      const lista = o.colaboradores || [];
+      const existente = dados.id ? lista.find((item) => item.id === dados.id) : undefined;
+      const novo: Colaborador = existente
+        ? { ...existente, nome: dados.nome, cargo: dados.cargo }
+        : { id: crypto.randomUUID(), empresaId: atual.id, nome: dados.nome, cargo: dados.cargo, ativo: true, criadoEm: new Date().toISOString() };
+      const atualizado: AppDB = { ...o, colaboradores: existente ? lista.map((item) => (item.id === novo.id ? novo : item)) : [...lista, novo] };
+      salvarDBLocal(atualizado);
+      return atualizado;
+    });
+  }
+
+  function alternarColaborador(id: string) {
+    if (!podeGerenciarPessoasAqui) return;
+    setDb((o) => {
+      const atualizado: AppDB = { ...o, colaboradores: (o.colaboradores || []).map((item) => (item.id === id ? { ...item, ativo: !item.ativo } : item)) };
+      salvarDBLocal(atualizado);
+      return atualizado;
+    });
+  }
+
+  function salvarCapacitacao(dados: { colaboradorId: string; conteudo: string; cargaHoraria: string; data: string; venceEm: string; instrutor: string }) {
+    if (!atual || !podeGerenciarPessoasAqui) return;
+    const registro: Capacitacao = {
+      id: crypto.randomUUID(),
+      empresaId: atual.id,
+      colaboradorId: dados.colaboradorId,
+      conteudo: dados.conteudo.trim(),
+      cargaHoraria: Number(dados.cargaHoraria.replace(",", ".")),
+      data: dados.data,
+      venceEm: dados.venceEm,
+      ...(dados.instrutor.trim() ? { instrutor: dados.instrutor.trim() } : {}),
+      criadoEm: new Date().toISOString(),
+    };
+    setDb((o) => {
+      const atualizado: AppDB = { ...o, capacitacoes: [...(o.capacitacoes || []), registro] };
+      salvarDBLocal(atualizado);
+      return atualizado;
+    });
+  }
+
+  async function removerCapacitacao(id: string) {
+    if (!podeGerenciarPessoasAqui) return;
+    if (!(await confirmar("Remover este registro de capacitação?", { titulo: "Remover capacitação", confirmarRotulo: "Remover", perigoso: true }))) return;
+    setDb((o) => {
+      const atualizado: AppDB = { ...o, capacitacoes: (o.capacitacoes || []).filter((item) => item.id !== id) };
+      salvarDBLocal(atualizado);
+      return atualizado;
+    });
   }
 
   function voltarDosComprovantes() {
@@ -2261,6 +2327,7 @@ export default function Home() {
   const podeCriarRegistro = !usuarioDaSessao || podeCriarRegistroPop(usuarioDaSessao);
   const podeGerenciarComprovantesAqui = !usuarioDaSessao || podeGerenciarComprovantes(usuarioDaSessao);
   const podeVerComprovantesAqui = !usuarioDaSessao || podeVerComprovantes(usuarioDaSessao);
+  const podeGerenciarPessoasAqui = !usuarioDaSessao || podeGerenciarPessoas(usuarioDaSessao);
 
   function atualizarEmpresaDosRegistros(empresaId: string, mudar: (empresa: Empresa) => Empresa) {
     setDb((o) => {
@@ -2280,6 +2347,18 @@ export default function Home() {
         registros: (db.registrosPop || []).filter((registro) => registro.empresaId === empresaDosRegistros.id),
         comprovantes: podeVerComprovantesAqui ? (db.comprovantes || []).filter((item) => item.empresaId === empresaDosRegistros.id) : [],
         podeCriarRegistro,
+        podeGerenciarPessoas: podeGerenciarPessoasAqui,
+        colaboradores: podeGerenciarPessoasAqui ? (db.colaboradores || []).filter((pessoa) => pessoa.empresaId === empresaDosRegistros.id) : [],
+        leituras: podeGerenciarPessoasAqui ? (db.leiturasPop || []).filter((leitura) => leitura.empresaId === empresaDosRegistros.id) : [],
+        registrarLeitura: (popId, popVersao, colaboradorId, data) => {
+          if (!podeGerenciarPessoasAqui) return;
+          const leitura: LeituraPop = { id: crypto.randomUUID(), empresaId: empresaDosRegistros.id, popId, popVersao, colaboradorId, data, registradoPorId: usuarioDaSessao?.id, criadoEm: new Date().toISOString() };
+          setDb((o) => {
+            const atualizado: AppDB = { ...o, leiturasPop: [...(o.leiturasPop || []), leitura] };
+            salvarDBLocal(atualizado);
+            return atualizado;
+          });
+        },
         podeEditarEmpresa: permitido("empresas.editar", empresaDosRegistros.id),
         novoRegistro: (dados) => {
           const resultado = criarRegistroPop({
@@ -6610,6 +6689,18 @@ export default function Home() {
             urlDoArquivo={(item) => `/api/comprovantes/file?pathname=${encodeURIComponent(item.blobPathname || "")}`}
             onVoltar={voltarDosComprovantes}
           />
+        ) : view === "pessoas" && atual && podeGerenciarPessoasAqui && (!usuarioDaSessao || (usuarioDaSessao.perfil !== "Executor de campo" && usuarioDaSessao.perfil !== "Fiscal")) ? (
+          <PcPessoas
+            empresa={nomeParaExibir(atual)}
+            normas={atual}
+            colaboradores={(db.colaboradores || []).filter((item) => item.empresaId === atual.id)}
+            capacitacoes={(db.capacitacoes || []).filter((item) => item.empresaId === atual.id)}
+            onSalvarColaborador={salvarColaborador}
+            onAlternarAtivo={alternarColaborador}
+            onSalvarCapacitacao={salvarCapacitacao}
+            onRemoverCapacitacao={(id) => void removerCapacitacao(id)}
+            onVoltar={voltarDosComprovantes}
+          />
         ) : view === "fila" ? (
           <PcFilaDeEnvio
             itens={fila.itens}
@@ -6644,6 +6735,7 @@ export default function Home() {
             podeEditar={false}
             onPersistir={(novos) => persistirPopsDaEmpresa(atual.id, novos)}
             onAbrirComprovantes={podeVerComprovantesAqui ? abrirComprovantes : undefined}
+            onAbrirPessoas={podeGerenciarPessoasAqui ? abrirPessoas : undefined}
             temAlteracoes={false}
             onSalvar={() => undefined}
             onVoltar={() => setView("inicio")}
@@ -6657,6 +6749,7 @@ export default function Home() {
               usuario={usuarioDaSessao}
               onPersistir={(novos) => empresaGerenciada && persistirPopsDaEmpresa(empresaGerenciada.id, novos)}
               onAbrirComprovantes={podeVerComprovantesAqui ? abrirComprovantes : undefined}
+              onAbrirPessoas={podeGerenciarPessoasAqui ? abrirPessoas : undefined}
               temAlteracoes={empresaTemAlteracoes}
               mensagem={msg}
               onSalvar={salvarEmpresa}
