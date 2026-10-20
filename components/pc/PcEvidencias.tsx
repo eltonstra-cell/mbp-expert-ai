@@ -8,6 +8,7 @@ import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import { avisar } from "@/lib/dialogos";
 import { dependenciasDoNavegador, validarFotoEscolhida } from "@/lib/fotoCompressao";
 import { formatarTempo, restanteDoLimite, useCapturaAudio, useCapturaCamera } from "@/components/useCapturaMidia";
+import { MENSAGEM_IA_DESLIGADA } from "@/lib/privacidadeEmpresa";
 
 export type AnaliseEvidencia = {
   id: string;
@@ -37,6 +38,8 @@ export type CartaoEvidencia = {
   possivelNc: boolean;
   analise: AnaliseEvidencia | null;
   podeAnalisar: boolean;
+  /** A empresa ainda não liberou a IA nas fotos: o botão fica cinza com aviso. */
+  iaDesligada?: boolean;
   analisando: boolean;
   bloqueioIA: boolean;
   mensagemIA: string;
@@ -148,9 +151,10 @@ function CaixaIA({ ev, vazia = false }: { ev: CartaoEvidencia; vazia?: boolean }
         <p className="ev7-ia-texto">Ainda não analisada. A IA só sugere; nada vira NC sem a sua confirmação.</p>
         {ev.podeAnalisar && (
           <div className="ev7-ia-acoes">
-            <button type="button" className="ev7-btn-ia" disabled={ev.analisando || ev.bloqueioIA} onClick={ev.onAnalisar}>
+            <button type="button" className={`ev7-btn-ia${ev.iaDesligada ? " is-desligada" : ""}`} disabled={ev.analisando || ev.bloqueioIA || ev.iaDesligada} onClick={ev.onAnalisar}>
               {ev.analisando ? "Analisando..." : "✦ Analisar com IA"}
             </button>
+            {ev.iaDesligada && <span className="ev7-ia-aviso">{MENSAGEM_IA_DESLIGADA}</span>}
           </div>
         )}
       </div>
@@ -281,13 +285,14 @@ function Cartao({ ev, onAmpliar }: { ev: CartaoEvidencia; onAmpliar: (id: string
         {aguardando && <span className="ev7-chip ev7-chip--ia">IA aguardando revisão</span>}
         {ev.possivelNc && <Pill tom="nc">Possível NC</Pill>}
         {mostrarAnalisar && (
-          <button type="button" className="ev7-btn-ia ev7-chips-fim" disabled={ev.analisando || ev.bloqueioIA} onClick={ev.onAnalisar}>
+          <button type="button" className={`ev7-btn-ia ev7-chips-fim${ev.iaDesligada ? " is-desligada" : ""}`} disabled={ev.analisando || ev.bloqueioIA || ev.iaDesligada} onClick={ev.onAnalisar}>
             {ev.analisando ? "Analisando..." : ev.analise ? "✦ Analisar novamente" : "✦ Analisar com IA"}
           </button>
         )}
       </div>
         </div>
       </div>
+      {mostrarAnalisar && ev.iaDesligada && <div className="ev7-nota ev7-nota--ia">{MENSAGEM_IA_DESLIGADA}</div>}
       {ev.mensagemIA && <div className="ev7-nota">{ev.mensagemIA}</div>}
       <CaixaIA ev={ev} />
     </article>

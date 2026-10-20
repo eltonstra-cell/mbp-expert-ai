@@ -227,9 +227,14 @@ export function mesclarEstadoPorUsuario(
 
   if (possuiPermissao(efetivo, "empresas.editar")) {
     empresas = { ...atual.empresas };
+    const podeMexerNaIa = possuiPermissao(efetivo, "ia.analisar");
     empresaIds.forEach((empresaId) => {
       if (recebido.empresas[empresaId]) {
-        empresas[empresaId] = recebido.empresas[empresaId];
+        const nova = recebido.empresas[empresaId];
+        // Só quem pode usar a IA (Administrador e Consultor/RT) liberar ou desligar a IA da empresa.
+        empresas[empresaId] = podeMexerNaIa
+          ? nova
+          : { ...nova, privacidade: { ...nova.privacidade, iaFotos: atual.empresas[empresaId]?.privacidade?.iaFotos } };
       }
     });
   }

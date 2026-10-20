@@ -4,6 +4,18 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import MetricCard from "@/components/MetricCard";
 import FaixaVisitaOutraEmpresa from "@/components/FaixaVisitaOutraEmpresa";
 import { textoDeBaseLegal } from "@/lib/conteudoValidado";
+import {
+  desligarIa,
+  erroDaGuarda,
+  guardaDaEmpresa,
+  iaJaFoiLiberada,
+  iaLiberada,
+  liberarIa,
+  MENSAGEM_IA_DESLIGADA,
+  textoDeLiberacao,
+  visitasComGuardaVencendo,
+} from "@/lib/privacidadeEmpresa";
+import PcPrivacidadeEmpresa from "@/components/pc/PcPrivacidadeEmpresa";
 import AccessPreparationPanel from "@/components/AccessPreparationPanel";
 import AppNavigation, { type CartaoVisita, type ContagemEtapa } from "@/components/AppNavigation";
 import AppTopbar from "@/components/AppTopbar";
@@ -179,7 +191,7 @@ import {
 import { resumoConfiguracaoEmpresa } from "@/lib/companyReadiness";
 
 type View = "inicio" | "ajuda" | "empresas" | "visitas" | "visita" | "ambientes" | "checklist" | "ncs" | "plano" | "acompanhamento" | "historico" | "evidencias" | "relatorio" | "acessos" | "correcoes" | "popsvisita" | "modotela" | "campomais";
-type EmpresaSecao = "dados" | "manual" | "ambientes" | "fluxos" | "programas" | "pops";
+type EmpresaSecao = "dados" | "manual" | "ambientes" | "fluxos" | "programas" | "pops" | "privacidade";
 type FiltroChecklistRapido = "Todos" | "Pendentes" | "Não conformes";
 
 const NAV_STORAGE_KEY = "mbp-expert-ai:navegacao:v1";
@@ -658,6 +670,7 @@ function CompanySectionIcon({ name }: { name: EmpresaSecao }) {
   if (name === "ambientes") return <svg {...common}><path d="M3 21h18M5 21V7h9v14M14 11h5v10" /><path d="M8 10h3M8 14h3M17 14h.01M17 18h.01" /></svg>;
   if (name === "fluxos") return <svg {...common}><path d="M4 6h11M15 6l-2-2M15 6l-2 2M20 12H9M9 12l2-2M9 12l2 2M4 18h11M15 18l-2-2M15 18l-2 2" /></svg>;
   if (name === "programas") return <svg {...common}><path d="M7 4h10v4H7z" /><path d="M5 6H4v15h16V6h-1" /><path d="m8 14 2 2 5-5" /></svg>;
+  if (name === "privacidade") return <svg {...common}><path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6z" /><path d="m9 12 2 2 4-4" /></svg>;
   return <svg {...common}><path d="M7 3h8l4 4v14H7z" /><path d="M15 3v5h5M10 12h6M10 16h6" /><path d="M4 7v13" /></svg>;
 }
 
@@ -2921,6 +2934,7 @@ export default function Home() {
       pops: normalizarPops(popsEmpresa),
       criadoEm: anterior?.criadoEm || new Date().toISOString(),
       cor: form.cor || (anterior ? anterior.cor : proximaCorLivre(Object.values(db.empresas))),
+      ...(anterior ? { arquivada: anterior.arquivada, arquivadaEm: anterior.arquivadaEm, privacidade: anterior.privacidade } : {}),
     };
     setDb((o) => ({
       ...o,
@@ -4433,6 +4447,10 @@ export default function Home() {
   async function analisarFotoComIA(ev: Evidencia) {
     if (ev.tipo !== "Foto" || analiseIAEmAndamentoId) return;
     if (!exigirPermissao("ia.analisar", ev.empresaId)) return;
+    if (!iaLiberada(db.empresas[ev.empresaId])) {
+      setAnaliseIAMensagens((atual) => ({ ...atual, [ev.id]: MENSAGEM_IA_DESLIGADA }));
+      return;
+    }
     if (!ev.blobPathname) {
       setAnaliseIAMensagens((atual) => ({
         ...atual,
@@ -4988,6 +5006,45 @@ export default function Home() {
     } catch (error) {
       void avisar(error instanceof Error ? error.message : "Não foi possível preparar o usuário.");
       return false;
+    }
+  }
+
+  // Privacidade da empresa: vale na hora e fica no histórico (quem liberou e quando). Não passa pelo "Salvar empresa".
+  function alterarPrivacidadeDaEmpresa(empresaId: string, mudanca: "ia" | "desligar" | "guarda", extra: { aceite?: boolean; dias?: number } = {}) {
+    const alvo = db.empresas[empresaId];
+    if (!alvo) return;
+    if (mudanca === "guarda" ? !exigirPermissao("empresas.editar", empresaId) : !exigirPermissao("ia.analisar", empresaId)) return;
+    try {
+      const agora = new Date().toISOString();
+      let privacidade = alvo.privacidade;
+      let acao = "";
+      let detalhes = "";
+      if (mudanca === "ia") {
+        privacidade = liberarIa(privacidade, { id: usuarioDaSessao?.id || "local", nome: usuarioDaSessao?.nome || "Usuário local" }, Boolean(extra.aceite), agora);
+        acao = "empresa.ia_fotos_liberada";
+        detalhes = `${alvo.nomeFantasia} • IA nas fotos liberada por ${usuarioDaSessao?.nome || "usuário local"}.`;
+      } else if (mudanca === "desligar") {
+        privacidade = desligarIa(privacidade);
+        acao = "empresa.ia_fotos_desligada";
+        detalhes = `${alvo.nomeFantasia} • IA nas fotos desligada.`;
+      } else {
+        const erro = erroDaGuarda(extra.dias);
+        if (erro) throw new Error(erro);
+        privacidade = { ...privacidade, guardaDias: extra.dias };
+        acao = "empresa.guarda_alterada";
+        detalhes = `${alvo.nomeFantasia} • guarda de fotos e áudios: ${extra.dias} dias.`;
+      }
+      const registro = criarRegistroAuditoria(
+        { usuarioId: usuarioDaSessao?.id || "local", usuarioNome: usuarioDaSessao?.nome || "Usuário local", acao, entidade: "Empresa", entidadeId: empresaId, empresaId, detalhes },
+        agora
+      );
+      setDb((estado) => ({
+        ...estado,
+        empresas: { ...estado.empresas, [empresaId]: { ...estado.empresas[empresaId], privacidade } },
+        registrosAuditoria: [...estado.registrosAuditoria, registro],
+      }));
+    } catch (error) {
+      void avisar(error instanceof Error ? error.message : "Não foi possível alterar a privacidade.");
     }
   }
 
@@ -6255,6 +6312,13 @@ export default function Home() {
                         cor: "bg-[#EEF1F5] text-[color:var(--ink)]",
                       },
                       {
+                        secao: "privacidade" as EmpresaSecao,
+                        categoria: "Privacidade",
+                        titulo: "Privacidade e guarda",
+                        resumo: `IA nas fotos ${iaLiberada(empresaGerenciada) ? "ligada" : "desligada"} • guarda de ${guardaDaEmpresa(empresaGerenciada)} dias.`,
+                        cor: "bg-[#EEF1F5] text-[color:var(--ink)]",
+                      },
+                      {
                         secao: "pops" as EmpresaSecao,
                         categoria: "Procedimentos",
                         titulo: "POPs",
@@ -6313,6 +6377,8 @@ export default function Home() {
                         ? "Informa como as atividades acontecem na prática. Os fluxos marcados como aplicáveis acrescentam verificações ao checklist."
                         : empresaSecao === "programas"
                         ? "Acompanha os controles permanentes de qualidade, sua implantação, responsáveis, registros e documentos relacionados."
+                        : empresaSecao === "privacidade"
+                        ? "Define se a IA pode analisar as fotos desta empresa e por quantos dias fotos e áudios são guardados."
                         : "Organiza os procedimentos escritos da empresa, indicando situação, responsável, versão e próxima revisão."}
                     </p>
                   </details>
@@ -6394,6 +6460,32 @@ export default function Home() {
 
                 {editingEmpresaId && empresaSecao === "pops" && (
                   <PopsFields pops={popsEmpresa} onChange={setPopsEmpresa} aberto />
+                )}
+
+                {editingEmpresaId && empresaSecao === "privacidade" && empresaGerenciada && (
+                  <PcPrivacidadeEmpresa
+                    empresaNome={nomeParaExibir(empresaGerenciada)}
+                    iaLiberada={iaLiberada(empresaGerenciada)}
+                    textoLiberacao={textoDeLiberacao(empresaGerenciada)}
+                    jaFoiLiberada={iaJaFoiLiberada(empresaGerenciada)}
+                    podeLiberarIa={permitido("ia.analisar", empresaGerenciada.id)}
+                    podeEditarGuarda={permitido("empresas.editar", empresaGerenciada.id)}
+                    somenteLeitura={modo === "campo"}
+                    guardaDias={guardaDaEmpresa(empresaGerenciada)}
+                    vencendo={visitasComGuardaVencendo(
+                      db.visitas.filter((visita) => visita.empresaId === empresaGerenciada.id),
+                      db.evidencias || [],
+                      guardaDaEmpresa(empresaGerenciada)
+                    ).map((linha) => ({
+                      ...linha,
+                      rotulo: `Visita ${numeroVisitaPorId.get(linha.visitaId) || "—"}`,
+                      concluidaTexto: new Date(linha.concluidaEm).toLocaleDateString("pt-BR"),
+                      venceTexto: new Date(linha.venceEm).toLocaleDateString("pt-BR"),
+                    }))}
+                    onLiberarIa={(aceite) => alterarPrivacidadeDaEmpresa(empresaGerenciada.id, "ia", { aceite })}
+                    onDesligarIa={() => alterarPrivacidadeDaEmpresa(empresaGerenciada.id, "desligar")}
+                    onSalvarGuarda={(dias) => alterarPrivacidadeDaEmpresa(empresaGerenciada.id, "guarda", { dias })}
+                  />
                 )}
 
                 {msg && <div className="mt-3 rounded-xl bg-[var(--pend-bg)] p-3 text-sm">{msg}</div>}
@@ -6614,6 +6706,7 @@ export default function Home() {
                     }
                   : null,
                 podeAnalisar: ev.tipo === "Foto" && permitido("ia.analisar", ev.empresaId),
+                iaDesligada: !iaLiberada(db.empresas[ev.empresaId]),
                 analisando: analiseIAEmAndamentoId === ev.id,
                 bloqueioIA: analiseIAEmAndamentoId !== null,
                 mensagemIA: analiseIAMensagens[ev.id] || "",

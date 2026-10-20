@@ -46,6 +46,21 @@ export type Empresa = {
   /** Arquivada: some da lista principal, sem apagar nada. */
   arquivada?: boolean;
   arquivadaEm?: string;
+  /** Privacidade e guarda (opcional, dentro do JSON do estado). */
+  privacidade?: PrivacidadeEmpresa;
+};
+
+export type PrivacidadeEmpresa = {
+  /** IA nas fotos: desligada até alguém com permissão liberar (com aceite na primeira vez). */
+  iaFotos?: {
+    liberada: boolean;
+    liberadaPorId?: string;
+    liberadaPorNome?: string;
+    liberadaEm?: string;
+    aceite?: boolean;
+  };
+  /** Guarda de fotos e áudios, em dias contados da conclusão da visita (padrão sugerido: 180). */
+  guardaDias?: number;
 };
 
 export type DiaSemana =

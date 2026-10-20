@@ -1,6 +1,7 @@
 import { get } from "@vercel/blob";
 import { NextResponse } from "next/server";
 import { corpoExcedeLimite } from "@/lib/requestLimits";
+import { decidirIaEmFoto } from "@/lib/privacidadeEmpresa";
 import {
   autorizaAcaoServidor,
   obterAcessoServidor,
@@ -141,6 +142,13 @@ export async function POST(request: Request) {
         { error: "Seu perfil não permite analisar esta foto." },
         { status: 403 }
       );
+    }
+    // A empresa precisa ter liberado a IA nas fotos (padrão: desligada).
+    if (acesso.aplicado && acesso.data) {
+      const decisao = decidirIaEmFoto(acesso.data, empresaId);
+      if (!decisao.ok) {
+        return NextResponse.json({ error: decisao.motivo, codigo: "ia-desligada-na-empresa" }, { status: 403 });
+      }
     }
 
     const imageUrl = await carregarImagem(pathname);
