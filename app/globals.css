@@ -3128,3 +3128,5 @@ html[data-modo="completo"] .chk-pc .chk-obs-area{height:auto;min-height:60px}
   .voz-linha.is-gravando .voz-ia{display:none}
   .voz-barra{padding:0 10px;gap:8px}
 }
+/* ===== Pacote 10 · B: avatar do usuário neutro (o da empresa é o colorido) ===== */
+.pc-avatar,.pc-user-avatar,.pc-rail-avatar{border:1.5px solid #C9D3DB;background:#EEF1F5;color:#000;font-family:var(--font-display),"Outfit",sans-serif;font-weight:500}
