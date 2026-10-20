@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import MetricCard from "@/components/MetricCard";
+import FaixaVisitaOutraEmpresa from "@/components/FaixaVisitaOutraEmpresa";
 import AccessPreparationPanel from "@/components/AccessPreparationPanel";
 import AppNavigation, { type CartaoVisita, type ContagemEtapa } from "@/components/AppNavigation";
 import AppTopbar from "@/components/AppTopbar";
@@ -1995,15 +1996,6 @@ export default function Home() {
       setRecuperandoDados(false);
     }
   }
-
-  useEffect(() => {
-    if (!visitaAtualId) return;
-    const visita = db.visitas.find((v) => v.id === visitaAtualId);
-    if (visita && db.empresaAtualId && visita.empresaId !== db.empresaAtualId) {
-      setVisitaAtualId(null);
-      if (VISIT_VIEWS.includes(view)) setView("visitas");
-    }
-  }, [db.empresaAtualId, db.visitas, visitaAtualId, view]);
 
   const empresasVisiveis = useMemo(
     () =>
@@ -5190,6 +5182,8 @@ export default function Home() {
     nivelTela: usuarioDaSessao ? (tela) => nivelDe(tela) : undefined,
   };
   const dentroDaVisita = contextoMenu.dentroDeVisita && !!visitaAtual;
+  // A visita aberta é de uma empresa diferente da ativa: a tela avisa e oferece a troca, sem fechar nada.
+  const visitaDeOutraEmpresa = !!visitaAtual && !!atual && visitaAtual.empresaId !== atual.id && VISIT_VIEWS.includes(view);
   // UMA fonte para os ambientes: o menu e a lista do checklist usam esta mesma resposta.
   const infosAmbientes = visitaAtual
     ? resumoAmbientes(
@@ -5756,6 +5750,13 @@ export default function Home() {
       )}
 
       <div className="mx-auto min-w-0 max-w-[1500px] overflow-x-hidden px-3 py-4 pb-28 sm:p-5 pc-offset pc-content-pad md:overflow-visible md:pb-6 lg:p-7">
+        {visitaDeOutraEmpresa && visitaAtual && atual && (
+          <FaixaVisitaOutraEmpresa
+            empresaDaVisita={nomeEmFormatoNatural(empresaVisita?.nomeFantasia) || "outra empresa"}
+            empresaAtiva={nomeEmFormatoNatural(atual.nomeFantasia) || "empresa"}
+            onTrocar={() => setDb((estado) => ({ ...estado, empresaAtualId: visitaAtual.empresaId }))}
+          />
+        )}
         {modo === "campo" && (
           <>
             <CampoCabecalho
