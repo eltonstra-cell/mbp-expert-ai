@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { NavIcon } from "@/components/NavIcons";
+import { useAvisoAntesDeFotografar } from "@/components/AvisoAntesDeFotografar";
 import { LIMITE_AUDIO, formatarTempo, restanteDoLimite, useCapturaAudio, useCapturaCamera } from "@/components/useCapturaMidia";
 
 export type VisitaParaRegistro = {
@@ -54,6 +55,7 @@ export default function RegistrarAgoraModal({ aparelho = "computador", visitas, 
     setPrevia(url);
   }, []);
 
+  const pedirAvisoDeFoto = useAvisoAntesDeFotografar();
   const camera = useCapturaCamera({
     aoCapturar: (foto) => {
       setOrigem("camera");
@@ -104,12 +106,14 @@ export default function RegistrarAgoraModal({ aparelho = "computador", visitas, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function abrirCamera() {
+  function abrirCamera() {
     setErro("");
-    if (await camera.abrir()) {
-      setArquivo(null);
-      trocarPrevia("");
-    }
+    pedirAvisoDeFoto(async () => {
+      if (await camera.abrir()) {
+        setArquivo(null);
+        trocarPrevia("");
+      }
+    });
   }
 
   function capturar() {

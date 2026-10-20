@@ -9,6 +9,7 @@ import { avisar } from "@/lib/dialogos";
 import { dependenciasDoNavegador, validarFotoEscolhida } from "@/lib/fotoCompressao";
 import { formatarTempo, restanteDoLimite, useCapturaAudio, useCapturaCamera } from "@/components/useCapturaMidia";
 import { MENSAGEM_IA_DESLIGADA } from "@/lib/privacidadeEmpresa";
+import { useAvisoAntesDeFotografar } from "@/components/AvisoAntesDeFotografar";
 
 export type AnaliseEvidencia = {
   id: string;
@@ -343,6 +344,7 @@ export default function PcEvidencias({
   const [duasColunas, setDuasColunas] = useState(false);
   const [etapa, setEtapa] = useState<1 | 2>(1);
 
+  const pedirAvisoDeFoto = useAvisoAntesDeFotografar();
   const camera = useCapturaCamera({
     alternativa: "Escolher arquivo",
     aoCapturar: (foto) => colocarAnexo({ arquivo: foto, tipo: "Foto", origem: "camera" }),
@@ -507,11 +509,11 @@ export default function PcEvidencias({
     if (valido) colocarAnexo({ arquivo: valido, tipo: "Foto", origem: "arquivo" });
   }
 
-  async function abrirCamera() {
+  function abrirCamera() {
     setTrocando(false);
     audio.liberar();
     audio.setAviso("");
-    await camera.abrir();
+    pedirAvisoDeFoto(() => void camera.abrir());
   }
 
   async function gravarAudio() {

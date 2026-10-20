@@ -71,6 +71,7 @@ import { visitaDaEmpresaAtiva } from "@/lib/trocarEmpresa";
 import { dadosExtrasDoItem, desfazerLimpeza, limparResposta, listaEmTexto, type InstantaneoDaResposta } from "@/lib/limparResposta";
 import { ABAS_PADRAO, CampoBarra, CampoCabecalho, CampoCorrecoes, CampoInicio, CampoMais, type AbaDaBarra, type TelaCampo } from "@/components/campo/CampoTelas";
 import FiscalInicio from "@/components/FiscalInicio";
+import { AvisoFotoProvider, useAvisoAntesDeFotografar } from "@/components/AvisoAntesDeFotografar";
 import type { ItemMenu } from "@/components/ui/RowMenu";
 import { ROTULO_DE_USO, descreverAparelho } from "@/lib/screenMode";
 import { preparacaoDaEmpresa, faltasDoCadastro } from "@/lib/companyReadiness";
@@ -685,6 +686,12 @@ function VisitAreaIcon({ name }: { name: VisitAreaIconName }) {
   return <svg {...common}><path d="M7 3h10v4H7z" /><path d="M5 5v16h14V5" /><path d="m8 14 2 2 5-5" /></svg>;
 }
 
+// O aviso "Antes de fotografar" vive no provedor; esta ponte entrega a função ao botão Registrar, que fica na página.
+function AvisoFotoPonte({ alvo }: { alvo: { current: (acao: () => void) => void } }) {
+  alvo.current = useAvisoAntesDeFotografar();
+  return null;
+}
+
 function nomeEmFormatoNatural(nome?: string) {
   if (nome) nome = nomeSemNumerosNoInicio(nome);
   if (!nome || nome !== nome.toUpperCase()) return nome;
@@ -736,6 +743,7 @@ export default function Home() {
   const [campoVozAtivo, setCampoVozAtivo] = useState<string | null>(null);
   const [campoIaAtivo, setCampoIaAtivo] = useState<string | null>(null);
   const registrarInputRef = useRef<HTMLInputElement | null>(null);
+  const pedirAvisoDeFotoRef = useRef<(acao: () => void) => void>((acao) => acao());
   const criandoVisitaRef = useRef(false);
   const [registrarAberto, setRegistrarAberto] = useState(false);
   const [registrarComCamera, setRegistrarComCamera] = useState(false);
@@ -3900,7 +3908,7 @@ export default function Home() {
     setView("evidencias");
 
     // O toque em Registrar é o gesto do usuário: abre a câmera de forma síncrona.
-    if (abrirCamera) registrarInputRef.current?.click();
+    if (abrirCamera) pedirAvisoDeFotoRef.current(() => registrarInputRef.current?.click());
   }
 
   // Depois da foto: pergunta antes de vincular ao último item tocado no checklist.
@@ -5500,6 +5508,8 @@ export default function Home() {
 
   return (
     <IaPermitidaContext.Provider value={deveExibirRecursosDeIa(usuarioDaSessao)}>
+    <AvisoFotoProvider visitaId={visitaAtual?.id ?? visitaEmAndamentoDestaque?.id ?? null}>
+    <AvisoFotoPonte alvo={pedirAvisoDeFotoRef} />
     <div className="min-h-screen bg-[var(--bg)]">
       <UpdateNotice />
       {perfilAberto && usuarioDaSessao && (
@@ -8911,6 +8921,7 @@ export default function Home() {
         )}
       </div>
     </div>
+    </AvisoFotoProvider>
     </IaPermitidaContext.Provider>
   );
 }

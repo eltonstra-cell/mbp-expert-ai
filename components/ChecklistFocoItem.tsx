@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
+import { useAvisoAntesDeFotografar } from "@/components/AvisoAntesDeFotografar";
 import FotoAmpliada from "@/components/FotoAmpliada";
 import AmbientesCortina from "@/components/AmbientesCortina";
 import { NavIcon } from "@/components/NavIcons";
@@ -144,6 +145,7 @@ export default function ChecklistFocoItem({
     [onFotoCapturada]
   );
 
+  const pedirAvisoDeFoto = useAvisoAntesDeFotografar();
   const camera = useCapturaCamera({ alternativa: "Escolher arquivo", aoCapturar: (foto) => void guardarFoto(foto) });
   const { liberar: liberarCamera, setAviso: limparAvisoCamera } = camera;
 
@@ -187,7 +189,7 @@ export default function ChecklistFocoItem({
       disabled={!podeFotografar || salvandoFoto || camera.ativa || gravando}
       onClick={() => {
         setAvisoFoto(null);
-        void camera.abrir();
+        pedirAvisoDeFoto(() => void camera.abrir());
       }}
     >
       <NavIcon name="registrar" size={18} strokeWidth={1.9} /> <span>{salvandoFoto ? "Salvando..." : "Foto"}</span>
