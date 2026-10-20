@@ -14,6 +14,7 @@ import {
   resolverLimiteEstado,
   validarFormaDoEstado,
 } from "@/lib/stateValidation";
+import { acessoVigente } from "@/lib/validadeDeAcesso";
 import type { AppDB, UsuarioSistema } from "@/types";
 
 export const runtime = "nodejs";
@@ -70,7 +71,7 @@ async function usuarioDaRequisicao(
   if (!authId || !email) return null;
 
   const usuario = localizarUsuarioAutenticado(data, authId, email);
-  if (!usuario || usuario.status === "Suspenso") return null;
+  if (!usuario || usuario.status === "Suspenso" || !acessoVigente(usuario)) return null;
   return { usuario, authId };
 }
 

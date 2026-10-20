@@ -46,6 +46,8 @@ type Props = {
   onAbrirVisita: (id: string) => void;
   /** Início simples: só continuar visita e visitas recentes. */
   simples?: boolean;
+  /** Executor de campo: só continuar a visita; sem visita nova nem lista de visitas. */
+  somenteCampo?: boolean;
   onVerTodas: () => void;
 };
 
@@ -64,6 +66,7 @@ export default function PcInicio({
   onAbrirVisita,
   onVerTodas,
   simples = false,
+  somenteCampo = false,
 }: Props) {
   const recentesFit = useCabem<HTMLDivElement>(48, 4, 1);
   return (
@@ -102,9 +105,11 @@ export default function PcInicio({
               <div className="ui-eyebrow">Nenhuma visita em andamento</div>
               <div className="ui-row-sub">{novaVisita.texto}</div>
             </div>
-            <button type="button" className="ui-btn ui-btn--primary" onClick={novaVisita.onClick}>
-              {novaVisita.botao}
-            </button>
+            {!somenteCampo && (
+              <button type="button" className="ui-btn ui-btn--primary" onClick={novaVisita.onClick}>
+                {novaVisita.botao}
+              </button>
+            )}
           </>
         )}
       </div>
@@ -147,6 +152,7 @@ export default function PcInicio({
       </div>
       )}
 
+      {!somenteCampo && (
       <div className="ui-card pc-recent">
         <div className="ui-head">
           <div>
@@ -186,6 +192,7 @@ export default function PcInicio({
           Ver todas as visitas →
         </button>
       </div>
+      )}
     </section>
   );
 }

@@ -23,6 +23,7 @@ import { BolinhasDeCor } from "@/components/CorDaEmpresa";
 import { avisoDeDivergencia, conciliarNcs } from "@/lib/ncReconcile";
 import { contagemDeEvidencias, correcoesAbertas, itensNaoConformes, progressoDoChecklist } from "@/lib/contagens";
 import { motivoParaNaoExcluir } from "@/lib/userManagement";
+import { dataDaValidade, diasRestantes, expiracoesSemRegistro, faixaDeLeitura } from "@/lib/validadeDeAcesso";
 import { diferencasDeTelas, nivelDaTela, telaDaVisao, telasDiferentesDoPadrao, telasEfetivas, type NivelTela, type TelaKey, type TelasDoUsuario } from "@/lib/screenAccess";
 import { maisRecentesPrimeiro, visitaPadraoParaRegistro } from "@/lib/registerTarget";
 import { listaSemArquivadas, marcarArquivada } from "@/lib/menuActions";
@@ -56,7 +57,8 @@ import { cssDoRodapeDeImpressao, suportaCaixasDeMargem } from "@/lib/printFooter
 import { sincronizarNcDoItem } from "@/lib/checklistNcs";
 import { visitaDaEmpresaAtiva } from "@/lib/trocarEmpresa";
 import { dadosExtrasDoItem, desfazerLimpeza, limparResposta, listaEmTexto, type InstantaneoDaResposta } from "@/lib/limparResposta";
-import { CampoBarra, CampoCabecalho, CampoCorrecoes, CampoInicio, CampoMais, type TelaCampo } from "@/components/campo/CampoTelas";
+import { ABAS_PADRAO, CampoBarra, CampoCabecalho, CampoCorrecoes, CampoInicio, CampoMais, type AbaDaBarra, type TelaCampo } from "@/components/campo/CampoTelas";
+import FiscalInicio from "@/components/FiscalInicio";
 import type { ItemMenu } from "@/components/ui/RowMenu";
 import { ROTULO_DE_USO, descreverAparelho } from "@/lib/screenMode";
 import { preparacaoDaEmpresa, faltasDoCadastro } from "@/lib/companyReadiness";
@@ -170,6 +172,8 @@ import {
   atualizarUsuarioPreparacao,
   criarUsuarioPreparacao,
   vincularSessaoUsuario,
+  encerrarAcessoFiscal,
+  renovarAcessoFiscal,
   type DadosUsuarioPreparacao,
 } from "@/lib/userManagement";
 import { resumoConfiguracaoEmpresa } from "@/lib/companyReadiness";
@@ -1760,6 +1764,11 @@ export default function Home() {
     ) || null;
   }, [db.usuarios, sessaoAtual]);
 
+  const ehExecutor = usuarioDaSessao?.perfil === "Executor de campo";
+  const ehFiscal = usuarioDaSessao?.perfil === "Fiscal";
+  // Barra de baixo do Campo: o Executor só tem Início, Checklist, Registrar e Evidências; o Fiscal, só o Início.
+  const abasDoCampo: AbaDaBarra[] = ehExecutor ? ["inicio", "checklist", "registrar", "evidencias"] : ehFiscal ? ["inicio"] : ABAS_PADRAO;
+
   function permitido(acao: AcaoPermissao, empresaId?: string): boolean {
     return podeExecutar(usuarioDaSessao, acao, empresaId);
   }
@@ -1794,6 +1803,40 @@ export default function Home() {
     ) {
       setView("inicio");
     }
+  }, [usuarioDaSessao, view]);
+
+  // Quando um acesso de Fiscal vence, o Administrador que estiver com o app aberto registra "Acesso expirou" no histórico (uma vez só).
+  useEffect(() => {
+    if (!ready || usuarioDaSessao?.perfil !== "Administrador") return;
+    const vencidos = expiracoesSemRegistro(db.usuarios.filter((usuario) => usuario.perfil === "Fiscal"), db.registrosAuditoria);
+    if (vencidos.length === 0) return;
+    const agora = new Date().toISOString();
+    setDb((estado) => ({
+      ...estado,
+      registrosAuditoria: [
+        ...estado.registrosAuditoria,
+        ...vencidos.map((pessoa) =>
+          criarRegistroAuditoria(
+            {
+              usuarioId: "preparacao-sistema",
+              usuarioNome: "Preparação do sistema",
+              acao: `Acesso expirou em ${dataDaValidade(pessoa.validoAte!)}`,
+              entidade: "Usuário",
+              entidadeId: pessoa.id,
+              detalhes: `${pessoa.nome} • Fiscal • acesso expirou em ${dataDaValidade(pessoa.validoAte!)}.`,
+            },
+            agora
+          )
+        ),
+      ],
+    }));
+  }, [ready, usuarioDaSessao, db.usuarios, db.registrosAuditoria]);
+
+  // Tela bloqueada para o perfil: nem digitando o endereço nem restaurando a última tela. O servidor também nega os dados.
+  useEffect(() => {
+    if (!usuarioDaSessao || view === "campomais" || view === "modotela" || view === "ajuda") return;
+    const tela = telaDaVisao(view);
+    if (tela && nivelDaTela(usuarioDaSessao, tela) === "oculta") setView("inicio");
   }, [usuarioDaSessao, view]);
 
   useEffect(() => {
@@ -4277,6 +4320,7 @@ export default function Home() {
     setMenuMaisAberto(false);
     if (tela === "inicio") navegarPrincipal("inicio");
     else if (tela === "checklist") irParaMenu("checklist");
+    else if (tela === "evidencias") irParaMenu("evidencias");
     else if (tela === "correcoes") {
       const alvo = visitaAtual || visitaEmAndamentoDestaque;
       if (!alvo) {
@@ -4927,7 +4971,7 @@ export default function Home() {
           acao: existente ? "usuario.preparacao_atualizada" : "usuario.preparado",
           entidade: "Usuário",
           entidadeId: usuario.id,
-          detalhes: `${usuario.nome} • ${usuario.perfil} • convite ainda não enviado.${!existente && usuario.telas ? ` Telas diferentes do padrão: ${telasDiferentesDoPadrao(usuario).join(", ")}.` : ""}`,
+          detalhes: `${usuario.nome} • ${usuario.perfil} • convite ainda não enviado.${usuario.perfil === "Fiscal" && usuario.validoAte && !existente ? ` Acesso de leitura válido até ${dataDaValidade(usuario.validoAte)}.` : ""}${!existente && usuario.telas ? ` Telas diferentes do padrão: ${telasDiferentesDoPadrao(usuario).join(", ")}.` : ""}`,
         },
         agora
       );
@@ -4944,6 +4988,46 @@ export default function Home() {
     } catch (error) {
       void avisar(error instanceof Error ? error.message : "Não foi possível preparar o usuário.");
       return false;
+    }
+  }
+
+  function gravarMudancaDeAcesso(usuarioNovo: UsuarioSistema, acao: string, detalhes: string, agora: string) {
+    const registro = criarRegistroAuditoria(
+      { usuarioId: "preparacao-sistema", usuarioNome: "Preparação do sistema", acao, entidade: "Usuário", entidadeId: usuarioNovo.id, detalhes },
+      agora
+    );
+    const novo: AppDB = {
+      ...db,
+      usuarios: db.usuarios.map((item) => (item.id === usuarioNovo.id ? usuarioNovo : item)),
+      registrosAuditoria: [...db.registrosAuditoria, registro],
+    };
+    salvarDBLocal(novo);
+    setDb(novo);
+  }
+
+  function renovarAcessoDoFiscal(usuarioId: string, dias: number) {
+    if (!exigirPermissao("usuarios.gerenciar")) return;
+    try {
+      const alvo = db.usuarios.find((usuario) => usuario.id === usuarioId);
+      if (!alvo) throw new Error("Usuário não encontrado.");
+      const agora = new Date();
+      const usuario = renovarAcessoFiscal(alvo, dias, agora);
+      gravarMudancaDeAcesso(usuario, "usuario.acesso_renovado", `${usuario.nome} • Fiscal • acesso renovado até ${dataDaValidade(usuario.validoAte!)}.`, agora.toISOString());
+    } catch (error) {
+      void avisar(error instanceof Error ? error.message : "Não foi possível renovar o acesso.");
+    }
+  }
+
+  function encerrarAcessoDoFiscal(usuarioId: string) {
+    if (!exigirPermissao("usuarios.gerenciar")) return;
+    try {
+      const alvo = db.usuarios.find((usuario) => usuario.id === usuarioId);
+      if (!alvo) throw new Error("Usuário não encontrado.");
+      const agora = new Date();
+      const usuario = encerrarAcessoFiscal(alvo, agora);
+      gravarMudancaDeAcesso(usuario, "usuario.acesso_encerrado", `${usuario.nome} • Fiscal • acesso encerrado agora.`, agora.toISOString());
+    } catch (error) {
+      void avisar(error instanceof Error ? error.message : "Não foi possível encerrar o acesso.");
     }
   }
 
@@ -5252,7 +5336,7 @@ export default function Home() {
           respondidos: progressoDoChecklist(checklistDestaque).respondidos,
           total: progressoDoChecklist(checklistDestaque).total,
           percentual: progressoVisitaDestaque,
-          divergencia: avisoDeDivergencia(
+          divergencia: ehExecutor ? null : avisoDeDivergencia(
             conciliarNcs(
               checklistDestaque,
               (db.ncs || []).filter((nc) => nc.visitaId === visitaEmAndamentoDestaque.id && !nc.inativaNoChecklist)
@@ -5751,6 +5835,9 @@ export default function Home() {
       )}
 
       <div className="mx-auto min-w-0 max-w-[1500px] overflow-x-hidden px-3 py-4 pb-28 sm:p-5 pc-offset pc-content-pad md:overflow-visible md:pb-6 lg:p-7">
+        {ehFiscal && usuarioDaSessao?.validoAte && (
+          <FaixaVisitaOutraEmpresa mensagem={faixaDeLeitura(usuarioDaSessao.validoAte)} />
+        )}
         {visitaDeOutraEmpresa && visitaAtual && atual && (
           <FaixaVisitaOutraEmpresa
             empresaDaVisita={nomeEmFormatoNatural(empresaVisita?.nomeFantasia) || "outra empresa"}
@@ -5773,10 +5860,11 @@ export default function Home() {
               onTrocarEmpresa={() => setTrocarEmpresaAberto(true)}
             />
             <CampoBarra
-              tela={view === "inicio" ? "inicio" : view === "checklist" ? "checklist" : view === "correcoes" ? "correcoes" : view === "campomais" || view === "empresas" ? "mais" : null}
+              tela={view === "inicio" ? "inicio" : view === "checklist" ? "checklist" : view === "correcoes" ? "correcoes" : view === "evidencias" ? "evidencias" : view === "campomais" || view === "empresas" ? "mais" : null}
               correcoesAbertas={ncsAbertas}
               podeRegistrar={permitido("evidencias.adicionar") || permitido("visitas.executar")}
               onIr={irParaTelaCampo}
+              abas={abasDoCampo}
               onRegistrar={() => setRegistrarAberto(true)}
             />
           </>
@@ -5902,7 +5990,7 @@ export default function Home() {
             }}
             onVersaoCompleta={() => telaModo.escolherModo("completo")}
           />
-        ) : modo === "campo" && view === "inicio" ? (
+        ) : modo === "campo" && view === "inicio" && !ehFiscal ? (
           (() => {
             const alvo = visitaEmAndamentoDestaque;
             const lista = alvo?.checklist || [];
@@ -5914,7 +6002,7 @@ export default function Home() {
               ? correcoesAbertas(db.ncs, { empresaId: atual.id, visitaIds: new Set(visitas.filter((visita) => visita.empresaId === atual.id).map((visita) => visita.id)) })
               : 0;
             const progressoDoAlvo = progressoDoChecklist(lista);
-            const divergenciaDoAlvo = alvo ? avisoDeDivergencia(conciliarNcs(lista, (db.ncs || []).filter((nc) => nc.visitaId === alvo.id && !nc.inativaNoChecklist))) : null;
+            const divergenciaDoAlvo = alvo && !ehExecutor ? avisoDeDivergencia(conciliarNcs(lista, (db.ncs || []).filter((nc) => nc.visitaId === alvo.id && !nc.inativaNoChecklist))) : null;
             const etapaDoAlvo = alvo ? proximaEtapaDaVisita(lista.filter((item) => item.status === "Pendente").length, ncsAbertasDoAlvo) : null;
             return (
               <CampoInicio
@@ -5926,6 +6014,7 @@ export default function Home() {
                 naoConformes={itensNaoConformes(lista)}
                 correcoesAbertas={abertasNaEmpresa}
                 divergencia={divergenciaDoAlvo}
+                somenteCampo={ehExecutor}
                 outras={db.visitas
                   .filter((visita) => visita.status === "Em andamento" && visita.id !== alvo?.id && podeAbrirVisita(visita.empresaId))
                   .map((visita) => ({ id: visita.id, rotulo: `${nomeParaExibir(db.empresas[visita.empresaId])} · ${fdata(visita.data)}` }))}
@@ -5938,7 +6027,7 @@ export default function Home() {
                 onVisitas={() => irParaMenu("visitas")}
                 onIniciar={permitido("visitas.criar", atual?.id) && atual ? novaVisita : undefined}
                 proxima={
-                  etapaDoAlvo && mostrarCartaoProximaEtapa(etapaDoAlvo)
+                  etapaDoAlvo && !ehExecutor && mostrarCartaoProximaEtapa(etapaDoAlvo)
                     ? {
                         titulo: etapaDoAlvo.titulo,
                         detalhe:
@@ -6019,6 +6108,8 @@ export default function Home() {
             onEnviarAcesso={enviarAcessoUsuario}
             onExcluirUsuario={excluirUsuarioPreparacao}
             onSalvarTelas={salvarTelasLiberadas}
+            onRenovarAcesso={renovarAcessoDoFiscal}
+            onEncerrarAcesso={encerrarAcessoDoFiscal}
             motivoNaoExcluir={(usuario) => motivoParaNaoExcluir(usuario, contextoExclusaoUsuario())}
           />
         ) : view === "empresas" && showEmpresaForm && permitido("empresas.editar") ? (
@@ -8164,9 +8255,18 @@ export default function Home() {
             onModoDeTela={() => setView("modotela")}
             guiasLiberados={{ guiaRapido: telaVisivel("guiaRapido"), manualCompleto: telaVisivel("manualCompleto") }}
           />
+        ) : view === "inicio" && ehFiscal ? (
+          <FiscalInicio
+            nome={usuarioDaSessao?.nome.split(" ").filter(Boolean)[0] || "bem-vindo"}
+            empresa={atual ? nomeParaExibir(atual) : ""}
+            popsAprovados={(atual?.pops || [])
+              .filter((pop) => pop.status === "Aprovado" && !pop.arquivado)
+              .map((pop) => ({ id: pop.id, codigo: pop.codigo, titulo: pop.titulo, versao: pop.versao }))}
+          />
         ) : view === "inicio" ? (
           ehPC ? (
             <PcInicio
+              somenteCampo={ehExecutor}
               simples={nivelDe("inicio") === "simples"}
               nome={usuarioDaSessao?.nome.split(" ").filter(Boolean)[0] || "bem-vindo"}
               continuar={inicioPc.continuar}

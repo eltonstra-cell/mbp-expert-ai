@@ -35,7 +35,9 @@ export async function GET(request: NextRequest) {
     if (
       acesso.aplicado &&
       (!empresaId ||
-        !autorizaAcaoServidor(acesso, "empresas.ver", empresaId))
+        !autorizaAcaoServidor(acesso, "empresas.ver", empresaId) ||
+        // Fiscal só lê o que está pronto (POPs aprovados): nunca fotos de visita.
+        (acesso.autorizado && acesso.usuario.perfil === "Fiscal"))
     ) {
       return NextResponse.json(
         { error: "Você não possui acesso a esta evidência." },

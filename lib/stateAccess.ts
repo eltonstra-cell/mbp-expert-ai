@@ -1,13 +1,15 @@
 import type { AcaoPermissao, AppDB, UsuarioSistema } from "@/types";
 import { permissoesEfetivas } from "./screenAccess.ts";
+import { acessoVigente } from "./validadeDeAcesso.ts";
 
 function possuiPermissao(usuario: UsuarioSistema, acao: AcaoPermissao): boolean {
-  return usuario.status === "Ativo" && permissoesEfetivas(usuario).includes(acao);
+  return usuario.status === "Ativo" && acessoVigente(usuario) && permissoesEfetivas(usuario).includes(acao);
 }
 
 function podeAcessarEmpresa(usuario: UsuarioSistema, empresaId: string): boolean {
   return (
     usuario.status === "Ativo" &&
+    acessoVigente(usuario) &&
     (usuario.perfil === "Administrador" || usuario.empresaIds.includes(empresaId))
   );
 }
@@ -59,6 +61,27 @@ export function filtrarEstadoPorUsuario(
     (evidencia) =>
       empresaIds.has(evidencia.empresaId) && visitaIds.has(evidencia.visitaId)
   );
+  // Fiscal: só empresas e POPs aprovados; nada de visitas, correções, evidências ou rascunhos.
+  if (usuario.perfil === "Fiscal") {
+    const somenteAprovados = Object.fromEntries(
+      Object.entries(empresas).map(([id, empresa]) => [
+        id,
+        { ...empresa, pops: (empresa.pops || []).filter((pop) => pop.status === "Aprovado" && !pop.arquivado) },
+      ])
+    );
+    return {
+      ...data,
+      empresas: somenteAprovados,
+      empresaAtualId: data.empresaAtualId && empresaIds.has(data.empresaAtualId) ? data.empresaAtualId : Object.keys(empresas)[0] || null,
+      visitas: [],
+      ncs: [],
+      evidencias: [],
+      usuarios: [usuario],
+      registrosAuditoria: [],
+    };
+  }
+  // Executor de campo: não recebe correções nem a lista de POPs.
+  const semPops = usuario.perfil === "Executor de campo";
   const registrosAuditoria = possuiPermissao(efetivo, "auditoria.ver")
     ? data.registrosAuditoria.filter(
         (registro) =>
@@ -69,17 +92,79 @@ export function filtrarEstadoPorUsuario(
 
   return {
     ...data,
-    empresas,
+    empresas: semPops
+      ? Object.fromEntries(Object.entries(empresas).map(([id, empresa]) => [id, { ...empresa, pops: [] }]))
+      : empresas,
     empresaAtualId:
       data.empresaAtualId && empresaIds.has(data.empresaAtualId)
         ? data.empresaAtualId
         : Object.keys(empresas)[0] || null,
     visitas,
-    ncs,
+    ncs: semPops ? [] : ncs,
     evidencias,
     usuarios: [usuario],
     registrosAuditoria,
   };
+}
+
+const CAMPOS_DA_NC_QUE_VEM_DO_CHECKLIST = [
+  "ambiente",
+  "titulo",
+  "categoria",
+  "criticidade",
+  "referencia",
+  "orientacao",
+  "observacao",
+  "prioridade",
+  "inativaNoChecklist",
+  "canceladaPeloUsuarioEm",
+] as const;
+
+/**
+ * Executor de campo: a NC nasce da resposta "Não conforme" no checklist, então ele pode criar a NC e
+ * atualizar o que vem do checklist. Plano, status, prazo e acompanhamento ficam como estão.
+ */
+function mesclarNcsDoChecklist(
+  atual: AppDB["ncs"],
+  recebidas: AppDB["ncs"],
+  empresaIds: Set<string>,
+  agora: string
+): AppDB["ncs"] {
+  const porId = new Map(atual.map((nc) => [nc.id, nc]));
+  recebidas
+    .filter((nc) => empresaIds.has(nc.empresaId))
+    .forEach((nova) => {
+      const existente = porId.get(nova.id);
+      if (!existente) {
+        porId.set(nova.id, { ...nova, status: "Aberta", acaoCorretiva: undefined, responsavelAcao: undefined, prazo: undefined, acompanhamento: undefined, historicoAcompanhamento: undefined, resolvidaEm: undefined, marcadaFeita: undefined });
+        return;
+      }
+      if (!empresaIds.has(existente.empresaId)) return;
+      const atualizada = { ...existente } as Record<string, unknown>;
+      CAMPOS_DA_NC_QUE_VEM_DO_CHECKLIST.forEach((campo) => {
+        atualizada[campo] = (nova as Record<string, unknown>)[campo];
+      });
+      if (existente.inativaNoChecklist && !nova.inativaNoChecklist) {
+        atualizada.status = "Aberta";
+        atualizada.resolvidaEm = undefined;
+        atualizada.historicoAcompanhamento = [
+          ...(existente.historicoAcompanhamento || []),
+          { id: `${existente.id}:reaberta:${agora}`, criadoEm: agora, observacao: "Reaberta: item voltou a Não conforme", status: "Aberta" },
+        ];
+      }
+      porId.set(existente.id, atualizada as unknown as AppDB["ncs"][number]);
+    });
+  return [...porId.values()];
+}
+
+/** Executor de campo: só o checklist e o progresso das visitas que já existem nas empresas dele. */
+function mesclarVisitasDoExecutor(atuais: AppDB["visitas"], recebidas: AppDB["visitas"], empresaIds: Set<string>): AppDB["visitas"] {
+  const porId = new Map(recebidas.map((visita) => [visita.id, visita]));
+  return atuais.map((visita) => {
+    const nova = porId.get(visita.id);
+    if (!nova || !empresaIds.has(visita.empresaId) || visita.status === "Concluída") return visita;
+    return { ...visita, checklist: nova.checklist, progresso: nova.progresso };
+  });
 }
 
 function mesclarPorEscopo<T extends { id: string; empresaId: string }>(
@@ -150,7 +235,11 @@ export function mesclarEstadoPorUsuario(
   }
 
   if (possuiPermissao(efetivo, "visitas.executar")) {
-    visitas = mesclarPorEscopo("visitas", atual.visitas, recebido.visitas, empresaIds, false);
+    visitas =
+      usuario.perfil === "Executor de campo"
+        ? mesclarVisitasDoExecutor(atual.visitas, recebido.visitas, empresaIds)
+        : mesclarPorEscopo("visitas", atual.visitas, recebido.visitas, empresaIds, false);
+    if (usuario.perfil === "Executor de campo") ncs = mesclarNcsDoChecklist(atual.ncs, recebido.ncs, empresaIds, agora);
   }
 
   if (possuiPermissao(efetivo, "ncs.acompanhar")) {

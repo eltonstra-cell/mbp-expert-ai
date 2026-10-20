@@ -10,7 +10,11 @@ import { acaoPadraoVisivel } from "@/lib/conteudoValidado";
 import { contarEtapas, etapaDaCorrecao, ordenarCorrecoes, prazoSugerido, validarPlano, type EtapaCorrecao, type GravidadeNc } from "@/lib/actionPlan";
 import { NOME_DA_GRAVIDADE, linhaDaCorrecao, mensagemDeFaltas, primeiroCampoComProblema, type CampoDoPlano } from "@/lib/correcaoRotulos";
 
-export type TelaCampo = "inicio" | "checklist" | "correcoes" | "mais";
+export type TelaCampo = "inicio" | "checklist" | "correcoes" | "evidencias" | "mais";
+
+/** Abas da barra de baixo, em ordem. O padrão é Início, Checklist, Registrar, Correções e Mais. */
+export type AbaDaBarra = "inicio" | "checklist" | "registrar" | "correcoes" | "evidencias" | "mais";
+export const ABAS_PADRAO: AbaDaBarra[] = ["inicio", "checklist", "registrar", "correcoes", "mais"];
 
 type Chrome = {
   tela: TelaCampo | null;
@@ -52,8 +56,8 @@ export function CampoCabecalho({
   );
 }
 
-export function CampoBarra({ tela, correcoesAbertas, podeRegistrar, onIr, onRegistrar }: Pick<Chrome, "tela" | "correcoesAbertas" | "podeRegistrar" | "onIr" | "onRegistrar">) {
-  const botao = (chave: TelaCampo, rotulo: string, icone: "inicio" | "checklist" | "ncs" | "mais", contador = 0) => (
+export function CampoBarra({ tela, correcoesAbertas, podeRegistrar, onIr, onRegistrar, abas = ABAS_PADRAO }: Pick<Chrome, "tela" | "correcoesAbertas" | "podeRegistrar" | "onIr" | "onRegistrar"> & { abas?: AbaDaBarra[] }) {
+  const botao = (chave: TelaCampo, rotulo: string, icone: NavIconName, contador = 0) => (
     <button key={chave} type="button" className={`campo-tab${tela === chave ? " is-on" : ""}`} aria-current={tela === chave ? "page" : undefined} onClick={() => onIr(chave)}>
       <span className="campo-tab-icon">
         <NavIcon name={icone} size={22} strokeWidth={1.9} />
@@ -63,21 +67,32 @@ export function CampoBarra({ tela, correcoesAbertas, podeRegistrar, onIr, onRegi
     </button>
   );
   return (
-    <nav className="campo-bar" aria-label="Navegação do modo Campo">
-      {botao("inicio", "Início", "inicio")}
-      {botao("checklist", "Checklist", "checklist")}
-      {podeRegistrar ? (
-        <button type="button" className="campo-register" onClick={onRegistrar}>
-          <span className="campo-register-orb">
-            <NavIcon name="registrar" size={26} strokeWidth={2.1} />
-          </span>
-          <span className="campo-tab-label">Registrar</span>
-        </button>
-      ) : (
-        <span className="campo-register-gap" />
-      )}
-      {botao("correcoes", "Correções", "ncs", correcoesAbertas)}
-      {botao("mais", "Mais", "mais")}
+    <nav className="campo-bar" aria-label="Navegação do modo Campo" style={abas.length === 5 ? undefined : { gridTemplateColumns: `repeat(${abas.length},1fr)` }}>
+      {abas.map((aba) => {
+        switch (aba) {
+          case "inicio":
+            return botao("inicio", "Início", "inicio");
+          case "checklist":
+            return botao("checklist", "Checklist", "checklist");
+          case "registrar":
+            return podeRegistrar ? (
+              <button key="registrar" type="button" className="campo-register" onClick={onRegistrar}>
+                <span className="campo-register-orb">
+                  <NavIcon name="registrar" size={26} strokeWidth={2.1} />
+                </span>
+                <span className="campo-tab-label">Registrar</span>
+              </button>
+            ) : (
+              <span key="registrar" className="campo-register-gap" />
+            );
+          case "correcoes":
+            return botao("correcoes", "Correções", "ncs", correcoesAbertas);
+          case "evidencias":
+            return botao("evidencias", "Evidências", "evidencias");
+          default:
+            return botao("mais", "Mais", "mais");
+        }
+      })}
     </nav>
   );
 }
@@ -104,6 +119,7 @@ export function CampoInicio({
   proxima,
   onProxima,
   continuarDetalhe,
+  somenteCampo = false,
 }: {
   usuario: string;
   empresa?: string;
@@ -127,6 +143,8 @@ export function CampoInicio({
   onProxima?: () => void;
   /** Texto pequeno do "Continuar checklist", ex.: "48 itens sem resposta". */
   continuarDetalhe?: string;
+  /** Executor de campo: sem correções, sem lista de visitas e sem abrir visita nova. */
+  somenteCampo?: boolean;
 }) {
   const percentual = total > 0 ? Math.round((respondidos / total) * 100) : 0;
   return (
@@ -157,9 +175,11 @@ export function CampoInicio({
               Iniciar visita
             </button>
           )}
-          <button type="button" className="campo-btn campo-btn--outline" onClick={onVisitas}>
-            Ver visitas
-          </button>
+          {!somenteCampo && (
+            <button type="button" className="campo-btn campo-btn--outline" onClick={onVisitas}>
+              Ver visitas
+            </button>
+          )}
         </div>
       )}
 
@@ -190,6 +210,7 @@ export function CampoInicio({
         </button>
       )}
 
+      {!somenteCampo && (
       <div className="campo-tiles">
         <button type="button" className="campo-tile campo-tile--nc" onClick={onCorrecoes}>
           <span className="campo-tile-n">{correcoesAbertas}</span>
@@ -200,6 +221,7 @@ export function CampoInicio({
           <span>Itens não conformes</span>
         </button>
       </div>
+      )}
 
       {outras.length > 0 && (
         <div className="campo-lista">

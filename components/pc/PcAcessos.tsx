@@ -14,14 +14,19 @@ import { telasDiferentesDoPadrao, type TelasDoUsuario } from "@/lib/screenAccess
 import type { ItemMenu } from "@/components/ui/RowMenu";
 import { acoesDoAcesso } from "@/lib/menuActions";
 import { contarPessoas, filtrarPessoas, type FiltroPessoas } from "@/lib/userManagement";
+import { PERFIS_NOVOS, PODE_E_NAO_PODE } from "@/lib/perfisTexto";
+import { confirmar } from "@/lib/dialogos";
+import { PRAZOS_DE_VALIDADE, acessoVigente, calcularValidade, dataDaValidade, textoDoConvite } from "@/lib/validadeDeAcesso";
 
-const PERFIS: PerfilUsuario[] = ["Administrador", "Consultor/RT", "Cliente Gestor", "Gerente"];
+const PERFIS: PerfilUsuario[] = ["Administrador", "Consultor/RT", "Cliente Gestor", "Gerente", "Executor de campo", "Fiscal"];
 
 const GRADIENTE_PERFIL: Record<PerfilUsuario, string> = {
   Administrador: `linear-gradient(160deg, ${TILE_GRADIENTS.roxo[0]}, ${TILE_GRADIENTS.roxo[1]})`,
   "Consultor/RT": `linear-gradient(160deg, ${TILE_GRADIENTS.azul[0]}, ${TILE_GRADIENTS.azul[1]})`,
   "Cliente Gestor": `linear-gradient(160deg, ${TILE_GRADIENTS.turquesa[0]}, ${TILE_GRADIENTS.turquesa[1]})`,
   Gerente: `linear-gradient(160deg, ${TILE_GRADIENTS.ambar[0]}, ${TILE_GRADIENTS.ambar[1]})`,
+  "Executor de campo": `linear-gradient(160deg, ${TILE_GRADIENTS.laranja[0]}, ${TILE_GRADIENTS.laranja[1]})`,
+  Fiscal: `linear-gradient(160deg, ${TILE_GRADIENTS.ceu[0]}, ${TILE_GRADIENTS.ceu[1]})`,
 };
 
 type Aba = "pessoas" | "perfis" | "historico";
@@ -45,6 +50,10 @@ type Props = {
   podeExcluir: (usuario: UsuarioSistema) => boolean;
   onExcluir: (usuarioId: string) => void;
   onSalvarTelas: (usuarioId: string, dados: { perfil: PerfilUsuario; empresaIds: string[]; telas: TelasDoUsuario }) => boolean;
+  /** Fiscal: renova a validade (3, 7, 15 ou 30 dias a partir de hoje). */
+  onRenovar: (usuarioId: string, dias: number) => void;
+  /** Fiscal: corta o acesso na hora. */
+  onEncerrar: (usuarioId: string) => void;
 };
 
 function iniciais(nome: string) {
@@ -78,7 +87,11 @@ export default function PcAcessos({
   podeExcluir,
   onExcluir,
   onSalvarTelas,
+  onRenovar,
+  onEncerrar,
 }: Props) {
+  const [renovarDe, setRenovarDe] = useState<UsuarioSistema | null>(null);
+  const [diasRenovacao, setDiasRenovacao] = useState<number>(0);
   const [telasDe, setTelasDe] = useState<UsuarioSistema | null>(null);
   const [telasDoNovo, setTelasDoNovo] = useState(false);
   const [excluirDe, setExcluirDe] = useState<UsuarioSistema | null>(null);
@@ -107,7 +120,11 @@ export default function PcAcessos({
     formulario && formulario.perfil !== "Administrador" && formulario.empresaIds.length === 0
       ? "Escolha ao menos uma empresa autorizada."
       : "";
-  const formularioValido = !erroNome && !erroEmail && !erroEmpresas;
+  const erroValidade =
+    formulario && formulario.perfil === "Fiscal" && !formulario.jaEraFiscal && !(formulario.validadeDias && (PRAZOS_DE_VALIDADE as readonly number[]).includes(formulario.validadeDias))
+      ? "Escolha a validade do acesso: 3, 7, 15 ou 30 dias."
+      : "";
+  const formularioValido = !erroNome && !erroEmail && !erroEmpresas && !erroValidade;
 
   return (
     <section className="ui-screen" aria-label="Acessos">
@@ -189,6 +206,29 @@ export default function PcAcessos({
                     </select>
                   </label>
                 </div>
+                {formulario.perfil === "Fiscal" && !formulario.jaEraFiscal && (
+                  <label className="pc-field">
+                    <span className="ui-eyebrow">Validade do acesso</span>
+                    <select
+                      className={`ui-input${erroValidade ? " is-invalid" : ""}`}
+                      value={formulario.validadeDias ?? ""}
+                      onChange={(evento) => onCampo({ validadeDias: evento.target.value ? Number(evento.target.value) : undefined })}
+                      aria-invalid={Boolean(erroValidade)}
+                    >
+                      <option value="">Escolha…</option>
+                      {PRAZOS_DE_VALIDADE.map((dias) => (
+                        <option key={dias} value={dias}>
+                          {dias} dias
+                        </option>
+                      ))}
+                    </select>
+                    {erroValidade ? (
+                      <span className="ui-field-error">{erroValidade}</span>
+                    ) : formulario.validadeDias ? (
+                      <span className="ui-row-sub">{textoDoConvite(calcularValidade(formulario.validadeDias))}</span>
+                    ) : null}
+                  </label>
+                )}
                 {formulario.perfil !== "Administrador" && (
                   <div className="pc-form-empresas">
                     <span className="ui-eyebrow">Empresas autorizadas</span>
@@ -262,6 +302,11 @@ export default function PcAcessos({
                   pilulas={
                     <>
                       <Pill tom="brand">{usuario.perfil}</Pill>
+                      {usuario.perfil === "Fiscal" && usuario.validoAte && (
+                        <Pill tom={usuario.acessoEncerradoEm ? "nc" : acessoVigente(usuario) ? "info" : "nc"}>
+                          {usuario.acessoEncerradoEm ? "Encerrado" : acessoVigente(usuario) ? `Expira em ${dataDaValidade(usuario.validoAte).slice(0, 5)}` : `Expirou em ${dataDaValidade(usuario.validoAte).slice(0, 5)}`}
+                        </Pill>
+                      )}
                       {telasDiferentesDoPadrao(usuario).length > 0 && <Pill tom="amber">Diferente do padrão</Pill>}
                       <Pill tom={usuario.status === "Ativo" ? "ok" : usuario.status === "Suspenso" ? "nc" : "pend"}>
                         {usuario.status}
@@ -279,6 +324,24 @@ export default function PcAcessos({
                         >
                           {enviandoId === usuario.id ? "Enviando..." : "Enviar acesso"}
                         </button>
+                      )}
+                      {usuario.perfil === "Fiscal" && (
+                        <>
+                          <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => { setRenovarDe(usuario); setDiasRenovacao(0); }}>
+                            Renovar
+                          </button>
+                          {!usuario.acessoEncerradoEm && (
+                            <button
+                              type="button"
+                              className="ui-btn ui-btn--soft ui-btn--small"
+                              onClick={async () => {
+                                if (await confirmar(`Encerrar agora o acesso de ${usuario.nome}? A pessoa deixa de entrar na hora.`, { titulo: "Encerrar acesso", confirmarRotulo: "Encerrar agora", perigoso: true })) onEncerrar(usuario.id);
+                              }}
+                            >
+                              Encerrar agora
+                            </button>
+                          )}
+                        </>
                       )}
                       <button type="button" className="ui-btn ui-btn--soft ui-btn--small" aria-label={`Telas liberadas de ${usuario.nome}`} onClick={() => setTelasDe(usuario)}>
                         Telas
@@ -315,13 +378,33 @@ export default function PcAcessos({
           <div className="pc-perfis">
             {PERFIS.map((perfil) => (
               <article key={perfil} className="ui-card">
-                <h2 className="ui-card-title">{perfil}</h2>
+                <h2 className="ui-card-title">
+                  {perfil}
+                  {PERFIS_NOVOS.includes(perfil) && <span className="perfil-novo">novo</span>}
+                </h2>
                 <p className="ui-subtitle">{PROFILE_DESCRIPTIONS[perfil]}</p>
-                <ul className="pc-perm-list">
-                  {PERMISSIONS_BY_PROFILE[perfil].map((acao) => (
-                    <li key={acao}>✓ {PERMISSION_LABELS[acao]}</li>
-                  ))}
-                </ul>
+                {PODE_E_NAO_PODE[perfil] ? (
+                  <>
+                    <span className="ui-eyebrow">Pode</span>
+                    <ul className="pc-perm-list">
+                      {PODE_E_NAO_PODE[perfil]!.pode.map((texto) => (
+                        <li key={texto}>✓ {texto}</li>
+                      ))}
+                    </ul>
+                    <span className="ui-eyebrow">Não pode</span>
+                    <ul className="pc-perm-list pc-perm-list--nao">
+                      {PODE_E_NAO_PODE[perfil]!.naoPode.map((texto) => (
+                        <li key={texto}>✕ {texto}</li>
+                      ))}
+                    </ul>
+                  </>
+                ) : (
+                  <ul className="pc-perm-list">
+                    {PERMISSIONS_BY_PROFILE[perfil].map((acao) => (
+                      <li key={acao}>✓ {PERMISSION_LABELS[acao]}</li>
+                    ))}
+                  </ul>
+                )}
               </article>
             ))}
           </div>
@@ -339,6 +422,43 @@ export default function PcAcessos({
           </div>
         )}
       </div>
+      {renovarDe && (
+        <div className="pc-modal-layer" role="presentation">
+          <div className="pc-modal-backdrop" onClick={() => setRenovarDe(null)} />
+          <section className="pc-modal pc-renovar" role="dialog" aria-modal="true" aria-label="Renovar acesso">
+            <h2 className="pc-modal-title">Renovar acesso</h2>
+            <p className="ui-subtitle">{renovarDe.nome} · escolha a nova validade, contada a partir de hoje.</p>
+            <label className="pc-field">
+              <span className="ui-eyebrow">Nova validade</span>
+              <select className="ui-input" value={diasRenovacao || ""} onChange={(evento) => setDiasRenovacao(Number(evento.target.value))}>
+                <option value="">Escolha…</option>
+                {PRAZOS_DE_VALIDADE.map((dias) => (
+                  <option key={dias} value={dias}>
+                    {dias} dias
+                  </option>
+                ))}
+              </select>
+              {diasRenovacao ? <span className="ui-row-sub">{textoDoConvite(calcularValidade(diasRenovacao))}</span> : <span className="ui-field-error">Escolha 3, 7, 15 ou 30 dias.</span>}
+            </label>
+            <div className="ui-footer-actions">
+              <button
+                type="button"
+                className="ui-btn ui-btn--save"
+                disabled={!diasRenovacao}
+                onClick={() => {
+                  onRenovar(renovarDe.id, diasRenovacao);
+                  setRenovarDe(null);
+                }}
+              >
+                Renovar
+              </button>
+              <button type="button" className="ui-btn ui-btn--secondary" onClick={() => setRenovarDe(null)}>
+                Cancelar
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
       {excluirDe && (
         <ConfirmarExclusaoModal
           titulo="Excluir usuário"

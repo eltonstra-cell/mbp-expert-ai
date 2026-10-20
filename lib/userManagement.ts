@@ -1,5 +1,6 @@
 import type { PerfilUsuario, StatusUsuario, UsuarioSistema } from "@/types";
 import type { TelasDoUsuario } from "./screenAccess.ts";
+import { calcularValidade, prazoPermitido } from "./validadeDeAcesso.ts";
 
 export type DadosUsuarioPreparacao = {
   nome: string;
@@ -8,6 +9,10 @@ export type DadosUsuarioPreparacao = {
   empresaIds: string[];
   /** Telas liberadas definidas já no preparo (opcional); sem isso vale o padrão do perfil. */
   telas?: TelasDoUsuario;
+  /** Fiscal: por quantos dias o acesso vale (3, 7, 15 ou 30). Não existe "sem prazo". */
+  validadeDias?: number;
+  /** Edição de quem já era Fiscal: a validade só muda em "Renovar". */
+  jaEraFiscal?: boolean;
 };
 
 export type IdentidadeSessao = {
@@ -50,6 +55,23 @@ function validarDados(
   if (dados.perfil !== "Administrador" && dados.empresaIds.length === 0) {
     throw new Error("Atribua pelo menos uma empresa para este perfil.");
   }
+  if (dados.perfil === "Fiscal" && !(dados.validadeDias !== undefined && prazoPermitido(dados.validadeDias))) {
+    throw new Error("Escolha por quantos dias o acesso vale: 3, 7, 15 ou 30.");
+  }
+}
+
+/** Fiscal: renova o acesso por mais 3, 7, 15 ou 30 dias a partir de agora (reabre um acesso encerrado ou vencido). */
+export function renovarAcessoFiscal(usuario: UsuarioSistema, dias: number, agora = new Date()): UsuarioSistema {
+  if (usuario.perfil !== "Fiscal") throw new Error("Só o acesso do Fiscal tem validade.");
+  if (!prazoPermitido(dias)) throw new Error("Escolha 3, 7, 15 ou 30 dias.");
+  const { acessoEncerradoEm: _encerrado, ...resto } = usuario;
+  return { ...resto, validoAte: calcularValidade(dias, agora), atualizadoEm: agora.toISOString() };
+}
+
+/** Fiscal: "Encerrar agora" corta o acesso na hora; o servidor passa a recusar a pessoa. */
+export function encerrarAcessoFiscal(usuario: UsuarioSistema, agora = new Date()): UsuarioSistema {
+  if (usuario.perfil !== "Fiscal") throw new Error("Só o acesso do Fiscal tem validade.");
+  return { ...usuario, acessoEncerradoEm: agora.toISOString(), atualizadoEm: agora.toISOString() };
 }
 
 export function criarUsuarioPreparacao(
@@ -70,6 +92,7 @@ export function criarUsuarioPreparacao(
         ? []
         : Array.from(new Set(dados.empresaIds)),
     ...(dados.telas && Object.keys(dados.telas).length > 0 ? { telas: dados.telas } : {}),
+    ...(dados.perfil === "Fiscal" && dados.validadeDias !== undefined ? { validoAte: calcularValidade(dados.validadeDias, new Date(criadoEm)) } : {}),
     criadoEm,
     atualizadoEm: criadoEm,
   };
@@ -81,9 +104,13 @@ export function atualizarUsuarioPreparacao(
   existentes: UsuarioSistema[],
   atualizadoEm = new Date().toISOString()
 ): UsuarioSistema {
-  validarDados(dados, existentes, usuario.id);
+  // Editar uma pessoa que já é Fiscal não pede validade de novo (renovar é um passo próprio).
+  validarDados({ ...dados, validadeDias: dados.perfil === "Fiscal" && usuario.perfil === "Fiscal" ? dados.validadeDias ?? 7 : dados.validadeDias }, existentes, usuario.id);
+  const virouFiscal = dados.perfil === "Fiscal" && usuario.perfil !== "Fiscal";
+  const { validoAte: _validoAte, acessoEncerradoEm: _encerradoEm, ...semValidade } = usuario;
   return {
-    ...usuario,
+    ...(dados.perfil === "Fiscal" && !virouFiscal ? usuario : semValidade),
+    ...(virouFiscal && dados.validadeDias !== undefined ? { validoAte: calcularValidade(dados.validadeDias, new Date(atualizadoEm)) } : {}),
     nome: dados.nome.trim(),
     email: normalizarEmail(dados.email),
     perfil: dados.perfil,

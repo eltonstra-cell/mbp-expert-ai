@@ -297,7 +297,9 @@ export type PerfilUsuario =
   | "Administrador"
   | "Consultor/RT"
   | "Cliente Gestor"
-  | "Gerente";
+  | "Gerente"
+  | "Executor de campo"
+  | "Fiscal";
 
 export type StatusUsuario = "Convidado" | "Ativo" | "Suspenso";
 
@@ -315,6 +317,10 @@ export type UsuarioSistema = {
   atualizadoEm: string;
   convidadoEm?: string;
   ultimoAcessoEm?: string;
+  /** Fiscal: último instante do acesso (ISO). Depois dele a pessoa não entra. Opcional, dentro do JSON do estado. */
+  validoAte?: string;
+  /** Fiscal: "Encerrar agora" corta o acesso na hora. */
+  acessoEncerradoEm?: string;
 };
 
 export type AcaoPermissao =

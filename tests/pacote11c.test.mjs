@@ -44,7 +44,7 @@ test("C: Continuar checklist e o cartão abrem o item de destino, sem usar o úl
   const pagina = ler("../app/page.tsx");
   assert.ok(pagina.includes("continuar(alvo.id, true, proximoItem)"));
   assert.ok(pagina.includes("continuarDetalhe={textoDoContinuar(etapaDoAlvo)}"));
-  assert.ok(pagina.includes("etapaDoAlvo && mostrarCartaoProximaEtapa(etapaDoAlvo)"));
+  assert.ok(pagina.includes("mostrarCartaoProximaEtapa(etapaDoAlvo)"));
   assert.ok(pagina.includes("if (itemEscolhido) setItemFocoId(itemEscolhido.id);"));
   assert.ok(ler("../components/campo/CampoTelas.tsx").includes("campo-btn-detalhe"));
 });

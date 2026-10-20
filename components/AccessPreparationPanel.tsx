@@ -17,7 +17,7 @@ import {
   PROFILE_DESCRIPTIONS,
 } from "@/lib/permissions";
 
-const perfis: PerfilUsuario[] = ["Administrador", "Consultor/RT", "Cliente Gestor", "Gerente"];
+const perfis: PerfilUsuario[] = ["Administrador", "Consultor/RT", "Cliente Gestor", "Gerente", "Executor de campo", "Fiscal"];
 const vazio: DadosUsuarioPreparacao = {
   nome: "",
   email: "",
@@ -34,6 +34,8 @@ type Props = {
   onEnviarAcesso: (usuarioId: string) => Promise<boolean>;
   onExcluirUsuario?: (usuarioId: string) => boolean;
   onSalvarTelas?: (usuarioId: string, dados: { perfil: PerfilUsuario; empresaIds: string[]; telas: Partial<Record<TelaKey, NivelTela>> }) => boolean;
+  onRenovarAcesso?: (usuarioId: string, dias: number) => void;
+  onEncerrarAcesso?: (usuarioId: string) => void;
   /** Motivo pelo qual a pessoa não pode ser excluída (null = pode). */
   motivoNaoExcluir?: (usuario: UsuarioSistema) => string | null;
   /** Layout do PC (a partir de 1024px). */
@@ -77,6 +79,7 @@ export default function AccessPreparationPanel(props: Props) {
       email: usuario.email,
       perfil: usuario.perfil,
       empresaIds: usuario.empresaIds,
+      jaEraFiscal: usuario.perfil === "Fiscal",
     });
   }
 
@@ -127,6 +130,8 @@ export default function AccessPreparationPanel(props: Props) {
         podeExcluir={(usuario) => !props.motivoNaoExcluir?.(usuario) && Boolean(props.onExcluirUsuario)}
         onExcluir={(id) => props.onExcluirUsuario?.(id)}
         onSalvarTelas={(id, dados) => props.onSalvarTelas?.(id, dados) ?? false}
+        onRenovar={(id, dias) => props.onRenovarAcesso?.(id, dias)}
+        onEncerrar={(id) => props.onEncerrarAcesso?.(id)}
       />
     );
   }

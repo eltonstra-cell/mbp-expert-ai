@@ -4,6 +4,7 @@ import { getNeonAuth } from "@/lib/auth/server";
 import { resolveNeonDatabaseUrl } from "@/lib/neonConnection";
 import { podeExecutar } from "@/lib/permissions";
 import { localizarUsuarioAutenticado } from "@/lib/stateAccess";
+import { acessoVigente } from "@/lib/validadeDeAcesso";
 import type { AcaoPermissao, AppDB, UsuarioSistema } from "@/types";
 
 const WORKSPACE_ID = process.env.MBP_WORKSPACE_ID || "principal";
@@ -49,7 +50,7 @@ export async function obterAcessoServidor(): Promise<AcessoServidor> {
   }
 
   const encontrado = localizarUsuarioAutenticado(data, authId, email);
-  if (!encontrado || encontrado.status === "Suspenso") {
+  if (!encontrado || encontrado.status === "Suspenso" || !acessoVigente(encontrado)) {
     return { aplicado: true, autorizado: false, data: null, usuario: null };
   }
 

@@ -8,10 +8,13 @@ export default function FaixaVisitaOutraEmpresa({
   empresaDaVisita,
   empresaAtiva,
   onTrocar,
+  mensagem,
 }: {
-  empresaDaVisita: string;
-  empresaAtiva: string;
-  onTrocar: () => void;
+  empresaDaVisita?: string;
+  empresaAtiva?: string;
+  onTrocar?: () => void;
+  /** Faixa só de aviso (sem botão), ex.: acesso de leitura do Fiscal. */
+  mensagem?: string;
 }) {
   const raiz = useRef<HTMLDivElement | null>(null);
 
@@ -30,12 +33,12 @@ export default function FaixaVisitaOutraEmpresa({
 
   return (
     <div ref={raiz} className="faixa-outra-empresa" role="status">
-      <span className="faixa-outra-texto">
-        Esta visita é de {empresaDaVisita}. A empresa ativa é {empresaAtiva}.
-      </span>
-      <button type="button" className="ui-btn ui-btn--secondary ui-btn--small faixa-outra-botao" onClick={onTrocar}>
-        Trocar para {empresaDaVisita}
-      </button>
+      <span className="faixa-outra-texto">{mensagem ?? `Esta visita é de ${empresaDaVisita}. A empresa ativa é ${empresaAtiva}.`}</span>
+      {onTrocar && (
+        <button type="button" className="ui-btn ui-btn--secondary ui-btn--small faixa-outra-botao" onClick={onTrocar}>
+          Trocar para {empresaDaVisita}
+        </button>
+      )}
     </div>
   );
 }

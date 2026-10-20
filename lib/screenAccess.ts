@@ -90,7 +90,15 @@ export const PADRAO_DO_PERFIL: Record<PerfilUsuario, Record<TelaKey, NivelTela>>
     central: "ver", checklist: "ver", evidencias: "editar", correcoes: "marcar", popsVisita: "ver", relatorio: "ver",
     pops: "ver", inicio: "completo", visitas: "ver", guiaRapido: "ver",
   }),
+  // Executor de campo: só Início, Checklist e Evidências (com Registrar agora), nas empresas atribuídas.
+  "Executor de campo": montar({ inicio: "simples", checklist: "editar", evidencias: "editar" }),
+  // Fiscal: leitura, só do que está pronto (POPs aprovados; relatórios emitidos e dossiê ainda não existem).
+  Fiscal: montar({ inicio: "simples", guiaRapido: "ver" }),
 };
+
+/** Telas que o Fiscal pode ter, sempre sem edição. Ajustes por pessoa nunca passam disto. */
+const TELAS_DO_FISCAL: TelaKey[] = ["inicio", "guiaRapido", "manualCompleto"];
+const NIVEIS_DO_FISCAL: NivelTela[] = ["oculta", "ver", "simples", "completo"];
 
 /** Ações liberadas por cada (tela, nível). Telas só de leitura liberam só a visão. */
 const ACOES_DA_TELA: Partial<Record<TelaKey, Partial<Record<NivelTela, AcaoPermissao[]>>>> = {
@@ -113,6 +121,8 @@ export const ACOES_FIXAS_DO_PERFIL: Record<PerfilUsuario, AcaoPermissao[]> = {
   "Consultor/RT": ["ia.analisar", "auditoria.ver"],
   "Cliente Gestor": [],
   Gerente: [],
+  "Executor de campo": [],
+  Fiscal: [],
 };
 
 export function nivelValido(tela: TelaKey, nivel: NivelTela): boolean {
@@ -135,6 +145,7 @@ export function telasEfetivas(
     const definicao = POR_TELA.get(tela);
     if (!definicao || !nivel || !nivelValido(tela, nivel)) return;
     if (definicao.somenteAdmin && usuario.perfil !== "Administrador") return;
+    if (usuario.perfil === "Fiscal" && (!TELAS_DO_FISCAL.includes(tela) || !NIVEIS_DO_FISCAL.includes(nivel))) return;
     efetivas[tela] = nivel;
   });
   return efetivas;
