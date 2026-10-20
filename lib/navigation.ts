@@ -84,7 +84,7 @@ const CATALOGO: NavItem[] = [
     grupo: "agora",
     requer: (pode) => pode("visitas.executar") && pode("evidencias.adicionar"),
   },
-  { key: "inicio", rotulo: "Início", curto: "Início", tom: "azul", grupo: "agora" },
+  { key: "inicio", rotulo: "Início", curto: "Início", tom: "indigo", grupo: "agora" },
   { key: "visitas", rotulo: "Visitas", curto: "Visitas", tom: "indigo", grupo: "agora" },
   { key: "central", rotulo: "Central da visita", curto: "Central", tom: "azul", grupo: "agora", somenteNaVisita: true },
   {

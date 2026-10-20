@@ -41,7 +41,7 @@ export const TILE_GRADIENTS = {
   ambar: ["#FCD34D", "#F59E0B"],
   violeta: ["#94A3B8", "#475569"],
   rosa: ["#F9A8D4", "#EC4899"],
-  indigo: ["#818CF8", "#4F46E5"],
+  indigo: ["#EEF1F5", "#EEF1F5"],
   ardosia: ["#94A3B8", "#475569"],
 } as const;
 
@@ -51,7 +51,7 @@ const NAV_VARIABLES: Record<string, string> = {
   "--nav-capsule-bg": "rgba(255,255,255,.92)",
   "--nav-shadow": "0 10px 30px rgba(18,32,43,.16), 0 2px 6px rgba(18,32,43,.08)",
   "--sheet-bg":
-    "radial-gradient(120% 70% at 20% 0%, rgba(36,86,214,.28), rgba(36,86,214,0) 60%), linear-gradient(170deg, #B4C8F8, #CBD8F6 42%, #EBD9B4)",
+    "linear-gradient(170deg, #EEF1F5, #F7F8FA)",
   "--nav-ring-inner": "#FFFFFF",
   "--visit-card-bg": "#FFFFFF",
   "--side-from": "#2F63E0",
@@ -69,9 +69,9 @@ const NAV_VARIABLES: Record<string, string> = {
   "--tabs-bg": "#EEF1F5",
   "--dash-bg": "#FFFBF0",
   "--dash-border": "#E89A0C",
-  "--menu-bg-from": "#F1F5FE",
-  "--menu-bg-to": "#F9FBFF",
-  "--menu-border": "#DCE5F8",
+  "--menu-bg-from": "#EEF1F5",
+  "--menu-bg-to": "#FFFFFF",
+  "--menu-border": "#DDE6EA",
   "--menu-active-shadow": "0 2px 8px rgba(36,86,214,.12), 0 1px 2px rgba(18,32,43,.06)",
   "--register-gradient": "linear-gradient(135deg, #F28C1E, #E8760A)",
   "--register-shadow": "0 6px 14px rgba(232,118,10,.38)",

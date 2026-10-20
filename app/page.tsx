@@ -5278,14 +5278,14 @@ export default function Home() {
         .slice(0, 12)
         .map((visita) => {
           const itens = visita.checklist || [];
-          const respondidosVisita = itens.filter((item) => item.status !== "Pendente").length;
           return {
             id: visita.id,
             empresa: nomeEmFormatoNatural(db.empresas[visita.empresaId]?.nomeFantasia) || "Empresa",
             data: fdata(visita.data),
             responsavel: visita.responsavel || "Responsável não informado",
             status: visita.status,
-            percentual: itens.length ? Math.round((respondidosVisita / itens.length) * 100) : 0,
+            percentual: progressoDoChecklist(itens).percentual,
+            cor: db.empresas[visita.empresaId] ? corDaEmpresa(db.empresas[visita.empresaId]) : undefined,
           };
         }),
   };
@@ -6139,7 +6139,7 @@ export default function Home() {
                         categoria: "Manual",
                         titulo: "Manual e responsabilidades",
                         resumo: `${quantidadeComNome(responsabilidadesEmpresa.filter((item) => item.ativa).length, "responsabilidade ativa", "responsabilidades ativas")}.`,
-                        cor: "bg-violet-100 text-violet-700",
+                        cor: "bg-[#EEF1F5] text-[color:var(--ink)]",
                       },
                       {
                         secao: "ambientes" as EmpresaSecao,
@@ -6160,7 +6160,7 @@ export default function Home() {
                         categoria: "Qualidade",
                         titulo: "Programas de Controle",
                         resumo: `${quantidadeComNome(programasEmpresa.filter((programa) => programa.status === "Implantado" || programa.status === "Em implantação").length, "programa ativo ou em implantação", "programas ativos ou em implantação")}.`,
-                        cor: "bg-indigo-100 text-indigo-700",
+                        cor: "bg-[#EEF1F5] text-[color:var(--ink)]",
                       },
                       {
                         secao: "pops" as EmpresaSecao,
@@ -8262,7 +8262,7 @@ export default function Home() {
                 { valor: visitasDoMes.length, rotulo: "Visitas este mês", cor: "bg-[var(--brand-soft)] text-[color:var(--brand)]", icone: "▣" },
                 { valor: visitasDoMes.filter((v) => v.status === "Concluída").length, rotulo: "Concluídas este mês", cor: "bg-[var(--ok-bg)] text-[color:var(--ink)]", icone: "✓" },
                 { valor: visitas.filter((v) => v.status === "Em andamento").length, rotulo: "Em andamento agora", cor: "bg-[var(--pend-bg)] text-[color:var(--ink)]", icone: "◷" },
-                { valor: empresasVisiveis.length, rotulo: "Empresas ativas", cor: "bg-violet-50 text-violet-700", icone: "□" },
+                { valor: empresasVisiveis.length, rotulo: "Empresas ativas", cor: "bg-[#EEF1F5] text-[color:var(--ink)]", icone: "□" },
               ].map((indicador) => (
                 <div key={indicador.rotulo} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                   <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl text-base font-extrabold ${indicador.cor}`}>{indicador.icone}</div>
@@ -8650,11 +8650,11 @@ export default function Home() {
                               {abertas}
                             </div>
                           </div>
-                          <div className="rounded-xl bg-violet-50 p-3">
-                            <div className="text-xs font-extrabold uppercase text-violet-700">
+                          <div className="rounded-xl bg-[#EEF1F5] p-3">
+                            <div className="text-xs font-extrabold uppercase text-[color:var(--ink-2)]">
                               Evidências
                             </div>
-                            <div className="mt-1 text-2xl font-extrabold text-violet-950">
+                            <div className="mt-1 text-2xl font-extrabold text-[color:var(--ink)]">
                               {evidencias}
                             </div>
                           </div>
@@ -8696,15 +8696,15 @@ export default function Home() {
             }}
             visitas={visitas.map((v) => {
               const itens = v.checklist || [];
-              const respondidosV = itens.filter((item) => item.status !== "Pendente").length;
               return {
                 id: v.id,
                 empresa: nomeParaExibir(db.empresas[v.empresaId]),
                 empresaAtiva: v.empresaId === db.empresaAtualId,
+                cor: db.empresas[v.empresaId] ? corDaEmpresa(db.empresas[v.empresaId]) : "#4A5D73",
                 numero: numeroVisitaPorId.get(v.id) || "—",
                 data: fdata(v.data),
                 responsavel: v.responsavel || "Responsável não informado",
-                percentual: itens.length ? Math.round((respondidosV / itens.length) * 100) : 0,
+                percentual: progressoDoChecklist(itens).percentual,
                 status: v.status,
                 podeContinuar: podeAbrirVisita(v.empresaId),
                 podeConcluir: permitido("visitas.concluir", v.empresaId),

@@ -1,6 +1,8 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import { useCabem } from "@/components/useFit";
+import { iniciaisDaEmpresa } from "@/lib/navigation";
 import { Pill } from "@/components/ui/Pill";
 import { ProgressBar, SegmentedProgress } from "@/components/ui/ProgressBar";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
@@ -13,6 +15,8 @@ export type VisitaRecenteInicio = {
   responsavel: string;
   status: "Em andamento" | "Concluída";
   percentual: number;
+  /** Cor da empresa. */
+  cor?: string;
 };
 
 type Props = {
@@ -163,6 +167,9 @@ export default function PcInicio({
           {recentes.length === 0 && <div className="ui-empty">Nenhuma visita nesta situação.</div>}
           {recentes.slice(0, recentesFit.quantos).map((visita) => (
             <button key={visita.id} type="button" className="pc-recent-row" onClick={() => onAbrirVisita(visita.id)}>
+              <span className="emp-avatar-mini" style={{ "--emp-cor": visita.cor || "#4A5D73" } as CSSProperties} aria-hidden="true">
+                {iniciaisDaEmpresa(visita.empresa)}
+              </span>
               <span className="pc-recent-main">
                 <span className="pc-recent-title">{visita.empresa}</span>
                 <span className="ui-row-sub">

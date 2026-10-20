@@ -90,10 +90,13 @@ function Tile({
   ativo?: boolean;
   badge?: number;
 }) {
+  // "indigo" (Visitas) é o tom neutro: fundo cinza claro e ícone #3D5160.
+  const neutro = tom === "indigo";
   const estilo = {
     width: tamanho,
     height: tamanho,
     background: `linear-gradient(160deg, var(--tile-${tom}-from), var(--tile-${tom}-to))`,
+    ...(neutro ? { color: "#3D5160", border: "1.5px solid #C9D3DB" } : {}),
   } as CSSProperties;
   return (
     <span className={`pc-tile${ativo ? " is-active" : ""}`} style={estilo}>

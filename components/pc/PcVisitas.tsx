@@ -1,18 +1,21 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { NavIcon } from "@/components/NavIcons";
+import type { CSSProperties } from "react";
 import { ListRow } from "@/components/ui/ListRow";
 import { Pill } from "@/components/ui/Pill";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import type { ItemMenu } from "@/components/ui/RowMenu";
 import { acoesDaVisita } from "@/lib/menuActions";
+import { iniciaisDaEmpresa } from "@/lib/navigation";
 
 export type LinhaVisita = {
   id: string;
   empresa: string;
   empresaAtiva: boolean;
+  /** Cor da empresa (campo cor ou a derivada do id). */
+  cor: string;
   numero: number | string;
   data: string;
   responsavel: string;
@@ -100,7 +103,11 @@ export default function PcVisitas({
       <ListRow
         key={visita.id}
         faixa={visita.status === "Concluída" ? "ok" : "pend"}
-        icone={<NavIcon name="visitas" size={22} strokeWidth={1.9} />}
+        icone={
+          <span className="ui-avatar ui-avatar--round emp-avatar-cor" style={{ "--emp-cor": visita.cor } as CSSProperties} aria-hidden="true">
+            {iniciaisDaEmpresa(visita.empresa)}
+          </span>
+        }
         titulo={visita.empresa}
         chip={visita.empresaAtiva ? <Pill tom="brand">Empresa ativa</Pill> : undefined}
         secundario={`Visita ${visita.numero} · ${visita.data} · ${visita.responsavel}`}

@@ -26,7 +26,7 @@ const GRUPOS: { id: GrupoTela; titulo: string; cor: string }[] = [
 // Ordem e cores do painel "Menu que essa pessoa vê".
 const MENU_PREVIA: { tela: TelaKey; cor: string }[] = [
   { tela: "inicio", cor: "#2456D6" },
-  { tela: "visitas", cor: "#6366F1" },
+  { tela: "visitas", cor: "#3D5160" },
   { tela: "central", cor: "#0EA5E9" },
   { tela: "checklist", cor: "#15803D" },
   { tela: "evidencias", cor: "#0EA5E9" },
@@ -99,7 +99,7 @@ export default function TelasLiberadasModal({ usuario, empresas, onSalvar, onFec
       <div className="pc-modal-backdrop" onClick={onFechar} />
       <section className="pc-modal pc-telas" role="dialog" aria-modal="true" aria-label="Telas liberadas">
         <header className="pc-telas-head">
-          <span className="ui-avatar ui-avatar--round" style={{ background: "linear-gradient(160deg,#FCD34D,#F59E0B)" }} aria-hidden="true">
+          <span className="ui-avatar ui-avatar--round pc-avatar-neutro" aria-hidden="true">
             {iniciais(usuario.nome)}
           </span>
           <div className="pc-telas-id">
