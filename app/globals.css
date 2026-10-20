@@ -3190,3 +3190,7 @@ html[data-modo="completo"] .chk-pc .chk-obs-area{height:auto;min-height:60px}
 .chk-apoio-evid{display:flex;flex-direction:column;align-items:flex-start;gap:2px;margin:0}
 .chk-apoio-evid figcaption{font-size:.78rem;color:var(--ink-2)}
 .chk-apoio-foto--audio{font-size:1.2rem}
+
+/* ===== Pacote 11 · C: texto pequeno no Continuar checklist ===== */
+.campo-acoes-inicio .campo-btn:has(.campo-btn-detalhe){flex-direction:column;gap:1px;min-height:48px;line-height:1.15}
+.campo-btn-detalhe{font-size:.74rem;opacity:.95}

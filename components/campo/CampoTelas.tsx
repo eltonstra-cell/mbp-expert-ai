@@ -101,6 +101,7 @@ export function CampoInicio({
   onIniciar,
   proxima,
   onProxima,
+  continuarDetalhe,
 }: {
   usuario: string;
   empresa?: string;
@@ -120,6 +121,8 @@ export function CampoInicio({
   /** Próxima pendência da visita (uma por vez): checklist, correções ou relatório. */
   proxima?: { titulo: string; detalhe: string } | null;
   onProxima?: () => void;
+  /** Texto pequeno do "Continuar checklist", ex.: "48 itens sem resposta". */
+  continuarDetalhe?: string;
 }) {
   const percentual = total > 0 ? Math.round((respondidos / total) * 100) : 0;
   return (
@@ -159,6 +162,7 @@ export function CampoInicio({
         <div className="campo-acoes-inicio">
           <button type="button" className="campo-btn campo-btn--brand" onClick={onContinuar}>
             Continuar checklist
+            {continuarDetalhe && <span className="campo-btn-detalhe">{continuarDetalhe}</span>}
           </button>
           {podeRegistrar && (
             <button type="button" className="campo-btn campo-btn--outline" onClick={onRegistrar}>

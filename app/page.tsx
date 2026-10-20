@@ -15,7 +15,7 @@ import { passoDaView, passosDaTrilha, percentualDaVisita, type PassoVisita } fro
 import { conferenciaDoRelatorio } from "@/lib/reportCheck";
 import { ocultarAmbiente, mostrarAmbiente, excluirAmbienteOculto, resumoOcultos } from "@/lib/hiddenEnvs";
 import { reincidenciaDaNc } from "@/lib/actionPlan";
-import { proximaEtapaDaVisita } from "@/lib/proximaEtapa";
+import { acharItemDeDestino, mostrarCartaoProximaEtapa, primeiroItemSemResposta, proximaEtapaDaVisita, textoDoContinuar, type ItemDeDestino } from "@/lib/proximaEtapa";
 import { corDaEmpresa, proximaCorLivre } from "@/lib/empresaCor";
 import { BolinhasDeCor } from "@/components/CorDaEmpresa";
 import { conciliarNcs } from "@/lib/ncReconcile";
@@ -3041,7 +3041,7 @@ export default function Home() {
     }, 500);
   }
 
-  function continuar(id: string, retomarChecklist = false) {
+  function continuar(id: string, retomarChecklist = false, destino?: ItemDeDestino) {
     const original = db.visitas.find((x) => x.id === id);
     const v = original ? migrarVisitaParaChecklistManual(original, CHECKLIST_VERSAO_ATUAL, true) : undefined;
     if (!v) return;
@@ -3081,7 +3081,9 @@ export default function Home() {
       visitaDestino = { ...v, checklist: checklistDestino, checklistVersao: CHECKLIST_VERSAO_ATUAL };
       const primeiraPendente = checklistDestino.find((item) => item.status === "Pendente");
       const itemRetomada = checklistDestino.find((item) => item.id === ultimoItemChecklistId);
-      const itemDestino = primeiraPendente || itemRetomada || checklistDestino[0];
+      const itemEscolhido = destino ? acharItemDeDestino(checklistDestino, destino) : undefined;
+      const itemDestino = itemEscolhido || primeiraPendente || itemRetomada || checklistDestino[0];
+      if (itemEscolhido) setItemFocoId(itemEscolhido.id);
       setUltimoItemChecklistId(itemDestino?.id || null);
       setAmbienteChecklistAtivo(itemDestino?.ambiente || (v.ambientes || [])[0] || null);
       setFiltroChecklistRapido(primeiraPendente ? "Pendentes" : "Todos");
@@ -5892,7 +5894,7 @@ export default function Home() {
             const alvo = visitaEmAndamentoDestaque;
             const lista = alvo?.checklist || [];
             const ordemAmbientes = alvo?.ambientes?.length ? alvo.ambientes : [...new Set(lista.map((item) => item.ambiente))];
-            const proximoItem = ordemAmbientes.flatMap((nome) => lista.filter((item) => item.ambiente === nome)).find((item) => item.status === "Pendente");
+            const proximoItem = primeiroItemSemResposta(lista, ordemAmbientes);
             const itensDoAmbiente = proximoItem ? lista.filter((item) => item.ambiente === proximoItem.ambiente) : [];
             const ncsAbertasDoAlvo = alvo ? (db.ncs || []).filter((nc) => nc.visitaId === alvo.id && !nc.inativaNoChecklist && nc.status !== "Resolvida") : [];
             const abertasDoAlvo = ncsAbertasDoAlvo.length;
@@ -5910,14 +5912,15 @@ export default function Home() {
                   .filter((visita) => visita.status === "Em andamento" && visita.id !== alvo?.id && podeAbrirVisita(visita.empresaId))
                   .map((visita) => ({ id: visita.id, rotulo: `${nomeParaExibir(db.empresas[visita.empresaId])} · ${fdata(visita.data)}` }))}
                 podeRegistrar={permitido("evidencias.adicionar", alvo?.empresaId) || permitido("visitas.executar", alvo?.empresaId)}
-                onContinuar={() => alvo && continuar(alvo.id, true)}
+                onContinuar={() => alvo && continuar(alvo.id, true, proximoItem)}
+                continuarDetalhe={textoDoContinuar(etapaDoAlvo)}
                 onRegistrar={() => setRegistrarAberto(true)}
                 onCorrecoes={() => irParaTelaCampo("correcoes")}
                 onAbrirVisita={(id) => continuar(id, true)}
                 onVisitas={() => irParaMenu("visitas")}
                 onIniciar={permitido("visitas.criar", atual?.id) && atual ? novaVisita : undefined}
                 proxima={
-                  etapaDoAlvo
+                  etapaDoAlvo && mostrarCartaoProximaEtapa(etapaDoAlvo)
                     ? {
                         titulo: etapaDoAlvo.titulo,
                         detalhe:
@@ -5932,11 +5935,7 @@ export default function Home() {
                 onProxima={() => {
                   if (!alvo || !etapaDoAlvo) return;
                   if (etapaDoAlvo.tipo === "checklist") {
-                    if (!proximoItem) return;
-                    continuar(alvo.id, true);
-                    setItemFocoId(proximoItem.id);
-                    setAmbienteChecklistAtivo(proximoItem.ambiente);
-                    setUltimoItemChecklistId(proximoItem.id);
+                    if (proximoItem) continuar(alvo.id, true, proximoItem);
                   } else if (etapaDoAlvo.tipo === "correcoes") {
                     irParaTelaCampo("correcoes");
                   } else {
