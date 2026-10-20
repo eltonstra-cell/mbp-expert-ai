@@ -3475,3 +3475,31 @@ html[data-modo="equilibrado"] .campo-tela{height:calc(100dvh - 190px - var(--fai
 .pess-tabela{font-size:.8rem}
 .pess-tabela th,.pess-tabela td{padding:5px 5px}
 .pess-tabela td:first-child{white-space:normal}
+/* Antes e depois da correção */
+.ad{display:flex;flex-direction:column;gap:6px}
+.ad-par{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ad-coluna{display:flex;flex-direction:column;gap:2px;min-width:0}
+.ad-foto{display:block;height:84px;overflow:hidden;border:1.5px solid #DDE6EA;border-radius:12px;background:#EEF3F7}
+.ad-foto img{width:100%;height:100%;object-fit:cover}
+.ad-vazio{display:grid;place-items:center;height:84px;border:1.5px dashed #DDE6EA;border-radius:12px}
+.ad-botao{align-self:flex-start}
+.rep-antes-depois{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.rep-antes-depois-foto{width:100%;max-height:150px;object-fit:cover;border-radius:8px}
+.rep-sem-comprovacao{grid-column:1 / -1;padding:6px 10px;border:1px solid #E8B04B;border-radius:8px;background:#FEF6E6;font-size:.85rem;color:#000}
+@media (max-width:767px){.ad-foto,.ad-vazio{height:56px}}
+/* Questionário por ambiente */
+.quest{width:min(720px,94vw)}
+.quest-lista{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
+.quest-item{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:6px 10px;padding:8px 10px;border:1px solid #DDE6EA;border-radius:12px;background:#fff}
+.quest-item.is-desligada{background:#F7F9FB}
+.quest-item.is-desligada .quest-titulo{text-decoration:line-through;color:var(--ink-2)}
+.quest-textos{display:flex;min-width:0;flex:1 1 320px;flex-direction:column;gap:2px}
+.quest-titulo{color:var(--ink)}
+.quest-acoes{display:flex;gap:6px}
+.quest-justificativa{display:flex;flex:1 1 100%;flex-wrap:wrap;align-items:flex-end;gap:8px}
+.quest-justificativa .pc-field{flex:1 1 240px}
+.quest-nova{display:flex;align-items:flex-end;gap:8px}
+.quest-nova .pc-field{flex:1}
+.pc-route-editar{margin-left:6px}
+.ad--vazio{flex-direction:row;flex-wrap:wrap;align-items:center;gap:8px}
+@media (max-width:767px){.ad-foto,.ad-vazio{height:44px}}

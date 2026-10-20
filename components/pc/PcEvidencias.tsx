@@ -40,6 +40,8 @@ export type CartaoEvidencia = {
   possivelNc: boolean;
   /** Evidência feita sem sinal: "Aguardando envio" até o arquivo subir, depois "Enviada". */
   envio?: "aguardando" | "enviada";
+  /** Quem registrou (carimbo gravado pelo app, não editável). */
+  registradoPor?: string;
   analise: AnaliseEvidencia | null;
   podeAnalisar: boolean;
   /** A empresa ainda não liberou a IA nas fotos: o botão fica cinza com aviso. */
@@ -291,6 +293,7 @@ function Cartao({ ev, onAmpliar }: { ev: CartaoEvidencia; onAmpliar: (id: string
           </>
         )}
         <span className="ev7-chip">{ev.dataCurta}</span>
+        {ev.registradoPor && <span className="ev7-chip" title="Quem registrou (gravado pelo app)">{ev.registradoPor}</span>}
         {ev.envio === "aguardando" && <span className="ev7-chip ev7-chip--fila">Aguardando envio</span>}
         {ev.envio === "enviada" && <span className="ev7-chip ev7-chip--enviada">Enviada</span>}
         {aguardando && <span className="ev7-chip ev7-chip--ia">IA aguardando revisão</span>}

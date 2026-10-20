@@ -21,6 +21,8 @@ type Props = {
   onDetalhado: () => void;
   onAdicionar: () => void;
   onModelo: (nome: string, modelo: string) => void;
+  /** Editar as perguntas do ambiente (só no PC e só para Administrador e RT). */
+  onQuestionario?: (nome: string) => void;
   onVoltar: () => void;
   onIniciar: () => void;
 };
@@ -45,6 +47,7 @@ export default function PcAmbientes({
   onDetalhado,
   onAdicionar,
   onModelo,
+  onQuestionario,
   onVoltar,
   onIniciar,
 }: Props) {
@@ -151,7 +154,7 @@ export default function PcAmbientes({
           <div className="ui-scroll">
             {semAmbientes && <div className="ui-empty">Nenhum ambiente escolhido ainda.</div>}
             <ol className="pc-route">
-              {mostrarRoteiroLista(mostrarRoteiro, opcoesModelo, modeloDoAmbiente, onModelo, onToggle)}
+              {mostrarRoteiroLista(mostrarRoteiro, opcoesModelo, modeloDoAmbiente, onModelo, onToggle, onQuestionario)}
             </ol>
             {selecionados.length > LIMITE_ROTEIRO && (
               <button type="button" className="pc-link-btn" onClick={() => setVerTodosRoteiro((aberto) => !aberto)}>
@@ -217,7 +220,8 @@ function mostrarRoteiroLista(
   opcoesModelo: string[],
   modeloDoAmbiente: (nome: string) => string,
   onModelo: (nome: string, modelo: string) => void,
-  onToggle: (nome: string) => void
+  onToggle: (nome: string) => void,
+  onQuestionario?: (nome: string) => void
 ) {
   return nomes.map((nome, indice) => (
     <li key={nome} className="pc-route-row">
@@ -233,6 +237,11 @@ function mostrarRoteiroLista(
           ))}
         </select>
       </label>
+      {onQuestionario && (
+        <button type="button" className="ui-btn ui-btn--secondary ui-btn--small pc-route-editar" onClick={() => onQuestionario(nome)}>
+          Editar perguntas
+        </button>
+      )}
       <button type="button" className="pc-route-remove" aria-label={`Remover ${nome}`} onClick={() => onToggle(nome)}>
         ×
       </button>

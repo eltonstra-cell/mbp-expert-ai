@@ -54,6 +54,8 @@ export type Empresa = {
   normasConfirmadasPeloRt?: { nome: string; usuarioId?: string; em: string };
   /** Guarda dos registros por POP, em dias, quando nenhuma norma estadual aplicada fixa o prazo: quem define é o RT. */
   guardaRegistrosDias?: number;
+  /** Questionário personalizado por ambiente (só Administrador e RT editam). Sem entrada: vale o modelo do app. */
+  questionarios?: Record<string, ConfigQuestionario>;
   /** Registro que prova a execução de cada POP (popId -> id do registro), escolhido pelo RT. */
   registroProvaPorPop?: Record<string, string>;
   /** Responsável do estabelecimento (RDC 216, 4.11.2): só a pessoa vinculada em Acessos aprova POPs. */
@@ -395,6 +397,11 @@ export type Evidencia = {
   analisesIA?: AnaliseFotoIA[];
   /** Só nas feitas pela fila offline: "aguardando" até o arquivo subir, depois "enviada". Ausente = enviada na hora. */
   envio?: "aguardando" | "enviada";
+  /** "depois" = foto anexada ao resolver a correção (par antes/depois). Sem valor: foto da não conformidade ("antes"). */
+  papel?: "antes" | "depois";
+  /** Carimbo gravado pelo app e conferido no servidor: quem registrou (a data e hora da captura é criadoEm). Sem GPS. */
+  registradoPorId?: string;
+  registradoPorNome?: string;
   criadoEm: string;
 };
 
@@ -471,6 +478,32 @@ export type ConfiguracaoAcesso = {
 };
 
 /** Registro de execução de um POP. Nunca é editado: a correção vira um novo registro que cita o anterior. */
+/** Pergunta do questionário de um ambiente: do modelo da norma ou criada pela empresa. Nunca é apagada se já foi usada. */
+export type PerguntaDoQuestionario = {
+  id: string;
+  origem: "modelo" | "empresa";
+  titulo: string;
+  categoria: string;
+  criticidade?: ChecklistCriticidade;
+  /** Fonte como já está no app (ex.: Manual de Boas Práticas); o app mostra "conferir". */
+  referencia?: string;
+  orientacao?: string;
+  ativa: boolean;
+  ordem: number;
+  /** Obrigatória para desligar pergunta do modelo. */
+  justificativaDeDesligar?: string;
+  desligadaPorId?: string;
+  desligadaPorNome?: string;
+  desligadaEm?: string;
+  criadoEm: string;
+};
+
+export type ConfigQuestionario = {
+  perguntas: PerguntaDoQuestionario[];
+  atualizadoEm: string;
+  ambiente?: string;
+};
+
 export type RegistroPop = {
   id: string;
   empresaId: string;

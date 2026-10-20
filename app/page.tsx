@@ -104,6 +104,7 @@ import { LogoHorizontal, LogoSymbol, LogoWordmark } from "@/components/BrandLogo
 import { IaPermitidaContext, useIaPermitida } from "@/components/IaPermissionContext";
 import type {
   ComprovanteTerceiro,
+  ConfigQuestionario,
   Capacitacao,
   Colaborador,
   LeituraPop,
@@ -145,6 +146,9 @@ import {
   SETORES_OFICIAIS_MANUAL,
 } from "@/lib/manualBase";
 import { obterModeloChecklistManual } from "@/lib/manualChecklist";
+import { itensDoQuestionario, materializarModelo, perguntaFoiUsada, podeEditarQuestionario } from "@/lib/questionarioAmbiente";
+import PcQuestionario from "@/components/pc/PcQuestionario";
+import { MENSAGEM_LIMITE_DE_FOTOS, comprovacaoDaCorrecao, fotosDoItem, podeAdicionarFotoNoItem } from "@/lib/fotosDoItem";
 import {
   adequarFluxosAosSetores,
   criarFluxosOperacionaisPadrao,
@@ -513,7 +517,8 @@ function criarChecklist(
   ambientes: string[],
   fluxosOperacionais?: FluxoOperacional[],
   programasControle?: ProgramaControleQualidade[],
-  modelosQuestionario?: Record<string, string>
+  modelosQuestionario?: Record<string, string>,
+  questionarios?: Record<string, ConfigQuestionario>
 ): ChecklistItem[] {
   const itensAmbientes = ambientes.flatMap((ambiente, ambienteIndex) => {
     const modeloReferencia = modelosQuestionario?.[ambiente] ||
@@ -522,7 +527,9 @@ function criarChecklist(
     const setorDoManual = SETORES_OFICIAIS_MANUAL.includes(
       setorNormalizado as (typeof SETORES_OFICIAIS_MANUAL)[number]
     );
-    const itensEstrutura = setorDoManual
+    // Questionário personalizado pelo RT (perguntas ativas, na ordem escolhida); sem ele, vale o modelo do app.
+    const personalizado = itensDoQuestionario(questionarios?.[ambiente]);
+    const itensEstrutura = personalizado ? personalizado : setorDoManual
       ? obterModeloChecklistManual(ambiente, modeloReferencia)
       : modelosChecklist[ambiente] || obterModeloChecklistManual(ambiente, modeloReferencia);
     const itens = [
@@ -2480,7 +2487,8 @@ export default function Home() {
       visitaAtual.ambientes || [],
       empresaVisita?.fluxosOperacionais,
       empresaVisita?.programasControleQualidade,
-      visitaAtual.modelosQuestionarioAmbientes || empresaVisita?.modelosQuestionarioAmbientes
+      visitaAtual.modelosQuestionarioAmbientes || empresaVisita?.modelosQuestionarioAmbientes,
+      empresaVisita?.questionarios
     );
     if (novoChecklist.length === 0) return;
 
@@ -3238,6 +3246,7 @@ export default function Home() {
             normasConfirmadasPeloRt: anterior.normasConfirmadasPeloRt,
             responsavelEstabelecimento: anterior.responsavelEstabelecimento,
             guardaRegistrosDias: anterior.guardaRegistrosDias,
+            questionarios: anterior.questionarios,
             registroProvaPorPop: anterior.registroProvaPorPop,
           }
         : {}),
@@ -3434,7 +3443,8 @@ export default function Home() {
             v.ambientes || [],
             empresaDaVisita?.fluxosOperacionais,
             empresaDaVisita?.programasControleQualidade,
-            v.modelosQuestionarioAmbientes || empresaDaVisita?.modelosQuestionarioAmbientes
+            v.modelosQuestionarioAmbientes || empresaDaVisita?.modelosQuestionarioAmbientes,
+            empresaDaVisita?.questionarios
           )
         : checklistExistente;
       visitaDestino = { ...v, checklist: checklistDestino, checklistVersao: CHECKLIST_VERSAO_ATUAL };
@@ -3515,7 +3525,8 @@ export default function Home() {
           adicionados,
           empresaVisita?.fluxosOperacionais,
           undefined,
-          proximosModelos
+          proximosModelos,
+          empresaVisita?.questionarios
         );
         return {
           ...visita,
@@ -3638,7 +3649,8 @@ export default function Home() {
         visitaMigrada.ambientes || [],
         empresaVisita?.fluxosOperacionais,
         empresaVisita?.programasControleQualidade,
-        visitaMigrada.modelosQuestionarioAmbientes || empresaVisita?.modelosQuestionarioAmbientes
+        visitaMigrada.modelosQuestionarioAmbientes || empresaVisita?.modelosQuestionarioAmbientes,
+        empresaVisita?.questionarios
       );
       setDb((o) => ({
         ...o,
@@ -4409,7 +4421,42 @@ export default function Home() {
       onVerNoChecklist={(itemId) => verItemNoChecklist(itemId)}
       responsavelPadrao={usuarioDaSessao?.nome || ""}
       onAbrirPop={abrirPopsPeloAtalho}
+      podeEvidenciar={permitido("evidencias.adicionar", visitaAtual.empresaId)}
+      onFotoDepois={fotoDoDepois}
     />
+    );
+  }
+
+  // Questionário por ambiente (só PC, só Administrador e RT): materializa o modelo na primeira edição.
+  const [ambienteDoQuestionario, setAmbienteDoQuestionario] = useState<string | null>(null);
+
+  function itensDoModeloDoAmbiente(ambiente: string, modeloReferencia?: string) {
+    const referencia = modeloReferencia || obterModeloQuestionarioParaAmbiente(ambiente);
+    const setor = normalizarSetorManual(referencia);
+    const doManual = SETORES_OFICIAIS_MANUAL.includes(setor as (typeof SETORES_OFICIAIS_MANUAL)[number]);
+    const itens = doManual ? obterModeloChecklistManual(ambiente, referencia) : modelosChecklist[ambiente] || obterModeloChecklistManual(ambiente, referencia);
+    return itens.filter((item) => item.categoria !== "Equipamentos e móveis");
+  }
+
+  function abrirQuestionario(ambiente: string) {
+    if (!empresaVisita || (usuarioDaSessao && !podeEditarQuestionario(usuarioDaSessao))) return;
+    if (!empresaVisita.questionarios?.[ambiente]) {
+      const config = materializarModelo(itensDoModeloDoAmbiente(ambiente, visitaAtual?.modelosQuestionarioAmbientes?.[ambiente] || empresaVisita.modelosQuestionarioAmbientes?.[ambiente]), ambiente, new Date().toISOString());
+      atualizarEmpresaDosRegistros(empresaVisita.id, (empresa) => ({ ...empresa, questionarios: { ...(empresa.questionarios || {}), [ambiente]: config } }));
+    }
+    setAmbienteDoQuestionario(ambiente);
+  }
+
+  // "Adicionar foto do depois": a foto entra como evidência da correção (papel "depois"); sem sinal, vai para a fila de envio.
+  function fotoDoDepois(ncId: string, arquivo: File) {
+    const nc = (db.ncs || []).find((registro) => registro.id === ncId);
+    const visita = nc ? db.visitas.find((registro) => registro.id === nc.visitaId) : undefined;
+    if (!nc || !visita) return;
+    void adicionarEvidencia(
+      arquivo,
+      "Foto",
+      { ambiente: nc.ambiente, checklistItemId: nc.checklistItemId, ncId: nc.id },
+      { visita, descricao: "Depois da correção", papel: "depois" }
     );
   }
 
@@ -4452,6 +4499,11 @@ export default function Home() {
           observacao: nc.observacao || "",
           registradoEm: nc.criadoEm || "",
           ultimaOcorrencia: ultimaOcorrenciaDaNc(nc),
+          par: (() => {
+            const comp = comprovacaoDaCorrecao(nc, db.evidencias || []);
+            const paraFoto = (ev: Evidencia) => ({ id: ev.id, url: urlEvidencia(ev), nome: ev.descricao?.trim() || ev.nomeArquivo, quando: new Date(ev.criadoEm).toLocaleString("pt-BR") });
+            return { antes: comp.antes.map(paraFoto), depois: comp.depois.map(paraFoto) };
+          })(),
           evidencias: (db.evidencias || [])
             .filter((ev) => ev.ncId === nc.id)
             .map((ev) => ({ id: ev.id, tipo: ev.tipo, nome: ev.descricao?.trim() || ev.nomeArquivo, quando: new Date(ev.criadoEm).toLocaleString("pt-BR"), url: urlEvidencia(ev) })),
@@ -4962,11 +5014,18 @@ export default function Home() {
     file: File | undefined,
     tipo: "Foto" | "Áudio",
     vinculo?: { ambiente: string; checklistItemId: string; ncId: string },
-    opcoes?: { visita?: Visita; descricao?: string; evidenciaId?: string }
+    opcoes?: { visita?: Visita; descricao?: string; evidenciaId?: string; papel?: "depois" }
   ): Promise<boolean> {
     const alvoVisita = opcoes?.visita || visitaAtual;
     if (!file || !alvoVisita) return false;
     if (!exigirPermissao("evidencias.adicionar", alvoVisita.empresaId)) return false;
+    // No máximo 5 fotos por item do checklist (a foto "depois" da correção não conta).
+    const itemDaFoto = (vinculo ? vinculo.checklistItemId : evidenciaChecklistItemId) || "";
+    if (tipo === "Foto" && itemDaFoto && opcoes?.papel !== "depois" && !podeAdicionarFotoNoItem(db.evidencias || [], alvoVisita.id, itemDaFoto)) {
+      setEvidenciaMsg(MENSAGEM_LIMITE_DE_FOTOS);
+      void avisar(MENSAGEM_LIMITE_DE_FOTOS, { titulo: "Limite de fotos" });
+      return false;
+    }
 
     if (tipo === "Áudio" && file.size > 3 * 1024 * 1024) {
       setEvidenciaMsg(
@@ -5056,6 +5115,9 @@ export default function Home() {
         nomeArquivo,
         mimeType,
         ...(blob ? { blobPathname: blob.pathname, blobUrl: blob.url } : { envio: "aguardando" as const }),
+        ...(opcoes?.papel ? { papel: opcoes.papel } : {}),
+        registradoPorId: usuarioDaSessao?.id,
+        registradoPorNome: usuarioDaSessao?.nome || sessaoAtual?.name || undefined,
         descricao: (opcoes?.descricao ?? evidenciaDescricao).trim(),
         ambiente: (vinculo ? vinculo.ambiente : evidenciaAmbiente) || "",
         checklistItemId: (vinculo ? vinculo.checklistItemId : evidenciaChecklistItemId) || undefined,
@@ -6386,6 +6448,16 @@ export default function Home() {
         {ehFiscal && usuarioDaSessao?.validoAte && (
           <FaixaVisitaOutraEmpresa mensagem={faixaDeLeitura(usuarioDaSessao.validoAte)} />
         )}
+        {ambienteDoQuestionario && empresaVisita?.questionarios?.[ambienteDoQuestionario] && (
+          <PcQuestionario
+            ambiente={nomeDeExibicaoDoAmbiente(ambienteDoQuestionario)}
+            config={empresaVisita.questionarios[ambienteDoQuestionario]}
+            foiUsada={(pergunta) => perguntaFoiUsada(pergunta, ambienteDoQuestionario, db.visitas.filter((visita) => visita.empresaId === empresaVisita.id))}
+            quem={{ id: usuarioDaSessao?.id, nome: usuarioDaSessao?.nome }}
+            onSalvar={(config) => atualizarEmpresaDosRegistros(empresaVisita.id, (empresa) => ({ ...empresa, questionarios: { ...(empresa.questionarios || {}), [ambienteDoQuestionario]: config } }))}
+            onFechar={() => setAmbienteDoQuestionario(null)}
+          />
+        )}
         {avisoSemSinal && (
           <div className="pc-modal-layer sem-sinal-camada" role="presentation">
             <div className="pc-modal-backdrop" onClick={() => setAvisoSemSinal(null)} />
@@ -6650,6 +6722,7 @@ export default function Home() {
                     onItem={(id) => { setItemFocoId(id); setUltimoItemChecklistId(id); }}
                     onFotoCapturada={(arquivo) => salvarFotoDoItem(foco, arquivo)}
                     verPop={verPopDoItem(foco)}
+                    fotosNoItem={fotosDoItem(db.evidencias || [], visitaAtual.id, foco.id).length}
                     onDesfazerFoto={desfazerFotoDoItem}
                     onLimpar={() => void limparRespostaDoItem(foco.id)}
                       onAnterior={() => moverItemFoco(-1)}
@@ -7220,6 +7293,7 @@ export default function Home() {
             onDetalhado={aplicarModeloDetalhadoRestaurante}
             onAdicionar={adicionarPersonalizado}
             onModelo={atualizarModeloQuestionarioAmbiente}
+            onQuestionario={ehPC && (!usuarioDaSessao || podeEditarQuestionario(usuarioDaSessao)) ? abrirQuestionario : undefined}
             onVoltar={() => setView("visita")}
             onIniciar={() => {
               if (JSON.stringify(visitaAtual.ambientes || []) !== JSON.stringify(ambientesSelecionados)) {
@@ -7296,6 +7370,7 @@ export default function Home() {
                 dataCompleta: `${criada.toLocaleDateString("pt-BR")} · ${hora}`,
                 url: urlEvidencia(ev),
                 envio: ev.envio,
+                registradoPor: ev.registradoPorNome,
                 possivelNc: ultima?.situacao === "Possível não conformidade",
                 analise: ultima
                   ? {
@@ -7345,6 +7420,7 @@ export default function Home() {
                 })
               }
               onRegistrar={(id, texto, status) => registrarAcompanhamento(id, texto, status)}
+              onFotoDepois={fotoDoDepois}
               onAdicionarEvidencia={(id) => {
                 const nc = ncsDaTelaDeCorrecoes().find((registro) => registro.id === id);
                 setEvidenciaNcId(id);
@@ -7471,6 +7547,7 @@ export default function Home() {
                       podeFotografar={permitido("evidencias.adicionar", visitaAtual.empresaId)}
                       onFotoCapturada={(arquivo) => salvarFotoDoItem(foco, arquivo)}
                     verPop={verPopDoItem(foco)}
+                    fotosNoItem={fotosDoItem(db.evidencias || [], visitaAtual.id, foco.id).length}
                       onDesfazerFoto={desfazerFotoDoItem}
                       onLimpar={() => void limparRespostaDoItem(foco.id)}
                       onAnterior={() => moverItemFoco(-1)}
@@ -7533,6 +7610,7 @@ export default function Home() {
                       podeFotografar={permitido("evidencias.adicionar", visitaAtual.empresaId)}
                       onFotoCapturada={(arquivo) => salvarFotoDoItem(foco, arquivo)}
                     verPop={verPopDoItem(foco)}
+                    fotosNoItem={fotosDoItem(db.evidencias || [], visitaAtual.id, foco.id).length}
                       onDesfazerFoto={desfazerFotoDoItem}
                       onLimpar={() => void limparRespostaDoItem(foco.id)}
                       onAnterior={() => moverItemFoco(-1)}
@@ -8576,6 +8654,30 @@ export default function Home() {
                         </span>{" "}
                         {nc.observacao || "Sem observação registrada."}
                       </div>
+
+                      {(() => {
+                        const comp = comprovacaoDaCorrecao(nc, db.evidencias || []);
+                        if (comp.antes.length === 0 && comp.depois.length === 0 && !comp.semComprovacao) return null;
+                        const quadro = (titulo: string, fotos: Evidencia[]) => (
+                          <div>
+                            <span className="text-xs font-extrabold uppercase text-slate-400">{titulo}</span>
+                            {fotos.length === 0 ? (
+                              <div className="text-xs text-slate-500">Sem foto</div>
+                            ) : (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={urlEvidencia(fotos[0])} alt={titulo} className="rep-antes-depois-foto" />
+                            )}
+                            {fotos[0] && <div className="text-[11px] text-slate-500">{new Date(fotos[0].criadoEm).toLocaleString("pt-BR")}</div>}
+                          </div>
+                        );
+                        return (
+                          <div className="rep-antes-depois mt-3" data-pdf-keep>
+                            {quadro("Antes", comp.antes)}
+                            {quadro("Depois", comp.depois)}
+                            {comp.semComprovacao && <div className="rep-sem-comprovacao">Sem comprovação: correção resolvida sem foto do depois.</div>}
+                          </div>
+                        );
+                      })()}
 
                       <div className="mt-3 grid gap-3 text-sm md:grid-cols-2">
                         <div>

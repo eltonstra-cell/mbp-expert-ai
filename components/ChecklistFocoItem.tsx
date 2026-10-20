@@ -57,6 +57,9 @@ type Props = {
   onProximo: () => void;
   /** Item ligado a um POP com versão aprovada: abre a leitura do POP sem sair do checklist. */
   verPop?: { rotulo: string; onAbrir: () => void };
+  /** Fotos já registradas neste item (até o máximo); no máximo, o botão Foto fica desligado. */
+  fotosNoItem?: number;
+  maxFotos?: number;
 };
 
 const NOME_GRAVIDADE: Record<string, string> = { Crítica: "Crítica", Importante: "Importante", Rotina: "Leve" };
@@ -106,6 +109,8 @@ export default function ChecklistFocoItem({
   onAnterior,
   onProximo,
   verPop,
+  fotosNoItem = 0,
+  maxFotos = 5,
 }: Props) {
   const [texto, setTexto] = useState(item.observacao || "");
   const areaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -189,13 +194,14 @@ export default function ChecklistFocoItem({
     <button
       type="button"
       className={`chk-linha-foto${gravando ? " is-apagado" : ""}`}
-      disabled={!podeFotografar || salvandoFoto || camera.ativa || gravando}
+      disabled={!podeFotografar || salvandoFoto || camera.ativa || gravando || fotosNoItem >= maxFotos}
+      title={fotosNoItem >= maxFotos ? `Este item já tem ${maxFotos} fotos` : undefined}
       onClick={() => {
         setAvisoFoto(null);
         pedirAvisoDeFoto(() => void camera.abrir());
       }}
     >
-      <NavIcon name="registrar" size={18} strokeWidth={1.9} /> <span>{salvandoFoto ? "Salvando..." : "Foto"}</span>
+      <NavIcon name="registrar" size={18} strokeWidth={1.9} /> <span>{salvandoFoto ? "Salvando..." : fotosNoItem > 0 ? `Foto ${fotosNoItem}/${maxFotos}` : "Foto"}</span>
     </button>
   );
 

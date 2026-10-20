@@ -1,5 +1,6 @@
 "use client";
 
+import AntesDepois, { type FotoDoPar } from "@/components/AntesDepois";
 import { confirmar } from "@/lib/dialogos";
 import { useEffect, useMemo, useRef, useState } from "react";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
@@ -45,6 +46,8 @@ export type CorrecaoItem = {
   /** Ação corretiva cadastrada no POP vigente da NC; sem POP aprovado ou sem ação, fica vazio e o bloco não aparece. */
   acaoDoPop?: { codigo: string; texto: string };
   evidencias: { id: string; tipo: string; nome: string; quando: string; url: string }[];
+  /** Par antes/depois da correção (fotos da não conformidade e a foto anexada ao resolver). */
+  par?: { antes: FotoDoPar[]; depois: FotoDoPar[] };
   historico: { id: string; quando: string; status: StatusNc; observacao: string }[];
   /** Marcada como feita por quem não pode resolver; aguarda confirmação do Consultor/RT. */
   marcadaFeita: { em: string; por: string; observacao?: string } | null;
@@ -74,6 +77,8 @@ type Props = {
   onSalvarPlano: (id: string, dados: { acao: string; responsavel: string; prazo: string; etapa: EtapaCorrecao }) => void;
   onRegistrar: (id: string, texto: string, status: StatusNc) => void;
   onAdicionarEvidencia: (id: string) => void;
+  /** Anexa a foto do "depois" (passa pela fila offline como qualquer evidência). */
+  onFotoDepois?: (ncId: string, arquivo: File) => void;
   onCriarPop: (codigo: string) => void;
   onAbrirPop: () => void;
   onLote: (ids: string[], valores: { responsavel: string; prazo: string }) => void;
@@ -130,6 +135,7 @@ export default function PcCorrecoes({
   onSalvarPlano,
   onRegistrar,
   onAdicionarEvidencia,
+  onFotoDepois,
   onCriarPop,
   onAbrirPop,
   onLote,
@@ -345,6 +351,7 @@ export default function PcCorrecoes({
                 onSalvarPlano={salvarPlano}
                 onRegistrar={onRegistrar}
                 onAdicionarEvidencia={onAdicionarEvidencia}
+                onFotoDepois={onFotoDepois}
                 onCriarPop={onCriarPop}
                 onAbrirPop={onAbrirPop}
                 onVerNoChecklist={onVerNoChecklist}
@@ -402,6 +409,7 @@ function Detalhe({
   onSalvarPlano,
   onRegistrar,
   onAdicionarEvidencia,
+  onFotoDepois,
   onCriarPop,
   onAbrirPop,
   pessoas,
@@ -427,6 +435,7 @@ function Detalhe({
   onSalvarPlano: Props["onSalvarPlano"];
   onRegistrar: Props["onRegistrar"];
   onAdicionarEvidencia: Props["onAdicionarEvidencia"];
+  onFotoDepois?: Props["onFotoDepois"];
   onCriarPop: Props["onCriarPop"];
   onAbrirPop: Props["onAbrirPop"];
 }) {
@@ -679,6 +688,15 @@ function Detalhe({
 
         {aba === "evidencias" && (
           <>
+            {nc.par && (
+              <AntesDepois
+                antes={nc.par.antes}
+                depois={nc.par.depois}
+                podeAdicionar={podeEvidenciar && Boolean(onFotoDepois)}
+                resolvida={resolvida}
+                onFotoDepois={(arquivo) => onFotoDepois?.(nc.id, arquivo)}
+              />
+            )}
             {podeEvidenciar && (
               <button type="button" className="pc-orange-btn pc-self-start" onClick={() => onAdicionarEvidencia(nc.id)}>
                 + Adicionar evidência

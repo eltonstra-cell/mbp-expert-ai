@@ -2,6 +2,7 @@
 
 import { useRef, useState, type CSSProperties } from "react";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
+import AntesDepois from "@/components/AntesDepois";
 import { LoteJanela, type CorrecaoItem } from "@/components/pc/PcCorrecoes";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import { NavIcon, type NavIconName } from "@/components/NavIcons";
@@ -282,7 +283,11 @@ export function CampoCorrecoes({
   onVerNoChecklist,
   responsavelPadrao = "",
   onAbrirPop,
+  podeEvidenciar = false,
+  onFotoDepois,
 }: {
+  podeEvidenciar?: boolean;
+  onFotoDepois?: (ncId: string, arquivo: File) => void;
   responsavelPadrao?: string;
   onAbrirPop?: () => void;
   itens: CorrecaoItem[];
@@ -330,6 +335,8 @@ export function CampoCorrecoes({
         hoje={hoje}
         podeEditar={podeEditar}
         podeMarcar={podeMarcar}
+        podeEvidenciar={podeEvidenciar}
+        onFotoDepois={onFotoDepois ? (arquivo) => onFotoDepois(atual.id, arquivo) : undefined}
         pessoas={pessoas}
         onVoltar={() => setAberta(null)}
         onPular={() => {
@@ -495,7 +502,11 @@ function DetalheCampo({
   onVerNoChecklist,
   responsavelPadrao,
   onAbrirPop,
+  podeEvidenciar = false,
+  onFotoDepois,
 }: {
+  podeEvidenciar?: boolean;
+  onFotoDepois?: (arquivo: File) => void;
   responsavelPadrao: string;
   onAbrirPop?: () => void;
   nc: CorrecaoItem;
@@ -582,6 +593,10 @@ function DetalheCampo({
             </button>
           )}
         </div>
+
+        {nc.par && (nc.par.antes.length > 0 || nc.par.depois.length > 0 || podeEvidenciar) && (
+          <AntesDepois antes={nc.par.antes} depois={nc.par.depois} podeAdicionar={podeEvidenciar && Boolean(onFotoDepois)} resolvida={nc.status === "Resolvida"} onFotoDepois={(arquivo) => onFotoDepois?.(arquivo)} />
+        )}
 
         {nc.observacao.trim() && (
           <div className="pc-registrado">

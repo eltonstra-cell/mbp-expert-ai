@@ -1,5 +1,7 @@
 import type { AcaoPermissao, AppDB, RegistroPop, UsuarioSistema } from "@/types";
 import { podeCriarRegistroPop, podeGerenciarComprovantes, podeGerenciarPessoas, podeVerComprovantes } from "./registrosEmpresa.ts";
+import { protegerCarimboDasEvidencias } from "./fotosDoItem.ts";
+import { podeEditarQuestionario } from "./questionarioAmbiente.ts";
 import { permissoesEfetivas } from "./screenAccess.ts";
 import { acessoVigente } from "./validadeDeAcesso.ts";
 
@@ -324,8 +326,10 @@ export function mesclarEstadoPorUsuario(
           ? nova
           : { ...nova, privacidade: { ...nova.privacidade, iaFotos: gravada?.privacidade?.iaFotos } };
         // Só o Administrador escolhe a pessoa de Acessos que é o responsável do estabelecimento (quem aprova os POPs).
+        // Só Administrador e RT mudam o questionário por ambiente.
         empresas[empresaId] = {
           ...comIa,
+          questionarios: podeEditarQuestionario(efetivo) ? comIa.questionarios : gravada?.questionarios,
           responsavelEstabelecimento: comIa.responsavelEstabelecimento
             ? { ...comIa.responsavelEstabelecimento, usuarioId: gravada?.responsavelEstabelecimento?.usuarioId }
             : gravada?.responsavelEstabelecimento,
@@ -377,12 +381,12 @@ export function mesclarEstadoPorUsuario(
   }
 
   if (possuiPermissao(efetivo, "evidencias.adicionar")) {
-    evidencias = mesclarPorEscopo(
-      "evidencias",
+    // Carimbo (data e hora, ambiente, quem registrou) não muda depois de gravado; no máximo 5 fotos por item.
+    evidencias = protegerCarimboDasEvidencias(
       atual.evidencias,
-      recebido.evidencias,
-      empresaIds,
-      true
+      mesclarPorEscopo("evidencias", atual.evidencias, recebido.evidencias, empresaIds, true),
+      usuario,
+      empresaIds
     );
   }
 
