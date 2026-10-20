@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import MetricCard from "@/components/MetricCard";
 import FaixaVisitaOutraEmpresa from "@/components/FaixaVisitaOutraEmpresa";
+import { textoDeBaseLegal } from "@/lib/conteudoValidado";
 import AccessPreparationPanel from "@/components/AccessPreparationPanel";
 import AppNavigation, { type CartaoVisita, type ContagemEtapa } from "@/components/AppNavigation";
 import AppTopbar from "@/components/AppTopbar";
@@ -6625,7 +6626,7 @@ export default function Home() {
               }
               apoio = {
                 orientacao: foco.orientacao || undefined,
-                baseLegal: foco.referencia ? { referencia: foco.referencia } : undefined,
+                baseLegal: textoDeBaseLegal(foco) ? { referencia: textoDeBaseLegal(foco) } : undefined,
                 pop: linhaPop ? { codigo: linhaPop.sugestao.codigo, titulo: linhaPop.sugestao.titulo, situacao: linhaPop.situacao } : undefined,
                 ultimaVisita,
                 evidencias: (db.evidencias || [])

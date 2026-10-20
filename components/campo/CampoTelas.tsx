@@ -6,6 +6,7 @@ import { LoteJanela, type CorrecaoItem } from "@/components/pc/PcCorrecoes";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import { NavIcon, type NavIconName } from "@/components/NavIcons";
 import { RowMenu, type ItemMenu } from "@/components/ui/RowMenu";
+import { acaoPadraoVisivel } from "@/lib/conteudoValidado";
 import { contarEtapas, etapaDaCorrecao, ordenarCorrecoes, prazoSugerido, validarPlano, type EtapaCorrecao, type GravidadeNc } from "@/lib/actionPlan";
 import { NOME_DA_GRAVIDADE, linhaDaCorrecao, mensagemDeFaltas, primeiroCampoComProblema, type CampoDoPlano } from "@/lib/correcaoRotulos";
 
@@ -568,10 +569,10 @@ function DetalheCampo({
           </div>
         )}
 
-        {nc.acaoSugerida && !bloqueado && acao.trim() !== nc.acaoSugerida.trim() && (
+        {acaoPadraoVisivel(nc) && !bloqueado && acao.trim() !== acaoPadraoVisivel(nc) && (
           <div className="pc-acao-padrao">
-            <span className="ui-row-sub">Ação padrão do critério: “{nc.acaoSugerida}”</span>
-            <button type="button" className="pc-chip-btn pc-chip-btn--soft" onClick={() => setAcao(nc.acaoSugerida || "")}>
+            <span className="ui-row-sub">Ação padrão do critério: “{acaoPadraoVisivel(nc)}”</span>
+            <button type="button" className="pc-chip-btn pc-chip-btn--soft" onClick={() => setAcao(acaoPadraoVisivel(nc))}>
               Usar
             </button>
           </div>

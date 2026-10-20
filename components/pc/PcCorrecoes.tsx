@@ -6,6 +6,7 @@ import FieldVoiceTools from "@/components/FieldVoiceTools";
 import { NavIcon } from "@/components/NavIcons";
 import { Pill, type Tom } from "@/components/ui/Pill";
 import { NOME_DA_GRAVIDADE, linhaDaCorrecao, mensagemDeFaltas, primeiroCampoComProblema, type CampoDoPlano } from "@/lib/correcaoRotulos";
+import { acaoPadraoVisivel } from "@/lib/conteudoValidado";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import {
   contarEtapas,
@@ -38,6 +39,8 @@ export type CorrecaoItem = {
   orientacao: string;
   /** Ação corretiva real do critério (catálogo normativo); ainda não existe nos dados. */
   acaoSugerida?: string;
+  /** A ação padrão só aparece depois de validada pelo RT. */
+  acaoSugeridaValidada?: boolean;
   pop: { codigo: string; titulo: string; existe: boolean } | null;
   evidencias: { id: string; tipo: string; nome: string; quando: string; url: string }[];
   historico: { id: string; quando: string; status: StatusNc; observacao: string }[];
@@ -582,10 +585,10 @@ function Detalhe({
                   )}
                 </div>
               )}
-              {!bloqueado && nc.acaoSugerida && acao.trim() !== nc.acaoSugerida.trim() && (
+              {!bloqueado && acaoPadraoVisivel(nc) && acao.trim() !== acaoPadraoVisivel(nc) && (
                 <div className="pc-acao-padrao">
-                  <span className="ui-row-sub">Ação padrão do critério: “{nc.acaoSugerida}”</span>
-                  <button type="button" className="pc-chip-btn pc-chip-btn--soft" onClick={() => setAcao(nc.acaoSugerida || "")}>
+                  <span className="ui-row-sub">Ação padrão do critério: “{acaoPadraoVisivel(nc)}”</span>
+                  <button type="button" className="pc-chip-btn pc-chip-btn--soft" onClick={() => setAcao(acaoPadraoVisivel(nc))}>
                     Usar
                   </button>
                 </div>

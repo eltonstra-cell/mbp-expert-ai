@@ -10,6 +10,7 @@ import type { InfoAmbiente } from "@/lib/checklistEnvs";
 import { COR_DO_SEGMENTO, rotuloDoSegmento } from "@/lib/checklistSegmentos";
 import { useCapturaCamera } from "@/components/useCapturaMidia";
 import { estadosDosBotoes, gravidadeSugerida } from "@/lib/checklistUi";
+import { textoDeBaseLegal } from "@/lib/conteudoValidado";
 import type { EstadoVoz } from "@/lib/vozLinha";
 import { dependenciasDoNavegador, validarFotoEscolhida } from "@/lib/fotoCompressao";
 import type { ChecklistCriticidade, ChecklistItem, ChecklistStatus } from "@/types";
@@ -427,10 +428,10 @@ export default function ChecklistFocoItem({
         </div>
       </div>
 
-      {mostrarApoio && (item.orientacao || item.referencia) && (
+      {mostrarApoio && (item.orientacao || textoDeBaseLegal(item)) && (
         <div className="chk-foco-apoio" key={item.id}>
           {item.orientacao && <LinhaDeApoio titulo="O que verificar" texto={item.orientacao} />}
-          {item.referencia && <LinhaDeApoio titulo="Base legal" texto={item.referencia} />}
+          {textoDeBaseLegal(item) && <LinhaDeApoio titulo="Base legal" texto={textoDeBaseLegal(item)} />}
         </div>
       )}
 

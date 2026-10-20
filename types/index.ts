@@ -168,6 +168,8 @@ export type ChecklistItem = {
   /** Gravidade que veio do critério, guardada na primeira vez que o profissional a troca. */
   criticidadeSugerida?: ChecklistCriticidade;
   referencia?: string;
+  /** Texto oficial da norma para o critério. Só existe quando foi salvo e conferido; sem ele o bloco "Base legal" não aparece. */
+  baseLegal?: string;
   orientacao?: string;
 };
 
