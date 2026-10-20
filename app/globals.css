@@ -3066,3 +3066,10 @@ html[data-modo="campo"] .ev7-filtro-select{max-width:none;flex:1}
 .chk-foco-card,.chk-foco-obs,.chk-apoio-linha,.chk-apoio-cartao,.chk-foco-amb,.chk-sel-botao,.amb-cortina{border:2px solid #B4C2CE;box-shadow:0 1px 3px rgba(18,32,43,.08)}
 .amb-cortina{box-shadow:0 14px 36px rgba(18,32,43,.28),0 1px 3px rgba(18,32,43,.08)}
 .chk-apoio-linha.is-aberta .chk-apoio-corpo{right:-2px;left:-2px;border:2px solid #B4C2CE}
+/* ===== Pacote 9 · B: foto ampliada no checklist ===== */
+.foto-amp-fundo{position:fixed;inset:0;z-index:130;display:grid;place-items:center;padding:12px;background:rgba(255,255,255,.92);overflow:hidden}
+.foto-amp-caixa{display:flex;max-width:100%;max-height:100%;flex-direction:column;align-items:center;gap:10px}
+.foto-amp-img{max-width:min(92vw,900px);max-height:calc(100dvh - 90px);border:2px solid #B4C2CE;border-radius:12px;background:#fff;object-fit:contain;box-shadow:0 1px 3px rgba(18,32,43,.08)}
+.foto-amp-fechar{flex:none}
+.chk-foto-mini-botao,.chk-apoio-foto-botao{display:inline-flex;flex:none;padding:0;border:0;border-radius:8px;background:none;cursor:zoom-in}
+.chk-foto-mini-botao:focus-visible,.chk-apoio-foto-botao:focus-visible{outline:3px solid var(--brand);outline-offset:2px}

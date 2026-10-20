@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
+import FotoAmpliada from "@/components/FotoAmpliada";
 import AmbientesCortina from "@/components/AmbientesCortina";
 import { NavIcon } from "@/components/NavIcons";
 import type { InfoAmbiente } from "@/lib/checklistEnvs";
@@ -35,6 +36,8 @@ type Props = {
   onStatus: (status: ChecklistStatus) => void;
   onObservacao: (texto: string) => void;
   onGravidade: (gravidade: ChecklistCriticidade) => void;
+  /** Mostra a miniatura da última foto no item; no PC ela fica só em "Evidências deste item". */
+  miniaturaNoItem?: boolean;
   /** Pode registrar foto (evidências.adicionar). */
   podeFotografar?: boolean;
   /** Salva a foto como evidência ligada a este item. Devolve o id da evidência criada, ou null se falhou. */
@@ -80,6 +83,7 @@ export default function ChecklistFocoItem({
   onAmbiente,
   podeEditar,
   podeFotografar = true,
+  miniaturaNoItem = true,
   temAnterior,
   temProximo,
   onStatus,
@@ -103,6 +107,7 @@ export default function ChecklistFocoItem({
   const [salvandoFoto, setSalvandoFoto] = useState(false);
   const [recente, setRecente] = useState<{ id: string; url: string } | null>(null);
   const [avisoFoto, setAvisoFoto] = useState<{ texto: string; id?: string } | null>(null);
+  const [ampliada, setAmpliada] = useState(false);
   const arquivoRef = useRef<HTMLInputElement | null>(null);
   const timerFoto = useRef<ReturnType<typeof setTimeout> | null>(null);
   const recenteRef = useRef<{ id: string; url: string } | null>(null);
@@ -141,6 +146,7 @@ export default function ChecklistFocoItem({
       if (recenteRef.current) URL.revokeObjectURL(recenteRef.current.url);
       setRecente(null);
       setAvisoFoto(null);
+      setAmpliada(false);
     };
   }, [item.id, liberarCamera, limparAvisoCamera]);
 
@@ -161,6 +167,7 @@ export default function ChecklistFocoItem({
     URL.revokeObjectURL(recente.url);
     setRecente(null);
     setAvisoFoto(null);
+    setAmpliada(false);
   }
 
   const salvarTexto = () => {
@@ -293,11 +300,13 @@ export default function ChecklistFocoItem({
             <NavIcon name="microfone" size={18} strokeWidth={1.9} /> Ditar
           </button>
         </div>
-        {(recente || avisoFoto || camera.aviso) && (
+        {((recente && miniaturaNoItem) || avisoFoto || camera.aviso) && (
           <div className="chk-foto-linha" role="status">
-            {recente && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img className="chk-foto-mini" src={recente.url} alt="Última foto deste item" />
+            {recente && miniaturaNoItem && (
+              <button type="button" className="chk-foto-mini-botao" onClick={() => setAmpliada(true)} aria-label="Ampliar a foto deste item">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img className="chk-foto-mini" src={recente.url} alt="Última foto deste item" />
+              </button>
             )}
             {(avisoFoto || camera.aviso) && (
               <span className="chk-foto-aviso">{camera.aviso || avisoFoto?.texto}</span>
@@ -322,6 +331,7 @@ export default function ChecklistFocoItem({
             )}
           </div>
         )}
+        {ampliada && recente && <FotoAmpliada url={recente.url} descricao="Última foto deste item" onFechar={() => setAmpliada(false)} />}
         <input
           ref={arquivoRef}
           type="file"

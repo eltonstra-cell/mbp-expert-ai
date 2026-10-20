@@ -1,6 +1,7 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import FotoAmpliada from "@/components/FotoAmpliada";
 import AmbientesCortina from "@/components/AmbientesCortina";
 import type { InfoAmbiente } from "@/lib/checklistEnvs";
 import type { ChecklistStatus } from "@/types";
@@ -92,6 +93,8 @@ function CartaoDeApoio({ titulo, tom, children }: { titulo: string; tom: string;
 
 // Cada cartão só aparece se houver dado real para ele.
 function PainelDeApoio({ apoio }: { apoio: ApoioDoItem }) {
+  const [ampliadaId, setAmpliadaId] = useState<string | null>(null);
+  const ampliada = apoio.evidencias.find((evidencia) => evidencia.id === ampliadaId && evidencia.tipo === "Foto");
   const vazio = !apoio.orientacao && !apoio.baseLegal && !apoio.pop && !apoio.ultimaVisita && apoio.evidencias.length === 0;
   return (
     <aside className="chk-apoio" aria-label="Apoio ao item">
@@ -128,8 +131,10 @@ function PainelDeApoio({ apoio }: { apoio: ApoioDoItem }) {
           <div className="chk-apoio-fotos">
             {apoio.evidencias.slice(0, 6).map((evidencia) =>
               evidencia.tipo === "Foto" ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img key={evidencia.id} src={evidencia.url} alt={evidencia.nome} className="chk-apoio-foto" />
+                <button key={evidencia.id} type="button" className="chk-apoio-foto-botao" onClick={() => setAmpliadaId(evidencia.id)} aria-label="Ampliar foto">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={evidencia.url} alt={evidencia.nome} className="chk-apoio-foto" />
+                </button>
               ) : (
                 <span key={evidencia.id} className="chk-apoio-foto chk-apoio-foto--audio">
                   Áudio
@@ -140,6 +145,7 @@ function PainelDeApoio({ apoio }: { apoio: ApoioDoItem }) {
         </CartaoDeApoio>
       )}
       {vazio && <p className="ui-row-sub">Sem material de apoio para este item.</p>}
+      {ampliada && <FotoAmpliada url={ampliada.url} descricao={ampliada.nome} onFechar={() => setAmpliadaId(null)} />}
     </aside>
   );
 }

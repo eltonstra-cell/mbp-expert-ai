@@ -6599,6 +6599,7 @@ export default function Home() {
                       destaque={destaqueItemId === foco.id}
                       semCabecalhoDeAmbiente
                       mostrarApoio={false}
+                      miniaturaNoItem={false}
                       {...dadosDoAmbienteEmFoco(foco, lista)}
                       onGravidade={(gravidade) => {
                         setItemFocoId(foco.id);
