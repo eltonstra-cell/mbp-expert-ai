@@ -243,7 +243,7 @@ function Cartao({ ev, onAmpliar }: { ev: CartaoEvidencia; onAmpliar: (id: string
           />
         )}
       </div>
-      <p className="ev7-card-desc">{ev.descricao || (ev.tipo === "Áudio" ? "Registro de voz." : "Sem descrição.")}</p>
+      {(ev.descricao || ev.tipo === "Áudio") && <p className="ev7-card-desc">{ev.descricao || "Registro de voz."}</p>}
       <div className="ev7-chips">
         {ev.tipo === "Foto" ? (
           <button type="button" className="ev7-chip ev7-chip--botao" disabled={!ev.url} onClick={() => onAmpliar(ev.id)} aria-label="Ver foto ampliada">
@@ -988,8 +988,11 @@ export default function PcEvidencias({
                 { id: "revisar", rotulo: celular ? "IA p/ revisar" : "IA para revisar", contagem: contagens.revisar, acao: true },
               ]}
             />
-            <label className="ev7-filtro">
-              <span className="ev7-filtro-rotulo">Ambiente:</span>
+            <div className={`ev7-filtro${filtroAmbiente ? " is-ativo" : ""}`}>
+              <span className="ev7-filtro-pino" aria-hidden="true"><PinIcon /></span>
+              <span className="ev7-filtro-rotulo">Ambiente</span>
+              <span className="ev7-filtro-valor">{filtroAmbiente ? (filtroAmbiente === SEM_AMBIENTE ? "Sem ambiente" : opcoesAmbiente.find((opcao) => opcao.valor === filtroAmbiente)?.rotulo || filtroAmbiente) : "Todos"}</span>
+              <span className="ev7-filtro-seta" aria-hidden="true">▾</span>
               <select className="ev7-filtro-select" value={filtroAmbiente} onChange={(evento) => setFiltroAmbiente(evento.target.value)} aria-label="Filtrar por ambiente">
                 <option value="">Todos</option>
                 {opcoesAmbiente.map((opcao) => (
@@ -999,8 +1002,12 @@ export default function PcEvidencias({
                 ))}
                 <option value={SEM_AMBIENTE}>Sem ambiente</option>
               </select>
-              <span className="ev7-filtro-seta" aria-hidden="true">▾</span>
-            </label>
+              {filtroAmbiente && (
+                <button type="button" className="ev7-filtro-limpar" onClick={() => setFiltroAmbiente("")} aria-label="Limpar o filtro de ambiente">
+                  ✕
+                </button>
+              )}
+            </div>
             <p className="ev7-aviso-ia">A IA só sugere. Nada vira NC sem a sua confirmação.</p>
           </div>
           <div className="ui-scroll ev7-scroll">
@@ -1048,7 +1055,7 @@ export default function PcEvidencias({
               </div>
               <div className="ev7-lb-bloco">
                 <div className="ui-eyebrow">Descrição</div>
-                <p className="ev7-lb-texto">{ampliada.descricao || "Sem descrição."}</p>
+                {ampliada.descricao && <p className="ev7-lb-texto">{ampliada.descricao}</p>}
               </div>
               <div className="ev7-lb-bloco ev7-lb-bloco--vinculo">
                 <div className="ui-eyebrow">Vinculada a</div>
