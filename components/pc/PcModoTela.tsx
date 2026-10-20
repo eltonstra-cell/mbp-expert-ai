@@ -15,7 +15,7 @@ type Props = {
 };
 
 const CARTOES: { modo: ModoTela; subtitulo: string; itens: string[] }[] = [
-  { modo: "campo", subtitulo: "Para o celular durante a visita", itens: ["5 abas: Início, Checklist, Registrar, Correções, Mais", "Um item do checklist por vez", "Câmera e microfone em destaque"] },
+  { modo: "campo", subtitulo: "Para o celular durante a visita", itens: ["5 abas: Início, Checklist, Registrar, Correções, Mais (com Visitas, Empresas e Ajuda)", "Um item do checklist por vez", "Câmera e microfone em destaque"] },
   { modo: "equilibrado", subtitulo: "Para o tablet em visita ou demonstração", itens: ["Menu de ícones de 108 px", "Lista e detalhe lado a lado", "Relatório com conferência"] },
   { modo: "completo", subtitulo: "Para o PC e para demonstrar tudo", itens: ["Menu lateral completo", "Cadastros, Acessos e Administração", "Painéis com todos os indicadores"] },
 ];
