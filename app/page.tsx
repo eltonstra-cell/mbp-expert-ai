@@ -3883,8 +3883,20 @@ export default function Home() {
     return evidenciaId;
   }
 
+  // Apaga o arquivo daquela evidência no armazenamento (LGPD). Se falhar, a ação do usuário segue; não registra URL.
+  function apagarArquivoDaEvidenciaNaNuvem(evidencia?: Evidencia) {
+    const caminho = evidencia?.blobPathname;
+    if (!caminho) return;
+    void fetch(`/api/evidencias/file?pathname=${encodeURIComponent(caminho)}`, { method: "DELETE" })
+      .then((resposta) => {
+        if (!resposta.ok) console.error("Não foi possível apagar o arquivo de uma evidência no armazenamento.");
+      })
+      .catch(() => console.error("Não foi possível apagar o arquivo de uma evidência no armazenamento."));
+  }
+
   // Desfazer da foto do item: tira só a evidência recém-criada (um único id), sem mexer nas demais.
   function desfazerFotoDoItem(evidenciaId: string) {
+    apagarArquivoDaEvidenciaNaNuvem((db.evidencias || []).find((ev) => ev.id === evidenciaId));
     setDb((o) => {
       const atualizado: AppDB = { ...o, evidencias: (o.evidencias || []).filter((ev) => ev.id !== evidenciaId) };
       salvarDBLocal(atualizado);
@@ -4613,6 +4625,7 @@ export default function Home() {
       ))
     ) return;
 
+    apagarArquivoDaEvidenciaNaNuvem(evidencia);
     setDb((o) => ({
       ...o,
       evidencias: (o.evidencias || []).filter((ev) => ev.id !== id),

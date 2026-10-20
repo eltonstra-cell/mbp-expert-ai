@@ -1,9 +1,10 @@
-import { get } from "@vercel/blob";
+import { del, get } from "@vercel/blob";
 import { type NextRequest, NextResponse } from "next/server";
 import {
   autorizaAcaoServidor,
   obterAcessoServidor,
 } from "@/lib/serverAccess";
+import { apagarArquivoDaEvidencia, caminhoDeEvidenciaValido } from "@/lib/evidenceBlob";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -81,4 +82,37 @@ export async function GET(request: NextRequest) {
       status: 500,
     });
   }
+}
+
+// Apaga o arquivo de UMA evidência (o caminho exato), quando ela é removida ou desfeita.
+export async function DELETE(request: NextRequest) {
+  const pathname = request.nextUrl.searchParams.get("pathname");
+
+  if (!caminhoDeEvidenciaValido(pathname)) {
+    return NextResponse.json({ error: "Arquivo inválido." }, { status: 400 });
+  }
+
+  const acesso = await obterAcessoServidor();
+  // A evidência pode já ter saído do estado sincronizado (ou nem ter chegado a ele, no Desfazer):
+  // nesse caso o acesso é validado pela visita presente no caminho do arquivo.
+  const evidencia = acesso.autorizado && acesso.data
+    ? acesso.data.evidencias.find((item) => item.blobPathname === pathname)
+    : undefined;
+  const visitaId = pathname.split("/")[1] || "";
+  const visita = acesso.autorizado && acesso.data
+    ? acesso.data.visitas.find((item) => item.id === visitaId)
+    : undefined;
+  const empresaId = evidencia?.empresaId || visita?.empresaId;
+  if (
+    acesso.aplicado &&
+    (!empresaId || !autorizaAcaoServidor(acesso, "evidencias.adicionar", empresaId))
+  ) {
+    return NextResponse.json(
+      { error: "Seu perfil não permite remover evidências desta visita." },
+      { status: 403 }
+    );
+  }
+
+  const apagado = await apagarArquivoDaEvidencia(pathname, (caminho) => del(caminho));
+  return NextResponse.json({ apagado }, { status: apagado ? 200 : 502 });
 }
