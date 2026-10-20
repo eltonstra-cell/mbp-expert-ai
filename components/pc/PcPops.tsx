@@ -1,18 +1,30 @@
 "use client";
 
 import { useState } from "react";
-import type { ProcedimentoOperacionalPadronizado, StatusPOP } from "@/types";
+import type { Empresa, ProcedimentoOperacionalPadronizado, StatusPOP, UsuarioSistema } from "@/types";
+import PcPopEditor from "@/components/pc/PcPopEditor";
+import { MENSAGEM_SEM_NORMA } from "@/lib/normas";
+import {
+  MENSAGEM_NORMA_ALTERADA,
+  MENSAGEM_SEM_NORMA_APLICADA,
+  aprovarPop,
+  criarPopDoTextoBase,
+  enviarParaAprovacao,
+  iniciarNovaVersao,
+  linhasDoConjunto,
+  popDoConjunto,
+  popPrecisaRevisarPorNorma,
+  situacaoDoPop,
+  type SituacaoDoPop,
+} from "@/lib/popsNorma";
 import { DEFINICOES_PROGRAMAS_CONTROLE } from "@/lib/qualityPrograms";
 import {
-  SUGESTOES_POPS_MANUAL,
   adicionarPop,
-  adicionarSugestaoPop,
   arquivarPop,
   duplicarPop,
   popsAtivos,
   resumoPops,
   situacaoRevisaoPOP,
-  sugestaoJaCriada,
   tomSituacaoPOP,
 } from "@/lib/pops";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
@@ -23,7 +35,17 @@ import type { ItemMenu } from "@/components/ui/RowMenu";
 import { acoesDoPop } from "@/lib/menuActions";
 import { NavIcon } from "@/components/NavIcons";
 
-const STATUS: StatusPOP[] = ["Rascunho", "Em revisão", "Aprovado", "Inativo"];
+// "Aprovado" e "Aguardando aprovação" não são escolhidos aqui: vêm do fluxo Enviar para aprovação e Aprovar e assinar.
+const STATUS_ESCOLHIVEIS: StatusPOP[] = ["Rascunho", "Inativo"];
+
+const TOM_DA_SITUACAO: Record<SituacaoDoPop, "ok" | "nc" | "pend" | "info" | "na"> = {
+  "Falta criar": "nc",
+  Rascunho: "pend",
+  "Aguardando aprovação": "info",
+  Aprovado: "ok",
+  Vencido: "nc",
+  Inativo: "na",
+};
 
 type Props = {
   pops: ProcedimentoOperacionalPadronizado[];
@@ -32,6 +54,13 @@ type Props = {
   mensagem?: string;
   onSalvar: () => void;
   onVoltar: () => void;
+  /** Empresa (norma, responsável do estabelecimento) e a pessoa logada, para o conjunto da norma e a aprovação. */
+  empresa?: Pick<Empresa, "normasAplicadas" | "responsavelEstabelecimento" | "uf">;
+  usuario?: UsuarioSistema | null;
+  /** Sem edição (leitura): só abre os POPs; quem é o responsável do estabelecimento ainda aprova. */
+  podeEditar?: boolean;
+  /** Grava os POPs na hora (sem esperar o "Salvar" da empresa). */
+  onPersistir?: (pops: ProcedimentoOperacionalPadronizado[]) => void;
 };
 
 function dataCurta(iso: string) {
@@ -40,7 +69,9 @@ function dataCurta(iso: string) {
   return `revisão ${dia}/${mes}/${ano}`;
 }
 
-export default function PcPops({ pops, onChange, temAlteracoes, mensagem, onSalvar, onVoltar }: Props) {
+export default function PcPops({ pops, onChange, temAlteracoes, mensagem, onSalvar, onVoltar, empresa, usuario = null, podeEditar = true, onPersistir }: Props) {
+  const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [mensagemEditor, setMensagemEditor] = useState("");
   const [codigo, setCodigo] = useState("");
   const [titulo, setTitulo] = useState("");
   const [erro, setErro] = useState<{ campo: "titulo" | "codigo"; aviso: string } | null>(null);
@@ -48,9 +79,14 @@ export default function PcPops({ pops, onChange, temAlteracoes, mensagem, onSalv
   const [aberto, setAberto] = useState<string | null>(null);
   const [verArquivados, setVerArquivados] = useState(false);
 
+  const persistir = (novos: ProcedimentoOperacionalPadronizado[]) => (onPersistir ? onPersistir(novos) : onChange(novos));
+  const empresaDoConjunto = { normasAplicadas: empresa?.normasAplicadas, pops };
+  const conjunto = linhasDoConjunto(empresaDoConjunto);
+  const idsDoConjunto = new Set(conjunto.linhas.map((linha) => linha.pop?.id).filter(Boolean));
+  const popEmEdicao = editandoId ? pops.find((pop) => pop.id === editandoId) : undefined;
   const resumo = resumoPops(popsAtivos(pops));
   const arquivados = pops.filter((pop) => pop.arquivado).length;
-  const listados = verArquivados ? pops : popsAtivos(pops);
+  const listados = (verArquivados ? pops : popsAtivos(pops)).filter((pop) => !idsDoConjunto.has(pop.id));
 
   function adicionar() {
     const resultado = adicionarPop(pops, codigo, titulo, crypto.randomUUID());
@@ -67,6 +103,49 @@ export default function PcPops({ pops, onChange, temAlteracoes, mensagem, onSalv
 
   function atualizar(id: string, alteracao: Partial<ProcedimentoOperacionalPadronizado>) {
     onChange(pops.map((pop) => (pop.id === id ? { ...pop, ...alteracao } : pop)));
+  }
+
+  function criarDoTextoBase(indice: number) {
+    const definicao = conjunto.linhas[indice]?.definicao;
+    if (!definicao) return;
+    const novo = criarPopDoTextoBase(definicao, empresaDoConjunto, crypto.randomUUID());
+    persistir([...pops, novo]);
+    setMensagemEditor("");
+    setEditandoId(novo.id);
+  }
+
+  function trocar(atual: ProcedimentoOperacionalPadronizado, novo: ProcedimentoOperacionalPadronizado) {
+    persistir(pops.map((pop) => (pop.id === atual.id ? novo : pop)));
+  }
+
+  function executar(atual: ProcedimentoOperacionalPadronizado, acao: () => ProcedimentoOperacionalPadronizado, aviso: string) {
+    try {
+      trocar(atual, acao());
+      setMensagemEditor(aviso);
+    } catch (erro) {
+      setMensagemEditor(erro instanceof Error ? erro.message : "Não foi possível concluir.");
+    }
+  }
+
+  if (popEmEdicao && empresa) {
+    return (
+      <PcPopEditor
+        key={`${popEmEdicao.id}-${popEmEdicao.versao}-${popEmEdicao.status}`}
+        pop={popEmEdicao}
+        empresa={empresa}
+        usuario={usuario}
+        podeEditar={podeEditar}
+        mensagem={mensagemEditor}
+        onVoltar={() => {
+          setEditandoId(null);
+          setMensagemEditor("");
+        }}
+        onSalvarRascunho={(novo) => executar(popEmEdicao, () => novo, "Rascunho salvo.")}
+        onEnviar={(novo) => executar(popEmEdicao, () => enviarParaAprovacao(novo), "Enviado para aprovação do responsável do estabelecimento.")}
+        onAprovar={(novo) => executar(popEmEdicao, () => aprovarPop(novo, usuario!, empresa, new Date().toISOString()), "POP aprovado e assinado.")}
+        onNovaVersao={(novo) => executar(popEmEdicao, () => iniciarNovaVersao(novo), "Nova versão criada em rascunho. A versão aprovada continua guardada.")}
+      />
+    );
   }
 
   return (
@@ -90,31 +169,53 @@ export default function PcPops({ pops, onChange, temAlteracoes, mensagem, onSalv
         ]}
       />
 
-      <div className="ui-card pc-suggest">
-        <div className="ui-eyebrow">Sugeridos pelo Manual de Boas Práticas</div>
-        <div className="pc-chip-row">
-          {SUGESTOES_POPS_MANUAL.map((sugestao) => {
-            const criado = sugestaoJaCriada(pops, sugestao);
-            return (
-              <button
-                key={sugestao.titulo}
-                type="button"
-                disabled={criado}
-                className={`ui-chip-btn${criado ? " ui-chip-btn--done" : ""}`}
-                onClick={() => {
-                  const resultado = adicionarSugestaoPop(pops, sugestao, crypto.randomUUID());
-                  onChange(resultado.pops);
-                  setAviso(resultado.aviso);
-                }}
-              >
-                {criado ? "✓ " : "+ "}
-                {sugestao.titulo}
-              </button>
-            );
-          })}
+      <div className="ui-card pop-conjunto">
+        <div className="pc-card-head">
+          <h2 className="ui-card-title">Conjunto da norma</h2>
+          {conjunto.linhas.length > 0 && (
+            <span className="ui-row-sub">
+              {conjunto.resumo.aprovados} de {conjunto.resumo.total} aprovados · {conjunto.resumo.rascunho} em rascunho · {conjunto.resumo.faltam} faltam criar
+            </span>
+          )}
         </div>
+        {conjunto.linhas.length === 0 ? (
+          <div className="priv-faixa" role="status">
+            <span>{empresa && (empresa.uf || "").trim().toUpperCase() !== "RS" ? MENSAGEM_SEM_NORMA : MENSAGEM_SEM_NORMA_APLICADA}</span>
+          </div>
+        ) : (
+          <div className="ui-list">
+            {conjunto.linhas.map((linha, indice) => (
+              <div key={linha.definicao.catalogoId} className="pop-conjunto-linha">
+                <div className="pop-conjunto-textos">
+                  <span className="pop-conjunto-titulo">{linha.definicao.titulo}</span>
+                  <span className="ui-row-sub">
+                    {linha.itemDaNorma} · versão {linha.versao} · {linha.responsavel}
+                  </span>
+                </div>
+                <Pill tom={TOM_DA_SITUACAO[linha.situacao]}>{linha.situacao}</Pill>
+                {linha.pop && popPrecisaRevisarPorNorma(linha.pop) && (
+                  <span className="pop-revisar" title={MENSAGEM_NORMA_ALTERADA}>Revisar</span>
+                )}
+                {linha.pop ? (
+                  <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => { setMensagemEditor(""); setEditandoId(linha.pop!.id); }}>
+                    Abrir
+                  </button>
+                ) : podeEditar ? (
+                  <button type="button" className="ui-btn ui-btn--criar ui-btn--small" onClick={() => criarDoTextoBase(indice)}>
+                    Criar do texto-base
+                  </button>
+                ) : (
+                  <span className="ui-row-sub">Falta criar</span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
+      <div className="ui-eyebrow pop-outros-titulo">Outros POPs e documentos da empresa</div>
+
+      {podeEditar && (
       <div className="pc-add-row">
         <label className="pc-add-code">
           <input
@@ -154,10 +255,11 @@ export default function PcPops({ pops, onChange, temAlteracoes, mensagem, onSalv
           </span>
           {erro?.campo === "titulo" && <span className="ui-field-error">{erro.aviso}</span>}
         </label>
-        <button type="button" className="ui-btn ui-btn--primary" onClick={adicionar}>
+        <button type="button" className="ui-btn ui-btn--criar" onClick={adicionar}>
           + Adicionar POP
         </button>
       </div>
+      )}
       {aviso && <div className="ui-note">{aviso}</div>}
       {arquivados > 0 && (
         <button type="button" className="pc-link-btn pc-self-start" onClick={() => setVerArquivados((atual) => !atual)}>
@@ -181,14 +283,19 @@ export default function PcPops({ pops, onChange, temAlteracoes, mensagem, onSalv
                 }
                 titulo={`${pop.codigo ? `${pop.codigo} · ` : ""}${pop.titulo || "POP sem título"}`}
                 secundario={`${pop.status} · versão ${pop.versao || "não informada"} · ${dataCurta(pop.proximaRevisao)}`}
-                pilulas={<Pill tom={tomSituacaoPOP(situacao.label)}>{situacao.label}</Pill>}
+                pilulas={
+                  <>
+                    <Pill tom={tomSituacaoPOP(situacao.label)}>{situacao.label}</Pill>
+                    {popPrecisaRevisarPorNorma(pop) && <span className="pop-revisar" title={MENSAGEM_NORMA_ALTERADA}>Revisar</span>}
+                  </>
+                }
                 acao={
                   <button type="button" className="ui-btn ui-btn--secondary" onClick={() => setAberto(expandido ? null : pop.id)}>
                     {expandido ? "Fechar" : "Abrir"}
                   </button>
                 }
                 esmaecida={Boolean(pop.arquivado)}
-                menu={acoesDoPop({ arquivado: Boolean(pop.arquivado), podeEditar: true }).map((acao): ItemMenu => {
+                menu={acoesDoPop({ arquivado: Boolean(pop.arquivado), podeEditar }).map((acao): ItemMenu => {
                   switch (acao) {
                     case "abrir":
                       return { rotulo: "Abrir", onClick: () => setAberto(pop.id) };
@@ -208,7 +315,7 @@ export default function PcPops({ pops, onChange, temAlteracoes, mensagem, onSalv
                   }
                 })}
                 filhos={
-                  expandido ? (
+                  expandido && podeEditar ? (
                     <div className="pc-pop-edit">
                       <label className="pc-field">
                         <span className="ui-eyebrow">Código</span>
@@ -230,8 +337,10 @@ export default function PcPops({ pops, onChange, temAlteracoes, mensagem, onSalv
                       <label className="pc-field">
                         <span className="ui-eyebrow">Situação</span>
                         <select className="ui-input" value={pop.status} onChange={(e) => atualizar(pop.id, { status: e.target.value as StatusPOP })}>
-                          {STATUS.map((status) => (
-                            <option key={status}>{status}</option>
+                          {(STATUS_ESCOLHIVEIS.includes(pop.status) ? STATUS_ESCOLHIVEIS : [...STATUS_ESCOLHIVEIS, pop.status]).map((status) => (
+                            <option key={status} disabled={!STATUS_ESCOLHIVEIS.includes(status)}>
+                              {status}
+                            </option>
                           ))}
                         </select>
                       </label>
@@ -267,19 +376,25 @@ export default function PcPops({ pops, onChange, temAlteracoes, mensagem, onSalv
               />
             );
           })}
-          {pops.length === 0 && <div className="ui-empty">Nenhum POP cadastrado.</div>}
+          {listados.length === 0 && <div className="ui-empty">Nenhum outro POP ou documento cadastrado.</div>}
         </div>
       </div>
 
       {mensagem && <div className="ui-note">{mensagem}</div>}
 
       <div className="ui-footer">
-        <span className="ui-row-sub">
-          {temAlteracoes ? "● Alterações ainda não salvas" : "✓ Todas as alterações desta área estão salvas"}
-        </span>
-        <button type="button" className="ui-btn ui-btn--save" onClick={onSalvar}>
-          Salvar e voltar à Central
-        </button>
+        {podeEditar ? (
+          <>
+            <span className="ui-row-sub">
+              {temAlteracoes ? "● Alterações ainda não salvas" : "✓ Todas as alterações desta área estão salvas"}
+            </span>
+            <button type="button" className="ui-btn ui-btn--save" onClick={onSalvar}>
+              Salvar e voltar à Central
+            </button>
+          </>
+        ) : (
+          <span className="ui-row-sub">Somente leitura. O responsável do estabelecimento aprova os POPs que aguardam aprovação.</span>
+        )}
       </div>
     </section>
   );

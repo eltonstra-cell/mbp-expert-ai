@@ -48,6 +48,12 @@ export type Empresa = {
   arquivadaEm?: string;
   /** Privacidade e guarda (opcional, dentro do JSON do estado). */
   privacidade?: PrivacidadeEmpresa;
+  /** Normas aplicadas à empresa (ids do catálogo em lib/normas). */
+  normasAplicadas?: string[];
+  /** O RT confirmou as normas aplicadas (quem e quando). */
+  normasConfirmadasPeloRt?: { nome: string; usuarioId?: string; em: string };
+  /** Responsável do estabelecimento (RDC 216, 4.11.2): só a pessoa vinculada em Acessos aprova POPs. */
+  responsavelEstabelecimento?: { nome: string; cargo: string; usuarioId?: string };
 };
 
 export type PrivacidadeEmpresa = {
@@ -153,7 +159,71 @@ export type ProgramaControleQualidade = {
   observacao: string;
 };
 
-export type StatusPOP = "Rascunho" | "Em revisão" | "Aprovado" | "Inativo";
+export type StatusPOP = "Rascunho" | "Aguardando aprovação" | "Em revisão" | "Aprovado" | "Inativo";
+
+/** Quem aprovou e assinou uma versão do POP (dado pessoal: só aparece para quem tem acesso à empresa). */
+export type AprovacaoPop = {
+  nome: string;
+  cargo: string;
+  usuarioId: string;
+  em: string;
+  versao: string;
+};
+
+export type PassoPop = { id: string; texto: string };
+
+export type ReferenciaPop = {
+  norma: string;
+  item: string;
+  /** O que a norma pede neste item (vem do catálogo, não é texto da empresa). */
+  orientacao: string;
+  conferir?: boolean;
+};
+
+/** Conteúdo do POP em campos. Os passos ficam em branco para o RT e a empresa preencherem. */
+export type ConteudoPop = {
+  objetivo?: string;
+  campoAplicacao?: string;
+  referencias?: ReferenciaPop[];
+  responsavelExecucao?: { nome: string; cargo: string };
+  frequencia?: string;
+  passos?: PassoPop[];
+  acaoCorretiva?: string;
+  registroProva?: string;
+  higienizacao?: {
+    superficie: string;
+    metodo: string;
+    produto: string;
+    principioAtivo: string;
+    concentracao: string;
+    tempoContato: string;
+    temperatura: string;
+  };
+  pragas?: { preventivas: string; corretivas: string; comprovanteEmpresa: string };
+  manipuladores?: {
+    lavagemMaosEtapas: string;
+    lavagemMaosFrequencia: string;
+    lesoesSintomas: string;
+    /** Só "apto" e a validade: nunca o laudo (dado de saúde sensível). */
+    examesApto: "" | "apto" | "nao-apto";
+    examesValidade: string;
+    examesPeriodicidade: string;
+    capacitacaoCargaHoraria: string;
+    capacitacaoConteudo: string;
+    capacitacaoFrequencia: string;
+  };
+};
+
+/** Versão guardada de um POP (as aprovadas nunca são apagadas). */
+export type VersaoPop = {
+  versao: string;
+  status: StatusPOP;
+  criadaEm: string;
+  conteudo?: ConteudoPop;
+  aprovacao?: AprovacaoPop;
+  revisarAte?: string;
+  versaoCatalogo?: Record<string, string>;
+};
 
 export type ProcedimentoOperacionalPadronizado = {
   id: string;
@@ -163,9 +233,21 @@ export type ProcedimentoOperacionalPadronizado = {
   status: StatusPOP;
   programaRelacionado: string;
   responsavel: string;
+  /** "Revisar até": passou da data, o POP aprovado vira Vencido. */
   proximaRevisao: string;
   /** Arquivado: sai da lista principal, mas continua guardado. */
   arquivado?: boolean;
+  /** POP do conjunto da norma (id do catálogo em lib/popsNorma.ts). */
+  catalogoId?: string;
+  /** Veio do texto-base: normas e itens citados e a versão do catálogo usada. */
+  origemTextoBase?: { normas: string[]; itens: string[]; versaoCatalogo: Record<string, string> };
+  conteudo?: ConteudoPop;
+  /** Aprovação da versão atual (vazia em rascunho). */
+  aprovacao?: AprovacaoPop;
+  /** Versões anteriores e aprovadas, guardadas. */
+  versoes?: VersaoPop[];
+  /** Versão do catálogo de cada norma no momento da aprovação. */
+  versaoCatalogoAprovada?: Record<string, string>;
 };
 
 export type ChecklistStatus = "Pendente" | "Conforme" | "Não Conforme" | "Não se aplica";

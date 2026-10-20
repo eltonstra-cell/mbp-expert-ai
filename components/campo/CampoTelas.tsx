@@ -120,6 +120,7 @@ export function CampoInicio({
   onProxima,
   continuarDetalhe,
   somenteCampo = false,
+  avisoPops = null,
 }: {
   usuario: string;
   empresa?: string;
@@ -145,6 +146,8 @@ export function CampoInicio({
   continuarDetalhe?: string;
   /** Executor de campo: sem correções, sem lista de visitas e sem abrir visita nova. */
   somenteCampo?: boolean;
+  /** Aviso para o RT: POPs aprovados com norma alterada. */
+  avisoPops?: string | null;
 }) {
   const percentual = total > 0 ? Math.round((respondidos / total) * 100) : 0;
   return (
@@ -180,6 +183,12 @@ export function CampoInicio({
               Ver visitas
             </button>
           )}
+        </div>
+      )}
+
+      {avisoPops && (
+        <div className="ui-nota-divergencia pop-aviso-inicio" role="status">
+          <span className="pop-revisar">Revisar</span> {avisoPops}
         </div>
       )}
 

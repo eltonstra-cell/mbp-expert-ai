@@ -167,6 +167,32 @@ function mesclarVisitasDoExecutor(atuais: AppDB["visitas"], recebidas: AppDB["vi
   });
 }
 
+// Responsável do estabelecimento sem permissão de editar empresas: leva do que chegou só a aprovação de POPs
+// que já estavam aguardando aprovação na versão gravada.
+function aplicarSomenteAprovacoes(
+  atuais: AppDB["empresas"],
+  recebidas: AppDB["empresas"],
+  usuario: UsuarioSistema,
+  empresaIds: Set<string>
+): AppDB["empresas"] | null {
+  let resultado: AppDB["empresas"] | null = null;
+  empresaIds.forEach((empresaId) => {
+    const gravada = atuais[empresaId];
+    const nova = recebidas[empresaId];
+    if (!gravada || !nova || gravada.responsavelEstabelecimento?.usuarioId !== usuario.id) return;
+    let mudou = false;
+    const pops = (gravada.pops || []).map((pop) => {
+      const recebido = (nova.pops || []).find((item) => item.id === pop.id);
+      const aguardava = pop.status === "Aguardando aprovação" || pop.status === "Em revisão";
+      if (!recebido || !aguardava || recebido.status !== "Aprovado" || recebido.versao !== pop.versao) return pop;
+      mudou = true;
+      return { ...pop, status: recebido.status, aprovacao: recebido.aprovacao, versoes: recebido.versoes, versaoCatalogoAprovada: recebido.versaoCatalogoAprovada };
+    });
+    if (mudou) resultado = { ...(resultado || atuais), [empresaId]: { ...gravada, pops } };
+  });
+  return resultado;
+}
+
 function mesclarPorEscopo<T extends { id: string; empresaId: string }>(
   colecao: string,
   atuais: T[],
@@ -231,12 +257,24 @@ export function mesclarEstadoPorUsuario(
     empresaIds.forEach((empresaId) => {
       if (recebido.empresas[empresaId]) {
         const nova = recebido.empresas[empresaId];
+        const gravada = atual.empresas[empresaId];
         // Só quem pode usar a IA (Administrador e Consultor/RT) liberar ou desligar a IA da empresa.
-        empresas[empresaId] = podeMexerNaIa
+        const comIa = podeMexerNaIa
           ? nova
-          : { ...nova, privacidade: { ...nova.privacidade, iaFotos: atual.empresas[empresaId]?.privacidade?.iaFotos } };
+          : { ...nova, privacidade: { ...nova.privacidade, iaFotos: gravada?.privacidade?.iaFotos } };
+        // Só o Administrador escolhe a pessoa de Acessos que é o responsável do estabelecimento (quem aprova os POPs).
+        empresas[empresaId] = {
+          ...comIa,
+          responsavelEstabelecimento: comIa.responsavelEstabelecimento
+            ? { ...comIa.responsavelEstabelecimento, usuarioId: gravada?.responsavelEstabelecimento?.usuarioId }
+            : gravada?.responsavelEstabelecimento,
+        };
       }
     });
+  } else {
+    // Quem não edita empresas mas é o responsável do estabelecimento só pode aprovar POP que aguarda aprovação.
+    const comAprovacao = aplicarSomenteAprovacoes(atual.empresas, recebido.empresas, usuario, empresaIds);
+    if (comAprovacao) empresas = comAprovacao;
   }
 
   if (possuiPermissao(efetivo, "visitas.executar")) {

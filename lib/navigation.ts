@@ -332,6 +332,7 @@ export function chaveAtiva(view: string): NavKey | null {
     case "acompanhamento":
     case "relatorio":
     case "acessos":
+    case "pops":
       return view;
     default:
       return null;

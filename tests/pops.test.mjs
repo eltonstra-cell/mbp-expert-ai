@@ -2,10 +2,16 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { normalizarPops, SUGESTOES_POPS_MANUAL, situacaoRevisaoPOP } from "../lib/pops.ts";
 
-test("oferece os POPs mencionados expressamente no Manual", () => {
-  assert.equal(SUGESTOES_POPS_MANUAL.length, 3);
-  assert.equal(SUGESTOES_POPS_MANUAL.some((pop) => pop.titulo.includes("potabilidade")), true);
-  assert.equal(SUGESTOES_POPS_MANUAL.some((pop) => pop.titulo.includes("temperatura")), true);
+test("as sugestões são os 4 POPs da norma (RDC 216, 4.11.4 a–d), sem potabilidade nem temperatura", () => {
+  assert.equal(SUGESTOES_POPS_MANUAL.length, 4);
+  assert.equal(SUGESTOES_POPS_MANUAL.some((pop) => pop.titulo.includes("potabilidade")), false);
+  assert.equal(SUGESTOES_POPS_MANUAL.some((pop) => pop.titulo.includes("temperatura")), false);
+  assert.deepEqual(SUGESTOES_POPS_MANUAL.map((pop) => pop.titulo), [
+    "Higienização de instalações, equipamentos e móveis",
+    "Controle integrado de vetores e pragas urbanas",
+    "Higienização do reservatório",
+    "Higiene e saúde dos manipuladores",
+  ]);
 });
 
 test("descarta registros vazios e preserva o vínculo do POP", () => {

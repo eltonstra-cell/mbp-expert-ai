@@ -48,6 +48,8 @@ type Props = {
   simples?: boolean;
   /** Executor de campo: só continuar a visita; sem visita nova nem lista de visitas. */
   somenteCampo?: boolean;
+  /** Aviso para o RT: POPs aprovados com norma alterada. */
+  avisoPops?: string | null;
   onVerTodas: () => void;
 };
 
@@ -67,6 +69,7 @@ export default function PcInicio({
   onVerTodas,
   simples = false,
   somenteCampo = false,
+  avisoPops = null,
 }: Props) {
   const recentesFit = useCabem<HTMLDivElement>(48, 4, 1);
   return (
@@ -113,6 +116,12 @@ export default function PcInicio({
           </>
         )}
       </div>
+
+      {avisoPops && (
+        <div className="ui-nota-divergencia pop-aviso-inicio" role="status">
+          <span className="pop-revisar">Revisar</span> {avisoPops}
+        </div>
+      )}
 
       {!simples && (
       <StatStrip

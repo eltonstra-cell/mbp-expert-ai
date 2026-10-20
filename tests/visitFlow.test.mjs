@@ -61,12 +61,13 @@ test("validação do plano no campo", () => {
 });
 
 test("vínculo NC → POP usa o programa de controle e não inventa o resto", () => {
-  assert.equal(popSugeridoParaNc({ categoria: "Controle de temperatura" })?.codigo, "POP-03");
+  assert.equal(popSugeridoParaNc({ categoria: "Saúde e higiene dos manipuladores" })?.codigo, "POP-04");
+  assert.equal(popSugeridoParaNc({ categoria: "Controle de temperatura" }), null);
   assert.equal(popSugeridoParaNc({ categoria: "Piso e ralos" }), null);
-  const pops = [{ id: "p1", codigo: "POP-03", titulo: "Monitoramento de temperatura de equipamentos", versao: "1.0", status: "Aprovado", programaRelacionado: "Controle de temperatura", responsavel: "", proximaRevisao: "" }];
+  const pops = [{ id: "p1", codigo: "POP-04", titulo: "Higiene e saúde dos manipuladores", versao: "1.0", status: "Aprovado", programaRelacionado: "Saúde e higiene dos manipuladores", responsavel: "", proximaRevisao: "" }];
   const r = popsDaVisita(
     [
-      { numero: 1, categoria: "Controle de temperatura" },
+      { numero: 1, categoria: "Saúde e higiene dos manipuladores" },
       { numero: 2, categoria: "Limpeza e higienização/sanitização" },
       { numero: 3, categoria: "Limpeza e higienização/sanitização" },
       { numero: 4, categoria: "Piso e ralos" },
@@ -81,14 +82,14 @@ test("vínculo NC → POP usa o programa de controle e não inventa o resto", ()
 
 test("criar POPs de uma vez cria só rascunhos dos que faltam e não mexe nos existentes", () => {
   const existente = { id: "p1", codigo: "POP-01", titulo: "Higienização de instalações, equipamentos e móveis", versao: "3.0", status: "Aprovado", programaRelacionado: "Limpeza e higienização/sanitização", responsavel: "Ana", proximaRevisao: "2027-01-01" };
-  const linhas = popsDaVisita([{ numero: 1, categoria: "Limpeza e higienização/sanitização" }, { numero: 2, categoria: "Controle de temperatura" }], [existente]).linhas;
+  const linhas = popsDaVisita([{ numero: 1, categoria: "Limpeza e higienização/sanitização" }, { numero: 2, categoria: "Controle da potabilidade da água" }], [existente]).linhas;
   let n = 0;
   const { pops, criados } = criarRascunhosFaltantes([existente], linhas, () => `novo-${++n}`);
   assert.equal(criados, 1);
   assert.equal(pops.length, 2);
   assert.deepEqual(pops[0], existente);
   assert.equal(pops[1].status, "Rascunho");
-  assert.equal(criarRascunhosFaltantes(pops, popsDaVisita([{ numero: 2, categoria: "Controle de temperatura" }], pops).linhas, () => "x").criados, 0);
+  assert.equal(criarRascunhosFaltantes(pops, popsDaVisita([{ numero: 2, categoria: "Controle da potabilidade da água" }], pops).linhas, () => "x").criados, 0);
 });
 
 test("conferência do relatório e mensagem", () => {

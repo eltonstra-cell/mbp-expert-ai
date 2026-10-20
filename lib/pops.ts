@@ -1,27 +1,19 @@
 import type { ProcedimentoOperacionalPadronizado } from "@/types";
+import { CONJUNTO_DA_NORMA, popDoConjunto, popSugeridoParaNcDoConjunto, type DefinicaoPopDoConjunto } from "./popsNorma.ts";
 
 export type SituacaoRevisaoPOP = {
   label: "Em elaboração" | "Em revisão" | "Inativo" | "Revisão não definida" | "Revisão vencida" | "Revisão próxima" | "Em dia";
   classe: string;
 };
 
-export const SUGESTOES_POPS_MANUAL = [
-  {
-    codigo: "POP-01",
-    titulo: "Higienização de instalações, equipamentos e móveis",
-    programaRelacionado: "Limpeza e higienização/sanitização",
-  },
-  {
-    codigo: "POP-02",
-    titulo: "Controle da potabilidade da água",
-    programaRelacionado: "Controle da potabilidade da água",
-  },
-  {
-    codigo: "POP-03",
-    titulo: "Monitoramento de temperatura de equipamentos",
-    programaRelacionado: "Controle de temperatura",
-  },
-] as const;
+// Sugestões de POP = conjunto da norma (RDC 216/2004, 4.11.4 a–d). "Controle da potabilidade da água" e
+// "Monitoramento de temperatura" deixaram de ser sugeridos como POPs obrigatórios.
+export const SUGESTOES_POPS_MANUAL = CONJUNTO_DA_NORMA.map((definicao) => ({
+  codigo: definicao.codigo,
+  titulo: definicao.titulo,
+  programaRelacionado: definicao.programaRelacionado,
+  catalogoId: definicao.catalogoId,
+}));
 
 export function situacaoRevisaoPOP(
   pop: ProcedimentoOperacionalPadronizado,
@@ -60,6 +52,8 @@ export function normalizarPops(
   return pops
     .filter((pop) => pop && (pop.titulo || pop.codigo))
     .map((pop, indice) => ({
+      // Os campos novos (conteúdo, aprovação, versões, origem) passam inteiros; só os básicos são normalizados.
+      ...pop,
       id: pop.id || `pop-${indice + 1}`,
       codigo: pop.codigo || "",
       titulo: pop.titulo || "",
@@ -146,7 +140,7 @@ export function adicionarSugestaoPop(
 export function resumoPops(pops: ProcedimentoOperacionalPadronizado[], hoje?: string) {
   return {
     aprovados: pops.filter((pop) => pop.status === "Aprovado").length,
-    emPreparacao: pops.filter((pop) => pop.status === "Rascunho" || pop.status === "Em revisão").length,
+    emPreparacao: pops.filter((pop) => pop.status === "Rascunho" || pop.status === "Em revisão" || pop.status === "Aguardando aprovação").length,
     revisaoVencida: pops.filter((pop) => situacaoRevisaoPOP(pop, hoje).label === "Revisão vencida").length,
   };
 }
@@ -172,8 +166,9 @@ export function tomSituacaoPOP(label: SituacaoRevisaoPOP["label"]): "ok" | "nc" 
 type SugestaoPop = (typeof SUGESTOES_POPS_MANUAL)[number];
 
 /** O Manual só relaciona POPs a programas de controle; NC de outro critério fica "Sem POP sugerido". */
-export function popSugeridoParaNc(nc: { categoria: string }): SugestaoPop | null {
-  return SUGESTOES_POPS_MANUAL.find((sugestao) => chave(sugestao.programaRelacionado) === chave(nc.categoria)) || null;
+export function popSugeridoParaNc(nc: { categoria: string }, definicoes: DefinicaoPopDoConjunto[] = CONJUNTO_DA_NORMA): SugestaoPop | null {
+  const definicao = popSugeridoParaNcDoConjunto(nc, definicoes);
+  return definicao ? SUGESTOES_POPS_MANUAL.find((sugestao) => sugestao.catalogoId === definicao.catalogoId) || null : null;
 }
 
 export type SituacaoPopVisita = "a-criar" | "rascunho" | "em-revisao" | "aprovado" | "inativo";
@@ -189,19 +184,21 @@ export type LinhaPopVisita = {
 function situacaoDoPopExistente(pop: ProcedimentoOperacionalPadronizado | undefined): SituacaoPopVisita {
   if (!pop) return "a-criar";
   if (pop.status === "Aprovado") return "aprovado";
-  if (pop.status === "Em revisão") return "em-revisao";
+  if (pop.status === "Em revisão" || pop.status === "Aguardando aprovação") return "em-revisao";
   if (pop.status === "Inativo") return "inativo";
   return "rascunho";
 }
 
 export function popsDaVisita(
   ncs: { numero: number; categoria: string }[],
-  pops: ProcedimentoOperacionalPadronizado[]
+  pops: ProcedimentoOperacionalPadronizado[],
+  /** Conjunto da norma da empresa; sem norma aplicada, vem vazio e nenhuma sugestão aparece. */
+  definicoes: DefinicaoPopDoConjunto[] = CONJUNTO_DA_NORMA
 ) {
   const linhas: LinhaPopVisita[] = [];
   const semPop: number[] = [];
   ncs.forEach((nc) => {
-    const sugestao = popSugeridoParaNc(nc);
+    const sugestao = popSugeridoParaNc(nc, definicoes);
     if (!sugestao) {
       semPop.push(nc.numero);
       return;
@@ -211,7 +208,8 @@ export function popsDaVisita(
       existente.ncs.push(nc.numero);
       return;
     }
-    const pop = pops.find((registro) => chave(registro.titulo) === chave(sugestao.titulo) || chave(registro.programaRelacionado) === chave(sugestao.programaRelacionado));
+    const definicao = definicoes.find((item) => item.catalogoId === sugestao.catalogoId);
+    const pop = (definicao ? popDoConjunto(pops, definicao) : undefined) || pops.find((registro) => !registro.arquivado && !registro.catalogoId && chave(registro.titulo) === chave(sugestao.titulo));
     linhas.push({ sugestao, ncs: [nc.numero], situacao: situacaoDoPopExistente(pop), popId: pop?.id || "" });
   });
   const ncsComPop = ncs.length - semPop.length;

@@ -15,6 +15,7 @@ import {
   validarFormaDoEstado,
 } from "@/lib/stateValidation";
 import { acessoVigente } from "@/lib/validadeDeAcesso";
+import { validarAprovacoesDePop } from "@/lib/popsNorma";
 import type { AppDB, UsuarioSistema } from "@/types";
 
 export const runtime = "nodejs";
@@ -240,6 +241,16 @@ export async function PUT(request: Request) {
         acesso.usuario,
         acesso.authId
       );
+      // Aprovação de POP: só vale se vier do responsável do estabelecimento; cada aprovação entra no histórico.
+      const aprovacoes = validarAprovacoesDePop(estadoAtual.empresas || {}, dadosParaGravar.empresas || {}, acesso.usuario, new Date().toISOString());
+      dadosParaGravar = {
+        ...dadosParaGravar,
+        empresas: aprovacoes.empresas,
+        registrosAuditoria: [
+          ...(dadosParaGravar.registrosAuditoria || []),
+          ...aprovacoes.registros.map((registro) => ({ ...registro, id: crypto.randomUUID() })),
+        ],
+      };
     }
 
     const payload = JSON.stringify(dadosParaGravar);

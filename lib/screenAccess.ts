@@ -83,7 +83,7 @@ export const PADRAO_DO_PERFIL: Record<PerfilUsuario, Record<TelaKey, NivelTela>>
     inicio: "completo", visitas: "editar", guiaRapido: "ver", manualCompleto: "ver",
   }),
   "Cliente Gestor": montar({
-    central: "ver", correcoes: "concluir", relatorio: "ver", empresas: "ver",
+    central: "ver", correcoes: "concluir", relatorio: "ver", empresas: "ver", pops: "ver",
     inicio: "completo", visitas: "ver", guiaRapido: "ver", manualCompleto: "ver",
   }),
   Gerente: montar({
@@ -270,6 +270,8 @@ export function telaDaVisao(view: string): TelaKey | null {
       return "popsVisita";
     case "relatorio":
       return "relatorio";
+    case "pops":
+      return "pops";
     default:
       return null;
   }

@@ -12,6 +12,8 @@ type Props = {
   resumo: { totalNcs: number; ncsComPop: number; rascunho: number; aCriar: number; aprovados: number; semPop: number[] };
   linhas: LinhaPopVisita[];
   podeCriar: boolean;
+  /** Empresa sem norma aplicada no cadastro: mensagem no lugar das sugestões. */
+  semNorma?: string;
   onCriar: (codigo: string) => void;
   onAbrir: () => void;
   onCriarTodos: () => void;
@@ -35,7 +37,7 @@ function faixaDeNcs(ncs: number[]) {
   return ncs.length > 3 ? `${codigoNc(ncs[0])}–${ncs[ncs.length - 1]}` : ncs.map(codigoNc).join(", ");
 }
 
-export default function PcPopsVisita({ empresa, data, resumo, linhas, podeCriar, onCriar, onAbrir, onCriarTodos, onContinuar, onTodosPops, onVoltar }: Props) {
+export default function PcPopsVisita({ empresa, data, resumo, linhas, podeCriar, semNorma, onCriar, onAbrir, onCriarTodos, onContinuar, onTodosPops, onVoltar }: Props) {
   const [confirmando, setConfirmando] = useState(false);
   const faltantes = linhas.filter((linha) => linha.situacao === "a-criar");
 
@@ -73,7 +75,11 @@ export default function PcPopsVisita({ empresa, data, resumo, linhas, podeCriar,
       <div className="ui-scroll">
         {linhas.length === 0 ? (
           <div className="ui-empty">
-            {resumo.totalNcs === 0 ? "Esta visita não tem não conformidades; não há POPs a sugerir." : "Nenhuma das não conformidades tem POP sugerido no Manual."}
+            {semNorma
+              ? semNorma
+              : resumo.totalNcs === 0
+                ? "Esta visita não tem não conformidades; não há POPs a sugerir."
+                : "Nenhuma das não conformidades tem POP sugerido no conjunto da norma."}
           </div>
         ) : (
           <div className="ui-list">
@@ -104,7 +110,7 @@ export default function PcPopsVisita({ empresa, data, resumo, linhas, podeCriar,
         )}
         {resumo.semPop.length > 0 && (
           <p className="ui-row-sub pc-sem-pop">
-            Sem POP sugerido: {resumo.semPop.map(codigoNc).join(", ")}. O Manual só relaciona POPs a programas de controle.
+            Sem POP sugerido: {resumo.semPop.map(codigoNc).join(", ")}. O conjunto da norma só relaciona POP a algumas categorias de não conformidade.
           </p>
         )}
       </div>
@@ -126,7 +132,7 @@ export default function PcPopsVisita({ empresa, data, resumo, linhas, podeCriar,
           <div className="pc-modal-backdrop" onClick={() => setConfirmando(false)} />
           <section className="pc-modal" role="dialog" aria-modal="true" aria-label="Criar os POPs de uma vez">
             <h2 className="pc-modal-title">Criar {faltantes.length} {faltantes.length === 1 ? "POP" : "POPs"} como rascunho?</h2>
-            <p className="ui-row-sub">Só serão criados rascunhos dos POPs que ainda não existem. Nenhum POP existente é alterado.</p>
+            <p className="ui-row-sub">Só serão criados, do texto-base, os POPs do conjunto da norma que ainda não existem (estrutura e orientações, sem passos redigidos). Nenhum POP existente é alterado.</p>
             <ul className="pc-modal-ul">
               {faltantes.map((linha) => (
                 <li key={linha.sugestao.codigo}>

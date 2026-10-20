@@ -3306,3 +3306,50 @@ html[data-modo="equilibrado"] .campo-tela{height:calc(100dvh - 190px - var(--fai
 .aviso-foto-botao{height:44px;border:0;border-radius:12px;background:#F5A623;color:#000;font-size:1rem;font-weight:400;cursor:pointer}
 .aviso-foto-botao:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
 @media (min-width:768px){.aviso-foto-camada{align-items:center}.aviso-foto-folha{border-radius:20px}}
+
+/* ===== Pacote 14: POPs (conjunto da norma, editor em campos, norma aplicável) ===== */
+.pop-conjunto{display:flex;flex:none;flex-direction:column;gap:8px;padding:12px 14px}
+.pop-conjunto-linha{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:8px 10px;border:1px solid #DDE6EA;border-radius:12px;background:#fff}
+.pop-conjunto-textos{display:flex;min-width:0;flex:1 1 220px;flex-direction:column}
+.pop-conjunto-titulo{font-family:var(--font-display),"Outfit",sans-serif;font-size:1rem;font-weight:500;color:var(--ink)}
+.pop-outros-titulo{flex:none;margin-top:4px}
+.pop-revisar{display:inline-flex;align-items:center;min-height:22px;padding:0 10px;border:1px solid #E8B04B;border-radius:999px;background:#FFF3D6;font-size:.76rem;font-weight:400;color:#000}
+.pop-aviso-inicio{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.pop-editor{gap:10px}
+.pop-abas{display:flex;flex-wrap:wrap;align-items:center;gap:8px;flex:none}
+.pop-aba-breve{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:0 12px;border:1.5px dashed #DDE6EA;border-radius:12px;background:#fff;font-size:.88rem;color:var(--ink-2);cursor:pointer}
+.pop-breve-nota{margin:0;flex:none}
+.pop-secoes{display:flex;min-height:0;flex:1;flex-direction:column;gap:6px;overflow-y:auto}
+.pop-secao{flex:none;border:1.5px solid #DDE6EA;border-radius:12px;background:#fff}
+.pop-secao.is-aberta{border-color:#E8B04B;background:#FEF6E6}
+.pop-secao-topo{display:flex;width:100%;align-items:center;gap:10px;min-height:40px;padding:0 12px;border:0;background:none;text-align:left;color:var(--ink);cursor:pointer}
+.pop-secao-titulo{font-family:var(--font-display),"Outfit",sans-serif;font-size:.98rem;font-weight:500}
+.pop-secao-resumo{margin-left:auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pop-secao-corpo{display:flex;flex-direction:column;gap:8px;padding:0 12px 12px}
+.pop-grade{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px}
+.pop-area{min-height:56px;padding:8px 12px;resize:none;font-family:inherit;line-height:1.35}
+.pop-refs{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
+.pop-ref-titulo{display:flex;flex-wrap:wrap;align-items:center;gap:6px;color:var(--ink)}
+.pop-conferir{background:#FFF3D6}
+.pop-passos{display:flex;flex-direction:column;gap:8px;margin:0;padding:0;list-style:none}
+.pop-passo{display:flex;align-items:flex-start;gap:8px}
+.pop-passo-n{flex:none;display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#EEF1F5;font-size:.84rem;color:var(--ink)}
+.pop-passo-campo{flex:1;min-width:0}
+.pop-passo-acoes{display:flex;flex-wrap:wrap;gap:4px}
+.pop-versoes{display:flex;flex-direction:column;gap:10px;min-height:0;flex:1;overflow-y:auto}
+.pop-versao-linha{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 12px}
+.pop-versao-n{font-family:var(--font-display),"Outfit",sans-serif;font-weight:500}
+.pop-comparar-escolha{display:flex;gap:10px}
+.pop-comparacao{display:flex;flex-direction:column;border:1px solid #DDE6EA;border-radius:12px;background:#fff}
+.pop-comparacao-linha{display:grid;grid-template-columns:minmax(120px,.8fr) 1fr 1fr;gap:10px;padding:6px 10px;border-bottom:1px solid #EEF1F5;font-size:.88rem;overflow-wrap:anywhere}
+.pop-comparacao-topo{background:#EEF1F5;color:var(--ink)}
+.pop-comparacao-linha.is-diferente{background:#FEF6E6}
+.pop-rodape{flex:none}
+.pop-rodape-acoes{display:flex;flex-wrap:wrap;gap:8px}
+.pop-aviso-aprovacao{flex:none;margin:0}
+.norma-painel{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+.norma-lista{display:flex;flex-direction:column;gap:6px}
+.norma-opcao{align-self:flex-start}
+.norma-avisos{display:flex;flex-direction:column;gap:6px}
+.norma-campos{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px}
+@media (max-width:767px){.pop-comparacao-linha{grid-template-columns:1fr 1fr}.pop-comparacao-linha span:first-child{grid-column:1/-1}}

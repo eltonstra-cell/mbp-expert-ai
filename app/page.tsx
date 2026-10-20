@@ -16,6 +16,9 @@ import {
   visitasComGuardaVencendo,
 } from "@/lib/privacidadeEmpresa";
 import PcPrivacidadeEmpresa from "@/components/pc/PcPrivacidadeEmpresa";
+import PcNormaAplicavel, { type DadosDaNorma } from "@/components/pc/PcNormaAplicavel";
+import { MENSAGEM_SEM_NORMA, normasDaEmpresa } from "@/lib/normas";
+import { MENSAGEM_SEM_NORMA_APLICADA, avisoDePopsComNormaAlterada, conjuntoDaEmpresa, criarPopsFaltantesDoConjunto } from "@/lib/popsNorma";
 import AccessPreparationPanel from "@/components/AccessPreparationPanel";
 import AppNavigation, { type CartaoVisita, type ContagemEtapa } from "@/components/AppNavigation";
 import AppTopbar from "@/components/AppTopbar";
@@ -191,8 +194,8 @@ import {
 } from "@/lib/userManagement";
 import { resumoConfiguracaoEmpresa } from "@/lib/companyReadiness";
 
-type View = "inicio" | "ajuda" | "empresas" | "visitas" | "visita" | "ambientes" | "checklist" | "ncs" | "plano" | "acompanhamento" | "historico" | "evidencias" | "relatorio" | "acessos" | "correcoes" | "popsvisita" | "modotela" | "campomais";
-type EmpresaSecao = "dados" | "manual" | "ambientes" | "fluxos" | "programas" | "pops" | "privacidade";
+type View = "inicio" | "pops" | "ajuda" | "empresas" | "visitas" | "visita" | "ambientes" | "checklist" | "ncs" | "plano" | "acompanhamento" | "historico" | "evidencias" | "relatorio" | "acessos" | "correcoes" | "popsvisita" | "modotela" | "campomais";
+type EmpresaSecao = "dados" | "manual" | "ambientes" | "fluxos" | "programas" | "pops" | "privacidade" | "norma";
 type FiltroChecklistRapido = "Todos" | "Pendentes" | "Não conformes";
 
 const NAV_STORAGE_KEY = "mbp-expert-ai:navegacao:v1";
@@ -671,6 +674,7 @@ function CompanySectionIcon({ name }: { name: EmpresaSecao }) {
   if (name === "ambientes") return <svg {...common}><path d="M3 21h18M5 21V7h9v14M14 11h5v10" /><path d="M8 10h3M8 14h3M17 14h.01M17 18h.01" /></svg>;
   if (name === "fluxos") return <svg {...common}><path d="M4 6h11M15 6l-2-2M15 6l-2 2M20 12H9M9 12l2-2M9 12l2 2M4 18h11M15 18l-2-2M15 18l-2 2" /></svg>;
   if (name === "programas") return <svg {...common}><path d="M7 4h10v4H7z" /><path d="M5 6H4v15h16V6h-1" /><path d="m8 14 2 2 5-5" /></svg>;
+  if (name === "norma") return <svg {...common}><path d="M6 3h9l4 4v14H6z" /><path d="M15 3v5h5M9 12h6M9 16h4" /></svg>;
   if (name === "privacidade") return <svg {...common}><path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6z" /><path d="m9 12 2 2 4-4" /></svg>;
   return <svg {...common}><path d="M7 3h8l4 4v14H7z" /><path d="M15 3v5h5M10 12h6M10 16h6" /><path d="M4 7v13" /></svg>;
 }
@@ -2101,6 +2105,8 @@ export default function Home() {
       ? empresaAtualCadastrada
       : undefined;
   const configuracaoEmpresaAtual = resumoConfiguracaoEmpresa(atual);
+  // O RT é avisado no Início quando a norma citada por um POP aprovado mudou no catálogo.
+  const avisoPopsDoInicio = atual && usuarioDaSessao && permitido("empresas.editar", atual.id) ? avisoDePopsComNormaAlterada(atual.pops || []) : null;
   const empresaGerenciada = editingEmpresaId
     ? db.empresas[editingEmpresaId]
     : atual;
@@ -2942,7 +2948,16 @@ export default function Home() {
       pops: normalizarPops(popsEmpresa),
       criadoEm: anterior?.criadoEm || new Date().toISOString(),
       cor: form.cor || (anterior ? anterior.cor : proximaCorLivre(Object.values(db.empresas))),
-      ...(anterior ? { arquivada: anterior.arquivada, arquivadaEm: anterior.arquivadaEm, privacidade: anterior.privacidade } : {}),
+      ...(anterior
+        ? {
+            arquivada: anterior.arquivada,
+            arquivadaEm: anterior.arquivadaEm,
+            privacidade: anterior.privacidade,
+            normasAplicadas: anterior.normasAplicadas,
+            normasConfirmadasPeloRt: anterior.normasConfirmadasPeloRt,
+            responsavelEstabelecimento: anterior.responsavelEstabelecimento,
+          }
+        : {}),
     };
     setDb((o) => ({
       ...o,
@@ -3810,6 +3825,11 @@ export default function Home() {
       setView("empresas");
       return;
     }
+    // Sem permissão de editar, quem tem a tela POPs só lê e, sendo o responsável do estabelecimento, aprova.
+    if (!permitido("empresas.editar", atual.id) && telaVisivel("pops")) {
+      setView("pops");
+      return;
+    }
     abrirSecaoEmpresaPeloMenu("pops");
   }
 
@@ -4198,11 +4218,19 @@ export default function Home() {
       const pops = empresa.pops || [];
       const linhas = popsDaVisita(
         (o.ncs || []).filter((nc) => nc.visitaId === visitaAtual.id && !nc.inativaNoChecklist).map((nc, i) => ({ numero: i + 1, categoria: nc.categoria })),
-        pops
-      ).linhas.filter((linha) => !codigo || linha.sugestao.codigo === codigo);
-      const resultado = criarRascunhosFaltantes(pops, linhas, () => crypto.randomUUID());
-      if (resultado.criados === 0) return o;
-      return { ...o, empresas: { ...o.empresas, [empresaId]: { ...empresa, pops: resultado.pops } } };
+        pops,
+        conjuntoDaEmpresa(empresa)
+      ).linhas.filter((linha) => linha.situacao === "a-criar" && (!codigo || linha.sugestao.codigo === codigo));
+      // Cria do texto-base só os POPs do conjunto da norma que faltam (estrutura e orientações, sem passos redigidos).
+      let atual = { normasAplicadas: empresa.normasAplicadas, pops };
+      let criados = 0;
+      for (const linha of linhas) {
+        const feito = criarPopsFaltantesDoConjunto(atual, () => crypto.randomUUID(), linha.sugestao.catalogoId);
+        atual = { normasAplicadas: empresa.normasAplicadas, pops: feito.pops };
+        criados += feito.criados;
+      }
+      if (criados === 0) return o;
+      return { ...o, empresas: { ...o.empresas, [empresaId]: { ...empresa, pops: atual.pops } } };
     });
   }
 
@@ -5017,6 +5045,54 @@ export default function Home() {
     }
   }
 
+  // POPs: grava na hora (sem esperar o "Salvar" da empresa); a aprovação é conferida de novo no servidor.
+  function persistirPopsDaEmpresa(empresaId: string, novos: ProcedimentoOperacionalPadronizado[]) {
+    if (!db.empresas[empresaId]) return;
+    const normalizados = normalizarPops(novos);
+    if (editingEmpresaId === empresaId) setPopsEmpresa(normalizados);
+    setDb((estado) => ({
+      ...estado,
+      empresas: { ...estado.empresas, [empresaId]: { ...estado.empresas[empresaId], pops: normalizados } },
+    }));
+  }
+
+  // Norma aplicável e responsável do estabelecimento: vale na hora e fica no histórico.
+  function salvarNormaDaEmpresa(empresaId: string, dados: DadosDaNorma) {
+    const alvo = db.empresas[empresaId];
+    if (!alvo) return;
+    if (!exigirPermissao("empresas.editar", empresaId)) return;
+    const agora = new Date().toISOString();
+    const confirmacaoAnterior = alvo.normasConfirmadasPeloRt;
+    const confirmou = dados.rtConfirmou
+      ? confirmacaoAnterior || { nome: usuarioDaSessao?.nome || "Usuário local", usuarioId: usuarioDaSessao?.id, em: agora }
+      : undefined;
+    const registro = criarRegistroAuditoria(
+      {
+        usuarioId: usuarioDaSessao?.id || "local",
+        usuarioNome: usuarioDaSessao?.nome || "Usuário local",
+        acao: "empresa.norma_atualizada",
+        entidade: "Empresa",
+        entidadeId: empresaId,
+        empresaId,
+        detalhes: `${alvo.nomeFantasia} • normas: ${dados.normasAplicadas.join(", ") || "nenhuma"}${confirmou ? " • confirmadas pelo RT" : ""} • responsável do estabelecimento: ${dados.responsavel.nome || "não informado"}.`,
+      },
+      agora
+    );
+    setDb((estado) => ({
+      ...estado,
+      empresas: {
+        ...estado.empresas,
+        [empresaId]: {
+          ...estado.empresas[empresaId],
+          normasAplicadas: dados.normasAplicadas,
+          normasConfirmadasPeloRt: confirmou,
+          responsavelEstabelecimento: dados.responsavel.nome || dados.responsavel.cargo ? dados.responsavel : undefined,
+        },
+      },
+      registrosAuditoria: [...estado.registrosAuditoria, registro],
+    }));
+  }
+
   // Privacidade da empresa: vale na hora e fica no histórico (quem liberou e quando). Não passa pelo "Salvar empresa".
   function alterarPrivacidadeDaEmpresa(empresaId: string, mudanca: "ia" | "desligar" | "guarda", extra: { aceite?: boolean; dias?: number } = {}) {
     const alvo = db.empresas[empresaId];
@@ -5445,9 +5521,11 @@ export default function Home() {
     const pareceCnpj = /^[\d.\/\-\s]+$/.test(fantasia);
     return nomeEmFormatoNatural(pareceCnpj || !fantasia ? empresa.razaoSocial || fantasia : fantasia) || "Empresa";
   };
+  const conjuntoDaVisita = conjuntoDaEmpresa(empresaVisita);
   const resumoPopsVisita = popsDaVisita(
     ncsVisita.map((nc, indice) => ({ numero: indice + 1, categoria: nc.categoria })),
-    empresaVisita?.pops || []
+    empresaVisita?.pops || [],
+    conjuntoDaVisita
   );
   const dadosTrilha = {
     respondidos,
@@ -6082,6 +6160,7 @@ export default function Home() {
                 correcoesAbertas={abertasNaEmpresa}
                 divergencia={divergenciaDoAlvo}
                 somenteCampo={ehExecutor}
+                avisoPops={avisoPopsDoInicio}
                 outras={db.visitas
                   .filter((visita) => visita.status === "Em andamento" && visita.id !== alvo?.id && podeAbrirVisita(visita.empresaId))
                   .map((visita) => ({ id: visita.id, rotulo: `${nomeParaExibir(db.empresas[visita.empresaId])} · ${fdata(visita.data)}` }))}
@@ -6179,11 +6258,26 @@ export default function Home() {
             onEncerrarAcesso={encerrarAcessoDoFiscal}
             motivoNaoExcluir={(usuario) => motivoParaNaoExcluir(usuario, contextoExclusaoUsuario())}
           />
+        ) : view === "pops" && atual && telaVisivel("pops") ? (
+          <PcPops
+            pops={atual.pops || []}
+            onChange={() => undefined}
+            empresa={atual}
+            usuario={usuarioDaSessao}
+            podeEditar={false}
+            onPersistir={(novos) => persistirPopsDaEmpresa(atual.id, novos)}
+            temAlteracoes={false}
+            onSalvar={() => undefined}
+            onVoltar={() => setView("inicio")}
+          />
         ) : view === "empresas" && showEmpresaForm && permitido("empresas.editar") ? (
           telaEmLista && !!editingEmpresaId && empresaSecao === "pops" ? (
             <PcPops
               pops={popsEmpresa}
               onChange={setPopsEmpresa}
+              empresa={empresaGerenciada ? { ...empresaGerenciada, normasAplicadas: empresaGerenciada.normasAplicadas } : undefined}
+              usuario={usuarioDaSessao}
+              onPersistir={(novos) => empresaGerenciada && persistirPopsDaEmpresa(empresaGerenciada.id, novos)}
               temAlteracoes={empresaTemAlteracoes}
               mensagem={msg}
               onSalvar={salvarEmpresa}
@@ -6322,6 +6416,13 @@ export default function Home() {
                         cor: "bg-[#EEF1F5] text-[color:var(--ink)]",
                       },
                       {
+                        secao: "norma" as EmpresaSecao,
+                        categoria: "Norma",
+                        titulo: "Norma aplicável",
+                        resumo: empresaGerenciada && normasDaEmpresa(empresaGerenciada).length > 0 ? `${normasDaEmpresa(empresaGerenciada).map((norma) => norma.nome).join(" • ")}.` : "Normas aplicadas, RT e responsável do estabelecimento.",
+                        cor: "bg-[var(--pend-bg)] text-[color:var(--ink)]",
+                      },
+                      {
                         secao: "privacidade" as EmpresaSecao,
                         categoria: "Privacidade",
                         titulo: "Privacidade e guarda",
@@ -6387,6 +6488,8 @@ export default function Home() {
                         ? "Informa como as atividades acontecem na prática. Os fluxos marcados como aplicáveis acrescentam verificações ao checklist."
                         : empresaSecao === "programas"
                         ? "Acompanha os controles permanentes de qualidade, sua implantação, responsáveis, registros e documentos relacionados."
+                        : empresaSecao === "norma"
+                        ? "Mostra as normas que valem para esta empresa, quem do RT as confirmou e quem é o responsável do estabelecimento, que aprova e assina os POPs."
                         : empresaSecao === "privacidade"
                         ? "Define se a IA pode analisar as fotos desta empresa e por quantos dias fotos e áudios são guardados."
                         : "Organiza os procedimentos escritos da empresa, indicando situação, responsável, versão e próxima revisão."}
@@ -6470,6 +6573,22 @@ export default function Home() {
 
                 {editingEmpresaId && empresaSecao === "pops" && (
                   <PopsFields pops={popsEmpresa} onChange={setPopsEmpresa} aberto />
+                )}
+
+                {editingEmpresaId && empresaSecao === "norma" && empresaGerenciada && (
+                  <PcNormaAplicavel
+                    key={empresaGerenciada.id}
+                    uf={empresaGerenciada.uf || ""}
+                    municipio={empresaGerenciada.municipio || ""}
+                    normasAplicadas={empresaGerenciada.normasAplicadas || []}
+                    confirmacao={empresaGerenciada.normasConfirmadasPeloRt}
+                    responsavel={empresaGerenciada.responsavelEstabelecimento || { nome: empresaGerenciada.responsavel || "", cargo: empresaGerenciada.cargoResponsavel || "" }}
+                    pessoas={db.usuarios.filter((pessoa) => pessoa.perfil === "Administrador" || pessoa.empresaIds.includes(empresaGerenciada.id)).map((pessoa) => ({ id: pessoa.id, nome: pessoa.nome, perfil: pessoa.perfil }))}
+                    podeEditar={permitido("empresas.editar", empresaGerenciada.id)}
+                    podeVincular={usuarioDaSessao?.perfil === "Administrador"}
+                    somenteLeitura={modo === "campo"}
+                    onSalvar={(dados) => salvarNormaDaEmpresa(empresaGerenciada.id, dados)}
+                  />
                 )}
 
                 {editingEmpresaId && empresaSecao === "privacidade" && empresaGerenciada && (
@@ -6787,6 +6906,7 @@ export default function Home() {
               }}
               linhas={resumoPopsVisita.linhas}
               podeCriar={permitido("empresas.editar", visitaAtual.empresaId)}
+              semNorma={conjuntoDaVisita.length === 0 ? ((empresaVisita?.uf || "").trim().toUpperCase() === "RS" ? MENSAGEM_SEM_NORMA_APLICADA : MENSAGEM_SEM_NORMA) : undefined}
               onCriar={(codigo) => criarPopsSugeridos(codigo)}
               onAbrir={abrirPopsPeloAtalho}
               onCriarTodos={() => criarPopsSugeridos()}
@@ -6804,7 +6924,7 @@ export default function Home() {
             const podeEditar = permitido("visitas.executar", visitaAtual.empresaId);
             let apoio: ApoioDoItem = { evidencias: [] };
             if (foco) {
-              const linhaPop = popsDaVisita([{ numero: 1, categoria: foco.categoria }], empresaVisita?.pops || []).linhas[0];
+              const linhaPop = popsDaVisita([{ numero: 1, categoria: foco.categoria }], empresaVisita?.pops || [], conjuntoDaVisita).linhas[0];
               const anteriores = db.visitas
                 .filter((visita) => visita.empresaId === visitaAtual.empresaId && visita.id !== visitaAtual.id && visita.data <= visitaAtual.data)
                 .sort((a, b) => b.data.localeCompare(a.data) || b.criadoEm.localeCompare(a.criadoEm));
@@ -8370,6 +8490,7 @@ export default function Home() {
           ehPC ? (
             <PcInicio
               somenteCampo={ehExecutor}
+              avisoPops={avisoPopsDoInicio}
               simples={nivelDe("inicio") === "simples"}
               nome={usuarioDaSessao?.nome.split(" ").filter(Boolean)[0] || "bem-vindo"}
               continuar={inicioPc.continuar}
