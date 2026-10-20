@@ -55,6 +55,12 @@ const PERGUNTAS: Pergunta[] = [
       "Eles sugerem POPs para as não conformidades que o Manual relaciona a um programa de controle. “Criar os POPs de uma vez” cria apenas rascunhos dos que ainda não existem e nunca altera um POP já cadastrado. NCs sem relação no Manual aparecem como “Sem POP sugerido”.",
   },
   {
+    categoria: "conta",
+    pergunta: "Posso trabalhar sem internet?",
+    resposta:
+      "Em parte. Depois que você abriu o app com internet e entrou na sua conta, ele volta a abrir sem conexão neste aparelho (se tocar em Sair, será preciso internet para entrar de novo). Sem internet você pode responder o checklist, escrever observações e trabalhar nas correções: tudo fica salvo neste aparelho e é enviado para a nuvem quando a conexão voltar; o ícone no topo mostra Sem conexão, Pendente ou Sincronizado, e em Mais, Sincronizar tenta de novo. Precisam de internet: salvar foto ou áudio como evidência (o arquivo é enviado na hora; sem conexão a evidência não é salva, então tire de novo quando a conexão voltar), os recursos de IA (analisar foto, melhorar texto e transcrever voz) e o primeiro acesso. Não limpe os dados do navegador antes de a sincronização terminar.",
+  },
+  {
     categoria: "relatorio",
     pergunta: "Posso emitir o relatório com pendências?",
     resposta:

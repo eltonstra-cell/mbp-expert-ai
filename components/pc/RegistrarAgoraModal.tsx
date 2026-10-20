@@ -359,6 +359,7 @@ export default function RegistrarAgoraModal({ aparelho = "computador", visitas, 
                 Regravar
               </button>
             )}
+            <span className="pc-reg-card-nota">O áudio fica guardado na visita.</span>
             {avisoAudio && (
               <p className="pc-reg-aviso" role="alert">
                 {avisoAudio}

@@ -48,6 +48,7 @@ export default function RevisaoTranscricao({ texto, onUsar, onDescartar, onDitar
         </div>
         <textarea ref={caixa} className={`ui-input voz-revisao-texto${vazio ? " is-invalid" : ""}`} rows={2} value={editado} aria-label="Texto ouvido" onChange={(evento) => setEditado(evento.target.value)} />
         {vazio && <span className="ui-field-error">O texto não pode ficar vazio.</span>}
+        <p className="voz-revisao-nota">Só o texto é usado. O áudio não é guardado.</p>
         <div className="voz-revisao-acoes">
           <button type="button" className="ui-btn ui-btn--secondary" onClick={onDitarDeNovo || onDescartar}>
             {onDitarDeNovo ? "Ditar de novo" : "Descartar"}
