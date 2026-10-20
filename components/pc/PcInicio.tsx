@@ -25,6 +25,7 @@ type Props = {
     percentual: number;
     conformes: number;
     naoConformes: number;
+    divergencia?: string | null;
     naoSeAplica: number;
     pendentes: number;
     onContinuar: () => void;
@@ -83,8 +84,9 @@ export default function PcInicio({
                 pendentes={continuar.pendentes}
               />
               <div className="ui-row-sub">
-                {continuar.respondidos} de {continuar.total} itens · {continuar.percentual}%
+                {continuar.respondidos} de {continuar.total} itens respondidos · {continuar.percentual}%
               </div>
+              {continuar.divergencia && <div className="ui-nota-divergencia">{continuar.divergencia}</div>}
             </div>
             <button type="button" className="ui-btn ui-btn--primary" onClick={continuar.onContinuar}>
               Continuar visita →
@@ -108,7 +110,7 @@ export default function PcInicio({
         rotulo="Indicadores"
         itens={[
           { rotulo: "Em andamento", valor: indicadores.emAndamento, tom: "pend" },
-          { rotulo: "Não conformidades em acompanhamento", valor: indicadores.ncAcompanhamento, tom: "nc", detalhe: "em todas as empresas" },
+          { rotulo: "Correções abertas na empresa", valor: indicadores.ncAcompanhamento, tom: "nc", detalhe: "na empresa ativa" },
           { rotulo: "Concluídas este mês", valor: indicadores.concluidasMes, tom: "ok" },
           { rotulo: "Empresas ativas", valor: indicadores.empresasAtivas, tom: "brand" },
         ]}

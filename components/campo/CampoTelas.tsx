@@ -91,6 +91,7 @@ export function CampoInicio({
   total,
   naoConformes,
   correcoesAbertas,
+  divergencia,
   outras,
   podeRegistrar,
   onContinuar,
@@ -110,6 +111,8 @@ export function CampoInicio({
   total: number;
   naoConformes: number;
   correcoesAbertas: number;
+  /** Aviso quando o checklist e as correções registradas não batem. */
+  divergencia?: string | null;
   outras: Visita[];
   podeRegistrar: boolean;
   onContinuar: () => void;
@@ -140,8 +143,9 @@ export function CampoInicio({
             <span style={{ width: `${percentual}%` }} />
           </div>
           <div className="campo-sub">
-            {respondidos} de {total} itens · {percentual}%
+            {respondidos} de {total} itens respondidos · {percentual}%
           </div>
+          {divergencia && <div className="ui-nota-divergencia">{divergencia}</div>}
         </div>
       ) : (
         <div className="campo-card">
@@ -188,11 +192,11 @@ export function CampoInicio({
       <div className="campo-tiles">
         <button type="button" className="campo-tile campo-tile--nc" onClick={onCorrecoes}>
           <span className="campo-tile-n">{correcoesAbertas}</span>
-          <span>Correções abertas</span>
+          <span>Correções abertas na empresa</span>
         </button>
         <button type="button" className="campo-tile campo-tile--amber" onClick={onContinuar} disabled={!visitaAtiva}>
           <span className="campo-tile-n">{naoConformes}</span>
-          <span>Não conformes</span>
+          <span>Itens não conformes</span>
         </button>
       </div>
 

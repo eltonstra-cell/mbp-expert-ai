@@ -40,3 +40,11 @@ export function frasesDaConciliacao(c: Conciliacao): string[] {
   }
   return frases;
 }
+
+/** Aviso curto para o Início quando o checklist e as correções registradas não batem; nada quando estão de acordo. */
+export function avisoDeDivergencia(c: Conciliacao): string | null {
+  if (!c.diverge) return null;
+  const itens = `${c.itensNaoConformes} ${c.itensNaoConformes === 1 ? "item não conforme" : "itens não conformes"}`;
+  const registradas = `${c.ncsRegistradas} ${c.ncsRegistradas === 1 ? "registrada" : "registradas"}`;
+  return `O checklist tem ${itens} e há ${registradas}.`;
+}

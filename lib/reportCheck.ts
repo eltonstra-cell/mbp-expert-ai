@@ -15,6 +15,7 @@ export type DadosConferencia = {
   ncsAbertas: number;
   ncsSemResponsavelOuPrazo: number;
   evidencias: number;
+  evidenciasTexto?: string;
   popsPendentes: number;
   popsSugeridos: number;
   cadastroPreenchidos: number;
@@ -31,7 +32,7 @@ export function conferenciaDoRelatorio(dados: DadosConferencia): LinhaConferenci
       chave: "checklist",
       rotulo: "Checklist respondido",
       ok: checklistOk,
-      resumo: `${dados.respondidos} de ${dados.totalChecklist} itens respondidos`,
+      resumo: `${dados.respondidos} de ${dados.totalChecklist} ${dados.totalChecklist === 1 ? "item respondido" : "itens respondidos"}`,
       acao: "Abrir checklist",
     },
     {
@@ -49,7 +50,7 @@ export function conferenciaDoRelatorio(dados: DadosConferencia): LinhaConferenci
       chave: "evidencias",
       rotulo: "Evidências",
       ok: dados.evidencias > 0,
-      resumo: dados.evidencias > 0 ? plural(dados.evidencias, "evidência registrada", "evidências registradas") : "Nenhuma evidência registrada",
+      resumo: dados.evidencias > 0 ? dados.evidenciasTexto || plural(dados.evidencias, "evidência registrada", "evidências registradas") : "Nenhuma evidência registrada",
       acao: "Abrir evidências",
     },
     {

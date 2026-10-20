@@ -3232,3 +3232,6 @@ html[data-modo="completo"] .chk-pc .chk-obs-area{height:auto;min-height:60px}
 .cemp-pct{flex:none;font-size:.76rem;color:var(--ink-2)}
 .campo-empresa-nome{display:flex;min-width:0;align-items:center;gap:10px}
 .emp-avatar-mini{display:grid;flex:none;place-items:center;width:32px;height:32px;border-radius:50%;background:var(--emp-cor,#4A5D73);font-size:.74rem;font-weight:400;color:#fff}
+
+/* ===== Pacote 12 · B: aviso de divergência entre checklist e correções (Início) ===== */
+.ui-nota-divergencia{margin-top:6px;padding:6px 10px;border:1.5px solid #E8B04B;border-radius:10px;background:#FEF6E6;font-size:.82rem;line-height:1.3;color:var(--ink)}

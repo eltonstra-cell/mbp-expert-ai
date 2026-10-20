@@ -18,7 +18,8 @@ import { reincidenciaDaNc } from "@/lib/actionPlan";
 import { acharItemDeDestino, mostrarCartaoProximaEtapa, primeiroItemSemResposta, proximaEtapaDaVisita, textoDoContinuar, type ItemDeDestino } from "@/lib/proximaEtapa";
 import { corDaEmpresa, proximaCorLivre } from "@/lib/empresaCor";
 import { BolinhasDeCor } from "@/components/CorDaEmpresa";
-import { conciliarNcs } from "@/lib/ncReconcile";
+import { avisoDeDivergencia, conciliarNcs } from "@/lib/ncReconcile";
+import { contagemDeEvidencias, correcoesAbertas, itensNaoConformes, progressoDoChecklist } from "@/lib/contagens";
 import { motivoParaNaoExcluir } from "@/lib/userManagement";
 import { diferencasDeTelas, nivelDaTela, telaDaVisao, telasDiferentesDoPadrao, telasEfetivas, type NivelTela, type TelaKey, type TelasDoUsuario } from "@/lib/screenAccess";
 import { maisRecentesPrimeiro, visitaPadraoParaRegistro } from "@/lib/registerTarget";
@@ -2198,15 +2199,7 @@ export default function Home() {
 
   // "Continue de onde parou" segue a visita aberta no momento; sem uma, a mais recente em andamento da empresa ativa.
   const visitaEmAndamentoDestaque = visitaDaEmpresaAtiva(visitas, db.empresaAtualId, visitaAtual?.id);
-  const progressoVisitaDestaque = visitaEmAndamentoDestaque?.checklist?.length
-    ? Math.round(
-        (visitaEmAndamentoDestaque.checklist.filter(
-          (item) => item.status !== "Pendente"
-        ).length /
-          visitaEmAndamentoDestaque.checklist.length) *
-          100
-      )
-    : 0;
+  const progressoVisitaDestaque = progressoDoChecklist(visitaEmAndamentoDestaque?.checklist).percentual;
 
   const numeroVisitaPorId = useMemo(() => {
     const numeros = new Map<string, number>();
@@ -2368,15 +2361,14 @@ export default function Home() {
       item.ambiente === ambienteChecklistAtivo &&
       item.status === "Pendente"
   ).length;
-  const respondidos = checklistAtual.filter((i) => i.status !== "Pendente").length;
-  const totalChecklist = checklistAtual.length;
+  const progressoChecklist = progressoDoChecklist(checklistAtual);
+  const respondidos = progressoChecklist.respondidos;
+  const totalChecklist = progressoChecklist.total;
   const conformesChecklist = checklistAtual.filter((i) => i.status === "Conforme").length;
-  const naoConformesChecklist = checklistAtual.filter((i) => i.status === "Não Conforme").length;
+  const naoConformesChecklist = itensNaoConformes(checklistAtual);
   const naoSeAplicaChecklist = checklistAtual.filter((i) => i.status === "Não se aplica").length;
   const pendentesChecklist = checklistAtual.filter((i) => i.status === "Pendente").length;
-  const percentualChecklist = totalChecklist
-    ? Math.round((respondidos / totalChecklist) * 100)
-    : 0;
+  const percentualChecklist = progressoChecklist.percentual;
   const itensAmbienteChecklistAtivo = checklistAtual.filter(
     (item) => item.ambiente === ambienteChecklistAtivo
   );
@@ -2394,7 +2386,7 @@ export default function Home() {
     return true;
   });
   const ncsVisita = (db.ncs || []).filter((nc) => nc.visitaId === visitaAtual?.id && !nc.inativaNoChecklist);
-  const ncsAbertas = ncsVisita.filter((nc) => nc.status !== "Resolvida").length;
+  const ncsAbertas = correcoesAbertas(ncsVisita);
   const ncsVisiveis = ncsVisita.filter((nc) => {
     if (filtroNcs === "Todas") return true;
     if (filtroNcs === "Abertas") return nc.status !== "Resolvida";
@@ -2407,8 +2399,9 @@ export default function Home() {
   const evidenciasVisita = (db.evidencias || []).filter(
     (ev) => ev.visitaId === visitaAtual?.id
   );
-  const fotosVisita = evidenciasVisita.filter((ev) => ev.tipo === "Foto").length;
-  const audiosVisita = evidenciasVisita.filter((ev) => ev.tipo === "Áudio").length;
+  const contagemEvidencias = contagemDeEvidencias(evidenciasVisita);
+  const fotosVisita = contagemEvidencias.fotos;
+  const audiosVisita = contagemEvidencias.audios;
   const analisesIAPendentes = evidenciasVisita.reduce(
     (total, ev) =>
       total + (ev.analisesIA || []).filter((analise) => analise.status === "Aguardando revisão").length,
@@ -2555,7 +2548,7 @@ export default function Home() {
 
     if (evidenciasVisita.length > 0) {
       partes.push(
-        `Foram vinculadas ${evidenciasVisita.length} evidência(s) aos registros da inspeção para fins de rastreabilidade.`
+        `Foram vinculadas ${contagemEvidencias.total} evidência(s) (${contagemEvidencias.texto}) aos registros da inspeção para fins de rastreabilidade.`
       );
     }
 
@@ -3794,7 +3787,10 @@ export default function Home() {
   function itensEmOrdem(): ChecklistItem[] {
     const ordem = infosAmbientes.map((info) => info.nome);
     const lista = checklistAtual;
-    return ordem.flatMap((nome) => lista.filter((item) => item.ambiente === nome));
+    const ordenados = ordem.flatMap((nome) => lista.filter((item) => item.ambiente === nome));
+    // Itens de um ambiente que não está na lista não somem: entram no fim, para o total bater com o do menu.
+    const nomes = new Set(ordem);
+    return [...ordenados, ...lista.filter((item) => !nomes.has(item.ambiente))];
   }
 
   function itemEmFoco(): ChecklistItem | undefined {
@@ -5208,10 +5204,10 @@ export default function Home() {
   const contagensMenu: Partial<Record<NavKey, ContagemEtapa>> = dentroDaVisita
     ? {
         ambientes: { texto: String(quantidadeDeAmbientes(infosAmbientes)) },
-        checklist: { texto: `${respondidos}/${totalChecklist}` },
-        evidencias: { texto: String(evidenciasVisita.length) },
-        ncs: { texto: String(ncsVisita.length), tom: "nc" },
-        plano: { texto: String(ncsVisita.length), tom: "pend" },
+        checklist: { texto: progressoChecklist.curto },
+        evidencias: { texto: contagemEvidencias.texto },
+        ncs: { texto: `${ncsAbertas} abertas`, tom: "nc" },
+        plano: { texto: `${ncsAbertas} abertas`, tom: "pend" },
       }
     : {};
   const cartaoVisita: CartaoVisita | null =
@@ -5258,11 +5254,17 @@ export default function Home() {
           proximaEtapa:
             checklistDestaque.find((item) => item.status === "Pendente")?.ambiente ||
             ((visitaEmAndamentoDestaque.ambientes || []).length ? "Revisar a inspeção" : "Definir os ambientes da visita"),
-          respondidos: checklistDestaque.filter((item) => item.status !== "Pendente").length,
-          total: checklistDestaque.length,
+          respondidos: progressoDoChecklist(checklistDestaque).respondidos,
+          total: progressoDoChecklist(checklistDestaque).total,
           percentual: progressoVisitaDestaque,
+          divergencia: avisoDeDivergencia(
+            conciliarNcs(
+              checklistDestaque,
+              (db.ncs || []).filter((nc) => nc.visitaId === visitaEmAndamentoDestaque.id && !nc.inativaNoChecklist)
+            )
+          ),
           conformes: checklistDestaque.filter((item) => item.status === "Conforme").length,
-          naoConformes: checklistDestaque.filter((item) => item.status === "Não Conforme").length,
+          naoConformes: itensNaoConformes(checklistDestaque),
           naoSeAplica: checklistDestaque.filter((item) => item.status === "Não se aplica").length,
           pendentes: checklistDestaque.filter((item) => item.status === "Pendente").length,
           onContinuar: () => {
@@ -5272,12 +5274,9 @@ export default function Home() {
           },
         }
       : null,
-    ncAcompanhamento: (db.ncs || []).filter(
-      (nc) =>
-        !nc.inativaNoChecklist &&
-        nc.status !== "Resolvida" &&
-        visitas.some((visita) => visita.id === nc.visitaId)
-    ).length,
+    ncAcompanhamento: atual
+      ? correcoesAbertas(db.ncs, { empresaId: atual.id, visitaIds: new Set(visitas.filter((visita) => visita.empresaId === atual.id).map((visita) => visita.id)) })
+      : 0,
     preparacaoAtual: atual ? preparacaoDaEmpresa(atual) : null,
     recentes: (filtro: "Em andamento" | "Concluída") =>
       visitas
@@ -5318,7 +5317,8 @@ export default function Home() {
                   totalChecklist,
                   ncsAbertas,
                   ncsSemResponsavelOuPrazo: ncsVisita.filter((nc) => nc.status !== "Resolvida" && (!nc.responsavelAcao?.trim() || !nc.prazo?.trim())).length,
-                  evidencias: evidenciasVisita.length,
+                  evidencias: contagemEvidencias.total,
+                  evidenciasTexto: contagemEvidencias.texto,
                   popsPendentes: resumoPopsVisita.pendentes,
                   popsSugeridos: resumoPopsVisita.linhas.length,
                   cadastroPreenchidos: empresaVisita ? preparacaoDaEmpresa(empresaVisita).preenchidos : 0,
@@ -5908,17 +5908,22 @@ export default function Home() {
             const proximoItem = primeiroItemSemResposta(lista, ordemAmbientes);
             const itensDoAmbiente = proximoItem ? lista.filter((item) => item.ambiente === proximoItem.ambiente) : [];
             const ncsAbertasDoAlvo = alvo ? (db.ncs || []).filter((nc) => nc.visitaId === alvo.id && !nc.inativaNoChecklist && nc.status !== "Resolvida") : [];
-            const abertasDoAlvo = ncsAbertasDoAlvo.length;
+            const abertasNaEmpresa = atual
+              ? correcoesAbertas(db.ncs, { empresaId: atual.id, visitaIds: new Set(visitas.filter((visita) => visita.empresaId === atual.id).map((visita) => visita.id)) })
+              : 0;
+            const progressoDoAlvo = progressoDoChecklist(lista);
+            const divergenciaDoAlvo = alvo ? avisoDeDivergencia(conciliarNcs(lista, (db.ncs || []).filter((nc) => nc.visitaId === alvo.id && !nc.inativaNoChecklist))) : null;
             const etapaDoAlvo = alvo ? proximaEtapaDaVisita(lista.filter((item) => item.status === "Pendente").length, ncsAbertasDoAlvo) : null;
             return (
               <CampoInicio
                 usuario={usuarioDaSessao?.nome || ""}
                 empresa={atual ? nomeParaExibir(atual) : ""}
                 visitaAtiva={alvo ? { empresa: nomeParaExibir(db.empresas[alvo.empresaId]), data: fdata(alvo.data) } : null}
-                respondidos={lista.filter((item) => item.status !== "Pendente").length}
-                total={lista.length}
-                naoConformes={lista.filter((item) => item.status === "Não Conforme").length}
-                correcoesAbertas={abertasDoAlvo}
+                respondidos={progressoDoAlvo.respondidos}
+                total={progressoDoAlvo.total}
+                naoConformes={itensNaoConformes(lista)}
+                correcoesAbertas={abertasNaEmpresa}
+                divergencia={divergenciaDoAlvo}
                 outras={db.visitas
                   .filter((visita) => visita.status === "Em andamento" && visita.id !== alvo?.id && podeAbrirVisita(visita.empresaId))
                   .map((visita) => ({ id: visita.id, rotulo: `${nomeParaExibir(db.empresas[visita.empresaId])} · ${fdata(visita.data)}` }))}
@@ -7284,8 +7289,9 @@ export default function Home() {
             }}
             indicadores={{
               conformes: conformesVisita,
-              naoConformidades: ncsVisita.length,
-              evidencias: evidenciasVisita.length,
+              naoConformidades: ncsAbertas,
+              evidencias: contagemEvidencias.total,
+              evidenciasTexto: contagemEvidencias.texto,
               pendencias: pendentesVisita,
             }}
             equipamentos={{
@@ -7423,10 +7429,10 @@ export default function Home() {
             </div>
 
             <div data-rep="resumo" className="grid gap-3 md:grid-cols-4">
-              <MetricCard label="Progresso do checklist" value={`${percentualChecklist}%`} />
+              <MetricCard label="Progresso do checklist" value={`${percentualChecklist}%`} helper={progressoChecklist.frase} />
               <MetricCard label="Conformidade dos itens avaliados" value={`${percentualConformidade}%`} />
-              <MetricCard label="Não conformidades registradas" value={ncsVisita.length} />
-              <MetricCard label="Evidências" value={evidenciasVisita.length} />
+              <MetricCard label="Correções abertas" value={ncsAbertas} helper={`${ncsVisita.length} registradas na visita`} />
+              <MetricCard label="Evidências" value={contagemEvidencias.total} helper={contagemEvidencias.texto} />
             </div>
 
             <article data-rep="resumo" className="print-card rounded-2xl bg-white p-5 shadow-sm">

@@ -35,7 +35,7 @@ type Props = {
     desabilitado: boolean;
     onContinuar: () => void;
   };
-  indicadores: { conformes: number; naoConformidades: number; evidencias: number; pendencias: number };
+  indicadores: { conformes: number; naoConformidades: number; evidencias: number; evidenciasTexto?: string; pendencias: number };
   equipamentos: { texto: string; desabilitado: boolean; onAbrir: () => void };
   programas: { texto: string; onAbrir: () => void } | null;
   atividade: { texto: string; onAcompanhar: (() => void) | null };
@@ -102,8 +102,8 @@ export default function PcCentral({
         rotulo="Resumo da visita"
         itens={[
           { rotulo: "Conformes", valor: indicadores.conformes, tom: "ok" },
-          { rotulo: "Não conformidades registradas", valor: indicadores.naoConformidades, tom: "nc" },
-          { rotulo: "Evidências", valor: indicadores.evidencias, tom: "info" },
+          { rotulo: "Correções abertas", valor: indicadores.naoConformidades, tom: "nc", detalhe: "da visita" },
+          { rotulo: "Evidências", valor: indicadores.evidencias, tom: "info", detalhe: indicadores.evidenciasTexto },
           { rotulo: "Pendências", valor: indicadores.pendencias, tom: "pend" },
         ]}
       />
