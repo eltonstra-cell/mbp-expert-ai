@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { CATALOGO_DE_NORMAS, MENSAGEM_SEM_NORMA, normaPorId, normasDisponiveis, normasDaEmpresa, versoesDoCatalogo } from "../lib/normas/index.ts";
+import { CATALOGO_DE_NORMAS, AVISO_SEM_NORMA_ESTADUAL, MENSAGEM_SEM_NORMA, temNormaEstadual, normaPorId, normasDisponiveis, normasDaEmpresa, versoesDoCatalogo } from "../lib/normas/index.ts";
 import { popsDaVisita } from "../lib/pops.ts";
 import {
   aprovarPop,
@@ -58,11 +58,14 @@ test("Catálogo: só RDC 216/2004 e SES 799/2023 (RS), com fonte, conferidoEm e 
   assert.ok(ses.avisos.includes("Exigência municipal: confirmar com a Vigilância Sanitária."));
 });
 
-test("Norma aplicável: só o RS tem norma; outro estado vê a mensagem e define os POPs manualmente", () => {
+test("Norma aplicável: a RDC 216 vale para todos os estados; a estadual só onde está cadastrada", () => {
   assert.equal(normasDisponiveis("RS").length, 2);
   assert.equal(normasDisponiveis("rs").length, 2);
-  assert.deepEqual(normasDisponiveis("SP"), []);
-  assert.deepEqual(normasDisponiveis(""), []);
+  assert.deepEqual(normasDisponiveis("SP").map((n) => n.id), ["rdc-216-2004"]);
+  assert.deepEqual(normasDisponiveis("").map((n) => n.id), ["rdc-216-2004"]);
+  assert.equal(temNormaEstadual("SP"), false);
+  assert.equal(temNormaEstadual("rs"), true);
+  assert.equal(AVISO_SEM_NORMA_ESTADUAL, "Norma estadual não cadastrada; consulte a Vigilância Sanitária local.");
   assert.equal(MENSAGEM_SEM_NORMA, "Norma ainda não cadastrada no app. Defina os POPs manualmente.");
   assert.deepEqual(conjuntoDaEmpresa({ normasAplicadas: [] }), []);
   assert.deepEqual(conjuntoDaEmpresa({ normasAplicadas: ["norma-inventada"] }), []);
@@ -282,4 +285,41 @@ test("Aviso do Início: só aparece quando há POP aprovado com norma alterada",
   assert.equal(avisoDePopsComNormaAlterada([aprovado], novo), "1 POP tem a norma citada alterada. Confira o texto e aprove de novo.");
   assert.equal(avisoDePopsComNormaAlterada([aprovado, { ...aprovado, id: "p2" }], novo), "2 POPs têm a norma citada alterada. Confira o texto e aprove de novo.");
   assert.equal(avisoDePopsComNormaAlterada([{ ...aprovado, arquivado: true }], novo), null);
+});
+
+test("POP vigente: só versão aprovada; rascunho nunca é vigente; nova versão mantém a aprovada anterior", async () => {
+  const { popVigente, acaoCorretivaDoPopVigente } = await import("../lib/popsNorma.ts");
+  const empresa = empresaRS();
+  const rascunho = comPassos();
+  assert.equal(popVigente(rascunho), null);
+  assert.equal(acaoCorretivaDoPopVigente(rascunho), "");
+  const comAcao = { ...rascunho, conteudo: { ...rascunho.conteudo, acaoCorretiva: "  Refazer a higienização e registrar.  " } };
+  const aprovado = aprovarPop(enviarParaAprovacao(comAcao), resp, empresa, AGORA);
+  assert.equal(popVigente(aprovado).versao, aprovado.versao);
+  assert.equal(acaoCorretivaDoPopVigente(aprovado), "Refazer a higienização e registrar.");
+  const nova = iniciarNovaVersao(aprovado);
+  assert.equal(nova.status, "Rascunho");
+  const vigenteNaNova = popVigente({ ...nova, conteudo: { ...nova.conteudo, acaoCorretiva: "Texto ainda em rascunho" } });
+  assert.equal(vigenteNaNova.versao, aprovado.versao);
+  assert.equal(acaoCorretivaDoPopVigente({ ...nova, conteudo: { ...nova.conteudo, acaoCorretiva: "Texto ainda em rascunho" } }), "Refazer a higienização e registrar.");
+  assert.equal(acaoCorretivaDoPopVigente(aprovarPop(enviarParaAprovacao({ ...rascunho, conteudo: { ...rascunho.conteudo, acaoCorretiva: "" } }), resp, empresa, AGORA)), "");
+  assert.equal(popVigente({ ...aprovado, arquivado: true }), null);
+});
+
+test("Trocar vínculo: o POP escolhido na NC vale mais que a categoria; \"nenhum\" tira o vínculo", () => {
+  const conjunto = conjuntoDaEmpresa(empresaRS());
+  const ncs = [
+    { numero: 1, categoria: "Limpeza e higienização/sanitização" },
+    { numero: 2, categoria: "Limpeza e higienização/sanitização", popCatalogoId: "higiene-saude-manipuladores" },
+    { numero: 3, categoria: "Limpeza e higienização/sanitização", popCatalogoId: "nenhum" },
+    { numero: 4, categoria: "Outra categoria", popCatalogoId: "controle-de-pragas" },
+    { numero: 5, categoria: "Limpeza e higienização/sanitização", popCatalogoId: "id-que-nao-existe" },
+  ];
+  const resultado = popsDaVisita(ncs, [], conjunto);
+  const porCodigo = Object.fromEntries(resultado.linhas.map((linha) => [linha.sugestao.catalogoId, linha.ncs]));
+  assert.deepEqual(porCodigo["higiene-saude-manipuladores"], [2]);
+  assert.deepEqual(resultado.semPop, [3]);
+  assert.ok(porCodigo["controle-de-pragas"]?.includes(4));
+  assert.deepEqual(resultado.linhas.find((linha) => linha.sugestao.catalogoId === conjunto[0].catalogoId).ncs.includes(1), true);
+  assert.ok(resultado.linhas.some((linha) => linha.ncs.includes(5)));
 });

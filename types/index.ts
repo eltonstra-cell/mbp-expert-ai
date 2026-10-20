@@ -335,6 +335,8 @@ export type NaoConformidade = {
   inativaNoChecklist?: boolean;
   /** O usuário limpou a resposta do item: a Correção fica guardada como "Cancelada pelo usuário" e sai das abertas. */
   canceladaPeloUsuarioEm?: string;
+  /** Vínculo escolhido à mão com um POP do conjunto da norma (catalogoId); "nenhum" tira o vínculo. Vazio: vale o padrão pela categoria. */
+  popCatalogoId?: string;
   criadoEm: string;
 };
 

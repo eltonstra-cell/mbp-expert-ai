@@ -10,7 +10,7 @@ test("Norma aplicável: textos, avisos do RS e confirmação do RT", () => {
   assert.ok(painel.includes("Exigência municipal: confirmar com a Vigilância Sanitária."));
   assert.ok(painel.includes("O RT confirmou estas normas"));
   assert.ok(painel.includes("Conferir no texto oficial da ANVISA antes de usar com clientes."));
-  assert.ok(painel.includes("MENSAGEM_SEM_NORMA"));
+  assert.ok(painel.includes("AVISO_SEM_NORMA_ESTADUAL"));
   assert.ok(painel.includes("Só o Administrador vincula a pessoa de Acessos."));
   const pagina = ler("../app/page.tsx");
   assert.ok(pagina.includes('secao: "norma" as EmpresaSecao') && pagina.includes("salvarNormaDaEmpresa"));
@@ -57,4 +57,22 @@ test("Aviso de norma alterada aparece no Início para quem edita", () => {
   assert.ok(pagina.includes("avisoDePopsComNormaAlterada(atual.pops || [])"));
   assert.ok(ler("../components/pc/PcInicio.tsx").includes("avisoPops") && ler("../components/campo/CampoTelas.tsx").includes("avisoPops"));
   assert.ok(ler("../lib/popsNorma.ts").includes("Norma citada neste POP foi alterada. Confira o texto e aprove de novo."));
+});
+
+test("Pacote 15: Ver POP no checklist, ação corretiva do POP na Correção, trocar vínculo e correções da empresa", async () => {
+  const { readFileSync } = await import("node:fs");
+  const ler = (caminho) => readFileSync(new URL(`../${caminho}`, import.meta.url), "utf8");
+  const foco = ler("components/ChecklistFocoItem.tsx");
+  assert.ok(foco.includes("Ver POP"));
+  const page = ler("app/page.tsx");
+  assert.ok(page.includes("verPop={verPopDoItem(foco)}"));
+  assert.equal((page.match(/verPop=\{verPopDoItem\(foco\)\}/g) || []).length, 3);
+  assert.ok(page.includes("abrirCorrecoesDaEmpresa"));
+  for (const arquivo of ["components/pc/PcCorrecoes.tsx", "components/campo/CampoTelas.tsx"]) {
+    const texto = ler(arquivo);
+    assert.ok(texto.includes("Ação corretiva do POP"), arquivo);
+    assert.ok(texto.includes("Usar este texto"), arquivo);
+  }
+  assert.ok(ler("components/pc/PcPopsVisita.tsx").includes("Trocar vínculo"));
+  assert.ok(page.includes("Peça ao responsável para definir os ambientes."));
 });

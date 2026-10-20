@@ -14,6 +14,11 @@ type Props = {
   podeCriar: boolean;
   /** Empresa sem norma aplicada no cadastro: mensagem no lugar das sugestões. */
   semNorma?: string;
+  /** NCs da visita e POPs do conjunto, para o "⋯ Trocar vínculo". */
+  ncsDaVisita: { numero: number; titulo: string; ambiente: string; popCatalogoId: string }[];
+  opcoesDeVinculo: { catalogoId: string; rotulo: string }[];
+  /** catalogoId do POP, "nenhum" para sem POP ou "" para voltar ao padrão pela categoria. */
+  onTrocarVinculo: (numero: number, catalogoId: string) => void;
   onCriar: (codigo: string) => void;
   onAbrir: () => void;
   onCriarTodos: () => void;
@@ -37,8 +42,11 @@ function faixaDeNcs(ncs: number[]) {
   return ncs.length > 3 ? `${codigoNc(ncs[0])}–${ncs[ncs.length - 1]}` : ncs.map(codigoNc).join(", ");
 }
 
-export default function PcPopsVisita({ empresa, data, resumo, linhas, podeCriar, semNorma, onCriar, onAbrir, onCriarTodos, onContinuar, onTodosPops, onVoltar }: Props) {
+export default function PcPopsVisita({ empresa, data, resumo, linhas, podeCriar, semNorma, ncsDaVisita, opcoesDeVinculo, onTrocarVinculo, onCriar, onAbrir, onCriarTodos, onContinuar, onTodosPops, onVoltar }: Props) {
   const [confirmando, setConfirmando] = useState(false);
+  // Trocar vínculo abre direto a lista das NCs: as da linha escolhida ou, em "Sem POP sugerido", as sem POP.
+  const [trocando, setTrocando] = useState<number[] | null>(null);
+  const ncsParaTrocar = ncsDaVisita.filter((nc) => trocando?.includes(nc.numero));
   const faltantes = linhas.filter((linha) => linha.situacao === "a-criar");
 
   return (
@@ -91,6 +99,7 @@ export default function PcPopsVisita({ empresa, data, resumo, linhas, podeCriar,
                 titulo={linha.sugestao.titulo}
                 secundario={`${linha.sugestao.codigo} · NCs: ${faixaDeNcs(linha.ncs)}`}
                 pilulas={<Pill tom={TOM[linha.situacao]}>{ROTULO[linha.situacao]}</Pill>}
+                menu={podeCriar ? [{ rotulo: "Trocar vínculo", onClick: () => setTrocando(linha.ncs) }] : undefined}
                 acao={
                   linha.situacao === "a-criar" ? (
                     podeCriar ? (
@@ -111,6 +120,14 @@ export default function PcPopsVisita({ empresa, data, resumo, linhas, podeCriar,
         {resumo.semPop.length > 0 && (
           <p className="ui-row-sub pc-sem-pop">
             Sem POP sugerido: {resumo.semPop.map(codigoNc).join(", ")}. O conjunto da norma só relaciona POP a algumas categorias de não conformidade.
+            {podeCriar && opcoesDeVinculo.length > 0 && (
+              <>
+                {" "}
+                <button type="button" className="pc-link-btn" onClick={() => setTrocando(resumo.semPop)}>
+                  Vincular a um POP
+                </button>
+              </>
+            )}
           </p>
         )}
       </div>
@@ -126,6 +143,43 @@ export default function PcPopsVisita({ empresa, data, resumo, linhas, podeCriar,
           </button>
         </div>
       </div>
+
+      {trocando && (
+        <div className="pc-modal-layer" role="presentation">
+          <div className="pc-modal-backdrop" onClick={() => setTrocando(null)} />
+          <section className="pc-modal" role="dialog" aria-modal="true" aria-label="Trocar vínculo">
+            <h2 className="pc-modal-title">Trocar vínculo</h2>
+            <p className="ui-row-sub">Escolha o POP de cada não conformidade. A troca vale só para esta visita e é salva na hora.</p>
+            <div className="pop-vinculo-lista">
+              {ncsParaTrocar.map((nc) => (
+                <label key={nc.numero} className="pc-field">
+                  <span className="ui-eyebrow">
+                    {codigoNc(nc.numero)} · {nc.titulo}
+                    {nc.ambiente ? ` · ${nc.ambiente}` : ""}
+                  </span>
+                  <select className="ui-input" value={nc.popCatalogoId} onChange={(evento) => onTrocarVinculo(nc.numero, evento.target.value)}>
+                    <option value="">Padrão pela categoria</option>
+                    {opcoesDeVinculo.map((opcao) => (
+                      <option key={opcao.catalogoId} value={opcao.catalogoId}>
+                        {opcao.rotulo}
+                      </option>
+                    ))}
+                    <option value="nenhum">Sem POP</option>
+                  </select>
+                </label>
+              ))}
+            </div>
+            <div className="pc-modal-foot">
+              <span />
+              <div className="ui-footer-actions">
+                <button type="button" className="ui-btn ui-btn--save" onClick={() => setTrocando(null)}>
+                  Pronto
+                </button>
+              </div>
+            </div>
+          </section>
+        </div>
+      )}
 
       {confirmando && (
         <div className="pc-modal-layer" role="presentation">

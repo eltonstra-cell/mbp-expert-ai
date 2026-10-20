@@ -17,8 +17,9 @@ import {
 } from "@/lib/privacidadeEmpresa";
 import PcPrivacidadeEmpresa from "@/components/pc/PcPrivacidadeEmpresa";
 import PcNormaAplicavel, { type DadosDaNorma } from "@/components/pc/PcNormaAplicavel";
-import { MENSAGEM_SEM_NORMA, normasDaEmpresa } from "@/lib/normas";
-import { MENSAGEM_SEM_NORMA_APLICADA, avisoDePopsComNormaAlterada, conjuntoDaEmpresa, criarPopsFaltantesDoConjunto } from "@/lib/popsNorma";
+import { normasDaEmpresa } from "@/lib/normas";
+import PopLeituraFolha from "@/components/PopLeituraFolha";
+import { MENSAGEM_SEM_NORMA_APLICADA, acaoCorretivaDoPopVigente, popVigente, avisoDePopsComNormaAlterada, conjuntoDaEmpresa, criarPopsFaltantesDoConjunto } from "@/lib/popsNorma";
 import AccessPreparationPanel from "@/components/AccessPreparationPanel";
 import AppNavigation, { type CartaoVisita, type ContagemEtapa } from "@/components/AppNavigation";
 import AppTopbar from "@/components/AppTopbar";
@@ -1033,6 +1034,10 @@ export default function Home() {
   const [filtroListaVisitas, setFiltroListaVisitas] = useState<"Todas" | "Em andamento" | "Concluída">("Todas");
   const [filtroNcs, setFiltroNcs] = useState<"Todas" | "Abertas" | "Resolvidas">("Todas");
   const [planoNcAbertaId, setPlanoNcAbertaId] = useState<string>("");
+  // Correções: da visita aberta (padrão) ou todas as abertas da empresa (toque em "Correções abertas na empresa").
+  const [correcoesDaEmpresa, setCorrecoesDaEmpresa] = useState(false);
+  // POP aberto para leitura numa folha (checklist), sem sair da visita.
+  const [popLeituraId, setPopLeituraId] = useState<string | null>(null);
   const [showEmpresaForm, setShowEmpresaForm] = useState(false);
   const [editingEmpresaId, setEditingEmpresaId] = useState<string | null>(null);
   const [empresaSecao, setEmpresaSecao] = useState<EmpresaSecao | null>(null);
@@ -3119,6 +3124,14 @@ export default function Home() {
     }
     const empresaDaVisita = db.empresas[v.empresaId];
 
+    if (retomarChecklist && !(v.ambientes || []).length && nivelDe("ambientes") === "oculta") {
+      // Quem não tem a tela Ambientes (Executor de campo) abre a visita sem erro; o responsável define os ambientes.
+      setDb((o) => ({ ...o, empresaAtualId: v.empresaId, visitas: o.visitas.map((visita) => (visita.id === v.id ? v : visita)) }));
+      setVisitaAtualId(id);
+      setView("checklist");
+      return;
+    }
+
     if (retomarChecklist && !(v.ambientes || []).length) {
       const ambientesIniciais = empresaDaVisita?.setoresManual || [];
       setDb((o) => ({
@@ -4107,13 +4120,13 @@ export default function Home() {
       podeMarcar={permitido("ncs.marcar_feita", visitaAtual.empresaId)}
       itens={montarItensDeCorrecao()}
       pessoas={nomesDasPessoasDaEmpresa(visitaAtual.empresaId)}
-      subtituloDaLista={`${nomeSemNumerosNoInicio(nomeParaExibir(empresaVisita))}`}
+      subtituloDaLista={correcoesDaEmpresa ? `${nomeSemNumerosNoInicio(nomeParaExibir(empresaVisita))} · todas as visitas` : `${nomeSemNumerosNoInicio(nomeParaExibir(empresaVisita))}`}
       onSalvarPlano={(id, dados) =>
         atualizarNC(id, { acaoCorretiva: dados.acao, responsavelAcao: dados.responsavel, prazo: dados.prazo, status: dados.etapa === "acompanhamento" ? "Em tratamento" : "Aberta" })
       }
       onMarcarFeita={(id) => marcarCorrecaoComoFeita(id, "")}
       onDesfazerFeita={desfazerCorrecaoFeita}
-      onLote={(ids, valores) => alteracoesEmLote(ncsVisita, ids, valores).forEach((alteracao) => atualizarNC(alteracao.id, alteracao.patch))}
+      onLote={(ids, valores) => alteracoesEmLote(ncsDaTelaDeCorrecoes(), ids, valores).forEach((alteracao) => atualizarNC(alteracao.id, alteracao.patch))}
       onVerNoChecklist={(itemId) => verItemNoChecklist(itemId)}
       responsavelPadrao={usuarioDaSessao?.nome || ""}
       onAbrirPop={abrirPopsPeloAtalho}
@@ -4124,16 +4137,18 @@ export default function Home() {
   // Itens da tela de Correções (PC, tablet e celular usam a mesma montagem).
   function montarItensDeCorrecao(): CorrecaoItem[] {
     if (!visitaAtual) return [];
-    return ncsVisita.map((nc, indice) => {
+    return ncsDaTelaDeCorrecoes().map((nc, posicao) => {
+        const indice = ncsVisita.indexOf(nc);
+        const daVisita = nc.visitaId === visitaAtual.id;
         const rein = reincidenciaDaNc(
           nc,
           (db.ncs || []).filter((outra) => !outra.inativaNoChecklist),
           (id) => db.visitas.find((visita) => visita.id === id)?.data || ""
         );
-        const linhaPop = resumoPopsVisita.linhas.find((linha) => linha.ncs.includes(indice + 1));
+        const linhaPop = indice >= 0 ? resumoPopsVisita.linhas.find((linha) => linha.ncs.includes(indice + 1)) : undefined;
         return {
           id: nc.id,
-          numero: indice + 1,
+          numero: posicao + 1,
           titulo: nc.titulo,
           ambiente: nc.ambiente,
           criterio: nc.categoria,
@@ -4147,9 +4162,14 @@ export default function Home() {
           dataAnterior: rein.dataAnterior,
           orientacao: nc.orientacao || "",
           pop: linhaPop ? { codigo: linhaPop.sugestao.codigo, titulo: linhaPop.sugestao.titulo, existe: linhaPop.situacao !== "a-criar" } : null,
+          acaoDoPop: (() => {
+            const registro = popRegistroDoCriterio(nc.categoria, nc.popCatalogoId);
+            const texto = acaoCorretivaDoPopVigente(registro);
+            return registro && texto ? { codigo: registro.codigo || registro.titulo, texto } : undefined;
+          })(),
           marcadaFeita: nc.marcadaFeita || null,
-          checklistItemId: nc.checklistItemId,
-          itemNumero: (visitaAtual.checklist || []).filter((item) => item.ambiente === nc.ambiente).findIndex((item) => item.id === nc.checklistItemId) + 1,
+          checklistItemId: daVisita ? nc.checklistItemId : "",
+          itemNumero: !daVisita ? 0 : (visitaAtual.checklist || []).filter((item) => item.ambiente === nc.ambiente).findIndex((item) => item.id === nc.checklistItemId) + 1,
           observacao: nc.observacao || "",
           registradoEm: nc.criadoEm || "",
           ultimaOcorrencia: ultimaOcorrenciaDaNc(nc),
@@ -4197,6 +4217,7 @@ export default function Home() {
         return;
       case "correcoes":
         setPlanoNcAbertaId("");
+        setCorrecoesDaEmpresa(false);
         setView("correcoes");
         return;
       case "pops":
@@ -4217,7 +4238,7 @@ export default function Home() {
       if (!empresa) return o;
       const pops = empresa.pops || [];
       const linhas = popsDaVisita(
-        (o.ncs || []).filter((nc) => nc.visitaId === visitaAtual.id && !nc.inativaNoChecklist).map((nc, i) => ({ numero: i + 1, categoria: nc.categoria })),
+        (o.ncs || []).filter((nc) => nc.visitaId === visitaAtual.id && !nc.inativaNoChecklist).map((nc, i) => ({ numero: i + 1, categoria: nc.categoria, popCatalogoId: nc.popCatalogoId })),
         pops,
         conjuntoDaEmpresa(empresa)
       ).linhas.filter((linha) => linha.situacao === "a-criar" && (!codigo || linha.sugestao.codigo === codigo));
@@ -4232,6 +4253,35 @@ export default function Home() {
       if (criados === 0) return o;
       return { ...o, empresas: { ...o.empresas, [empresaId]: { ...empresa, pops: atual.pops } } };
     });
+  }
+
+  // POP ligado ao critério (ou à NC do item) na empresa da visita; só leitura.
+  function popRegistroDoCriterio(categoria: string, popCatalogoId?: string): ProcedimentoOperacionalPadronizado | undefined {
+    const pops = empresaVisita?.pops || [];
+    const linha = popsDaVisita([{ numero: 1, categoria, popCatalogoId }], pops, conjuntoDaVisita).linhas[0];
+    return linha?.popId ? pops.find((pop) => pop.id === linha.popId) : undefined;
+  }
+
+  // "Ver POP" no checklist: só quando o POP do item tem versão aprovada (rascunho nunca é mostrado como vigente).
+  function verPopDoItem(item: ChecklistItem): { rotulo: string; onAbrir: () => void } | undefined {
+    const pop = popRegistroDoCriterio(item.categoria, ncsVisita.find((nc) => nc.checklistItemId === item.id)?.popCatalogoId);
+    if (!pop || !popVigente(pop)) return undefined;
+    return { rotulo: pop.codigo || pop.titulo, onAbrir: () => setPopLeituraId(pop.id) };
+  }
+
+  // POPs da visita › ⋯ Trocar vínculo: guarda na NC o POP escolhido (ou "nenhum"); vazio volta ao padrão pela categoria.
+  function trocarVinculoDaNc(numero: number, catalogoId: string) {
+    if (!visitaAtual || !exigirPermissao("empresas.editar", visitaAtual.empresaId)) return;
+    const alvo = ncsVisita[numero - 1];
+    if (!alvo) return;
+    setDb((o) => ({
+      ...o,
+      ncs: (o.ncs || []).map((nc) => {
+        if (nc.id !== alvo.id) return nc;
+        const { popCatalogoId: _anterior, ...resto } = nc;
+        return catalogoId ? { ...resto, popCatalogoId: catalogoId } : resto;
+      }),
+    }));
   }
 
   function ocultarAmbienteDaVisita(nome: string) {
@@ -4380,9 +4430,34 @@ export default function Home() {
       setDb((estado) => ({ ...estado, empresaAtualId: alvo.empresaId }));
       setVisitaAtualId(alvo.id);
       setPlanoNcAbertaId("");
+      setCorrecoesDaEmpresa(false);
       setView("correcoes");
     }
     else setView("campomais");
+  }
+
+  // Todas as correções abertas da empresa ativa, de qualquer visita. A tela usa a visita aberta (ou a mais recente) só como âncora.
+  function abrirCorrecoesDaEmpresa() {
+    const ancora =
+      visitaAtual ||
+      visitaEmAndamentoDestaque ||
+      [...visitas].filter((visita) => visita.empresaId === atual?.id).sort((a, b) => b.data.localeCompare(a.data))[0];
+    if (!ancora) {
+      setView("visitas");
+      return;
+    }
+    setDb((estado) => ({ ...estado, empresaAtualId: ancora.empresaId }));
+    setVisitaAtualId(ancora.id);
+    setPlanoNcAbertaId("");
+    setCorrecoesDaEmpresa(true);
+    setView("correcoes");
+  }
+
+  /** NCs mostradas na tela de Correções: as da visita ou todas as abertas da empresa. */
+  function ncsDaTelaDeCorrecoes(): NaoConformidade[] {
+    if (!visitaAtual) return [];
+    if (!correcoesDaEmpresa) return ncsVisita;
+    return (db.ncs || []).filter((nc) => nc.empresaId === visitaAtual.empresaId && !nc.inativaNoChecklist && nc.status !== "Resolvida");
   }
 
   function abrirAjudaRapida() {
@@ -5523,7 +5598,7 @@ export default function Home() {
   };
   const conjuntoDaVisita = conjuntoDaEmpresa(empresaVisita);
   const resumoPopsVisita = popsDaVisita(
-    ncsVisita.map((nc, indice) => ({ numero: indice + 1, categoria: nc.categoria })),
+    ncsVisita.map((nc, indice) => ({ numero: indice + 1, categoria: nc.categoria, popCatalogoId: nc.popCatalogoId })),
     empresaVisita?.pops || [],
     conjuntoDaVisita
   );
@@ -5983,6 +6058,9 @@ export default function Home() {
         {ehFiscal && usuarioDaSessao?.validoAte && (
           <FaixaVisitaOutraEmpresa mensagem={faixaDeLeitura(usuarioDaSessao.validoAte)} />
         )}
+        {popLeituraId && (empresaVisita?.pops || []).some((pop) => pop.id === popLeituraId) && (
+          <PopLeituraFolha pop={(empresaVisita?.pops || []).find((pop) => pop.id === popLeituraId)!} onFechar={() => setPopLeituraId(null)} />
+        )}
         {visitaDeOutraEmpresa && visitaAtual && atual && (
           <FaixaVisitaOutraEmpresa
             empresaDaVisita={nomeEmFormatoNatural(empresaVisita?.nomeFantasia) || "outra empresa"}
@@ -6168,7 +6246,7 @@ export default function Home() {
                 onContinuar={() => alvo && continuar(alvo.id, true, proximoItem)}
                 continuarDetalhe={textoDoContinuar(etapaDoAlvo)}
                 onRegistrar={() => setRegistrarAberto(true)}
-                onCorrecoes={() => irParaTelaCampo("correcoes")}
+                onCorrecoes={abrirCorrecoesDaEmpresa}
                 onAbrirVisita={(id) => continuar(id, true)}
                 onVisitas={() => irParaMenu("visitas")}
                 onIniciar={permitido("visitas.criar", atual?.id) && atual ? novaVisita : undefined}
@@ -6230,13 +6308,14 @@ export default function Home() {
                     fila={lista.filter((item) => item.ambiente === foco.ambiente).map((item) => ({ id: item.id, status: item.status }))}
                     onItem={(id) => { setItemFocoId(id); setUltimoItemChecklistId(id); }}
                     onFotoCapturada={(arquivo) => salvarFotoDoItem(foco, arquivo)}
+                    verPop={verPopDoItem(foco)}
                     onDesfazerFoto={desfazerFotoDoItem}
                     onLimpar={() => void limparRespostaDoItem(foco.id)}
                       onAnterior={() => moverItemFoco(-1)}
                     onProximo={() => moverItemFoco(1)}
                   />
                 ) : (
-                  <p className="campo-sub">Esta visita não tem itens de checklist.</p>
+                  <p className="campo-sub" role="status">{(visitaAtual.ambientes || []).length === 0 ? "Peça ao responsável para definir os ambientes." : "Esta visita não tem itens de checklist."}</p>
                 )}
               </section>
             );
@@ -6852,7 +6931,7 @@ export default function Home() {
         ) : view === "correcoes" && visitaAtual ? (
             <PcCorrecoes
               empresa={nomeParaExibir(empresaVisita)}
-              data={fdata(visitaAtual.data)}
+              data={correcoesDaEmpresa ? "todas as visitas" : fdata(visitaAtual.data)}
               hoje={hojeISO()}
               selecionadaInicial={planoNcAbertaId}
               podeEditar={permitido("ncs.acompanhar", visitaAtual.empresaId)}
@@ -6871,7 +6950,7 @@ export default function Home() {
               }
               onRegistrar={(id, texto, status) => registrarAcompanhamento(id, texto, status)}
               onAdicionarEvidencia={(id) => {
-                const nc = ncsVisita.find((registro) => registro.id === id);
+                const nc = ncsDaTelaDeCorrecoes().find((registro) => registro.id === id);
                 setEvidenciaNcId(id);
                 setEvidenciaAmbiente(nc?.ambiente || "");
                 setEvidenciaChecklistItemId("");
@@ -6879,7 +6958,7 @@ export default function Home() {
               }}
               onCriarPop={(codigo) => criarPopsSugeridos(codigo)}
               onAbrirPop={abrirPopsPeloAtalho}
-              onLote={(ids, valores) => alteracoesEmLote(ncsVisita, ids, valores).forEach((alteracao) => atualizarNC(alteracao.id, alteracao.patch))}
+              onLote={(ids, valores) => alteracoesEmLote(ncsDaTelaDeCorrecoes(), ids, valores).forEach((alteracao) => atualizarNC(alteracao.id, alteracao.patch))}
               onVoltar={() => setView("visita")}
               pessoas={Array.from(
                 new Set(
@@ -6906,7 +6985,10 @@ export default function Home() {
               }}
               linhas={resumoPopsVisita.linhas}
               podeCriar={permitido("empresas.editar", visitaAtual.empresaId)}
-              semNorma={conjuntoDaVisita.length === 0 ? ((empresaVisita?.uf || "").trim().toUpperCase() === "RS" ? MENSAGEM_SEM_NORMA_APLICADA : MENSAGEM_SEM_NORMA) : undefined}
+              semNorma={conjuntoDaVisita.length === 0 ? MENSAGEM_SEM_NORMA_APLICADA : undefined}
+              ncsDaVisita={ncsVisita.map((nc, indice) => ({ numero: indice + 1, titulo: nc.titulo, ambiente: nc.ambiente, popCatalogoId: nc.popCatalogoId || "" }))}
+              opcoesDeVinculo={conjuntoDaVisita.map((definicao) => ({ catalogoId: definicao.catalogoId, rotulo: `${definicao.codigo} · ${definicao.titulo}` }))}
+              onTrocarVinculo={trocarVinculoDaNc}
               onCriar={(codigo) => criarPopsSugeridos(codigo)}
               onAbrir={abrirPopsPeloAtalho}
               onCriarTodos={() => criarPopsSugeridos()}
@@ -6924,7 +7006,7 @@ export default function Home() {
             const podeEditar = permitido("visitas.executar", visitaAtual.empresaId);
             let apoio: ApoioDoItem = { evidencias: [] };
             if (foco) {
-              const linhaPop = popsDaVisita([{ numero: 1, categoria: foco.categoria }], empresaVisita?.pops || [], conjuntoDaVisita).linhas[0];
+              const linhaPop = popsDaVisita([{ numero: 1, categoria: foco.categoria, popCatalogoId: ncsVisita.find((nc) => nc.checklistItemId === foco.id)?.popCatalogoId }], empresaVisita?.pops || [], conjuntoDaVisita).linhas[0];
               const anteriores = db.visitas
                 .filter((visita) => visita.empresaId === visitaAtual.empresaId && visita.id !== visitaAtual.id && visita.data <= visitaAtual.data)
                 .sort((a, b) => b.data.localeCompare(a.data) || b.criadoEm.localeCompare(a.criadoEm));
@@ -6992,6 +7074,7 @@ export default function Home() {
                       onObservacao={(texto) => atualizarChecklistItem(foco.id, { observacao: texto })}
                       podeFotografar={permitido("evidencias.adicionar", visitaAtual.empresaId)}
                       onFotoCapturada={(arquivo) => salvarFotoDoItem(foco, arquivo)}
+                    verPop={verPopDoItem(foco)}
                       onDesfazerFoto={desfazerFotoDoItem}
                       onLimpar={() => void limparRespostaDoItem(foco.id)}
                       onAnterior={() => moverItemFoco(-1)}
@@ -7053,6 +7136,7 @@ export default function Home() {
                       onObservacao={(texto) => atualizarChecklistItem(foco.id, { observacao: texto })}
                       podeFotografar={permitido("evidencias.adicionar", visitaAtual.empresaId)}
                       onFotoCapturada={(arquivo) => salvarFotoDoItem(foco, arquivo)}
+                    verPop={verPopDoItem(foco)}
                       onDesfazerFoto={desfazerFotoDoItem}
                       onLimpar={() => void limparRespostaDoItem(foco.id)}
                       onAnterior={() => moverItemFoco(-1)}

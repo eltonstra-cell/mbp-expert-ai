@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Pill } from "@/components/ui/Pill";
-import { MENSAGEM_SEM_NORMA, normasDisponiveis } from "@/lib/normas";
+import { AVISO_SEM_NORMA_ESTADUAL, normasDisponiveis, temNormaEstadual } from "@/lib/normas";
 
 export type PessoaVinculavel = { id: string; nome: string; perfil: string };
 
@@ -51,12 +51,7 @@ export default function PcNormaAplicavel({ uf, municipio, normasAplicadas, confi
         <p className="ui-row-sub priv-texto">
           Estado: {uf || "não informado"} · Município: {municipio || "não informado"}. Mude em Dados da empresa.
         </p>
-        {disponiveis.length === 0 ? (
-          <div className="priv-faixa" role="status">
-            <span>{MENSAGEM_SEM_NORMA}</span>
-          </div>
-        ) : (
-          <>
+        <>
             <div className="norma-lista" role="group" aria-label="Normas aplicadas">
               {disponiveis.map((norma) => (
                 <label key={norma.id} className={`priv-opcao norma-opcao${escolhidas.includes(norma.id) ? " is-on" : ""}`}>
@@ -74,6 +69,11 @@ export default function PcNormaAplicavel({ uf, municipio, normasAplicadas, confi
             </div>
             {disponiveis.some((norma) => escolhidas.includes(norma.id) && norma.id === "rdc-216-2004") && (
               <p className="ui-row-sub priv-texto">Conferir no texto oficial da ANVISA antes de usar com clientes.</p>
+            )}
+            {!temNormaEstadual(uf) && (
+              <div className="priv-faixa" role="status">
+                <span>{AVISO_SEM_NORMA_ESTADUAL}</span>
+              </div>
             )}
             {rs && (
               <div className="norma-avisos">
@@ -95,8 +95,7 @@ export default function PcNormaAplicavel({ uf, municipio, normasAplicadas, confi
                 Confirmado por {confirmacao.nome} em {new Date(confirmacao.em).toLocaleDateString("pt-BR")}.
               </p>
             )}
-          </>
-        )}
+        </>
       </article>
 
       <article className="ui-card priv-cartao">

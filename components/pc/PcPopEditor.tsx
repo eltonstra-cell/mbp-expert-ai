@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { ConteudoPop, Empresa, PassoPop, ProcedimentoOperacionalPadronizado, UsuarioSistema } from "@/types";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
 import { Pill } from "@/components/ui/Pill";
@@ -20,7 +20,7 @@ import {
 import { normasDaEmpresa } from "@/lib/normas";
 
 type Aba = "procedimento" | "versoes";
-type Secao = "identificacao" | "objetivo" | "referencias" | "responsavel" | "passos" | "acao" | "registro" | "extra";
+type Secao = "identificacao" | "objetivo" | "referencias" | "responsavel" | "passos" | "acao" | "registro" | "extra" | "extra2";
 
 type Props = {
   pop: ProcedimentoOperacionalPadronizado;
@@ -68,6 +68,9 @@ function umAnoDepois(): string {
   return data.toISOString().slice(0, 10);
 }
 
+// Passos em páginas: 4 (duas colunas) no computador, 2 em telas estreitas.
+const passosPorPagina = (largo: boolean) => (largo ? 4 : 2);
+
 // POP em campos: Procedimento e Versões. Registros e Treinamento aparecem como "em breve".
 export default function PcPopEditor({ pop, empresa, usuario, podeEditar, onSalvarRascunho, onEnviar, onAprovar, onNovaVersao, onVoltar, mensagem }: Props) {
   const [rascunho, setRascunho] = useState<ProcedimentoOperacionalPadronizado>(pop);
@@ -75,11 +78,28 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, onSalva
   const [secao, setSecao] = useState<Secao | null>("passos");
   const [emBreve, setEmBreve] = useState("");
   const [tocado, setTocado] = useState(false);
+  // Com muitos passos a lista não rola por dentro do editor: eles ficam em páginas.
+  const [paginaPassos, setPaginaPassos] = useState(0);
+  const [paginaRefs, setPaginaRefs] = useState(0);
+  const [largo, setLargo] = useState(true);
+  useEffect(() => {
+    const consulta = window.matchMedia("(min-width: 900px)");
+    const aplicar = () => setLargo(consulta.matches);
+    aplicar();
+    consulta.addEventListener("change", aplicar);
+    return () => consulta.removeEventListener("change", aplicar);
+  }, []);
+  const PASSOS_POR_PAGINA = passosPorPagina(largo);
+  const REFS_POR_PAGINA = passosPorPagina(largo);
   const [versaoA, setVersaoA] = useState("");
   const [versaoB, setVersaoB] = useState("");
 
   const definicao = CONJUNTO_DA_NORMA.find((item) => item.catalogoId === rascunho.catalogoId);
   const conteudo: ConteudoPop = rascunho.conteudo || conteudoEmBranco(definicao || CONJUNTO_DA_NORMA[0], []);
+  const totalDePaginasDosPassos = Math.max(1, Math.ceil((conteudo.passos || []).length / PASSOS_POR_PAGINA));
+  const paginaDosPassos = Math.min(paginaPassos, totalDePaginasDosPassos - 1);
+  const totalDePaginasDasRefs = Math.max(1, Math.ceil((conteudo.referencias || []).length / REFS_POR_PAGINA));
+  const paginaDasRefs = Math.min(paginaRefs, totalDePaginasDasRefs - 1);
   const situacao = situacaoDoPop(rascunho);
   const editavel = podeEditar && (rascunho.status === "Rascunho");
   const faltas = faltasParaEnviar(rascunho);
@@ -101,8 +121,9 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, onSalva
     if (alvo < 0 || alvo >= lista.length) return;
     [lista[indice], lista[alvo]] = [lista[alvo], lista[indice]];
     mudar({ passos: lista });
+    setPaginaPassos(Math.floor(alvo / PASSOS_POR_PAGINA));
   }
-  const alternar = (id: Secao) => setSecao((atual) => (atual === id ? null : id));
+  const alternar = (id: Secao) => setSecao(id);
 
   const versoes = useMemo(() => {
     const guardadas = rascunho.versoes || [];
@@ -178,7 +199,7 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, onSalva
             </div>
           </SecaoRecolhivel>
 
-          <SecaoRecolhivel id="objetivo" titulo="Objetivo e campo de aplicação" resumo={conteudo.objetivo ? "preenchido" : "em branco"} aberta={secao === "objetivo"} onAlternar={alternar}>
+          <SecaoRecolhivel id="objetivo" titulo="Objetivo e aplicação" resumo={conteudo.objetivo ? "preenchido" : "em branco"} aberta={secao === "objetivo"} onAlternar={alternar}>
             <Campo rotulo="Objetivo" linhas={2} valor={conteudo.objetivo || ""} desabilitado={!editavel} onChange={(valor) => mudar({ objetivo: valor })} />
             <Campo rotulo="Campo de aplicação" linhas={2} valor={conteudo.campoAplicacao || ""} desabilitado={!editavel} onChange={(valor) => mudar({ campoAplicacao: valor })} />
           </SecaoRecolhivel>
@@ -187,17 +208,32 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, onSalva
             {(conteudo.referencias || []).length === 0 ? (
               <p className="ui-row-sub">Este POP não veio de uma norma do catálogo.</p>
             ) : (
+              <>
               <ul className="pop-refs">
-                {(conteudo.referencias || []).map((ref, indice) => (
+                {(conteudo.referencias || []).map((ref, indice) => ({ ref, indice })).slice(paginaDasRefs * REFS_POR_PAGINA, (paginaDasRefs + 1) * REFS_POR_PAGINA).map(({ ref, indice }) => (
                   <li key={`${ref.norma}-${ref.item}-${indice}`}>
                     <span className="pop-ref-titulo">
                       {ref.norma} · {ref.item} <span className="em-breve">vem da norma</span>
                       {ref.conferir && <span className="em-breve pop-conferir">conferir</span>}
                     </span>
-                    <span className="ui-row-sub">{ref.orientacao}</span>
+                    <span className="ui-row-sub pop-ref-texto" title={ref.orientacao}>{ref.orientacao}</span>
                   </li>
                 ))}
               </ul>
+              {totalDePaginasDasRefs > 1 && (
+                <div className="pop-passos-pagina" role="group" aria-label="Páginas das referências">
+                  <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" disabled={paginaDasRefs === 0} onClick={() => setPaginaRefs(paginaDasRefs - 1)}>
+                    ‹ Anteriores
+                  </button>
+                  <span className="ui-row-sub">
+                    Referências {paginaDasRefs * REFS_POR_PAGINA + 1} a {Math.min((paginaDasRefs + 1) * REFS_POR_PAGINA, (conteudo.referencias || []).length)} de {(conteudo.referencias || []).length}
+                  </span>
+                  <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" disabled={paginaDasRefs >= totalDePaginasDasRefs - 1} onClick={() => setPaginaRefs(paginaDasRefs + 1)}>
+                    Próximas ›
+                  </button>
+                </div>
+              )}
+              </>
             )}
           </SecaoRecolhivel>
 
@@ -211,7 +247,7 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, onSalva
 
           <SecaoRecolhivel id="passos" titulo="Passos" resumo={`${(conteudo.passos || []).filter((passo) => passo.texto.trim()).length} escrito(s)`} aberta={secao === "passos"} onAlternar={alternar}>
             <ol className="pop-passos">
-              {(conteudo.passos || []).map((passo: PassoPop, indice) => (
+              {(conteudo.passos || []).map((passo: PassoPop, indice) => ({ passo, indice })).slice(paginaDosPassos * PASSOS_POR_PAGINA, (paginaDosPassos + 1) * PASSOS_POR_PAGINA).map(({ passo, indice }) => (
                 <li key={passo.id} className="pop-passo">
                   <span className="pop-passo-n">{indice + 1}</span>
                   <span className="ui-field-wrap pop-passo-campo">
@@ -226,7 +262,7 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, onSalva
                     <span className="pop-passo-acoes">
                       <button type="button" className="ui-btn ui-btn--soft ui-btn--small" aria-label={`Subir o passo ${indice + 1}`} disabled={indice === 0} onClick={() => moverPasso(indice, -1)}>↑</button>
                       <button type="button" className="ui-btn ui-btn--soft ui-btn--small" aria-label={`Descer o passo ${indice + 1}`} disabled={indice === (conteudo.passos || []).length - 1} onClick={() => moverPasso(indice, 1)}>↓</button>
-                      <button type="button" className="ui-btn ui-btn--soft ui-btn--small" aria-label={`Remover o passo ${indice + 1}`} onClick={() => mudar({ passos: (conteudo.passos || []).filter((item) => item.id !== passo.id) })}>Remover</button>
+                      <button type="button" className="ui-btn ui-btn--soft ui-btn--small" aria-label={`Remover o passo ${indice + 1}`} title="Remover o passo" onClick={() => mudar({ passos: (conteudo.passos || []).filter((item) => item.id !== passo.id) })}>✕</button>
                     </span>
                   )}
                 </li>
@@ -234,20 +270,40 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, onSalva
             </ol>
             {(conteudo.passos || []).length === 0 && <p className="ui-row-sub">Nenhum passo ainda. Os passos ficam em branco para o RT e a empresa preencherem.</p>}
             {tocado && !(conteudo.passos || []).some((passo) => passo.texto.trim()) && <span className="ui-field-error">Escreva ao menos um passo.</span>}
-            {editavel && (
-              <button type="button" className="ui-btn ui-btn--criar ui-btn--small" onClick={() => mudar({ passos: [...(conteudo.passos || []), { id: crypto.randomUUID(), texto: "" }] })}>
-                + Adicionar passo
-              </button>
-            )}
+            <div className="pop-passos-pagina" role="group" aria-label="Páginas dos passos">
+              {totalDePaginasDosPassos > 1 && (
+                <>
+                  <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" disabled={paginaDosPassos === 0} onClick={() => setPaginaPassos(paginaDosPassos - 1)}>
+                    ‹ Anteriores
+                  </button>
+                  <span className="ui-row-sub">
+                    Passos {paginaDosPassos * PASSOS_POR_PAGINA + 1} a {Math.min((paginaDosPassos + 1) * PASSOS_POR_PAGINA, (conteudo.passos || []).length)} de {(conteudo.passos || []).length}
+                  </span>
+                  <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" disabled={paginaDosPassos >= totalDePaginasDosPassos - 1} onClick={() => setPaginaPassos(paginaDosPassos + 1)}>
+                    Próximos ›
+                  </button>
+                </>
+              )}
+              {editavel && (
+                <button
+                  type="button"
+                  className="ui-btn ui-btn--criar ui-btn--small"
+                  onClick={() => {
+                    const novos = [...(conteudo.passos || []), { id: crypto.randomUUID(), texto: "" }];
+                    mudar({ passos: novos });
+                    setPaginaPassos(Math.ceil(novos.length / PASSOS_POR_PAGINA) - 1);
+                  }}
+                >
+                  + Adicionar passo
+                </button>
+              )}
+            </div>
           </SecaoRecolhivel>
 
-          <SecaoRecolhivel id="acao" titulo="Ação corretiva" resumo={conteudo.acaoCorretiva ? "preenchida" : exigeAcaoCorretivaSes ? "exigida na SES 799/2023" : "em branco"} aberta={secao === "acao"} onAlternar={alternar}>
+          <SecaoRecolhivel id="acao" titulo="Ação corretiva e registro" resumo={conteudo.acaoCorretiva ? "preenchida" : exigeAcaoCorretivaSes ? "exigida na SES 799/2023" : "em branco"} aberta={secao === "acao"} onAlternar={alternar}>
             {exigeAcaoCorretivaSes && <p className="ui-row-sub">Exigido na SES 799/2023, Anexo II, 13.2.</p>}
             <Campo rotulo="Ação corretiva" linhas={3} valor={conteudo.acaoCorretiva || ""} desabilitado={!editavel} onChange={(valor) => mudar({ acaoCorretiva: valor })} />
-          </SecaoRecolhivel>
-
-          <SecaoRecolhivel id="registro" titulo="Registro que prova a execução (opcional)" resumo={conteudo.registroProva ? "preenchido" : "lista vazia"} aberta={secao === "registro"} onAlternar={alternar}>
-            <Campo rotulo="Registro" valor={conteudo.registroProva || ""} desabilitado={!editavel} onChange={(valor) => mudar({ registroProva: valor })} dica="A lista de registros por POP fica para um próximo pacote." />
+            <Campo rotulo="Registro que prova a execução (opcional)" valor={conteudo.registroProva || ""} desabilitado={!editavel} onChange={(valor) => mudar({ registroProva: valor })} dica="A lista de registros por POP fica para um próximo pacote." />
           </SecaoRecolhivel>
 
           {definicao?.bloco === "higienizacao" && conteudo.higienizacao && (
@@ -279,10 +335,13 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, onSalva
           )}
 
           {definicao?.bloco === "manipuladores" && conteudo.manipuladores && (
-            <SecaoRecolhivel id="extra" titulo="Manipuladores" resumo="mãos, saúde, exames e capacitação" aberta={secao === "extra"} onAlternar={alternar}>
+            <>
+            <SecaoRecolhivel id="extra" titulo="Higiene e saúde" resumo="mãos e sintomas" aberta={secao === "extra"} onAlternar={alternar}>
               <Campo rotulo="Lavagem e antissepsia das mãos: etapas" linhas={2} valor={conteudo.manipuladores.lavagemMaosEtapas} desabilitado={!editavel} onChange={(valor) => mudar({ manipuladores: { ...conteudo.manipuladores!, lavagemMaosEtapas: valor } })} />
               <Campo rotulo="Lavagem e antissepsia das mãos: frequência" valor={conteudo.manipuladores.lavagemMaosFrequencia} desabilitado={!editavel} onChange={(valor) => mudar({ manipuladores: { ...conteudo.manipuladores!, lavagemMaosFrequencia: valor } })} />
               <Campo rotulo="Medidas para lesões, sintomas ou suspeita de problema de saúde" linhas={2} valor={conteudo.manipuladores.lesoesSintomas} desabilitado={!editavel} onChange={(valor) => mudar({ manipuladores: { ...conteudo.manipuladores!, lesoesSintomas: valor } })} />
+            </SecaoRecolhivel>
+            <SecaoRecolhivel id="extra2" titulo="Exames e capacitação" resumo="exames e capacitação" aberta={secao === "extra2"} onAlternar={alternar}>
               <div className="pop-grade">
                 <label className="pc-field">
                   <span className="ui-eyebrow">Exames: situação</span>
@@ -302,6 +361,7 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, onSalva
                 <Campo rotulo="Capacitação: frequência" valor={conteudo.manipuladores.capacitacaoFrequencia} desabilitado={!editavel} onChange={(valor) => mudar({ manipuladores: { ...conteudo.manipuladores!, capacitacaoFrequencia: valor } })} dica="O registro nominal fica para um próximo pacote." />
               </div>
             </SecaoRecolhivel>
+            </>
           )}
         </div>
       )}

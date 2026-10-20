@@ -3,7 +3,6 @@
 import { useState } from "react";
 import type { Empresa, ProcedimentoOperacionalPadronizado, StatusPOP, UsuarioSistema } from "@/types";
 import PcPopEditor from "@/components/pc/PcPopEditor";
-import { MENSAGEM_SEM_NORMA } from "@/lib/normas";
 import {
   MENSAGEM_NORMA_ALTERADA,
   MENSAGEM_SEM_NORMA_APLICADA,
@@ -180,7 +179,7 @@ export default function PcPops({ pops, onChange, temAlteracoes, mensagem, onSalv
         </div>
         {conjunto.linhas.length === 0 ? (
           <div className="priv-faixa" role="status">
-            <span>{empresa && (empresa.uf || "").trim().toUpperCase() !== "RS" ? MENSAGEM_SEM_NORMA : MENSAGEM_SEM_NORMA_APLICADA}</span>
+            <span>{MENSAGEM_SEM_NORMA_APLICADA}</span>
           </div>
         ) : (
           <div className="ui-list">

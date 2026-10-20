@@ -166,7 +166,14 @@ export function tomSituacaoPOP(label: SituacaoRevisaoPOP["label"]): "ok" | "nc" 
 type SugestaoPop = (typeof SUGESTOES_POPS_MANUAL)[number];
 
 /** O Manual só relaciona POPs a programas de controle; NC de outro critério fica "Sem POP sugerido". */
-export function popSugeridoParaNc(nc: { categoria: string }, definicoes: DefinicaoPopDoConjunto[] = CONJUNTO_DA_NORMA): SugestaoPop | null {
+export function popSugeridoParaNc(nc: { categoria: string; popCatalogoId?: string }, definicoes: DefinicaoPopDoConjunto[] = CONJUNTO_DA_NORMA): SugestaoPop | null {
+  // Vínculo escolhido à mão ("Trocar vínculo") vale mais que o padrão pela categoria.
+  if (nc.popCatalogoId === "nenhum") return null;
+  if (nc.popCatalogoId) {
+    const escolhido = definicoes.find((item) => item.catalogoId === nc.popCatalogoId);
+    const sugestaoEscolhida = escolhido ? SUGESTOES_POPS_MANUAL.find((sugestao) => sugestao.catalogoId === escolhido.catalogoId) : undefined;
+    if (sugestaoEscolhida) return sugestaoEscolhida;
+  }
   const definicao = popSugeridoParaNcDoConjunto(nc, definicoes);
   return definicao ? SUGESTOES_POPS_MANUAL.find((sugestao) => sugestao.catalogoId === definicao.catalogoId) || null : null;
 }
@@ -190,7 +197,7 @@ function situacaoDoPopExistente(pop: ProcedimentoOperacionalPadronizado | undefi
 }
 
 export function popsDaVisita(
-  ncs: { numero: number; categoria: string }[],
+  ncs: { numero: number; categoria: string; popCatalogoId?: string }[],
   pops: ProcedimentoOperacionalPadronizado[],
   /** Conjunto da norma da empresa; sem norma aplicada, vem vazio e nenhuma sugestão aparece. */
   definicoes: DefinicaoPopDoConjunto[] = CONJUNTO_DA_NORMA

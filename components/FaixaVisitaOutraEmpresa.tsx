@@ -33,10 +33,18 @@ export default function FaixaVisitaOutraEmpresa({
 
   return (
     <div ref={raiz} className="faixa-outra-empresa" role="status">
-      <span className="faixa-outra-texto">{mensagem ?? `Esta visita é de ${empresaDaVisita}. A empresa ativa é ${empresaAtiva}.`}</span>
+      {mensagem ? (
+        <span className="faixa-outra-texto faixa-outra-livre">{mensagem}</span>
+      ) : (
+        <span className="faixa-outra-texto" title={`Esta visita é de ${empresaDaVisita}. A empresa ativa é ${empresaAtiva}.`}>
+          <span className="faixa-longo">Esta visita é de {empresaDaVisita}. A empresa ativa é {empresaAtiva}.</span>
+          <span className="faixa-curto">Visita de {empresaDaVisita}</span>
+        </span>
+      )}
       {onTrocar && (
-        <button type="button" className="ui-btn ui-btn--secondary ui-btn--small faixa-outra-botao" onClick={onTrocar}>
-          Trocar para {empresaDaVisita}
+        <button type="button" className="ui-btn ui-btn--secondary ui-btn--small faixa-outra-botao" onClick={onTrocar} aria-label={`Trocar para ${empresaDaVisita}`}>
+          <span className="faixa-longo">Trocar para {empresaDaVisita}</span>
+          <span className="faixa-curto">Trocar</span>
         </button>
       )}
     </div>

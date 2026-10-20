@@ -3240,6 +3240,8 @@ html[data-modo="completo"] .chk-pc .chk-obs-area{height:auto;min-height:60px}
 .faixa-outra-empresa{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:4px 12px;margin-bottom:8px;padding:6px 12px;border:1.5px solid #E8B04B;border-radius:12px;background:#FFF3D6;color:#000;font-size:.88rem;line-height:1.3}
 .faixa-outra-texto{min-width:0;flex:1 1 220px;overflow-wrap:anywhere}
 .faixa-outra-botao{flex:none;min-height:30px;max-width:100%;white-space:normal;text-align:center}
+.faixa-curto{display:none}
+@media (max-width:767px){.faixa-outra-empresa{flex-wrap:nowrap;gap:8px}.faixa-outra-texto{flex:1 1 auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.faixa-outra-botao{white-space:nowrap}.faixa-longo{display:none}.faixa-curto{display:inline}.faixa-outra-livre{white-space:normal;overflow:visible}}
 .campo-tela{height:calc(100dvh - 137px - var(--faixa-h,0px))}
 html[data-modo="campo"] .ui-screen{height:calc(100dvh - 137px - var(--faixa-h,0px))}
 html[data-modo="equilibrado"] .campo-tela{height:calc(100dvh - 190px - var(--faixa-h,0px))}
@@ -3353,3 +3355,40 @@ html[data-modo="equilibrado"] .campo-tela{height:calc(100dvh - 190px - var(--fai
 .norma-avisos{display:flex;flex-direction:column;gap:6px}
 .norma-campos{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px}
 @media (max-width:767px){.pop-comparacao-linha{grid-template-columns:1fr 1fr}.pop-comparacao-linha span:first-child{grid-column:1/-1}}
+.pop-vinculo-lista{display:grid;gap:10px;margin:10px 0}
+
+.chk-foco-verpop{flex:none;display:flex}
+.pop-acao-bloco{align-items:flex-start}
+.pop-leitura{display:flex;flex-direction:column;max-height:min(86vh,720px);width:min(640px,calc(100vw - 24px))}
+.pop-leitura-corpo{min-height:0;overflow-y:auto;margin:8px 0}
+.pop-leitura-lista{display:grid;gap:10px;margin:0}
+.pop-leitura-linha dd{margin:2px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
+@media (max-width:767px){.pop-leitura-camada{align-items:flex-end}.pop-leitura{width:100%;border-bottom-left-radius:0;border-bottom-right-radius:0}}
+.pop-passos-pagina{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
+.pop-leitura-camada{grid-template-columns:minmax(0,1fr)}.pop-leitura{max-width:100%;box-sizing:border-box}
+.pop-leitura .ui-row-sub{white-space:normal;overflow:visible;text-overflow:clip}
+.pop-acao-bloco{flex-direction:column;align-items:flex-start;gap:6px}.pop-acao-bloco .ui-row-sub{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;white-space:normal;overflow:hidden;text-overflow:clip}.pop-acao-bloco .pc-chip-btn{flex:none;white-space:nowrap;align-self:flex-start}
+/* Editor de POP: seções como painéis (menu à esquerda no computador, fichas no alto no tablet); só a aberta aparece, sem lista longa para rolar. */
+.pop-secoes{display:flex;flex-wrap:wrap;align-content:flex-start;gap:6px;overflow-y:auto}
+.pop-secao{display:contents}
+.pop-secao-topo{order:0;flex:0 0 auto;width:auto;min-height:34px;padding:0 12px;border:1.5px solid #DDE6EA;border-radius:12px;background:#fff}
+.pop-secao.is-aberta .pop-secao-topo{border-color:#E8B04B;background:#FEF6E6}
+.pop-secao-topo .pop-secao-resumo,.pop-secao-topo [aria-hidden="true"]{display:none}
+.pop-secao-corpo{order:1;flex:1 0 100%;min-width:0;padding:10px 12px;border:1.5px solid #E8B04B;border-radius:12px;background:#fff}
+@media (min-width:900px){
+  .pop-secoes{display:grid;grid-template-columns:230px minmax(0,1fr);grid-auto-rows:min-content;gap:4px 12px;align-content:start}
+  .pop-secao-topo{grid-column:1;order:initial;width:100%;justify-content:space-between}
+  .pop-secao-corpo{grid-column:2;grid-row:1 / span 12;order:initial;flex:none}
+  .pop-passos{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px}
+}
+
+.pop-passo-acoes{flex-wrap:nowrap}.pop-passo-acoes .ui-btn{min-width:34px;padding:0 8px}
+@media (min-width:900px){
+  .pop-secoes{row-gap:0}
+  .pop-secao-topo{min-height:30px;margin-bottom:3px}
+  .pop-secao-corpo{align-self:start}
+}
+@media (min-width:900px){.pop-secao-corpo{padding:8px 12px}}
+@media (min-width:900px){.pop-refs{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px}}
+.pop-refs .ui-row-sub,.pop-refs li{white-space:normal;overflow-wrap:anywhere;min-width:0}.pop-secao-corpo{overflow-x:hidden}
+.pop-ref-texto{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}

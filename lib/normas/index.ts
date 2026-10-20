@@ -13,14 +13,17 @@ export function normaPorId(id: string, catalogo: Norma[] = CATALOGO_DE_NORMAS): 
   return catalogo.find((norma) => norma.id === id);
 }
 
-/**
- * Normas que o app oferece para a empresa. Só o Rio Grande do Sul tem norma cadastrada (federal + estadual);
- * empresa de outro estado vê a mensagem de norma não cadastrada e define os POPs manualmente.
- */
+export const AVISO_SEM_NORMA_ESTADUAL = "Norma estadual não cadastrada; consulte a Vigilância Sanitária local.";
+
+/** Normas que o app oferece para a empresa: a federal vale para todos os estados; a estadual só onde está cadastrada. */
 export function normasDisponiveis(uf: string | undefined, catalogo: Norma[] = CATALOGO_DE_NORMAS): Norma[] {
   const sigla = (uf || "").trim().toUpperCase();
-  if (sigla !== "RS") return [];
-  return catalogo.filter((norma) => norma.esfera === "federal" || norma.uf === sigla);
+  return catalogo.filter((norma) => norma.esfera === "federal" || (sigla !== "" && norma.uf === sigla));
+}
+
+/** Há norma estadual cadastrada para a UF? Se não, o app mostra o aviso de consultar a Vigilância Sanitária local. */
+export function temNormaEstadual(uf: string | undefined, catalogo: Norma[] = CATALOGO_DE_NORMAS): boolean {
+  return normasDisponiveis(uf, catalogo).some((norma) => norma.esfera !== "federal");
 }
 
 /** Normas aplicadas da empresa que existem no catálogo (ids desconhecidos são ignorados). */
