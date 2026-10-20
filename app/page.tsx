@@ -16,6 +16,7 @@ import { conferenciaDoRelatorio } from "@/lib/reportCheck";
 import { ocultarAmbiente, mostrarAmbiente, excluirAmbienteOculto, resumoOcultos } from "@/lib/hiddenEnvs";
 import { reincidenciaDaNc } from "@/lib/actionPlan";
 import { proximaEtapaDaVisita } from "@/lib/proximaEtapa";
+import { corDaEmpresa, proximaCorLivre } from "@/lib/empresaCor";
 import { conciliarNcs } from "@/lib/ncReconcile";
 import { motivoParaNaoExcluir } from "@/lib/userManagement";
 import { diferencasDeTelas, nivelDaTela, telaDaVisao, telasDiferentesDoPadrao, telasEfetivas, type NivelTela, type TelaKey, type TelasDoUsuario } from "@/lib/screenAccess";
@@ -59,7 +60,7 @@ import CommandPalette from "@/components/CommandPalette";
 import { construirDestinos, type Destino } from "@/lib/commandSearch";
 import { quantidadeDeAmbientes, resumoAmbientes, vizinhoDoAmbiente } from "@/lib/checklistEnvs";
 import { NavIcon } from "@/components/NavIcons";
-import { chaveAtiva, itemDoMenu, itensVisiveis, nomeSemNumerosNoInicio, type NavContexto, type NavKey } from "@/lib/navigation";
+import { iniciaisDaEmpresa, chaveAtiva, itemDoMenu, itensVisiveis, nomeSemNumerosNoInicio, type NavContexto, type NavKey } from "@/lib/navigation";
 import ManualBaseFields from "@/components/ManualBaseFields";
 import OperationalFlowsFields from "@/components/OperationalFlowsFields";
 import QualityProgramsFields from "@/components/QualityProgramsFields";
@@ -2886,6 +2887,7 @@ export default function Home() {
       programasControleQualidade: normalizarProgramasControle(programasEmpresa),
       pops: normalizarPops(popsEmpresa),
       criadoEm: anterior?.criadoEm || new Date().toISOString(),
+      cor: anterior ? anterior.cor : proximaCorLivre(Object.values(db.empresas)),
     };
     setDb((o) => ({
       ...o,
@@ -5750,6 +5752,8 @@ export default function Home() {
           <>
             <CampoCabecalho
               empresa={nomeEmFormatoNatural(atual?.nomeFantasia) || ""}
+              empresaCor={atual ? corDaEmpresa(atual) : undefined}
+              empresaIniciais={atual ? iniciaisDaEmpresa(atual.nomeFantasia || "") : ""}
               sincronizacao={{
                 estado: !estaOnline || syncStatus === "erro" ? "erro" : syncStatus === "sincronizado" ? "ok" : "pendente",
                 rotulo: !estaOnline ? "Sem conexão" : syncStatus === "sincronizado" ? "Sincronizado" : syncStatus === "conectando" ? "Sincronizando…" : "Verificar sincronização",
@@ -5771,6 +5775,8 @@ export default function Home() {
           caminho={caminhoTopo}
           onPrimeiro={() => navegarPrincipal("visitas")}
           empresaAtiva={nomeEmFormatoNatural(atual?.nomeFantasia) || null}
+          empresaCor={atual ? corDaEmpresa(atual) : undefined}
+          empresaIniciais={atual ? iniciaisDaEmpresa(atual.nomeFantasia || "") : ""}
           iniciais={iniciaisUsuario}
           mostrarTodasVisitas={dentroDaVisita}
           onTodasVisitas={() => navegarPrincipal("visitas")}
@@ -8310,6 +8316,10 @@ export default function Home() {
               if (!exigirPermissao("empresas.editar", id)) return;
               setDb((o) => (o.empresas[id] ? { ...o, empresas: { ...o.empresas, [id]: marcarArquivada(o.empresas[id], arquivar, new Date().toISOString()) } } : o));
             }}
+            onCor={(id, cor) => {
+              if (!exigirPermissao("empresas.editar", id)) return;
+              setDb((o) => (o.empresas[id] ? { ...o, empresas: { ...o.empresas, [id]: { ...o.empresas[id], cor } } } : o));
+            }}
             arquivadasTotal={empresasVisiveis.filter((e) => e.arquivada).length}
             mostrarArquivadas={mostrarEmpresasArquivadas}
             onMostrarArquivadas={setMostrarEmpresasArquivadas}
@@ -8330,6 +8340,7 @@ export default function Home() {
                 podeGerenciar: permitido("empresas.editar", e.id),
                 podeAcessos: permitido("usuarios.gerenciar"),
                 arquivada: Boolean(e.arquivada),
+                cor: corDaEmpresa(e),
                 podeNovaVisita: permitido("visitas.criar", e.id),
               };
             })}

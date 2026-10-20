@@ -1,12 +1,14 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import { ListRow } from "@/components/ui/ListRow";
 import { Pill } from "@/components/ui/Pill";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import type { ItemMenu } from "@/components/ui/RowMenu";
 import { acoesDaEmpresa } from "@/lib/menuActions";
 import { nomeSemNumerosNoInicio } from "@/lib/navigation";
-import { TILE_GRADIENTS } from "@/lib/brand";
+import { iniciaisDaEmpresa } from "@/lib/navigation";
+import { PALETA_EMPRESA } from "@/lib/empresaCor";
 
 export type LinhaEmpresa = {
   id: string;
@@ -24,6 +26,8 @@ export type LinhaEmpresa = {
   podeAcessos: boolean;
   arquivada: boolean;
   podeNovaVisita: boolean;
+  /** Cor da empresa (da paleta fixa). */
+  cor: string;
 };
 
 type Props = {
@@ -39,30 +43,11 @@ type Props = {
   onHistorico: (id: string) => void;
   onAcessos: () => void;
   onArquivar: (id: string, arquivar: boolean) => void;
+  onCor: (id: string, cor: string) => void;
   arquivadasTotal: number;
   mostrarArquivadas: boolean;
   onMostrarArquivadas: (valor: boolean) => void;
 };
-
-const TONS = ["azul", "verde", "violeta", "turquesa", "rosa", "indigo", "ambar", "ceu"] as const;
-
-// Cor estável por empresa (a partir do id), usando os gradientes da marca.
-function gradienteDaEmpresa(id: string) {
-  let soma = 0;
-  for (const letra of id) soma = (soma + letra.charCodeAt(0)) % 997;
-  const [claro, base] = TILE_GRADIENTS[TONS[soma % TONS.length]];
-  return `linear-gradient(160deg, ${claro}, ${base})`;
-}
-
-function iniciais(nome: string) {
-  return nome
-    .split(" ")
-    .filter((parte) => parte.length > 2 || /^\p{L}$/u.test(parte))
-    .slice(0, 2)
-    .map((parte) => parte[0])
-    .join("")
-    .toUpperCase();
-}
 
 function plural(quantidade: number, singular: string, pluralTexto: string) {
   return `${quantidade} ${quantidade === 1 ? singular : pluralTexto}`;
@@ -81,6 +66,7 @@ export default function PcEmpresas({
   onHistorico,
   onAcessos,
   onArquivar,
+  onCor,
   arquivadasTotal,
   mostrarArquivadas,
   onMostrarArquivadas,
@@ -152,8 +138,8 @@ export default function PcEmpresas({
                 selecionada={empresa.ativa}
                 esmaecida={empresa.arquivada}
                 icone={
-                  <span className="ui-avatar" style={{ background: gradienteDaEmpresa(empresa.id) }} aria-hidden="true">
-                    {iniciais(empresa.nome)}
+                  <span className="ui-avatar ui-avatar--round emp-avatar-cor" style={{ "--emp-cor": empresa.cor } as CSSProperties} aria-hidden="true">
+                    {iniciaisDaEmpresa(empresa.nome)}
                   </span>
                 }
                 titulo={empresa.nome}
@@ -190,6 +176,25 @@ export default function PcEmpresas({
                   </>
                 }
                 menu={menu}
+                filhos={
+                  empresa.podeGerenciar ? (
+                    <div className="emp-cores" role="group" aria-label={`Cor de ${empresa.nome}`}>
+                      <span className="emp-cores-rotulo">Cor</span>
+                      {PALETA_EMPRESA.map((opcao) => (
+                        <button
+                          key={opcao.hex}
+                          type="button"
+                          className={`emp-cor-bolinha${empresa.cor === opcao.hex ? " is-on" : ""}`}
+                          style={{ background: opcao.hex }}
+                          aria-label={opcao.nome}
+                          aria-pressed={empresa.cor === opcao.hex}
+                          title={opcao.nome}
+                          onClick={() => onCor(empresa.id, opcao.hex)}
+                        />
+                      ))}
+                    </div>
+                  ) : undefined
+                }
               />
             );
           })}

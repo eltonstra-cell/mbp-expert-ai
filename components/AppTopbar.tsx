@@ -1,5 +1,6 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import { NavIcon } from "@/components/NavIcons";
 import { RowMenu, type ItemMenu } from "@/components/ui/RowMenu";
 import { ROTULO_DE_USO, type ModoTela } from "@/lib/screenMode";
@@ -12,6 +13,9 @@ type Props = {
   /** Chamado ao tocar no primeiro item do caminho (Visitas), quando houver. */
   onPrimeiro?: () => void;
   empresaAtiva: string | null;
+  /** Cor da empresa ativa (paleta fixa) e suas iniciais, para o avatar. */
+  empresaCor?: string;
+  empresaIniciais?: string;
   iniciais: string | null;
   /** Tablet, dentro de uma visita: link para voltar à lista. */
   mostrarTodasVisitas: boolean;
@@ -35,6 +39,8 @@ export default function AppTopbar({
   caminho,
   onPrimeiro,
   empresaAtiva,
+  empresaCor = "#4A5D73",
+  empresaIniciais = "",
   iniciais,
   mostrarTodasVisitas,
   onTodasVisitas,
@@ -101,10 +107,16 @@ export default function AppTopbar({
           </button>
         )}
         {empresaAtiva && (
-          <button type="button" className="pc-company-chip" title={empresaAtiva} aria-label={`Trocar empresa. Empresa ativa: ${empresaAtiva}`} onClick={onTrocarEmpresa} disabled={!onTrocarEmpresa}>
-            <span className="pc-company-chip-label">Empresa ativa</span>
-            <span className="pc-company-chip-name">{empresaAtiva}</span>
-          </button>
+          <div className="emp-ativa" style={{ "--emp-cor": empresaCor } as CSSProperties}>
+            <span className="emp-ativa-avatar" aria-hidden="true">
+              {empresaIniciais}
+            </span>
+            <button type="button" className="emp-ativa-caixa" title={empresaAtiva} aria-label={`Trocar empresa. Empresa ativa: ${empresaAtiva}`} onClick={onTrocarEmpresa} disabled={!onTrocarEmpresa}>
+              <span className="emp-ativa-selo">Empresa ativa</span>
+              <span className="emp-ativa-nome">{empresaAtiva}</span>
+              <span className="emp-ativa-seta" aria-hidden="true">▾</span>
+            </button>
+          </div>
         )}
         {modo && onAbrirConfigModo && (
           <button type="button" className="pc-mode-chip" onClick={onAbrirConfigModo} title="Configurar o modo de tela">

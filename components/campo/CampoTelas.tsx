@@ -4,7 +4,6 @@ import { useRef, useState, type CSSProperties } from "react";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
 import { LoteJanela, type CorrecaoItem } from "@/components/pc/PcCorrecoes";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
-import { LogoSymbol } from "@/components/BrandLogo";
 import { NavIcon, type NavIconName } from "@/components/NavIcons";
 import { RowMenu, type ItemMenu } from "@/components/ui/RowMenu";
 import { contarEtapas, etapaDaCorrecao, ordenarCorrecoes, prazoSugerido, validarPlano, type EtapaCorrecao, type GravidadeNc } from "@/lib/actionPlan";
@@ -24,14 +23,26 @@ type Chrome = {
 };
 
 // Cabeçalho e barra de baixo do modo Campo (celular): 4 telas + Registrar no centro.
-export function CampoCabecalho({ empresa, sincronizacao, menuModo, onTrocarEmpresa }: Pick<Chrome, "empresa" | "sincronizacao" | "menuModo"> & { onTrocarEmpresa?: () => void }) {
+export function CampoCabecalho({
+  empresa,
+  empresaCor = "#4A5D73",
+  empresaIniciais = "",
+  sincronizacao,
+  menuModo,
+  onTrocarEmpresa,
+}: Pick<Chrome, "empresa" | "sincronizacao" | "menuModo"> & { empresaCor?: string; empresaIniciais?: string; onTrocarEmpresa?: () => void }) {
   return (
     <header className="campo-head">
-      <LogoSymbol size={34} />
-      <button type="button" className="campo-head-text campo-head-troca" aria-label="Trocar empresa" onClick={onTrocarEmpresa} disabled={!onTrocarEmpresa}>
-        <div className="campo-head-title">Ponto Certo</div>
-        <div className="campo-head-sub">{empresa || "Nenhuma empresa ativa"}</div>
-      </button>
+      <div className="emp-ativa" style={{ "--emp-cor": empresaCor } as CSSProperties}>
+        <span className="emp-ativa-avatar" aria-hidden="true">
+          {empresaIniciais}
+        </span>
+        <button type="button" className="emp-ativa-caixa" aria-label={`Trocar empresa. Empresa ativa: ${empresa || "nenhuma"}`} onClick={onTrocarEmpresa} disabled={!onTrocarEmpresa}>
+          <span className="emp-ativa-selo">Empresa ativa</span>
+          <span className="emp-ativa-nome">{empresa || "Nenhuma empresa ativa"}</span>
+          <span className="emp-ativa-seta" aria-hidden="true">▾</span>
+        </button>
+      </div>
       <button type="button" className={`campo-sync is-${sincronizacao.estado}`} aria-label={sincronizacao.rotulo} title={sincronizacao.rotulo} onClick={sincronizacao.onClick}>
         <span aria-hidden="true" />
       </button>

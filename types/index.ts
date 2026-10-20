@@ -41,6 +41,8 @@ export type Empresa = {
   programasControleQualidade?: ProgramaControleQualidade[];
   pops?: ProcedimentoOperacionalPadronizado[];
   criadoEm: string;
+  /** Cor da empresa (uma da paleta fixa, ex.: "#2E7D4F"); sem ela, a cor é derivada do id. */
+  cor?: string;
   /** Arquivada: some da lista principal, sem apagar nada. */
   arquivada?: boolean;
   arquivadaEm?: string;

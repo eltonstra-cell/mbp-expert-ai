@@ -2503,7 +2503,6 @@ html[data-modo="equilibrado"] .pc-topbar{flex-wrap:nowrap;gap:8px}
 html[data-modo="equilibrado"] .pc-back-link,html[data-modo="equilibrado"] .pc-mode-chip,html[data-modo="equilibrado"] .pc-sync-chip{flex:none;white-space:nowrap}
 html[data-modo="equilibrado"] .pc-back-link{min-height:36px;padding:0 12px}
 html[data-modo="equilibrado"] .pc-topbar-end{flex:1 1 auto;justify-content:flex-end;gap:8px}
-@media (max-width:899px){html[data-modo="equilibrado"] .pc-company-chip{display:none}}
 
 /* ===== Relatório impresso (PDF com texto selecionável): páginas mais cheias ===== */
 @media print {
@@ -3081,3 +3080,21 @@ html[data-modo="campo"] .ev7-lista-topo .ui-tab{flex:1 1 auto;justify-content:ce
 .ev7-filtro-limpar:focus-visible{outline:3px solid var(--brand);outline-offset:1px}
 html[data-modo="campo"] .ev7-filtro{display:flex;width:100%}
 html[data-modo="campo"] .ev7-filtro-valor{flex:1}
+/* ===== Pacote 9 · F: empresa ativa com cor própria (topo e lista de Empresas) ===== */
+.emp-ativa{display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto;max-width:22rem}
+.emp-ativa-avatar,.emp-avatar-cor{display:grid;flex:none;place-items:center;width:40px;height:40px;border-radius:50%;background:var(--emp-cor);color:#fff;font-family:var(--font-display),"Outfit",sans-serif;font-size:.9rem;font-weight:500;line-height:1}
+.ui-avatar.emp-avatar-cor{background:var(--emp-cor)!important}
+html[data-modo="completo"] .emp-ativa-avatar{width:34px;height:34px;font-size:.8rem}
+.emp-ativa-caixa{position:relative;display:flex;align-items:center;gap:8px;min-width:0;flex:1;height:38px;padding:0 12px;border:2px solid var(--emp-cor);border-radius:10px;background:#fff;color:var(--ink);text-align:left;cursor:pointer}
+.emp-ativa-caixa:disabled{cursor:default}
+.emp-ativa-caixa:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
+.emp-ativa-selo{position:absolute;top:-9px;left:12px;padding:0 6px;border-radius:6px;background:var(--emp-cor);color:#fff;font-size:10px;font-weight:400;line-height:16px;white-space:nowrap}
+.emp-ativa-nome{min-width:0;flex:1;overflow:hidden;font-family:var(--font-display),"Outfit",sans-serif;font-size:18px;font-weight:500;line-height:1.1;text-overflow:ellipsis;white-space:nowrap;color:var(--ink)}
+.emp-ativa-seta{flex:none;font-size:.8rem;color:var(--ink-2)}
+.campo-head .emp-ativa{max-width:none;padding-top:6px}
+.campo-head{padding-top:12px}
+.emp-cores{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:6px;padding-left:2px}
+.emp-cores-rotulo{font-size:.8rem;color:var(--ink-2)}
+.emp-cor-bolinha{width:22px;height:22px;padding:0;border:2px solid #fff;border-radius:50%;box-shadow:0 0 0 1px #B4C2CE;cursor:pointer}
+.emp-cor-bolinha.is-on{box-shadow:0 0 0 2px var(--ink)}
+.emp-cor-bolinha:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
