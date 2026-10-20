@@ -50,11 +50,13 @@ test("Executor: o servidor nega correções, relatório, acessos, empresas e emp
   assert.equal(podeExecutar(executor, "evidencias.adicionar", "e2"), false);
 });
 
-test("Executor: não recebe correções, POPs nem outras empresas", () => {
-  const visto = filtrarEstadoPorUsuario(base(), executor);
+test("Executor: não recebe correções nem outras empresas; dos POPs, só os aprovados (Ver POP)", () => {
+  const estado = base();
+  estado.empresas.e1.pops.push({ id: "p2", status: "Rascunho", titulo: "Rascunho" }, { id: "p3", status: "Aprovado", arquivado: true, titulo: "Arquivado" });
+  const visto = filtrarEstadoPorUsuario(estado, executor);
   assert.deepEqual(Object.keys(visto.empresas), ["e1"]);
   assert.deepEqual(visto.ncs, []);
-  assert.deepEqual(visto.empresas.e1.pops, []);
+  assert.deepEqual(visto.empresas.e1.pops.map((pop) => pop.id), ["p1"]);
   assert.deepEqual(visto.visitas.map((v) => v.id), ["v1"]);
 });
 

@@ -609,6 +609,17 @@ function DetalheCampo({
           </div>
         )}
 
+        {nc.acaoDoPop && !bloqueado && acao.trim() !== nc.acaoDoPop.texto && (
+          <div className="pc-acao-padrao pop-acao-bloco">
+            <span className="ui-row-sub">
+              <span className="ui-eyebrow">Ação corretiva do POP · {nc.acaoDoPop.codigo}</span> “{nc.acaoDoPop.texto}”
+            </span>
+            <button type="button" className="pc-chip-btn pc-chip-btn--soft" onClick={() => setAcao(nc.acaoDoPop!.texto)}>
+              Usar este texto
+            </button>
+          </div>
+        )}
+
         <label className="campo-field campo-field--acao">
           <span className="ui-eyebrow">
             O que será feito <span className="pc-obrig">· obrigatório</span>

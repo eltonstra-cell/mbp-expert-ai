@@ -55,6 +55,8 @@ type Props = {
   onLimpar?: () => void;
   onAnterior: () => void;
   onProximo: () => void;
+  /** Item ligado a um POP com versão aprovada: abre a leitura do POP sem sair do checklist. */
+  verPop?: { rotulo: string; onAbrir: () => void };
 };
 
 const NOME_GRAVIDADE: Record<string, string> = { Crítica: "Crítica", Importante: "Importante", Rotina: "Leve" };
@@ -103,6 +105,7 @@ export default function ChecklistFocoItem({
   onLimpar,
   onAnterior,
   onProximo,
+  verPop,
 }: Props) {
   const [texto, setTexto] = useState(item.observacao || "");
   const areaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -434,6 +437,14 @@ export default function ChecklistFocoItem({
         <div className="chk-foco-apoio" key={item.id}>
           {item.orientacao && <LinhaDeApoio titulo="O que verificar" texto={item.orientacao} />}
           {textoDeBaseLegal(item) && <LinhaDeApoio titulo="Base legal" texto={textoDeBaseLegal(item)} />}
+        </div>
+      )}
+
+      {verPop && (
+        <div className="chk-foco-verpop">
+          <button type="button" className="pc-chip-btn pc-chip-btn--soft" onClick={verPop.onAbrir}>
+            Ver POP · {verPop.rotulo}
+          </button>
         </div>
       )}
 

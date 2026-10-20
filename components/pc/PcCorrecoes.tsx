@@ -42,6 +42,8 @@ export type CorrecaoItem = {
   /** A ação padrão só aparece depois de validada pelo RT. */
   acaoSugeridaValidada?: boolean;
   pop: { codigo: string; titulo: string; existe: boolean } | null;
+  /** Ação corretiva cadastrada no POP vigente da NC; sem POP aprovado ou sem ação, fica vazio e o bloco não aparece. */
+  acaoDoPop?: { codigo: string; texto: string };
   evidencias: { id: string; tipo: string; nome: string; quando: string; url: string }[];
   historico: { id: string; quando: string; status: StatusNc; observacao: string }[];
   /** Marcada como feita por quem não pode resolver; aguarda confirmação do Consultor/RT. */
@@ -590,6 +592,16 @@ function Detalhe({
                   <span className="ui-row-sub">Ação padrão do critério: “{acaoPadraoVisivel(nc)}”</span>
                   <button type="button" className="pc-chip-btn pc-chip-btn--soft" onClick={() => setAcao(acaoPadraoVisivel(nc))}>
                     Usar
+                  </button>
+                </div>
+              )}
+              {!bloqueado && nc.acaoDoPop && acao.trim() !== nc.acaoDoPop.texto && (
+                <div className="pc-acao-padrao pop-acao-bloco">
+                  <span className="ui-row-sub">
+                    <span className="ui-eyebrow">Ação corretiva do POP · {nc.acaoDoPop.codigo}</span> “{nc.acaoDoPop.texto}”
+                  </span>
+                  <button type="button" className="pc-chip-btn pc-chip-btn--soft" onClick={() => setAcao(nc.acaoDoPop!.texto)}>
+                    Usar este texto
                   </button>
                 </div>
               )}

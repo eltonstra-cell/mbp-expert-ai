@@ -530,3 +530,25 @@ export function validarAprovacoesDePop(
   }
   return { empresas: resultado, registros };
 }
+
+// ===== POP vigente (leitura no checklist e na Correção) =====
+
+export type PopVigente = {
+  versao: string;
+  conteudo: ConteudoPop | undefined;
+  aprovacao?: AprovacaoPop;
+};
+
+/** Versão vigente: a aprovada em uso; se o POP está em nova versão (rascunho), vale a última aprovada guardada. Rascunho nunca é vigente. */
+export function popVigente(pop: ProcedimentoOperacionalPadronizado | undefined): PopVigente | null {
+  if (!pop || pop.arquivado || pop.status === "Inativo") return null;
+  if (pop.status === "Aprovado") return { versao: pop.versao, conteudo: pop.conteudo, aprovacao: pop.aprovacao };
+  const aprovadas = (pop.versoes || []).filter((versao) => versao.status === "Aprovado");
+  const ultima = aprovadas[aprovadas.length - 1];
+  return ultima ? { versao: ultima.versao, conteudo: ultima.conteudo, aprovacao: ultima.aprovacao } : null;
+}
+
+/** Texto da ação corretiva cadastrada no POP vigente, ou vazio quando não há. */
+export function acaoCorretivaDoPopVigente(pop: ProcedimentoOperacionalPadronizado | undefined): string {
+  return (popVigente(pop)?.conteudo?.acaoCorretiva || "").trim();
+}

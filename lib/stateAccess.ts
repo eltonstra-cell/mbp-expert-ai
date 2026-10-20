@@ -80,7 +80,7 @@ export function filtrarEstadoPorUsuario(
       registrosAuditoria: [],
     };
   }
-  // Executor de campo: não recebe correções nem a lista de POPs.
+  // Executor de campo: não recebe correções; dos POPs recebe só os aprovados, para ler no checklist ("Ver POP").
   const semPops = usuario.perfil === "Executor de campo";
   const registrosAuditoria = possuiPermissao(efetivo, "auditoria.ver")
     ? data.registrosAuditoria.filter(
@@ -93,7 +93,7 @@ export function filtrarEstadoPorUsuario(
   return {
     ...data,
     empresas: semPops
-      ? Object.fromEntries(Object.entries(empresas).map(([id, empresa]) => [id, { ...empresa, pops: [] }]))
+      ? Object.fromEntries(Object.entries(empresas).map(([id, empresa]) => [id, { ...empresa, pops: (empresa.pops || []).filter((pop) => pop.status === "Aprovado" && !pop.arquivado) }]))
       : empresas,
     empresaAtualId:
       data.empresaAtualId && empresaIds.has(data.empresaAtualId)
