@@ -3,6 +3,7 @@
 import { avisar } from "@/lib/dialogos";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useIaPermitida } from "@/components/IaPermissionContext";
+import { useOnline } from "@/components/useOnline";
 import RevisaoTranscricao from "@/components/RevisaoTranscricao";
 import { iniciarMedidorDeVolume } from "@/components/useNivelDeAudio";
 import { MENSAGEM_SEM_FALA, ehSilencio } from "@/lib/transcricao";
@@ -61,6 +62,8 @@ export default function FieldVoiceTools({
   onAviso,
 }: Props) {
   const iaPermitida = useIaPermitida();
+  const online = useOnline();
+  const SEM_INTERNET = "Precisa de internet";
   const [gravando, setGravando] = useState(false);
   const [transcrevendo, setTranscrevendo] = useState(false);
   const [melhorando, setMelhorando] = useState(false);
@@ -102,6 +105,10 @@ export default function FieldVoiceTools({
   }, [aviso]);
 
   async function iniciarOuParar() {
+    if (!online && !gravando) {
+      avisarErro("O ditado por voz precisa de internet para transformar a fala em texto. Digite no campo.");
+      return;
+    }
     if (gravando && recorderRef.current) {
       const gravador = recorderRef.current;
       try { gravador.requestData(); } catch {}
@@ -283,13 +290,13 @@ export default function FieldVoiceTools({
                 <path d="M6 10a6 6 0 0 0 12 0" />
                 <path d="M12 16v5M9 21h6" />
               </svg>
-              <span>{transcrevendo ? "Transcrevendo" : rotuloVoz}</span>
+              <span>{transcrevendo ? "Transcrevendo" : !online ? SEM_INTERNET : rotuloVoz}</span>
             </button>
           )}
           {!somenteVoz && (
-            <button type="button" className={`voz-ia${estado.ia.apagado ? " is-apagado" : ""}`} onClick={melhorar} disabled={estado.ia.desativado} title="Melhorar texto com IA">
+            <button type="button" className={`voz-ia${estado.ia.apagado || !online ? " is-apagado" : ""}`} onClick={melhorar} disabled={estado.ia.desativado} title="Melhorar texto com IA">
               <span aria-hidden="true">✦</span>
-              <span>{melhorando ? "Ajustando" : rotuloIa}</span>
+              <span>{melhorando ? "Ajustando" : !online ? SEM_INTERNET : rotuloIa}</span>
             </button>
           )}
         </div>
@@ -312,7 +319,7 @@ export default function FieldVoiceTools({
           title="Melhorar texto com IA"
         >
           <span aria-hidden="true">✦</span>
-          <span>{melhorando ? "Ajustando" : rotuloIa}</span>
+          <span>{melhorando ? "Ajustando" : !online ? SEM_INTERNET : rotuloIa}</span>
         </button>
       )}
       <button
@@ -327,7 +334,7 @@ export default function FieldVoiceTools({
           <path d="M6 10a6 6 0 0 0 12 0" />
           <path d="M12 16v5M9 21h6" />
         </svg>
-        <span>{transcrevendo ? "Transcrevendo" : gravando ? "Parar" : rotuloVoz}</span>
+        <span>{transcrevendo ? "Transcrevendo" : gravando ? "Parar" : !online ? SEM_INTERNET : rotuloVoz}</span>
       </button>
     </div>
     {aviso && (

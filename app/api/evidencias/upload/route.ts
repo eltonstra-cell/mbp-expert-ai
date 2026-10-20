@@ -1,4 +1,4 @@
-import { put } from "@vercel/blob";
+import { head, put } from "@vercel/blob";
 import { NextResponse } from "next/server";
 import {
   autorizaAcaoServidor,
@@ -84,11 +84,28 @@ export async function POST(request: Request) {
 
     const pathname = `evidencias/${visitaId}/${evidenciaId}-${nome}`;
 
-    const blob = await put(pathname, file, {
-      access: "private",
-      addRandomSuffix: true,
-      contentType: validacao.contentType,
-    });
+    // Com chave de envio (fila offline) o caminho é fixo: repetir o envio devolve o arquivo que já existe, sem duplicar.
+    const comChave = form.get("chaveEnvio") === evidenciaId;
+    if (comChave) {
+      const existente = await head(pathname).catch(() => null);
+      if (existente) {
+        return NextResponse.json({ pathname: existente.pathname, url: existente.url, contentType: existente.contentType, repetido: true });
+      }
+    }
+
+    let blob;
+    try {
+      blob = await put(pathname, file, {
+        access: "private",
+        addRandomSuffix: !comChave,
+        contentType: validacao.contentType,
+      });
+    } catch (erroDoPut) {
+      // Duas tentativas ao mesmo tempo: a segunda encontra o arquivo da primeira.
+      const existente = comChave ? await head(pathname).catch(() => null) : null;
+      if (!existente) throw erroDoPut;
+      return NextResponse.json({ pathname: existente.pathname, url: existente.url, contentType: existente.contentType, repetido: true });
+    }
 
     return NextResponse.json({
       pathname: blob.pathname,

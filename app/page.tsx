@@ -19,6 +19,10 @@ import PcPrivacidadeEmpresa from "@/components/pc/PcPrivacidadeEmpresa";
 import PcNormaAplicavel, { type DadosDaNorma } from "@/components/pc/PcNormaAplicavel";
 import { normasDaEmpresa } from "@/lib/normas";
 import PopLeituraFolha from "@/components/PopLeituraFolha";
+import PcFilaDeEnvio from "@/components/pc/PcFilaDeEnvio";
+import { useFilaDeEvidencias } from "@/components/useFilaDeEvidencias";
+import { useOnline } from "@/components/useOnline";
+import { FalhaDeEnvio, LIMITE_AVISO_FILA_BYTES, causaDaResposta, textoDeEspaco, type ItemSemArquivo } from "@/lib/filaEvidencias";
 import { MENSAGEM_SEM_NORMA_APLICADA, acaoCorretivaDoPopVigente, popVigente, avisoDePopsComNormaAlterada, conjuntoDaEmpresa, criarPopsFaltantesDoConjunto } from "@/lib/popsNorma";
 import AccessPreparationPanel from "@/components/AccessPreparationPanel";
 import AppNavigation, { type CartaoVisita, type ContagemEtapa } from "@/components/AppNavigation";
@@ -195,7 +199,7 @@ import {
 } from "@/lib/userManagement";
 import { resumoConfiguracaoEmpresa } from "@/lib/companyReadiness";
 
-type View = "inicio" | "pops" | "ajuda" | "empresas" | "visitas" | "visita" | "ambientes" | "checklist" | "ncs" | "plano" | "acompanhamento" | "historico" | "evidencias" | "relatorio" | "acessos" | "correcoes" | "popsvisita" | "modotela" | "campomais";
+type View = "inicio" | "pops" | "ajuda" | "empresas" | "visitas" | "visita" | "ambientes" | "checklist" | "ncs" | "plano" | "acompanhamento" | "historico" | "evidencias" | "relatorio" | "acessos" | "correcoes" | "popsvisita" | "modotela" | "campomais" | "fila";
 type EmpresaSecao = "dados" | "manual" | "ambientes" | "fluxos" | "programas" | "pops" | "privacidade" | "norma";
 type FiltroChecklistRapido = "Todos" | "Pendentes" | "Não conformes";
 
@@ -1038,6 +1042,8 @@ export default function Home() {
   const [correcoesDaEmpresa, setCorrecoesDaEmpresa] = useState(false);
   // POP aberto para leitura numa folha (checklist), sem sair da visita.
   const [popLeituraId, setPopLeituraId] = useState<string | null>(null);
+  // Folha curta depois de registrar evidência sem sinal.
+  const [avisoSemSinal, setAvisoSemSinal] = useState<string | null>(null);
   const [showEmpresaForm, setShowEmpresaForm] = useState(false);
   const [editingEmpresaId, setEditingEmpresaId] = useState<string | null>(null);
   const [empresaSecao, setEmpresaSecao] = useState<EmpresaSecao | null>(null);
@@ -1773,8 +1779,34 @@ export default function Home() {
         });
   }, [ready, sessaoAtual]);
 
+  // Itens na fila continuam guardados ao sair ou trocar de empresa; só avisa antes.
+  async function confirmarComFila(acao: "sair" | "trocar"): Promise<boolean> {
+    const n = fila.resumo.pendentes;
+    if (!n) return true;
+    const plural = n === 1 ? "1 evidência aguardando envio" : `${n} evidências aguardando envio`;
+    return confirmar(
+      acao === "sair"
+        ? `Há ${plural} neste aparelho.\n\nSe você sair, elas continuam guardadas, mas só serão enviadas quando você entrar de novo com a mesma conta e houver conexão. Não limpe os dados do navegador antes disso.`
+        : `Há ${plural} neste aparelho.\n\nElas continuam na fila e serão enviadas normalmente, com qualquer empresa aberta.`,
+      { titulo: "Evidências na fila", confirmarRotulo: acao === "sair" ? "Sair mesmo assim" : "Trocar mesmo assim" }
+    );
+  }
+
+  // Arquivo enviado pela fila: a evidência passa a apontar para ele e mostra "Enviada".
+  function aplicarEvidenciaEnviada(item: ItemSemArquivo, resultado: { pathname: string; url: string }): boolean {
+    const existe = (dbAtualRef.current.evidencias || []).some((ev) => ev.id === item.id);
+    if (!existe) {
+      // A evidência foi removida enquanto esperava: não deixa o arquivo órfão no armazenamento.
+      void fetch(`/api/evidencias/file?pathname=${encodeURIComponent(resultado.pathname)}`, { method: "DELETE" }).catch(() => undefined);
+      return true;
+    }
+    atualizarEvidenciaRegistrada(item.id, (ev) => ({ ...ev, blobPathname: resultado.pathname, blobUrl: resultado.url, envio: "enviada" }));
+    return true;
+  }
+
   async function sairDoSistema() {
     if (saindo) return;
+    if (!(await confirmarComFila("sair"))) return;
     setSaindo(true);
     try {
       await authClient.signOut();
@@ -1793,6 +1825,18 @@ export default function Home() {
       (usuario) => usuario.email.trim().toLocaleLowerCase("pt-BR") === email
     ) || null;
   }, [db.usuarios, sessaoAtual]);
+
+  // Fila de envio de evidências feitas sem sinal: só do usuário logado, só nas empresas a que ele ainda tem acesso.
+  const usuarioDaFila = (sessaoAtual?.email || "").trim().toLocaleLowerCase("pt-BR") || "local";
+  const dbAtualRef = useRef(db);
+  dbAtualRef.current = db;
+  const online = useOnline();
+  const fila = useFilaDeEvidencias({
+    usuarioId: usuarioDaFila,
+    pronto: ready && (sessaoConsultada || !sessaoAtual),
+    podeAcessarEmpresa: (empresaId) => !usuarioDaSessao || podeAcessarEmpresa(usuarioDaSessao, empresaId),
+    aplicarResultado: aplicarEvidenciaEnviada,
+  });
 
   const ehExecutor = usuarioDaSessao?.perfil === "Executor de campo";
   const ehFiscal = usuarioDaSessao?.perfil === "Fiscal";
@@ -3994,6 +4038,7 @@ export default function Home() {
 
   // Desfazer da foto do item: tira só a evidência recém-criada (um único id), sem mexer nas demais.
   function desfazerFotoDoItem(evidenciaId: string) {
+    void fila.descartar(evidenciaId);
     apagarArquivoDaEvidenciaNaNuvem((db.evidencias || []).find((ev) => ev.id === evidenciaId));
     setDb((o) => {
       const atualizado: AppDB = { ...o, evidencias: (o.evidencias || []).filter((ev) => ev.id !== evidenciaId) };
@@ -4496,15 +4541,25 @@ export default function Home() {
     form.append("visitaId", visitaId);
     form.append("evidenciaId", evidenciaId);
 
-    const response = await fetch("/api/evidencias/upload", {
-      method: "POST",
-      body: form,
-    });
+    form.append("chaveEnvio", evidenciaId);
 
-    const body = await response.json().catch(() => null);
+    let response: Response;
+    try {
+      response = await fetch("/api/evidencias/upload", {
+        method: "POST",
+        body: form,
+      });
+    } catch {
+      throw new FalhaDeEnvio("rede", "Sem conexão para enviar a evidência.");
+    }
 
-    if (!response.ok || !body?.pathname) {
-      throw new Error(
+    const ehJson = (response.headers.get("content-type") || "").includes("application/json");
+    const body = ehJson ? await response.json().catch(() => null) : null;
+    const causa = causaDaResposta(response.status, ehJson, response.redirected);
+
+    if (causa || !body?.pathname) {
+      throw new FalhaDeEnvio(
+        causa || "servidor",
         body?.error || "Não foi possível enviar a evidência para o armazenamento."
       );
     }
@@ -4714,14 +4769,50 @@ export default function Home() {
         nomeArquivo = preparo.nome;
       }
 
-      setEvidenciaMsg("Enviando...");
+      const criadoEm = new Date().toISOString();
+      let blob: { pathname: string; url: string } | null = null;
+      let motivoDaFila = "";
+      if (!navigator.onLine) {
+        motivoDaFila = "Sem sinal.";
+      } else {
+        setEvidenciaMsg("Enviando...");
+        try {
+          blob = await enviarArquivoParaBlob(conteudo, nomeArquivo, alvoVisita.id, evidenciaId);
+        } catch (erroDeEnvio) {
+          const causa = erroDeEnvio instanceof FalhaDeEnvio ? erroDeEnvio.causa : "rede";
+          // Erro do arquivo em si (tipo, tamanho): vale a mensagem de sempre, sem fila.
+          if (causa === "invalido") throw erroDeEnvio;
+          motivoDaFila = causa === "sessao" ? "Sessão expirada. Entre de novo para enviar." : "Não foi possível enviar agora.";
+        }
+      }
 
-      const blob = await enviarArquivoParaBlob(
-        conteudo,
-        nomeArquivo,
-        alvoVisita.id,
-        evidenciaId
-      );
+      if (!blob) {
+        // Sem sinal (ou o envio falhou): guarda o arquivo no aparelho, com a data e a hora da captura.
+        try {
+          await fila.guardar(
+            {
+              id: evidenciaId,
+              usuarioId: usuarioDaFila,
+              empresaId: alvoVisita.empresaId,
+              visitaId: alvoVisita.id,
+              tipo,
+              nomeArquivo,
+              mimeType,
+              ambiente: (vinculo ? vinculo.ambiente : evidenciaAmbiente) || "",
+              checklistItemId: (vinculo ? vinculo.checklistItemId : evidenciaChecklistItemId) || undefined,
+              ncId: (vinculo ? vinculo.ncId : evidenciaNcId) || undefined,
+              descricao: (opcoes?.descricao ?? evidenciaDescricao).trim(),
+              capturadoEm: criadoEm,
+            },
+            conteudo
+          );
+        } catch {
+          setEvidenciaMsg("Sem sinal e sem espaço no aparelho para guardar. Libere espaço e tente de novo.");
+          void avisar("Não foi possível guardar o arquivo no aparelho. Libere espaço e tente de novo; sem internet ele não pode ser enviado.", { titulo: "Não foi salvo" });
+          return false;
+        }
+        setAvisoSemSinal(`${motivoDaFila} ${tipo === "Foto" ? "Foto salva" : "Áudio salvo"} no aparelho.`);
+      }
 
       const ev: Evidencia = {
         id: evidenciaId,
@@ -4730,13 +4821,12 @@ export default function Home() {
         tipo,
         nomeArquivo,
         mimeType,
-        blobPathname: blob.pathname,
-        blobUrl: blob.url,
+        ...(blob ? { blobPathname: blob.pathname, blobUrl: blob.url } : { envio: "aguardando" as const }),
         descricao: (opcoes?.descricao ?? evidenciaDescricao).trim(),
         ambiente: (vinculo ? vinculo.ambiente : evidenciaAmbiente) || "",
         checklistItemId: (vinculo ? vinculo.checklistItemId : evidenciaChecklistItemId) || undefined,
         ncId: (vinculo ? vinculo.ncId : evidenciaNcId) || undefined,
-        criadoEm: new Date().toISOString(),
+        criadoEm,
       };
 
       setDb((o) => {
@@ -4757,7 +4847,9 @@ export default function Home() {
 
       setEvidenciaDescricao("");
       setEvidenciaMsg(
-        tipo === "Foto"
+        !blob
+          ? "Salva no aparelho. Aguardando envio."
+          : tipo === "Foto"
           ? "Foto registrada."
           : "Áudio registrado."
       );
@@ -4777,6 +4869,7 @@ export default function Home() {
     const evidencia = (db.evidencias || []).find((ev) => ev.id === id);
     if (!evidencia) return;
     if (!exigirPermissao("evidencias.adicionar", evidencia.empresaId)) return;
+    if (evidencia.envio === "aguardando") void fila.descartar(id);
 
     const ncRelacionada = evidencia.ncId
       ? (db.ncs || []).find((nc) => nc.id === evidencia.ncId)
@@ -5758,7 +5851,7 @@ export default function Home() {
         onFecharMais={() => setMenuMaisAberto(false)}
         utilitarias={[
           { id: "texto", rotulo: "Texto", onClick: () => { setTamanhoTextoRascunho(tamanhoTexto); setPainelTamanhoTextoAberto(true); } },
-          { id: "sincronizar", rotulo: "Sincronizar", onClick: () => { setMenuMaisAberto(false); void atualizarNuvemManualmente(); } },
+          { id: "sincronizar", rotulo: fila.resumo.pendentes ? `Sincronizar · ${fila.resumo.pendentes} ${fila.resumo.pendentes === 1 ? "pendente" : "pendentes"}` : "Sincronizar", onClick: () => { setMenuMaisAberto(false); void atualizarNuvemManualmente(); setView("fila"); } },
           { id: "modo", rotulo: "Modo de tela", onClick: () => { setMenuMaisAberto(false); setView("modotela"); } },
           { id: "sobre", rotulo: "Sobre", onClick: () => void avisar(`${BRAND.name}\n${BRAND.subtitle}`, { titulo: "Sobre" }) },
           { id: "sair", rotulo: "Sair", desabilitado: saindo, onClick: () => { setMenuMaisAberto(false); void sairDoSistema(); } },
@@ -6058,6 +6151,18 @@ export default function Home() {
         {ehFiscal && usuarioDaSessao?.validoAte && (
           <FaixaVisitaOutraEmpresa mensagem={faixaDeLeitura(usuarioDaSessao.validoAte)} />
         )}
+        {avisoSemSinal && (
+          <div className="pc-modal-layer sem-sinal-camada" role="presentation">
+            <div className="pc-modal-backdrop" onClick={() => setAvisoSemSinal(null)} />
+            <section className="pc-modal sem-sinal-folha" role="dialog" aria-modal="true" aria-label="Salvo no aparelho">
+              <p className="sem-sinal-texto">{avisoSemSinal}</p>
+              <p className="ui-row-sub">Vai ser enviada sozinha quando o sinal voltar, com o app aberto. O checklist continua normal.</p>
+              <button type="button" className="ui-btn ui-btn--primary" onClick={() => setAvisoSemSinal(null)} autoFocus>
+                Ok
+              </button>
+            </section>
+          </div>
+        )}
         {popLeituraId && (empresaVisita?.pops || []).some((pop) => pop.id === popLeituraId) && (
           <PopLeituraFolha pop={(empresaVisita?.pops || []).find((pop) => pop.id === popLeituraId)!} onFechar={() => setPopLeituraId(null)} />
         )}
@@ -6173,9 +6278,10 @@ export default function Home() {
             opcoes={opcoesTrocaDeEmpresa}
             corDe={(id) => (db.empresas[id] ? corDaEmpresa(db.empresas[id]) : "#4A5D73")}
             onFechar={() => setTrocarEmpresaAberto(false)}
-            onEscolher={(id) => {
+            onEscolher={async (id) => {
               setTrocarEmpresaAberto(false);
               if (id === db.empresaAtualId) return;
+              if (!(await confirmarComFila("trocar"))) return;
               setDb((o) => ({ ...o, empresaAtualId: id }));
               setVisitaAtualId(null);
               setView("inicio");
@@ -6200,7 +6306,7 @@ export default function Home() {
               { id: "trocar-empresa", rotulo: "Trocar empresa", icone: "empresas", tom: "turquesa", onClick: () => setTrocarEmpresaAberto(true) },
               { id: "ajuda", rotulo: "Ajuda", icone: "ajuda", tom: "laranja", onClick: () => irParaMenu("ajuda") },
               { id: "modo", rotulo: "Modo de tela", icone: "modo", tom: "roxo", onClick: () => setView("modotela") },
-              { id: "sincronizar", rotulo: "Sincronizar", icone: "sincronizar", tom: "verde", onClick: () => void atualizarNuvemManualmente() },
+              { id: "sincronizar", rotulo: fila.resumo.pendentes ? `Sincronizar · ${fila.resumo.pendentes} ${fila.resumo.pendentes === 1 ? "pendente" : "pendentes"}` : "Sincronizar", icone: "sincronizar", tom: "verde", onClick: () => { void atualizarNuvemManualmente(); setView("fila"); } },
               { id: "sair", rotulo: "Sair", icone: "sair", tom: "vermelho", onClick: () => void sairDoSistema() },
             ]}
             destaque={{
@@ -6336,6 +6442,31 @@ export default function Home() {
             onRenovarAcesso={renovarAcessoDoFiscal}
             onEncerrarAcesso={encerrarAcessoDoFiscal}
             motivoNaoExcluir={(usuario) => motivoParaNaoExcluir(usuario, contextoExclusaoUsuario())}
+          />
+        ) : view === "fila" ? (
+          <PcFilaDeEnvio
+            itens={fila.itens}
+            resumo={fila.resumo}
+            online={online}
+            sessaoExpirada={fila.sessaoExpirada}
+            enviando={fila.enviando}
+            limiteTexto={textoDeEspaco(LIMITE_AVISO_FILA_BYTES)}
+            nomeDaEmpresa={(empresaId) => nomeParaExibir(db.empresas[empresaId]) || "Empresa"}
+            onEnviarAgora={() => void fila.enviarAgora()}
+            onRepetir={(id) => void fila.repetir(id)}
+            onDescartar={async (id) => {
+              const item = fila.itens.find((registro) => registro.id === id);
+              if (!item) return;
+              if (!(await confirmar("Descartar este item da fila?\n\nO arquivo será apagado deste aparelho e não será enviado. A evidência sai do registro da visita.", { titulo: "Descartar da fila", confirmarRotulo: "Descartar", perigoso: true }))) return;
+              await fila.descartar(id);
+              setDb((o) => {
+                const atualizado: AppDB = { ...o, evidencias: (o.evidencias || []).filter((ev) => ev.id !== id) };
+                salvarDBLocal(atualizado);
+                return atualizado;
+              });
+            }}
+            onEntrar={() => window.location.assign("/auth/sign-in")}
+            onVoltar={() => setView(modo === "campo" ? "campomais" : "inicio")}
           />
         ) : view === "pops" && atual && telaVisivel("pops") ? (
           <PcPops
@@ -6841,6 +6972,8 @@ export default function Home() {
             data={fdata(visitaAtual.data)}
             totais={{ evidencias: evidenciasVisita.length, fotos: fotosVisita, audios: audiosVisita, revisar: analisesIAPendentes }}
             podeAdicionar={permitido("evidencias.adicionar", visitaAtual.empresaId)}
+            pendentesNaFila={fila.resumo.pendentes}
+            onAbrirFila={() => setView("fila")}
             vinculo={(() => {
               const item = checklistAtual.find((registro) => registro.id === evidenciaChecklistItemId);
               return {
@@ -6900,6 +7033,7 @@ export default function Home() {
                 dataCurta: `${criada.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} · ${hora}`,
                 dataCompleta: `${criada.toLocaleDateString("pt-BR")} · ${hora}`,
                 url: urlEvidencia(ev),
+                envio: ev.envio,
                 possivelNc: ultima?.situacao === "Possível não conformidade",
                 analise: ultima
                   ? {

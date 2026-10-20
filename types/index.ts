@@ -389,6 +389,8 @@ export type Evidencia = {
   checklistItemId?: string;
   ncId?: string;
   analisesIA?: AnaliseFotoIA[];
+  /** Só nas feitas pela fila offline: "aguardando" até o arquivo subir, depois "enviada". Ausente = enviada na hora. */
+  envio?: "aguardando" | "enviada";
   criadoEm: string;
 };
 

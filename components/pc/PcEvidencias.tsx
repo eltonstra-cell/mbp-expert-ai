@@ -1,5 +1,6 @@
 "use client";
 
+import { useOnline } from "@/components/useOnline";
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
 import { RowMenu } from "@/components/ui/RowMenu";
@@ -37,6 +38,8 @@ export type CartaoEvidencia = {
   dataCompleta: string;
   url: string;
   possivelNc: boolean;
+  /** Evidência feita sem sinal: "Aguardando envio" até o arquivo subir, depois "Enviada". */
+  envio?: "aguardando" | "enviada";
   analise: AnaliseEvidencia | null;
   podeAnalisar: boolean;
   /** A empresa ainda não liberou a IA nas fotos: o botão fica cinza com aviso. */
@@ -76,6 +79,9 @@ type Props = {
   onAudio: (arquivo: File | undefined) => boolean | void | Promise<boolean | void>;
   /** Apaga o aviso curto do rodapé (ao cancelar). */
   onLimparMensagem?: () => void;
+  /** Quantas evidências estão na fila de envio do aparelho; o chip abre a Fila de envio. */
+  pendentesNaFila?: number;
+  onAbrirFila?: () => void;
 };
 
 type Aba = "todas" | "fotos" | "audios" | "revisar";
@@ -140,6 +146,7 @@ const PauseIcon = () => (
 
 /** Caixa da sugestão da IA: fundo #FFFBF2 com barra âmbar à esquerda. */
 function CaixaIA({ ev, vazia = false }: { ev: CartaoEvidencia; vazia?: boolean }) {
+  const online = useOnline();
   const [editando, setEditando] = useState(false);
   const [texto, setTexto] = useState("");
   const analise = ev.analise;
@@ -152,8 +159,8 @@ function CaixaIA({ ev, vazia = false }: { ev: CartaoEvidencia; vazia?: boolean }
         <p className="ev7-ia-texto">Ainda não analisada. A IA só sugere; nada vira NC sem a sua confirmação.</p>
         {ev.podeAnalisar && (
           <div className="ev7-ia-acoes">
-            <button type="button" className={`ev7-btn-ia${ev.iaDesligada ? " is-desligada" : ""}`} disabled={ev.analisando || ev.bloqueioIA || ev.iaDesligada} onClick={ev.onAnalisar}>
-              {ev.analisando ? "Analisando..." : "✦ Analisar com IA"}
+            <button type="button" className={`ev7-btn-ia${ev.iaDesligada || !online ? " is-desligada" : ""}`} disabled={ev.analisando || ev.bloqueioIA || ev.iaDesligada || !online} onClick={ev.onAnalisar}>
+              {ev.analisando ? "Analisando..." : !online ? "Precisa de internet" : "✦ Analisar com IA"}
             </button>
             {ev.iaDesligada && <span className="ev7-ia-aviso">{MENSAGEM_IA_DESLIGADA}</span>}
           </div>
@@ -226,6 +233,7 @@ function CaixaIA({ ev, vazia = false }: { ev: CartaoEvidencia; vazia?: boolean }
 }
 
 function Cartao({ ev, onAmpliar }: { ev: CartaoEvidencia; onAmpliar: (id: string) => void }) {
+  const online = useOnline();
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [tocando, setTocando] = useState(false);
   const aguardando = ev.analise?.status === "Aguardando revisão";
@@ -283,11 +291,13 @@ function Cartao({ ev, onAmpliar }: { ev: CartaoEvidencia; onAmpliar: (id: string
           </>
         )}
         <span className="ev7-chip">{ev.dataCurta}</span>
+        {ev.envio === "aguardando" && <span className="ev7-chip ev7-chip--fila">Aguardando envio</span>}
+        {ev.envio === "enviada" && <span className="ev7-chip ev7-chip--enviada">Enviada</span>}
         {aguardando && <span className="ev7-chip ev7-chip--ia">IA aguardando revisão</span>}
         {ev.possivelNc && <Pill tom="nc">Possível NC</Pill>}
         {mostrarAnalisar && (
-          <button type="button" className={`ev7-btn-ia ev7-chips-fim${ev.iaDesligada ? " is-desligada" : ""}`} disabled={ev.analisando || ev.bloqueioIA || ev.iaDesligada} onClick={ev.onAnalisar}>
-            {ev.analisando ? "Analisando..." : ev.analise ? "✦ Analisar novamente" : "✦ Analisar com IA"}
+          <button type="button" className={`ev7-btn-ia ev7-chips-fim${ev.iaDesligada || !online ? " is-desligada" : ""}`} disabled={ev.analisando || ev.bloqueioIA || ev.iaDesligada || !online} onClick={ev.onAnalisar}>
+            {ev.analisando ? "Analisando..." : !online ? "Precisa de internet" : ev.analise ? "✦ Analisar novamente" : "✦ Analisar com IA"}
           </button>
         )}
       </div>
@@ -318,6 +328,8 @@ export default function PcEvidencias({
   onFoto,
   onAudio,
   onLimparMensagem,
+  pendentesNaFila,
+  onAbrirFila,
 }: Props) {
   const [aba, setAba] = useState<Aba>("todas");
   const [filtroAmbiente, setFiltroAmbiente] = useState("");
@@ -711,6 +723,11 @@ export default function PcEvidencias({
             Fotos e áudios da visita · {empresa} · {data}
           </p>
         </div>
+        {pendentesNaFila ? (
+          <button type="button" className="ev7-chip ev7-chip--fila ev7-chip--botao" onClick={onAbrirFila}>
+            {pendentesNaFila} {pendentesNaFila === 1 ? "pendente" : "pendentes"}
+          </button>
+        ) : null}
       </div>
 
       <div className={`ev7-cols${podeAdicionar ? "" : " is-single"}`}>
