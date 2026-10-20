@@ -10,6 +10,8 @@ export function sincronizarNcDoItem(
   const idNc = `${visita.id}:${item.id}`;
   if (item.status === "Não Conforme") {
     const existente = ncs.find((nc) => nc.id === idNc);
+    // Item que volta a "Não Conforme" depois de ter saído: a correção reabre e o histórico registra isso.
+    const reaberta = !!existente && !!existente.inativaNoChecklist;
     const nc = {
       id: idNc,
       empresaId: visita.empresaId,
@@ -23,7 +25,16 @@ export function sincronizarNcDoItem(
       orientacao: item.orientacao || "",
       observacao: item.observacao || "",
       prioridade: item.criticidade || "Rotina",
-      status: existente?.status || ("Aberta" as const),
+      status: reaberta ? ("Aberta" as const) : existente?.status || ("Aberta" as const),
+      ...(reaberta
+        ? {
+            resolvidaEm: undefined,
+            historicoAcompanhamento: [
+              ...(existente.historicoAcompanhamento || []),
+              { id: `${idNc}:reaberta:${agoraIso}`, criadoEm: agoraIso, observacao: "Reaberta: item voltou a Não conforme", status: "Aberta" as const },
+            ],
+          }
+        : {}),
       inativaNoChecklist: false,
       canceladaPeloUsuarioEm: undefined,
       criadoEm: existente?.criadoEm || agoraIso,
