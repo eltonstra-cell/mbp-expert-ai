@@ -3062,3 +3062,7 @@ html[data-modo="campo"] .ev7-filtro-select{max-width:none;flex:1}
 .pc-modo-radio.is-on{border-color:#E8782A;background:#F28C28}
 .pc-modo-quick-list li.is-on{background:#FEF6E6}
 @media (max-height:820px){.pc-modo-quick-list{display:none}}
+/* ===== Pacote 9 · A: contorno das caixas do checklist (Campo, Equilibrado e Completo) ===== */
+.chk-foco-card,.chk-foco-obs,.chk-apoio-linha,.chk-apoio-cartao,.chk-foco-amb,.chk-sel-botao,.amb-cortina{border:2px solid #B4C2CE;box-shadow:0 1px 3px rgba(18,32,43,.08)}
+.amb-cortina{box-shadow:0 14px 36px rgba(18,32,43,.28),0 1px 3px rgba(18,32,43,.08)}
+.chk-apoio-linha.is-aberta .chk-apoio-corpo{right:-2px;left:-2px;border:2px solid #B4C2CE}
