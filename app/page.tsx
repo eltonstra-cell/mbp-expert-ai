@@ -5975,6 +5975,8 @@ export default function Home() {
                     onStatus={(status) => { setItemFocoId(foco.id); atualizarChecklistItem(foco.id, { status, ...(status !== "Não Conforme" ? { observacao: "" } : {}) }); }}
                     onObservacao={(texto) => atualizarChecklistItem(foco.id, { observacao: texto })}
                     podeFotografar={permitido("evidencias.adicionar", visitaAtual.empresaId)}
+                    fila={lista.filter((item) => item.ambiente === foco.ambiente).map((item) => ({ id: item.id, status: item.status }))}
+                    onItem={(id) => { setItemFocoId(id); setUltimoItemChecklistId(id); }}
                     onFotoCapturada={(arquivo) => salvarFotoDoItem(foco, arquivo)}
                     onDesfazerFoto={desfazerFotoDoItem}
                     onLimpar={() => void limparRespostaDoItem(foco.id)}
@@ -6612,7 +6614,7 @@ export default function Home() {
                 ultimaVisita,
                 evidencias: (db.evidencias || [])
                   .filter((ev) => ev.visitaId === visitaAtual.id && ev.checklistItemId === foco.id)
-                  .map((ev) => ({ id: ev.id, url: urlEvidencia(ev), tipo: ev.tipo, nome: ev.descricao?.trim() || ev.nomeArquivo })),
+                  .map((ev) => ({ id: ev.id, url: urlEvidencia(ev), tipo: ev.tipo, nome: ev.descricao?.trim() || ev.nomeArquivo, criadoEm: ev.criadoEm })),
               };
             }
             return (

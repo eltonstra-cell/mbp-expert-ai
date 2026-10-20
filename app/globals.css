@@ -3163,3 +3163,30 @@ html[data-modo="completo"] .chk-pc .chk-obs-area{height:auto;min-height:60px}
 /* ===== Pacote 10 · D: avatar da empresa é só o círculo colorido, sem quadrado atrás ===== */
 .ui-row-icon:has(.emp-avatar-cor),.ui-row-icon:has(.emp-avatar-btn){background:transparent}
 .pc-vcard-mono{border-radius:50%;background:var(--emp-cor,#fff);color:#fff;font-weight:500}
+
+/* Pacote 11 · B: o campo da Observação cede altura quando a tela é baixa (Salvar e próximo nunca sai da tela) */
+.campo-tela .chk-foco-obs{flex:1 1 auto;min-height:0}
+.campo-tela .chk-obs-campo{flex:1 1 auto;min-height:0}
+.campo-tela .chk-obs-campo .chk-obs-area{flex:1 1 auto;height:auto;min-height:52px}
+
+/* ===== Pacote 11 · B: checklist, fonte, texto simples e evolução em segmentos ===== */
+.chk-obs-area,.chk-obs-campo textarea{font-family:inherit}
+.chk-resp,.chk-resp span,.chk-grav{font-weight:400}
+.chk-segmentos{display:flex;align-items:center;gap:5px;padding:3px 3px}
+.chk-seg{position:relative;flex:1 1 0;min-width:0;height:10px;padding:0;border:0;border-radius:5px;cursor:pointer}
+.chk-seg::before{content:"";position:absolute;inset:-12px -2px}
+.chk-seg.is-atual{box-shadow:0 0 0 2px #fff,0 0 0 4px #12202B}
+.chk-seg:focus-visible{outline:3px solid var(--brand);outline-offset:3px}
+.chk-pc-fila{flex-wrap:wrap}
+.chk-pc-num{width:40px;height:40px;border:2px solid transparent;border-radius:10px;background:#fff;color:#000;font-weight:400}
+.chk-pc-num.is-pend{border-color:#DDE3E9;background:#fff;color:#000}
+.chk-pc-num.is-ok{background:#15803D;border-color:#15803D;color:#fff}
+.chk-pc-num.is-nc{background:#D93A3A;border-color:#D93A3A;color:#fff}
+.chk-pc-num.is-na{background:#C3CDD6;border-color:#C3CDD6;color:#000}
+.chk-pc-num.is-atual{border-color:#2456D6;box-shadow:0 0 0 3px #DCE6FB}
+.chk-foto-linha{flex-wrap:wrap}
+.chk-foto-mini{width:56px;height:56px;border-radius:10px}
+.chk-foto-mini-botao{border-radius:10px}
+.chk-apoio-evid{display:flex;flex-direction:column;align-items:flex-start;gap:2px;margin:0}
+.chk-apoio-evid figcaption{font-size:.78rem;color:var(--ink-2)}
+.chk-apoio-foto--audio{font-size:1.2rem}

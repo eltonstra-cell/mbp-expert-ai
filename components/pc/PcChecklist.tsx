@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react";
 import FotoAmpliada from "@/components/FotoAmpliada";
 import AmbientesCortina from "@/components/AmbientesCortina";
 import type { InfoAmbiente } from "@/lib/checklistEnvs";
+import { legendaDaEvidencia, rotuloDoSegmento } from "@/lib/checklistSegmentos";
 import type { ChecklistStatus } from "@/types";
 
 export type ItemDaFila = { id: string; status: ChecklistStatus };
@@ -17,7 +18,7 @@ export type ApoioDoItem = {
   pop?: { codigo: string; titulo: string; situacao: string };
   /** Resultado do mesmo item na visita anterior da empresa. */
   ultimaVisita?: { data: string; status: string; observacao: string };
-  evidencias: { id: string; url: string; tipo: string; nome: string }[];
+  evidencias: { id: string; url: string; tipo: string; nome: string; criadoEm?: string }[];
 };
 
 type Props = {
@@ -129,18 +130,25 @@ function PainelDeApoio({ apoio }: { apoio: ApoioDoItem }) {
       {apoio.evidencias.length > 0 && (
         <CartaoDeApoio titulo="Evidências deste item" tom="verde">
           <div className="chk-apoio-fotos">
-            {apoio.evidencias.slice(0, 6).map((evidencia) =>
-              evidencia.tipo === "Foto" ? (
-                <button key={evidencia.id} type="button" className="chk-apoio-foto-botao" onClick={() => setAmpliadaId(evidencia.id)} aria-label="Ampliar foto">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={evidencia.url} alt={evidencia.nome} className="chk-apoio-foto" />
-                </button>
+            {apoio.evidencias.slice(0, 6).map((evidencia) => {
+              const legenda = legendaDaEvidencia(evidencia.tipo, evidencia.criadoEm || "");
+              return evidencia.tipo === "Foto" ? (
+                <figure key={evidencia.id} className="chk-apoio-evid">
+                  <button type="button" className="chk-apoio-foto-botao" onClick={() => setAmpliadaId(evidencia.id)} aria-label="Ampliar foto">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={evidencia.url} alt="Foto do item" className="chk-apoio-foto" />
+                  </button>
+                  <figcaption>{legenda}</figcaption>
+                </figure>
               ) : (
-                <span key={evidencia.id} className="chk-apoio-foto chk-apoio-foto--audio">
-                  Áudio
-                </span>
-              )
-            )}
+                <figure key={evidencia.id} className="chk-apoio-evid">
+                  <span className="chk-apoio-foto chk-apoio-foto--audio" aria-hidden="true">
+                    {evidencia.tipo === "Áudio" ? "🎙" : "📄"}
+                  </span>
+                  <figcaption>{legenda}</figcaption>
+                </figure>
+              );
+            })}
           </div>
         </CartaoDeApoio>
       )}
@@ -178,7 +186,7 @@ export default function PcChecklist({ titulo, subtitulo, ambientes, ambienteAtua
               type="button"
               className={`chk-pc-num ${CLASSE_DO_STATUS[item.status]}${item.id === itemAtualId ? " is-atual" : ""}`}
               aria-current={item.id === itemAtualId ? "true" : undefined}
-              aria-label={`Item ${indice + 1}: ${item.status}`}
+              aria-label={rotuloDoSegmento(indice, item.status)}
               onClick={() => onItem(item.id)}
             >
               {indice + 1}

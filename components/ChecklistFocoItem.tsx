@@ -7,6 +7,7 @@ import FotoAmpliada from "@/components/FotoAmpliada";
 import AmbientesCortina from "@/components/AmbientesCortina";
 import { NavIcon } from "@/components/NavIcons";
 import type { InfoAmbiente } from "@/lib/checklistEnvs";
+import { COR_DO_SEGMENTO, rotuloDoSegmento } from "@/lib/checklistSegmentos";
 import { useCapturaCamera } from "@/components/useCapturaMidia";
 import { estadosDosBotoes, gravidadeSugerida } from "@/lib/checklistUi";
 import type { EstadoVoz } from "@/lib/vozLinha";
@@ -29,6 +30,9 @@ type Props = {
   /** Celular: o cabeçalho do ambiente vira o seletor que abre a cortina com todos os ambientes. */
   ambientes?: InfoAmbiente[];
   onAmbiente?: (nome: string) => void;
+  /** Celular: itens do ambiente, um segmento colorido por item; tocar leva direto ao item. */
+  fila?: { id: string; status: ChecklistStatus }[];
+  onItem?: (id: string) => void;
   /** Destaque rápido do item (ao chegar por "Ver no checklist"). */
   destaque?: boolean;
   podeEditar: boolean;
@@ -82,6 +86,8 @@ export default function ChecklistFocoItem({
   destaque = false,
   ambientes,
   onAmbiente,
+  fila,
+  onItem,
   podeEditar,
   podeFotografar = true,
   miniaturaNoItem = true,
@@ -227,9 +233,25 @@ export default function ChecklistFocoItem({
                 {posicaoNoAmbiente}
               </div>
             )}
-            <div className="chk-foco-bar" role="img" aria-label={`${respondidosAmbiente} de ${totalAmbiente} respondidos`}>
-              <span style={{ width: `${totalAmbiente ? Math.round((respondidosAmbiente / totalAmbiente) * 100) : 0}%` }} />
-            </div>
+            {fila && onItem ? (
+              <div className="chk-segmentos" role="group" aria-label="Itens do ambiente">
+                {fila.map((outro, indice) => (
+                  <button
+                    key={outro.id}
+                    type="button"
+                    className={`chk-seg${outro.id === item.id ? " is-atual" : ""}`}
+                    style={{ background: COR_DO_SEGMENTO[outro.status] }}
+                    aria-label={rotuloDoSegmento(indice, outro.status)}
+                    aria-current={outro.id === item.id ? "true" : undefined}
+                    onClick={() => onItem(outro.id)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="chk-foco-bar" role="img" aria-label={`${respondidosAmbiente} de ${totalAmbiente} respondidos`}>
+                <span style={{ width: `${totalAmbiente ? Math.round((respondidosAmbiente / totalAmbiente) * 100) : 0}%` }} />
+              </div>
+            )}
             <span className="chk-foco-count">
               Item {posicao} de {total} na visita
             </span>
