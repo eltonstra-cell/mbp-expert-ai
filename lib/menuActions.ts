@@ -1,11 +1,11 @@
 // Ações dos menus "⋯" das telas do PC: quais aparecem para cada perfil/situação.
 // Nenhuma delas apaga dado: "arquivar" só marca um campo opcional dentro do próprio JSON.
 
-export type AcaoEmpresa = "editar" | "historico" | "acessos" | "arquivar" | "desarquivar";
+export type AcaoEmpresa = "editar" | "cor" | "historico" | "acessos" | "arquivar" | "desarquivar";
 
 export function acoesDaEmpresa(f: { podeEditar: boolean; podeGerenciarAcessos: boolean; arquivada: boolean }): AcaoEmpresa[] {
   const acoes: AcaoEmpresa[] = [];
-  if (f.podeEditar) acoes.push("editar");
+  if (f.podeEditar) acoes.push("editar", "cor");
   acoes.push("historico");
   if (f.podeGerenciarAcessos) acoes.push("acessos");
   if (f.podeEditar) acoes.push(f.arquivada ? "desarquivar" : "arquivar");

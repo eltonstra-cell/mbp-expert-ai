@@ -17,6 +17,7 @@ import { ocultarAmbiente, mostrarAmbiente, excluirAmbienteOculto, resumoOcultos 
 import { reincidenciaDaNc } from "@/lib/actionPlan";
 import { proximaEtapaDaVisita } from "@/lib/proximaEtapa";
 import { corDaEmpresa, proximaCorLivre } from "@/lib/empresaCor";
+import { BolinhasDeCor } from "@/components/CorDaEmpresa";
 import { conciliarNcs } from "@/lib/ncReconcile";
 import { motivoParaNaoExcluir } from "@/lib/userManagement";
 import { diferencasDeTelas, nivelDaTela, telaDaVisao, telasDiferentesDoPadrao, telasEfetivas, type NivelTela, type TelaKey, type TelasDoUsuario } from "@/lib/screenAccess";
@@ -214,6 +215,7 @@ const ambientesPadrao = [...SETORES_OFICIAIS_MANUAL];
 
 const formEmpresaVazio = {
   cnpj: "",
+  cor: "",
   nomeFantasia: "",
   razaoSocial: "",
   situacao: "",
@@ -2887,7 +2889,7 @@ export default function Home() {
       programasControleQualidade: normalizarProgramasControle(programasEmpresa),
       pops: normalizarPops(popsEmpresa),
       criadoEm: anterior?.criadoEm || new Date().toISOString(),
-      cor: anterior ? anterior.cor : proximaCorLivre(Object.values(db.empresas)),
+      cor: form.cor || (anterior ? anterior.cor : proximaCorLivre(Object.values(db.empresas))),
     };
     setDb((o) => ({
       ...o,
@@ -2912,6 +2914,7 @@ export default function Home() {
   function editarEmpresa(empresa: Empresa) {
     if (!exigirPermissao("empresas.editar", empresa.id)) return;
     const formCarregado = {
+      cor: corDaEmpresa(empresa),
       cnpj: empresa.cnpj || "",
       nomeFantasia: empresa.nomeFantasia || "",
       razaoSocial: empresa.razaoSocial || "",
@@ -3760,8 +3763,9 @@ export default function Home() {
     const responsabilidadesIniciais = criarResponsabilidadesPadrao();
     const fluxosIniciais = criarFluxosOperacionaisPadrao();
     const programasIniciais = criarProgramasControlePadrao();
+    const formNovo = { ...formEmpresaVazio, cor: proximaCorLivre(Object.values(db.empresas)) };
     setEditingEmpresaId(null);
-    setForm(formEmpresaVazio);
+    setForm(formNovo);
     setResponsabilidadesEmpresa(responsabilidadesIniciais);
     setSetoresEmpresa([]);
     setEquipamentosEmpresa([]);
@@ -3769,7 +3773,7 @@ export default function Home() {
     setProgramasEmpresa(programasIniciais);
     setPopsEmpresa([]);
     setAssinaturaEmpresaSalva(assinaturaEdicaoEmpresa({
-      form: formEmpresaVazio,
+      form: formNovo,
       responsabilidades: responsabilidadesIniciais,
       setores: [],
       equipamentos: [],
@@ -6237,6 +6241,10 @@ export default function Home() {
                     />
                   </label>
                     ))}
+                    <div className="md:col-span-2">
+                      <span className="mb-1 block text-xs font-bold text-slate-500">Cor</span>
+                      <BolinhasDeCor valor={form.cor} onEscolher={(cor) => setForm({ ...form, cor })} rotulo="Cor da empresa" variante="linha" />
+                    </div>
                   </div>
                 )}
 

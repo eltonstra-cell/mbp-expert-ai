@@ -1,6 +1,7 @@
 "use client";
 
-import type { CSSProperties } from "react";
+import { useCallback, useState, type CSSProperties } from "react";
+import { CorDaEmpresaJanela } from "@/components/CorDaEmpresa";
 import { ListRow } from "@/components/ui/ListRow";
 import { Pill } from "@/components/ui/Pill";
 import { ProgressBar } from "@/components/ui/ProgressBar";
@@ -8,7 +9,6 @@ import type { ItemMenu } from "@/components/ui/RowMenu";
 import { acoesDaEmpresa } from "@/lib/menuActions";
 import { nomeSemNumerosNoInicio } from "@/lib/navigation";
 import { iniciaisDaEmpresa } from "@/lib/navigation";
-import { PALETA_EMPRESA } from "@/lib/empresaCor";
 
 export type LinhaEmpresa = {
   id: string;
@@ -71,6 +71,13 @@ export default function PcEmpresas({
   mostrarArquivadas,
   onMostrarArquivadas,
 }: Props) {
+  const [corAberta, setCorAberta] = useState<{ id: string; ancora: { left: number; top: number; bottom: number } } | null>(null);
+  const fecharCor = useCallback(() => setCorAberta(null), []);
+  const abrirCor = (id: string) => {
+    const caixa = document.getElementById(`emp-av-${id}`)?.getBoundingClientRect();
+    setCorAberta({ id, ancora: caixa ? { left: caixa.left, top: caixa.top, bottom: caixa.bottom } : { left: 16, top: 120, bottom: 160 } });
+  };
+  const empresaDaCor = corAberta ? empresas.find((item) => item.id === corAberta.id) : undefined;
   return (
     <section className="ui-screen" aria-label="Empresas">
       <div className="ui-head">
@@ -121,6 +128,8 @@ export default function PcEmpresas({
               switch (acao) {
                 case "editar":
                   return { rotulo: "Editar empresa", onClick: () => onGerenciar(empresa.id) };
+                case "cor":
+                  return { rotulo: "Mudar cor", onClick: () => abrirCor(empresa.id) };
                 case "historico":
                   return { rotulo: "Histórico da empresa", onClick: () => onHistorico(empresa.id) };
                 case "acessos":
@@ -138,9 +147,29 @@ export default function PcEmpresas({
                 selecionada={empresa.ativa}
                 esmaecida={empresa.arquivada}
                 icone={
-                  <span className="ui-avatar ui-avatar--round emp-avatar-cor" style={{ "--emp-cor": empresa.cor } as CSSProperties} aria-hidden="true">
-                    {iniciaisDaEmpresa(empresa.nome)}
-                  </span>
+                  empresa.podeGerenciar ? (
+                    <button
+                      type="button"
+                      id={`emp-av-${empresa.id}`}
+                      className="emp-avatar-btn"
+                      aria-label={`Mudar a cor de ${empresa.nome}`}
+                      aria-haspopup="dialog"
+                      onClick={() => abrirCor(empresa.id)}
+                    >
+                      <span className="ui-avatar ui-avatar--round emp-avatar-cor" style={{ "--emp-cor": empresa.cor } as CSSProperties} aria-hidden="true">
+                        {iniciaisDaEmpresa(empresa.nome)}
+                      </span>
+                      <span className="emp-lapis" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M4 20l1-4L16.5 4.5a2.1 2.1 0 0 1 3 3L8 19z" />
+                        </svg>
+                      </span>
+                    </button>
+                  ) : (
+                    <span className="ui-avatar ui-avatar--round emp-avatar-cor" style={{ "--emp-cor": empresa.cor } as CSSProperties} aria-hidden="true">
+                      {iniciaisDaEmpresa(empresa.nome)}
+                    </span>
+                  )
                 }
                 titulo={empresa.nome}
                 chip={empresa.arquivada ? <Pill tom="na">Arquivada</Pill> : empresa.ativa ? <Pill tom="brand">Empresa ativa</Pill> : undefined}
@@ -176,31 +205,22 @@ export default function PcEmpresas({
                   </>
                 }
                 menu={menu}
-                filhos={
-                  empresa.podeGerenciar ? (
-                    <div className="emp-cores" role="group" aria-label={`Cor de ${empresa.nome}`}>
-                      <span className="emp-cores-rotulo">Cor</span>
-                      {PALETA_EMPRESA.map((opcao) => (
-                        <button
-                          key={opcao.hex}
-                          type="button"
-                          className={`emp-cor-bolinha${empresa.cor === opcao.hex ? " is-on" : ""}`}
-                          style={{ background: opcao.hex }}
-                          aria-label={opcao.nome}
-                          aria-pressed={empresa.cor === opcao.hex}
-                          title={opcao.nome}
-                          onClick={() => onCor(empresa.id, opcao.hex)}
-                        />
-                      ))}
-                    </div>
-                  ) : undefined
-                }
               />
             );
           })}
           {empresas.length === 0 && <div className="ui-empty">Nenhuma empresa encontrada com esse termo.</div>}
         </div>
       </div>
+      {corAberta && empresaDaCor && (
+        <CorDaEmpresaJanela
+          nome={empresaDaCor.nome}
+          iniciais={iniciaisDaEmpresa(empresaDaCor.nome)}
+          cor={empresaDaCor.cor}
+          ancora={corAberta.ancora}
+          onEscolher={(cor) => onCor(empresaDaCor.id, cor)}
+          onFechar={fecharCor}
+        />
+      )}
     </section>
   );
 }

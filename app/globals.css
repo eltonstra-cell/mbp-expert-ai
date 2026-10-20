@@ -3130,3 +3130,28 @@ html[data-modo="completo"] .chk-pc .chk-obs-area{height:auto;min-height:60px}
 }
 /* ===== Pacote 10 · B: avatar do usuário neutro (o da empresa é o colorido) ===== */
 .pc-avatar,.pc-user-avatar,.pc-rail-avatar{border:1.5px solid #C9D3DB;background:#EEF1F5;color:#000;font-family:var(--font-display),"Outfit",sans-serif;font-weight:500}
+/* ===== Pacote 10 · C: escolher a cor da empresa pelo avatar (janelinha e folha) ===== */
+.emp-avatar-btn{position:relative;display:inline-grid;flex:none;place-items:center;width:40px;height:40px;padding:0;border:0;border-radius:50%;background:none;cursor:pointer}
+.emp-avatar-btn:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
+.emp-lapis{position:absolute;right:-3px;bottom:-3px;display:grid;place-items:center;width:18px;height:18px;border:1.5px solid #B4C2CE;border-radius:50%;background:#fff;color:var(--ink)}
+.cor-fundo{position:fixed;inset:0;z-index:140}
+.cor-fundo--folha{background:rgba(18,32,43,.25)}
+.cor-janela{position:fixed;display:flex;flex-direction:column;gap:12px;padding:14px 16px 16px;border:2px solid #B4C2CE;border-radius:16px;background:#fff;box-shadow:0 8px 24px rgba(18,32,43,.18)}
+.cor-janela-titulo{font-family:var(--font-display),"Outfit",sans-serif;font-size:.95rem;font-weight:500;color:var(--ink)}
+.cor-bolinhas{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.cor-bolinhas--janela{display:grid;grid-template-columns:repeat(4,30px);gap:10px}
+.cor-bolinhas--folha{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px 8px}
+.cor-bolinha{display:flex;flex-direction:column;align-items:center;gap:4px;padding:0;border:0;background:none;color:var(--ink);cursor:pointer}
+.cor-bolinha-disco{display:block;width:26px;height:26px;border:2px solid #fff;border-radius:50%;box-shadow:0 0 0 1px #B4C2CE}
+.cor-bolinhas--janela .cor-bolinha-disco{width:30px;height:30px}
+.cor-bolinhas--folha .cor-bolinha-disco{width:44px;height:44px}
+.cor-bolinha.is-on .cor-bolinha-disco{box-shadow:0 0 0 2px #12202B}
+.cor-bolinha:focus-visible{outline:3px solid var(--brand);outline-offset:3px;border-radius:50%}
+.cor-bolinha-nome{font-size:.78rem;line-height:1.1;color:var(--ink)}
+.cor-folha{position:fixed;right:0;bottom:0;left:0;display:flex;flex-direction:column;gap:14px;padding:8px 16px calc(18px + env(safe-area-inset-bottom));border:2px solid #B4C2CE;border-bottom:0;border-radius:20px 20px 0 0;background:#fff;box-shadow:0 -8px 24px rgba(18,32,43,.18)}
+.cor-folha-alca{align-self:center;width:40px;height:4px;border-radius:2px;background:#B4C2CE}
+.cor-folha-topo{display:flex;align-items:center;gap:12px;min-width:0}
+.cor-folha-avatar{display:grid;flex:none;place-items:center;width:40px;height:40px;border-radius:50%;background:var(--emp-cor);color:#fff;font-family:var(--font-display),"Outfit",sans-serif;font-size:.9rem;font-weight:500}
+.cor-folha-textos{display:flex;min-width:0;flex-direction:column}
+.cor-folha-titulo{font-family:var(--font-display),"Outfit",sans-serif;font-size:1rem;font-weight:500;color:var(--ink)}
+.cor-folha-nome{overflow:hidden;font-size:.85rem;text-overflow:ellipsis;white-space:nowrap;color:var(--ink-2)}
