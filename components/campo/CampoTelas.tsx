@@ -679,7 +679,10 @@ function quandoCurtoCampo(iso: string) {
 
 export type CartaoMais = { id: string; rotulo: string; icone: NavIconName; tom: string; onClick: () => void };
 
-export function CampoMais({ daVisita, gerais, onVersaoCompleta }: { daVisita: CartaoMais[]; gerais: CartaoMais[]; onVersaoCompleta: () => void }) {
+/** Linha de destaque do Mais (ex.: Empresas), com etiqueta "novo". */
+export type LinhaMais = { rotulo: string; detalhe: string; icone: NavIconName; tom: string; etiqueta?: string; onClick: () => void };
+
+export function CampoMais({ daVisita, gerais, destaque, onVersaoCompleta }: { daVisita: CartaoMais[]; gerais: CartaoMais[]; destaque?: LinhaMais; onVersaoCompleta: () => void }) {
   const cartao = (item: CartaoMais) => (
     <button key={item.id} type="button" className="campo-mais-card" onClick={item.onClick}>
       <span className="campo-mais-tile" style={{ background: `linear-gradient(160deg, var(--tile-${item.tom}-from), var(--tile-${item.tom}-to))` }}>
@@ -696,6 +699,21 @@ export function CampoMais({ daVisita, gerais, onVersaoCompleta }: { daVisita: Ca
           <div className="ui-eyebrow">Desta visita</div>
           <div className="campo-mais-grid">{daVisita.map(cartao)}</div>
         </>
+      )}
+      {destaque && (
+        <button type="button" className="campo-mais-destaque" onClick={destaque.onClick}>
+          <span className="campo-mais-tile" style={{ background: `linear-gradient(160deg, var(--tile-${destaque.tom}-from), var(--tile-${destaque.tom}-to))` }}>
+            <NavIcon name={destaque.icone} size={22} strokeWidth={1.9} />
+          </span>
+          <span className="campo-mais-destaque-textos">
+            <span className="campo-mais-destaque-titulo">
+              {destaque.rotulo}
+              {destaque.etiqueta && <span className="campo-mais-etiqueta">{destaque.etiqueta}</span>}
+            </span>
+            <span className="campo-mais-destaque-sub">{destaque.detalhe}</span>
+          </span>
+          <span aria-hidden="true">›</span>
+        </button>
       )}
       <div className="ui-eyebrow">Geral</div>
       <div className="campo-mais-grid">{gerais.map(cartao)}</div>

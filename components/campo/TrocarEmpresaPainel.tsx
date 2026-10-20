@@ -1,15 +1,20 @@
 "use client";
 
 import { useEffect } from "react";
+import type { CSSProperties } from "react";
+import { iniciaisDaEmpresa } from "@/lib/navigation";
 import type { OpcaoDeEmpresa } from "@/lib/trocarEmpresa";
 
 // Painel inferior do Campo para escolher a empresa ativa. Não faz cadastro nem edição de empresas.
 export default function TrocarEmpresaPainel({
   opcoes,
+  corDe,
   onEscolher,
   onFechar,
 }: {
   opcoes: OpcaoDeEmpresa[];
+  /** Cor da empresa (a mesma do avatar da lista de Empresas). */
+  corDe?: (id: string) => string;
   onEscolher: (id: string) => void;
   onFechar: () => void;
 }) {
@@ -40,7 +45,12 @@ export default function TrocarEmpresaPainel({
                     className={`campo-linha campo-empresa-opcao${opcao.ativa ? " is-ativa" : ""}`}
                     onClick={() => onEscolher(opcao.id)}
                   >
-                    <span>{opcao.nome}</span>
+                    <span className="campo-empresa-nome">
+                      <span className="emp-avatar-mini" style={{ "--emp-cor": corDe ? corDe(opcao.id) : "#4A5D73" } as CSSProperties} aria-hidden="true">
+                        {iniciaisDaEmpresa(opcao.nome)}
+                      </span>
+                      <span>{opcao.nome}</span>
+                    </span>
                     {opcao.ativa && <span className="campo-empresa-ativa">Empresa ativa</span>}
                   </button>
                 </li>

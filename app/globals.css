@@ -3203,3 +3203,32 @@ html[data-modo="completo"] .chk-pc .chk-obs-area{height:auto;min-height:60px}
 .ev7-card-mini:disabled{cursor:default}
 .ev7-card-mini--icone{cursor:default}
 .ev7-card-mini:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
+
+/* ===== Pacote 11 · E: Empresas no Campo (celular) ===== */
+.campo-mais-destaque{display:flex;align-items:center;gap:12px;width:100%;padding:10px 12px;border:2px solid #E8B04B;border-radius:16px;background:#FEF6E6;color:var(--ink);text-align:left;cursor:pointer}
+.campo-mais-destaque .campo-mais-tile{flex:none}
+.campo-mais-destaque-textos{display:flex;min-width:0;flex:1;flex-direction:column;gap:2px}
+.campo-mais-destaque-titulo{display:flex;align-items:center;gap:8px;font-family:var(--font-display),"Outfit",sans-serif;font-size:1.05rem;font-weight:500}
+.campo-mais-destaque-sub{font-size:.84rem;color:var(--ink-2)}
+.campo-mais-etiqueta{padding:1px 8px;border-radius:999px;background:#fff;border:1px solid #E8B04B;font-family:var(--font-body),"Nunito Sans",sans-serif;font-size:.7rem;font-weight:400;color:var(--ink)}
+.cemp{gap:8px}
+.cemp-topo{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.cemp-busca{flex:none}
+.cemp-arquivadas{align-self:flex-start;padding:4px 10px;border:1.5px solid var(--outline);border-radius:999px;background:#fff;font-size:.8rem;color:var(--ink)}
+.cemp-lista{display:flex;min-height:0;flex:1;flex-direction:column;gap:8px;margin:0;padding:0 0 4px;list-style:none;overflow-y:auto}
+.cemp-cartao{display:flex;flex:none;flex-direction:column;gap:6px;padding:10px 12px;border:2px solid #B4C2CE;border-radius:16px;background:#fff}
+.cemp-cartao.is-ativa{border-color:var(--brand);background:#FEF6E6}
+.cemp-cartao.is-arquivada{opacity:.65}
+.cemp-linha{display:flex;align-items:center;gap:10px;min-width:0}
+.cemp-avatar-btn{width:44px;height:44px}
+.cemp-avatar{width:44px;height:44px;border-radius:50%}
+.cemp-textos{display:flex;min-width:0;flex:1;flex-direction:column;gap:3px}
+.cemp-nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--font-display),"Outfit",sans-serif;font-size:1rem;font-weight:500;color:var(--ink)}
+.cemp-situacao{display:flex}
+.cemp-sel{flex:none}
+.cemp-progresso{display:flex;align-items:center;gap:8px}
+.cemp-barra{display:block;flex:1;height:4px;overflow:hidden;border-radius:2px;background:#EEF1F5}
+.cemp-barra span{display:block;height:100%;border-radius:2px;background:var(--ok)}
+.cemp-pct{flex:none;font-size:.76rem;color:var(--ink-2)}
+.campo-empresa-nome{display:flex;min-width:0;align-items:center;gap:10px}
+.emp-avatar-mini{display:grid;flex:none;place-items:center;width:32px;height:32px;border-radius:50%;background:var(--emp-cor,#4A5D73);font-size:.74rem;font-weight:400;color:#fff}

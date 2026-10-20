@@ -32,6 +32,7 @@ import PcCentral, { type PassoCentral } from "@/components/pc/PcCentral";
 import PcPops from "@/components/pc/PcPops";
 import PcVisitas from "@/components/pc/PcVisitas";
 import PcEmpresas from "@/components/pc/PcEmpresas";
+import CampoEmpresas from "@/components/campo/CampoEmpresas";
 import { useScreenMode } from "@/components/useScreenMode";
 import PcModoTela from "@/components/pc/PcModoTela";
 import ChecklistFocoItem from "@/components/ChecklistFocoItem";
@@ -732,6 +733,7 @@ export default function Home() {
   const modo = telaModo.modo;
   // Completo e Equilibrado usam o kit de telas do PC; Campo tem apresentação própria.
   const ehPC = modo !== "campo";
+  const ComponenteEmpresas = ehPC ? PcEmpresas : CampoEmpresas;
   // Evidências, Ambientes, Ajuda, Empresas e Visitas usam as mesmas telas compactas no celular (cabem numa tela, a lista rola por dentro).
   const telaEmLista = true;
   useEffect(() => {
@@ -5769,7 +5771,7 @@ export default function Home() {
               onTrocarEmpresa={() => setTrocarEmpresaAberto(true)}
             />
             <CampoBarra
-              tela={view === "inicio" ? "inicio" : view === "checklist" ? "checklist" : view === "correcoes" ? "correcoes" : view === "campomais" ? "mais" : null}
+              tela={view === "inicio" ? "inicio" : view === "checklist" ? "checklist" : view === "correcoes" ? "correcoes" : view === "campomais" || view === "empresas" ? "mais" : null}
               correcoesAbertas={ncsAbertas}
               podeRegistrar={permitido("evidencias.adicionar") || permitido("visitas.executar")}
               onIr={irParaTelaCampo}
@@ -5856,6 +5858,7 @@ export default function Home() {
         {trocarEmpresaAberto && (
           <TrocarEmpresaPainel
             opcoes={opcoesTrocaDeEmpresa}
+            corDe={(id) => (db.empresas[id] ? corDaEmpresa(db.empresas[id]) : "#4A5D73")}
             onFechar={() => setTrocarEmpresaAberto(false)}
             onEscolher={(id) => {
               setTrocarEmpresaAberto(false);
@@ -5887,6 +5890,14 @@ export default function Home() {
               { id: "sincronizar", rotulo: "Sincronizar", icone: "sincronizar", tom: "verde", onClick: () => void atualizarNuvemManualmente() },
               { id: "sair", rotulo: "Sair", icone: "sair", tom: "vermelho", onClick: () => void sairDoSistema() },
             ]}
+            destaque={{
+              rotulo: "Empresas",
+              detalhe: "Cadastro, cor e seleção",
+              icone: "empresas",
+              tom: "turquesa",
+              etiqueta: "novo",
+              onClick: () => irParaMenu("empresas"),
+            }}
             onVersaoCompleta={() => telaModo.escolherModo("completo")}
           />
         ) : modo === "campo" && view === "inicio" ? (
@@ -8306,7 +8317,7 @@ export default function Home() {
             </section>
           </div>)
         ) : view === "empresas" ? (
-          <PcEmpresas
+          <ComponenteEmpresas
             totalClientes={empresasVisiveis.length}
             busca={buscaEmpresas}
             onBusca={setBuscaEmpresas}
