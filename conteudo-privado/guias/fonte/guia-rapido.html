@@ -9,7 +9,7 @@
   @page { size: A4; margin: 16mm 15mm 18mm; @bottom-left { content: "Ponto Certo · Guia rápido"; font: 9pt "Nunito Sans", sans-serif; color: #3D5160; } @bottom-right { content: "Página " counter(page) " de " counter(pages); font: 9pt "Nunito Sans", sans-serif; color: #3D5160; } }
   :root { --ink:#12202B; --ink2:#3D5160; --borda:#DDE6EA; --creme:#FEF6E6; --chip:#EEF1F5; --marca:#2456D6; }
   * { box-sizing: border-box; }
-  body { margin: 0; font: 10.5pt/1.45 "Nunito Sans", Arial, sans-serif; color: var(--ink); background: #fff; }
+  body { margin: 0; font: 10.2pt/1.4 "Nunito Sans", Arial, sans-serif; color: var(--ink); background: #fff; }
   h1, h2, h3 { font-family: "Outfit", Arial, sans-serif; font-weight: 500; margin: 0; color: var(--ink); }
   header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 10px; border-bottom: 2px solid var(--borda); margin-bottom: 14px; }
   .marca { display: flex; align-items: center; gap: 10px; }
@@ -20,7 +20,9 @@
   .tag { padding: 4px 12px; border-radius: 999px; background: var(--chip); font-size: 9.5pt; color: var(--ink2); }
   .titulo { margin: 4px 0 2px; font-size: 22pt; }
   .lead { margin: 0 0 12px; color: var(--ink2); }
-  section { break-inside: avoid; margin-top: 14px; }
+  section { break-inside: avoid; margin-top: 10px; }
+  section:nth-of-type(2), section:nth-of-type(7) { break-inside: auto; }
+  .duvida { break-inside: avoid; }
   h2 { font-size: 14pt; margin-bottom: 6px; }
   p { margin: 4px 0; }
   table { width: 100%; border-collapse: collapse; margin-top: 4px; }
@@ -72,7 +74,7 @@
   <table>
     <tr><th style="width:24%">Atalho</th><th>Para que serve</th></tr>
     <tr><td><b>Início</b></td><td>Resumo da visita em andamento, com <b>Continuar checklist</b> (com o texto pequeno “48 itens sem resposta”; leva ao primeiro item sem resposta) e <b>Registrar agora</b> lado a lado. O cartão <b>Próxima etapa</b> só aparece quando os itens acabam: “N correções sem plano” (abre Correções) e depois “Gerar relatório” (abre o Relatório), sempre no item ou tela descritos.</td></tr>
-    <tr><td><b>Checklist</b></td><td>Responder os itens, um por vez, ambiente por ambiente. No alto, a evolução do ambiente é uma barra com um segmento por item (verde conforme, vermelho não conforme, cinza não se aplica, claro sem resposta); toque para ir ao item. No computador e no tablet são quadradinhos numerados nas mesmas cores. Em cada item, <b>Foto</b> abre a câmera por cima do item (toque em <b>Capturar</b>) e salva a foto em Evidências, ligada àquele item (com <b>Desfazer</b>); a miniatura de 56 px fica no item e amplia ao toque. No computador a foto aparece em “Evidências deste item”, com a legenda “Foto · hora”. Acima da observação há uma linha: <b>Foto</b>, <b>Falar</b> e <b>IA</b>. <b>Falar</b> vira uma barra azul com medidor de voz, tempo e <b>Parar</b>; ao parar, abre a janela <b>Revisar o que você disse</b>: toque no texto para corrigir e em <b>Usar texto</b> (ou <b>Ditar de novo</b>); ela cabe na tela do celular. Microfone negado: aviso no campo. Ao voltar ao checklist, ele abre no último item em que você estava.</td></tr>
+    <tr><td><b>Checklist</b></td><td>Responder os itens, um por vez. No alto, a evolução do ambiente é uma barra com um segmento por item (verde conforme, vermelho não conforme, cinza não se aplica, claro sem resposta); toque para ir ao item. No computador e no tablet são quadradinhos numerados nas mesmas cores. <b>Foto</b> abre a câmera e salva a foto em Evidências, ligada ao item (com <b>Desfazer</b>); a miniatura de 56 px amplia ao toque. Acima da observação há uma linha: <b>Foto</b>, <b>Falar</b> e <b>IA</b>. <b>Falar</b> vira uma barra azul com medidor, tempo e <b>Parar</b>; ao parar abre a janela <b>Revisar o que você disse</b> (toque no texto para corrigir; <b>Usar texto</b> ou <b>Ditar de novo</b>). Microfone negado: aviso no campo. Ao voltar ao checklist, ele abre no último item.</td></tr>
     <tr><td><b>Registrar</b></td><td>Botão laranja no centro: tira uma foto, envia um arquivo ou grava um áudio e salva como evidência.</td></tr>
     <tr><td><b>Correções</b></td><td>Lista das correções (uma para cada não conformidade), com plano, responsável e prazo. O número laranja mostra quantas estão abertas.</td></tr>
     <tr><td><b>Mais</b></td><td>Os demais atalhos, abaixo.</td></tr>
@@ -80,8 +82,8 @@
   <p style="margin-top:8px"><b>Números iguais em todas as telas:</b> progresso = itens respondidos da visita aberta (“12 de 67 itens respondidos”); <b>Correções</b> = correções abertas; “itens não conformes” vêm do checklist; Evidências aparecem como “16 fotos · 2 áudios”. O Início mostra “Correções abertas na empresa” e avisa se o checklist e as correções não baterem.</p>
   <p><b>Visita de outra empresa:</b> uma faixa âmbar no topo avisa e oferece <b>Trocar para</b> a empresa da visita, sem perder o que está aberto.</p>
   <p><b>Em Mais, “Desta visita”:</b> Central da visita, Ambientes, Evidências, POPs da visita e Relatório.</p>
-  <p><b>Evidências:</b> a lista mostra um cartão por foto ou áudio. Toque em <b>+ Nova evidência</b>, escolha o vínculo no alto: toque na caixa do vínculo; no computador e no tablet largo abrem duas colunas (ambiente à esquerda, item à direita), e no celular são duas etapas (primeiro o ambiente, depois o item, com seta para voltar). Escolher o item fecha a lista, use <b>Tirar foto</b> (abre a câmera do aparelho; toque em <b>Capturar</b>), <b>Áudio</b> (grava na hora; toque em <b>Parar</b> para terminar) ou <b>Arquivo</b> (só imagens), e salve. Cada evidência é uma foto, um áudio ou um arquivo; para trocar use <b>Trocar foto</b>, <b>Gravar de novo</b>, <b>Trocar arquivo</b> ou <b>Remover</b> (com <b>Desfazer</b>). O áudio gravado tem <b>Ouvir</b>/<b>Pausar</b> e a duração. Sem câmera ou microfone liberados, toque em <b>Escolher arquivo</b>. Na lista, cada cartão tem uma miniatura de 56 px (microfone no áudio): toque nela para ampliar a foto, com setas para passar entre as fotos; o áudio tem <b>Ouvir</b>.</p>
-  <p><b>Empresa ativa e cor:</b> cada empresa tem uma cor própria. No alto da tela, o círculo com as iniciais e a caixa branca com contorno na mesma cor, com o selo “Empresa ativa”, mostram em que empresa você está; toque na caixa para trocar. No celular (modo Campo) abra <b>Mais › Empresas</b>: busca, <b>+ Nova</b> e um cartão por empresa. Para mudar a cor, toque no avatar (círculo com lápis) e escolha uma das 8 cores (no celular abre de baixo para cima); vale na hora, em todos os aparelhos (também em <b>⋯ › Mudar cor</b> e no campo <b>Cor</b> de Nova/Editar empresa). <b>Trocar empresa</b> mostra o avatar colorido. O avatar do <b>usuário</b> é sempre cinza claro com iniciais pretas; só o da <b>empresa</b> é colorido.</p>
+  <p><b>Evidências:</b> um cartão por foto ou áudio, com miniatura de 56 px (microfone no áudio); toque na miniatura para ampliar. Toque em <b>+ Nova evidência</b>, escolha o vínculo (ambiente e depois item), use <b>Tirar foto</b>, <b>Áudio</b> ou <b>Arquivo</b> e salve. Para trocar use <b>Trocar foto</b>, <b>Gravar de novo</b>, <b>Trocar arquivo</b> ou <b>Remover</b> (com <b>Desfazer</b>). Sem câmera ou microfone liberados, toque em <b>Escolher arquivo</b>.</p>
+  <p><b>Empresa ativa e cor:</b> cada empresa tem uma cor própria: o círculo com as iniciais e a caixa com o selo “Empresa ativa” no alto mostram onde você está; toque na caixa para trocar. No celular abra <b>Mais › Empresas</b> (busca, <b>+ Nova</b>, um cartão por empresa); toque no avatar (círculo com lápis) para escolher uma das 8 cores, também em <b>⋯ › Mudar cor</b> e no campo <b>Cor</b>. O avatar do <b>usuário</b> é cinza claro com iniciais pretas; só o da <b>empresa</b> é colorido.</p>
   <p><b>Em Mais, “Geral”:</b> Visitas, Trocar empresa, Ajuda, Modo de tela, Sincronizar e Sair.</p>
   <p><b>Modo de tela:</b> em Ajuda e guias, abra <b>Modo de tela</b> (ou use a troca rápida no menu ⋯ do topo) e toque em <b>Campo</b>, <b>Equilibrado</b> ou <b>Completo</b>. A tela muda na hora e a escolha fica guardada neste aparelho, sem botão Salvar e sem perder o que estava aberto. O <b>Nome do aparelho</b> é gravado ao sair do campo, e “Escolher automaticamente pelo aparelho” volta ao modo certo para o tamanho da tela.</p>
 </section>
@@ -108,7 +110,7 @@
   <ul>
     <li><b>Checklist:</b> toque no nome do ambiente, no alto, para abrir a lista de ambientes. Toque numa linha para ir até ele; o número ao lado mostra quantos itens já foram respondidos e o selo vermelho, quantas NCs ele tem.</li>
     <li><b>Visitas:</b> Todas, Em andamento ou Concluídas.</li>
-    <li><b>Evidências:</b> Todas, Fotos, Áudios ou IA para revisar. A caixa <b>Ambiente</b>, com ícone de pino, mostra só as evidências de um ambiente (há também “Sem ambiente”); com um ambiente escolhido ela fica creme com borda âmbar, mostra o nome e um <b>✕</b> para limpar o filtro. A lista e os números das abas acompanham a escolha. Evidência sem descrição não mostra texto no cartão.</li>
+    <li><b>Evidências:</b> Todas, Fotos, Áudios ou IA para revisar; a caixa <b>Ambiente</b> mostra só as de um ambiente.</li>
   </ul>
 </section>
 
@@ -116,6 +118,9 @@
   <h2>5. Voz e IA</h2>
   <div class="caixa"><b>Falar.</b> Fica no canto de baixo do campo de observação. Toque em Falar, dite a observação e toque de novo para parar. O áudio é transcrito para texto e você revisa antes de usar.</div>
   <div class="caixa"><b>IA.</b> Depois de escrever ou ditar, toque em IA para corrigir a gramática e deixar o texto mais claro e objetivo. A IA preserva os fatos e não cria informações novas.</div>
+  <div class="caixa"><b>IA por empresa.</b> Nasce desligada em cada empresa. Administrador e Consultor/RT liberam em Empresas › Editar › <b>Privacidade e guarda</b>; desligada, <b>Analisar com IA</b> fica cinza.</div>
+  <div class="caixa"><b>Guarda de fotos e áudios.</b> 90, 180 (sugerido) ou outro prazo, contado da conclusão da visita. O app só avisa; nada é apagado.</div>
+  <div class="caixa"><b>Antes de fotografar.</b> Uma folha lembra de evitar rostos, crachás e documentos; “Não mostrar de novo” vale só para a visita aberta.</div>
   <div class="caixa"><b>Análise de fotos.</b> A sugestão da IA nasce como “Aguardando revisão”. Você escolhe <b>Confirmar</b>, <b>Editar texto</b> ou <b>Descartar</b>. Nada é criado ou resolvido automaticamente.</div>
 </section>
 
@@ -127,13 +132,11 @@
 
 <section>
   <h2>7. Dúvidas rápidas</h2>
+  <div class="duvida"><b>Que perfis existem?</b>Administrador, Consultor/RT, Cliente Gestor, Gerente e dois novos: <b>Executor de campo</b> (Início, Checklist, Evidências e Registrar) e <b>Fiscal</b> (leitura, validade de 3 a 30 dias; em Acessos: <b>Renovar</b> e <b>Encerrar agora</b>).</div>
   <div class="duvida"><b>Marquei “Não conforme”. O que acontece?</b>O item vira uma correção na aba Correções (se o item voltar a Não conforme depois, a correção reabre como Aberta e o histórico registra “Reaberta”), com a gravidade sugerida pelo critério. Lá você define o que será feito, o responsável e o prazo.</div>
-  <div class="duvida"><b>Um item desapareceu.</b>Confira o filtro da tela (Visitas e Evidências) e volte para “Todas”. No checklist, toque no nome do ambiente, no alto, e escolha o ambiente certo na lista.</div>
-  <div class="duvida"><b>Marquei a resposta errada. Como limpo?</b>No checklist, toque em “Limpar resposta” (aparece quando o item tem resposta). Se o item tinha observação, foto ou gravidade, o app pergunta antes. Logo depois surge o aviso “Resposta limpa · Desfazer” por alguns segundos; se tocar em Desfazer, tudo volta como estava. Se o item tinha gerado uma correção, ela fica como “Cancelada pelo usuário” e deixa de contar como aberta.</div>
+    <div class="duvida"><b>Marquei a resposta errada. Como limpo?</b>No checklist, toque em “Limpar resposta” (aparece quando o item tem resposta). Se o item tinha observação, foto ou gravidade, o app pergunta antes. Logo depois surge o aviso “Resposta limpa · Desfazer” por alguns segundos; se tocar em Desfazer, tudo volta como estava. Se o item tinha gerado uma correção, ela fica como “Cancelada pelo usuário” e deixa de contar como aberta.</div>
   <div class="duvida"><b>Como troco de empresa?</b>Toque na caixa com o nome da empresa no alto da tela (selo “Empresa ativa”) ou use Mais › Trocar empresa. Você só vê as empresas liberadas para o seu acesso.</div>
-  <div class="duvida"><b>O microfone não transcreveu.</b>Confira a internet, permita o uso do microfone e fale por alguns segundos antes de tocar para parar.</div>
-  <div class="duvida"><b>A IA alterou demais a frase.</b>Revise o texto antes de salvar. A IA é um apoio de redação; o registro final continua sob responsabilidade do usuário.</div>
-  <div class="duvida"><b>A foto não foi aceita.</b>O app converte fotos PNG e WebP para JPEG. Se o formato não puder ser aberto (por exemplo, HEIC), aparece uma janela explicando; tire a foto de novo pela câmera do app.</div>
+      <div class="duvida"><b>A foto não foi aceita.</b>Se o formato não puder ser aberto (por exemplo, HEIC), tire a foto de novo pelo botão Foto.</div>
 </section>
 </body>
 </html>
