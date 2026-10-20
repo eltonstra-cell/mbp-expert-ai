@@ -3194,3 +3194,12 @@ html[data-modo="completo"] .chk-pc .chk-obs-area{height:auto;min-height:60px}
 /* ===== Pacote 11 · C: texto pequeno no Continuar checklist ===== */
 .campo-acoes-inicio .campo-btn:has(.campo-btn-detalhe){flex-direction:column;gap:1px;min-height:48px;line-height:1.15}
 .campo-btn-detalhe{font-size:.74rem;opacity:.95}
+
+/* ===== Pacote 11 · D: Evidências, miniatura de 56px no cartão ===== */
+.ev7-card-linha{display:flex;align-items:flex-start;gap:12px;min-width:0}
+.ev7-card-conteudo{display:flex;min-width:0;flex:1;flex-direction:column;gap:6px}
+.ev7-card-mini{display:grid;flex:none;place-items:center;width:56px;height:56px;padding:0;overflow:hidden;border:1px solid #D2DCE4;border-radius:10px;background:#EEF3F7;color:var(--ink-2);cursor:zoom-in}
+.ev7-card-mini img{display:block;width:100%;height:100%;object-fit:cover}
+.ev7-card-mini:disabled{cursor:default}
+.ev7-card-mini--icone{cursor:default}
+.ev7-card-mini:focus-visible{outline:3px solid var(--brand);outline-offset:2px}

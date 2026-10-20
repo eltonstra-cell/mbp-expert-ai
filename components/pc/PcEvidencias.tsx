@@ -118,6 +118,11 @@ const ExpandIcon = ({ tamanho = 12 }: { tamanho?: number }) => (
     <path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7" />
   </Icone>
 );
+const ArquivoIcon = () => (
+  <Icone tamanho={22}>
+    <path d="M7 3h7l5 5v13H7zM14 3v5h5" />
+  </Icone>
+);
 const PlayIcon = () => (
   <svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
     <path d="M7 4l13 8-13 8z" />
@@ -228,8 +233,25 @@ function Cartao({ ev, onAmpliar }: { ev: CartaoEvidencia; onAmpliar: (id: string
     else audio.pause();
   }
 
+  const ehFoto = ev.tipo === "Foto";
   return (
     <article className="ev7-card">
+      <div className="ev7-card-linha">
+        {ehFoto ? (
+          <button type="button" className="ev7-card-mini" disabled={!ev.url} onClick={() => onAmpliar(ev.id)} aria-label="Ampliar a foto">
+            {ev.url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={ev.url} alt="" />
+            ) : (
+              <ArquivoIcon />
+            )}
+          </button>
+        ) : (
+          <span className="ev7-card-mini ev7-card-mini--icone" aria-hidden="true">
+            {ev.tipo === "Áudio" ? <MicIcon /> : <ArquivoIcon />}
+          </span>
+        )}
+        <div className="ev7-card-conteudo">
       <div className="ev7-card-topo">
         <h3 className="ev7-card-titulo">{ev.titulo}</h3>
         {ev.podeExcluir && (
@@ -245,11 +267,7 @@ function Cartao({ ev, onAmpliar }: { ev: CartaoEvidencia; onAmpliar: (id: string
       </div>
       {(ev.descricao || ev.tipo === "Áudio") && <p className="ev7-card-desc">{ev.descricao || "Registro de voz."}</p>}
       <div className="ev7-chips">
-        {ev.tipo === "Foto" ? (
-          <button type="button" className="ev7-chip ev7-chip--botao" disabled={!ev.url} onClick={() => onAmpliar(ev.id)} aria-label="Ver foto ampliada">
-            <ExpandIcon /> Ver foto
-          </button>
-        ) : (
+        {ehFoto ? null : (
           <>
             <button type="button" className="ev7-chip ev7-chip--botao" disabled={!ev.url} onClick={alternarAudio} aria-label={tocando ? "Pausar áudio" : "Ouvir áudio"}>
               {tocando ? <PauseIcon /> : <PlayIcon />} {tocando ? "Pausar" : "Ouvir"}
@@ -267,6 +285,8 @@ function Cartao({ ev, onAmpliar }: { ev: CartaoEvidencia; onAmpliar: (id: string
             {ev.analisando ? "Analisando..." : ev.analise ? "✦ Analisar novamente" : "✦ Analisar com IA"}
           </button>
         )}
+      </div>
+        </div>
       </div>
       {ev.mensagemIA && <div className="ev7-nota">{ev.mensagemIA}</div>}
       <CaixaIA ev={ev} />
