@@ -9,6 +9,7 @@ import { NavIcon } from "@/components/NavIcons";
 import type { InfoAmbiente } from "@/lib/checklistEnvs";
 import { useCapturaCamera } from "@/components/useCapturaMidia";
 import { estadosDosBotoes, gravidadeSugerida } from "@/lib/checklistUi";
+import type { EstadoVoz } from "@/lib/vozLinha";
 import { dependenciasDoNavegador, validarFotoEscolhida } from "@/lib/fotoCompressao";
 import type { ChecklistCriticidade, ChecklistItem, ChecklistStatus } from "@/types";
 
@@ -108,6 +109,8 @@ export default function ChecklistFocoItem({
   const [recente, setRecente] = useState<{ id: string; url: string } | null>(null);
   const [avisoFoto, setAvisoFoto] = useState<{ texto: string; id?: string } | null>(null);
   const [ampliada, setAmpliada] = useState(false);
+  const [estadoVoz, setEstadoVoz] = useState<EstadoVoz>("ocioso");
+  const [avisoVoz, setAvisoVoz] = useState("");
   const arquivoRef = useRef<HTMLInputElement | null>(null);
   const timerFoto = useRef<ReturnType<typeof setTimeout> | null>(null);
   const recenteRef = useRef<{ id: string; url: string } | null>(null);
@@ -159,6 +162,30 @@ export default function ChecklistFocoItem({
     }
     await guardarFoto(arquivo);
   }
+
+  useEffect(() => {
+    if (!avisoVoz) return;
+    const tempo = setTimeout(() => setAvisoVoz(""), 7000);
+    return () => clearTimeout(tempo);
+  }, [avisoVoz]);
+
+  useEffect(() => {
+    setAvisoVoz("");
+  }, [item.id]);
+
+  const botaoFoto = (gravando: boolean) => (
+    <button
+      type="button"
+      className={`chk-linha-foto${gravando ? " is-apagado" : ""}`}
+      disabled={!podeFotografar || salvandoFoto || camera.ativa || gravando}
+      onClick={() => {
+        setAvisoFoto(null);
+        void camera.abrir();
+      }}
+    >
+      <NavIcon name="registrar" size={18} strokeWidth={1.9} /> <span>{salvandoFoto ? "Salvando..." : "Foto"}</span>
+    </button>
+  );
 
   function desfazerFoto() {
     if (!recente) return;
@@ -276,30 +303,20 @@ export default function ChecklistFocoItem({
             </button>
           )}
         </div>
-        <div className="chk-foco-tools">
-          <button
-            type="button"
-            className="chk-tool chk-tool--foto"
-            disabled={!podeFotografar || salvandoFoto || camera.ativa}
-            onClick={() => {
-              setAvisoFoto(null);
-              void camera.abrir();
-            }}
-          >
-            <NavIcon name="registrar" size={18} strokeWidth={1.9} /> {salvandoFoto ? "Salvando..." : "Foto"}
-          </button>
-          <button
-            type="button"
-            className="chk-tool chk-tool--ditar"
-            disabled={!podeEditar}
-            onClick={() => {
-              areaRef.current?.focus();
-              caixaRef.current?.querySelector<HTMLButtonElement>(".field-assist-voice")?.click();
-            }}
-          >
-            <NavIcon name="microfone" size={18} strokeWidth={1.9} /> Ditar
-          </button>
-        </div>
+        {podeEditar ? (
+          <FieldVoiceTools
+            variante="linha"
+            linhaInicio={botaoFoto}
+            onEstado={setEstadoVoz}
+            onAviso={setAvisoVoz}
+            fieldKey={`checklist-${item.id}`}
+            value={texto}
+            onChange={setTexto}
+            contexto="Observação de um item de checklist de boas práticas em segurança dos alimentos."
+          />
+        ) : (
+          <div className="voz-linha">{botaoFoto(false)}</div>
+        )}
         {((recente && miniaturaNoItem) || avisoFoto || camera.aviso) && (
           <div className="chk-foto-linha" role="status">
             {recente && miniaturaNoItem && (
@@ -369,15 +386,21 @@ export default function ChecklistFocoItem({
             className="ui-input chk-obs-area"
             value={texto}
             disabled={!podeEditar}
-            placeholder="Ex.: termômetro a 9 °C"
+            placeholder={estadoVoz === "gravando" ? "Ouvindo… fale a observação" : "Ex.: termômetro a 9 °C"}
             aria-label="Observação do item"
             onChange={(evento) => setTexto(evento.target.value)}
             onBlur={salvarTexto}
           />
-          {podeEditar && (
-            <div className="chk-obs-voz">
-              <FieldVoiceTools fieldKey={`checklist-${item.id}`} value={texto} onChange={setTexto} contexto="Observação de um item de checklist de boas práticas em segurança dos alimentos." />
-            </div>
+          {estadoVoz !== "ocioso" && (
+            <span className="chk-obs-ouvindo" role="status">
+              {estadoVoz === "gravando" ? "Ouvindo… o texto entra quando você parar" : "Transcrevendo…"}
+              <span className="chk-cursor" aria-hidden="true" />
+            </span>
+          )}
+          {avisoVoz && (
+            <span className="chk-obs-aviso" role="alert">
+              {avisoVoz}
+            </span>
           )}
         </div>
       </div>

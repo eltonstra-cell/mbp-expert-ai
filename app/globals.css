@@ -3098,3 +3098,33 @@ html[data-modo="completo"] .emp-ativa-avatar{width:34px;height:34px;font-size:.8
 .emp-cor-bolinha{width:22px;height:22px;padding:0;border:2px solid #fff;border-radius:50%;box-shadow:0 0 0 1px #B4C2CE;cursor:pointer}
 .emp-cor-bolinha.is-on{box-shadow:0 0 0 2px var(--ink)}
 .emp-cor-bolinha:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
+/* ===== Pacote 10 · A: Observação em uma linha (Foto, Falar, IA) ===== */
+.voz-linha{display:flex;flex:none;align-items:center;gap:8px;min-width:0}
+.chk-linha-foto,.voz-btn,.voz-barra{display:inline-flex;flex:none;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 14px;border:0;border-radius:12px;color:#fff;font-size:.92rem;font-weight:400;line-height:1;white-space:nowrap}
+.chk-linha-foto{background:linear-gradient(135deg,#F28C1E,#E8760A);cursor:pointer}
+.voz-btn{background:#2BA6E8;cursor:pointer}
+.chk-linha-foto svg,.voz-btn svg{width:18px;height:18px;flex:none}
+.chk-linha-foto:disabled,.voz-btn:disabled{cursor:default;opacity:.55}
+.chk-linha-foto.is-apagado{opacity:.4}
+.chk-linha-foto:focus-visible,.voz-btn:focus-visible,.voz-ia:focus-visible,.voz-parar:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
+.voz-ia{display:inline-flex;flex:none;align-items:center;justify-content:center;gap:6px;height:32px;margin-left:auto;padding:0 12px;border:1.5px solid #DDE6EA;border-radius:12px;background:#fff;color:var(--ink);font-size:.88rem;font-weight:400;line-height:1;cursor:pointer}
+.voz-ia > span:first-child{color:#2BA6E8}
+.voz-ia:disabled{cursor:default;opacity:.55}
+.voz-ia.is-apagado{opacity:.4}
+.voz-barra{flex:1;min-width:0;justify-content:flex-start;gap:10px;background:#2BA6E8}
+.voz-ponto{flex:none;width:9px;height:9px;border-radius:50%;background:#fff;animation:voz-pisca 1s ease-in-out infinite}
+.voz-medidor{display:flex;flex:1;min-width:0;align-items:center;justify-content:center;gap:3px;height:22px}
+.voz-medidor span{width:3px;min-height:4px;border-radius:2px;background:#fff;transition:height .08s linear}
+.voz-tempo{flex:none;font-variant-numeric:tabular-nums}
+.voz-parar{flex:none;height:26px;padding:0 12px;border:1.5px solid #fff;border-radius:9px;background:transparent;color:#fff;font-size:.85rem;font-weight:400;line-height:1;cursor:pointer}
+@keyframes voz-pisca{50%{opacity:.35}}
+.chk-obs-campo .chk-obs-area{padding-bottom:8px}
+.chk-obs-area{height:104px;min-height:104px}
+.chk-obs-ouvindo{position:absolute;left:10px;bottom:8px;display:inline-flex;align-items:center;gap:4px;font-size:.8rem;color:var(--ink-2);pointer-events:none}
+.chk-cursor{display:inline-block;width:2px;height:14px;background:var(--ink);animation:voz-pisca 1s steps(1) infinite}
+.chk-obs-aviso{display:block;margin-top:4px;padding:6px 10px;border:1.5px solid #E8B04B;border-radius:10px;background:#FEF6E6;font-size:.84rem;line-height:1.25;color:var(--ink)}
+html[data-modo="completo"] .chk-pc .chk-obs-area{height:auto;min-height:60px}
+@media (max-width:520px){
+  .voz-linha.is-gravando .voz-ia{display:none}
+  .voz-barra{padding:0 10px;gap:8px}
+}

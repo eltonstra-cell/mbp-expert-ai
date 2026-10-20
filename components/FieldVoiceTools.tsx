@@ -1,11 +1,12 @@
 "use client";
 
 import { avisar } from "@/lib/dialogos";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useIaPermitida } from "@/components/IaPermissionContext";
 import RevisaoTranscricao from "@/components/RevisaoTranscricao";
 import { iniciarMedidorDeVolume } from "@/components/useNivelDeAudio";
 import { MENSAGEM_SEM_FALA, ehSilencio } from "@/lib/transcricao";
+import { estadoDaLinha, formatarTempo, type EstadoVoz } from "@/lib/vozLinha";
 
 type Props = {
   fieldKey: string;
@@ -17,6 +18,14 @@ type Props = {
   rotuloIa?: string;
   /** Texto do botão de voz (padrão "Falar"). */
   rotuloVoz?: string;
+  /** "linha": uma linha só (item à esquerda, Falar e IA), com barra de gravação e avisos no próprio campo. */
+  variante?: "padrao" | "linha";
+  /** Variante linha: botão que vem antes do Falar (ex.: Foto); recebe se está gravando. */
+  linhaInicio?: (gravando: boolean) => ReactNode;
+  /** Variante linha: situação da voz (para o campo mostrar "Ouvindo…"). */
+  onEstado?: (estado: EstadoVoz) => void;
+  /** Variante linha: avisos de erro dados no próprio campo, em vez de uma janela. */
+  onAviso?: (texto: string) => void;
 };
 
 function juntarTexto(atual: string, novo: string) {
@@ -46,6 +55,10 @@ export default function FieldVoiceTools({
   somenteVoz = false,
   rotuloIa = "IA",
   rotuloVoz = "Falar",
+  variante = "padrao",
+  linhaInicio,
+  onEstado,
+  onAviso,
 }: Props) {
   const iaPermitida = useIaPermitida();
   const [gravando, setGravando] = useState(false);
@@ -54,10 +67,33 @@ export default function FieldVoiceTools({
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
-  const medidorRef = useRef<{ pico: () => number; parar: () => void } | null>(null);
+  const medidorRef = useRef<{ pico: () => number; nivel: () => number; parar: () => void } | null>(null);
+  const [barras, setBarras] = useState<number[]>([0, 0, 0, 0, 0, 0, 0]);
+  const [segundos, setSegundos] = useState(0);
   const inicioRef = useRef(0);
   const [proposta, setProposta] = useState<string | null>(null);
   const [aviso, setAviso] = useState("");
+
+  const avisarErro = (texto: string) => {
+    if (onAviso) onAviso(texto);
+    else void avisar(texto);
+  };
+
+  useEffect(() => {
+    onEstado?.(gravando ? "gravando" : transcrevendo ? "transcrevendo" : "ocioso");
+  }, [gravando, transcrevendo, onEstado]);
+
+  // Medidor de barrinhas e relógio enquanto grava (só o volume do momento; nada é guardado).
+  useEffect(() => {
+    if (!gravando || variante !== "linha") return;
+    setSegundos(0);
+    const tempo = window.setInterval(() => {
+      const nivel = medidorRef.current?.nivel() ?? 0;
+      setBarras((antes) => [...antes.slice(1), Math.min(1, nivel * 2.2)]);
+      setSegundos(Math.floor((Date.now() - inicioRef.current) / 1000));
+    }, 100);
+    return () => window.clearInterval(tempo);
+  }, [gravando, variante]);
 
   useEffect(() => {
     if (!aviso) return;
@@ -76,7 +112,7 @@ export default function FieldVoiceTools({
     }
 
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
-      void avisar("Este dispositivo não oferece gravação de áudio compatível.");
+      avisarErro("Este aparelho não grava áudio para ditar. Digite a observação.");
       return;
     }
 
@@ -98,7 +134,7 @@ export default function FieldVoiceTools({
         setGravando(false);
         setTranscrevendo(false);
         stream.getTracks().forEach((track) => track.stop());
-        void avisar("Não foi possível gravar o áudio.");
+        avisarErro("Não foi possível gravar o áudio. Tente de novo ou digite.");
       };
 
       recorder.onstop = async () => {
@@ -148,7 +184,7 @@ export default function FieldVoiceTools({
           // O texto ouvido só entra no campo depois da revisão.
           setProposta(texto);
         } catch (error) {
-          void avisar(error instanceof Error ? error.message : "Não foi possível transcrever o áudio.");
+          avisarErro(error instanceof Error ? error.message : "Não foi possível transcrever o áudio.");
         } finally {
           setTranscrevendo(false);
           chunksRef.current = [];
@@ -161,7 +197,7 @@ export default function FieldVoiceTools({
       setGravando(true);
     } catch (error) {
       setGravando(false);
-      void avisar("Não consegui acessar o microfone. Verifique a permissão do navegador.");
+      avisarErro("Não consegui usar o microfone. Libere o microfone nas permissões do navegador e tente de novo, ou digite.");
     }
   }
 
@@ -194,6 +230,72 @@ export default function FieldVoiceTools({
     } finally {
       setMelhorando(false);
     }
+  }
+
+  const extras = (
+    <>
+      {aviso && (
+        <div className="pc-toast voz-toast" role="status">
+          <span>{aviso}</span>
+        </div>
+      )}
+      {proposta !== null && (
+        <RevisaoTranscricao
+          texto={proposta}
+          onDescartar={() => setProposta(null)}
+          onDitarDeNovo={() => {
+            setProposta(null);
+            void iniciarOuParar();
+          }}
+          onUsar={(texto) => {
+            onChange(juntarTexto(value, texto));
+            setProposta(null);
+          }}
+        />
+      )}
+    </>
+  );
+
+  if (variante === "linha") {
+    if (!iaPermitida) return <div className="voz-linha">{linhaInicio?.(false)}</div>;
+    const estado = estadoDaLinha(gravando ? "gravando" : transcrevendo ? "transcrevendo" : "ocioso", { podeFotografar: true, melhorando });
+    return (
+      <>
+        <div className={`voz-linha${gravando ? " is-gravando" : ""}`}>
+          {linhaInicio?.(gravando)}
+          {estado.falar.modo === "barra" ? (
+            <div className="voz-falar voz-barra" role="status" aria-label="Gravando a observação">
+              <span className="voz-ponto" aria-hidden="true" />
+              <span className="voz-medidor" aria-hidden="true">
+                {barras.map((nivel, indice) => (
+                  <span key={indice} style={{ height: `${4 + Math.round(nivel * 14)}px` }} />
+                ))}
+              </span>
+              <span className="voz-tempo">{formatarTempo(segundos)}</span>
+              <button type="button" className="voz-parar" onClick={iniciarOuParar}>
+                Parar
+              </button>
+            </div>
+          ) : (
+            <button type="button" className="voz-falar voz-btn" onClick={iniciarOuParar} disabled={estado.falar.desativado} title="Falar a observação">
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="9" y="3" width="6" height="11" rx="3" />
+                <path d="M6 10a6 6 0 0 0 12 0" />
+                <path d="M12 16v5M9 21h6" />
+              </svg>
+              <span>{transcrevendo ? "Transcrevendo" : rotuloVoz}</span>
+            </button>
+          )}
+          {!somenteVoz && (
+            <button type="button" className={`voz-ia${estado.ia.apagado ? " is-apagado" : ""}`} onClick={melhorar} disabled={estado.ia.desativado} title="Melhorar texto com IA">
+              <span aria-hidden="true">✦</span>
+              <span>{melhorando ? "Ajustando" : rotuloIa}</span>
+            </button>
+          )}
+        </div>
+        {extras}
+      </>
+    );
   }
 
   if (!iaPermitida) return null;
