@@ -15,6 +15,7 @@ import { passoDaView, passosDaTrilha, percentualDaVisita, type PassoVisita } fro
 import { conferenciaDoRelatorio } from "@/lib/reportCheck";
 import { ocultarAmbiente, mostrarAmbiente, excluirAmbienteOculto, resumoOcultos } from "@/lib/hiddenEnvs";
 import { reincidenciaDaNc } from "@/lib/actionPlan";
+import { proximaEtapaDaVisita } from "@/lib/proximaEtapa";
 import { conciliarNcs } from "@/lib/ncReconcile";
 import { motivoParaNaoExcluir } from "@/lib/userManagement";
 import { diferencasDeTelas, nivelDaTela, telaDaVisao, telasDiferentesDoPadrao, telasEfetivas, type NivelTela, type TelaKey, type TelasDoUsuario } from "@/lib/screenAccess";
@@ -5883,7 +5884,9 @@ export default function Home() {
             const ordemAmbientes = alvo?.ambientes?.length ? alvo.ambientes : [...new Set(lista.map((item) => item.ambiente))];
             const proximoItem = ordemAmbientes.flatMap((nome) => lista.filter((item) => item.ambiente === nome)).find((item) => item.status === "Pendente");
             const itensDoAmbiente = proximoItem ? lista.filter((item) => item.ambiente === proximoItem.ambiente) : [];
-            const abertasDoAlvo = alvo ? (db.ncs || []).filter((nc) => nc.visitaId === alvo.id && !nc.inativaNoChecklist && nc.status !== "Resolvida").length : 0;
+            const ncsAbertasDoAlvo = alvo ? (db.ncs || []).filter((nc) => nc.visitaId === alvo.id && !nc.inativaNoChecklist && nc.status !== "Resolvida") : [];
+            const abertasDoAlvo = ncsAbertasDoAlvo.length;
+            const etapaDoAlvo = alvo ? proximaEtapaDaVisita(lista.filter((item) => item.status === "Pendente").length, ncsAbertasDoAlvo) : null;
             return (
               <CampoInicio
                 usuario={usuarioDaSessao?.nome || ""}
@@ -5904,21 +5907,33 @@ export default function Home() {
                 onVisitas={() => irParaMenu("visitas")}
                 onIniciar={permitido("visitas.criar", atual?.id) && atual ? novaVisita : undefined}
                 proxima={
-                  proximoItem
+                  etapaDoAlvo
                     ? {
-                        ambiente: infosAmbientes.find((info) => info.nome === proximoItem.ambiente)?.rotulo || proximoItem.ambiente,
-                        numero: itensDoAmbiente.findIndex((item) => item.id === proximoItem.id) + 1,
-                        total: itensDoAmbiente.length,
-                        texto: proximoItem.titulo,
+                        titulo: etapaDoAlvo.titulo,
+                        detalhe:
+                          etapaDoAlvo.tipo === "checklist" && proximoItem
+                            ? `${infosAmbientes.find((info) => info.nome === proximoItem.ambiente)?.rotulo || proximoItem.ambiente} · Item ${itensDoAmbiente.findIndex((item) => item.id === proximoItem.id) + 1} de ${itensDoAmbiente.length}: ${proximoItem.titulo}`
+                            : etapaDoAlvo.tipo === "correcoes"
+                              ? "Defina ação, responsável e prazo de cada uma."
+                              : "Checklist e correções em dia. Falta o relatório.",
                       }
                     : null
                 }
                 onProxima={() => {
-                  if (!alvo || !proximoItem) return;
-                  continuar(alvo.id, true);
-                  setItemFocoId(proximoItem.id);
-                  setAmbienteChecklistAtivo(proximoItem.ambiente);
-                  setUltimoItemChecklistId(proximoItem.id);
+                  if (!alvo || !etapaDoAlvo) return;
+                  if (etapaDoAlvo.tipo === "checklist") {
+                    if (!proximoItem) return;
+                    continuar(alvo.id, true);
+                    setItemFocoId(proximoItem.id);
+                    setAmbienteChecklistAtivo(proximoItem.ambiente);
+                    setUltimoItemChecklistId(proximoItem.id);
+                  } else if (etapaDoAlvo.tipo === "correcoes") {
+                    irParaTelaCampo("correcoes");
+                  } else {
+                    setDb((estado) => ({ ...estado, empresaAtualId: alvo.empresaId }));
+                    setVisitaAtualId(alvo.id);
+                    setView("relatorio");
+                  }
                 }}
               />
             );

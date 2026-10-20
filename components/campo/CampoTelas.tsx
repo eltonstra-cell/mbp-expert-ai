@@ -106,8 +106,8 @@ export function CampoInicio({
   onAbrirVisita: (id: string) => void;
   onVisitas: () => void;
   onIniciar?: () => void;
-  /** Próximo item pendente do checklist ativo. */
-  proxima?: { ambiente: string; numero: number; total: number; texto: string } | null;
+  /** Próxima pendência da visita (uma por vez): checklist, correções ou relatório. */
+  proxima?: { titulo: string; detalhe: string } | null;
   onProxima?: () => void;
 }) {
   const percentual = total > 0 ? Math.round((respondidos / total) * 100) : 0;
@@ -158,14 +158,13 @@ export function CampoInicio({
       )}
 
       {visitaAtiva && proxima && onProxima && (
-        <button type="button" className="campo-proxima" onClick={onProxima} aria-label={`Próxima etapa: ${proxima.ambiente}, item ${proxima.numero}. ${proxima.texto}`}>
+        <button type="button" className="campo-proxima" onClick={onProxima} aria-label={`Próxima etapa: ${proxima.titulo}. ${proxima.detalhe}`}>
           <span className="campo-proxima-corpo">
             <span className="ui-eyebrow">Próxima etapa</span>
             <span className="campo-proxima-titulo">
-              <span className="campo-proxima-amb">{proxima.ambiente}</span>
-              <span className="campo-proxima-item"> · Item {proxima.numero} de {proxima.total}</span>
+              <span className="campo-proxima-amb">{proxima.titulo}</span>
             </span>
-            <span className="campo-proxima-texto">{proxima.texto}</span>
+            <span className="campo-proxima-texto">{proxima.detalhe}</span>
           </span>
           <span className="campo-proxima-seta" aria-hidden="true">›</span>
         </button>
