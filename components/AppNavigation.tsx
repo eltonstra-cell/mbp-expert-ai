@@ -60,7 +60,7 @@ type Props = {
   usuario: { nome: string; perfil: string; iniciais: string } | null;
   versao: string;
   /** Grupo "Visita atual" do menu do PC; null quando não há visita aberta. */
-  visitaMenu?: { empresa: string; data: string; passos: PassoTrilha[]; atual: PassoVisita | null; emTelaDaVisita: boolean } | null;
+  visitaMenu?: { empresa: string; cor?: string; data: string; passos: PassoTrilha[]; atual: PassoVisita | null; emTelaDaVisita: boolean } | null;
   /** Abre a janela "Meu perfil" (menu do cartão do usuário). */
   onMeuPerfil?: () => void;
   onIrPasso?: (passo: PassoVisita) => void;
@@ -364,7 +364,7 @@ export default function AppNavigation({
                   aria-label={`Central da visita de ${visitaMenu.empresa}`}
                   onClick={() => onIrPasso?.("central")}
                 >
-                  <span className="pc-vcard-mono" aria-hidden="true">
+                  <span className="pc-vcard-mono" style={{ "--emp-cor": visitaMenu.cor || "#4A5D73" } as CSSProperties} aria-hidden="true">
                     {iniciaisDaEmpresa(visitaMenu.empresa, usuario?.iniciais || "?")}
                   </span>
                   <span className="pc-vgroup-text">

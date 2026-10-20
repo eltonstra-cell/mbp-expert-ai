@@ -3155,3 +3155,6 @@ html[data-modo="completo"] .chk-pc .chk-obs-area{height:auto;min-height:60px}
 .cor-folha-textos{display:flex;min-width:0;flex-direction:column}
 .cor-folha-titulo{font-family:var(--font-display),"Outfit",sans-serif;font-size:1rem;font-weight:500;color:var(--ink)}
 .cor-folha-nome{overflow:hidden;font-size:.85rem;text-overflow:ellipsis;white-space:nowrap;color:var(--ink-2)}
+/* ===== Pacote 10 · D: avatar da empresa é só o círculo colorido, sem quadrado atrás ===== */
+.ui-row-icon:has(.emp-avatar-cor),.ui-row-icon:has(.emp-avatar-btn){background:transparent}
+.pc-vcard-mono{border-radius:50%;background:var(--emp-cor,#fff);color:#fff;font-weight:500}

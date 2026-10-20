@@ -5468,7 +5468,7 @@ export default function Home() {
         contagens={contagensMenu}
         visita={cartaoVisita}
         onSair={() => void sairDoSistema()}
-        visitaMenu={ehPC && visitaAbertaNoMenu ? { empresa: nomeSemNumerosNoInicio(nomeParaExibir(empresaVisita)), data: `${visitaAtual ? fdata(visitaAtual.data).slice(0, 5) : ""} · ${visitaAtual?.status === "Concluída" ? "concluída" : "em andamento"}`, passos: passosDaTrilha(dadosTrilha).filter((passo) => telaVisivel(passo.chave === "pops" ? "popsVisita" : (passo.chave as TelaKey))), atual: passoAtualDaTrilha, emTelaDaVisita: VISIT_VIEWS.includes(view) } : null}
+        visitaMenu={ehPC && visitaAbertaNoMenu ? { empresa: nomeSemNumerosNoInicio(nomeParaExibir(empresaVisita)), cor: empresaVisita ? corDaEmpresa(empresaVisita) : undefined, data: `${visitaAtual ? fdata(visitaAtual.data).slice(0, 5) : ""} · ${visitaAtual?.status === "Concluída" ? "concluída" : "em andamento"}`, passos: passosDaTrilha(dadosTrilha).filter((passo) => telaVisivel(passo.chave === "pops" ? "popsVisita" : (passo.chave as TelaKey))), atual: passoAtualDaTrilha, emTelaDaVisita: VISIT_VIEWS.includes(view) } : null}
         onIrPasso={irParaPasso}
         onMeuPerfil={() => setPerfilAberto(true)}
         usuario={usuarioDaSessao ? { nome: usuarioDaSessao.nome, perfil: usuarioDaSessao.perfil, iniciais: iniciaisUsuario || "" } : null}
