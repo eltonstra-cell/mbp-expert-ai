@@ -42,6 +42,8 @@ export type CartaoEvidencia = {
   envio?: "aguardando" | "enviada";
   /** Quem registrou (carimbo gravado pelo app, não editável). */
   registradoPor?: string;
+  /** Foto citada em relatório emitido: não pode ser removida. */
+  emRelatorio?: boolean;
   analise: AnaliseEvidencia | null;
   podeAnalisar: boolean;
   /** A empresa ainda não liberou a IA nas fotos: o botão fica cinza com aviso. */
@@ -293,6 +295,7 @@ function Cartao({ ev, onAmpliar }: { ev: CartaoEvidencia; onAmpliar: (id: string
           </>
         )}
         <span className="ev7-chip">{ev.dataCurta}</span>
+        {ev.emRelatorio && <span className="ev7-chip ev7-chip--fila">em relatório emitido</span>}
         {ev.registradoPor && <span className="ev7-chip" title="Quem registrou (gravado pelo app)">{ev.registradoPor}</span>}
         {ev.envio === "aguardando" && <span className="ev7-chip ev7-chip--fila">Aguardando envio</span>}
         {ev.envio === "enviada" && <span className="ev7-chip ev7-chip--enviada">Enviada</span>}

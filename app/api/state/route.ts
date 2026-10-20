@@ -16,6 +16,7 @@ import {
 } from "@/lib/stateValidation";
 import { acessoVigente } from "@/lib/validadeDeAcesso";
 import { validarAprovacoesDePop } from "@/lib/popsNorma";
+import { preservarEvidenciasEmRelatorio } from "@/lib/relatorioEmitido";
 import type { AppDB, UsuarioSistema } from "@/types";
 
 export const runtime = "nodejs";
@@ -251,6 +252,22 @@ export async function PUT(request: Request) {
           ...aprovacoes.registros.map((registro) => ({ ...registro, id: crypto.randomUUID() })),
         ],
       };
+    }
+
+    // Relatórios emitidos só mudam pela rota de emissão: o estado enviado pelo navegador nunca substitui esta lista.
+    const emitidosNoServidor = (atualAntesDaGravacao.data as AppDB | null)?.relatoriosEmitidos;
+    if (emitidosNoServidor) {
+      // E as fotos citadas num relatório emitido não somem, nem por quem grava o estado inteiro.
+      const evidenciasAtuais = (atualAntesDaGravacao.data as AppDB).evidencias || [];
+      dadosParaGravar = {
+        ...dadosParaGravar,
+        relatoriosEmitidos: emitidosNoServidor,
+        evidencias: preservarEvidenciasEmRelatorio(evidenciasAtuais, dadosParaGravar.evidencias || [], emitidosNoServidor),
+      };
+    }
+    else if (dadosParaGravar.relatoriosEmitidos) {
+      const { relatoriosEmitidos: _descartado, ...resto } = dadosParaGravar;
+      dadosParaGravar = resto as AppDB;
     }
 
     const payload = JSON.stringify(dadosParaGravar);

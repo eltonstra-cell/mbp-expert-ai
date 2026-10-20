@@ -24,6 +24,13 @@ import PcComprovantes, { type DadosDoFormulario } from "@/components/pc/PcCompro
 import { RegistrosEmpresaContext, type RegistrosEmpresaValor } from "@/components/RegistrosEmpresaContext";
 import { criarRegistroPop, podeCriarRegistroPop, podeGerenciarComprovantes, podeGerenciarPessoas, podeVerComprovantes } from "@/lib/registrosEmpresa";
 import PcPessoas from "@/components/pc/PcPessoas";
+import PcEmitirRelatorio from "@/components/pc/PcEmitirRelatorio";
+import PcRelatoriosEmitidos from "@/components/pc/PcRelatoriosEmitidos";
+import PcDossie from "@/components/pc/PcDossie";
+import PcEvolucao from "@/components/pc/PcEvolucao";
+import { evidenciasEmRelatorioEmitido, podeEmitirRelatorio, ultimaVersao } from "@/lib/relatorioEmitido";
+import { podeGerarDossie } from "@/lib/dossie";
+import { CAPACIDADE_VAZIA, TEXTO_DA_CAPACIDADE, capacidadeDoFormulario, capacidadeParaFormulario, validarCapacidade, type CapacidadeEmTexto } from "@/lib/capacidadeEmpresa";
 import PainelHojeCard from "@/components/PainelHoje";
 import PcLembrete from "@/components/pc/PcLembrete";
 import PcResumo from "@/components/pc/PcResumo";
@@ -109,6 +116,7 @@ import { IaPermitidaContext, useIaPermitida } from "@/components/IaPermissionCon
 import type {
   ComprovanteTerceiro,
   ConfigQuestionario,
+  RelatorioEmitido,
   Capacitacao,
   Colaborador,
   LeituraPop,
@@ -215,7 +223,7 @@ import {
 } from "@/lib/userManagement";
 import { resumoConfiguracaoEmpresa } from "@/lib/companyReadiness";
 
-type View = "inicio" | "pops" | "ajuda" | "empresas" | "visitas" | "visita" | "ambientes" | "checklist" | "ncs" | "plano" | "acompanhamento" | "historico" | "evidencias" | "relatorio" | "acessos" | "correcoes" | "popsvisita" | "modotela" | "campomais" | "fila" | "comprovantes" | "pessoas" | "resumo";
+type View = "inicio" | "pops" | "ajuda" | "empresas" | "visitas" | "visita" | "ambientes" | "checklist" | "ncs" | "plano" | "acompanhamento" | "historico" | "evidencias" | "relatorio" | "acessos" | "correcoes" | "popsvisita" | "modotela" | "campomais" | "fila" | "comprovantes" | "pessoas" | "resumo" | "relatoriosemitidos" | "dossie" | "evolucao";
 type EmpresaSecao = "dados" | "manual" | "ambientes" | "fluxos" | "programas" | "pops" | "privacidade" | "norma";
 type FiltroChecklistRapido = "Todos" | "Pendentes" | "Não conformes";
 
@@ -1168,6 +1176,8 @@ export default function Home() {
   }
 
   const [form, setForm] = useState(formEmpresaVazio);
+  // Capacidade e turnos (não é critério de norma; não gera regra automática).
+  const [capacidadeForm, setCapacidadeForm] = useState<CapacidadeEmTexto>(CAPACIDADE_VAZIA);
   const [responsabilidadesEmpresa, setResponsabilidadesEmpresa] = useState<
     ResponsabilidadeManual[]
   >(criarResponsabilidadesPadrao());
@@ -1660,6 +1670,7 @@ export default function Home() {
       registrosPop: Array.isArray((s as any).registrosPop) ? (s as any).registrosPop : [],
       comprovantes: Array.isArray((s as any).comprovantes) ? (s as any).comprovantes : [],
       colaboradores: Array.isArray((s as any).colaboradores) ? (s as any).colaboradores : [],
+      relatoriosEmitidos: Array.isArray((s as any).relatoriosEmitidos) ? (s as any).relatoriosEmitidos : [],
       capacitacoes: Array.isArray((s as any).capacitacoes) ? (s as any).capacitacoes : [],
       leiturasPop: Array.isArray((s as any).leiturasPop) ? (s as any).leiturasPop : [],
       configuracaoAcesso:
@@ -1817,6 +1828,53 @@ export default function Home() {
   }
 
   // ===== Registros por POP e comprovantes de terceiros =====
+  // Emissão do relatório assinado (RT e Administrador): o servidor atribui o número e guarda o instantâneo.
+  const [emitirAberto, setEmitirAberto] = useState(false);
+  const [emitindoRelatorio, setEmitindoRelatorio] = useState(false);
+  const [erroDeEmissao, setErroDeEmissao] = useState("");
+
+  async function emitirRelatorioDaVisita(motivo: string) {
+    if (!visitaAtual || emitindoRelatorio) return;
+    setEmitindoRelatorio(true);
+    setErroDeEmissao("");
+    try {
+      const anterior = ultimaVersao(db.relatoriosEmitidos || [], visitaAtual.id);
+      const resposta = await fetch("/api/relatorios/emitir", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ visitaId: visitaAtual.id, novaVersao: Boolean(anterior), motivo, nomeLocal: usuarioDaSessao?.nome || sessaoAtual?.name || "" }),
+      });
+      const corpo = (resposta.headers.get("content-type") || "").includes("application/json") ? await resposta.json().catch(() => null) : null;
+      if (!resposta.ok || !corpo?.relatorio) {
+        setErroDeEmissao(corpo?.error || "Não foi possível emitir agora. Emitir precisa de internet.");
+        return;
+      }
+      const emitido = corpo.relatorio as RelatorioEmitido;
+      setDb((o) => {
+        const atualizado: AppDB = { ...o, relatoriosEmitidos: [...(o.relatoriosEmitidos || []).filter((item) => item.id !== emitido.id), emitido] };
+        salvarDBLocal(atualizado);
+        return atualizado;
+      });
+      setEmitirAberto(false);
+      setView("relatoriosemitidos");
+    } catch {
+      setErroDeEmissao("Sem conexão. Emitir o relatório precisa de internet.");
+    } finally {
+      setEmitindoRelatorio(false);
+    }
+  }
+
+  function imprimirDocumento(titulo: string) {
+    const tituloAntes = document.title;
+    document.title = titulo.replace(/[^\w\s.-]+/g, "");
+    const limpar = () => {
+      document.title = tituloAntes;
+      window.removeEventListener("afterprint", limpar);
+    };
+    window.addEventListener("afterprint", limpar);
+    window.setTimeout(() => window.print(), 100);
+  }
+
   function imprimirResumo() {
     const tituloAntes = document.title;
     document.title = `Resumo - ${nomeParaExibir(atual)}`.replace(/[^\w\s.-]+/g, "");
@@ -2450,7 +2508,7 @@ export default function Home() {
 
   const painelNode =
     painelHoje && atual ? (
-      <PainelHojeCard painel={painelHoje} onAcao={acaoDoPainel} onLembrete={podeEnviarLembrete(usuarioDaSessao) ? () => setLembreteAberto(true) : undefined} onResumo={() => setView("resumo")} />
+      <PainelHojeCard painel={painelHoje} onEvolucao={() => setView("evolucao")} onDossie={podeGerarDossie(usuarioDaSessao) ? () => setView("dossie") : undefined} onEmitidos={() => setView("relatoriosemitidos")} onAcao={acaoDoPainel} onLembrete={podeEnviarLembrete(usuarioDaSessao) ? () => setLembreteAberto(true) : undefined} onResumo={() => setView("resumo")} />
     ) : null;
 
 
@@ -3276,6 +3334,10 @@ export default function Home() {
 
   function salvarEmpresa() {
     if (!exigirPermissao("empresas.editar")) return;
+    if (Object.keys(validarCapacidade(capacidadeForm)).length) {
+      void avisar("Confira os números de capacidade e turnos antes de salvar.");
+      return;
+    }
     const id = editingEmpresaId || form.cnpj.replace(/\D/g, "") || crypto.randomUUID();
     const anterior = editingEmpresaId ? db.empresas[editingEmpresaId] : undefined;
     const emp: Empresa = {
@@ -3284,6 +3346,7 @@ export default function Home() {
       cnpj: editingEmpresaId ? (anterior?.cnpj || form.cnpj) : form.cnpj,
       nomeFantasia: form.nomeFantasia || form.razaoSocial || "Sem nome",
       horariosFuncionamento: anterior?.horariosFuncionamento,
+      capacidade: capacidadeDoFormulario(capacidadeForm),
       responsabilidadesManual: normalizarResponsabilidades(responsabilidadesEmpresa),
       setoresManual: setoresEmpresa,
       modelosQuestionarioAmbientes: criarModelosQuestionarioAmbientes(
@@ -3382,6 +3445,7 @@ export default function Home() {
     );
     const popsCarregados = normalizarPops(empresa.pops);
     setForm(formCarregado);
+    setCapacidadeForm(capacidadeParaFormulario(empresa.capacidade));
     setResponsabilidadesEmpresa(responsabilidadesCarregadas);
     setSetoresEmpresa(setoresCarregados);
     setEquipamentosEmpresa(equipamentosCarregados);
@@ -4203,6 +4267,7 @@ export default function Home() {
     const formNovo = { ...formEmpresaVazio, cor: proximaCorLivre(Object.values(db.empresas)) };
     setEditingEmpresaId(null);
     setForm(formNovo);
+    setCapacidadeForm(CAPACIDADE_VAZIA);
     setResponsabilidadesEmpresa(responsabilidadesIniciais);
     setSetoresEmpresa([]);
     setEquipamentosEmpresa([]);
@@ -5224,6 +5289,10 @@ export default function Home() {
     const evidencia = (db.evidencias || []).find((ev) => ev.id === id);
     if (!evidencia) return;
     if (!exigirPermissao("evidencias.adicionar", evidencia.empresaId)) return;
+    if (evidenciasEmRelatorioEmitido(db.relatoriosEmitidos).has(id)) {
+      void avisar("Esta foto está citada em um relatório emitido e não pode ser removida.", { titulo: "Foto em relatório emitido" });
+      return;
+    }
     if (evidencia.envio === "aguardando") void fila.descartar(id);
 
     const ncRelacionada = evidencia.ncId
@@ -6517,6 +6586,20 @@ export default function Home() {
             onFechar={() => setAmbienteDoQuestionario(null)}
           />
         )}
+        {emitirAberto && visitaAtual && (
+          <PcEmitirRelatorio
+            versaoAnterior={(() => {
+              const ultimo = ultimaVersao(db.relatoriosEmitidos || [], visitaAtual.id);
+              return ultimo ? { numero: ultimo.numero, versao: ultimo.versao } : undefined;
+            })()}
+            assinante={usuarioDaSessao?.nome || sessaoAtual?.name || "RT"}
+            crn={usuarioDaSessao?.crn || ""}
+            emitindo={emitindoRelatorio}
+            erro={erroDeEmissao}
+            onConfirmar={(motivo) => void emitirRelatorioDaVisita(motivo)}
+            onCancelar={() => setEmitirAberto(false)}
+          />
+        )}
         {lembreteAberto && atual && painelHoje && podeEnviarLembrete(usuarioDaSessao) && (() => {
           const responsavel = atual.responsavelEstabelecimento;
           const pessoaDoResponsavel = responsavel?.usuarioId ? db.usuarios.find((usuario) => usuario.id === responsavel.usuarioId) : undefined;
@@ -6833,6 +6916,29 @@ export default function Home() {
             urlDoArquivo={(item) => `/api/comprovantes/file?pathname=${encodeURIComponent(item.blobPathname || "")}`}
             onVoltar={() => { setRenovarComprovanteId(undefined); voltarDosComprovantes(); }}
             renovarId={renovarComprovanteId}
+          />
+        ) : view === "relatoriosemitidos" && atual ? (
+          <PcRelatoriosEmitidos
+            empresa={nomeParaExibir(atual)}
+            relatorios={(db.relatoriosEmitidos || []).filter((item) => item.empresaId === atual.id)}
+            urlDaFoto={(pathname) => `/api/evidencias/file?pathname=${encodeURIComponent(pathname)}`}
+            onImprimir={() => imprimirDocumento(`Relatorio emitido - ${nomeParaExibir(atual)}`)}
+            onVoltar={() => setView(visitaAtual ? "relatorio" : "inicio")}
+          />
+        ) : view === "dossie" && atual && podeGerarDossie(usuarioDaSessao) ? (
+          <PcDossie
+            dados={{ empresa: atual, relatorios: db.relatoriosEmitidos, registros: db.registrosPop, comprovantes: db.comprovantes, colaboradores: db.colaboradores, capacitacoes: db.capacitacoes }}
+            urlDaFoto={(pathname) => `/api/evidencias/file?pathname=${encodeURIComponent(pathname)}`}
+            onImprimir={() => imprimirDocumento(`Dossie - ${nomeParaExibir(atual)}`)}
+            onVoltar={() => setView("inicio")}
+          />
+        ) : view === "evolucao" && atual && painelHoje ? (
+          <PcEvolucao
+            empresa={nomeParaExibir(atual)}
+            visitas={db.visitas.filter((visita) => visita.empresaId === atual.id)}
+            ncs={(db.ncs || []).filter((nc) => nc.empresaId === atual.id)}
+            hoje={hojeISO()}
+            onVoltar={() => setView("inicio")}
           />
         ) : view === "resumo" && atual && painelHoje ? (
           <PcResumo
@@ -7159,6 +7265,44 @@ export default function Home() {
                     />
                   </label>
                     ))}
+                    {editingEmpresaId && (
+                      <fieldset className="md:col-span-2 rounded-xl border border-slate-200 p-3">
+                        <legend className="px-1 text-xs font-bold text-slate-500">Capacidade e turnos</legend>
+                        <p className="mb-2 text-xs text-slate-500">{TEXTO_DA_CAPACIDADE}</p>
+                        <div className="grid gap-3 md:grid-cols-3">
+                          {(
+                            [
+                              ["refeicoesPorDia", "Refeições por dia"],
+                              ["funcionarios", "Funcionários"],
+                              ["turnos", "Turnos"],
+                            ] as const
+                          ).map(([campo, rotulo]) => {
+                            const erro = validarCapacidade(capacidadeForm)[campo];
+                            return (
+                              <label key={campo}>
+                                <span className="mb-1 block text-xs font-bold text-slate-500">{rotulo}</span>
+                                <input
+                                  inputMode="numeric"
+                                  className={`w-full rounded-xl border p-3 ${erro ? "border-red-500" : ""}`}
+                                  value={capacidadeForm[campo]}
+                                  onChange={(e) => setCapacidadeForm({ ...capacidadeForm, [campo]: e.target.value.replace(/\D/g, "") })}
+                                  aria-invalid={Boolean(erro)}
+                                />
+                                {erro && <span className="mt-1 block text-xs text-red-700">{erro}</span>}
+                              </label>
+                            );
+                          })}
+                          <label className="md:col-span-2">
+                            <span className="mb-1 block text-xs font-bold text-slate-500">Tipo de serviço</span>
+                            <input className="w-full rounded-xl border p-3" value={capacidadeForm.tipoDeServico} onChange={(e) => setCapacidadeForm({ ...capacidadeForm, tipoDeServico: e.target.value })} placeholder="Ex.: restaurante comercial, cozinha industrial, escolar" />
+                          </label>
+                          <label>
+                            <span className="mb-1 block text-xs font-bold text-slate-500">Vigilância de referência (opcional)</span>
+                            <input className="w-full rounded-xl border p-3" value={capacidadeForm.vigilanciaDeReferencia} onChange={(e) => setCapacidadeForm({ ...capacidadeForm, vigilanciaDeReferencia: e.target.value })} />
+                          </label>
+                        </div>
+                      </fieldset>
+                    )}
                     <div className="md:col-span-2">
                       <span className="mb-1 block text-xs font-bold text-slate-500">Cor</span>
                       <BolinhasDeCor valor={form.cor} onEscolher={(cor) => setForm({ ...form, cor })} rotulo="Cor da empresa" variante="linha" />
@@ -7233,7 +7377,10 @@ export default function Home() {
                     vencendo={visitasComGuardaVencendo(
                       db.visitas.filter((visita) => visita.empresaId === empresaGerenciada.id),
                       db.evidencias || [],
-                      guardaDaEmpresa(empresaGerenciada)
+                      guardaDaEmpresa(empresaGerenciada),
+                      new Date(),
+                      undefined,
+                      evidenciasEmRelatorioEmitido(db.relatoriosEmitidos)
                     ).map((linha) => ({
                       ...linha,
                       rotulo: `Visita ${numeroVisitaPorId.get(linha.visitaId) || "—"}`,
@@ -7455,6 +7602,7 @@ export default function Home() {
                 url: urlEvidencia(ev),
                 envio: ev.envio,
                 registradoPor: ev.registradoPorNome,
+                emRelatorio: evidenciasEmRelatorioEmitido(db.relatoriosEmitidos).has(ev.id),
                 possivelNc: ultima?.situacao === "Possível não conformidade",
                 analise: ultima
                   ? {
@@ -8312,6 +8460,13 @@ export default function Home() {
                 onFinalizar={finalizarInspecao}
                 onReabrir={reabrirInspecao}
                 onVoltar={() => setView("visita")}
+                podeEmitir={podeEmitirRelatorio(usuarioDaSessao) || (!usuarioDaSessao && true)}
+                emitido={(() => {
+                  const ultimo = ultimaVersao(db.relatoriosEmitidos || [], visitaAtual.id);
+                  return ultimo ? { numero: ultimo.numero, versao: ultimo.versao } : undefined;
+                })()}
+                onEmitir={() => { setErroDeEmissao(""); setEmitirAberto(true); }}
+                onVerEmitidos={() => setView("relatoriosemitidos")}
               />
             )}
           <section id="relatorio-visita" data-empresa={nomeParaExibir(empresaVisita)} data-data-visita={visitaAtual.data} data-visita-id={visitaAtual.id} className={`report-print space-y-4${telaEmLista ? ` rep-offscreen ${classesSecoesRelatorio}` : ""}`}>

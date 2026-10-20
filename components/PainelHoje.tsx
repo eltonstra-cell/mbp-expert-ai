@@ -14,10 +14,14 @@ type Props = {
   /** Só RT e Administrador: abre a prévia do lembrete ao responsável do estabelecimento. */
   onLembrete?: () => void;
   onResumo: () => void;
+  onEvolucao?: () => void;
+  /** Dossiê para fiscalização (RT, Administrador, Gestor, Gerente). */
+  onDossie?: () => void;
+  onEmitidos?: () => void;
 };
 
 // "Hoje precisa de você": contadores e lista por urgência, com a ação ao lado de cada item.
-export default function PainelHoje({ painel, onAcao, onLembrete, onResumo }: Props) {
+export default function PainelHoje({ painel, onAcao, onLembrete, onResumo, onEvolucao, onDossie, onEmitidos }: Props) {
   const [pagina, setPagina] = useState(0);
   const totalPaginas = Math.max(1, Math.ceil(painel.itens.length / POR_PAGINA));
   const paginaAtual = Math.min(pagina, totalPaginas - 1);
@@ -71,6 +75,21 @@ export default function PainelHoje({ painel, onAcao, onLembrete, onResumo }: Pro
           <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={onResumo}>
             Resumo de uma página
           </button>
+          {onEvolucao && (
+            <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={onEvolucao}>
+              Evolução
+            </button>
+          )}
+          {onEmitidos && (
+            <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={onEmitidos}>
+              Relatórios emitidos
+            </button>
+          )}
+          {onDossie && (
+            <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={onDossie}>
+              Dossiê
+            </button>
+          )}
           {onLembrete && (
             <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={onLembrete}>
               Lembrete ao responsável

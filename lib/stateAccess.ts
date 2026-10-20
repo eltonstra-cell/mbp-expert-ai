@@ -1,6 +1,7 @@
 import type { AcaoPermissao, AppDB, RegistroPop, UsuarioSistema } from "@/types";
 import { podeCriarRegistroPop, podeGerenciarComprovantes, podeGerenciarPessoas, podeVerComprovantes } from "./registrosEmpresa.ts";
 import { protegerCarimboDasEvidencias } from "./fotosDoItem.ts";
+import { preservarEvidenciasEmRelatorio } from "./relatorioEmitido.ts";
 import { podeEditarQuestionario } from "./questionarioAmbiente.ts";
 import { permissoesEfetivas } from "./screenAccess.ts";
 import { acessoVigente } from "./validadeDeAcesso.ts";
@@ -73,6 +74,7 @@ export function filtrarEstadoPorUsuario(
   const colaboradores = doEscopo(data.colaboradores);
   const capacitacoes = doEscopo(data.capacitacoes);
   const leiturasPop = doEscopo(data.leiturasPop);
+  const relatoriosEmitidos = (data.relatoriosEmitidos || []).filter((relatorio) => empresaIds.has(relatorio.empresaId));
   // Fiscal: só empresas e POPs aprovados; nada de visitas, correções, evidências ou rascunhos.
   if (usuario.perfil === "Fiscal") {
     const somenteAprovados = Object.fromEntries(
@@ -95,6 +97,7 @@ export function filtrarEstadoPorUsuario(
       colaboradores,
       capacitacoes,
       leiturasPop,
+      relatoriosEmitidos,
     };
   }
   // Executor de campo: não recebe correções; dos POPs recebe só os aprovados, para ler no checklist ("Ver POP").
@@ -126,6 +129,7 @@ export function filtrarEstadoPorUsuario(
     colaboradores,
     capacitacoes,
     leiturasPop,
+    relatoriosEmitidos: usuario.perfil === "Executor de campo" ? [] : relatoriosEmitidos,
   };
 }
 
@@ -388,6 +392,8 @@ export function mesclarEstadoPorUsuario(
       usuario,
       empresaIds
     );
+    // Foto citada em relatório emitido não some por uma mesclagem.
+    evidencias = preservarEvidenciasEmRelatorio(atual.evidencias, evidencias, atual.relatoriosEmitidos);
   }
 
   return {

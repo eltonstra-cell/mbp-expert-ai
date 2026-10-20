@@ -13,6 +13,8 @@ export type DadosUsuarioPreparacao = {
   validadeDias?: number;
   /** Edição de quem já era Fiscal: a validade só muda em "Renovar". */
   jaEraFiscal?: boolean;
+  /** CRN de quem assina relatórios (RT e Administrador); opcional. */
+  crn?: string;
 };
 
 export type IdentidadeSessao = {
@@ -92,6 +94,7 @@ export function criarUsuarioPreparacao(
         ? []
         : Array.from(new Set(dados.empresaIds)),
     ...(dados.telas && Object.keys(dados.telas).length > 0 ? { telas: dados.telas } : {}),
+    ...(dados.crn?.trim() && (dados.perfil === "Consultor/RT" || dados.perfil === "Administrador") ? { crn: dados.crn.trim() } : {}),
     ...(dados.perfil === "Fiscal" && dados.validadeDias !== undefined ? { validoAte: calcularValidade(dados.validadeDias, new Date(criadoEm)) } : {}),
     criadoEm,
     atualizadoEm: criadoEm,
@@ -118,6 +121,7 @@ export function atualizarUsuarioPreparacao(
       dados.perfil === "Administrador"
         ? []
         : Array.from(new Set(dados.empresaIds)),
+    crn: dados.crn?.trim() && (dados.perfil === "Consultor/RT" || dados.perfil === "Administrador") ? dados.crn.trim() : undefined,
     atualizadoEm,
   };
 }

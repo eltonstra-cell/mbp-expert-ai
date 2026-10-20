@@ -206,6 +206,13 @@ export default function PcAcessos({
                     </select>
                   </label>
                 </div>
+                {(formulario.perfil === "Consultor/RT" || formulario.perfil === "Administrador") && (
+                  <label className="pc-field">
+                    <span className="ui-eyebrow">CRN (opcional, assina os relatórios)</span>
+                    <input className="ui-input" value={formulario.crn || ""} onChange={(evento) => onCampo({ crn: evento.target.value })} placeholder="Ex.: CRN-2 12345" />
+                    {!(formulario.crn || "").trim() && <span className="ui-row-sub">Sem CRN, o relatório emitido mostra “CRN a preencher”.</span>}
+                  </label>
+                )}
                 {formulario.perfil === "Fiscal" && !formulario.jaEraFiscal && (
                   <label className="pc-field">
                     <span className="ui-eyebrow">Validade do acesso</span>

@@ -3534,3 +3534,31 @@ html[data-modo="equilibrado"] .campo-tela{height:calc(100dvh - 190px - var(--fai
   #resumo-pagina{position:absolute;inset:0 auto auto 0;width:100%;max-width:none;border:0;border-radius:0}
 }
 @media (max-width:767px){.hoje-item{padding:5px 8px}.hoje-textos{flex-basis:100%}.hoje .pc-card-head{flex-wrap:wrap}}
+/* Relatório emitido, dossiê e evolução */
+.emitido-linha{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:10px 14px}
+.emitido-textos{display:flex;min-width:0;flex:1 1 280px;flex-direction:column}
+.emitido-numero{font-family:var(--font-display),"Outfit",sans-serif;font-weight:500;color:var(--ink)}
+.emitido-assinatura{display:flex;flex-direction:column;gap:2px;margin-top:8px;padding:8px 10px;border:1px solid #E8B04B;border-radius:12px;background:#FEF6E6;color:#000}
+.dossie-opcoes{display:flex;flex:none;flex-direction:column;gap:6px;padding:12px 14px}
+.dossie-pagina{display:flex;flex-direction:column;gap:8px;max-width:900px;padding:16px 18px;border:1px solid #DDE6EA;border-radius:16px;background:#fff;color:var(--ink)}
+.dossie-capa{display:flex;flex-direction:column;gap:2px;padding-bottom:8px;border-bottom:1.5px solid var(--brand)}
+.dossie-indice ol{margin:0;padding-left:18px}
+.dossie-secao{break-inside:avoid-page}
+.dossie-linha{margin:0 0 4px;font-size:.9rem;overflow-wrap:anywhere;white-space:pre-wrap}
+.dossie-fotos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.dossie-fotos img{width:100%;max-height:120px;object-fit:cover;border-radius:8px}
+.dossie-fotos figcaption{font-size:.72rem;color:var(--ink-2)}
+.evol-cols{display:grid;grid-template-columns:1fr;gap:10px;min-height:0}
+@media (min-width:900px){.evol-cols{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.evol-card{display:flex;flex-direction:column;gap:6px;padding:12px 14px}
+.evol-serie,.evol-lista{display:flex;flex-direction:column;gap:5px;margin:0;padding:0;list-style:none}
+.evol-mes{display:grid;grid-template-columns:70px minmax(0,1fr) 110px;align-items:center;gap:8px}
+.evol-mes-rotulo{font-size:.85rem;color:var(--ink)}
+.evol-mes-valor{text-align:right}
+.evol-linha{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px}
+.evol-nome{flex:1 1 140px;min-width:0;color:var(--ink);overflow-wrap:anywhere}
+.evol-numero{margin:0;font-family:var(--font-display),"Outfit",sans-serif;font-size:1.7rem;font-weight:500;line-height:1.1}
+@media print{
+  #relatorio-emitido-doc,#relatorio-emitido-doc *,#dossie-pagina,#dossie-pagina *{visibility:visible}
+  #relatorio-emitido-doc,#dossie-pagina{position:absolute;inset:0 auto auto 0;width:100%;max-width:none;border:0;border-radius:0}
+}

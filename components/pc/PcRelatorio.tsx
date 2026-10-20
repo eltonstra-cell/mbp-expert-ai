@@ -30,6 +30,11 @@ type Props = {
   onFinalizar: () => void;
   onReabrir: () => void;
   onVoltar: () => void;
+  /** RT e Administrador emitem o relatório assinado (número e data atribuídos pelo servidor). */
+  podeEmitir?: boolean;
+  emitido?: { numero: string; versao: number };
+  onEmitir?: () => void;
+  onVerEmitidos?: () => void;
 };
 
 export default function PcRelatorio({
@@ -47,6 +52,10 @@ export default function PcRelatorio({
   onFinalizar,
   onReabrir,
   onVoltar,
+  podeEmitir = false,
+  emitido,
+  onEmitir,
+  onVerEmitidos,
 }: Props) {
   const [menuSel, setMenuSel] = useState(false);
   const pendencias = pendenciasDoRelatorio(linhas);
@@ -94,6 +103,16 @@ export default function PcRelatorio({
                 </div>
               )}
             </div>
+          )}
+          {onVerEmitidos && (
+            <button type="button" className="ui-btn ui-btn--secondary" onClick={onVerEmitidos}>
+              Relatórios emitidos
+            </button>
+          )}
+          {podeEmitir && onEmitir && (
+            <button type="button" className="ui-btn ui-btn--primary" onClick={onEmitir}>
+              {emitido ? `Emitir versão ${emitido.versao + 1}` : "Emitir assinado"}
+            </button>
           )}
           {podeConcluir &&
             (concluida ? (

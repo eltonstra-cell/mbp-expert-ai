@@ -56,6 +56,7 @@ export type Empresa = {
   guardaRegistrosDias?: number;
   /** Questionário personalizado por ambiente (só Administrador e RT editam). Sem entrada: vale o modelo do app. */
   questionarios?: Record<string, ConfigQuestionario>;
+  capacidade?: CapacidadeDaEmpresa;
   /** Registro que prova a execução de cada POP (popId -> id do registro), escolhido pelo RT. */
   registroProvaPorPop?: Record<string, string>;
   /** Responsável do estabelecimento (RDC 216, 4.11.2): só a pessoa vinculada em Acessos aprova POPs. */
@@ -433,6 +434,8 @@ export type UsuarioSistema = {
   validoAte?: string;
   /** Fiscal: "Encerrar agora" corta o acesso na hora. */
   acessoEncerradoEm?: string;
+  /** Registro no CRN (nutricionista), opcional; entra na assinatura do relatório emitido. Vazio: "CRN a preencher". */
+  crn?: string;
 };
 
 export type AcaoPermissao =
@@ -581,6 +584,43 @@ export type LeituraPop = {
   criadoEm: string;
 };
 
+/** Instantâneo do que o relatório emitido mostrava; nunca muda depois da emissão. */
+export type InstantaneoDoRelatorio = {
+  empresa: { nome: string; cnpj: string; municipio?: string; uf?: string };
+  visita: { id: string; data: string; responsavel: string; observacoes: string; conclusao: string };
+  conformidade: { conformes: number; naoConformes: number; respondidos: number; percentual: number | null };
+  itens: { id: string; ambiente: string; titulo: string; categoria: string; status: string; observacao: string; criticidade?: string }[];
+  ncs: { id: string; titulo: string; ambiente: string; criticidade: string; status: string; observacao: string; acaoCorretiva?: string; responsavelAcao?: string; prazo?: string; resolvidaEm?: string; semComprovacao: boolean }[];
+  evidencias: { id: string; tipo: string; ambiente: string; descricao: string; criadoEm: string; registradoPorNome?: string; blobPathname?: string; papel?: string; ncId?: string; checklistItemId?: string }[];
+};
+
+/** Relatório de visita emitido e assinado. Gravado só pelo servidor, que também atribui o número. */
+export type RelatorioEmitido = {
+  id: string;
+  empresaId: string;
+  visitaId: string;
+  /** PC-AAAA-NNNN, sequencial por empresa e ano; a versão 2 mantém o número da versão 1. */
+  numero: string;
+  ano: number;
+  sequencia: number;
+  versao: number;
+  emitidoEm: string;
+  emitidoPorId?: string;
+  assinatura: { nome: string; cargo: string; crn: string; crnPendente: boolean };
+  aviso: string;
+  motivoDaNovaVersao?: string;
+  instantaneo: InstantaneoDoRelatorio;
+};
+
+/** Capacidade e turnos: usados para dimensionar o plano e sugerir a frequência das visitas. Não é critério de norma. */
+export type CapacidadeDaEmpresa = {
+  refeicoesPorDia?: number;
+  funcionarios?: number;
+  turnos?: number;
+  tipoDeServico?: string;
+  vigilanciaDeReferencia?: string;
+};
+
 export type AppDB = {
   empresas: Record<string, Empresa>;
   empresaAtualId: string | null;
@@ -596,4 +636,6 @@ export type AppDB = {
   colaboradores?: Colaborador[];
   capacitacoes?: Capacitacao[];
   leiturasPop?: LeituraPop[];
+  /** Só o servidor grava (rota de emissão); o PUT do estado nunca substitui esta lista. */
+  relatoriosEmitidos?: RelatorioEmitido[];
 };

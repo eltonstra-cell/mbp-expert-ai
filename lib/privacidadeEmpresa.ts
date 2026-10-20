@@ -78,6 +78,8 @@ export type VisitaComGuardaVencendo = {
   vencida: boolean;
   fotos: number;
   audios: number;
+  /** Fotos citadas em relatório emitido: ficam de fora da revisão e do descarte (e nada é apagado). */
+  fotosEmRelatorio?: number;
 };
 
 /** Instante em que a visita foi concluída (encerradaEm ou o último "Concluída" do histórico). */
@@ -97,7 +99,8 @@ export function visitasComGuardaVencendo(
   evidencias: EvidenciaBase[],
   guardaDias: number,
   agora: Date = new Date(),
-  janelaDias: number = JANELA_DE_AVISO_DIAS
+  janelaDias: number = JANELA_DE_AVISO_DIAS,
+  emRelatorioEmitido: Set<string> = new Set()
 ): VisitaComGuardaVencendo[] {
   const limite = agora.getTime() + janelaDias * DIA_MS;
   const resultado: VisitaComGuardaVencendo[] = [];
@@ -107,12 +110,14 @@ export function visitasComGuardaVencendo(
     const inicio = new Date(conclusao).getTime();
     if (!Number.isFinite(inicio)) continue;
     const doDia = evidencias.filter((evidencia) => evidencia.visitaId === visita.id);
-    const fotos = doDia.filter((evidencia) => evidencia.tipo === "Foto").length;
+    const todasAsFotos = doDia.filter((evidencia) => evidencia.tipo === "Foto");
+    const fotosEmRelatorio = todasAsFotos.filter((evidencia) => emRelatorioEmitido.has((evidencia as { id?: string }).id || "")).length;
+    const fotos = todasAsFotos.length - fotosEmRelatorio;
     const audios = doDia.filter((evidencia) => evidencia.tipo === "Áudio").length;
     if (fotos + audios === 0) continue;
     const vence = inicio + guardaDias * DIA_MS;
     if (vence > limite) continue;
-    resultado.push({ visitaId: visita.id, concluidaEm: conclusao, venceEm: new Date(vence).toISOString(), vencida: vence < agora.getTime(), fotos, audios });
+    resultado.push({ visitaId: visita.id, concluidaEm: conclusao, venceEm: new Date(vence).toISOString(), vencida: vence < agora.getTime(), fotos, audios, fotosEmRelatorio });
   }
   return resultado.sort((a, b) => a.venceEm.localeCompare(b.venceEm));
 }
