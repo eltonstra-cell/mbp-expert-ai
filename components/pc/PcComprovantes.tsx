@@ -32,6 +32,8 @@ type Props = {
   onRemover: (comprovante: ComprovanteTerceiro) => void;
   urlDoArquivo: (comprovante: ComprovanteTerceiro) => string;
   onVoltar: () => void;
+  /** Abre direto o formulário de renovação deste comprovante (vindo do painel "Hoje"). */
+  renovarId?: string;
 };
 
 const TOM: Record<SituacaoDaValidade, Tom> = { vencido: "nc", "vence-em-breve": "amber", "em-dia": "ok", "sem-validade": "na" };
@@ -47,10 +49,13 @@ function vazio(): DadosDoFormulario {
 }
 
 // "Comprovantes e documentos com validade": certificados de terceiros com semáforo por item.
-export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, online, onSalvar, onRemover, urlDoArquivo, onVoltar }: Props) {
+export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, online, onSalvar, onRemover, urlDoArquivo, onVoltar, renovarId }: Props) {
   const hoje = hojeISO();
-  const [formAberto, setFormAberto] = useState(false);
-  const [dados, setDados] = useState<DadosDoFormulario>(vazio);
+  const [formAberto, setFormAberto] = useState(Boolean(renovarId && podeGerenciar));
+  const [dados, setDados] = useState<DadosDoFormulario>(() => {
+    const origem = renovarId ? comprovantes.find((item) => item.id === renovarId) : undefined;
+    return origem && podeGerenciar ? { tipo: origem.tipo, emissor: origem.emissor, dataServico: "", validade: "", observacao: "", renovaId: origem.id } : vazio();
+  });
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [arrastando, setArrastando] = useState(false);
   const [tocado, setTocado] = useState(false);

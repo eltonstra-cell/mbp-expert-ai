@@ -1,5 +1,7 @@
 "use client";
 
+import type { ReactNode } from "react";
+
 import type { CSSProperties } from "react";
 import { useCabem } from "@/components/useFit";
 import { iniciaisDaEmpresa } from "@/lib/navigation";
@@ -50,6 +52,8 @@ type Props = {
   somenteCampo?: boolean;
   /** Aviso para o RT: POPs aprovados com norma alterada. */
   avisoPops?: string | null;
+  /** Painel "Hoje precisa de você" (só gestor: Administrador, RT, Gestor, Gerente). */
+  painel?: ReactNode;
   onVerTodas: () => void;
 };
 
@@ -70,6 +74,7 @@ export default function PcInicio({
   simples = false,
   somenteCampo = false,
   avisoPops = null,
+  painel = null,
 }: Props) {
   const recentesFit = useCabem<HTMLDivElement>(48, 4, 1);
   return (
@@ -116,6 +121,8 @@ export default function PcInicio({
           </>
         )}
       </div>
+
+      {painel}
 
       {avisoPops && (
         <div className="ui-nota-divergencia pop-aviso-inicio" role="status">

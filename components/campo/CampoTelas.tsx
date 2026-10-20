@@ -1,5 +1,7 @@
 "use client";
 
+import type { ReactNode } from "react";
+
 import { useRef, useState, type CSSProperties } from "react";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
 import AntesDepois from "@/components/AntesDepois";
@@ -122,7 +124,10 @@ export function CampoInicio({
   continuarDetalhe,
   somenteCampo = false,
   avisoPops = null,
+  painel = null,
 }: {
+  /** Painel "Hoje precisa de você" (só gestor). */
+  painel?: ReactNode;
   usuario: string;
   empresa?: string;
   visitaAtiva: { empresa: string; data: string } | null;
@@ -186,6 +191,8 @@ export function CampoInicio({
           )}
         </div>
       )}
+
+      {painel}
 
       {avisoPops && (
         <div className="ui-nota-divergencia pop-aviso-inicio" role="status">

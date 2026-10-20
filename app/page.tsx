@@ -24,6 +24,10 @@ import PcComprovantes, { type DadosDoFormulario } from "@/components/pc/PcCompro
 import { RegistrosEmpresaContext, type RegistrosEmpresaValor } from "@/components/RegistrosEmpresaContext";
 import { criarRegistroPop, podeCriarRegistroPop, podeGerenciarComprovantes, podeGerenciarPessoas, podeVerComprovantes } from "@/lib/registrosEmpresa";
 import PcPessoas from "@/components/pc/PcPessoas";
+import PainelHojeCard from "@/components/PainelHoje";
+import PcLembrete from "@/components/pc/PcLembrete";
+import PcResumo from "@/components/pc/PcResumo";
+import { montarLembrete, montarPainelHoje, montarResumo, podeEnviarLembrete, podeVerPainel, type ItemDoPainel } from "@/lib/painelHoje";
 import { useFilaDeEvidencias } from "@/components/useFilaDeEvidencias";
 import { useOnline } from "@/components/useOnline";
 import { FalhaDeEnvio, LIMITE_AVISO_FILA_BYTES, causaDaResposta, textoDeEspaco, type ItemSemArquivo } from "@/lib/filaEvidencias";
@@ -211,7 +215,7 @@ import {
 } from "@/lib/userManagement";
 import { resumoConfiguracaoEmpresa } from "@/lib/companyReadiness";
 
-type View = "inicio" | "pops" | "ajuda" | "empresas" | "visitas" | "visita" | "ambientes" | "checklist" | "ncs" | "plano" | "acompanhamento" | "historico" | "evidencias" | "relatorio" | "acessos" | "correcoes" | "popsvisita" | "modotela" | "campomais" | "fila" | "comprovantes" | "pessoas";
+type View = "inicio" | "pops" | "ajuda" | "empresas" | "visitas" | "visita" | "ambientes" | "checklist" | "ncs" | "plano" | "acompanhamento" | "historico" | "evidencias" | "relatorio" | "acessos" | "correcoes" | "popsvisita" | "modotela" | "campomais" | "fila" | "comprovantes" | "pessoas" | "resumo";
 type EmpresaSecao = "dados" | "manual" | "ambientes" | "fluxos" | "programas" | "pops" | "privacidade" | "norma";
 type FiltroChecklistRapido = "Todos" | "Pendentes" | "Não conformes";
 
@@ -1813,6 +1817,29 @@ export default function Home() {
   }
 
   // ===== Registros por POP e comprovantes de terceiros =====
+  function imprimirResumo() {
+    const tituloAntes = document.title;
+    document.title = `Resumo - ${nomeParaExibir(atual)}`.replace(/[^\w\s.-]+/g, "");
+    const limpar = () => {
+      document.title = tituloAntes;
+      window.removeEventListener("afterprint", limpar);
+    };
+    window.addEventListener("afterprint", limpar);
+    window.setTimeout(() => window.print(), 100);
+  }
+
+  async function compartilharResumo(texto: string) {
+    try {
+      if (typeof navigator.share === "function") {
+        await navigator.share({ text: texto });
+        return;
+      }
+    } catch {
+      return;
+    }
+    window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, "_blank", "noopener");
+  }
+
   function abrirComprovantes() {
     setOrigemDosRegistros({ view, secao: empresaSecao });
     if (view === "empresas" && editingEmpresaId) setDb((o) => ({ ...o, empresaAtualId: editingEmpresaId }));
@@ -2394,6 +2421,38 @@ export default function Home() {
         },
       }
     : null;
+
+  // Painel "Hoje precisa de você" (gestor), lembrete ao responsável do estabelecimento e resumo de uma página.
+  const [lembreteAberto, setLembreteAberto] = useState(false);
+  const [renovarComprovanteId, setRenovarComprovanteId] = useState<string | undefined>(undefined);
+  const painelHoje =
+    atual && usuarioDaSessao && podeVerPainel(usuarioDaSessao)
+      ? montarPainelHoje({
+          empresa: atual,
+          usuario: usuarioDaSessao,
+          usuarioId: usuarioDaSessao.id,
+          comprovantes: db.comprovantes,
+          capacitacoes: db.capacitacoes,
+          colaboradores: db.colaboradores,
+          ncs: db.ncs,
+          podeVerCorrecoes: permitido("ncs.acompanhar", atual.id),
+        })
+      : null;
+
+  function acaoDoPainel(item: ItemDoPainel) {
+    if (item.origem === "comprovante") {
+      setRenovarComprovanteId(item.id.split(":")[1]);
+      abrirComprovantes();
+    } else if (item.origem === "capacitacao") abrirPessoas();
+    else if (item.origem === "correcao") abrirCorrecoesDaEmpresa();
+    else abrirPopsPeloAtalho();
+  }
+
+  const painelNode =
+    painelHoje && atual ? (
+      <PainelHojeCard painel={painelHoje} onAcao={acaoDoPainel} onLembrete={podeEnviarLembrete(usuarioDaSessao) ? () => setLembreteAberto(true) : undefined} onResumo={() => setView("resumo")} />
+    ) : null;
+
 
   const empresaGerenciada = editingEmpresaId
     ? db.empresas[editingEmpresaId]
@@ -6458,6 +6517,17 @@ export default function Home() {
             onFechar={() => setAmbienteDoQuestionario(null)}
           />
         )}
+        {lembreteAberto && atual && painelHoje && podeEnviarLembrete(usuarioDaSessao) && (() => {
+          const responsavel = atual.responsavelEstabelecimento;
+          const pessoaDoResponsavel = responsavel?.usuarioId ? db.usuarios.find((usuario) => usuario.id === responsavel.usuarioId) : undefined;
+          return (
+            <PcLembrete
+              lembrete={montarLembrete({ empresaNome: nomeParaExibir(atual), painel: painelHoje, remetente: usuarioDaSessao?.nome || "", destinatarioNome: responsavel?.nome, destinatarioEmail: pessoaDoResponsavel?.email })}
+              destinatarioNome={responsavel?.nome}
+              onFechar={() => setLembreteAberto(false)}
+            />
+          );
+        })()}
         {avisoSemSinal && (
           <div className="pc-modal-layer sem-sinal-camada" role="presentation">
             <div className="pc-modal-backdrop" onClick={() => setAvisoSemSinal(null)} />
@@ -6652,6 +6722,7 @@ export default function Home() {
                 divergencia={divergenciaDoAlvo}
                 somenteCampo={ehExecutor}
                 avisoPops={avisoPopsDoInicio}
+                painel={painelNode}
                 outras={db.visitas
                   .filter((visita) => visita.status === "Em andamento" && visita.id !== alvo?.id && podeAbrirVisita(visita.empresaId))
                   .map((visita) => ({ id: visita.id, rotulo: `${nomeParaExibir(db.empresas[visita.empresaId])} · ${fdata(visita.data)}` }))}
@@ -6760,7 +6831,20 @@ export default function Home() {
             onSalvar={salvarComprovante}
             onRemover={removerComprovante}
             urlDoArquivo={(item) => `/api/comprovantes/file?pathname=${encodeURIComponent(item.blobPathname || "")}`}
-            onVoltar={voltarDosComprovantes}
+            onVoltar={() => { setRenovarComprovanteId(undefined); voltarDosComprovantes(); }}
+            renovarId={renovarComprovanteId}
+          />
+        ) : view === "resumo" && atual && painelHoje ? (
+          <PcResumo
+            resumo={montarResumo({
+              empresaNome: nomeParaExibir(atual),
+              visitas: db.visitas.filter((visita) => visita.empresaId === atual.id),
+              ncs: (db.ncs || []).filter((nc) => nc.empresaId === atual.id),
+              painel: painelHoje,
+            })}
+            onImprimir={imprimirResumo}
+            onCompartilhar={(texto) => void compartilharResumo(texto)}
+            onVoltar={() => setView("inicio")}
           />
         ) : view === "pessoas" && atual && podeGerenciarPessoasAqui && (!usuarioDaSessao || (usuarioDaSessao.perfil !== "Executor de campo" && usuarioDaSessao.perfil !== "Fiscal")) ? (
           <PcPessoas
@@ -9074,6 +9158,7 @@ export default function Home() {
             <PcInicio
               somenteCampo={ehExecutor}
               avisoPops={avisoPopsDoInicio}
+              painel={painelNode}
               simples={nivelDe("inicio") === "simples"}
               nome={usuarioDaSessao?.nome.split(" ").filter(Boolean)[0] || "bem-vindo"}
               continuar={inicioPc.continuar}
