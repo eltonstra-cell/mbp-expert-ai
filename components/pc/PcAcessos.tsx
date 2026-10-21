@@ -213,6 +213,13 @@ export default function PcAcessos({
                     {!(formulario.crn || "").trim() && <span className="ui-row-sub">Sem CRN, o relatório emitido mostra “CRN a preencher”.</span>}
                   </label>
                 )}
+                {(formulario.perfil === "Consultor/RT" || formulario.perfil === "Administrador") && (
+                  <label className="pc-field">
+                    <span className="ui-eyebrow">Cargo na assinatura do relatório (opcional)</span>
+                    <input className="ui-input" value={formulario.cargo || ""} onChange={(evento) => onCampo({ cargo: evento.target.value })} placeholder="Ex.: Nutricionista RT" />
+                    {!(formulario.cargo || "").trim() && <span className="ui-row-sub">Sem cargo, a assinatura mostra “Responsável técnico” (nunca o perfil de acesso).</span>}
+                  </label>
+                )}
                 {formulario.perfil === "Fiscal" && !formulario.jaEraFiscal && (
                   <label className="pc-field">
                     <span className="ui-eyebrow">Validade do acesso</span>

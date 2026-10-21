@@ -25,3 +25,40 @@ export function cssDoRodapeDeImpressao(opcoes: { empresa: string; selo: string; 
   const base = "font-family:Helvetica,Arial,sans-serif;font-size:8pt;color:#64748B;";
   return `@media print{@page{margin:12mm 11mm 18mm 11mm;@bottom-left{content:"${empresa}";${base}}@bottom-center{content:"${selo}";${base}color:#12202B;}@bottom-right{content:"Página " counter(page) " de " counter(pages);${base}}}}`;
 }
+
+// ===== Cabeçalho e rodapé de documentos impressos (relatório emitido, resumo de uma página, dossiê) =====
+// Escolha técnica: caixas de margem do @page (Chrome e Edge 131 ou mais). Elas repetem o cabeçalho e o "Página X de Y" em TODAS as páginas.
+// Sem suporte (Firefox, Safari), o documento traz a identificação no começo da primeira página e não tem o número das páginas.
+
+export type CabecalhoDeImpressao = {
+  /** Linhas do canto esquerdo (ex.: nome da empresa e CNPJ). */
+  esquerda: string[];
+  /** Linhas do canto direito (ex.: número do relatório, versão, data de emissão e motivo da versão). */
+  direita: string[];
+  /** Texto do rodapé, ao lado do "Página X de Y". */
+  rodape?: string;
+};
+
+/** Linhas de um texto de CSS: cada linha vira "\A " (quebra) e o texto é protegido contra aspas e barras. */
+export function linhasParaCss(linhas: string[]): string {
+  return linhas
+    .map((linha) => textoParaCss((linha || "").slice(0, 80)))
+    .filter(Boolean)
+    .join("\\A ");
+}
+
+export function cssDoDocumentoImpresso(opcoes: { cabecalho: CabecalhoDeImpressao; comCaixasDeMargem: boolean }): string {
+  if (!opcoes.comCaixasDeMargem) return "";
+  const { cabecalho } = opcoes;
+  const base = "font-family:Helvetica,Arial,sans-serif;font-size:8pt;line-height:1.35;color:#12202B;white-space:pre-line;";
+  const esquerda = linhasParaCss(cabecalho.esquerda);
+  const direita = linhasParaCss(cabecalho.direita);
+  const rodape = textoParaCss((cabecalho.rodape || "").slice(0, 80));
+  return (
+    `@media print{@page{size:A4;margin:26mm 12mm 18mm 12mm;` +
+    `@top-left{content:"${esquerda}";${base}text-align:left;vertical-align:bottom;padding-bottom:3mm;border-bottom:0.3mm solid #B4C2CE;}` +
+    `@top-right{content:"${direita}";${base}text-align:right;vertical-align:bottom;padding-bottom:3mm;border-bottom:0.3mm solid #B4C2CE;}` +
+    `@bottom-left{content:"${rodape}";${base}text-align:left;}` +
+    `@bottom-right{content:"Página " counter(page) " de " counter(pages);${base}text-align:right;}}}`
+  );
+}

@@ -3,17 +3,26 @@
 import { Pill } from "@/components/ui/Pill";
 
 export type PopAprovadoLinha = { id: string; codigo: string; titulo: string; versao: string; aprovadoEm?: string };
+export type RelatorioEmitidoLinha = { id: string; numero: string; versao: number; emitidoEm: string; motivo?: string };
 
-// Início do Fiscal: só leitura, só o que está pronto. O que ainda não existe aparece como "em breve".
+// Início do Fiscal: só leitura (relatórios emitidos, comprovantes e POPs aprovados). O dossiê ainda aparece como "em breve".
 export default function FiscalInicio({
   nome,
   empresa,
   popsAprovados,
+  relatorios = [],
+  onAbrirRelatorios,
+  onAbrirPops,
   onAbrirComprovantes,
 }: {
   nome: string;
   empresa: string;
   popsAprovados: PopAprovadoLinha[];
+  /** Relatórios emitidos da empresa (só leitura), do mais novo para o mais antigo. */
+  relatorios?: RelatorioEmitidoLinha[];
+  onAbrirRelatorios?: () => void;
+  /** Abre os POPs vigentes em Documentos (só leitura). */
+  onAbrirPops?: () => void;
   /** Comprovantes de terceiros com validade (só leitura). */
   onAbrirComprovantes?: () => void;
 }) {
@@ -30,9 +39,25 @@ export default function FiscalInicio({
           <article className="ui-card fiscal-cartao">
             <div className="pc-card-head">
               <h2 className="ui-card-title">Relatórios emitidos</h2>
-              <span className="em-breve">em breve</span>
+              <Pill tom={relatorios.length ? "ok" : "na"}>{relatorios.length}</Pill>
+              {onAbrirRelatorios && relatorios.length > 0 && (
+                <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={onAbrirRelatorios}>
+                  Abrir
+                </button>
+              )}
             </div>
-            <p className="ui-row-sub">Os relatórios emitidos desta empresa vão aparecer aqui.</p>
+            {relatorios.length === 0 ? (
+              <p className="doc-linha">Nenhum relatório emitido ainda.</p>
+            ) : (
+              <ul className="fiscal-pops">
+                {relatorios.slice(0, 5).map((item) => (
+                  <li key={item.id}>
+                    <span className="fiscal-pop-titulo">{item.numero} · versão {item.versao}</span>
+                    <span className="doc-linha">emitido em {new Date(item.emitidoEm).toLocaleDateString("pt-BR")}{item.motivo ? ` · motivo: ${item.motivo}` : ""}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </article>
           <article className="ui-card fiscal-cartao">
             <div className="pc-card-head">
@@ -56,6 +81,11 @@ export default function FiscalInicio({
             <div className="pc-card-head">
               <h2 className="ui-card-title">POPs aprovados</h2>
               <Pill tom="ok">{popsAprovados.length}</Pill>
+              {onAbrirPops && (
+                <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={onAbrirPops}>
+                  Abrir
+                </button>
+              )}
             </div>
             {popsAprovados.length === 0 ? (
               <p className="ui-row-sub">Nenhum POP aprovado ainda.</p>

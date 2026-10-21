@@ -12,7 +12,7 @@ export function acoesDaEmpresa(f: { podeEditar: boolean; podeGerenciarAcessos: b
   return acoes;
 }
 
-export type AcaoVisita = "abrir" | "relatorio" | "encerrar" | "excluir";
+export type AcaoVisita = "abrir" | "relatorio" | "encerrar" | "arquivar" | "desarquivar" | "excluir";
 
 export function acoesDaVisita(f: {
   status: "Em andamento" | "Concluída";
@@ -20,11 +20,15 @@ export function acoesDaVisita(f: {
   podeRelatorio: boolean;
   podeConcluir: boolean;
   podeExcluir: boolean;
+  /** Arquivar tira a visita da lista sem apagar nada (quem pode concluir visitas). */
+  podeArquivar?: boolean;
+  arquivada?: boolean;
 }): AcaoVisita[] {
   const acoes: AcaoVisita[] = [];
   if (f.podeContinuar || f.status === "Concluída") acoes.push("abrir");
   if (f.podeRelatorio) acoes.push("relatorio");
   if (f.status === "Em andamento" && f.podeConcluir) acoes.push("encerrar");
+  if (f.podeArquivar) acoes.push(f.arquivada ? "desarquivar" : "arquivar");
   if (f.podeExcluir) acoes.push("excluir");
   return acoes;
 }

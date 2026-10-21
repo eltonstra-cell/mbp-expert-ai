@@ -29,9 +29,9 @@ test("Conjunto da norma em POPs e documentos: criar do modelo em laranja e Outro
   assert.ok(ler("../app/globals.css").includes(".ui-btn--criar{background:#E8760A;color:#fff;font-weight:400}"));
 });
 
-test("POP em campos: abas, em breve, blocos extras, faixa do texto-base e rodapé com Salvar rascunho", () => {
+test("POP em campos: documento e histórico, blocos extras, faixa do texto-base e rodapé com Salvar rascunho", () => {
   const editor = ler("../components/pc/PcPopEditor.tsx");
-  for (const texto of ["Procedimento", "Versões", "Registros", "Treinamento", "em breve", "Salvar rascunho", "Enviar para aprovação", "Aprovar e assinar", "Editar (cria nova versão)", "Comparação de versões"]) {
+  for (const texto of ["Histórico do POP", "Documento do POP", "Motivo", "Salvar rascunho", "Enviar para aprovação", "Aprovar e assinar", "Editar (cria nova versão)", "Comparação de versões"]) {
     assert.ok(editor.includes(texto), texto);
   }
   for (const texto of ["Objetivo", "Campo de aplicação", "Responsável pela execução", "Frequência", "Ação corretiva", "Registro que prova a execução", "Exigido na SES 799/2023, Anexo II, 13.2.", "vem da norma", "Comprovante da empresa especializada", "Princípio ativo", "Tempo de contato", "Nunca o laudo"]) {

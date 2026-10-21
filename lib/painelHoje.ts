@@ -2,6 +2,8 @@
 // Lógica pura: os números vêm dos dados que o app já tem; nada é inventado nem arredondado de forma enganosa.
 import type { Capacitacao, Colaborador, ComprovanteTerceiro, Empresa, NaoConformidade, PerfilUsuario, ProcedimentoOperacionalPadronizado, UsuarioSistema, Visita } from "../types/index.ts";
 import { hojeISO, situacaoDoPop } from "./popsNorma.ts";
+import { coberturaDoChecklist, textoDoPercentualConforme } from "./cobertura.ts";
+import { quantidade } from "./plural.ts";
 import { diasEntre, pendenciasDaEmpresa, podeGerenciarComprovantes, podeGerenciarPessoas, podeVerComprovantes } from "./registrosEmpresa.ts";
 
 type Quem = Pick<UsuarioSistema, "perfil" | "status" | "validoAte" | "acessoEncerradoEm"> | null | undefined;
@@ -180,11 +182,11 @@ export function montarLembrete(dados: { empresaNome: string; painel: PainelHoje;
     const prazo = item.validade ? `${item.prazo} (${dataBr(item.validade)})` : item.prazo;
     linhas.push(`- ${item.titulo}: ${prazo}`);
   }
-  if (linhasDatadas.length > mostrados.length) linhas.push(`- e mais ${linhasDatadas.length - mostrados.length} item(ns) no painel do Ponto Certo.`);
+  if (linhasDatadas.length > mostrados.length) linhas.push(`- e mais ${quantidade(linhasDatadas.length - mostrados.length, "item", "itens")} no painel do Ponto Certo.`);
   if (capacitacoes.length > 0) {
     const vencidas = capacitacoes.filter((item) => item.situacao === "vencido").length;
     const aVencer = capacitacoes.length - vencidas;
-    linhas.push(`- Capacitações da equipe: ${vencidas} vencida(s) e ${aVencer} vencendo. Veja os detalhes no Ponto Certo.`);
+    linhas.push(`- Capacitações da equipe: ${quantidade(vencidas, "vencida", "vencidas")} e ${aVencer} vencendo. Veja os detalhes no Ponto Certo.`);
   }
   linhas.push("", "Este lembrete foi preparado no Ponto Certo e não substitui o relatório completo.", "", `${dados.remetente}`);
   const corpo = linhas.join("\n");
@@ -202,9 +204,25 @@ export function montarLembrete(dados: { empresaNome: string; painel: PainelHoje;
 
 export type ResumoDeUmaPagina = {
   empresaNome: string;
+  empresaCnpj?: string;
   geradoEm: string;
   /** Percentual de conformidade da última visita com respostas; null quando não há respostas. */
-  conformidade: { percentual: number; respondidos: number; conformes: number; naoConformes: number; dataDaVisita: string } | null;
+  conformidade: {
+    /** Conforme ÷ itens avaliados (nunca da visita inteira quando ela ficou parcial). */
+    percentual: number;
+    /** Itens avaliados (conformes + não conformes). */
+    respondidos: number;
+    conformes: number;
+    naoConformes: number;
+    dataDaVisita: string;
+    /** Itens da visita e quantos têm resposta: o denominador que fica visível ("3 de 34 respondidos"). */
+    totalDeItens: number;
+    respondidosNoChecklist: number;
+    parcial: boolean;
+    /** Não conformidades ainda abertas que nasceram nesta visita. */
+    abertasDaVisita: number;
+  } | null;
+  /** Não conformidades abertas da EMPRESA (todas as visitas). */
   abertas: number;
   /** Comparação com a visita anterior (só quando as duas têm respostas suficientes). */
   melhoria: { texto: string; pontos: number | null; resolvidasNoPeriodo: number } | null;
@@ -233,6 +251,7 @@ export function percentualDeConformidade(visita: Pick<Visita, "checklist">): num
 
 export function montarResumo(dados: {
   empresaNome: string;
+  empresaCnpj?: string;
   visitas: Visita[];
   ncs: NaoConformidade[];
   painel: PainelHoje;
@@ -244,6 +263,8 @@ export function montarResumo(dados: {
   const anterior = comRespostas[1];
   const r = ultima ? respostasDaVisita(ultima) : null;
   const abertas = dados.ncs.filter((nc) => !nc.inativaNoChecklist && nc.status !== "Resolvida").length;
+  const cobertura = ultima ? coberturaDoChecklist(ultima.checklist) : null;
+  const abertasDaVisita = ultima ? dados.ncs.filter((nc) => nc.visitaId === ultima.id && !nc.inativaNoChecklist && nc.status !== "Resolvida").length : 0;
 
   let melhoria: ResumoDeUmaPagina["melhoria"] = null;
   if (ultima && anterior) {
@@ -255,7 +276,7 @@ export function montarResumo(dados: {
       melhoria = {
         pontos,
         resolvidasNoPeriodo,
-        texto: pontos > 0 ? `Conformidade subiu ${pontos} ponto(s) percentuais desde a visita anterior.` : pontos < 0 ? `Conformidade caiu ${Math.abs(pontos)} ponto(s) percentuais desde a visita anterior.` : "Conformidade igual à da visita anterior.",
+        texto: pontos > 0 ? `Conformidade subiu ${quantidade(pontos, "ponto percentual", "pontos percentuais")} desde a visita anterior.` : pontos < 0 ? `Conformidade caiu ${quantidade(Math.abs(pontos), "ponto percentual", "pontos percentuais")} desde a visita anterior.` : "Conformidade igual à da visita anterior.",
       };
     } else {
       melhoria = { pontos: null, resolvidasNoPeriodo, texto: MENSAGEM_POUCOS_DADOS };
@@ -264,8 +285,22 @@ export function montarResumo(dados: {
 
   return {
     empresaNome: dados.empresaNome,
+    empresaCnpj: dados.empresaCnpj,
     geradoEm: hoje,
-    conformidade: ultima && r ? { percentual: Math.round((r.conformes / r.respondidos) * 100), respondidos: r.respondidos, conformes: r.conformes, naoConformes: r.naoConformes, dataDaVisita: ultima.data } : null,
+    conformidade:
+      ultima && r && cobertura
+        ? {
+            percentual: Math.round((r.conformes / r.respondidos) * 100),
+            respondidos: r.respondidos,
+            conformes: r.conformes,
+            naoConformes: r.naoConformes,
+            dataDaVisita: ultima.data,
+            totalDeItens: cobertura.total,
+            respondidosNoChecklist: cobertura.respondidos,
+            parcial: cobertura.parcial,
+            abertasDaVisita,
+          }
+        : null,
     abertas,
     melhoria,
     precisaDeAcao: dados.painel.itens.slice(0, 6),
@@ -278,10 +313,14 @@ export function montarResumo(dados: {
 /** Texto curto do resumo para WhatsApp: os mesmos números da página. */
 export function textoDoResumo(resumo: ResumoDeUmaPagina): string {
   const linhas = [`Resumo · ${resumo.empresaNome} · ${dataBr(resumo.geradoEm)}`];
-  linhas.push(resumo.conformidade ? `Conformidade: ${resumo.conformidade.percentual}% (${resumo.conformidade.conformes} de ${resumo.conformidade.respondidos} itens respondidos, visita de ${dataBr(resumo.conformidade.dataDaVisita)})` : "Conformidade: sem visita com respostas ainda");
-  linhas.push(`Não conformidades abertas: ${resumo.abertas}`);
+  linhas.push(
+    resumo.conformidade
+      ? `Visita de ${dataBr(resumo.conformidade.dataDaVisita)}: ${resumo.conformidade.percentual}% conforme entre os itens avaliados (${resumo.conformidade.conformes} de ${resumo.conformidade.respondidos}); ${resumo.conformidade.respondidosNoChecklist} de ${resumo.conformidade.totalDeItens} itens respondidos${resumo.conformidade.parcial ? " (visita parcial)" : ""}`
+      : "Visita: sem itens respondidos ainda"
+  );
+  linhas.push(`Da empresa: ${quantidade(resumo.abertas, "não conformidade aberta", "não conformidades abertas")}`);
   if (resumo.melhoria) linhas.push(resumo.melhoria.texto);
-  linhas.push(`Documentos vencidos ou vencendo: ${resumo.documentosVencendo} · Treinamentos: ${resumo.treinamentosVencendo}`);
+  linhas.push(`Da empresa: ${quantidade(resumo.documentosVencendo, "documento vencido ou vencendo", "documentos vencidos ou vencendo")} · ${quantidade(resumo.treinamentosVencendo, "treinamento vencido ou vencendo", "treinamentos vencidos ou vencendo")}`);
   linhas.push("Não substitui o relatório completo.");
   return linhas.join("\n");
 }

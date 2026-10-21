@@ -36,7 +36,7 @@ export default function QualityProgramsFields({ programas, onChange, aberto = fa
       <summary className="cursor-pointer list-none">
         <div className="font-extrabold text-slate-950">Capítulo 3 — Programas de Controle de Qualidade</div>
         <div className="mt-0.5 text-xs text-slate-500">
-          Informe a situação atual e toque no nome para completar os dados. {ativos} programa(s) ativo(s) ou em implantação.
+          Informe a situação atual e toque no nome para completar os dados. {ativos === 1 ? "1 programa ativo ou em implantação" : `${ativos} programas ativos ou em implantação`}.
         </div>
       </summary>
 

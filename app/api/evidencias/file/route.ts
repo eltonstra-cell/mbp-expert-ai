@@ -5,6 +5,7 @@ import {
   obterAcessoServidor,
 } from "@/lib/serverAccess";
 import { apagarArquivoDaEvidencia, caminhoDeEvidenciaValido } from "@/lib/evidenceBlob";
+import { arquivosEmRelatorioEmitido } from "@/lib/relatorioEmitido";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -113,6 +114,11 @@ export async function DELETE(request: NextRequest) {
       { error: "Seu perfil não permite remover evidências desta visita." },
       { status: 403 }
     );
+  }
+
+  // Foto citada em relatório emitido fica guardada: o relatório não pode perder a imagem.
+  if (acesso.data && arquivosEmRelatorioEmitido(acesso.data.relatoriosEmitidos).has(pathname)) {
+    return NextResponse.json({ error: "Esta foto está citada em um relatório emitido e não pode ser removida." }, { status: 409 });
   }
 
   const apagado = await apagarArquivoDaEvidencia(pathname, (caminho) => del(caminho));

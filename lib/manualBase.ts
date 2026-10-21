@@ -343,3 +343,17 @@ export function normalizarEquipamentos(equipamentos?: EquipamentoSetor[]) {
       observacao: item.observacao || "",
     }));
 }
+
+/** Separa os ambientes escolhidos: os do modelo do app e os com nome próprio da empresa. */
+export function separarSetores(setores: string[]): { doModelo: string[]; daEmpresa: string[] } {
+  const oficiais = new Set<string>(SETORES_OFICIAIS_MANUAL);
+  return { doModelo: setores.filter((setor) => oficiais.has(setor)), daEmpresa: setores.filter((setor) => !oficiais.has(setor)) };
+}
+
+/** "3 do modelo · 2 próprios da empresa" (nunca soma os dois como se fossem do mesmo tipo). */
+export function resumoDosSetores(setores: string[]): string {
+  const { doModelo, daEmpresa } = separarSetores(setores);
+  const modelo = doModelo.length === 1 ? "1 ambiente do modelo" : `${doModelo.length} ambientes do modelo`;
+  const proprios = daEmpresa.length === 1 ? "1 ambiente próprio da empresa" : `${daEmpresa.length} ambientes próprios da empresa`;
+  return `${modelo} · ${proprios}`;
+}

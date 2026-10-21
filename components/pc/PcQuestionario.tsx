@@ -86,6 +86,14 @@ export default function PcQuestionario({ ambiente, config, foiUsada, quem, onSal
                   <span className="quest-titulo">{pergunta.titulo}</span>
                   <span className="ui-row-sub">
                     <span className={`quest-origem quest-origem--${pergunta.origem}`}>{ORIGEM_DA_PERGUNTA[pergunta.origem]}</span>{" "}
+                    {pergunta.nova && (
+                      <>
+                        <span className="quest-nova">Nova no modelo</span>{" "}
+                        <button type="button" className="pc-link-btn" onClick={() => onSalvar({ ...config, perguntas: config.perguntas.map((item) => (item.id === pergunta.id ? { ...item, nova: false } : item)) })}>
+                          Marcar como vista
+                        </button>{" "}
+                      </>
+                    )}
                     {pergunta.referencia ? (
                       <>
                         Fonte: {pergunta.referencia}

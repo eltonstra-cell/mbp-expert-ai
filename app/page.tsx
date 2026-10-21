@@ -69,7 +69,8 @@ import PcEvidencias from "@/components/pc/PcEvidencias";
 import PcAmbientes from "@/components/pc/PcAmbientes";
 import PcCentral, { type PassoCentral } from "@/components/pc/PcCentral";
 import PcPops from "@/components/pc/PcPops";
-import PcVisitas from "@/components/pc/PcVisitas";
+import PcVisitas, { type FiltroVisitas } from "@/components/pc/PcVisitas";
+import { avisoDeVisitaAberta, limiteDeDiasDaVisita, motivoParaNaoExcluirVisita, textoDeProgressoDaVisita } from "@/lib/visitasLista";
 import PcEmpresas from "@/components/pc/PcEmpresas";
 import CampoEmpresas from "@/components/campo/CampoEmpresas";
 import { useScreenMode } from "@/components/useScreenMode";
@@ -88,7 +89,7 @@ import { MENSAGEM_SEM_FALA, ehSilencio } from "@/lib/transcricao";
 import { nomeDoArquivoPdf, rotuloDoRelatorio, seloDoPdf } from "@/lib/reportLabels";
 import { nomeDeExibicaoDoAmbiente } from "@/lib/checklistEnvs";
 import { calcularCortes } from "@/lib/pdfPaginacao";
-import { cssDoRodapeDeImpressao, suportaCaixasDeMargem } from "@/lib/printFooter";
+import { cssDoDocumentoImpresso, cssDoRodapeDeImpressao, suportaCaixasDeMargem, type CabecalhoDeImpressao } from "@/lib/printFooter";
 import { sincronizarNcDoItem } from "@/lib/checklistNcs";
 import { visitaDaEmpresaAtiva } from "@/lib/trocarEmpresa";
 import { dadosExtrasDoItem, desfazerLimpeza, limparResposta, listaEmTexto, type InstantaneoDaResposta } from "@/lib/limparResposta";
@@ -109,6 +110,8 @@ import OperationalFlowsFields from "@/components/OperationalFlowsFields";
 import QualityProgramsFields from "@/components/QualityProgramsFields";
 import CentralEmpresaNav from "@/components/pc/CentralEmpresaNav";
 import PcImplantacao from "@/components/pc/PcImplantacao";
+import { mostrarToast } from "@/lib/toast";
+import { palavra as pal, quantidade as qtd } from "@/lib/plural";
 import { gruposVisiveis, lembrarSubaba, lerSubabaLembrada, resolverSubaba, subabasVisiveis, type SubAbaCentral } from "@/lib/centralEmpresa";
 import { empresaTemImplantacao, implantacaoConcluida, implantacaoDeEmpresaNova, passosDeImplantacao } from "@/lib/implantacao";
 import { divergenciaDeResponsavel, responsavelEfetivo, textoDoResponsavel } from "@/lib/responsavelEstabelecimento";
@@ -163,7 +166,7 @@ import {
   SETORES_OFICIAIS_MANUAL,
 } from "@/lib/manualBase";
 import { obterModeloChecklistManual } from "@/lib/manualChecklist";
-import { itensDoQuestionario, materializarModelo, perguntaFoiUsada, podeEditarQuestionario } from "@/lib/questionarioAmbiente";
+import { comPerguntasNovasDoModelo, itensDoQuestionario, materializarModelo, perguntaFoiUsada, podeEditarQuestionario } from "@/lib/questionarioAmbiente";
 import PcQuestionario from "@/components/pc/PcQuestionario";
 import { MENSAGEM_LIMITE_DE_FOTOS, comprovacaoDaCorrecao, fotosDoItem, podeAdicionarFotoNoItem } from "@/lib/fotosDoItem";
 import {
@@ -204,8 +207,7 @@ import {
   hasLocalOnlyRecords,
   localOnlyCounts,
   mergeForRecovery,
-  type RecoveryCounts,
-} from "@/lib/recovery";
+  type RecoveryCounts, textoDaRecuperacao } from "@/lib/recovery";
 import {
   createLocalBackup,
   localBackupFilename,
@@ -545,7 +547,9 @@ function criarChecklist(
       setorNormalizado as (typeof SETORES_OFICIAIS_MANUAL)[number]
     );
     // Questionário personalizado pelo RT (perguntas ativas, na ordem escolhida); sem ele, vale o modelo do app.
-    const personalizado = itensDoQuestionario(questionarios?.[ambiente]);
+    // As perguntas que o modelo ganhou depois da edição entram também nos ambientes já editados (ativas, sem apagar nada da empresa).
+    const modeloDoAmbiente = (setorDoManual ? obterModeloChecklistManual(ambiente, modeloReferencia) : modelosChecklist[ambiente] || obterModeloChecklistManual(ambiente, modeloReferencia)).filter((item) => item.categoria !== "Equipamentos e móveis");
+    const personalizado = itensDoQuestionario(questionarios?.[ambiente], modeloDoAmbiente);
     const itensEstrutura = personalizado ? personalizado : setorDoManual
       ? obterModeloChecklistManual(ambiente, modeloReferencia)
       : modelosChecklist[ambiente] || obterModeloChecklistManual(ambiente, modeloReferencia);
@@ -1055,7 +1059,7 @@ export default function Home() {
   }
   const [filtroInicio, setFiltroInicio] = useState<"Em andamento" | "Concluída">("Em andamento");
   const [buscaEmpresas, setBuscaEmpresas] = useState("");
-  const [filtroListaVisitas, setFiltroListaVisitas] = useState<"Todas" | "Em andamento" | "Concluída">("Todas");
+  const [filtroListaVisitas, setFiltroListaVisitas] = useState<FiltroVisitas>("Todas");
   const [filtroNcs, setFiltroNcs] = useState<"Todas" | "Abertas" | "Resolvidas">("Todas");
   const [planoNcAbertaId, setPlanoNcAbertaId] = useState<string>("");
   // Correções: da visita aberta (padrão) ou todas as abertas da empresa (toque em "Correções abertas na empresa").
@@ -1840,7 +1844,7 @@ export default function Home() {
       const resposta = await fetch("/api/relatorios/emitir", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ visitaId: visitaAtual.id, novaVersao: Boolean(anterior), motivo, nomeLocal: usuarioDaSessao?.nome || sessaoAtual?.name || "" }),
+        body: JSON.stringify({ visitaId: visitaAtual.id, novaVersao: Boolean(anterior), motivo, secoes: secoesRelatorio, nomeLocal: usuarioDaSessao?.nome || sessaoAtual?.name || "" }),
       });
       const corpo = (resposta.headers.get("content-type") || "").includes("application/json") ? await resposta.json().catch(() => null) : null;
       if (!resposta.ok || !corpo?.relatorio) {
@@ -1862,26 +1866,23 @@ export default function Home() {
     }
   }
 
-  function imprimirDocumento(titulo: string) {
+  // Relatório emitido, resumo de uma página e dossiê: o cabeçalho (empresa, CNPJ, número, emissão, versão e motivo) e o
+  // "Página X de Y" saem em TODAS as páginas pelas caixas de margem do @page (Chrome/Edge 131+).
+  function imprimirDocumento(titulo: string, cabecalho: CabecalhoDeImpressao) {
+    const marcas = (navigator as Navigator & { userAgentData?: { brands: { brand: string; version: string }[] } }).userAgentData?.brands;
+    const estilo = document.createElement("style");
+    estilo.id = "estilo-impressao-documento";
+    estilo.textContent = cssDoDocumentoImpresso({ cabecalho, comCaixasDeMargem: suportaCaixasDeMargem(marcas, navigator.userAgent) });
+    document.head.appendChild(estilo);
     const tituloAntes = document.title;
     document.title = titulo.replace(/[^\w\s.-]+/g, "");
     const limpar = () => {
+      estilo.remove();
       document.title = tituloAntes;
       window.removeEventListener("afterprint", limpar);
     };
     window.addEventListener("afterprint", limpar);
-    window.setTimeout(() => window.print(), 100);
-  }
-
-  function imprimirResumo() {
-    const tituloAntes = document.title;
-    document.title = `Resumo - ${nomeParaExibir(atual)}`.replace(/[^\w\s.-]+/g, "");
-    const limpar = () => {
-      document.title = tituloAntes;
-      window.removeEventListener("afterprint", limpar);
-    };
-    window.addEventListener("afterprint", limpar);
-    window.setTimeout(() => window.print(), 100);
+    window.setTimeout(() => window.print(), 150);
   }
 
   async function compartilharResumo(texto: string) {
@@ -1910,6 +1911,11 @@ export default function Home() {
     }
     setDocSecao(sub);
     setView("pops");
+  }
+
+  // Caixa inteligente: leva à sub-aba da Central (quem edita) ou ao Documentos (quem só lê), sempre da empresa ativa.
+  function abrirDocumentosOuCentral(sub: SubAbaCentral) {
+    abrirDocumentos(sub);
   }
 
   function abrirComprovantes() {
@@ -2674,24 +2680,26 @@ export default function Home() {
       visitas.filter((v) => v.empresaId === db.empresaAtualId),
     [visitas, db.empresaAtualId]
   );
+  // Visita arquivada some das listas do dia a dia (a lista do PC tem o filtro "Arquivadas"); a numeração segue com todas.
+  const visitasSemArquivadas = useMemo(() => visitas.filter((visita) => !visita.arquivada), [visitas]);
   const visitasFiltradas = useMemo(
     () =>
-      filtroListaVisitas === "Todas"
-        ? visitas
-        : visitas.filter(
+      filtroListaVisitas === "Todas" || filtroListaVisitas === "Arquivadas"
+        ? visitasSemArquivadas
+        : visitasSemArquivadas.filter(
             (visita) => visita.status === filtroListaVisitas
           ),
-    [visitas, filtroListaVisitas]
+    [visitasSemArquivadas, filtroListaVisitas]
   );
 
   const prefixoMesAtual = new Date().toISOString().slice(0, 7);
   const visitasDoMes = visitas.filter((visita) => visita.data?.startsWith(prefixoMesAtual));
-  const visitasRecentesInicio = visitas
+  const visitasRecentesInicio = visitasSemArquivadas
     .filter((visita) => visita.status === filtroInicio)
     .slice(0, 4);
 
   // "Continue de onde parou" segue a visita aberta no momento; sem uma, a mais recente em andamento da empresa ativa.
-  const visitaEmAndamentoDestaque = visitaDaEmpresaAtiva(visitas, db.empresaAtualId, visitaAtual?.id);
+  const visitaEmAndamentoDestaque = visitaDaEmpresaAtiva(visitasSemArquivadas, db.empresaAtualId, visitaAtual?.id);
   const progressoVisitaDestaque = progressoDoChecklist(visitaEmAndamentoDestaque?.checklist).percentual;
 
   const numeroVisitaPorId = useMemo(() => {
@@ -3014,14 +3022,14 @@ export default function Home() {
     const partes: string[] = [];
 
     partes.push(
-      `A inspeção avaliou ${itensAvaliadosVisita} item(ns), com ${conformesVisita} conforme(s) e ${naoConformesVisita} não conforme(s), resultando em ${percentualConformidade}% de conformidade entre os itens avaliados.`
+      `A inspeção avaliou ${qtd(itensAvaliadosVisita, "item", "itens")}, com ${qtd(conformesVisita, "conforme", "conformes")} e ${qtd(naoConformesVisita, "não conforme", "não conformes")}, resultando em ${percentualConformidade}% de conformidade entre os itens avaliados.`
     );
 
     if (ncsVisita.length === 0) {
       partes.push("Não foram registradas não conformidades nesta visita.");
     } else {
       partes.push(
-        `Foram registradas ${ncsVisita.length} não conformidade(s): ${ncsResolvidas} resolvida(s), ${ncsEmTratamento} em tratamento e ${ncsSomenteAbertas} aberta(s).`
+        `${pal(ncsVisita.length, "Foi registrada", "Foram registradas")} ${qtd(ncsVisita.length, "não conformidade", "não conformidades")}: ${qtd(ncsResolvidas, "resolvida", "resolvidas")}, ${ncsEmTratamento} em tratamento e ${qtd(ncsSomenteAbertas, "aberta", "abertas")}.`
       );
 
       if (ncsCriticasVisita > 0 || ncsImportantesVisita > 0 || ncsLevesVisita > 0) {
@@ -3034,20 +3042,20 @@ export default function Home() {
         partes.push("Todas as não conformidades possuem ação corretiva definida.");
       } else {
         partes.push(
-          `${ncsVisita.length - acoesDefinidas} não conformidade(s) ainda necessita(m) de definição de ação corretiva.`
+          `${qtd(ncsVisita.length - acoesDefinidas, "não conformidade", "não conformidades")} ainda ${pal(ncsVisita.length - acoesDefinidas, "necessita", "necessitam")} de definição de ação corretiva.`
         );
       }
     }
 
     if (evidenciasVisita.length > 0) {
       partes.push(
-        `Foram vinculadas ${contagemEvidencias.total} evidência(s) (${contagemEvidencias.texto}) aos registros da inspeção para fins de rastreabilidade.`
+        `${pal(contagemEvidencias.total, "Foi vinculada", "Foram vinculadas")} ${qtd(contagemEvidencias.total, "evidência", "evidências")} (${contagemEvidencias.texto}) aos registros da inspeção para fins de rastreabilidade.`
       );
     }
 
     if (pendentesVisita > 0) {
       partes.push(
-        `A inspeção permanece parcial, com ${pendentesVisita} item(ns) pendente(s) no checklist.`
+        `A inspeção permanece parcial, com ${qtd(pendentesVisita, "item pendente", "itens pendentes")} no checklist.`
       );
     } else {
       partes.push("O checklist foi integralmente respondido.");
@@ -3244,7 +3252,7 @@ export default function Home() {
     if (pendentesVisita > 0) {
       void avisar(
         `Não é possível finalizar esta inspeção ainda.\n\n` +
-        `Existem ${pendentesVisita} item(ns) pendente(s) no checklist.\n\n` +
+        `${pal(pendentesVisita, "Existe", "Existem")} ${qtd(pendentesVisita, "item pendente", "itens pendentes")} no checklist.\n\n` +
         `Avalie todos os itens selecionados como Conforme, Não conforme ou Não se aplica. ` +
         `Depois disso, a inspeção poderá ser concluída normalmente.`
       );
@@ -3252,9 +3260,9 @@ export default function Home() {
     }
 
     const alertas: string[] = [];
-    if (ncsSomenteAbertas > 0) alertas.push(`${ncsSomenteAbertas} não conformidade(s) seguirá(ão) aberta(s) para acompanhamento`);
-    if (ncsSemAcao > 0) alertas.push(`${ncsSemAcao} não conformidade(s) ainda está(ão) sem ação corretiva definida`);
-    if (analisesIAPendentes > 0) alertas.push(`${analisesIAPendentes} sugestão(ões) de análise fotográfica por IA ainda aguarda(m) confirmação ou descarte`);
+    if (ncsSomenteAbertas > 0) alertas.push(`${qtd(ncsSomenteAbertas, "não conformidade", "não conformidades")} ${pal(ncsSomenteAbertas, "seguirá", "seguirão")} ${pal(ncsSomenteAbertas, "aberta", "abertas")} para acompanhamento`);
+    if (ncsSemAcao > 0) alertas.push(`${qtd(ncsSemAcao, "não conformidade", "não conformidades")} ainda ${pal(ncsSemAcao, "está", "estão")} sem ação corretiva definida`);
+    if (analisesIAPendentes > 0) alertas.push(`${qtd(analisesIAPendentes, "sugestão", "sugestões")} de análise fotográfica por IA ainda ${pal(analisesIAPendentes, "aguarda", "aguardam")} confirmação ou descarte`);
     if (!(visitaAtual.conclusao || "").trim()) alertas.push("conclusão / observação final não preenchida — será gerada uma sugestão automática");
 
     const ressalvas = alertas.length
@@ -3511,9 +3519,44 @@ export default function Home() {
       setView("empresas");
       return;
     }
-    setVf({ data: hojeISO(), responsavel: "", responsavelIdentificacao: "", observacoes: "" });
+    setVf({ data: hojeISO(), responsavel: usuarioDaSessao?.nome || sessaoAtual?.name || "", responsavelIdentificacao: "", observacoes: "" });
     setShowVisitaForm(true);
     setView("visitas");
+  }
+
+  // Nova visita pelo grupo da empresa: a empresa do grupo vira a ativa e a visita já nasce nela.
+  function novaVisitaDaEmpresa(empresaId: string) {
+    if (!db.empresas[empresaId] || !exigirPermissao("visitas.criar", empresaId)) return;
+    setDb((o) => (o.empresaAtualId === empresaId ? o : { ...o, empresaAtualId: empresaId }));
+    setVf({ data: hojeISO(), responsavel: usuarioDaSessao?.nome || sessaoAtual?.name || "", responsavelIdentificacao: "", observacoes: "" });
+    setShowVisitaForm(true);
+    setView("visitas");
+  }
+
+  // Arquivar tira a visita da lista sem apagar nada (visita abandonada); vale para quem pode concluir visitas.
+  function arquivarVisita(id: string, arquivar: boolean) {
+    const visita = db.visitas.find((item) => item.id === id);
+    if (!visita || !exigirPermissao("visitas.concluir", visita.empresaId)) return;
+    const agora = new Date().toISOString();
+    const registro = criarRegistroAuditoria(
+      {
+        usuarioId: usuarioDaSessao?.id || "local",
+        usuarioNome: usuarioDaSessao?.nome || "Usuário local",
+        acao: arquivar ? "visita.arquivada" : "visita.desarquivada",
+        entidade: "Visita",
+        entidadeId: id,
+        empresaId: visita.empresaId,
+        detalhes: `${nomeParaExibir(db.empresas[visita.empresaId])} • visita de ${fdata(visita.data)} ${arquivar ? "arquivada" : "desarquivada"}.`,
+      },
+      agora
+    );
+    setDb((o) => ({
+      ...o,
+      visitas: o.visitas.map((item) => (item.id === id ? (arquivar ? { ...item, arquivada: true, arquivadaEm: agora } : { ...item, arquivada: false, arquivadaEm: undefined }) : item)),
+      registrosAuditoria: [...o.registrosAuditoria, registro],
+    }));
+    mostrarToast(arquivar ? "Visita arquivada" : "Visita desarquivada");
+    if (arquivar && visitaAtualId === id) setVisitaAtualId(null);
   }
 
   function salvarVisita() {
@@ -3792,7 +3835,13 @@ export default function Home() {
   }
 
   function abrirChecklistNoAmbiente(ambienteInicial?: string) {
-    if (!visitaAtual || !(visitaAtual.ambientes || []).length) return;
+    if (!visitaAtual) return;
+    if (!(visitaAtual.ambientes || []).length) {
+      // Sem ambientes o checklist não tem o que mostrar: avisa e leva à escolha dos ambientes da visita.
+      mostrarToast("Escolha os ambientes da visita para abrir o checklist.", { tipo: "aviso", duracaoMs: 3500 });
+      setView("ambientes");
+      return;
+    }
     if (!(permitido("visitas.executar", visitaAtual.empresaId) || (!!usuarioDaSessao && telaVisivel("checklist")))) {
       void avisar("Seu perfil não possui permissão para abrir o checklist.");
       return;
@@ -4016,7 +4065,7 @@ export default function Home() {
     if (
       pendentesAmbienteAtivo > 0 &&
       !(await confirmar(
-        `Ainda há ${pendentesAmbienteAtivo} pergunta(s) pendente(s) neste ambiente. Deseja avançar mesmo assim?`,
+        `Ainda há ${qtd(pendentesAmbienteAtivo, "pergunta pendente", "perguntas pendentes")} neste ambiente. Deseja avançar mesmo assim?`,
         { titulo: "Perguntas pendentes", confirmarRotulo: "Avançar" }
       ))
     ) return;
@@ -4059,7 +4108,7 @@ export default function Home() {
 
     const confirmou = await confirmar(
       `Zerar o ambiente “${ambienteChecklistAtivo}”?\n\n` +
-      `${respondidos.length} resposta(s) voltarão para Pendente. ` +
+      `${qtd(respondidos.length, "resposta voltará", "respostas voltarão")} para Pendente. ` +
       `As respostas e observações desses itens serão removidas.\n\n` +
       `Esta ação não apaga a visita nem as evidências já registradas.`,
       { titulo: "Zerar ambiente", confirmarRotulo: "Zerar", perigoso: true }
@@ -4465,6 +4514,9 @@ export default function Home() {
         if (ehPC) setRegistrarAberto(true);
         else registrarRapido(false);
         return;
+      case "central":
+        abrirDocumentosOuCentral(acao.subaba);
+        return;
       case "continuar":
         if (visitaEmAndamentoDestaque) continuar(visitaEmAndamentoDestaque.id, true);
         return;
@@ -4594,8 +4646,11 @@ export default function Home() {
 
   function abrirQuestionario(ambiente: string) {
     if (!empresaVisita || (usuarioDaSessao && !podeEditarQuestionario(usuarioDaSessao))) return;
-    if (!empresaVisita.questionarios?.[ambiente]) {
-      const config = materializarModelo(itensDoModeloDoAmbiente(ambiente, visitaAtual?.modelosQuestionarioAmbientes?.[ambiente] || empresaVisita.modelosQuestionarioAmbientes?.[ambiente]), ambiente, new Date().toISOString());
+    const modelo = itensDoModeloDoAmbiente(ambiente, visitaAtual?.modelosQuestionarioAmbientes?.[ambiente] || empresaVisita.modelosQuestionarioAmbientes?.[ambiente]);
+    const existente = empresaVisita.questionarios?.[ambiente];
+    // Ambiente já editado: as perguntas novas do modelo entram agora (ativas, marcadas como novas), sem apagar nada da empresa.
+    const config = existente ? comPerguntasNovasDoModelo(existente, modelo, new Date().toISOString()) : materializarModelo(modelo, ambiente, new Date().toISOString());
+    if (config !== existente) {
       atualizarEmpresaDosRegistros(empresaVisita.id, (empresa) => ({ ...empresa, questionarios: { ...(empresa.questionarios || {}), [ambiente]: config } }));
     }
     setAmbienteDoQuestionario(ambiente);
@@ -5523,7 +5578,7 @@ export default function Home() {
     if (
       pendentesIA > 0 &&
       !(await confirmar(
-        `Esta visita possui ${pendentesIA} sugestão(ões) de análise fotográfica por IA ainda sem revisão.\n\n` +
+        `Esta visita possui ${qtd(pendentesIA, "sugestão", "sugestões")} de análise fotográfica por IA ainda sem revisão.\n\n` +
         "Elas não serão apresentadas como conclusão técnica no relatório. Deseja concluir mesmo assim?",
         { titulo: "Concluir visita", confirmarRotulo: "Concluir" }
       ))
@@ -5588,6 +5643,10 @@ export default function Home() {
     const visita = db.visitas.find((v) => v.id === id);
     if (!visita) return;
     if (!exigirPermissao("visitas.concluir", visita.empresaId)) return;
+    if (usuarioDaSessao && usuarioDaSessao.perfil !== "Administrador") {
+      void avisar("Só o Administrador exclui uma visita. Para tirá-la da lista, use Arquivar.", { titulo: "Excluir visita" });
+      return;
+    }
 
     const respostas = (visita.checklist || []).filter(
       (item) => item.status !== "Pendente"
@@ -5596,29 +5655,45 @@ export default function Home() {
     const evidenciasLigadas = (db.evidencias || []).filter(
       (ev) => ev.visitaId === id
     ).length;
-
-    if (
-      respostas > 0 ||
-      ncsLigadas > 0 ||
-      evidenciasLigadas > 0 ||
-      visita.status === "Concluída"
-    ) {
-      void avisar(
-        "Esta visita já possui registros e foi protegida contra exclusão acidental.\n\n" +
-        `Respostas: ${respostas}\nNão conformidades: ${ncsLigadas}\nEvidências: ${evidenciasLigadas}\n\n` +
-        "Nesta versão, somente visitas vazias podem ser excluídas."
-      );
+    const bloqueio = motivoParaNaoExcluirVisita({
+      respostas,
+      naoConformidades: ncsLigadas,
+      evidencias: evidenciasLigadas,
+      concluida: visita.status === "Concluída",
+      temRelatorioEmitido: (db.relatoriosEmitidos || []).some((relatorio) => relatorio.visitaId === id),
+    });
+    if (bloqueio) {
+      void avisar(bloqueio, { titulo: "Excluir visita" });
       return;
     }
 
-    const digitado = await perguntar(
-      "Esta visita ainda está vazia. Para excluí-la definitivamente, digite EXCLUIR:",
-      { titulo: "Excluir visita", confirmarRotulo: "Excluir", perigoso: true }
-    );
+    const motivo = await perguntar("Por que esta visita vai ser excluída? O motivo fica no histórico (sem dados da visita).", {
+      titulo: "Excluir visita",
+      confirmarRotulo: "Continuar",
+    });
+    if (motivo === null) return;
+    if (motivo.trim().length < 5) {
+      void avisar("Informe o motivo da exclusão (mínimo de 5 letras).", { titulo: "Excluir visita" });
+      return;
+    }
+    const digitado = await perguntar("Esta visita ainda está vazia. Para excluí-la definitivamente, digite EXCLUIR:", {
+      titulo: "Excluir visita",
+      confirmarRotulo: "Excluir",
+      perigoso: true,
+    });
 
     if (digitado !== "EXCLUIR") return;
 
-    setDb((o) => ({ ...o, visitas: o.visitas.filter((v) => v.id !== id) }));
+    const registro = criarRegistroAuditoria({
+      usuarioId: usuarioDaSessao?.id || "local",
+      usuarioNome: usuarioDaSessao?.nome || "Usuário local",
+      acao: "visita.excluida",
+      entidade: "Visita",
+      entidadeId: id,
+      empresaId: visita.empresaId,
+      detalhes: `${nomeParaExibir(db.empresas[visita.empresaId])} • visita vazia de ${fdata(visita.data)} excluída. Motivo: ${motivo.trim()}`,
+    });
+    setDb((o) => ({ ...o, visitas: o.visitas.filter((v) => v.id !== id), registrosAuditoria: [...o.registrosAuditoria, registro] }));
     if (visitaAtualId === id) {
       setVisitaAtualId(null);
       setView("visitas");
@@ -5712,6 +5787,7 @@ export default function Home() {
       },
       registrosAuditoria: [...estado.registrosAuditoria, registro],
     }));
+    mostrarToast("Salvo");
   }
 
   // Privacidade da empresa: vale na hora e fica no histórico (quem liberou e quando). Não passa pelo "Salvar empresa".
@@ -6196,6 +6272,7 @@ export default function Home() {
           : [],
         visitaEmAndamentoId: visitaEmAndamentoDestaque?.id ?? null,
         podeChecklist: podeUsarChecklistNaBusca && !!visitaEmAndamentoDestaque,
+        subabasCentral: atual ? subabasVisiveis(permitido("empresas.editar", atual.id) ? quemVeNaCentral : quemVeNosDocumentos) : [],
       })
     : [];
   const checklistDestaque = visitaEmAndamentoDestaque?.checklist || [];
@@ -6663,7 +6740,7 @@ export default function Home() {
             </div>
             <p className="mt-1 text-sm">
               A sincronização foi bloqueada para evitar perda. Serão recuperados:
-              {` ${recuperacaoPendente.counts.empresas} empresa(s), ${recuperacaoPendente.counts.visitas} visita(s), ${recuperacaoPendente.counts.ncs} não conformidade(s) e ${recuperacaoPendente.counts.evidencias} evidência(s).`}
+              {` ${textoDaRecuperacao(recuperacaoPendente.counts)}.`}
             </p>
             <button
               type="button"
@@ -7050,14 +7127,14 @@ export default function Home() {
             empresa={nomeParaExibir(atual)}
             relatorios={(db.relatoriosEmitidos || []).filter((item) => item.empresaId === atual.id)}
             urlDaFoto={(pathname) => `/api/evidencias/file?pathname=${encodeURIComponent(pathname)}`}
-            onImprimir={() => imprimirDocumento(`Relatorio emitido - ${nomeParaExibir(atual)}`)}
+            onImprimir={imprimirDocumento}
             onVoltar={() => setView(visitaAtual ? "relatorio" : "inicio")}
           />
         ) : view === "dossie" && atual && podeGerarDossie(usuarioDaSessao) ? (
           <PcDossie
             dados={{ empresa: atual, relatorios: db.relatoriosEmitidos, registros: db.registrosPop, comprovantes: db.comprovantes, colaboradores: db.colaboradores, capacitacoes: db.capacitacoes }}
             urlDaFoto={(pathname) => `/api/evidencias/file?pathname=${encodeURIComponent(pathname)}`}
-            onImprimir={() => imprimirDocumento(`Dossie - ${nomeParaExibir(atual)}`)}
+            onImprimir={imprimirDocumento}
             onVoltar={() => setView("inicio")}
           />
         ) : view === "evolucao" && atual && painelHoje ? (
@@ -7072,11 +7149,12 @@ export default function Home() {
           <PcResumo
             resumo={montarResumo({
               empresaNome: nomeParaExibir(atual),
+              empresaCnpj: atual.cnpj,
               visitas: db.visitas.filter((visita) => visita.empresaId === atual.id),
               ncs: (db.ncs || []).filter((nc) => nc.empresaId === atual.id),
               painel: painelHoje,
             })}
-            onImprimir={imprimirResumo}
+            onImprimir={imprimirDocumento}
             onCompartilhar={(texto) => void compartilharResumo(texto)}
             onVoltar={() => setView("inicio")}
           />
@@ -7155,7 +7233,7 @@ export default function Home() {
                           onChange={(e) => setForm({ ...form, cnpj: e.target.value })}
                         />
                         {!editingEmpresaId && (
-                          <button onClick={buscar} className="rounded-xl bg-[var(--brand)] px-4 font-medium text-white">
+                          <button type="button" onClick={buscar} className="ui-btn ui-btn--criar">
                             {loading ? "..." : "Buscar"}
                           </button>
                         )}
@@ -7432,7 +7510,7 @@ export default function Home() {
             <button
               onClick={salvarVisita}
               disabled={criandoVisita}
-              className="mt-5 w-full rounded-xl bg-[var(--brand)] p-3 font-medium text-white disabled:opacity-50"
+              className="ui-btn ui-btn--criar mt-5 w-full"
             >
               {criandoVisita ? "Criando..." : "Criar visita"}
             </button>
@@ -8256,7 +8334,7 @@ export default function Home() {
                         <button
                           type="button"
                           onClick={adicionarEquipamentoEncontradoNaVisita}
-                          className="rounded-xl bg-[var(--brand)] px-4 py-3 text-sm font-medium text-white"
+                          className="ui-btn ui-btn--criar"
                         >
                           Adicionar
                         </button>
@@ -8465,8 +8543,8 @@ export default function Home() {
 
               {pendentesVisita > 0 && (
                 <div className="mt-5 rounded-xl border border-amber-200 bg-[var(--pend-bg)] p-4 text-sm text-[color:var(--ink)]">
-                  <strong>Atenção:</strong> ainda existem {pendentesVisita} item(ns)
-                  pendente(s) no checklist. O relatório pode ser revisado, mas a
+                  <strong>Atenção:</strong> ainda {pal(pendentesVisita, "existe", "existem")} {qtd(pendentesVisita, "item pendente", "itens pendentes")}
+                  no checklist. O relatório pode ser revisado, mas a
                   inspeção ainda não está totalmente preenchida.
                 </div>
               )}
@@ -8485,19 +8563,19 @@ export default function Home() {
               </div>
               <h2 className="mt-1 text-xl font-extrabold">Panorama da inspeção</h2>
               <p className="mt-2 text-sm leading-6 text-slate-600">
-                Foram avaliados <strong>{itensAvaliadosVisita} item(ns)</strong>, com{" "}
-                <strong>{conformesVisita} conforme(s)</strong> e{" "}
-                <strong>{naoConformesVisita} item(ns) não conforme(s) no checklist</strong>, resultando em{" "}
+                {pal(itensAvaliadosVisita, "Foi avaliado", "Foram avaliados")} <strong>{qtd(itensAvaliadosVisita, "item", "itens")}</strong>, com{" "}
+                <strong>{qtd(conformesVisita, "conforme", "conformes")}</strong> e{" "}
+                <strong>{qtd(naoConformesVisita, "item não conforme", "itens não conformes")} no checklist</strong>, resultando em{" "}
                 <strong>{percentualConformidade}% de conformidade</strong> entre os itens avaliados.
                 {pendentesVisita > 0
-                  ? ` Permanecem ${pendentesVisita} item(ns) pendente(s) de avaliação.`
+                  ? ` ${pal(pendentesVisita, "Permanece", "Permanecem")} ${qtd(pendentesVisita, "item pendente", "itens pendentes")} de avaliação.`
                   : " Não há itens pendentes no checklist."}
               </p>
               {(() => {
                 const conciliacao = conciliarNcs(checklistAtual, ncsVisita);
                 return conciliacao.diverge ? (
                   <p className="mt-2 text-xs leading-5 text-slate-600">
-                    Observação: o checklist tem {conciliacao.itensNaoConformes} item(ns) não conforme(s) e há {conciliacao.ncsRegistradas} não conformidade(s) registrada(s)
+                    Observação: o checklist tem {qtd(conciliacao.itensNaoConformes, "item não conforme", "itens não conformes")} e há {qtd(conciliacao.ncsRegistradas, "não conformidade registrada", "não conformidades registradas")}
                     {conciliacao.ncsSemItem.length > 0 ? `, das quais ${conciliacao.ncsSemItem.length} sem item não conforme correspondente no checklist atual` : ""}.
                   </p>
                 ) : null;
@@ -8530,7 +8608,7 @@ export default function Home() {
                 <div className="mt-4 rounded-xl border border-amber-200 bg-[var(--pend-bg)] p-4 text-sm text-[color:var(--ink)]">
                   <div className="font-extrabold">Pendências para um fechamento completo</div>
                   <div className="mt-1">
-                    {pendentesVisita > 0 && <span>{pendentesVisita} item(ns) de checklist pendente(s). </span>}
+                    {pendentesVisita > 0 && <span>{qtd(pendentesVisita, "item de checklist pendente", "itens de checklist pendentes")}. </span>}
                     {ncsSemAcao > 0 && <span>{ncsSemAcao} NC(s) sem ação corretiva. </span>}
                     {ncsSemResponsavel > 0 && <span>{ncsSemResponsavel} NC(s) sem responsável. </span>}
                     {ncsSemPrazo > 0 && <span>{ncsSemPrazo} NC(s) sem prazo.</span>}
@@ -8610,7 +8688,7 @@ export default function Home() {
                   </h2>
                 </div>
                 <div className="text-sm font-bold text-slate-500">
-                  {respondidos}/{totalChecklist} respondidos • {itensAvaliadosVisita} item(ns) avaliados para conformidade
+                  {respondidos}/{totalChecklist} respondidos • {qtd(itensAvaliadosVisita, "item avaliado", "itens avaliados")} para conformidade
                 </div>
               </div>
 
@@ -8659,7 +8737,7 @@ export default function Home() {
                   <h2 className="mt-1 text-xl font-extrabold">Programas de Controle e POPs</h2>
                 </div>
                 <div className="text-sm font-bold text-slate-500">
-                  {programasControleAtivos.length} programa(s) • {popsRelatorio.length} POP(s)
+                  {qtd(programasControleAtivos.length, "programa", "programas")} • {qtd(popsRelatorio.length, "POP", "POPs")}
                 </div>
               </div>
 
@@ -8720,7 +8798,7 @@ export default function Home() {
                   <h2 className="mt-1 text-xl font-extrabold">Equipamentos e móveis</h2>
                 </div>
                 <div className="text-sm font-bold text-slate-500">
-                  {equipamentosRelatorio.length} tipo(s) • {totalUnidadesEquipamentos} unidade(s)
+                  {qtd(equipamentosRelatorio.length, "tipo", "tipos")} • {qtd(totalUnidadesEquipamentos, "unidade", "unidades")}
                 </div>
               </div>
 
@@ -8895,7 +8973,7 @@ export default function Home() {
                   <h2 className="mt-1 text-xl font-extrabold">Evidências</h2>
                 </div>
                 <div className="text-sm font-bold text-slate-500">
-                  {fotosVisita} foto(s) • {audiosVisita} áudio(s) • {analisesIAConfirmadas} análise(s) confirmada(s)
+                  {qtd(fotosVisita, "foto", "fotos")} • {qtd(audiosVisita, "áudio", "áudios")} • {qtd(analisesIAConfirmadas, "análise confirmada", "análises confirmadas")}
                 </div>
               </div>
 
@@ -9027,7 +9105,7 @@ export default function Home() {
                 {pendentesVisita > 0 ? (
                   <p>
                     A inspeção permanece <strong>em andamento</strong>, com{" "}
-                    <strong>{pendentesVisita} item(ns) pendente(s)</strong> no
+                    <strong>{qtd(pendentesVisita, "item pendente", "itens pendentes")}</strong> no
                     checklist.
                   </p>
                 ) : (
@@ -9039,7 +9117,7 @@ export default function Home() {
                 {ncsVisita.length > 0 ? (
                   <p className="mt-2">
                     Foram registradas{" "}
-                    <strong>{ncsVisita.length} não conformidade(s)</strong>.
+                    <strong>{qtd(ncsVisita.length, "não conformidade", "não conformidades")}</strong>.
                     {" "}
                     {ncsSemAcao > 0
                       ? `${ncsSemAcao} ainda não possui(em) ação corretiva definida.`
@@ -9237,6 +9315,9 @@ export default function Home() {
             popsAprovados={(atual?.pops || [])
               .filter((pop) => pop.status === "Aprovado" && !pop.arquivado)
               .map((pop) => ({ id: pop.id, codigo: pop.codigo, titulo: pop.titulo, versao: pop.versao }))}
+            relatorios={(db.relatoriosEmitidos || []).filter((item) => atual && item.empresaId === atual.id).sort((a, b) => b.emitidoEm.localeCompare(a.emitidoEm)).map((item) => ({ id: item.id, numero: item.numero, versao: item.versao, emitidoEm: item.emitidoEm, motivo: item.motivoDaNovaVersao }))}
+            onAbrirRelatorios={() => setView("relatoriosemitidos")}
+            onAbrirPops={abrirPopsPeloAtalho}
             onAbrirComprovantes={abrirComprovantes}
           />
         ) : view === "inicio" ? (
@@ -9273,7 +9354,7 @@ export default function Home() {
                   : null
               }
               pendencias={{
-                texto: ncsEmpresaAbertas ? `${ncsEmpresaAbertas} não conformidade(s) em acompanhamento nesta empresa` : "Nenhuma não conformidade aberta nesta empresa",
+                texto: ncsEmpresaAbertas ? `${qtd(ncsEmpresaAbertas, "não conformidade", "não conformidades")} em acompanhamento nesta empresa` : "Nenhuma não conformidade aberta nesta empresa",
                 onVer: permitido("ncs.acompanhar", atual?.id) ? () => irParaMenu("ncs") : null,
               }}
               filtro={filtroInicio}
@@ -9484,8 +9565,8 @@ export default function Home() {
               {ncsEmpresaForaDoHistorico > 0 && (
                 <div className="mt-4 rounded-xl border border-amber-200 bg-[var(--pend-bg)] p-3 text-sm text-[color:var(--ink)]">
                   <span className="font-extrabold">Dados anteriores preservados:</span>{" "}
-                  {ncsEmpresaForaDoHistorico} registro(s) de não conformidade da empresa não estão
-                  vinculados a uma visita atualmente existente. Eles foram excluídos dos indicadores
+                  {qtd(ncsEmpresaForaDoHistorico, "registro", "registros")} de não conformidade da empresa {pal(ncsEmpresaForaDoHistorico, "não está", "não estão")}
+                  vinculado{ncsEmpresaForaDoHistorico === 1 ? "" : "s"} a uma visita atualmente existente. Eles foram excluídos dos indicadores
                   de evolução para evitar contagem incorreta.
                 </div>
               )}
@@ -9744,7 +9825,7 @@ export default function Home() {
                             <span className="font-extrabold">
                               Situação das não conformidades:
                             </span>{" "}
-                            {abertas} aberta(s) • {resolvidas} resolvida(s)
+                            {qtd(abertas, "aberta", "abertas")} • {qtd(resolvidas, "resolvida", "resolvidas")}
                           </div>
                         )}
                       </article>
@@ -9762,6 +9843,11 @@ export default function Home() {
             novaDesabilitada={!atual || !permitido("visitas.criar", atual.id)}
             onHistorico={() => setView("historico")}
             onNova={novaVisita}
+            onNovaDaEmpresa={novaVisitaDaEmpresa}
+            onArquivar={arquivarVisita}
+            diasDeAviso={limiteDeDiasDaVisita(db.configuracaoVisitas?.diasAvisoVisitaAberta)}
+            podeConfigurarAviso={!usuarioDaSessao || usuarioDaSessao.perfil === "Administrador"}
+            onDiasDeAviso={(dias) => setDb((o) => ({ ...o, configuracaoVisitas: { ...o.configuracaoVisitas, diasAvisoVisitaAberta: dias } }))}
             onContinuar={(id) => continuar(id)}
             onConcluir={(id) => void concluir(id)}
             onReabrir={(id) => void reabrir(id)}
@@ -9775,15 +9861,24 @@ export default function Home() {
             }}
             visitas={visitas.map((v) => {
               const itens = v.checklist || [];
+              const nEvidencias = (db.evidencias || []).filter((ev) => ev.visitaId === v.id).length;
+              const nNcs = (db.ncs || []).filter((nc) => nc.visitaId === v.id && !nc.inativaNoChecklist && !nc.canceladaPeloUsuarioEm).length;
+              const pct = progressoDoChecklist(itens).percentual;
               return {
                 id: v.id,
+                empresaId: v.empresaId,
+                progressoTexto: textoDeProgressoDaVisita(pct, { evidencias: nEvidencias, naoConformidades: nNcs }),
+                aviso: avisoDeVisitaAberta(v.status, v.data, hojeISO(), limiteDeDiasDaVisita(db.configuracaoVisitas?.diasAvisoVisitaAberta)),
+                arquivada: Boolean(v.arquivada),
+                podeArquivar: permitido("visitas.concluir", v.empresaId),
+                podeCriarNesta: permitido("visitas.criar", v.empresaId),
                 empresa: nomeParaExibir(db.empresas[v.empresaId]),
                 empresaAtiva: v.empresaId === db.empresaAtualId,
                 cor: db.empresas[v.empresaId] ? corDaEmpresa(db.empresas[v.empresaId]) : "#4A5D73",
                 numero: numeroVisitaPorId.get(v.id) || "—",
                 data: fdata(v.data),
                 responsavel: v.responsavel || "Responsável não informado",
-                percentual: progressoDoChecklist(itens).percentual,
+                percentual: pct,
                 status: v.status,
                 podeContinuar: podeAbrirVisita(v.empresaId),
                 podeConcluir: permitido("visitas.concluir", v.empresaId),

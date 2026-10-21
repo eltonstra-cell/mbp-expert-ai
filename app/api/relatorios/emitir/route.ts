@@ -50,7 +50,7 @@ export async function POST(request: Request) {
 
     const resultado = await emitirNoArmazem(
       armazem,
-      { visitaId, novaVersao: Boolean(corpo?.novaVersao), motivo: typeof corpo?.motivo === "string" ? corpo.motivo : undefined },
+      { visitaId, novaVersao: Boolean(corpo?.novaVersao), motivo: typeof corpo?.motivo === "string" ? corpo.motivo : undefined, secoes: corpo?.secoes },
       emissor,
       () => new Date(),
       () => crypto.randomUUID(),

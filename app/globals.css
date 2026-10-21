@@ -3673,3 +3673,88 @@ html[data-modo="equilibrado"] .campo-tela{height:calc(100dvh - 190px - var(--fai
 .quest-origem--empresa{background:#FFF3D6;color:#12202B;border:1px solid #E8B04B}
 .em-breve{min-height:26px;font-size:.86rem;color:#12202B}
 .pop-conferir{font-size:.86rem;color:#12202B}
+
+/* ===== Bloco 2a: a página sempre rola até o fim (causa: o contêiner das telas cortava o que passava da altura) ===== */
+:is(html[data-modo="completo"],html[data-modo="equilibrado"]) .pc-offset:has(.ui-screen){height:100vh;overflow-x:hidden;overflow-y:auto}
+:is(html[data-modo="completo"],html[data-modo="equilibrado"]) .pc-offset:has(.ui-screen)::after{content:"";flex:none;height:24px}
+.ui-scroll{min-height:min(200px,40vh)}
+html[data-modo="campo"] .ui-screen{overflow-x:hidden;overflow-y:auto}
+.toast-salvo{z-index:150;gap:8px;padding:8px 16px;font-size:.95rem;color:#12202B}
+
+/* ===== Bloco 2e: comprovante (formulário fechado até pedir, sugestão curta, Salvar sempre à vista) ===== */
+.comp-form:not(.is-aberto){display:none}
+.comp-form.is-aberto{max-height:calc(100vh - 150px);overflow-y:auto}
+.comp-form-acoes{position:sticky;bottom:-12px;margin:0 -14px -12px;padding:10px 14px;border-top:1px solid #DDE6EA;background:#fff}
+.comp-sugestao{display:flex;flex-wrap:nowrap;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;border:1px solid #B4C2CE;border-radius:10px;background:#EEF1F5;font-size:.86rem;color:#12202B}
+.comp-conferir{margin-left:6px;padding:0 8px;border:1px solid #E8B04B;border-radius:999px;background:#FEF6E6}
+.ui-input.is-invalid{border-color:#D93A3A;background:#fff}
+
+/* ===== Bloco 2f: passos do POP em uma coluna, com barra única de ferramentas ===== */
+.pop-passos-barra{position:sticky;top:0;z-index:2;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;background:#FEF6E6}
+.pop-passos-barra-acoes{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.pop-passos.pop-passos--rolagem{display:flex;flex-direction:column;gap:8px;max-height:min(46vh,420px);overflow-y:auto;padding-right:4px}
+.pop-passo{display:flex;align-items:flex-start;gap:8px}
+.pop-passo.is-foco .pop-area{border-color:#E8B04B}
+.pop-passo-campo{display:flex;flex:1;min-width:0;flex-direction:column;gap:2px}
+.pop-refs.pop-refs--rolagem{max-height:min(34vh,300px);overflow-y:auto;padding-right:4px}
+.pop-salvo-sinal{font-size:.88rem;color:#12202B}
+.toast-aviso{border-color:#E8B04B;background:#FEF6E6}
+
+/* ===== Bloco 2h: lista de visitas agrupada por empresa ===== */
+.vis-grupo{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.vis-grupo-topo{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
+.vis-grupo-alternar{display:flex;flex:1 1 280px;min-width:0;align-items:center;gap:12px;padding:6px 8px;border:0;border-radius:12px;background:transparent;text-align:left;color:#12202B;cursor:pointer}
+.vis-grupo-alternar:hover{background:#EEF1F5}
+.vis-grupo-textos{display:flex;min-width:0;flex:1;flex-direction:column}
+.vis-grupo-nome{font-family:var(--font-display),"Outfit",sans-serif;font-size:1.15rem;font-weight:500;color:#12202B;overflow-wrap:anywhere}
+.vis-grupo-seta{font-size:.9rem;color:#3D5160}
+.vis-grupo-lista{padding-left:8px}
+.vis-progresso-texto{white-space:normal}
+.vis-aviso-config{display:flex;align-items:center;gap:6px}
+.vis-aviso-dias{width:56px;min-height:34px;text-align:center}
+
+/* ===== Bloco 2b/2c/2d: documentos impressos (relatório emitido, resumo de uma página, dossiê) ===== */
+.doc-impresso{font-size:10pt;color:#12202B}
+.doc-linha{display:block;font-size:.92em;line-height:1.4;color:#3D5160;overflow-wrap:anywhere}
+.doc-secao{display:flex;flex-direction:column;gap:6px;margin-top:4px}
+.doc-parcial{padding:8px 12px;border:1.5px solid #E8B04B;border-radius:10px;background:#FEF6E6;font-size:1em;color:#12202B}
+.doc-lista li{display:flex;flex-direction:column;gap:2px;margin-bottom:6px;break-inside:avoid}
+.doc-nc-titulo{font-family:var(--font-display),"Outfit",sans-serif;font-weight:500;color:#12202B}
+.doc-tabela{width:100%;border-collapse:collapse;font-size:.95em}
+.doc-tabela th,.doc-tabela td{padding:4px 8px;border:1px solid #B4C2CE;text-align:left;vertical-align:top;overflow-wrap:anywhere}
+.doc-tabela th{background:#EEF1F5;font-weight:500}
+.doc-fotos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.doc-foto{margin:0;break-inside:avoid}
+.doc-foto img{display:block;width:100%;max-height:150px;object-fit:cover;border-radius:6px}
+.doc-foto-vazia{display:grid;place-items:center;height:80px;border:1px dashed #B4C2CE;border-radius:6px;font-size:.85em;color:#3D5160}
+.doc-foto figcaption{display:flex;flex-direction:column;gap:1px;margin-top:3px;font-size:.82em;color:#3D5160;overflow-wrap:anywhere}
+.doc-foto figcaption strong{font-weight:500;color:#12202B}
+.resumo-tipo{display:inline-block;margin-right:8px;padding:0 8px;border-radius:999px;background:#EEF1F5;font-size:.82em;color:#12202B}
+.dossie-pagina{max-width:186mm;font-size:10pt}
+.dossie-linha{font-size:.92em}
+.dossie-fotos figcaption{font-size:.8em}
+.dossie-indice-lista{display:flex;flex-direction:column;gap:2px;margin:0;padding:0;list-style:none}
+.dossie-indice-lista li{display:flex;align-items:baseline;gap:10px;padding:3px 0;border-bottom:1px dotted #B4C2CE}
+.dossie-indice-titulo{flex:1;min-width:0}
+.dossie-indice-contagem{flex:none;color:#3D5160}
+.dossie-indice-pagina{flex:0 0 52px;text-align:right}
+.dossie-secao-contagem{font-size:.8em;color:#3D5160}
+.dossie-opcoes{gap:10px}
+.dossie-opcao{display:flex;align-items:flex-start;gap:12px;padding:10px 12px;border:1.5px solid #B4C2CE;border-radius:12px;background:#fff;font-size:1rem;cursor:pointer}
+.dossie-opcao:has(input:checked){border-color:#E8B04B;background:#FEF6E6}
+.dossie-opcao input{flex:none;width:22px;height:22px;margin-top:1px;accent-color:#E8760A}
+.dossie-opcao-aviso{font-size:.88rem;color:#3D5160}
+.dossie-aviso{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;border:1.5px solid #E8B04B;border-radius:12px;background:#FEF6E6;font-size:.95rem;color:#12202B}
+@media print{
+  .doc-impresso,.doc-impresso *{text-overflow:clip!important;overflow:visible!important}
+  .doc-impresso .doc-linha,.doc-impresso .ui-row-sub,.doc-impresso .resumo-texto{white-space:normal!important}
+  .doc-impresso{font-size:10pt!important}
+  #dossie-pagina .dossie-secao{break-before:page;break-inside:auto}
+  .doc-foto,.dossie-fotos figure{break-inside:avoid}
+  .doc-tabela tr{break-inside:avoid}
+}
+.quest-nova{display:inline-flex;align-items:center;min-height:24px;padding:0 10px;border-radius:999px;background:#E8760A;font-size:.84rem;color:#fff}
+/* A regra geral de impressão esconde header e nav (menu do app); dentro dos documentos impressos eles são o cabeçalho e o índice. */
+@media print{.doc-impresso header,.doc-impresso nav{display:flex!important;flex-direction:column}}
+.emitido-assinatura,.doc-parcial,.doc-secao>h3{break-inside:avoid;break-after:avoid}
+.doc-lista li .ui-pill{align-self:flex-start}

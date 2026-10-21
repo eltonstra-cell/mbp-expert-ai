@@ -131,9 +131,47 @@ export function removerOuDesativarPergunta(config: ConfigQuestionario, id: strin
   return resultado.ok ? { ...resultado, removida: false } : resultado;
 }
 
-/** Itens no formato que o montador do checklist já usa. */
-export function itensDoQuestionario(config: ConfigQuestionario | undefined): ItemDoModelo[] | null {
+/** Itens do modelo que ainda não estão no questionário da empresa (perguntas que o modelo ganhou depois da edição). */
+export function perguntasNovasDoModelo(config: ConfigQuestionario | undefined, itensDoModelo: ItemDoModelo[]): ItemDoModelo[] {
+  if (!config) return [];
+  const existentes = new Set(config.perguntas.filter((pergunta) => pergunta.origem === "modelo").map((pergunta) => chaveDaPergunta(pergunta)));
+  const vistos = new Set<string>();
+  return itensDoModelo.filter((item) => {
+    const chave = chaveDaPergunta(item);
+    if (existentes.has(chave) || vistos.has(chave)) return false;
+    vistos.add(chave);
+    return true;
+  });
+}
+
+/**
+ * Põe no questionário da empresa as perguntas novas do modelo, sem mexer em nada que a empresa editou: entram ativas, no fim da lista
+ * e marcadas como novas. Sem pergunta nova, devolve o mesmo objeto.
+ */
+export function comPerguntasNovasDoModelo(config: ConfigQuestionario, itensDoModelo: ItemDoModelo[], agora: string): ConfigQuestionario {
+  const novas = perguntasNovasDoModelo(config, itensDoModelo);
+  if (novas.length === 0) return config;
+  const base = config.perguntas.length;
+  const acrescentadas: PerguntaDoQuestionario[] = novas.map((item, indice) => ({
+    id: `modelo:${base + indice}:${chaveDaPergunta(item)}`,
+    origem: "modelo" as const,
+    titulo: item.titulo,
+    categoria: item.categoria,
+    criticidade: item.criticidade,
+    referencia: item.referencia,
+    orientacao: item.orientacao,
+    ativa: true,
+    nova: true,
+    ordem: base + indice,
+    criadoEm: agora,
+  }));
+  return { ...config, perguntas: [...config.perguntas, ...acrescentadas], atualizadoEm: agora };
+}
+
+/** Itens no formato que o montador do checklist já usa (com as perguntas novas do modelo, quando o modelo é informado). */
+export function itensDoQuestionario(config: ConfigQuestionario | undefined, itensDoModelo?: ItemDoModelo[]): ItemDoModelo[] | null {
   if (!config) return null;
+  if (itensDoModelo) config = comPerguntasNovasDoModelo(config, itensDoModelo, config.atualizadoEm);
   return perguntasVigentes(config).map((pergunta) => ({
     categoria: pergunta.categoria,
     titulo: pergunta.titulo,

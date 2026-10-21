@@ -3,6 +3,7 @@
 import type {
   AprovacaoPop,
   ConteudoPop,
+  PassoPop,
   Empresa,
   ProcedimentoOperacionalPadronizado,
   ReferenciaPop,
@@ -282,6 +283,7 @@ export function faltasParaEnviar(pop: ProcedimentoOperacionalPadronizado): strin
   const conteudo = pop.conteudo || {};
   const faltas: string[] = [];
   if (!(conteudo.passos || []).some((passo) => passo.texto.trim())) faltas.push("Escreva ao menos um passo.");
+  if ((conteudo.passos || []).some((passo) => !passo.texto.trim()) && (conteudo.passos || []).some((passo) => passo.texto.trim())) faltas.push(MENSAGEM_PASSO_EM_BRANCO);
   if (!(conteudo.frequencia || "").trim()) faltas.push("Informe a frequência.");
   if (!(conteudo.responsavelExecucao?.nome || "").trim() || !(conteudo.responsavelExecucao?.cargo || "").trim()) {
     faltas.push("Informe o responsável pela execução, com nome e cargo.");
@@ -294,6 +296,29 @@ export function enviarParaAprovacao(pop: ProcedimentoOperacionalPadronizado): Pr
   const faltas = faltasParaEnviar(pop);
   if (faltas.length) throw new Error(faltas[0]);
   return { ...pop, status: "Aguardando aprovação" };
+}
+
+export const MENSAGEM_PASSO_EM_BRANCO = "Há passo em branco: escreva o texto ou remova o passo.";
+
+/** Passos com texto, na ordem (a numeração é pela posição, sem buracos). Passo em branco não vai para aprovação. */
+export function limparPassosEmBranco(passos: PassoPop[] | undefined): PassoPop[] {
+  return (passos || []).filter((passo) => passo.texto.trim());
+}
+
+/** Mais de um passo em branco vira um só (sobra no máximo o que a pessoa está escrevendo). */
+export function juntarPassosEmBrancoRepetidos(passos: PassoPop[] | undefined): PassoPop[] {
+  let jaTemBranco = false;
+  return (passos || []).filter((passo) => {
+    if (passo.texto.trim()) return true;
+    if (jaTemBranco) return false;
+    jaTemBranco = true;
+    return true;
+  });
+}
+
+/** Tira vírgula, ponto e vírgula e espaços do começo de um cargo (", Nutricionista" vira "Nutricionista"). */
+export function limparCargo(texto: string | undefined): string {
+  return (texto || "").replace(/^[\s,;:.\-–]+/, "").replace(/\s+/g, " ").trim();
 }
 
 /** Só a pessoa cadastrada como responsável do estabelecimento (e vinculada em Acessos) aprova. */

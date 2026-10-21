@@ -313,6 +313,9 @@ export type Visita = {
   ambientesOcultos?: { ambiente: string; itens: ChecklistItem[]; modelo?: string; ocultadoEm: string }[];
   encerradaEm?: string;
   historicoStatus?: HistoricoStatusVisita[];
+  /** Arquivada: some da lista principal, sem apagar nada (visita abandonada, por exemplo). */
+  arquivada?: boolean;
+  arquivadaEm?: string;
 };
 
 export type HistoricoAcompanhamento = {
@@ -442,6 +445,8 @@ export type UsuarioSistema = {
   acessoEncerradoEm?: string;
   /** Registro no CRN (nutricionista), opcional; entra na assinatura do relatório emitido. Vazio: "CRN a preencher". */
   crn?: string;
+  /** Cargo profissional que sai na assinatura do relatório (ex.: "Nutricionista RT"). Vazio: "Responsável técnico". */
+  cargo?: string;
 };
 
 export type AcaoPermissao =
@@ -504,6 +509,8 @@ export type PerguntaDoQuestionario = {
   desligadaPorId?: string;
   desligadaPorNome?: string;
   desligadaEm?: string;
+  /** Pergunta que o modelo ganhou depois que a empresa editou o ambiente: entra ativa e fica marcada como nova. */
+  nova?: boolean;
   criadoEm: string;
 };
 
@@ -600,6 +607,10 @@ export type InstantaneoDoRelatorio = {
   itens: { id: string; ambiente: string; titulo: string; categoria: string; status: string; observacao: string; criticidade?: string }[];
   ncs: { id: string; titulo: string; ambiente: string; criticidade: string; status: string; observacao: string; acaoCorretiva?: string; responsavelAcao?: string; prazo?: string; resolvidaEm?: string; semComprovacao: boolean }[];
   evidencias: { id: string; tipo: string; ambiente: string; descricao: string; criadoEm: string; registradoPorNome?: string; blobPathname?: string; papel?: string; ncId?: string; checklistItemId?: string }[];
+  /** Seções marcadas em "Conteúdo do relatório" na hora da emissão. Sem o campo (relatórios antigos): todas. */
+  secoes?: { resumo: boolean; ambientes: boolean; ncs: boolean; evidencias: boolean; pops: boolean };
+  /** POPs da empresa no dia da emissão (só código, título, versão, situação e quem aprovou). */
+  pops?: { codigo: string; titulo: string; versao: string; situacao: string; aprovadoPor?: string; aprovadoEm?: string }[];
 };
 
 /** Relatório de visita emitido e assinado. Gravado só pelo servidor, que também atribui o número. */
@@ -646,4 +657,6 @@ export type AppDB = {
   leiturasPop?: LeituraPop[];
   /** Só o servidor grava (rota de emissão); o PUT do estado nunca substitui esta lista. */
   relatoriosEmitidos?: RelatorioEmitido[];
+  /** Aviso de visita aberta há muito tempo (só o Administrador muda; sem valor vale 3 dias). */
+  configuracaoVisitas?: { diasAvisoVisitaAberta?: number };
 };

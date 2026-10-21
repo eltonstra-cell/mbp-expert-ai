@@ -3,6 +3,7 @@
 // cadastrado; NÃO é assinatura digital com certificado ICP-Brasil.
 import type { AppDB, Evidencia, InstantaneoDoRelatorio, RelatorioEmitido, UsuarioSistema } from "../types/index.ts";
 import { comprovacaoDaCorrecao } from "./fotosDoItem.ts";
+import { hojeISO, popVigente, situacaoDoPop } from "./popsNorma.ts";
 import { acessoVigente } from "./validadeDeAcesso.ts";
 
 export const AVISO_SEM_ICP = "Não é assinatura digital com certificado ICP-Brasil.";
@@ -40,6 +41,23 @@ export function evidenciasEmRelatorioEmitido(relatorios: RelatorioEmitido[] | un
   return ids;
 }
 
+/** Caminhos dos arquivos das fotos citadas em relatório emitido: o servidor não deixa apagar nenhum deles. */
+export function arquivosEmRelatorioEmitido(relatorios: RelatorioEmitido[] | undefined): Set<string> {
+  const caminhos = new Set<string>();
+  for (const relatorio of relatorios || []) for (const ev of relatorio.instantaneo.evidencias) if (ev.blobPathname) caminhos.add(ev.blobPathname);
+  return caminhos;
+}
+
+export const SECOES_DO_RELATORIO = ["resumo", "ambientes", "ncs", "evidencias", "pops"] as const;
+export type SecoesDoRelatorio = NonNullable<InstantaneoDoRelatorio["secoes"]>;
+export const TODAS_AS_SECOES: SecoesDoRelatorio = { resumo: true, ambientes: true, ncs: true, evidencias: true, pops: true };
+
+/** Lê as seções que vieram no pedido; o que não for booleano marcado vale como ligado. */
+export function secoesDoPedido(bruto: unknown): SecoesDoRelatorio {
+  const origem = bruto && typeof bruto === "object" ? (bruto as Record<string, unknown>) : {};
+  return Object.fromEntries(SECOES_DO_RELATORIO.map((chave) => [chave, origem[chave] !== false])) as SecoesDoRelatorio;
+}
+
 /** O servidor recoloca evidências citadas em relatório emitido que sumiram de uma lista recebida. */
 export function preservarEvidenciasEmRelatorio(atuais: Evidencia[], resultado: Evidencia[], relatorios: RelatorioEmitido[] | undefined): Evidencia[] {
   const protegidas = evidenciasEmRelatorioEmitido(relatorios);
@@ -50,7 +68,7 @@ export function preservarEvidenciasEmRelatorio(atuais: Evidencia[], resultado: E
 }
 
 /** Instantâneo montado dos dados do servidor (não do que o navegador mandou). */
-export function montarInstantaneo(data: AppDB, visitaId: string): InstantaneoDoRelatorio | null {
+export function montarInstantaneo(data: AppDB, visitaId: string, secoes: SecoesDoRelatorio = TODAS_AS_SECOES): InstantaneoDoRelatorio | null {
   const visita = data.visitas.find((item) => item.id === visitaId);
   const empresa = visita ? data.empresas[visita.empresaId] : undefined;
   if (!visita || !empresa) return null;
@@ -60,7 +78,22 @@ export function montarInstantaneo(data: AppDB, visitaId: string): InstantaneoDoR
   const respondidos = conformes + naoConformes;
   const evidencias = (data.evidencias || []).filter((ev) => ev.visitaId === visita.id);
   const ncs = (data.ncs || []).filter((nc) => nc.visitaId === visita.id && !nc.inativaNoChecklist);
+  const hoje = hojeISO();
+  const pops = (empresa.pops || [])
+    .filter((pop) => !pop.arquivado && pop.status !== "Inativo")
+    .map((pop) => {
+      const vigente = popVigente(pop);
+      return {
+        codigo: pop.codigo,
+        titulo: pop.titulo,
+        versao: vigente?.versao || pop.versao,
+        situacao: situacaoDoPop(pop, hoje),
+        ...(vigente?.aprovacao ? { aprovadoPor: vigente.aprovacao.nome, aprovadoEm: vigente.aprovacao.em } : {}),
+      };
+    });
   return {
+    secoes,
+    pops,
     empresa: { nome: empresa.nomeFantasia || empresa.razaoSocial, cnpj: empresa.cnpj, municipio: empresa.municipio, uf: empresa.uf },
     visita: { id: visita.id, data: visita.data, responsavel: visita.responsavel, observacoes: visita.observacoes || "", conclusao: visita.conclusao || "" },
     conformidade: { conformes, naoConformes, respondidos, percentual: respondidos ? Math.round((conformes / respondidos) * 100) : null },
@@ -89,6 +122,8 @@ export type PedidoDeEmissao = {
   /** Emitir a versão seguinte de um relatório já emitido (correção posterior). */
   novaVersao?: boolean;
   motivo?: string;
+  /** Seções marcadas em "Conteúdo do relatório"; sem isso, todas. */
+  secoes?: unknown;
 };
 
 export type Emissor = Pick<UsuarioSistema, "id" | "nome" | "perfil" | "crn" | "status" | "validoAte" | "acessoEncerradoEm">;
@@ -103,7 +138,7 @@ export function emitir(data: AppDB, pedido: PedidoDeEmissao, emissor: Emissor | 
   if (emissor && emissor.perfil !== "Administrador" && !(emissor as UsuarioSistema).empresaIds?.includes(visita.empresaId)) {
     return { ok: false, erro: "Você não tem acesso a esta empresa.", status: 403 };
   }
-  const instantaneo = montarInstantaneo(data, visita.id);
+  const instantaneo = montarInstantaneo(data, visita.id, secoesDoPedido(pedido.secoes));
   if (!instantaneo) return { ok: false, erro: "Não foi possível montar o relatório desta visita.", status: 404 };
   const relatorios = data.relatoriosEmitidos || [];
   const anterior = ultimaVersao(relatorios, visita.id);
@@ -129,7 +164,8 @@ export function emitir(data: AppDB, pedido: PedidoDeEmissao, emissor: Emissor | 
     emitidoPorId: emissor?.id,
     assinatura: {
       nome: emissor?.nome || nomeLocal || "RT",
-      cargo: emissor?.perfil === "Administrador" ? "Administrador" : "Responsável técnico",
+      // O cargo é o profissional (ex.: "Nutricionista RT"), nunca o perfil de acesso ("Administrador").
+      cargo: ((emissor as UsuarioSistema | null)?.cargo || "").trim().slice(0, 80) || "Responsável técnico",
       crn: crn || TEXTO_CRN_PENDENTE,
       crnPendente: !crn,
     },

@@ -81,6 +81,7 @@ export default function AccessPreparationPanel(props: Props) {
       empresaIds: usuario.empresaIds,
       jaEraFiscal: usuario.perfil === "Fiscal",
       crn: usuario.crn,
+      cargo: usuario.cargo,
     });
   }
 

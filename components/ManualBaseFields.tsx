@@ -6,7 +6,7 @@ import type {
   PapelResponsabilidadeManual,
   ResponsabilidadeManual,
 } from "@/types";
-import { SETORES_OFICIAIS_MANUAL } from "@/lib/manualBase";
+import { SETORES_OFICIAIS_MANUAL, resumoDosSetores } from "@/lib/manualBase";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
 
 type Props = {
@@ -140,9 +140,9 @@ export default function ManualBaseFields({
               somenteVoz
             />
           </div>
-          <button type="button" onClick={adicionarAmbienteReal} className="rounded-xl bg-[var(--brand)] px-4 py-3 text-sm font-medium text-white">Adicionar ambiente</button>
+          <button type="button" onClick={adicionarAmbienteReal} className="ui-btn ui-btn--criar">Adicionar ambiente</button>
         </div>
-        <div className="mt-3 text-xs font-bold text-slate-500">{setores.length} setor(es) selecionado(s)</div>
+        <div className="mt-3 text-sm text-slate-600">{resumoDosSetores(setores)}</div>
       </details>}
 
       {mostrarResponsabilidades && <details open={modo === "responsabilidades"} className="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-4">
@@ -195,7 +195,7 @@ export default function ManualBaseFields({
             <FieldVoiceTools fieldKey="novo-equipamento" value={nomeEquipamento} onChange={setNomeEquipamento} contexto="Nome curto de um equipamento ou móvel de estabelecimento de alimentos." somenteVoz />
           </div>
           <input type="number" min="1" value={quantidadeEquipamento} onChange={(event) => setQuantidadeEquipamento(event.target.value)} className="min-w-0 w-full rounded-xl border p-3 text-sm" aria-label="Quantidade" />
-          <button type="button" onClick={adicionarEquipamento} className="w-full rounded-xl bg-[var(--brand)] px-4 py-3 text-sm font-medium text-white">Adicionar</button>
+          <button type="button" onClick={adicionarEquipamento} className="ui-btn ui-btn--criar w-full">Adicionar</button>
         </div>
 
         <div className="mt-4 space-y-2">

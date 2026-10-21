@@ -15,6 +15,8 @@ export type DadosUsuarioPreparacao = {
   jaEraFiscal?: boolean;
   /** CRN de quem assina relatórios (RT e Administrador); opcional. */
   crn?: string;
+  /** Cargo que sai na assinatura (ex.: "Nutricionista RT"); opcional. */
+  cargo?: string;
 };
 
 export type IdentidadeSessao = {
@@ -95,6 +97,7 @@ export function criarUsuarioPreparacao(
         : Array.from(new Set(dados.empresaIds)),
     ...(dados.telas && Object.keys(dados.telas).length > 0 ? { telas: dados.telas } : {}),
     ...(dados.crn?.trim() && (dados.perfil === "Consultor/RT" || dados.perfil === "Administrador") ? { crn: dados.crn.trim() } : {}),
+    ...(dados.cargo?.trim() && (dados.perfil === "Consultor/RT" || dados.perfil === "Administrador") ? { cargo: dados.cargo.trim().slice(0, 80) } : {}),
     ...(dados.perfil === "Fiscal" && dados.validadeDias !== undefined ? { validoAte: calcularValidade(dados.validadeDias, new Date(criadoEm)) } : {}),
     criadoEm,
     atualizadoEm: criadoEm,
@@ -122,6 +125,7 @@ export function atualizarUsuarioPreparacao(
         ? []
         : Array.from(new Set(dados.empresaIds)),
     crn: dados.crn?.trim() && (dados.perfil === "Consultor/RT" || dados.perfil === "Administrador") ? dados.crn.trim() : undefined,
+    cargo: dados.cargo?.trim() && (dados.perfil === "Consultor/RT" || dados.perfil === "Administrador") ? dados.cargo.trim().slice(0, 80) : undefined,
     atualizadoEm,
   };
 }

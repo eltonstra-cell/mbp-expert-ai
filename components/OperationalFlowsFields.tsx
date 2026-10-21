@@ -38,7 +38,7 @@ export default function OperationalFlowsFields({ fluxos, setores, onChange, aber
     <details open={aberto} className="mt-4 min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-4">
       <summary className="cursor-pointer list-none">
         <div className="font-extrabold text-slate-950">Capítulo 2 — Fluxos operacionais</div>
-        <div className="mt-0.5 text-xs text-slate-500">Ative somente os fluxos que existem. {ativos} de {fluxos.length} selecionado(s).</div>
+        <div className="mt-0.5 text-xs text-slate-500">Ative somente os fluxos que existem. {ativos} de {fluxos.length} {fluxos.length === 1 ? "selecionado" : "selecionados"}.</div>
       </summary>
 
       <div className="mt-4 space-y-3">

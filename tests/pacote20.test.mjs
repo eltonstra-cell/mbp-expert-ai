@@ -88,7 +88,7 @@ test("Lembrete: só título e prazo; sem nome de colaborador, observação, foto
   assert.ok(lembrete.corpo.includes("Correção n1"));
   assert.ok(lembrete.corpo.includes("Emissor b"));
   assert.ok(lembrete.corpo.includes("18/10/2026"));
-  assert.ok(lembrete.corpo.includes("Capacitações da equipe: 1 vencida(s) e 1 vencendo"));
+  assert.ok(lembrete.corpo.includes("Capacitações da equipe: 1 vencida e 1 vencendo"));
   for (const proibido of ["Maria", "Souza", "Observação sensível", "Fulano", "saúde", "atestado", "exame", "foto", "evidência"]) {
     assert.ok(!lembrete.corpo.toLowerCase().includes(proibido.toLowerCase()), proibido);
   }
@@ -101,7 +101,7 @@ test("Lembrete: só título e prazo; sem nome de colaborador, observação, foto
   assert.ok(semEmail.mailto.startsWith("mailto:?subject="));
   // muitas pendências: a lista é cortada e avisa quantas faltam
   const muitas = montarPainelHoje({ empresa: empresa(), usuario: usuario("Consultor/RT"), hoje: HOJE, comprovantes: Array.from({ length: 20 }, (_, i) => comprovante(`m${i}`, "2026-10-01")), podeVerCorrecoes: false });
-  assert.ok(montarLembrete({ empresaNome: "X", painel: muitas, remetente: "R", hoje: HOJE }).corpo.includes("e mais 8 item(ns)"));
+  assert.ok(montarLembrete({ empresaNome: "X", painel: muitas, remetente: "R", hoje: HOJE }).corpo.includes("e mais 8 itens"));
   // nada pendente
   const vazio = montarPainelHoje({ empresa: empresa(), usuario: usuario("Gerente"), hoje: HOJE, podeVerCorrecoes: true });
   assert.ok(montarLembrete({ empresaNome: "X", painel: vazio, remetente: "R", hoje: HOJE }).corpo.includes("Nenhuma pendência"));
@@ -132,13 +132,15 @@ test("Resumo: percentual exato dos itens respondidos, sem arredondar para engana
     painel: montarPainelHoje({ empresa: empresa(), usuario: usuario("Gerente"), hoje: HOJE, comprovantes: [comprovante("b", "2026-10-10")], podeVerCorrecoes: true }),
     hoje: HOJE,
   });
-  assert.deepEqual(resumo.conformidade, { percentual: 85, respondidos: 20, conformes: 17, naoConformes: 3, dataDaVisita: "2026-10-10" });
+  assert.equal(resumo.conformidade.percentual, 85);
+  assert.deepEqual([resumo.conformidade.respondidos, resumo.conformidade.conformes, resumo.conformidade.naoConformes, resumo.conformidade.dataDaVisita], [20, 17, 3, "2026-10-10"]);
+  assert.equal(resumo.conformidade.totalDeItens >= resumo.conformidade.respondidosNoChecklist, true, "o denominador da visita inteira fica visível");
   assert.equal(resumo.abertas, 1, "resolvida e inativa não contam");
   assert.equal(resumo.melhoria.pontos, 15, "85% menos 70%");
   assert.equal(resumo.melhoria.resolvidasNoPeriodo, 1);
   assert.equal(resumo.documentosVencendo, 1);
   const texto = textoDoResumo(resumo);
-  assert.ok(texto.includes("Conformidade: 85% (17 de 20 itens respondidos"));
+  assert.ok(texto.includes("85% conforme entre os itens avaliados (17 de 20)"));
   assert.ok(texto.includes("Não substitui o relatório completo."));
 });
 
@@ -151,7 +153,7 @@ test("Resumo: com poucos dados não compara nem inventa número", () => {
   assert.equal(uma.melhoria, null);
   const nenhuma = montarResumo({ empresaNome: "X", visitas: [], ncs: [], painel, hoje: HOJE });
   assert.equal(nenhuma.conformidade, null);
-  assert.ok(textoDoResumo(nenhuma).includes("sem visita com respostas ainda"));
+  assert.ok(textoDoResumo(nenhuma).includes("sem itens respondidos ainda"));
 });
 
 test("Telas: o painel só aparece para o gestor, o lembrete abre no e-mail da pessoa e o resumo avisa que não substitui o relatório", () => {

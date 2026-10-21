@@ -1,4 +1,5 @@
 import type { NavItem, NavKey } from "@/lib/navigation";
+import { ROTULO_DA_SUBABA, type SubAbaCentral } from "./centralEmpresa.ts";
 
 // Busca LOCAL da caixa inteligente (Ctrl K): sem IA e sem chamada externa.
 // O índice é montado só com o que o perfil já pode ver (itens do menu filtrados por
@@ -13,6 +14,7 @@ export type AcaoDestino =
   | { tipo: "ambiente"; nome: string }
   | { tipo: "item"; id: string; ambiente: string }
   | { tipo: "continuar" }
+  | { tipo: "central"; subaba: SubAbaCentral }
   | { tipo: "registrar" };
 
 export type Destino = {
@@ -172,7 +174,7 @@ const SINONIMOS_NAV: Partial<Record<NavKey, string[]>> = {
   plano: ["acoes", "acao corretiva", "prazos"],
   acompanhamento: ["acompanhar", "correcao"],
   relatorio: ["pdf", "imprimir", "exportar"],
-  pops: ["procedimentos", "documentos"],
+  pops: ["procedimentos", "documentos", "pops", "central da empresa", "norma"],
   acessos: ["usuarios", "permissoes", "pessoas"],
   ajuda: ["guias", "duvidas", "manual"],
 };
@@ -191,6 +193,21 @@ export type EntradaDeDestinos = {
   itensChecklist: { id: string; ambiente: string; titulo: string; status: string }[];
   visitaEmAndamentoId: string | null;
   podeChecklist: boolean;
+  /** Sub-abas da Central da Empresa que o perfil enxerga (vazio: sem empresa ativa ou sem acesso). */
+  subabasCentral?: SubAbaCentral[];
+};
+
+const SINONIMOS_SUBABA: Record<SubAbaCentral, string[]> = {
+  dados: ["dados da empresa", "cadastro da empresa", "endereco", "responsavel do estabelecimento"],
+  norma: ["norma", "normas", "rdc 216", "legislacao", "confirmar norma"],
+  privacidade: ["lgpd", "guarda", "ia nas fotos"],
+  ambientes: ["setores", "equipamentos", "locais"],
+  fluxos: ["fluxos operacionais", "processos"],
+  manual: ["manual de boas praticas", "mbp"],
+  pops: ["pop", "pops", "procedimentos", "documentos", "procedimento operacional"],
+  programas: ["programas de controle", "qualidade"],
+  comprovantes: ["certificados", "validade", "pragas", "reservatorio"],
+  pessoas: ["equipe", "colaboradores", "treinamento", "capacitacao"],
 };
 
 export function construirDestinos(entrada: EntradaDeDestinos): Destino[] {
@@ -227,6 +244,28 @@ export function construirDestinos(entrada: EntradaDeDestinos): Destino[] {
       acao: { tipo: "nav", key: item.key },
       contexto: entrada.dentroDeVisita && etapas.includes(item.key),
     });
+  }
+
+  const subabas = entrada.subabasCentral || [];
+  if (entrada.empresaAtivaId && subabas.length > 0) {
+    destinos.push({
+      id: "ir:central-empresa",
+      grupo: "ir",
+      titulo: "Central da Empresa",
+      detalhe: "Dados, norma, ambientes e documentos da empresa ativa",
+      sinonimos: ["central", "empresa", "dados da empresa", "cadastro", "documentos", "norma", "pops"],
+      acao: { tipo: "central", subaba: subabas.includes("dados") ? "dados" : subabas[0] },
+    });
+    for (const subaba of subabas) {
+      destinos.push({
+        id: `ir:central:${subaba}`,
+        grupo: "ir",
+        titulo: `Central › ${ROTULO_DA_SUBABA[subaba]}`,
+        detalhe: "Empresa ativa",
+        sinonimos: ["central da empresa", ...SINONIMOS_SUBABA[subaba]],
+        acao: { tipo: "central", subaba },
+      });
+    }
   }
 
   if (entrada.visitaEmAndamentoId && entrada.podeChecklist) {

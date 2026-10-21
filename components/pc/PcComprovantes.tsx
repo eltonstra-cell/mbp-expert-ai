@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, type DragEvent } from "react";
+import { mostrarToast } from "@/lib/toast";
 import { ListRow } from "@/components/ui/ListRow";
 import { Pill, type Tom } from "@/components/ui/Pill";
 import { StatStrip } from "@/components/ui/StatStrip";
@@ -65,6 +66,9 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [arrastando, setArrastando] = useState(false);
   const [tocado, setTocado] = useState(false);
+  // Campo já tocado (saiu dele): o aviso aparece na hora, não só ao salvar.
+  const [campos, setCampos] = useState<Partial<Record<"emissor" | "dataServico" | "validade", boolean>>>({});
+  const formularioRef = useRef<HTMLDivElement | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
   const entrada = useRef<HTMLInputElement | null>(null);
@@ -75,12 +79,17 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
   const editando = Boolean(dados.id);
   const exigeArquivo = !editando || !comprovantes.find((item) => item.id === dados.id)?.blobPathname;
   const erroArquivo = !arquivo && exigeArquivo ? "Anexe o PDF ou a foto do comprovante." : "";
-  const sugestao = sugerirValidade(dados.tipo, dados.dataServico);
+  // A sugestão some depois de "Usar" (a validade passa a ser a sugerida) e volta se a pessoa mudar a data.
+  const sugestaoBruta = sugerirValidade(dados.tipo, dados.dataServico);
+  const sugestao = sugestaoBruta && dados.validade !== sugestaoBruta.validade ? sugestaoBruta : null;
+  const mostrar = (nome: "emissor" | "dataServico" | "validade") => Boolean(tocado || campos[nome]);
+  const tocar = (nome: "emissor" | "dataServico" | "validade") => setCampos((atual) => (atual[nome] ? atual : { ...atual, [nome]: true }));
 
   function abrir(inicial: DadosDoFormulario) {
     setDados(inicial);
     setArquivo(null);
     setTocado(false);
+    setCampos({});
     setErro("");
     setFormAberto(true);
   }
@@ -105,7 +114,15 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
 
   async function salvar() {
     setTocado(true);
-    if (Object.keys(erros).length || erroArquivo) return;
+    if (Object.keys(erros).length || erroArquivo) {
+      // Leva a pessoa ao primeiro campo com problema (o formulário pode estar abaixo da tela).
+      window.setTimeout(() => {
+        const primeiro = formularioRef.current?.querySelector<HTMLElement>(".is-invalid, .is-invalida, .ui-field-error");
+        primeiro?.scrollIntoView({ block: "center", behavior: "smooth" });
+        if (primeiro && "focus" in primeiro && primeiro.tagName !== "SPAN" && primeiro.tagName !== "DIV") primeiro.focus({ preventScroll: true });
+      }, 0);
+      return;
+    }
     if (arquivo && !online) return;
     setSalvando(true);
     const mensagem = await onSalvar(dados, arquivo);
@@ -117,7 +134,9 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
     setDados(vazio());
     setArquivo(null);
     setTocado(false);
+    setCampos({});
     setFormAberto(false);
+    mostrarToast("Salvo");
   }
 
   const todosOsPops = popFixo ? [popFixo] : popsParaVincular || [];
@@ -134,7 +153,7 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
           </div>
         )}
         <div className="ui-head-actions">
-          {podeGerenciar && (
+          {podeGerenciar && !formAberto && (
             <button type="button" className="ui-btn ui-btn--criar" onClick={() => abrir(vazio())}>
               + Anexar comprovante
             </button>
@@ -156,7 +175,7 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
         ]}
       />
 
-      <div className={`comp-cols${podeGerenciar ? "" : " is-single"}`}>
+      <div className={`comp-cols${podeGerenciar && formAberto ? " tem-form" : " is-single"}`}>
         <div className="comp-lista">
           {vigentes.length === 0 ? (
             <div className="ui-empty">Nenhum comprovante anexado. Anexe o certificado de controle de pragas, da limpeza do reservatório ou o contrato do RT.</div>
@@ -208,7 +227,7 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
         </div>
 
         {podeGerenciar && (
-          <div className={`ui-card comp-form${formAberto ? " is-aberto" : ""}`}>
+          <div ref={formularioRef} className={`ui-card comp-form${formAberto ? " is-aberto" : ""}`}>
             <h2 className="ui-card-title">{editando ? "Editar comprovante" : dados.renovaId ? "Renovar comprovante" : "Anexar comprovante"}</h2>
             <label className="pc-field">
               <span className="ui-eyebrow">Tipo</span>
@@ -235,26 +254,26 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
             )}
             <label className="pc-field">
               <span className="ui-eyebrow">Emissor</span>
-              <input className={`ui-input${tocado && erros.emissor ? " is-invalid" : ""}`} value={dados.emissor} onChange={(evento) => campo("emissor", evento.target.value)} aria-invalid={Boolean(tocado && erros.emissor)} />
-              {tocado && erros.emissor && <span className="ui-field-error">{erros.emissor}</span>}
+              <input className={`ui-input${mostrar("emissor") && erros.emissor ? " is-invalid" : ""}`} value={dados.emissor} onChange={(evento) => campo("emissor", evento.target.value)} onBlur={() => tocar("emissor")} aria-invalid={Boolean(mostrar("emissor") && erros.emissor)} />
+              {mostrar("emissor") && erros.emissor && <span className="ui-field-error">{erros.emissor}</span>}
             </label>
             <div className="comp-duplo">
               <label className="pc-field">
                 <span className="ui-eyebrow">Data do serviço</span>
-                <input type="date" className={`ui-input${tocado && erros.dataServico ? " is-invalid" : ""}`} value={dados.dataServico} max={hoje} onChange={(evento) => campo("dataServico", evento.target.value)} aria-invalid={Boolean(tocado && erros.dataServico)} />
-                {tocado && erros.dataServico && <span className="ui-field-error">{erros.dataServico}</span>}
+                <input type="date" className={`ui-input${mostrar("dataServico") && erros.dataServico ? " is-invalid" : ""}`} value={dados.dataServico} max={hoje} onChange={(evento) => campo("dataServico", evento.target.value)} onBlur={() => tocar("dataServico")} aria-invalid={Boolean(mostrar("dataServico") && erros.dataServico)} />
+                {mostrar("dataServico") && erros.dataServico && <span className="ui-field-error">{erros.dataServico}</span>}
               </label>
               <label className="pc-field">
                 <span className="ui-eyebrow">Validade</span>
-                <input type="date" className={`ui-input${(tocado || dados.validade) && erros.validade ? " is-invalid" : ""}`} value={dados.validade} onChange={(evento) => campo("validade", evento.target.value)} aria-invalid={Boolean((tocado || dados.validade) && erros.validade)} />
-                {(tocado || dados.validade) && erros.validade && <span className="ui-field-error">{erros.validade}</span>}
+                <input type="date" className={`ui-input${(mostrar("validade") || dados.validade) && erros.validade ? " is-invalid" : ""}`} value={dados.validade} onChange={(evento) => campo("validade", evento.target.value)} onBlur={() => tocar("validade")} aria-invalid={Boolean((mostrar("validade") || dados.validade) && erros.validade)} />
+                {(mostrar("validade") || dados.validade) && erros.validade && <span className="ui-field-error">{erros.validade}</span>}
               </label>
             </div>
             {sugestao && (
-              <div className="priv-faixa comp-sugestao" role="status">
+              <div className="comp-sugestao" role="status">
                 <span>
-                  {sugestao.texto} Validade sugerida: {dataBr(sugestao.validade)}. Fonte: {sugestao.fonte}
-                  {sugestao.conferir ? <span className="em-breve pop-conferir"> conferir</span> : null}. Confira no texto oficial.
+                  Sugestão: {dataBr(sugestao.validade)} · {sugestao.fonte}
+                  {sugestao.conferir ? <span className="pop-conferir comp-conferir">conferir</span> : null}
                 </span>
                 <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => campo("validade", sugestao.validade)}>
                   Usar
@@ -280,11 +299,11 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
                 Escolher arquivo
               </button>
             </div>
-            {tocado && erroArquivo && <span className="ui-field-error">{erroArquivo}</span>}
+            {tocado && erroArquivo && <span className="ui-field-error" role="alert">{erroArquivo}</span>}
             {arquivo && !online && <span className="ui-field-error">Precisa de internet para enviar o arquivo.</span>}
             {erro && <span className="ui-field-error">{erro}</span>}
             <div className="comp-form-acoes">
-              <button type="button" className="ui-btn ui-btn--secondary" onClick={() => setFormAberto(false)}>
+              <button type="button" className="ui-btn ui-btn--secondary" onClick={() => { setFormAberto(false); setTocado(false); setCampos({}); }}>
                 Cancelar
               </button>
               <button type="button" className="ui-btn ui-btn--save" onClick={() => void salvar()} disabled={salvando || Boolean(arquivo && !online)}>

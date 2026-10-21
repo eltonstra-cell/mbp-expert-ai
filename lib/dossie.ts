@@ -32,12 +32,14 @@ export type SecaoDoDossie = {
   linhas: string[];
   /** Referências de fotos (só quando as fotos foram ligadas). */
   fotos?: { id: string; legenda: string; pathname: string }[];
+  /** Quantos itens a seção traz (relatórios, POPs, registros...), para o índice. */
+  contagem: number;
 };
 
 export type Dossie = {
   empresaNome: string;
   geradoEm: string;
-  indice: { id: string; titulo: string }[];
+  indice: { id: string; titulo: string; contagem: number }[];
   secoes: SecaoDoDossie[];
   /** O dossiê leva fotos? */
   comFotos: boolean;
@@ -80,18 +82,21 @@ export function montarDossie(dados: DadosDoDossie, opcoes: OpcoesDoDossie, hoje:
             return `${item.numero} · versão ${item.versao} · emitido em ${dataHoraBr(item.emitidoEm)} · visita de ${dataBr(item.instantaneo.visita.data)} · ${c.percentual === null ? "sem itens respondidos" : `${c.percentual}% de conformidade (${c.conformes} de ${c.respondidos})`} · assinado por ${item.assinatura.nome}, ${item.assinatura.crn}. ${item.aviso}`;
           })
         : ["Nenhum relatório emitido nos últimos 12 meses."],
+      contagem: relatorios.length,
     });
   }
 
   if (opcoes.pops) {
     const linhas: string[] = [];
+    let quantosPops = 0;
     for (const pop of (dados.empresa.pops || []).filter((item) => !item.arquivado)) {
       const vigente = popVigente(pop);
       if (!vigente) continue;
+      quantosPops += 1;
       linhas.push(`${pop.codigo ? `${pop.codigo} · ` : ""}${pop.titulo} · versão vigente ${vigente.versao}${vigente.aprovacao ? ` · aprovada por ${vigente.aprovacao.nome} em ${dataBr(vigente.aprovacao.em)}` : ""}`);
       for (const linha of linhasDoConteudo(vigente.conteudo).filter((item) => item.valor.trim())) linhas.push(`    ${linha.campo}: ${linha.valor}`);
     }
-    secoes.push({ id: "pops", titulo: "POPs aprovados (versão vigente)", linhas: linhas.length ? linhas : ["Nenhum POP aprovado."] });
+    secoes.push({ id: "pops", titulo: "POPs aprovados (versão vigente)", linhas: linhas.length ? linhas : ["Nenhum POP aprovado."], contagem: quantosPops });
   }
 
   if (opcoes.registros) {
@@ -101,6 +106,7 @@ export function montarDossie(dados: DadosDoDossie, opcoes: OpcoesDoDossie, hoje:
       id: "registros",
       titulo: "Registros por POP",
       linhas: lista.length ? lista.map((item) => `${dataHoraBr(item.dataHora)} · ${doPop.get(item.popId) || "POP"} (v${item.popVersao}) · ${item.responsavel}${item.ambiente ? ` · ${item.ambiente}` : ""} · ${item.descricao}`) : ["Nenhum registro."],
+      contagem: lista.length,
     });
   }
 
@@ -110,6 +116,7 @@ export function montarDossie(dados: DadosDoDossie, opcoes: OpcoesDoDossie, hoje:
       id: "comprovantes",
       titulo: "Comprovantes de terceiros",
       linhas: lista.length ? lista.map((item) => `${rotuloDoTipo(item.tipo)} · ${item.emissor} · serviço em ${dataBr(item.dataServico)} · validade ${dataBr(item.validade)} (${ROTULO_DA_VALIDADE[situacaoDaValidade(item.validade, hoje)]})`) : ["Nenhum comprovante."],
+      contagem: lista.length,
     });
   }
 
@@ -122,6 +129,7 @@ export function montarDossie(dados: DadosDoDossie, opcoes: OpcoesDoDossie, hoje:
       linhas: lista.length
         ? lista.map((item) => `${nomes.get(item.colaboradorId) || "Pessoa"} · ${item.conteudo} · ${item.cargaHoraria} h · feito em ${dataBr(item.data)} · ${item.venceEm ? `vence em ${dataBr(item.venceEm)}` : "sem vencimento"}`)
         : ["Nenhuma capacitação registrada."],
+      contagem: lista.length,
     });
   }
 
@@ -130,13 +138,13 @@ export function montarDossie(dados: DadosDoDossie, opcoes: OpcoesDoDossie, hoje:
     const fotos = relatorios.flatMap((relatorio) =>
       relatorio.instantaneo.evidencias.filter((ev) => ev.blobPathname).map((ev) => ({ id: ev.id, legenda: `${relatorio.numero} v${relatorio.versao} · ${ev.ambiente || "Sem ambiente"} · ${dataHoraBr(ev.criadoEm)}${ev.descricao ? ` · ${ev.descricao}` : ""}`, pathname: ev.blobPathname as string }))
     );
-    secoes.push({ id: "fotos", titulo: "Fotos dos relatórios emitidos", linhas: fotos.length ? [] : ["Nenhuma foto nos relatórios incluídos."], fotos });
+    secoes.push({ id: "fotos", titulo: "Fotos dos relatórios emitidos", linhas: fotos.length ? [] : ["Nenhuma foto nos relatórios incluídos."], fotos, contagem: fotos.length });
   }
 
   return {
     empresaNome: dados.empresa.nomeFantasia || dados.empresa.razaoSocial,
     geradoEm: hoje,
-    indice: secoes.map((secao) => ({ id: secao.id, titulo: secao.titulo })),
+    indice: secoes.map((secao) => ({ id: secao.id, titulo: secao.titulo, contagem: secao.contagem })),
     secoes,
     comFotos: opcoes.fotos,
   };
