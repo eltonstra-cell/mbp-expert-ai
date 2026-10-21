@@ -48,9 +48,15 @@ export function formatarData(entrada: Entrada): string {
   return `${dia}/${mes}/${ano}`;
 }
 
-/** "20/10". */
-export function formatarDataCurta(entrada: Entrada): string {
-  return formatarData(entrada).slice(0, 5);
+/**
+ * "20/10" quando a data é do ano corrente e "20/10/2027" quando é de outro ano (para "vence 21/10" não parecer hoje quando é só no ano que vem).
+ * É o ÚNICO helper de data curta do app. `hoje` (AAAA-MM-DD) existe para os testes; sem ele vale o dia de hoje em São Paulo.
+ */
+export function formatarDataCurta(entrada: Entrada, hoje: string = hojeLocalISO()): string {
+  const completa = formatarData(entrada);
+  if (!completa) return "";
+  const anoDaData = completa.slice(6);
+  return anoDaData === hoje.slice(0, 4) ? completa.slice(0, 5) : completa;
 }
 
 /** "21:26" em São Paulo (só para instantes; texto só de data não tem hora). */
@@ -70,8 +76,8 @@ export function formatarDataHora(entrada: Entrada): string {
 }
 
 /** "20/10 · 21:26". */
-export function formatarDataCurtaHora(entrada: Entrada): string {
-  const data = formatarDataCurta(entrada);
+export function formatarDataCurtaHora(entrada: Entrada, hoje?: string): string {
+  const data = formatarDataCurta(entrada, hoje);
   const hora = formatarHora(entrada);
   return hora ? `${data} · ${hora}` : data;
 }

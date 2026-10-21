@@ -20,8 +20,8 @@ test("fuso: 21:00 a 23:59 de São Paulo (00:00 a 02:59 UTC do dia seguinte) cont
     assert.equal(formatarData(utc), dia.split("-").reverse().join("/"), utc);
   }
   assert.equal(formatarDataHora("2026-10-21T00:26:00.000Z"), "20/10/2026 21:26");
-  assert.equal(formatarDataCurtaHora("2026-10-21T00:26:00.000Z"), "20/10 · 21:26");
-  assert.equal(formatarDataCurta("2026-10-21T00:26:00.000Z"), "20/10");
+  assert.equal(formatarDataCurtaHora("2026-10-21T00:26:00.000Z", "2026-10-21"), "20/10 · 21:26");
+  assert.equal(formatarDataCurta("2026-10-21T00:26:00.000Z", "2026-10-21"), "20/10");
   // o texto ISO cortado trazia o dia errado: é exatamente o defeito que o teste protege
   assert.notEqual("2026-10-21T00:26:00.000Z".slice(0, 10), dataISOLocal("2026-10-21T00:26:00.000Z"));
 });

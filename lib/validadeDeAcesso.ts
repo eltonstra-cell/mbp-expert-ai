@@ -3,7 +3,7 @@
 export const PRAZOS_DE_VALIDADE = [3, 7, 15, 30] as const;
 export type PrazoDeValidade = (typeof PRAZOS_DE_VALIDADE)[number];
 
-import { dataISOLocal } from "./dataLocal.ts";
+import { dataISOLocal, formatarDataCurta } from "./dataLocal.ts";
 
 type ComValidade = { validoAte?: string; acessoEncerradoEm?: string };
 
@@ -47,9 +47,9 @@ export function dataDaValidade(validoAte: string): string {
   return `${dia}/${mes}/${ano}`;
 }
 
-/** "20/11". */
+/** "20/11" (com o ano quando não for o corrente). */
 export function diaMesDaValidade(validoAte: string): string {
-  return dataDaValidade(validoAte).slice(0, 5);
+  return formatarDataCurta(dataNoFuso(new Date(validoAte)));
 }
 
 export function textoDoConvite(validoAte: string): string {
