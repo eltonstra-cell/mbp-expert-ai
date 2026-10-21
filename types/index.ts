@@ -447,6 +447,8 @@ export type UsuarioSistema = {
   crn?: string;
   /** Cargo profissional que sai na assinatura do relatório (ex.: "Nutricionista RT"). Vazio: "Responsável técnico". */
   cargo?: string;
+  /** Telefone do RT, opcional; só entra no relatório emitido quando preenchido. */
+  telefone?: string;
 };
 
 export type AcaoPermissao =
@@ -625,7 +627,7 @@ export type RelatorioEmitido = {
   versao: number;
   emitidoEm: string;
   emitidoPorId?: string;
-  assinatura: { nome: string; cargo: string; crn: string; crnPendente: boolean };
+  assinatura: { nome: string; cargo: string; crn: string; crnPendente: boolean; telefone?: string };
   aviso: string;
   motivoDaNovaVersao?: string;
   instantaneo: InstantaneoDoRelatorio;

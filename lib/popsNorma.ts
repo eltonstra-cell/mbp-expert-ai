@@ -356,7 +356,7 @@ export function versaoDoCatalogoUsada(pop: ProcedimentoOperacionalPadronizado, e
 /** "Aprovar e assinar": grava nome, cargo, data e versão da PESSOA responsável; guarda a versão aprovada. */
 export function aprovarPop(
   pop: ProcedimentoOperacionalPadronizado,
-  usuario: Pick<UsuarioSistema, "id" | "nome" | "status" | "validoAte" | "acessoEncerradoEm">,
+  usuario: Pick<UsuarioSistema, "id" | "nome" | "status" | "validoAte" | "acessoEncerradoEm"> & Partial<Pick<UsuarioSistema, "cargo">>,
   empresa: Pick<Empresa, "responsavelEstabelecimento" | "normasAplicadas">,
   agora: string,
   catalogo: Norma[] = CATALOGO_DE_NORMAS
@@ -366,7 +366,8 @@ export function aprovarPop(
   if (pop.status !== "Aguardando aprovação" && pop.status !== "Em revisão") throw new Error("O POP precisa estar aguardando aprovação.");
   const aprovacao: AprovacaoPop = {
     nome: usuario.nome,
-    cargo: limparTextoDePessoa(empresa.responsavelEstabelecimento?.cargo),
+    // Uma só fonte: o cargo cadastrado no usuário que aprova; sem ele, o que Dados guarda para o responsável.
+    cargo: limparTextoDePessoa(usuario.cargo) || limparTextoDePessoa(empresa.responsavelEstabelecimento?.cargo),
     usuarioId: usuario.id,
     em: agora,
     versao: pop.versao,

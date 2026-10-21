@@ -15,6 +15,7 @@ import { telasDiferentesDoPadrao, type TelasDoUsuario } from "@/lib/screenAccess
 import type { ItemMenu } from "@/components/ui/RowMenu";
 import { acoesDoAcesso } from "@/lib/menuActions";
 import { contarPessoas, filtrarPessoas, type FiltroPessoas } from "@/lib/userManagement";
+import { nomeProprio } from "@/lib/nomeCargo";
 import { PERFIS_NOVOS, PODE_E_NAO_PODE } from "@/lib/perfisTexto";
 import { confirmar } from "@/lib/dialogos";
 import { PRAZOS_DE_VALIDADE, acessoVigente, calcularValidade, dataDaValidade, textoDoConvite } from "@/lib/validadeDeAcesso";
@@ -214,6 +215,12 @@ export default function PcAcessos({
                     {!(formulario.crn || "").trim() && <span className="ui-row-sub">Sem CRN, o relatório emitido mostra “CRN a preencher”.</span>}
                   </label>
                 )}
+                {(formulario.perfil === "Consultor/RT" || formulario.perfil === "Administrador") && (
+                  <label className="pc-field">
+                    <span className="ui-eyebrow">Telefone (opcional, sai no relatório)</span>
+                    <input className="ui-input" inputMode="tel" value={formulario.telefone || ""} onChange={(evento) => onCampo({ telefone: evento.target.value })} placeholder="Ex.: (51) 99999-0000" />
+                  </label>
+                )}
                 {(
                   <label className="pc-field">
                     <span className="ui-eyebrow">{formulario.perfil === "Consultor/RT" || formulario.perfil === "Administrador" ? "Cargo na assinatura do relatório (opcional)" : "Cargo (opcional)"}</span>
@@ -312,7 +319,7 @@ export default function PcAcessos({
                       {iniciais(usuario.nome)}
                     </span>
                   }
-                  titulo={usuario.nome}
+                  titulo={nomeProprio(usuario.nome)}
                   secundario={usuario.email}
                   pilulas={
                     <>

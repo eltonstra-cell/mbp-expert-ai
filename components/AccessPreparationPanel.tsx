@@ -83,6 +83,7 @@ export default function AccessPreparationPanel(props: Props) {
       jaEraFiscal: usuario.perfil === "Fiscal",
       crn: usuario.crn,
       cargo: usuario.cargo,
+      telefone: usuario.telefone,
     });
   }
 

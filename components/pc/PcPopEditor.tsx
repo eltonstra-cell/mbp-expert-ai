@@ -522,7 +522,7 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, onImpri
           <section className="pc-modal" role="dialog" aria-modal="true" aria-label="Aprovar e assinar o POP">
             <h2 className="pc-modal-title">Aprovar e assinar</h2>
             <p className="resumo-texto">
-              Você está aprovando e assinando este POP como <b>{nomeECargo(usuario?.nome, empresa.responsavelEstabelecimento?.cargo) || "responsável do estabelecimento"}</b>. Confirmar?
+              Você está aprovando e assinando este POP como <b>{nomeECargo(usuario?.nome, usuario?.cargo || empresa.responsavelEstabelecimento?.cargo) || "responsável do estabelecimento"}</b>. Confirmar?
             </p>
             <p className="ui-row-sub">
               Fica gravado o seu nome, o cargo, a data e a versão {rascunho.versao}.

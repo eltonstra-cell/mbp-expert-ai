@@ -18,7 +18,15 @@ export type DadosUsuarioPreparacao = {
   crn?: string;
   /** Cargo que sai na assinatura (ex.: "Nutricionista RT"); opcional. */
   cargo?: string;
+  /** Telefone do RT (opcional); aparece no relatório só quando preenchido. */
+  telefone?: string;
 };
+
+/** Telefone só com dígitos e os sinais comuns, até 20 caracteres; vazio vira undefined. */
+export function limparTelefone(texto: string | undefined | null): string | undefined {
+  const limpo = (texto || "").replace(/[^0-9()+\- ]/g, "").replace(/\s+/g, " ").trim().slice(0, 20);
+  return limpo || undefined;
+}
 
 export type IdentidadeSessao = {
   authId: string;
@@ -99,6 +107,7 @@ export function criarUsuarioPreparacao(
     ...(dados.telas && Object.keys(dados.telas).length > 0 ? { telas: dados.telas } : {}),
     ...(dados.crn?.trim() && (dados.perfil === "Consultor/RT" || dados.perfil === "Administrador") ? { crn: dados.crn.trim() } : {}),
     ...(limparTextoDePessoa(dados.cargo) ? { cargo: limparTextoDePessoa(dados.cargo).slice(0, 80) } : {}),
+    ...(limparTelefone(dados.telefone) && (dados.perfil === "Consultor/RT" || dados.perfil === "Administrador") ? { telefone: limparTelefone(dados.telefone) } : {}),
     ...(dados.perfil === "Fiscal" && dados.validadeDias !== undefined ? { validoAte: calcularValidade(dados.validadeDias, new Date(criadoEm)) } : {}),
     criadoEm,
     atualizadoEm: criadoEm,
@@ -127,6 +136,7 @@ export function atualizarUsuarioPreparacao(
         : Array.from(new Set(dados.empresaIds)),
     crn: dados.crn?.trim() && (dados.perfil === "Consultor/RT" || dados.perfil === "Administrador") ? dados.crn.trim() : undefined,
     cargo: limparTextoDePessoa(dados.cargo) ? limparTextoDePessoa(dados.cargo).slice(0, 80) : undefined,
+    telefone: dados.perfil === "Consultor/RT" || dados.perfil === "Administrador" ? limparTelefone(dados.telefone) : undefined,
     atualizadoEm,
   };
 }

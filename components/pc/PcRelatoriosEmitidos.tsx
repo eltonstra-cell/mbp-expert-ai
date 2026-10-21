@@ -219,6 +219,7 @@ export default function PcRelatoriosEmitidos({ empresa, relatorios, urlDaFoto, o
           <div className="emitido-assinatura">
             <span>
               Assinado por <b>{aberto.assinatura.nome}</b>, {aberto.assinatura.cargo} · {aberto.assinatura.crn}
+              {aberto.assinatura.telefone ? ` · ${aberto.assinatura.telefone}` : ""}
             </span>
           </div>
         </article>

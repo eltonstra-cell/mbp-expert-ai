@@ -3453,14 +3453,14 @@ export default function Home() {
       uf: empresa.uf || "",
       telefone: empresa.telefone || "",
       email: empresa.email || "",
-      responsavel: responsavelEfetivo(empresa).nome,
+      responsavel: responsavelEfetivo(empresa, db.usuarios).nome,
       horarioFuncionamento:
         empresa.horarioFuncionamento ||
         (empresa.horariosFuncionamento?.some((item) => item.aberto)
           ? resumirHorarioFuncionamento(empresa.horariosFuncionamento)
           : ""),
       atividadeDescricao: empresa.atividadeDescricao || "",
-      cargoResponsavel: responsavelEfetivo(empresa).cargo,
+      cargoResponsavel: responsavelEfetivo(empresa, db.usuarios).cargo,
       // Identificação do Consultor/RT: se estiver em branco, vem do usuário RT (nome, cargo e CRN de Acessos); continua editável.
       consultorNome: empresa.consultorNome || usuarioRtDaEmpresa(empresa)?.nome || "",
       consultorCpfCnpj: empresa.consultorCpfCnpj || "",
@@ -6130,7 +6130,7 @@ export default function Home() {
   // Documentos (POPs, Comprovantes, Pessoas): o mesmo conteúdo na Central de quem edita e no Documentos de quem só lê.
   function conteudoDeDocumentos(sub: SubAbaCentral, empresaDoc: Empresa, podeEditarDoc: boolean) {
     if (sub === "pops") {
-      const efetivo = responsavelEfetivo(empresaDoc);
+      const efetivo = responsavelEfetivo(empresaDoc, db.usuarios);
       const divergencia = podeEditarDoc ? divergenciaDeResponsavel(empresaDoc) : null;
       const passos = podeEditarDoc && empresaTemImplantacao(empresaDoc)
         ? passosDeImplantacao(empresaDoc, { colaboradores: (db.colaboradores || []).filter((pessoa) => pessoa.empresaId === empresaDoc.id), leiturasPop: db.leiturasPop, registrosPop: db.registrosPop })
@@ -7525,8 +7525,8 @@ export default function Home() {
                     municipio={empresaGerenciada.municipio || ""}
                     normasAplicadas={empresaGerenciada.normasAplicadas || []}
                     confirmacao={empresaGerenciada.normasConfirmadasPeloRt}
-                    responsavel={responsavelEfetivo(empresaGerenciada)}
-                    responsavelTexto={textoDoResponsavel(responsavelEfetivo(empresaGerenciada))}
+                    responsavel={responsavelEfetivo(empresaGerenciada, db.usuarios)}
+                    responsavelTexto={textoDoResponsavel(responsavelEfetivo(empresaGerenciada, db.usuarios))}
                     onAlterarEmDados={() => irParaSubaba("dados")}
                     podeEditar={permitido("empresas.editar", empresaGerenciada.id)}
                     somenteLeitura={modo === "campo"}

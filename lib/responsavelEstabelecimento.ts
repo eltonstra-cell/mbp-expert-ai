@@ -1,6 +1,6 @@
 // Um só responsável do estabelecimento: a fonte é Empresa › Dados (nome, cargo e usuário de Acessos vinculado).
 // Quem só tem o campo antigo de POPs continua aparecendo (fallback de leitura) e divergências viram aviso ao RT.
-import type { Empresa, ProcedimentoOperacionalPadronizado } from "../types/index.ts";
+import type { Empresa, ProcedimentoOperacionalPadronizado, UsuarioSistema } from "../types/index.ts";
 import { limparTextoDePessoa } from "./nomeCargo.ts";
 
 export type ResponsavelEfetivo = {
@@ -27,11 +27,22 @@ export function nomesAntigosDosPops(pops: ProcedimentoOperacionalPadronizado[] |
   return nomes;
 }
 
-export function responsavelEfetivo(empresa: Pick<Empresa, "responsavelEstabelecimento" | "responsavel" | "cargoResponsavel" | "pops"> | undefined): ResponsavelEfetivo {
+export function responsavelEfetivo(
+  empresa: Pick<Empresa, "responsavelEstabelecimento" | "responsavel" | "cargoResponsavel" | "pops"> | undefined,
+  usuarios?: Pick<UsuarioSistema, "id" | "nome" | "cargo">[]
+): ResponsavelEfetivo {
   const guardado = empresa?.responsavelEstabelecimento;
   const nomeGuardado = limpo(guardado?.nome);
   if (nomeGuardado || limpo(guardado?.cargo) || guardado?.usuarioId) {
-    return { nome: nomeGuardado || limpo(empresa?.responsavel), cargo: limpo(guardado?.cargo) || limpo(empresa?.cargoResponsavel), usuarioId: guardado?.usuarioId, origem: "dados", vinculado: Boolean(guardado?.usuarioId) };
+    // Com usuário vinculado, nome e cargo vêm do cadastro dele (uma só fonte); sem ele (ou sem cargo lá), vale o que Dados guarda.
+    const vinculado = guardado?.usuarioId ? (usuarios || []).find((pessoa) => pessoa.id === guardado.usuarioId) : undefined;
+    return {
+      nome: limpo(vinculado?.nome) || nomeGuardado || limpo(empresa?.responsavel),
+      cargo: limpo(vinculado?.cargo) || limpo(guardado?.cargo) || limpo(empresa?.cargoResponsavel),
+      usuarioId: guardado?.usuarioId,
+      origem: "dados",
+      vinculado: Boolean(guardado?.usuarioId),
+    };
   }
   const dados = limpo(empresa?.responsavel);
   if (dados) return { nome: dados, cargo: limpo(empresa?.cargoResponsavel), origem: "dados", vinculado: false };

@@ -127,7 +127,7 @@ export type PedidoDeEmissao = {
   secoes?: unknown;
 };
 
-export type Emissor = Pick<UsuarioSistema, "id" | "nome" | "perfil" | "crn" | "status" | "validoAte" | "acessoEncerradoEm">;
+export type Emissor = Pick<UsuarioSistema, "id" | "nome" | "perfil" | "crn" | "status" | "validoAte" | "acessoEncerradoEm"> & Partial<Pick<UsuarioSistema, "telefone">>;
 
 export type ResultadoDaEmissao = { ok: true; relatorio: RelatorioEmitido; relatorios: RelatorioEmitido[] } | { ok: false; erro: string; status: 400 | 403 | 404 | 409 };
 
@@ -169,6 +169,7 @@ export function emitir(data: AppDB, pedido: PedidoDeEmissao, emissor: Emissor | 
       cargo: ((emissor as UsuarioSistema | null)?.cargo || "").trim().slice(0, 80) || "Responsável técnico",
       crn: crn || TEXTO_CRN_PENDENTE,
       crnPendente: !crn,
+      ...((emissor?.telefone || "").trim() ? { telefone: (emissor?.telefone || "").trim().slice(0, 20) } : {}),
     },
     aviso: AVISO_SEM_ICP,
     ...(anterior ? { motivoDaNovaVersao: (pedido.motivo || "").trim() } : {}),
