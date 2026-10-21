@@ -151,3 +151,15 @@ test("Empresas: razão social só quando difere do nome exibido", () => {
   assert.equal(razaoSocialDiferente("Beyond Nutri", "BEYOND NUTRI LTDA"), "Beyond Nutri Ltda");
   assert.equal(razaoSocialDiferente("Mello", ""), "");
 });
+
+import { rotuloDoChipDePendencias } from "../lib/companyReadiness.ts";
+
+test("cartão de Empresas: chip âmbar 'N pendências ▸' com a lista completa numa janelinha; uma só mostra o nome", () => {
+  assert.equal(rotuloDoChipDePendencias([]), "");
+  assert.equal(rotuloDoChipDePendencias(["horário de funcionamento"]), "Falta: horário de funcionamento");
+  assert.equal(rotuloDoChipDePendencias(["horário de funcionamento", "equipamentos", "programas"]), "3 pendências ▸");
+  const chip = ler("../components/pc/PendenciasChip.tsx");
+  assert.ok(chip.includes("faltas.map((falta)") && chip.includes("onMouseEnter") && chip.includes("onClick") && chip.includes('role="dialog"'));
+  assert.ok(ler("../components/pc/PcEmpresas.tsx").includes("<PendenciasChip faltas={empresa.faltas} />"));
+  assert.match(ler("../app/globals.css"), /\.pend-chip\{display:inline-flex;align-items:center;height:28px/);
+});

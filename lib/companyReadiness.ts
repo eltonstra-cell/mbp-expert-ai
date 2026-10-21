@@ -178,3 +178,9 @@ export function textoDaPendencia(faltas: string[]): string {
   const lista = faltas.length === 1 ? faltas[0] : `${faltas.slice(0, -1).join(", ")} e ${faltas[faltas.length - 1]}`;
   return `Falta: ${lista}`;
 }
+
+/** Texto do chip de pendências do cartão: uma só mostra o nome; várias, "N pendências ▸" (a lista completa abre numa janelinha). */
+export function rotuloDoChipDePendencias(faltas: string[]): string {
+  if (faltas.length === 0) return "";
+  return faltas.length === 1 ? `Falta: ${faltas[0]}` : `${faltas.length} pendências ▸`;
+}

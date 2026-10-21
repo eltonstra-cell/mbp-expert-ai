@@ -4102,3 +4102,11 @@ html:not([data-modo="campo"]) :is(.ui-row-sub,.ui-subtitle,.pgl-detalhe,.pgl-aca
 .comp-grade .pc-field{display:flex;flex-direction:column;gap:4px}
 .comp-tipo-fixo{box-sizing:border-box;width:100%;padding:0 12px;border:1px solid #B4C2CE;border-radius:10px;background:#F3F5F8;color:#3D5160;cursor:not-allowed}
 .comp-tarja{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:4px 10px;border:1px solid #E8B04B;border-radius:10px;background:#FFF3D6;font-size:.9rem;color:#12202B}
+
+/* Empresas: chip âmbar de pendências com janelinha */
+.pend-chip{display:inline-flex;align-items:center;height:28px;padding:0 12px;border:1px solid #E8B04B;border-radius:999px;background:#FFF3D6;font-family:inherit;font-size:.9rem;color:#12202B;white-space:nowrap}
+.pend-chip--botao{cursor:pointer}
+.pend-chip--botao:hover{background:#FDE9B8}
+.pend-janela{position:fixed;z-index:120;min-width:15rem;max-width:20rem;padding:10px 14px;border:1px solid #E8B04B;border-radius:12px;background:#fff;box-shadow:0 10px 24px rgba(18,32,43,.16);font-size:.94rem;color:#12202B}
+.pend-janela ul{margin:6px 0 0;padding-left:18px}
+.pend-janela li{margin:2px 0}
