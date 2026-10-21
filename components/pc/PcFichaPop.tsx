@@ -31,6 +31,7 @@ type Props = {
   onEnviar: (pop: ProcedimentoOperacionalPadronizado) => void;
   onAprovar: (pop: ProcedimentoOperacionalPadronizado) => void;
   onNovaVersao: (pop: ProcedimentoOperacionalPadronizado) => void;
+  onDescartar?: (pop: ProcedimentoOperacionalPadronizado) => void;
 };
 
 const ROTULO: Record<AbaFicha, string> = { resumo: "Resumo", documento: "Documento", registros: "Registros", comprovantes: "Comprovantes", quemleu: "Quem leu", historico: "Histórico" };
@@ -49,7 +50,7 @@ const DESTINO_DA_ABA: Record<NonNullable<ReturnType<typeof montarLinhaDoPop>["ac
 };
 
 // Ficha do POP: o POP é o centro. Resumo, Documento, Registros, Comprovantes, Quem leu e Histórico no mesmo lugar.
-export default function PcFichaPop({ pop, empresa, usuario, podeEditar, onImprimir, podeAprovar, contexto, mensagem, abaInicial = "resumo", onVoltar, onSalvarRascunho, onEnviar, onAprovar, onNovaVersao }: Props) {
+export default function PcFichaPop({ pop, empresa, usuario, podeEditar, onImprimir, podeAprovar, contexto, mensagem, abaInicial = "resumo", onVoltar, onSalvarRascunho, onEnviar, onAprovar, onNovaVersao, onDescartar }: Props) {
   const [aba, setAba] = useState<AbaFicha>(abaInicial);
   const hoje = hojeISO();
   useEffect(() => setAba(abaInicial), [abaInicial]);
@@ -220,6 +221,7 @@ export default function PcFichaPop({ pop, empresa, usuario, podeEditar, onImprim
             onEnviar={onEnviar}
             onAprovar={onAprovar}
             onNovaVersao={onNovaVersao}
+            onDescartar={onDescartar}
           />
         </div>
 

@@ -577,6 +577,53 @@ export function popVigente(pop: ProcedimentoOperacionalPadronizado | undefined):
   return ultima ? { versao: ultima.versao, conteudo: ultima.conteudo, aprovacao: ultima.aprovacao } : null;
 }
 
+/**
+ * O POP como quem só lê deve vê-lo: a versão vigente aprovada, mesmo com um rascunho de nova versão em andamento
+ * (o conteúdo do rascunho não sai). Sem versão aprovada, devolve null.
+ */
+export function popComoVigente(pop: ProcedimentoOperacionalPadronizado): ProcedimentoOperacionalPadronizado | null {
+  if (pop.arquivado || pop.status === "Inativo") return null;
+  if (pop.status === "Aprovado") return pop;
+  const aprovadas = (pop.versoes || []).filter((versao) => versao.status === "Aprovado");
+  const ultima = aprovadas[aprovadas.length - 1];
+  if (!ultima) return null;
+  return {
+    ...pop,
+    versao: ultima.versao,
+    status: "Aprovado",
+    conteudo: ultima.conteudo,
+    aprovacao: ultima.aprovacao,
+    proximaRevisao: ultima.revisarAte || "",
+    versaoCatalogoAprovada: ultima.versaoCatalogo,
+    motivoDaVersao: ultima.motivo,
+    versoes: aprovadas,
+  };
+}
+
+/** Só quem tem uma versão aprovada guardada pode descartar o rascunho (volta à aprovada); o primeiro rascunho se arquiva ou exclui. */
+export function podeDescartarRascunho(pop: ProcedimentoOperacionalPadronizado): boolean {
+  return pop.status === "Rascunho" && (pop.versoes || []).some((versao) => versao.status === "Aprovado");
+}
+
+/** Descarta o rascunho da nova versão: o POP volta a ser a última versão aprovada, que nunca deixou de valer. */
+export function descartarRascunho(pop: ProcedimentoOperacionalPadronizado): ProcedimentoOperacionalPadronizado {
+  if (!podeDescartarRascunho(pop)) throw new Error("Só dá para descartar o rascunho de uma nova versão de um POP já aprovado.");
+  const aprovadas = (pop.versoes || []).filter((versao) => versao.status === "Aprovado");
+  const ultima = aprovadas[aprovadas.length - 1];
+  const { aprovacao: _a, versaoCatalogoAprovada: _v, motivoDaVersao: _m, ...resto } = pop;
+  return {
+    ...resto,
+    versao: ultima.versao,
+    status: "Aprovado",
+    conteudo: ultima.conteudo,
+    aprovacao: ultima.aprovacao,
+    proximaRevisao: ultima.revisarAte || "",
+    versaoCatalogoAprovada: ultima.versaoCatalogo,
+    ...(ultima.motivo ? { motivoDaVersao: ultima.motivo } : {}),
+    versoes: (pop.versoes || []).filter((versao) => versao.status === "Aprovado"),
+  };
+}
+
 /** Texto da ação corretiva cadastrada no POP vigente, ou vazio quando não há. */
 export function acaoCorretivaDoPopVigente(pop: ProcedimentoOperacionalPadronizado | undefined): string {
   return (popVigente(pop)?.conteudo?.acaoCorretiva || "").trim();

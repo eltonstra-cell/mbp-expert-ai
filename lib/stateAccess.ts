@@ -3,6 +3,7 @@ import { podeCriarRegistroPop, podeGerenciarComprovantes, podeGerenciarPessoas, 
 import { protegerCarimboDasEvidencias } from "./fotosDoItem.ts";
 import { preservarEvidenciasEmRelatorio } from "./relatorioEmitido.ts";
 import { podeEditarQuestionario } from "./questionarioAmbiente.ts";
+import { popComoVigente } from "./popsNorma.ts";
 import { permissoesEfetivas } from "./screenAccess.ts";
 import { acessoVigente } from "./validadeDeAcesso.ts";
 
@@ -80,7 +81,7 @@ export function filtrarEstadoPorUsuario(
     const somenteAprovados = Object.fromEntries(
       Object.entries(empresas).map(([id, empresa]) => [
         id,
-        { ...empresa, pops: (empresa.pops || []).filter((pop) => pop.status === "Aprovado" && !pop.arquivado) },
+        { ...empresa, pops: (empresa.pops || []).flatMap((pop) => popComoVigente(pop) ?? []) },
       ])
     );
     return {
@@ -113,7 +114,7 @@ export function filtrarEstadoPorUsuario(
   return {
     ...data,
     empresas: semPops
-      ? Object.fromEntries(Object.entries(empresas).map(([id, empresa]) => [id, { ...empresa, pops: (empresa.pops || []).filter((pop) => pop.status === "Aprovado" && !pop.arquivado) }]))
+      ? Object.fromEntries(Object.entries(empresas).map(([id, empresa]) => [id, { ...empresa, pops: (empresa.pops || []).flatMap((pop) => popComoVigente(pop) ?? []) }]))
       : empresas,
     empresaAtualId:
       data.empresaAtualId && empresaIds.has(data.empresaAtualId)
@@ -276,6 +277,17 @@ function mesclarPorEscopo<T extends { id: string; empresaId: string }>(
   return [...mapa.values()];
 }
 
+/** Concluir, reabrir e arquivar visita exigem `visitas.concluir`: sem ela, o que já estava gravado vale. */
+export function preservarConclusaoDeVisitas(mescladas: AppDB["visitas"], atuais: AppDB["visitas"], podeConcluir: boolean): AppDB["visitas"] {
+  if (podeConcluir) return mescladas;
+  const gravadas = new Map(atuais.map((visita) => [visita.id, visita]));
+  return mescladas.map((visita) => {
+    const gravada = gravadas.get(visita.id);
+    if (!gravada) return visita;
+    return { ...visita, status: gravada.status, arquivada: gravada.arquivada, arquivadaEm: gravada.arquivadaEm, encerradaEm: gravada.encerradaEm, conclusao: gravada.conclusao, historicoStatus: gravada.historicoStatus };
+  });
+}
+
 export function mesclarEstadoPorUsuario(
   atual: AppDB,
   recebido: AppDB,
@@ -357,7 +369,7 @@ export function mesclarEstadoPorUsuario(
     visitas =
       usuario.perfil === "Executor de campo"
         ? mesclarVisitasDoExecutor(atual.visitas, recebido.visitas, empresaIds)
-        : mesclarPorEscopo("visitas", atual.visitas, recebido.visitas, empresaIds, false);
+        : preservarConclusaoDeVisitas(mesclarPorEscopo("visitas", atual.visitas, recebido.visitas, empresaIds, false), atual.visitas, possuiPermissao(efetivo, "visitas.concluir"));
     if (usuario.perfil === "Executor de campo") ncs = mesclarNcsDoChecklist(atual.ncs, recebido.ncs, empresaIds, agora);
   }
 

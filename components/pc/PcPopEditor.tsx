@@ -14,11 +14,13 @@ import {
   juntarPassosEmBrancoRepetidos,
   limparPassosEmBranco,
   motivoParaNaoAprovar,
+  podeDescartarRascunho,
   podeAprovarPop,
   popPrecisaRevisarPorNorma,
   textoDaFaixaDoTextoBase,
 } from "@/lib/popsNorma";
 import { normasDaEmpresa } from "@/lib/normas";
+import { confirmar } from "@/lib/dialogos";
 import PopFolha from "@/components/pc/PopFolha";
 import { folhaDoPop, secoesDoEditor, textoDasSecoes } from "@/lib/popDocumento";
 import type { CabecalhoDeImpressao } from "@/lib/printFooter";
@@ -36,6 +38,8 @@ type Props = {
   onEnviar: (pop: ProcedimentoOperacionalPadronizado) => void;
   onAprovar: (pop: ProcedimentoOperacionalPadronizado) => void;
   onNovaVersao: (pop: ProcedimentoOperacionalPadronizado) => void;
+  /** Descarta o rascunho de uma nova versão; a última versão aprovada continua vigente. */
+  onDescartar?: (pop: ProcedimentoOperacionalPadronizado) => void;
   mensagem?: string;
   /** Documento (editor) ou Histórico (versões, aprovações e motivo). O cabeçalho e as abas ficam na ficha do POP. */
   parte?: "documento" | "historico";
@@ -78,7 +82,7 @@ function horaCerta(): string {
 }
 
 // Documento (editor em painéis) e Histórico (versões, aprovações e motivo) do POP. O cabeçalho e as abas ficam na ficha (PcFichaPop).
-export default function PcPopEditor({ pop, empresa, usuario, podeEditar, onImprimir, onSalvarRascunho, onEnviar, onAprovar, onNovaVersao, mensagem, parte = "documento" }: Props) {
+export default function PcPopEditor({ pop, empresa, usuario, podeEditar, onImprimir, onSalvarRascunho, onEnviar, onAprovar, onNovaVersao, onDescartar, mensagem, parte = "documento" }: Props) {
   // Mais de um passo em branco vira um só logo ao abrir.
   const [rascunho, setRascunho] = useState<ProcedimentoOperacionalPadronizado>(() => (pop.conteudo?.passos ? { ...pop, conteudo: { ...pop.conteudo, passos: juntarPassosEmBrancoRepetidos(pop.conteudo.passos) } } : pop));
   const [motivoDaNovaVersao, setMotivoDaNovaVersao] = useState("");
@@ -471,6 +475,18 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, onImpri
           <div className="pop-rodape-acoes">
             {(rascunho.versoes || []).length > 0 && (
               <input className="ui-input pop-motivo-versao" value={rascunho.motivoDaVersao || ""} onChange={(evento) => { setSalvoEm(""); setRascunho({ ...rascunho, motivoDaVersao: evento.target.value }); }} placeholder="Motivo da nova versão (opcional)" aria-label="Motivo da nova versão" />
+            )}
+            {onDescartar && podeDescartarRascunho(pop) && (
+              <button
+                type="button"
+                className="ui-btn ui-btn--secondary"
+                onClick={async () => {
+                  if (!(await confirmar(`Descartar este rascunho? A versão ${(rascunho.versoes || []).filter((versao) => versao.status === "Aprovado").slice(-1)[0]?.versao} aprovada continua vigente e o que foi escrito no rascunho se perde.`, { titulo: "Descartar rascunho", confirmarRotulo: "Descartar rascunho", cancelarRotulo: "Continuar editando", perigoso: true }))) return;
+                  onDescartar(pop);
+                }}
+              >
+                Descartar rascunho
+              </button>
             )}
             <button
               type="button"

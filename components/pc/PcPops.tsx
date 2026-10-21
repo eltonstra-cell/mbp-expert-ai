@@ -6,7 +6,7 @@ import PcFichaPop, { type AbaFicha } from "@/components/pc/PcFichaPop";
 import PcPopsLista from "@/components/pc/PcPopsLista";
 import type { CabecalhoDeImpressao } from "@/lib/printFooter";
 import { useRegistrosDaEmpresa } from "@/components/RegistrosEmpresaContext";
-import { aprovarPop, criarPopDoTextoBase, criarPopsFaltantesDoConjunto, conjuntoDaEmpresa, enviarParaAprovacao, hojeISO, iniciarNovaVersao, podeAprovarPop, MENSAGEM_SEM_NORMA_APLICADA } from "@/lib/popsNorma";
+import { aprovarPop, criarPopDoTextoBase, criarPopsFaltantesDoConjunto, descartarRascunho, conjuntoDaEmpresa, enviarParaAprovacao, hojeISO, iniciarNovaVersao, podeAprovarPop, MENSAGEM_SEM_NORMA_APLICADA } from "@/lib/popsNorma";
 import { montarListaDePops } from "@/lib/popGestao";
 
 type Props = {
@@ -128,6 +128,7 @@ export default function PcPops({ pops, empresa, usuario = null, podeEditar = fal
         onSalvarRascunho={(novo) => executar(popEmFicha, () => novo, "Rascunho salvo.")}
         onEnviar={(novo) => executar(popEmFicha, () => enviarParaAprovacao(novo), "Enviado para aprovação do responsável do estabelecimento.")}
         onAprovar={(novo) => executar(popEmFicha, () => aprovarPop(novo, usuario!, empresa, new Date().toISOString()), "POP aprovado e assinado.")}
+        onDescartar={(atual) => executar(popEmFicha, () => descartarRascunho(atual), "Rascunho descartado. A versão aprovada continua vigente.")}
         onNovaVersao={(novo) => executar(popEmFicha, () => iniciarNovaVersao(novo), "Nova versão criada em rascunho. A versão aprovada continua guardada.")}
       />
     );
