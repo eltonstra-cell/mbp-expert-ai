@@ -189,7 +189,7 @@ export default function PcEmpresas({
                   )
                 }
                 titulo={empresa.nome}
-                chip={empresa.arquivada ? <Pill tom="na">Arquivada</Pill> : empresa.ativa ? <Pill tom="brand">Empresa ativa</Pill> : undefined}
+                chip={empresa.arquivada ? <Pill tom="na">Arquivada</Pill> : undefined}
                 secundario={<span className="pc-sub-quebra">{[razaoSocialDiferente(empresa.nome, empresa.razaoSocial), detalhes].filter(Boolean).join(" · ")}</span>}
                 meio={
                   <>
@@ -205,7 +205,9 @@ export default function PcEmpresas({
                 acao={
                   <>
                     {empresa.ativa ? (
-                      <span className="ui-btn ui-btn--secondary" aria-current="true">Ativa ✓</span>
+                      <button type="button" className="ui-btn ui-btn--secondary" aria-current="true" disabled>
+                        Ativa ✓
+                      </button>
                     ) : (
                       <button type="button" className="ui-btn ui-btn--secondary" onClick={() => onSelecionar(empresa.id)}>
                         Selecionar
