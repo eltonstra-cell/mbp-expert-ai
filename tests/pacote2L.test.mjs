@@ -130,3 +130,25 @@ test("Quem ainda não leu: só os pendentes da versão vigente; todos leram → 
   assert.ok(bloco.includes("Quem ainda não leu") && bloco.includes("Todos leram a v{versao}") && bloco.includes("Registrar leitura") && bloco.includes("podeRegistrar && registrando"));
   assert.ok(ler("../components/pc/PcFichaPop.tsx").includes("podeRegistrar={contexto.podeGerenciarPessoas}"));
 });
+
+import { cssDoDocumentoImpresso, FONTE_DA_MARGEM } from "../lib/printFooter.ts";
+
+test("PDF da folha do POP: 'Seção vazia' fica fora do papel, 'Não preenchida' continua, cabeçalho corrido sem repetir o corpo e na fonte do app", () => {
+  const folha = ler("../components/pc/PopFolha.tsx");
+  assert.ok(folha.includes('className="pfolha-aviso no-print"'), "o aviso de tela não vai para o papel");
+  assert.match(ler("../app/globals.css"), /@media print\{\.pfolha-aviso,#pop-folha \.pfolha-aviso,\.no-print\{display:none!important\}\}/);
+  assert.ok(!ler("../app/globals.css").includes(".pfolha-vazia{display:none"), "'Não preenchida' continua saindo");
+  // cabeçalho da margem: só empresa/CNPJ e "POP-01 · versão"; "Aprovada por" não entra
+  const editor = ler("../components/pc/PcPopEditor.tsx");
+  assert.ok(editor.includes('ocultarNoCorpo: ["#pop-folha .pfolha-topo"]'));
+  assert.ok(!editor.includes("folhaDeLeitura.situacao]"), "a situação não vai para o cabeçalho corrido");
+  // com caixas de margem: fonte do app e corpo sem as linhas repetidas; sem caixas: nada é escondido
+  const cabecalho = { esquerda: ["Empresa", "CNPJ 1"], direita: ["POP-01 · versão 1.1"], rodape: "Título", ocultarNoCorpo: ["#pop-folha .pfolha-topo"] };
+  const css = cssDoDocumentoImpresso({ cabecalho, comCaixasDeMargem: true });
+  assert.ok(css.includes(FONTE_DA_MARGEM) && !css.includes("Helvetica") && !css.includes("Arial"));
+  assert.ok(css.includes("@media print{#pop-folha .pfolha-topo{display:none!important}}"));
+  assert.ok(css.includes("POP-01 · versão 1.1") && !css.includes("Aprovada por"));
+  assert.equal(cssDoDocumentoImpresso({ cabecalho, comCaixasDeMargem: false }), "");
+  // cabeçalho da folha: razão social em formato de título, não o nome de exibição
+  assert.ok(editor.includes("razaoSocialTitulo(nomeSemNumerosNoInicio(empresa.razaoSocial || empresa.nomeFantasia"));
+});

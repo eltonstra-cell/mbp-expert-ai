@@ -23,7 +23,7 @@ export default function PopFolha({ folha, modo, id }: Props) {
         <section key={bloco.titulo} className="pfolha-bloco">
           <h3 className="pfolha-bloco-titulo">
             {bloco.titulo}
-            {bloco.aviso && <span className="pfolha-aviso">{bloco.aviso}</span>}
+            {bloco.aviso && <span className="pfolha-aviso no-print">{bloco.aviso}</span>}
           </h3>
           {bloco.vazia ? (
             <p className="pfolha-linha is-branco">{bloco.linhas[0]}</p>

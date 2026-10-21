@@ -22,7 +22,8 @@ import {
 import { normasDaEmpresa } from "@/lib/normas";
 import { confirmar } from "@/lib/dialogos";
 import PopFolha from "@/components/pc/PopFolha";
-import { nomeDeExibicaoDaEmpresa } from "@/lib/nomeEmpresa";
+import { razaoSocialTitulo } from "@/lib/nomeCargo";
+import { nomeSemNumerosNoInicio } from "@/lib/navigation";
 import { AVISO_SECAO_VAZIA, folhaDoPop, secoesDoEditor, textoDasSecoes } from "@/lib/popDocumento";
 import type { CabecalhoDeImpressao } from "@/lib/printFooter";
 
@@ -129,7 +130,8 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
   const alternar = (id: Secao) => setSecao(id);
   const modoLeitura = parte === "documento" && !editavel;
   const secoesDaLista = secoesDoEditor(rascunho, definicao);
-  const dadosDaEmpresa = { nome: nomeDeExibicaoDaEmpresa(empresa), cnpj: (empresa.cnpj || "").trim() };
+  // O documento (folha, PDF) leva a razão social em formato de título; o nome de exibição vale só para as telas.
+  const dadosDaEmpresa = { nome: razaoSocialTitulo(nomeSemNumerosNoInicio(empresa.razaoSocial || empresa.nomeFantasia || "")), cnpj: (empresa.cnpj || "").trim() };
   const opcoesDaFolha = { responsavel: responsavelDoEstabelecimento, exigeAcaoCorretiva: exigeAcaoCorretivaSes };
   const folhaDeLeitura = folhaDoPop(rascunho, dadosDaEmpresa, opcoesDaFolha);
   const folhaDaPrevia = folhaDoPop(rascunho, dadosDaEmpresa, { ...opcoesDaFolha, marcarBranco: true });
@@ -137,8 +139,10 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
   function imprimirFolha() {
     onImprimir?.(`${rascunho.codigo || "POP"} - ${rascunho.titulo}`, {
       esquerda: [dadosDaEmpresa.nome, dadosDaEmpresa.cnpj ? `CNPJ ${dadosDaEmpresa.cnpj}` : ""],
-      direita: [`${rascunho.codigo ? `${rascunho.codigo} · ` : ""}versão ${rascunho.versao}`, folhaDeLeitura.situacao],
+      // O cabeçalho corrido tem só empresa, CNPJ e "POP-01 · versão 1.1"; "Aprovada por …" fica uma vez só, abaixo do título.
+      direita: [`${rascunho.codigo ? `${rascunho.codigo} · ` : ""}versão ${rascunho.versao}`],
       rodape: rascunho.titulo,
+      ocultarNoCorpo: ["#pop-folha .pfolha-topo"],
     });
   }
 

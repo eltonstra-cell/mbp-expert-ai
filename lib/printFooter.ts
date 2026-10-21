@@ -22,7 +22,7 @@ export function cssDoRodapeDeImpressao(opcoes: { empresa: string; selo: string; 
   if (!opcoes.comCaixasDeMargem) return "";
   const empresa = textoParaCss(opcoes.empresa.slice(0, 60));
   const selo = textoParaCss(opcoes.selo);
-  const base = "font-family:Helvetica,Arial,sans-serif;font-size:8pt;color:#64748B;";
+  const base = "font-family:" + FONTE_DA_MARGEM + ";font-size:8pt;color:#64748B;";
   return `@media print{@page{margin:12mm 11mm 18mm 11mm;@bottom-left{content:"${empresa}";${base}}@bottom-center{content:"${selo}";${base}color:#12202B;}@bottom-right{content:"Página " counter(page) " de " counter(pages);${base}}}}`;
 }
 
@@ -37,7 +37,12 @@ export type CabecalhoDeImpressao = {
   direita: string[];
   /** Texto do rodapé, ao lado do "Página X de Y". */
   rodape?: string;
+  /** Seletores do corpo que repetem o cabeçalho corrido e saem do papel quando as caixas de margem existem (sem elas, ficam). */
+  ocultarNoCorpo?: string[];
 };
+
+/** A mesma fonte do corpo do app nos cabeçalhos e rodapés da margem (a variável vem do <html>). */
+export const FONTE_DA_MARGEM = 'var(--font-body),"Nunito Sans","Segoe UI",system-ui,sans-serif';
 
 /** Linhas de um texto de CSS: cada linha vira "\A " (quebra) e o texto é protegido contra aspas e barras. */
 export function linhasParaCss(linhas: string[]): string {
@@ -50,7 +55,7 @@ export function linhasParaCss(linhas: string[]): string {
 export function cssDoDocumentoImpresso(opcoes: { cabecalho: CabecalhoDeImpressao; comCaixasDeMargem: boolean }): string {
   if (!opcoes.comCaixasDeMargem) return "";
   const { cabecalho } = opcoes;
-  const base = "font-family:Helvetica,Arial,sans-serif;font-size:8pt;line-height:1.35;color:#12202B;white-space:pre-line;";
+  const base = "font-family:" + FONTE_DA_MARGEM + ";font-size:8pt;line-height:1.35;color:#12202B;white-space:pre-line;";
   const esquerda = linhasParaCss(cabecalho.esquerda);
   const direita = linhasParaCss(cabecalho.direita);
   const rodape = textoParaCss((cabecalho.rodape || "").slice(0, 80));
@@ -59,6 +64,8 @@ export function cssDoDocumentoImpresso(opcoes: { cabecalho: CabecalhoDeImpressao
     `@top-left{content:"${esquerda}";${base}text-align:left;vertical-align:bottom;padding-bottom:3mm;border-bottom:0.3mm solid #B4C2CE;}` +
     `@top-right{content:"${direita}";${base}text-align:right;vertical-align:bottom;padding-bottom:3mm;border-bottom:0.3mm solid #B4C2CE;}` +
     `@bottom-left{content:"${rodape}";${base}text-align:left;}` +
-    `@bottom-right{content:"Página " counter(page) " de " counter(pages);${base}text-align:right;}}}`
+    `@bottom-right{content:"Página " counter(page) " de " counter(pages);${base}text-align:right;}}}` +
+    // O que o cabeçalho corrido já diz não se repete no corpo (só quando as caixas de margem existem, que é este ramo).
+    (cabecalho.ocultarNoCorpo || []).map((seletor) => `@media print{${seletor}{display:none!important}}`).join("")
   );
 }

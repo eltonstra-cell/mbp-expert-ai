@@ -143,7 +143,7 @@ test("nome de exibição da empresa: uma função só, sem alterar o dado salvo"
   // o seletor "Empresa ativa" e as listas usam a mesma função
   const pagina = ler("../app/page.tsx");
   assert.ok(pagina.includes("empresaAtiva={atual ? nomeDeExibicaoDaEmpresa(atual) : null}") && pagina.includes("nomeDeExibicaoDaEmpresa(empresa)"));
-  for (const arquivo of ["../components/pc/PcAcessos.tsx", "../components/AccessPreparationPanel.tsx", "../components/pc/TelasLiberadasModal.tsx", "../components/pc/PcPopEditor.tsx"]) {
+  for (const arquivo of ["../components/pc/PcAcessos.tsx", "../components/AccessPreparationPanel.tsx", "../components/pc/TelasLiberadasModal.tsx"]) {
     assert.ok(ler(arquivo).includes("nomeDeExibicaoDaEmpresa"), arquivo);
   }
 });
