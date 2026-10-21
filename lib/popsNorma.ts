@@ -15,6 +15,8 @@ import { CATALOGO_DE_NORMAS, normasDaEmpresa, type Norma } from "./normas/index.
 import { acessoVigente } from "./validadeDeAcesso.ts";
 import { hojeLocalISO } from "./dataLocal.ts";
 import { limparTextoDePessoa, nomeECargo } from "./nomeCargo.ts";
+import { bloqueioDeAprovacao } from "./popConferencia.ts";
+import { SECOES_DE_LISTA, gruposParaTexto, itensParaTexto, definicoesParaTexto } from "./popConteudoModelo.ts";
 
 export type BlocoExtraDoPop = "higienizacao" | "pragas" | "manipuladores";
 
@@ -363,6 +365,8 @@ export function aprovarPop(
 ): ProcedimentoOperacionalPadronizado {
   const motivo = motivoParaNaoAprovar(usuario, empresa);
   if (motivo) throw new Error(motivo);
+  const bloqueio = bloqueioDeAprovacao(pop);
+  if (bloqueio) throw new Error(bloqueio);
   if (pop.status !== "Aguardando aprovação" && pop.status !== "Em revisão") throw new Error("O POP precisa estar aguardando aprovação.");
   const aprovacao: AprovacaoPop = {
     nome: usuario.nome,
@@ -418,6 +422,14 @@ export function linhasDoConteudo(conteudo: ConteudoPop | undefined): { campo: st
     { campo: "Ação corretiva", valor: c.acaoCorretiva || "" },
     { campo: "Registro que prova a execução", valor: c.registroProva || "" },
   ];
+  // Campos de modelo (só entram na comparação quando existem; POP antigo não ganha linhas novas).
+  if (c.alcance) linhas.push({ campo: "Alcance", valor: c.alcance });
+  if (c.definicoes?.length) linhas.push({ campo: "Definições", valor: definicoesParaTexto(c.definicoes) });
+  if (c.responsabilidades?.length) linhas.push({ campo: "Responsabilidades", valor: gruposParaTexto(c.responsabilidades) });
+  for (const secao of SECOES_DE_LISTA) {
+    const itens = c[secao.chave];
+    if (itens?.length) linhas.push({ campo: secao.titulo, valor: itensParaTexto(itens) });
+  }
   if (c.higienizacao) {
     const h = c.higienizacao;
     linhas.push(
@@ -527,7 +539,7 @@ export function validarAprovacoesDePop(
           final = { ...pop, versao: anterior.versao, conteudo: anterior.conteudo, aprovacao: anterior.aprovacao, versaoCatalogoAprovada: anterior.versaoCatalogoAprovada };
         } else {
           const aguardava = anterior?.status === "Aguardando aprovação" || anterior?.status === "Em revisão";
-          const valida = podeAprovar && aguardava && anterior?.versao === pop.versao && pop.aprovacao?.usuarioId === usuario.id;
+          const valida = podeAprovar && aguardava && !bloqueioDeAprovacao(pop) &&anterior?.versao === pop.versao && pop.aprovacao?.usuarioId === usuario.id;
           if (valida) {
             registros.push({
               criadoEm: agora,

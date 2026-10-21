@@ -179,7 +179,15 @@ export type AprovacaoPop = {
   versao: string;
 };
 
-export type PassoPop = { id: string; texto: string };
+/** `tabela`: id de uma tabela do POP (ConteudoPop.tabelas) que a folha imprime logo depois deste passo. */
+export type PassoPop = { id: string; texto: string; tabela?: string };
+
+/** Item de uma lista de modelo: texto, texto com subitens ou texto que cita uma tabela. */
+export type ItemDeModeloPop = string | { texto: string; subitens?: string[]; tabela?: string };
+
+export type GrupoDeModeloPop = { titulo: string | null; itens: ItemDeModeloPop[] };
+
+export type TabelaDoPop = { id: string; titulo: string; colunas: string[]; linhas: string[][] };
 
 export type ReferenciaPop = {
   norma: string;
@@ -199,6 +207,20 @@ export type ConteudoPop = {
   passos?: PassoPop[];
   acaoCorretiva?: string;
   registroProva?: string;
+  /** Campos vindos de um modelo do catálogo (todos opcionais; POP sem eles segue igual). */
+  alcance?: string;
+  definicoes?: { termo: string; texto: string }[];
+  materiais?: ItemDeModeloPop[];
+  epis?: ItemDeModeloPop[];
+  cuidadosEspeciais?: ItemDeModeloPop[];
+  acoesNaoConformidade?: ItemDeModeloPop[];
+  verificacao?: ItemDeModeloPop[];
+  quemRealiza?: ItemDeModeloPop[];
+  acoesPreventivas?: ItemDeModeloPop[];
+  responsabilidades?: GrupoDeModeloPop[];
+  tabelas?: TabelaDoPop[];
+  /** Frequência do modelo: só sugestão ao lado do campo Frequência (nunca preenche sozinha). */
+  frequenciaDetalhe?: GrupoDeModeloPop[];
   higienizacao?: {
     superficie: string;
     metodo: string;
@@ -261,6 +283,12 @@ export type ProcedimentoOperacionalPadronizado = {
   versaoCatalogoAprovada?: Record<string, string>;
   /** Motivo da versão em edição (vai para o histórico quando a versão é aprovada). */
   motivoDaVersao?: string;
+  /** POP criado de um modelo do catálogo de modelos (lib/popModelos.ts). */
+  origemModelo?: { id: string; versaoCatalogo: number };
+  /** Conferência do conteúdo de modelo: quem e quando. Sem `conferido`, a folha avisa que os valores são do modelo. */
+  conferencia?: { conferido: boolean; por?: { nome: string; cargo: string }; em?: string };
+  /** Pendências do modelo para o RT marcar uma a uma antes de aprovar. */
+  itensAConferir?: { texto: string; feito: boolean }[];
 };
 
 export type ChecklistStatus = "Pendente" | "Conforme" | "Não Conforme" | "Não se aplica";

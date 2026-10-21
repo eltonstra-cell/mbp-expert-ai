@@ -22,3 +22,6 @@ npm-debug.log*
 # sistema operacional
 .DS_Store
 Thumbs.db
+
+# catálogo de modelos de POP (original de terceiros adaptado; só a versão enxuta em lib/modelos entra no git)
+catalogo-pops-modelos.json
