@@ -2,6 +2,7 @@
 // Só liga o que combina de verdade; contrato do RT e documentos próprios não pertencem a POP nenhum.
 import type { ProcedimentoOperacionalPadronizado, TipoComprovante } from "../types/index.ts";
 import { CONJUNTO_DA_NORMA, popDoConjunto, type DefinicaoPopDoConjunto } from "./popsNorma.ts";
+import { TIPOS_DE_COMPROVANTE } from "./registrosEmpresa.ts";
 
 /** Controle de pragas → POP de vetores e pragas; Limpeza do reservatório → POP do reservatório; os demais, sem POP. */
 export const CATALOGO_DO_TIPO: Partial<Record<TipoComprovante, string>> = {
@@ -45,4 +46,12 @@ export function mensagemDeComprovanteVazio(pop: Pick<ProcedimentoOperacionalPadr
     default:
       return "Nenhum comprovante vinculado a este POP.";
   }
+}
+
+export const ROTULO_OUTRO_NO_POP = "Outro documento deste POP";
+
+/** Tipos que a ficha de um POP oferece: só os ligados àquele POP, mais "Outro documento deste POP". */
+export function tiposDoPop(catalogoId: string | undefined): { id: TipoComprovante; rotulo: string }[] {
+  const ligados = TIPOS_DE_COMPROVANTE.filter((tipo) => Boolean(catalogoId) && CATALOGO_DO_TIPO[tipo.id] === catalogoId);
+  return [...ligados, { id: "outro", rotulo: ROTULO_OUTRO_NO_POP }];
 }

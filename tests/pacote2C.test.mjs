@@ -117,3 +117,17 @@ test("caminho da ficha: só os níveis com destino são link; o POP aberto nunca
   assert.deepEqual(chamadas, ["p"]);
   assert.match(ler("../app/globals.css"), /\.pfolha-passos\{list-style:decimal outside\}/);
 });
+
+import { tiposDoPop, ROTULO_OUTRO_NO_POP } from "../lib/comprovantePop.ts";
+
+test("comprovante dentro da ficha do POP: só os tipos ligados àquele POP, mais 'Outro documento deste POP'", () => {
+  assert.deepEqual(tiposDoPop("controle-de-pragas").map((tipo) => tipo.id), ["pragas", "outro"]);
+  assert.deepEqual(tiposDoPop("higienizacao-reservatorio").map((tipo) => tipo.id), ["reservatorio", "outro"]);
+  const qualquer = tiposDoPop("higienizacao-instalacoes");
+  assert.deepEqual(qualquer.map((tipo) => tipo.id), ["outro"], "POP-01 não oferece reservatório nem contrato");
+  assert.equal(qualquer[0].rotulo, ROTULO_OUTRO_NO_POP);
+  assert.deepEqual(tiposDoPop(undefined).map((tipo) => tipo.id), ["outro"]);
+  const tela = ler("../components/pc/PcComprovantes.tsx");
+  assert.ok(tela.includes("tiposDoPop(popFixo.catalogoId)") && tela.includes("<span className=\"comp-emissor\">{item.emissor}</span> · Serviço em"));
+  assert.ok(!tela.includes('aria-hidden="true">\n        !'), "um só ícone de alerta");
+});

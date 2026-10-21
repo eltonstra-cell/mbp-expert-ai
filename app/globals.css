@@ -4011,3 +4011,11 @@ html:not([data-modo="campo"]) :is(.ui-row-sub,.ui-subtitle,.pgl-detalhe,.pgl-aca
 .ficha-caminho{font-size:1rem}
 .ficha-caminho-link{padding:0;border:0;background:transparent;font:inherit;color:#12202B;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 .ficha-caminho-link:hover{background:#FEF6E6}
+
+/* Comprovantes: aviso do POP ausente maior e mais escuro, campos da mesma altura, foco só com borda mais forte */
+.comp-aviso-pop{font-size:.94rem;color:#12202B}
+.comp-aviso-pop .pc-link-btn{font-size:.94rem;font-weight:500;color:#B35A00;text-decoration:underline;text-underline-offset:3px}
+.comp-emissor{color:#2B3E4C}
+.comp-form :is(input:not([type="checkbox"]):not([type="file"]),select){box-sizing:border-box;height:40px;min-height:40px;padding-top:0;padding-bottom:0;border-width:1px}
+.comp-form :is(input,select,textarea):focus,.comp-form :is(input,select,textarea):focus-visible{outline:0;border-color:#E8B04B;box-shadow:inset 0 0 0 1px #E8B04B}
+.comp-form :is(input,select,textarea).is-invalid{border-width:1px;border-color:#D93A3A;box-shadow:inset 0 0 0 1px #D93A3A}

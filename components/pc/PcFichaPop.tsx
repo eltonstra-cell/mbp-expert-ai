@@ -241,7 +241,7 @@ export default function PcFichaPop({ pop, empresa, usuario, podeEditar, onImprim
             onSalvar={(dados, arquivo) => contexto.salvarComprovante({ ...dados, popId: pop.id }, arquivo)}
             onRemover={contexto.removerComprovante}
             urlDoArquivo={contexto.urlDoComprovante}
-            popFixo={{ id: pop.id, rotulo: pop.titulo }}
+            popFixo={{ id: pop.id, rotulo: pop.titulo, catalogoId: pop.catalogoId }}
             mensagemVazia={mensagemDeComprovanteVazio(pop)}
             onVoltar={() => setAba("resumo")}
           />

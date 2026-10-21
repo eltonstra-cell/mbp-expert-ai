@@ -17,7 +17,7 @@ import {
   type SituacaoDaValidade,
 } from "@/lib/registrosEmpresa";
 import { hojeISO } from "@/lib/popsNorma";
-import { avisoDePopAusente, sugestaoDePopParaTipo } from "@/lib/comprovantePop";
+import { avisoDePopAusente, sugestaoDePopParaTipo, tiposDoPop } from "@/lib/comprovantePop";
 import { quantidade } from "@/lib/plural";
 import type { ComprovanteTerceiro, ProcedimentoOperacionalPadronizado, TipoComprovante } from "@/types";
 
@@ -39,7 +39,7 @@ type Props = {
   /** Dentro da ficha do POP: sem título nem "Voltar" próprios. */
   embutido?: boolean;
   /** Dentro da ficha do POP o vínculo já está escolhido. */
-  popFixo?: { id: string; rotulo: string };
+  popFixo?: { id: string; rotulo: string; catalogoId?: string };
   /** Fora da ficha: os POPs que existem (campo opcional "POP vinculado" e selo na lista). */
   pops?: ProcedimentoOperacionalPadronizado[];
   /** Cria o POP do modelo que o tipo pede (devolve o id do POP novo). */
@@ -56,8 +56,8 @@ function dataBr(iso: string) {
   return `${dia}/${mes}/${ano}`;
 }
 
-function vazio(): DadosDoFormulario {
-  return { tipo: "pragas", emissor: "", dataServico: "", validade: "", observacao: "" };
+function vazio(tipo: TipoComprovante = "pragas"): DadosDoFormulario {
+  return { tipo, emissor: "", dataServico: "", validade: "", observacao: "" };
 }
 
 const rotuloDoPop = (pop: Pick<ProcedimentoOperacionalPadronizado, "codigo" | "titulo">) => `${pop.codigo ? `${pop.codigo} · ` : ""}${pop.titulo}`;
@@ -66,9 +66,6 @@ const rotuloDoPop = (pop: Pick<ProcedimentoOperacionalPadronizado, "codigo" | "t
 function ErroDeCampo({ texto, id }: { texto: string; id?: string }) {
   return (
     <span className="ui-field-error ui-field-error--forte" role="alert" id={id}>
-      <span className="ui-field-error-icone" aria-hidden="true">
-        !
-      </span>
       {texto}
     </span>
   );
@@ -77,10 +74,13 @@ function ErroDeCampo({ texto, id }: { texto: string; id?: string }) {
 // "Comprovantes e documentos com validade": certificados de terceiros com semáforo por item.
 export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, online, onSalvar, onRemover, urlDoArquivo, onVoltar, renovarId, embutido = false, popFixo, pops, onCriarPopDoModelo, mensagemVazia }: Props) {
   const hoje = hojeISO();
+  // Dentro da ficha de um POP, o Tipo só oferece o que se liga àquele POP (mais "Outro documento deste POP").
+  const tiposDisponiveis = popFixo ? tiposDoPop(popFixo.catalogoId) : TIPOS_DE_COMPROVANTE;
+  const tipoPadrao: TipoComprovante = tiposDisponiveis[0].id;
   const [formAberto, setFormAberto] = useState(Boolean(renovarId && podeGerenciar));
   const [dados, setDados] = useState<DadosDoFormulario>(() => {
     const origem = renovarId ? comprovantes.find((item) => item.id === renovarId) : undefined;
-    return origem && podeGerenciar ? { tipo: origem.tipo, emissor: origem.emissor, dataServico: "", validade: "", observacao: "", renovaId: origem.id, ...(origem.popId ? { popId: origem.popId } : {}) } : vazio();
+    return origem && podeGerenciar ? { tipo: origem.tipo, emissor: origem.emissor, dataServico: "", validade: "", observacao: "", renovaId: origem.id, ...(origem.popId ? { popId: origem.popId } : {}) } : vazio(tipoPadrao);
   });
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [arrastando, setArrastando] = useState(false);
@@ -166,7 +166,7 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
       setErro(mensagem);
       return;
     }
-    setDados(vazio());
+    setDados(vazio(tipoPadrao));
     setArquivo(null);
     setTocado(false);
     setCampos({});
@@ -187,7 +187,7 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
         )}
         <div className="ui-head-actions">
           {podeGerenciar && !formAberto && (
-            <button type="button" className="ui-btn ui-btn--criar" onClick={() => abrir(vazio())}>
+            <button type="button" className="ui-btn ui-btn--criar" onClick={() => abrir(vazio(tipoPadrao))}>
               + Anexar comprovante
             </button>
           )}
@@ -221,7 +221,7 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
             <label className="pc-field">
               <span className="ui-eyebrow">Tipo</span>
               <select className="ui-input ui-input--lista" value={dados.tipo} onChange={(evento) => campo("tipo", evento.target.value as TipoComprovante)}>
-                {TIPOS_DE_COMPROVANTE.map((tipo) => (
+                {(tiposDisponiveis.some((tipo) => tipo.id === dados.tipo) ? tiposDisponiveis : [...tiposDisponiveis, { id: dados.tipo, rotulo: rotuloDoTipo(dados.tipo) }]).map((tipo) => (
                   <option key={tipo.id} value={tipo.id}>
                     {tipo.rotulo}
                   </option>
@@ -345,9 +345,8 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
                   chip={!embutido && item.popId ? <span className="comp-selo-pop">{codigo || "POP"}</span> : undefined}
                   secundario={
                     <>
-                      <span className="comp-emissor">{item.emissor}</span>
                       <span>
-                        Serviço em {dataBr(item.dataServico)} · validade {dataBr(item.validade)} ({detalhe}){item.observacao ? ` · ${item.observacao}` : ""}
+                        <span className="comp-emissor">{item.emissor}</span> · Serviço em {dataBr(item.dataServico)} · validade {dataBr(item.validade)} ({detalhe}){item.observacao ? ` · ${item.observacao}` : ""}
                       </span>
                     </>
                   }
