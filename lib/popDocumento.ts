@@ -1,18 +1,20 @@
 // Aba Documento do POP: seções do editor (com marcador de preenchida) e a folha formatada (leitura e pré-visualização).
-import type { ConteudoPop, ProcedimentoOperacionalPadronizado } from "../types/index.ts";
+import type { ConteudoPop, ItemDeModeloPop, ProcedimentoOperacionalPadronizado } from "../types/index.ts";
+import { AVISO_VALORES_DO_MODELO, popNaoConferido } from "./popConferencia.ts";
+import { SECOES_ANTES_DOS_PASSOS, SECOES_DE_LISTA, itensEscritos, linhasDoItem, tabelaDoItem, textoDoItem } from "./popConteudoModelo.ts";
 import { formatarData } from "./dataLocal.ts";
 import { nomeECargo, razaoSocialTitulo } from "./nomeCargo.ts";
 import { nomeSemNumerosNoInicio } from "./navigation.ts";
 import { linhasDoConteudo, type DefinicaoPopDoConjunto } from "./popsNorma.ts";
 
-export type IdDaSecao = "identificacao" | "objetivo" | "referencias" | "responsavel" | "passos" | "acao" | "extra" | "extra2";
+export type IdDaSecao = "identificacao" | "objetivo" | "referencias" | "responsavel" | "passos" | "acao" | "extra" | "extra2" | "modelo";
 
 export type SecaoDoEditor = { id: IdDaSecao; titulo: string; preenchida: boolean };
 
 const escrito = (valor: string | undefined | null) => Boolean((valor || "").trim());
 
 /** Seções na ordem do editor. "Preenchida" só olha os campos que a pessoa escreve; Referências vêm da norma. */
-export function secoesDoEditor(pop: Pick<ProcedimentoOperacionalPadronizado, "codigo" | "titulo" | "conteudo">, definicao?: Pick<DefinicaoPopDoConjunto, "bloco" | "eReservatorio">): SecaoDoEditor[] {
+export function secoesDoEditor(pop: Pick<ProcedimentoOperacionalPadronizado, "codigo" | "titulo" | "conteudo"> & Partial<Pick<ProcedimentoOperacionalPadronizado, "origemModelo">>, definicao?: Pick<DefinicaoPopDoConjunto, "bloco" | "eReservatorio">): SecaoDoEditor[] {
   const c: ConteudoPop = pop.conteudo || {};
   const secoes: SecaoDoEditor[] = [
     { id: "identificacao", titulo: "Identificação", preenchida: escrito(pop.titulo) },
@@ -34,6 +36,8 @@ export function secoesDoEditor(pop: Pick<ProcedimentoOperacionalPadronizado, "co
       { id: "extra2", titulo: "Exames e capacitação", preenchida: Boolean(c.manipuladores.examesApto) && escrito(c.manipuladores.capacitacaoConteudo) }
     );
   }
+  // POP criado de modelo: as listas do modelo (materiais, EPIs, cuidados…) ganham uma seção própria no editor.
+  if (pop.origemModelo) secoes.push({ id: "modelo", titulo: "Conteúdo do modelo", preenchida: true });
   return secoes;
 }
 
@@ -127,10 +131,20 @@ export function referenciasCompactas(referencias: { norma: string; item: string 
 export const TEXTO_SECAO_VAZIA = "Não preenchida";
 export const AVISO_SECAO_VAZIA = "Seção vazia";
 
+export type TabelaDaFolha = {
+  titulo: string;
+  colunas: string[];
+  linhas: string[][];
+  /** "Valores do modelo, a conferir com a norma aplicada." enquanto o POP não foi conferido. */
+  aviso?: string;
+};
+
 export type BlocoDaFolha = {
   titulo: string;
   tipo: "texto" | "passos" | "lista";
   linhas: string[];
+  /** Tabela impressa logo depois da linha de mesmo índice (a que a cita). */
+  tabelas?: (TabelaDaFolha | undefined)[];
   /** Seção sem nada escrito: a folha mostra "Não preenchida". */
   vazia?: boolean;
   /** Aviso amarelo ao lado do título (só Ação corretiva vazia, quando a norma da empresa a exige). */
@@ -144,9 +158,11 @@ export type FolhaDoPop = {
   /** "Aprovada por Elton, Nutricionista RT, em 21/10/2026" ou "Rascunho · v1.2". */
   situacao: string;
   blocos: BlocoDaFolha[];
+  /** Página de capa opcional (código, título, empresa e versão). */
+  capa: { codigo: string; titulo: string; empresa: string; versao: string };
 };
 
-const CAMPOS_BASE = new Set(["Objetivo", "Campo de aplicação", "Responsável pela execução", "Frequência", "Ação corretiva", "Registro que prova a execução"]);
+const CAMPOS_BASE = new Set(["Objetivo", "Campo de aplicação", "Responsável pela execução", "Frequência", "Ação corretiva", "Registro que prova a execução", "Alcance", "Definições", "Responsabilidades", ...SECOES_DE_LISTA.map((secao) => secao.titulo)]);
 
 export type OpcoesDaFolha = {
   /** Passo sem texto aparece como "(em branco)" (pré-visualização). */
@@ -159,7 +175,7 @@ export type OpcoesDaFolha = {
 
 /** A folha do POP como a pessoa vai ler. Toda seção sem texto mostra "Não preenchida". */
 export function folhaDoPop(
-  pop: Pick<ProcedimentoOperacionalPadronizado, "codigo" | "titulo" | "versao" | "status" | "conteudo" | "aprovacao">,
+  pop: Pick<ProcedimentoOperacionalPadronizado, "codigo" | "titulo" | "versao" | "status" | "conteudo" | "aprovacao"> & Partial<Pick<ProcedimentoOperacionalPadronizado, "origemModelo" | "conferencia">>,
   empresa: { nome?: string; cnpj?: string },
   opcoes: OpcoesDaFolha = {}
 ): FolhaDoPop {
@@ -168,14 +184,54 @@ export function folhaDoPop(
   const bloco = (titulo: string, tipo: BlocoDaFolha["tipo"], linhas: string[], extra: Partial<BlocoDaFolha> = {}) =>
     blocos.push(linhas.length ? { titulo, tipo, linhas, ...extra } : { titulo, tipo, linhas: [TEXTO_SECAO_VAZIA], vazia: true, ...extra });
 
+  const aviso = popNaoConferido(pop) ? AVISO_VALORES_DO_MODELO : undefined;
+  const tabelaPorId = (id: string | undefined): TabelaDaFolha | undefined => {
+    const tabela = id ? (c.tabelas || []).find((item) => item.id === id) : undefined;
+    return tabela ? { titulo: tabela.titulo, colunas: tabela.colunas, linhas: tabela.linhas, ...(aviso ? { aviso } : {}) } : undefined;
+  };
+  // Seção nova de modelo: só entra quando tem algo escrito (nunca "Não preenchida"). A tabela citada por um item vem logo depois dele.
+  const blocoDeItens = (titulo: string, itens: ItemDeModeloPop[] | undefined) => {
+    const escritos = itensEscritos(itens);
+    if (!escritos.length) return;
+    const linhas: string[] = [];
+    const tabelas: (TabelaDaFolha | undefined)[] = [];
+    for (const item of escritos) {
+      const dele = linhasDoItem(item);
+      dele.forEach((linha, posicao) => {
+        linhas.push(linha);
+        tabelas.push(posicao === dele.length - 1 ? tabelaPorId(tabelaDoItem(item)) : undefined);
+      });
+    }
+    blocos.push({ titulo, tipo: "lista", linhas, ...(tabelas.some(Boolean) ? { tabelas } : {}) });
+  };
+  const blocoDeTexto = (titulo: string, linhas: string[], tipo: BlocoDaFolha["tipo"] = "texto") => {
+    const escritas = linhas.map((linha) => linha.trim()).filter(Boolean);
+    if (escritas.length) blocos.push({ titulo, tipo, linhas: escritas });
+  };
+
   bloco("Objetivo", "texto", [c.objetivo, c.campoAplicacao].filter((texto): texto is string => escrito(texto)).map((texto) => texto.trim()));
+  blocoDeTexto("Alcance", [c.alcance || ""]);
+  blocoDeTexto("Definições", (c.definicoes || []).filter((item) => escrito(item.termo) && escrito(item.texto)).map((item) => `${item.termo.trim()}: ${item.texto.trim()}`), "lista");
   const referencias = referenciasCompactas(c.referencias);
   if (referencias.length) bloco("Referências", "lista", referencias);
+  blocoDeTexto(
+    "Responsabilidades",
+    (c.responsabilidades || []).flatMap((grupo) => {
+      const itens = itensEscritos(grupo.itens);
+      if (!itens.length) return [];
+      return [...(grupo.titulo ? [grupo.titulo] : []), ...itens.map((item) => (grupo.titulo ? `– ${textoDoItem(item).trim()}` : textoDoItem(item).trim()))];
+    }),
+    "lista"
+  );
   const executor = nomeECargo(c.responsavelExecucao?.nome, c.responsavelExecucao?.cargo) || nomeECargo(opcoes.responsavel?.nome, opcoes.responsavel?.cargo);
   bloco("Responsável e frequência", "texto", [executor, (c.frequencia || "").trim()].filter(Boolean).join(" · ") ? [[executor, (c.frequencia || "").trim()].filter(Boolean).join(" · ")] : []);
-  const passos = (c.passos || []).map((passo) => passo.texto.trim()).map((texto) => texto || (opcoes.marcarBranco ? "(em branco)" : ""));
-  const passosVisiveis = opcoes.marcarBranco ? passos : passos.filter(Boolean);
-  bloco("Passos", "passos", passosVisiveis);
+  const doModelo = (chave: (typeof SECOES_DE_LISTA)[number]["chave"]) => blocoDeItens(SECOES_DE_LISTA.find((secao) => secao.chave === chave)!.titulo, c[chave]);
+  SECOES_ANTES_DOS_PASSOS.forEach(doModelo);
+  const passosComTabela = (c.passos || [])
+    .map((passo) => ({ texto: passo.texto.trim() || (opcoes.marcarBranco ? "(em branco)" : ""), tabela: tabelaPorId(passo.tabela) }))
+    .filter((passo) => opcoes.marcarBranco || passo.texto);
+  bloco("Passos", "passos", passosComTabela.map((passo) => passo.texto), passosComTabela.some((passo) => passo.tabela) ? { tabelas: passosComTabela.map((passo) => passo.tabela) } : {});
+  SECOES_DE_LISTA.filter((secao) => !SECOES_ANTES_DOS_PASSOS.includes(secao.chave)).forEach((secao) => doModelo(secao.chave));
   const acao = escrito(c.acaoCorretiva) ? [(c.acaoCorretiva || "").trim()] : [];
   bloco("Ação corretiva", "texto", acao, opcoes.exigeAcaoCorretiva && acao.length === 0 ? { aviso: AVISO_SECAO_VAZIA } : {});
   if (escrito(c.registroProva)) blocos.push({ titulo: "Registro que prova a execução", tipo: "texto", linhas: [(c.registroProva || "").trim()] });
@@ -194,6 +250,7 @@ export function folhaDoPop(
     esquerda: [nomeDaEmpresa, empresa.cnpj ? `CNPJ ${empresa.cnpj}` : ""].filter(Boolean).join(" · "),
     direita: `${pop.codigo ? `${pop.codigo} · ` : ""}versão ${pop.versao}`,
     titulo: pop.titulo || "POP",
+    capa: { codigo: pop.codigo || "", titulo: pop.titulo || "POP", empresa: nomeDaEmpresa, versao: `versão ${pop.versao}` },
     situacao: pop.status === "Aprovado" && aprovacao ? `Aprovada por ${aprovador}, em ${formatarData(aprovacao.em)}` : `${pop.status} · v${pop.versao}`,
     blocos,
   };

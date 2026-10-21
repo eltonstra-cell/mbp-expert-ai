@@ -26,8 +26,11 @@ import { razaoSocialTitulo } from "@/lib/nomeCargo";
 import { nomeSemNumerosNoInicio } from "@/lib/navigation";
 import { AVISO_SECAO_VAZIA, folhaDoPop, secoesDoEditor, textoDasSecoes } from "@/lib/popDocumento";
 import type { CabecalhoDeImpressao } from "@/lib/printFooter";
+import { MENSAGEM_APROVAR_NAO_CONFERIDO, bloqueioDeAprovacao, exigenciaDeAprovacao } from "@/lib/popConferencia";
+import { SECOES_DE_LISTA, definicoesParaTexto, gruposParaTexto, itensParaTexto, sugestaoDeFrequencia, textoParaDefinicoes, textoParaGrupos, textoParaItens } from "@/lib/popConteudoModelo";
+import { modeloPorId } from "@/lib/popModelos";
 
-type Secao = "identificacao" | "objetivo" | "referencias" | "responsavel" | "passos" | "acao" | "registro" | "extra" | "extra2";
+type Secao = "identificacao" | "objetivo" | "referencias" | "responsavel" | "passos" | "acao" | "registro" | "extra" | "extra2" | "modelo";
 
 type Props = {
   pop: ProcedimentoOperacionalPadronizado;
@@ -73,9 +76,32 @@ function Campo({ rotulo, valor, onChange, linhas, desabilitado, erro, tipo = "te
   );
 }
 
+function CampoDeListaDoModelo({ rotulo, valor, onChange, desabilitado }: { rotulo: string; valor: string; onChange: (texto: string) => void; desabilitado?: boolean }) {
+  return (
+    <label className="pc-field">
+      <span className="ui-eyebrow">{rotulo}</span>
+      <textarea className="ui-input pop-area" rows={3} value={valor} disabled={desabilitado} onChange={(evento) => onChange(evento.target.value)} />
+    </label>
+  );
+}
+
 function umAnoDepois(): string {
   const [ano, mes, dia] = hojeLocalISO().split("-");
   return `${Number(ano) + 1}-${mes}-${dia}`;
+}
+
+// Instruções do modelo ao consultor: recolhidas, só para quem edita, e nunca vão para a folha nem para o PDF.
+function NotasDoModelo({ notas }: { notas: string[] }) {
+  return (
+    <details className="pop-notas no-print">
+      <summary>Notas do modelo (só para o RT)</summary>
+      <ul>
+        {notas.map((nota) => (
+          <li key={nota}>{nota}</li>
+        ))}
+      </ul>
+    </details>
+  );
 }
 
 // Cargo sem vírgula, ponto ou espaço no começo (digitando).
@@ -99,6 +125,11 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
   const [lado, setLado] = useState<"editar" | "previa">("editar");
   const [versaoA, setVersaoA] = useState("");
   const [versaoB, setVersaoB] = useState("");
+  const [escolhendoImpressao, setEscolhendoImpressao] = useState(false);
+  const [comCapa, setComCapa] = useState(false);
+  const [capaEscolhida, setCapaEscolhida] = useState(false);
+  // Texto em edição de cada campo de lista do modelo (um item por linha); o conteúdo guarda os itens já separados.
+  const [textosDoModelo, setTextosDoModelo] = useState<Record<string, string>>({});
 
   const definicao = CONJUNTO_DA_NORMA.find((item) => item.catalogoId === rascunho.catalogoId);
   const conteudo: ConteudoPop = rascunho.conteudo || conteudoEmBranco(definicao || CONJUNTO_DA_NORMA[0], []);
@@ -111,7 +142,18 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
   const exigeAcaoCorretivaSes = normas.some((norma) => norma.id === "ses-799-2023-rs");
   const podeAprovar = podeAprovarPop(usuario, empresa);
   const aguardando = rascunho.status === "Aguardando aprovação" || rascunho.status === "Em revisão";
-  const alterou = JSON.stringify(rascunho) !== JSON.stringify(pop);
+  // A conferência do modelo é gravada na hora pela ficha (Resumo): o editor sempre leva a versão mais nova dela, nunca a de quando abriu.
+  const comConferenciaAtual = (atual: ProcedimentoOperacionalPadronizado): ProcedimentoOperacionalPadronizado => ({
+    ...atual,
+    ...(pop.origemModelo ? { origemModelo: pop.origemModelo } : {}),
+    ...(pop.conferencia ? { conferencia: pop.conferencia } : {}),
+    ...(pop.itensAConferir ? { itensAConferir: pop.itensAConferir } : {}),
+  });
+  const alterou = JSON.stringify(comConferenciaAtual(rascunho)) !== JSON.stringify(pop);
+  const exigencia = exigenciaDeAprovacao(pop);
+  const modeloDeOrigem = modeloPorId(pop.origemModelo?.id);
+  const notasDoModelo = podeEditar ? modeloDeOrigem?.notasParaOConsultor || [] : [];
+  const sugestaoDaFrequencia = sugestaoDeFrequencia(conteudo.frequenciaDetalhe);
 
   function mudar(alteracao: Partial<ConteudoPop>) {
     setSalvoEm("");
@@ -133,10 +175,14 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
   // O documento (folha, PDF) leva a razão social em formato de título; o nome de exibição vale só para as telas.
   const dadosDaEmpresa = { nome: razaoSocialTitulo(nomeSemNumerosNoInicio(empresa.razaoSocial || empresa.nomeFantasia || "")), cnpj: (empresa.cnpj || "").trim() };
   const opcoesDaFolha = { responsavel: responsavelDoEstabelecimento, exigeAcaoCorretiva: exigeAcaoCorretivaSes };
-  const folhaDeLeitura = folhaDoPop(rascunho, dadosDaEmpresa, opcoesDaFolha);
-  const folhaDaPrevia = folhaDoPop(rascunho, dadosDaEmpresa, { ...opcoesDaFolha, marcarBranco: true });
+  const folhaDeLeitura = folhaDoPop(comConferenciaAtual(rascunho), dadosDaEmpresa, opcoesDaFolha);
+  const folhaDaPrevia = folhaDoPop(comConferenciaAtual(rascunho), dadosDaEmpresa, { ...opcoesDaFolha, marcarBranco: true });
   const dicaDaNorma = (conteudo.referencias || [])[0];
-  function imprimirFolha() {
+  function imprimirFolha(comCapaNoPapel: boolean) {
+    setEscolhendoImpressao(false);
+    setComCapa(comCapaNoPapel);
+    // A capa só existe no papel: some de novo quando a impressão termina.
+    if (comCapaNoPapel) window.addEventListener("afterprint", () => setComCapa(false), { once: true });
     onImprimir?.(`${rascunho.codigo || "POP"} - ${rascunho.titulo}`, {
       esquerda: [dadosDaEmpresa.nome, dadosDaEmpresa.cnpj ? `CNPJ ${dadosDaEmpresa.cnpj}` : ""],
       // O cabeçalho corrido tem só empresa, CNPJ e "POP-01 · versão 1.1"; "Aprovada por …" fica uma vez só, abaixo do título.
@@ -174,11 +220,19 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
         <div className="pdoc-leitura">
           <div className="pdoc-barra">
             {onImprimir && (
-              <button type="button" className="ui-btn ui-btn--secondary" onClick={imprimirFolha}>
+              <button type="button" className="ui-btn ui-btn--secondary" onClick={() => { setCapaEscolhida(false); setEscolhendoImpressao(true); }}>
                 Imprimir / PDF
               </button>
             )}
-            {aguardando && podeAprovar && (
+            {aguardando && podeAprovar && exigencia === "bloqueada" && (
+              <>
+                <span className="pdoc-bloqueio" role="status">{bloqueioDeAprovacao(pop)}</span>
+                <button type="button" className="ui-btn ui-btn--criar" disabled title={bloqueioDeAprovacao(pop)}>
+                  Aprovar e assinar
+                </button>
+              </>
+            )}
+            {aguardando && podeAprovar && exigencia !== "bloqueada" && (
               <button type="button" className="ui-btn ui-btn--criar" onClick={() => setConfirmandoAprovacao(true)}>
                 Aprovar e assinar
               </button>
@@ -189,7 +243,8 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
               </button>
             )}
           </div>
-          <PopFolha folha={folhaDeLeitura} modo="leitura" id="pop-folha" />
+          {notasDoModelo.length > 0 && <NotasDoModelo notas={notasDoModelo} />}
+          <PopFolha folha={folhaDeLeitura} modo="leitura" id="pop-folha" comCapa={comCapa} />
         </div>
       )}
 
@@ -218,6 +273,7 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
             </ul>
           </aside>
           <div className="pdoc-meio">
+          {notasDoModelo.length > 0 && <NotasDoModelo notas={notasDoModelo} />}
           <SecaoRecolhivel id="identificacao" titulo="Identificação" resumo={rascunho.proximaRevisao ? `revisar até ${rascunho.proximaRevisao.split("-").reverse().join("/")}` : "revisar até: não definido"} aberta={secao === "identificacao"} onAlternar={alternar}>
             <div className="pop-grade">
               <Campo rotulo="Código" valor={rascunho.codigo} desabilitado={!editavel} onChange={(valor) => setRascunho({ ...rascunho, codigo: valor })} />
@@ -260,7 +316,17 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
             <div className="pop-grade">
               <Campo rotulo="Responsável pela execução (nome)" valor={conteudo.responsavelExecucao?.nome || ""} desabilitado={!editavel} erro={tocado && !(conteudo.responsavelExecucao?.nome || "").trim() ? "Informe o nome." : ""} onChange={(valor) => mudar({ responsavelExecucao: { nome: valor, cargo: conteudo.responsavelExecucao?.cargo || "" } })} />
               <Campo rotulo="Cargo ou função" valor={conteudo.responsavelExecucao?.cargo || ""} desabilitado={!editavel} erro={tocado && !(conteudo.responsavelExecucao?.cargo || "").trim() ? "Informe o cargo ou a função." : ""} onChange={(valor) => mudar({ responsavelExecucao: { nome: conteudo.responsavelExecucao?.nome || "", cargo: semPontuacaoNoInicio(valor) } })} />
-              <Campo rotulo="Frequência" valor={conteudo.frequencia || ""} desabilitado={!editavel} erro={tocado && !(conteudo.frequencia || "").trim() ? "Informe a frequência." : ""} onChange={(valor) => mudar({ frequencia: valor })} />
+              <div className="pc-field">
+                <Campo rotulo="Frequência" valor={conteudo.frequencia || ""} desabilitado={!editavel} erro={tocado && !(conteudo.frequencia || "").trim() ? "Informe a frequência." : ""} onChange={(valor) => mudar({ frequencia: valor })} />
+                {editavel && sugestaoDaFrequencia && sugestaoDaFrequencia !== (conteudo.frequencia || "").trim() && (
+                  <span className="ui-row-sub pdoc-sugestao">
+                    Sugestão do modelo:{" "}
+                    <button type="button" className="pc-link-btn" title="Usar esta sugestão" onClick={() => mudar({ frequencia: sugestaoDaFrequencia })}>
+                      {sugestaoDaFrequencia}
+                    </button>
+                  </span>
+                )}
+              </div>
             </div>
           </SecaoRecolhivel>
 
@@ -407,6 +473,50 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
             </SecaoRecolhivel>
             </>
           )}
+
+          {rascunho.origemModelo && (
+            <SecaoRecolhivel id="modelo" titulo="Conteúdo do modelo" resumo="listas do modelo" aberta={secao === "modelo"} onAlternar={alternar}>
+              <p className="ui-row-sub">Um item por linha. Uma linha começando com “- ” vira subitem do item de cima. Só as seções preenchidas saem na folha.</p>
+              <label className="pc-field">
+                <span className="ui-eyebrow">Alcance</span>
+                <textarea className="ui-input pop-area" rows={2} value={conteudo.alcance || ""} disabled={!editavel} onChange={(evento) => mudar({ alcance: evento.target.value })} />
+              </label>
+              <CampoDeListaDoModelo
+                rotulo="Definições (Termo: texto)"
+                valor={textosDoModelo.definicoes ?? definicoesParaTexto(conteudo.definicoes)}
+                desabilitado={!editavel}
+                onChange={(texto) => {
+                  setTextosDoModelo((atual) => ({ ...atual, definicoes: texto }));
+                  const definicoes = textoParaDefinicoes(texto);
+                  mudar({ definicoes: definicoes.length ? definicoes : undefined });
+                }}
+              />
+              <CampoDeListaDoModelo
+                rotulo="Responsabilidades (“# Título” abre um grupo)"
+                valor={textosDoModelo.responsabilidades ?? gruposParaTexto(conteudo.responsabilidades)}
+                desabilitado={!editavel}
+                onChange={(texto) => {
+                  setTextosDoModelo((atual) => ({ ...atual, responsabilidades: texto }));
+                  const grupos = textoParaGrupos(texto);
+                  mudar({ responsabilidades: grupos.length ? grupos : undefined });
+                }}
+              />
+              {SECOES_DE_LISTA.map((item) => (
+                <CampoDeListaDoModelo
+                  key={item.chave}
+                  rotulo={item.titulo}
+                  valor={textosDoModelo[item.chave] ?? itensParaTexto(conteudo[item.chave])}
+                  desabilitado={!editavel}
+                  onChange={(texto) => {
+                    setTextosDoModelo((atual) => ({ ...atual, [item.chave]: texto }));
+                    const itens = textoParaItens(texto, conteudo[item.chave]);
+                    mudar({ [item.chave]: itens.length ? itens : undefined });
+                  }}
+                />
+              ))}
+              {(conteudo.tabelas || []).length > 0 && <p className="ui-row-sub">As tabelas do modelo ({(conteudo.tabelas || []).map((tabela) => tabela.titulo).join("; ")}) saem na folha logo depois do passo que as cita. Valores a conferir com a norma aplicada.</p>}
+            </SecaoRecolhivel>
+          )}
           </div>
           <aside className="pdoc-previa" aria-label="Pré-visualização da folha">
             <h2 className="pdoc-lista-titulo">Pré-visualização da folha</h2>
@@ -508,14 +618,14 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
               onClick={() => {
                 // Salvar rascunho não guarda passo em branco: sobra só o que foi escrito.
                 const exec = (rascunho.conteudo || conteudo).responsavelExecucao;
-                const limpo = {
+                const limpo = comConferenciaAtual({
                   ...rascunho,
                   conteudo: {
                     ...(rascunho.conteudo || conteudo),
                     passos: limparPassosEmBranco(passos),
                     ...(exec ? { responsavelExecucao: { nome: limparTextoDePessoa(exec.nome), cargo: limparTextoDePessoa(exec.cargo) } } : {}),
                   },
-                };
+                });
                 setRascunho(limpo);
                 onSalvarRascunho(limpo);
                 setSalvoEm(horaCerta());
@@ -523,10 +633,34 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
             >
               Salvar rascunho
             </button>
-            <button type="button" className="ui-btn ui-btn--criar" onClick={() => { setTocado(true); if (faltas.length === 0 && !erroTitulo) onEnviar(rascunho); }}>
+            <button type="button" className="ui-btn ui-btn--criar" onClick={() => { setTocado(true); if (faltas.length === 0 && !erroTitulo) onEnviar(comConferenciaAtual(rascunho)); }}>
               Enviar para aprovação
             </button>
           </div>
+        </div>
+      )}
+      {escolhendoImpressao && (
+        <div className="pc-modal-layer" role="presentation">
+          <div className="pc-modal-backdrop" onClick={() => setEscolhendoImpressao(false)} />
+          <section className="pc-modal" role="dialog" aria-modal="true" aria-label="Imprimir ou salvar o POP em PDF">
+            <h2 className="pc-modal-title">Imprimir ou salvar em PDF</h2>
+            <label className="pdoc-capa-opcao">
+              <input type="checkbox" checked={capaEscolhida} onChange={(evento) => setCapaEscolhida(evento.target.checked)} />
+              <span>Incluir capa</span>
+            </label>
+            <p className="ui-row-sub">A capa é uma página com o código, o título, a empresa e a versão.</p>
+            <div className="pc-modal-foot">
+              <span />
+              <div className="ui-footer-actions">
+                <button type="button" className="ui-btn ui-btn--secondary" onClick={() => setEscolhendoImpressao(false)}>
+                  Cancelar
+                </button>
+                <button type="button" className="ui-btn ui-btn--criar" onClick={() => imprimirFolha(capaEscolhida)}>
+                  Imprimir ou salvar PDF
+                </button>
+              </div>
+            </div>
+          </section>
         </div>
       )}
       {confirmandoAprovacao && (
@@ -534,8 +668,13 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
           <div className="pc-modal-backdrop" onClick={() => setConfirmandoAprovacao(false)} />
           <section className="pc-modal" role="dialog" aria-modal="true" aria-label="Aprovar e assinar o POP">
             <h2 className="pc-modal-title">Aprovar e assinar</h2>
+            {exigencia === "confirmar" && (
+              <p className="resumo-texto pdoc-nao-conferido" role="alert">
+                {MENSAGEM_APROVAR_NAO_CONFERIDO}
+              </p>
+            )}
             <p className="resumo-texto">
-              Você está aprovando e assinando este POP como <b>{nomeECargo(usuario?.nome, usuario?.cargo || empresa.responsavelEstabelecimento?.cargo) || "responsável do estabelecimento"}</b>. Confirmar?
+              Você está aprovando e assinando este POP como <b>{nomeECargo(usuario?.nome, usuario?.cargo || empresa.responsavelEstabelecimento?.cargo) || "responsável do estabelecimento"}</b>. {exigencia === "confirmar" ? "" : "Confirmar?"}
             </p>
             <p className="ui-row-sub">
               Fica gravado o seu nome, o cargo, a data e a versão {rascunho.versao}.
@@ -551,10 +690,10 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
                   className="ui-btn ui-btn--criar"
                   onClick={() => {
                     setConfirmandoAprovacao(false);
-                    onAprovar(rascunho);
+                    onAprovar(comConferenciaAtual(rascunho));
                   }}
                 >
-                  Confirmar
+                  {exigencia === "confirmar" ? "Aprovar mesmo assim" : "Confirmar"}
                 </button>
               </div>
             </div>
