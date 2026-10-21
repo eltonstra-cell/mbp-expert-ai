@@ -117,7 +117,7 @@ export function comprovantesDoPop(comprovantes: ComprovanteTerceiro[] | undefine
 export function comprovantesVigentesDoPop(comprovantes: ComprovanteTerceiro[] | undefined, popId: string): ComprovanteTerceiro[] {
   const doPop = comprovantesDoPop(comprovantes, popId);
   const renovados = new Set(doPop.map((item) => item.renovaId).filter(Boolean));
-  return doPop.filter((item) => !renovados.has(item.id));
+  return doPop.filter((item) => !renovados.has(item.id) && !item.substituidoPor);
 }
 
 /** Correções abertas e com prazo vencido ligadas ao POP: vínculo escolhido à mão, ou o padrão pela categoria. */

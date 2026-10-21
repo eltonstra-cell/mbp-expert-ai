@@ -2012,6 +2012,8 @@ export default function Home() {
       ...(nomeArquivo ? { nomeArquivo } : {}),
       ...(mimeType ? { mimeType } : {}),
       ...(dados.renovaId || anterior?.renovaId ? { renovaId: dados.renovaId || anterior?.renovaId } : {}),
+      // Vínculo direto da renovação: o botão Renovar grava o id do anterior aqui; o anterior ganha "substituidoPor".
+      ...(dados.renovaId || anterior?.renovaDe ? { renovaDe: dados.renovaId || anterior?.renovaDe } : {}),
       // POP vinculado: só vale se o POP existe nesta empresa (sem POP: comprovante geral da empresa).
       ...(dados.popId && (db.empresas[empresaId]?.pops || []).some((pop) => pop.id === dados.popId) ? { popId: dados.popId } : {}),
       criadoPorId: anterior?.criadoPorId || usuarioDaSessao?.id,
@@ -2021,7 +2023,7 @@ export default function Home() {
       const lista = o.comprovantes || [];
       const aplicada = anterior ? lista.map((item) => (item.id === id ? comprovante : item)) : [...lista, comprovante];
       // Renovação: o comprovante anterior (mesmo tipo e POP) ganha "Substituído"; nada é apagado.
-      const atualizado: AppDB = { ...o, comprovantes: comprovante.renovaId ? marcarSubstituidoNaRenovacao(aplicada, comprovante) : aplicada };
+      const atualizado: AppDB = { ...o, comprovantes: comprovante.renovaDe ? marcarSubstituidoNaRenovacao(aplicada, comprovante) : aplicada };
       salvarDBLocal(atualizado);
       return atualizado;
     });

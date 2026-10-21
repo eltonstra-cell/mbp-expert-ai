@@ -95,15 +95,15 @@ export function tipoDeOutroPop(
 }
 
 /**
- * Renovou um comprovante: o anterior, do mesmo tipo e do mesmo POP, ganha "substituidoPor" (etiqueta "Substituído"). Nada é apagado e
- * comprovante antigo sem o campo continua como estava. Devolve a mesma lista quando não há o que marcar.
+ * Usou "Renovar": o novo comprovante guarda `renovaDe` (id do anterior) e o anterior ganha `substituidoPor` (id do novo), seja qual for o POP
+ * vinculado. Anexo criado fora do "Renovar" (sem `renovaDe`) não marca nada, e comprovante antigo sem os campos continua como estava.
+ * Nada é apagado. Devolve a mesma lista quando não há o que marcar.
  */
-export function marcarSubstituidoNaRenovacao<T extends { id: string; tipo: TipoComprovante; popId?: string; substituidoPor?: string }>(lista: T[], novo: { id: string; tipo: TipoComprovante; popId?: string; renovaId?: string }): T[] {
-  if (!novo.renovaId) return lista;
+export function marcarSubstituidoNaRenovacao<T extends { id: string; substituidoPor?: string }>(lista: T[], novo: { id: string; renovaDe?: string }): T[] {
+  if (!novo.renovaDe) return lista;
   let mudou = false;
   const resultado = lista.map((item) => {
-    if (item.id !== novo.renovaId || item.substituidoPor) return item;
-    if (item.tipo !== novo.tipo || (item.popId || "") !== (novo.popId || "")) return item;
+    if (item.id !== novo.renovaDe || item.substituidoPor || item.id === novo.id) return item;
     mudou = true;
     return { ...item, substituidoPor: novo.id };
   });

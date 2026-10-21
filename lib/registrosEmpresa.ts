@@ -249,7 +249,8 @@ export function contarPorValidade(itens: { validade?: string }[], hoje: string =
 /** Comprovantes ainda valendo: quando um foi renovado, o antigo sai da conta (só o mais novo da cadeia importa). */
 export function comprovantesVigentes(comprovantes: ComprovanteTerceiro[]): ComprovanteTerceiro[] {
   const renovados = new Set(comprovantes.map((item) => item.renovaId).filter(Boolean));
-  return comprovantes.filter((item) => !renovados.has(item.id));
+  // Fora das contagens: o que foi renovado (renovaId, antigo) e o que ganhou "substituidoPor" pelo botão Renovar.
+  return comprovantes.filter((item) => !renovados.has(item.id) && !item.substituidoPor);
 }
 
 // ===== Pendências da empresa (base do painel "Hoje"; o painel vem em outro pacote) =====

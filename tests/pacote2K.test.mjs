@@ -20,26 +20,29 @@ test("tarja: tipo que pertence a outro POP (reservatório preso ao POP-01) avisa
   assert.equal(tipoDeOutroPop("reservatorio", undefined), null, "comprovante sem POP não tem tarja");
 });
 
-test("renovar: o anterior do mesmo tipo e POP vira 'Substituído' e sai das contagens; nada é apagado", () => {
+test("renovar pelo botão: o novo grava renovaDe, o anterior ganha substituidoPor (seja qual for o POP) e sai das contagens; nada é apagado", () => {
   const velho = { id: "c1", tipo: "pragas", popId: "p1", validade: "2026-10-01" };
   const outro = { id: "c9", tipo: "reservatorio", popId: "p2", validade: "2026-10-01" };
-  const novo = { id: "c2", tipo: "pragas", popId: "p1", validade: "2027-10-01", renovaId: "c1" };
+  const novo = { id: "c2", tipo: "pragas", popId: "p7", validade: "2027-10-01", renovaId: "c1", renovaDe: "c1" };
   const lista = [velho, outro, novo];
   const marcada = marcarSubstituidoNaRenovacao(lista, novo);
   assert.equal(marcada.length, 3, "nada some");
-  assert.equal(marcada.find((item) => item.id === "c1").substituidoPor, "c2");
+  assert.equal(marcada.find((item) => item.id === "c1").substituidoPor, "c2", "mesmo com POP diferente do novo");
   assert.equal(marcada.find((item) => item.id === "c9").substituidoPor, undefined);
   assert.equal(velho.substituidoPor, undefined, "o original não muda");
-  // contagens: o substituído (vencido) não conta
+  // contagens: o substituído (vencido) não conta, nem pelo campo novo
   const vigentes = comprovantesVigentes(marcada);
   assert.deepEqual(vigentes.map((item) => item.id).sort(), ["c2", "c9"]);
   assert.equal(contarPorValidade(vigentes, "2026-10-21").vencidos, 1, "só o do reservatório, que segue vencido");
-  // tipo ou POP diferente: não marca; antigo sem campo continua como estava
-  assert.equal(marcarSubstituidoNaRenovacao(lista, { ...novo, popId: "p9" }), lista);
-  assert.equal(marcarSubstituidoNaRenovacao(lista, { id: "c3", tipo: "pragas", popId: "p1" }), lista, "sem renovaId nada acontece");
+  const semRenovaId = comprovantesVigentes([{ ...velho, substituidoPor: "c2" }, { id: "c2", tipo: "pragas", validade: "2027-10-01" }]);
+  assert.deepEqual(semRenovaId.map((item) => item.id), ["c2"], "vale o substituidoPor sozinho");
+  // anexo criado fora do Renovar não marca nada; antigo sem os campos continua como estava
+  assert.equal(marcarSubstituidoNaRenovacao(lista, { id: "c3", tipo: "pragas", popId: "p1" }), lista, "sem renovaDe nada acontece");
+  assert.equal(marcarSubstituidoNaRenovacao(lista, { id: "c3", renovaDe: "nao-existe" }), lista);
   assert.equal(marcarSubstituidoNaRenovacao(marcada, novo), marcada, "já marcado: sem mudança");
   const tela = ler("../components/pc/PcComprovantes.tsx");
   assert.ok(tela.includes('"Substituído"') && tela.includes("substituidos") && tela.includes("comp-selo-pop") && tela.includes("Sem POP vinculado"));
+  assert.ok(ler("../app/page.tsx").includes("comprovante.renovaDe ? marcarSubstituidoNaRenovacao"));
 });
 
 const usuario = (id, perfil, empresaIds = ["e1"]) => ({ id, nome: id, email: `${id}@example.com`, perfil, status: "Ativo", empresaIds, authId: `auth-${id}`, criadoEm: agora, atualizadoEm: agora });
