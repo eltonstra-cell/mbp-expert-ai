@@ -4110,3 +4110,19 @@ html:not([data-modo="campo"]) :is(.ui-row-sub,.ui-subtitle,.pgl-detalhe,.pgl-aca
 .pend-janela{position:fixed;z-index:120;min-width:15rem;max-width:20rem;padding:10px 14px;border:1px solid #E8B04B;border-radius:12px;background:#fff;box-shadow:0 10px 24px rgba(18,32,43,.16);font-size:.94rem;color:#12202B}
 .pend-janela ul{margin:6px 0 0;padding-left:18px}
 .pend-janela li{margin:2px 0}
+
+/* Busca na linha do topo (520 px, encolhe até ~360 px); painel a 8 px da barra, da mesma largura */
+.pc-topbar .pc-busca{flex:0 1 520px;width:auto;min-width:360px;margin-left:16px}
+.pc-busca{display:none}
+html[data-modo="equilibrado"] .pc-busca,html[data-modo="completo"] .pc-busca{display:block}
+.pc-topbar .pc-smartbar{display:flex;padding:3px 6px;gap:8px;border-radius:14px;box-shadow:none}
+.pc-topbar .pc-bolt{width:32px;height:32px;border-radius:10px}
+.pc-topbar .pc-busca-input{min-height:34px;font-size:.95rem}
+.pc-topbar .pc-mic{width:30px;height:30px}
+.pc-topbar .pc-go{min-height:32px;padding:0 14px}
+.pc-smartbar.is-aberta{border-radius:14px}
+.pc-busca-painel{top:100%;margin-top:8px;border:2px solid #E8B04B;border-radius:16px;gap:4px}
+.pc-busca-bloco{display:flex;flex-direction:column;gap:8px;padding:4px 6px 8px}
+.pc-busca-titulo{padding:4px 6px 0;font-size:.88rem;font-weight:500;color:#12202B}
+.pc-busca-chips{display:flex;flex-wrap:wrap;gap:8px}
+@media (max-width:1180px){.pc-topbar .pc-busca{min-width:280px}.pc-topbar .pc-kbd{display:none}}

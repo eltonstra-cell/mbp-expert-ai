@@ -7025,6 +7025,7 @@ export default function Home() {
           onEscolherDestino={escolherDestinoDaCaixa}
           onBuscaAtiva={setBuscaNaBarraAtiva}
           pedidoDeFocoNaBusca={pedidoDeFocoNaBusca}
+          usuarioId={usuarioDaSessao?.id}
           micDisponivel={deveExibirRecursosDeIa(usuarioDaSessao)}
           modo={modo}
           sincronizacao={{

@@ -28,6 +28,8 @@ type Props = {
   onEscolherDestino: (destino: Destino) => void;
   onBuscaAtiva: (ativa: boolean) => void;
   pedidoDeFocoNaBusca: number;
+  /** Usuário de quem usa (recentes da busca guardados só dele). */
+  usuarioId?: string | null;
   micDisponivel: boolean;
   /** Modo de tela em uso e ações da troca rápida (menu ⋯ do topo). */
   modo?: ModoTela;
@@ -57,6 +59,7 @@ export default function AppTopbar({
   onEscolherDestino,
   onBuscaAtiva,
   pedidoDeFocoNaBusca,
+  usuarioId,
   micDisponivel,
   modo,
   sincronizacao,
@@ -100,6 +103,7 @@ export default function AppTopbar({
           );
         })}
       </nav>
+      <BuscaNaBarra destinos={destinos} atalhos={atalhos} usuarioId={usuarioId} onAtiva={onBuscaAtiva} onEscolher={onEscolherDestino} micDisponivel={micDisponivel} pedidoDeFoco={pedidoDeFocoNaBusca} />
       {subtituloDoCaminho && <span className="pc-crumb-apoio">{subtituloDoCaminho}</span>}
 
       {mostrarTodasVisitas && (
@@ -144,19 +148,6 @@ export default function AppTopbar({
           </span>
         )}
       </div>    </div>
-    <div className="pc-smartwrap">
-    <BuscaNaBarra destinos={destinos} onAtiva={onBuscaAtiva} onEscolher={onEscolherDestino} micDisponivel={micDisponivel} pedidoDeFoco={pedidoDeFocoNaBusca} />
-    {atalhos.length > 0 && (
-      <div className="pc-atalhos" role="group" aria-label="Atalhos">
-        <span className="pc-atalhos-rotulo">Atalhos</span>
-        {atalhos.map((atalho) => (
-          <button key={atalho.id} type="button" className="pc-atalho" onClick={atalho.onClick}>
-            {atalho.rotulo}
-          </button>
-        ))}
-      </div>
-    )}
-    </div>
     </>
   );
 }

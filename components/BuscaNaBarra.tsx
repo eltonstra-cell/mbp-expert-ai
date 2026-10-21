@@ -3,14 +3,21 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { NavIcon } from "@/components/NavIcons";
 import { useVoiceCapture } from "@/components/useVoiceCapture";
-import { ORDEM_GRUPOS_BUSCA, buscar, sugestoes, type Destino, type GrupoBusca, type Resultado } from "@/lib/commandSearch";
+import { ORDEM_GRUPOS_BUSCA, buscar, type Destino, type GrupoBusca, type Resultado } from "@/lib/commandSearch";
+import { lerRecentes, registrarRecente, type Recente } from "@/lib/buscaRecentes";
 
 // Exemplos que trocam a cada poucos segundos (só o texto de ajuda; nada é buscado sozinho).
 const EXEMPLOS = ["nova visita, POPs, correções abertas", "relatório emitido, dossiê, norma", "ambientes, comprovantes, pessoas", "central da empresa, dados, responsável"];
 const LIMITE_POR_GRUPO: Record<GrupoBusca, number> = { ir: 6, agir: 4, itens: 8, empresas: 6 };
 
+export type AtalhoDaBusca = { id: string; rotulo: string; onClick: () => void };
+
 type Props = {
   destinos: Destino[];
+  /** Os quatro atalhos (Nova visita, Central da Empresa, Correções abertas, Relatórios): chips no painel da busca. */
+  atalhos: AtalhoDaBusca[];
+  /** Quem está usando (para guardar os recentes só dele neste aparelho). */
+  usuarioId?: string | null;
   /** Avisa que a pessoa começou ou terminou de usar a busca (a tela só monta o índice enquanto está em uso). */
   onAtiva: (ativa: boolean) => void;
   onEscolher: (destino: Destino) => void;
@@ -20,12 +27,14 @@ type Props = {
   pedidoDeFoco: number;
 };
 
-// A busca vive na própria barra do topo: digita ali, os resultados abrem num painel colado embaixo, da mesma largura.
-export default function BuscaNaBarra({ destinos, onAtiva, onEscolher, micDisponivel, pedidoDeFoco }: Props) {
+// A busca vive na própria linha do topo, à direita do nome da página. Ao clicar, abre um painel colado embaixo (8 px), da mesma largura:
+// com a barra vazia mostra os atalhos e os recentes; ao digitar, os resultados.
+export default function BuscaNaBarra({ destinos, atalhos, usuarioId, onAtiva, onEscolher, micDisponivel, pedidoDeFoco }: Props) {
   const [consulta, setConsulta] = useState("");
   const [aberto, setAberto] = useState(false);
   const [indice, setIndice] = useState(0);
   const [exemplo, setExemplo] = useState(0);
+  const [recentes, setRecentes] = useState<Recente[]>([]);
   const campoRef = useRef<HTMLInputElement | null>(null);
   const raizRef = useRef<HTMLDivElement | null>(null);
 
@@ -40,6 +49,7 @@ export default function BuscaNaBarra({ destinos, onAtiva, onEscolher, micDisponi
   });
 
   function abrir() {
+    if (!aberto) setRecentes(lerRecentes(usuarioId));
     setAberto(true);
     onAtiva(true);
   }
@@ -72,11 +82,22 @@ export default function BuscaNaBarra({ destinos, onAtiva, onEscolher, micDisponi
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [aberto]);
 
-  const resultados: Resultado[] = useMemo(() => (!aberto ? [] : consulta.trim() ? buscar(consulta, destinos, { limite: 60 }) : sugestoes(destinos)), [aberto, consulta, destinos]);
-  const lista = useMemo(
+  const digitando = consulta.trim().length > 0;
+  const resultados: Resultado[] = useMemo(() => (aberto && digitando ? buscar(consulta, destinos, { limite: 60 }) : []), [aberto, digitando, consulta, destinos]);
+  const doBuscar = useMemo(
     () => ORDEM_GRUPOS_BUSCA.flatMap((grupo) => resultados.filter((resultado) => resultado.destino.grupo === grupo).slice(0, LIMITE_POR_GRUPO[grupo])),
     [resultados]
   );
+  // Sem texto, a lista navegável são os recentes que ainda existem para esta pessoa (a rota é o id do destino).
+  const doRecentes = useMemo(
+    () =>
+      recentes
+        .map((recente) => destinos.find((destino) => destino.id === recente.rota))
+        .filter((destino): destino is Destino => Boolean(destino))
+        .map((destino): Resultado => ({ destino, pontos: 0 })),
+    [recentes, destinos]
+  );
+  const lista = digitando ? doBuscar : doRecentes;
 
   useEffect(() => {
     document.getElementById(`pc-busca-opcao-${indice}`)?.scrollIntoView({ block: "nearest" });
@@ -84,6 +105,7 @@ export default function BuscaNaBarra({ destinos, onAtiva, onEscolher, micDisponi
 
   function escolher(resultado: Resultado | undefined) {
     if (!resultado) return;
+    registrarRecente(resultado.destino, usuarioId);
     fechar();
     setConsulta("");
     campoRef.current?.blur();
@@ -112,7 +134,7 @@ export default function BuscaNaBarra({ destinos, onAtiva, onEscolher, micDisponi
     <div className="pc-busca" ref={raizRef} onKeyDown={aoTeclar}>
       <div className={`pc-smartbar${aberto ? " is-aberta" : ""}`}>
         <span className="pc-bolt" aria-hidden="true">
-          <NavIcon name="raio" size={22} />
+          <NavIcon name="raio" size={20} />
         </span>
         <input
           id="pc-busca-input"
@@ -129,6 +151,7 @@ export default function BuscaNaBarra({ destinos, onAtiva, onEscolher, micDisponi
           spellCheck={false}
           value={consulta}
           onFocus={abrir}
+          onClick={abrir}
           onChange={(evento) => {
             setConsulta(evento.target.value);
             setIndice(0);
@@ -144,14 +167,14 @@ export default function BuscaNaBarra({ destinos, onAtiva, onEscolher, micDisponi
             disabled={voz.estado === "transcrevendo"}
             onClick={() => (voz.estado === "ouvindo" ? voz.parar() : void voz.iniciar())}
           >
-            <NavIcon name="microfone" size={18} />
+            <NavIcon name="microfone" size={16} />
           </button>
         )}
         <button
           type="button"
           className="pc-go"
           onClick={() => {
-            if (lista.length && consulta.trim()) escolher(lista[indice]);
+            if (lista.length && digitando) escolher(lista[indice]);
             else {
               campoRef.current?.focus();
               abrir();
@@ -174,6 +197,29 @@ export default function BuscaNaBarra({ destinos, onAtiva, onEscolher, micDisponi
           )}
           {voz.estado === "transcrevendo" && <div className="pc-cmd-status" role="status">Transcrevendo…</div>}
           {voz.erro && <div className="pc-cmd-error" role="alert">{voz.erro}</div>}
+
+          {!digitando && atalhos.length > 0 && (
+            <div className="pc-busca-bloco" role="group" aria-label="Atalhos">
+              <span className="pc-busca-titulo">Atalhos</span>
+              <div className="pc-busca-chips">
+                {atalhos.map((atalho) => (
+                  <button
+                    key={atalho.id}
+                    type="button"
+                    className="pc-atalho"
+                    onClick={() => {
+                      fechar();
+                      atalho.onClick();
+                    }}
+                  >
+                    {atalho.rotulo}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {!digitando && doRecentes.length > 0 && <span className="pc-busca-titulo">Recentes</span>}
+
           {lista.map((resultado, posicao) => (
             <button
               key={resultado.destino.id}
@@ -190,14 +236,12 @@ export default function BuscaNaBarra({ destinos, onAtiva, onEscolher, micDisponi
                 <span className="pc-cmd-option-title">{resultado.destino.titulo}</span>
                 {resultado.destino.detalhe && <span className="pc-cmd-option-detail">{resultado.destino.detalhe}</span>}
               </span>
-              {posicao === indice && consulta.trim() && <span className="pc-cmd-enter">Enter</span>}
+              {posicao === indice && digitando && <span className="pc-cmd-enter">Enter</span>}
             </button>
           ))}
-          {lista.length === 0 && (
-            <div className="pc-cmd-empty">{consulta.trim() ? `Nada encontrado para “${consulta.trim()}”. Tente outra palavra.` : "Digite para buscar."}</div>
-          )}
+          {digitando && lista.length === 0 && <div className="pc-cmd-empty">{`Nada encontrado para “${consulta.trim()}”. Tente outra palavra.`}</div>}
           <div className="pc-cmd-foot" aria-hidden="true">
-            <span>Enter abre o primeiro resultado · ↑↓ navegam · Esc fecha</span>
+            <span>Digite para buscar · ↑↓ navegam · Enter abre · Esc fecha</span>
           </div>
         </div>
       )}
