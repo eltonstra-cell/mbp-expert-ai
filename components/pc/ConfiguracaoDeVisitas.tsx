@@ -9,14 +9,14 @@ type Props = {
   onDias: (dias: number) => void;
 };
 
-// Administração › Visitas: depois de quantos dias a visita em andamento recebe a etiqueta "Aberta há X dias" na lista.
+// Administração › Visitas: depois de quantos dias a visita em andamento recebe a etiqueta "Aberta há X dias" na lista (uma linha só).
 export default function ConfiguracaoDeVisitas({ dias, podeEditar, onDias }: Props) {
   const [texto, setTexto] = useState(String(dias));
   const erro = texto !== "" && (!/^\d+$/.test(texto) || Number(texto) < 1 || Number(texto) > 60) ? "Use de 1 a 60 dias." : "";
   return (
-    <section className="ui-card adm-visitas" aria-label="Visitas">
-      <h2 className="ui-card-title">Visitas</h2>
-      <label className="vis-aviso-config">
+    <div className="adm-visitas-linha" role="group" aria-label="Configuração das visitas">
+      <span className="adm-visitas-rotulo">Visitas</span>
+      <label className="vis-aviso-config" title="A lista de Visitas marca em terra a visita em andamento que passa deste limite.">
         <span>Avisar visita aberta após</span>
         <input
           className={`ui-input vis-aviso-dias${erro ? " is-invalid" : ""}`}
@@ -35,7 +35,6 @@ export default function ConfiguracaoDeVisitas({ dias, podeEditar, onDias }: Prop
         <span>dias</span>
       </label>
       {erro && <span className="ui-field-error ui-field-error--forte">{erro}</span>}
-      <p className="ui-row-sub">A lista de Visitas marca em terra a visita em andamento que passa deste limite.</p>
-    </section>
+    </div>
   );
 }

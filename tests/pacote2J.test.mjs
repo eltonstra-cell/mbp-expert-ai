@@ -125,3 +125,13 @@ test("Empresas: 'Falta: …' em uma linha, primeira pendência + N, lista inteir
   assert.match(ler("../app/globals.css"), /\.pc-cadastro-status \.pc-pendencia\{display:block;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap\}/);
   assert.ok(ler("../app/page.tsx").includes('secaoEmpresa === "dados" && pendenciasDaEmpresa(empresaGerenciada).length > 0'));
 });
+
+test("Acessos: editar usuário em janela com fundo escurecido, duas linhas de três campos e destaque da linha editada", () => {
+  const tela = ler("../components/pc/PcAcessos.tsx");
+  assert.ok(tela.includes('aria-label={editando ? "Editar usuário" : "Preparar usuário"}') && tela.includes('className="pc-modal-backdrop"'));
+  assert.ok(!tela.includes('className="ui-card pc-form"'), "o formulário não fica mais duplicado acima da lista");
+  assert.ok(tela.includes("selecionada={destacadoId === usuario.id}") && tela.includes("3500"));
+  assert.equal((tela.match(/className="acc-grade"/g) || []).length, 2);
+  const config = ler("../components/pc/ConfiguracaoDeVisitas.tsx");
+  assert.ok(!config.includes("ui-card") && config.includes("adm-visitas-linha"));
+});

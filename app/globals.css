@@ -4076,3 +4076,13 @@ html:not([data-modo="campo"]) :is(.ui-row-sub,.ui-subtitle,.pgl-detalhe,.pgl-aca
 
 /* Empresas: uma só linha de pendência, cartões de altura uniforme */
 .pc-cadastro-status .pc-pendencia{display:block;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Acessos: editar usuário em janela, sem rolagem interna; configuração de visitas em uma linha */
+.acc-modal{width:min(780px,94vw);max-height:none;overflow:visible;gap:10px}
+.acc-grade{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 12px}
+.acc-modal .pc-field{gap:4px}
+.acc-modal .pc-empresas-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.acc-modal .pc-form-actions{justify-content:flex-end;padding-top:8px;border-top:1px solid #DDE6EA;background:#fff}
+@media (max-width:719px){.acc-grade,.acc-modal .pc-empresas-grid{grid-template-columns:1fr}}
+.adm-visitas-linha{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin-bottom:8px;padding:6px 12px;border:1px solid #DDE6EA;border-radius:12px;background:#fff;font-size:.92rem;color:#12202B}
+.adm-visitas-rotulo{font-family:var(--font-display),"Outfit",sans-serif;font-weight:500}

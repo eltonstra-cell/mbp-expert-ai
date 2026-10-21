@@ -57,7 +57,7 @@ test("C2: lista de visitas sem chip repetido, com contadores e aviso em terra; o
   assert.ok(!tela.includes("Avisar visita aberta") && !tela.includes("onNovaDaEmpresa"), "o aviso saiu da barra e Nova visita só fica no topo");
   assert.ok(tela.includes("{concluida && <Pill tom=\"ok\">Concluída</Pill>}") && !tela.includes("visita.status}</Pill>"));
   const config = ler("../components/pc/ConfiguracaoDeVisitas.tsx");
-  assert.ok(config.includes("Avisar visita aberta após") && config.includes("podeEditar"));
+  assert.ok(config.includes("Avisar visita aberta após") && config.includes("podeEditar") && config.includes("adm-visitas-linha"));
   const pagina = ler("../app/page.tsx");
   assert.ok(pagina.includes("<ConfiguracaoDeVisitas") && pagina.includes('perfil === "Administrador"'));
   const css = ler("../app/globals.css");

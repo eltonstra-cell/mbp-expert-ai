@@ -1,7 +1,7 @@
 "use client";
 
 import { formatarDataHora } from "@/lib/dataLocal";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Empresa, PerfilUsuario, RegistroAuditoria, StatusUsuario, UsuarioSistema } from "@/types";
 import type { DadosUsuarioPreparacao } from "@/lib/userManagement";
 import { PERMISSIONS_BY_PROFILE, PERMISSION_LABELS, PROFILE_DESCRIPTIONS } from "@/lib/permissions";
@@ -99,6 +99,20 @@ export default function PcAcessos({
   const [excluirDe, setExcluirDe] = useState<UsuarioSistema | null>(null);
   const [filtroPessoas, setFiltroPessoas] = useState<FiltroPessoas>("ativos");
   const [aba, setAba] = useState<Aba>("pessoas");
+  // Ao fechar a janela de edição, a linha da pessoa editada fica em creme por alguns segundos.
+  const [editandoLocalId, setEditandoLocalId] = useState<string | null>(null);
+  const [destacadoId, setDestacadoId] = useState<string | null>(null);
+  useEffect(() => {
+    if (formulario || !editandoLocalId) return;
+    setDestacadoId(editandoLocalId);
+    setEditandoLocalId(null);
+    const timer = window.setTimeout(() => setDestacadoId(null), 3500);
+    return () => window.clearTimeout(timer);
+  }, [formulario, editandoLocalId]);
+  const editarPessoa = (usuario: UsuarioSistema) => {
+    setEditandoLocalId(usuario.id);
+    onEditar(usuario);
+  };
   const [tocado, setTocado] = useState<{ nome: boolean; email: boolean }>({ nome: false, email: false });
 
   // Ativos primeiro, suspensos por último.
@@ -165,8 +179,12 @@ export default function PcAcessos({
         {aba === "pessoas" && (
           <>
             {formulario && (
-              <div className="ui-card pc-form" role="group" aria-label={editando ? "Editar pessoa" : "Preparar usuário"}>
-                <div className="pc-form-grid">
+              <div className="pc-modal-layer" role="presentation">
+              {/* Fundo escurecido: a lista fica parada atrás e o formulário só existe aqui. */}
+              <div className="pc-modal-backdrop" />
+              <section className="pc-modal acc-modal" role="dialog" aria-modal="true" aria-label={editando ? "Editar usuário" : "Preparar usuário"}>
+                <h2 className="pc-modal-title">{editando ? "Editar usuário" : "Preparar usuário"}</h2>
+                <div className="acc-grade">
                   <label className="pc-field">
                     <span className="ui-eyebrow">Nome</span>
                     <input
@@ -208,26 +226,24 @@ export default function PcAcessos({
                     </select>
                   </label>
                 </div>
+                <div className="acc-grade">
                 {(formulario.perfil === "Consultor/RT" || formulario.perfil === "Administrador") && (
                   <label className="pc-field">
-                    <span className="ui-eyebrow">CRN (opcional, assina os relatórios)</span>
+                    <span className="ui-eyebrow">CRN (assina os relatórios)</span>
                     <input className="ui-input" value={formulario.crn || ""} onChange={(evento) => onCampo({ crn: evento.target.value })} placeholder="Ex.: CRN-2 12345" />
-                    {!(formulario.crn || "").trim() && <span className="ui-row-sub">Sem CRN, o relatório emitido mostra “CRN a preencher”.</span>}
                   </label>
                 )}
                 {(formulario.perfil === "Consultor/RT" || formulario.perfil === "Administrador") && (
                   <label className="pc-field">
-                    <span className="ui-eyebrow">Telefone (opcional, sai no relatório)</span>
+                    <span className="ui-eyebrow">Telefone (sai no relatório)</span>
                     <input className="ui-input" inputMode="tel" value={formulario.telefone || ""} onChange={(evento) => onCampo({ telefone: evento.target.value })} placeholder="Ex.: (51) 99999-0000" />
                   </label>
                 )}
-                {(
-                  <label className="pc-field">
-                    <span className="ui-eyebrow">{formulario.perfil === "Consultor/RT" || formulario.perfil === "Administrador" ? "Cargo na assinatura do relatório (opcional)" : "Cargo (opcional)"}</span>
-                    <input className="ui-input" value={formulario.cargo || ""} onChange={(evento) => onCampo({ cargo: evento.target.value })} placeholder="Ex.: Nutricionista RT" />
-                    {!(formulario.cargo || "").trim() && (formulario.perfil === "Consultor/RT" || formulario.perfil === "Administrador") && <span className="ui-row-sub">Sem cargo, a assinatura mostra “Responsável técnico” (nunca o perfil de acesso).</span>}
-                  </label>
-                )}
+                <label className="pc-field">
+                  <span className="ui-eyebrow">{formulario.perfil === "Consultor/RT" || formulario.perfil === "Administrador" ? "Cargo na assinatura" : "Cargo (opcional)"}</span>
+                  <input className="ui-input" value={formulario.cargo || ""} onChange={(evento) => onCampo({ cargo: evento.target.value })} placeholder="Ex.: Nutricionista RT" />
+                </label>
+                </div>
                 {formulario.perfil === "Fiscal" && !formulario.jaEraFiscal && (
                   <label className="pc-field">
                     <span className="ui-eyebrow">Validade do acesso</span>
@@ -290,6 +306,7 @@ export default function PcAcessos({
                     Cancelar
                   </button>
                 </div>
+              </section>
               </div>
             )}
 
@@ -309,6 +326,7 @@ export default function PcAcessos({
               {ordenados.map((usuario) => (
                 <ListRow
                   key={usuario.id}
+                  selecionada={destacadoId === usuario.id}
                   esmaecida={usuario.status === "Suspenso"}
                   icone={
                     <span
@@ -368,7 +386,7 @@ export default function PcAcessos({
                       <button type="button" className="ui-btn ui-btn--soft ui-btn--small" aria-label={`Telas liberadas de ${usuario.nome}`} onClick={() => setTelasDe(usuario)}>
                         Telas
                       </button>
-                      <button type="button" className="ui-btn ui-btn--secondary" onClick={() => onEditar(usuario)}>
+                      <button type="button" className="ui-btn ui-btn--secondary" onClick={() => editarPessoa(usuario)}>
                         Editar
                       </button>
                     </>
@@ -376,7 +394,7 @@ export default function PcAcessos({
                   menu={acoesDoAcesso({ status: usuario.status, podeGerenciar: true, podeExcluir: podeExcluir(usuario) }).map((acao): ItemMenu => {
                     switch (acao) {
                       case "editar":
-                        return { rotulo: "Editar", onClick: () => onEditar(usuario) };
+                        return { rotulo: "Editar", onClick: () => editarPessoa(usuario) };
                       case "desativar":
                         return { rotulo: "Desativar acesso", perigo: true, confirmar: `Desativar o acesso de ${usuario.nome}? A pessoa continua cadastrada e o acesso pode ser reativado.`, onClick: () => onAlterarStatus(usuario.id, "Suspenso") };
                       case "excluir":
