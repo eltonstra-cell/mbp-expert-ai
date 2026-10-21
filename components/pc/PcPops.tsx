@@ -8,6 +8,8 @@ import type { CabecalhoDeImpressao } from "@/lib/printFooter";
 import { useRegistrosDaEmpresa } from "@/components/RegistrosEmpresaContext";
 import { aprovarPop, criarPopDoTextoBase, criarPopsFaltantesDoConjunto, descartarRascunho, conjuntoDaEmpresa, enviarParaAprovacao, hojeISO, iniciarNovaVersao, podeAprovarPop } from "@/lib/popsNorma";
 import { montarListaDePops } from "@/lib/popGestao";
+import { criarPopDeModelo, modeloPorId, type ResultadoDaCriacao } from "@/lib/popModelos";
+import { nomeDeExibicaoDaEmpresa } from "@/lib/nomeEmpresa";
 
 type Props = {
   pops: ProcedimentoOperacionalPadronizado[];
@@ -106,6 +108,29 @@ export default function PcPops({ pops, empresa, usuario = null, podeEditar = fal
     setFichaId(novo.id);
   }
 
+  // "A partir de modelo": rascunho não conferido, com {{empresa}} e {{responsavel}} já resolvidos; abre a ficha no Resumo (onde fica a conferência).
+  function criarDeModelo(modeloId: string, codigo: string, titulo: string): ResultadoDaCriacao {
+    const modelo = modeloPorId(modeloId);
+    if (!modelo) return { ok: false, campo: "titulo", aviso: "Modelo não encontrado." };
+    const resultado = criarPopDeModelo({
+      modelo,
+      pops,
+      empresa: nomeDeExibicaoDaEmpresa(empresa),
+      responsavel: { nome: responsavelDoEstabelecimento?.nome || "", cargo: responsavelDoEstabelecimento?.cargo || "" },
+      id: crypto.randomUUID(),
+      gerarId: () => crypto.randomUUID(),
+      codigo,
+      titulo,
+    });
+    if (resultado.ok) {
+      onPersistir([...pops, resultado.pop]);
+      setMensagemFicha("");
+      setAbaInicial("resumo");
+      setFichaId(resultado.pop.id);
+    }
+    return resultado;
+  }
+
   function criarFaltantes() {
     const resultado = criarPopsFaltantesDoConjunto(empresaDaLista, () => crypto.randomUUID());
     if (resultado.criados > 0) onPersistir(resultado.pops);
@@ -143,6 +168,7 @@ export default function PcPops({ pops, empresa, usuario = null, podeEditar = fal
         onSalvarRascunho={(novo) => executar(popEmFicha, () => novo, "Rascunho salvo.")}
         onEnviar={(novo) => executar(popEmFicha, () => enviarParaAprovacao(novo), "Enviado para aprovação do responsável do estabelecimento.")}
         onAprovar={(novo) => executar(popEmFicha, () => aprovarPop(novo, usuario!, empresa, new Date().toISOString()), "POP aprovado e assinado.")}
+        onAtualizarConferencia={(novo) => onPersistir(pops.map((pop) => (pop.id === novo.id ? novo : pop)))}
         onDescartar={(atual) => executar(popEmFicha, () => descartarRascunho(atual), "Rascunho descartado. A versão aprovada continua vigente.")}
         onNovaVersao={(novo) => executar(popEmFicha, () => iniciarNovaVersao(novo), "Nova versão criada em rascunho. A versão aprovada continua guardada.")}
       />
@@ -164,6 +190,7 @@ export default function PcPops({ pops, empresa, usuario = null, podeEditar = fal
       onIrParaNorma={onIrParaNorma}
       onCriarFaltantes={criarFaltantes}
       onCriarDoModelo={criarDoModelo}
+      onCriarDeModelo={criarDeModelo}
       onAbrirFicha={abrir}
       pops={pops}
       onPersistir={onPersistir}

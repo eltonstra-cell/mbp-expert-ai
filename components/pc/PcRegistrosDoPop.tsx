@@ -5,6 +5,7 @@ import { Pill } from "@/components/ui/Pill";
 import { agoraParaCampoLocal, formatarDataHora, localParaISO } from "@/lib/dataLocal";
 import { useRegistrosDaEmpresa } from "@/components/RegistrosEmpresaContext";
 import { popVigente } from "@/lib/popsNorma";
+import { modeloPorId } from "@/lib/popModelos";
 import { guardaDosRegistros, separarRegistros } from "@/lib/registrosEmpresa";
 import type { ProcedimentoOperacionalPadronizado, RegistroPop } from "@/types";
 
@@ -29,6 +30,8 @@ export default function PcRegistrosDoPop({ pop }: { pop: ProcedimentoOperacional
   const [guardaTexto, setGuardaTexto] = useState("");
 
   const vigente = popVigente(pop);
+  // Só apoio: o app ainda não tem a planilha própria; a descrição vem do modelo de origem.
+  const registrosSugeridos = modeloPorId(pop.origemModelo?.id)?.registrosSugeridos || [];
   const guarda = useMemo(() => (contexto?.empresa ? guardaDosRegistros(contexto.empresa) : null), [contexto?.empresa]);
   const { recentes, revisar } = useMemo(
     () => separarRegistros(contexto?.registros || [], pop.id, guarda?.dias ?? null),
@@ -69,6 +72,11 @@ export default function PcRegistrosDoPop({ pop }: { pop: ProcedimentoOperacional
   return (
     <div className="pop-registros">
       <div className="pop-registros-col">
+        {registrosSugeridos.map((descricao) => (
+          <p key={descricao} className="ui-row-sub pop-registro-sugerido">
+            Registro sugerido: {descricao}
+          </p>
+        ))}
         <div className="priv-faixa pop-guarda" role="status">
           {guarda?.dias ? (
             <span>

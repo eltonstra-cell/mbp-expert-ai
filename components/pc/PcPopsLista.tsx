@@ -8,6 +8,9 @@ import { MENSAGEM_NORMA_ALTERADA, MENSAGEM_SEM_NORMA_APLICADA, popPrecisaRevisar
 import { CORES_DA_SITUACAO, contadoresDaLista, type LinhaComDetalhe } from "@/lib/popGestao";
 import { acoesDoPop } from "@/lib/menuActions";
 import { adicionarPop, arquivarPop, duplicarPop } from "@/lib/pops";
+import PcModelosPop from "@/components/pc/PcModelosPop";
+import { ROTULO_NAO_CONFERIDO, popNaoConferido } from "@/lib/popConferencia";
+import type { ResultadoDaCriacao } from "@/lib/popModelos";
 
 type Props = {
   empresa: Pick<Empresa, "normasAplicadas" | "pops">;
@@ -24,6 +27,8 @@ type Props = {
   onIrParaNorma?: () => void;
   onCriarFaltantes: () => void;
   onCriarDoModelo: (catalogoId: string) => void;
+  /** "A partir de modelo": cria um rascunho do catálogo de modelos e abre a ficha. */
+  onCriarDeModelo?: (modeloId: string, codigo: string, titulo: string) => ResultadoDaCriacao;
   onAbrirFicha: (popId: string) => void;
   pops: ProcedimentoOperacionalPadronizado[];
   onPersistir: (pops: ProcedimentoOperacionalPadronizado[]) => void;
@@ -61,6 +66,7 @@ function Linha({ linha, podeEditar, onAbrirFicha, onCriarDoModelo, menu }: { lin
             revisar
           </span>
         )}
+        {linha.pop && popNaoConferido(linha.pop) && <span className="pop-revisar">{ROTULO_NAO_CONFERIDO}</span>}
       </div>
       {linha.situacao !== "Falta criar" && <div className="pgl-acao">{linha.acao.texto}</div>}
       <div className="pgl-botoes">
@@ -96,6 +102,7 @@ export default function PcPopsLista({
   onIrParaNorma,
   onCriarFaltantes,
   onCriarDoModelo,
+  onCriarDeModelo,
   onAbrirFicha,
   pops,
   onPersistir,
@@ -104,6 +111,8 @@ export default function PcPopsLista({
   mensagem,
 }: Props) {
   const [adicionando, setAdicionando] = useState(false);
+  const [menuAdicionar, setMenuAdicionar] = useState(false);
+  const [deModelo, setDeModelo] = useState(false);
   const [codigo, setCodigo] = useState("");
   const [titulo, setTitulo] = useState("");
   const [erro, setErro] = useState<{ campo: "titulo" | "codigo"; aviso: string } | null>(null);
@@ -202,12 +211,53 @@ export default function PcPopsLista({
 
         <div className="pgl-secao-linha">
           <div className="pgl-secao">Outros POPs e documentos da empresa</div>
-          {podeEditar && !adicionando && (
-            <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => setAdicionando(true)}>
-              + Adicionar POP
-            </button>
+          {podeEditar && !adicionando && !deModelo && (
+            <div className="pgl-add-menu" onKeyDown={(evento) => evento.key === "Escape" && setMenuAdicionar(false)}>
+              <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" aria-haspopup="menu" aria-expanded={menuAdicionar} onClick={() => setMenuAdicionar((aberto) => !aberto)}>
+                + Adicionar POP
+              </button>
+              {menuAdicionar && (
+                <div className="pgl-add-opcoes" role="menu">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="pgl-add-opcao"
+                    onClick={() => {
+                      setMenuAdicionar(false);
+                      setAdicionando(true);
+                    }}
+                  >
+                    POP em branco
+                  </button>
+                  {onCriarDeModelo && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="pgl-add-opcao"
+                      onClick={() => {
+                        setMenuAdicionar(false);
+                        setDeModelo(true);
+                      }}
+                    >
+                      A partir de modelo
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           )}
         </div>
+        {podeEditar && deModelo && onCriarDeModelo && (
+          <PcModelosPop
+            pops={pops}
+            onCancelar={() => setDeModelo(false)}
+            onCriar={(modeloId, codigo, titulo) => {
+              const resultado = onCriarDeModelo(modeloId, codigo, titulo);
+              if (resultado.ok) setDeModelo(false);
+              return resultado;
+            }}
+          />
+        )}
         {podeEditar && adicionando && (
           <div className="pgl-adicionar">
             <label className="pc-add-code">
