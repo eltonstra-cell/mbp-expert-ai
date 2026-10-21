@@ -137,8 +137,7 @@ export default function PcPopsLista({
     <div className="pgl">
       <div className="pgl-topo">
         <div className="pgl-cabecalho">
-          <h2 className="pgl-h">POPs</h2>
-          <p className="pgl-sub">Procedimentos Operacionais Padronizados: situação e a próxima ação de cada um.</p>
+          <h2 className="sr-only">POPs</h2>
         </div>
         {podeEditar && (
           <div className="pgl-criar">

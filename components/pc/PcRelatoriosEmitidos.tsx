@@ -230,10 +230,7 @@ export default function PcRelatoriosEmitidos({ empresa, relatorios, urlDaFoto, o
   return (
     <section className="ui-screen" aria-label="Relatórios emitidos">
       <div className="ui-head">
-        <div>
-          <h1 className="ui-title">Emitidos</h1>
-          <p className="ui-subtitle">Cada versão fica guardada e não muda</p>
-        </div>
+        <h1 className="sr-only">Emitidos</h1>
       </div>
       {ordenados.length === 0 ? (
         <div className="ui-empty">Nenhum relatório emitido. Emita pelo Relatório da visita (RT ou Administrador).</div>

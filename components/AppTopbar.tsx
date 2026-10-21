@@ -9,6 +9,8 @@ import { ROTULO_DE_USO, type ModoTela } from "@/lib/screenMode";
 const ROTULO_SYNC = { ok: "Sincronizado", pendente: "Sincronizando…", erro: "Sem conexão" } as const;
 
 type Props = {
+  /** Texto pequeno ao lado do caminho (ex.: data e situação da visita). */
+  subtituloDoCaminho?: string;
   /** Caminho exibido no PC, por exemplo: Visitas › Empresa › Central. */
   caminho: string[];
   /** Chamado ao tocar no primeiro item do caminho (Visitas), quando houver. */
@@ -43,6 +45,7 @@ type Props = {
 
 export default function AppTopbar({
   caminho,
+  subtituloDoCaminho,
   onPrimeiro,
   empresaAtiva,
   empresaCor = "#4A5D73",
@@ -97,6 +100,7 @@ export default function AppTopbar({
           );
         })}
       </nav>
+      {subtituloDoCaminho && <span className="pc-crumb-apoio">{subtituloDoCaminho}</span>}
 
       {mostrarTodasVisitas && (
         <button type="button" className="pc-back-link" onClick={onTodasVisitas}>

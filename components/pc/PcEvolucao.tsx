@@ -22,10 +22,7 @@ export default function PcEvolucao({ empresa, visitas, ncs, hoje, onVoltar }: Pr
   return (
     <section className="ui-screen evol" aria-label="Evolução">
       <div className="ui-head">
-        <div>
-          <h1 className="ui-title">Evolução</h1>
-          <p className="ui-subtitle">Conformidade, reincidentes e tempo para resolver</p>
-        </div>
+        <h1 className="sr-only">Evolução</h1>
         <button type="button" className="ui-btn ui-btn--secondary" onClick={onVoltar}>
           ← Voltar
         </button>

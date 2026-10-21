@@ -62,3 +62,20 @@ test("folha: responsável vem do usuário vinculado e a razão social sai em for
   assert.equal(outra.situacao, "Aprovada por Élton Volmir Strapazon, em 21/10/2026");
   assert.equal(folhaDoPop(pop({}), { nome: "PADARIA DO JOSE ME" }).esquerda, "Padaria do Jose ME");
 });
+
+import { readFileSync } from "node:fs";
+const ler = (c) => readFileSync(new URL(c, import.meta.url), "utf8");
+
+test("cabeçalho: título grande que repete o topo sai (só para leitores de tela); subtítulo sobe para a linha das abas", () => {
+  for (const arquivo of ["PcVisitas", "PcEmpresas", "PcInicio", "PcAcessos", "PcResumo", "PcDossie", "PcEvolucao", "PcRelatoriosEmitidos", "PcRelatorio"]) {
+    const tela = ler(`../components/pc/${arquivo}.tsx`);
+    assert.ok(!/<h1 className="ui-title[^"]*">(Visitas|Empresas|Acessos|Relatório|Emitidos|Evolução|Olá)/.test(tela), arquivo);
+    assert.ok(tela.includes('className="sr-only"'), arquivo);
+  }
+  const abas = ler("../components/pc/RelatoriosAbas.tsx");
+  assert.ok(abas.includes("rel-abas-apoio") && abas.includes("Cada versão fica guardada e não muda"));
+  const pagina = ler("../app/page.tsx");
+  assert.ok(pagina.includes("`Visita ${numeroVisitaPorId.get(visitaAtual?.id || \"\") || \"—\"}`") && pagina.includes("subtituloDoCaminho="));
+  assert.ok(!ler("../components/pc/PcFichaPop.tsx").includes("← Lista de POPs"));
+  assert.ok(!ler("../components/pc/PcPopsLista.tsx").includes("Procedimentos Operacionais Padronizados: situação"));
+});

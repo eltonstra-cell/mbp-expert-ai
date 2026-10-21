@@ -115,11 +115,9 @@ export default function PcEmpresas({
   const empresaDaCor = corAberta ? empresas.find((item) => item.id === corAberta.id) : undefined;
   return (
     <section className="ui-screen" aria-label="Empresas">
-      <div className="ui-head">
-        <div>
-          <h1 className="ui-title">Empresas</h1>
-          <p className="ui-subtitle">{plural(totalClientes, "cliente", "clientes")} · escolha a empresa ativa para trabalhar</p>
-        </div>
+      <h1 className="sr-only">Empresas</h1>
+      <div className="ui-head ui-head--so-direita">
+        <span className="ui-subtitle ui-subtitle--linha">{plural(totalClientes, "cliente", "clientes")} · escolha a empresa ativa para trabalhar</span>
         {podeCriar && (
           <button type="button" className="ui-btn ui-btn--criar" onClick={onNova}>
             + Nova empresa

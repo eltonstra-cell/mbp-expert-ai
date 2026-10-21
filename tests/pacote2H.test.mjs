@@ -54,7 +54,7 @@ test("visitas: placeholder da busca cabe sem corte; Início: Hoje com 'Ver todos
 
 test("nome da página no topo: mesma fonte do seletor Empresa ativa; título sem nome da empresa", () => {
   const css = ler("../app/globals.css");
-  assert.ok(css.includes(".pc-crumb-current,.pc-crumb,.pc-crumb-link{font-family:var(--font-display),\"Outfit\",sans-serif;font-size:18px;font-weight:500"));
+  assert.ok(css.includes(".pc-crumb-current,.pc-crumb,.pc-crumb-link{font-family:var(--font-display),\"Outfit\",sans-serif;font-size:18px;font-weight:500") && css.includes(".pc-crumb-current,.pc-crumb,.pc-crumb-link,.pc-crumb-sep{font-size:22px}"), "nome da página em 22 px, seletor Empresa ativa segue em 18 px");
   assert.ok(css.includes(".emp-ativa-nome{min-width:0;flex:1;overflow:hidden;font-family:var(--font-display),\"Outfit\",sans-serif;font-size:18px;font-weight:500"));
   const pagina = ler("../app/page.tsx");
   assert.ok(pagina.includes("ROTULO_DA_SUBABA[subabaDosDocumentos]") && !pagina.includes('<div className="ui-eyebrow">Documentos</div>'));

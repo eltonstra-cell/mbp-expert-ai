@@ -132,7 +132,7 @@ export default function PcAcessos({
     <section className="ui-screen" aria-label="Acessos">
       <div className="ui-head">
         <div>
-          <h1 className="ui-title">Acessos</h1>
+          <h1 className="sr-only">Acessos</h1>
           <div className="pc-badges">
             {loginProtegido && <Pill tom="ok">Login protegido</Pill>}
             <Pill tom="ok">Diretório preparado</Pill>

@@ -4030,3 +4030,12 @@ html:not([data-modo="campo"]) :is(.ui-row-sub,.ui-subtitle,.pgl-detalhe,.pgl-aca
 .emitir-crn-alerta strong{font-weight:600;flex:1 1 100%}
 .emitir-crn-confirma{display:inline-flex;align-items:center;gap:8px;font-size:.94rem}
 .pfolha-aviso{margin-left:10px;padding:1px 10px;border:1px solid #E8B04B;border-radius:999px;background:#FFF3D6;font-family:inherit;font-size:.82em;font-weight:400;color:#12202B}
+
+/* Cabeçalho global: nome da página em 22 px; títulos grandes repetidos saem; subtítulo sobe para a linha das abas/ações */
+.pc-crumb-current,.pc-crumb,.pc-crumb-link,.pc-crumb-sep{font-size:22px}
+.pc-crumb-apoio{margin-left:12px;font-size:.9rem;color:#2B3E4C;white-space:nowrap}
+.rel-abas{align-items:center;justify-content:space-between}
+.rel-abas-lista{display:flex;flex-wrap:wrap;gap:6px}
+.rel-abas-apoio{margin-left:auto;font-size:.88rem;color:#2B3E4C}
+.ui-head--so-direita{justify-content:flex-end;align-items:center;gap:12px}
+.ui-subtitle--linha{font-size:.88rem;color:#2B3E4C}

@@ -98,9 +98,6 @@ export default function PcFichaPop({ pop, empresa, usuario, podeEditar, onImprim
     <section className="ficha" aria-label="Ficha do POP">
       <div className="ficha-topo">
         <div className="ficha-titulo-linha">
-          <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={onVoltar}>
-            ← Lista de POPs
-          </button>
           <h1 className="ficha-titulo">{`${pop.codigo ? `${pop.codigo} · ` : ""}${pop.titulo || "POP"}`}</h1>
           <span className="pgl-etiqueta" style={{ background: cor.fundo, color: cor.texto }}>
             {linha.situacao}

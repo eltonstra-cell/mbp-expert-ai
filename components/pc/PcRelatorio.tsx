@@ -64,12 +64,7 @@ export default function PcRelatorio({
   return (
     <section className="ui-screen" aria-label="Relatório da visita">
       <div className="ui-head">
-        <div>
-          <h1 className="ui-title">Relatório</h1>
-          <p className="ui-subtitle">
-            {data} · {concluida ? "inspeção concluída" : "inspeção em andamento"}
-          </p>
-        </div>
+        <h1 className="sr-only">Relatório da visita de {data}</h1>
         <div className="ui-head-actions">
           {podeGerar && (
             <div className="pc-sel-pdf">

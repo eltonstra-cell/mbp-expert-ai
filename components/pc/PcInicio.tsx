@@ -76,9 +76,7 @@ export default function PcInicio({
 }: Props) {
   return (
     <section className="ui-screen" aria-label="Início">
-      <div className="ui-head">
-        <h1 className="ui-title pc-hello">Olá, {nome}</h1>
-      </div>
+      <h1 className="sr-only">Início · olá, {nome}</h1>
 
       <div className="ui-card pc-continue">
         {continuar ? (

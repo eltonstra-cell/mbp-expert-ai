@@ -26,10 +26,7 @@ export default function PcResumo({ resumo, onImprimir, onCompartilhar, onVoltar 
   return (
     <section className="ui-screen resumo-tela" aria-label="Resumo de uma página">
       <div className="ui-head no-print">
-        <div>
-          <h1 className="ui-title">Resumo de uma página</h1>
-          <p className="ui-subtitle">Para imprimir, salvar em PDF ou mandar por WhatsApp.</p>
-        </div>
+        <h1 className="sr-only">Resumo de uma página</h1>
         <div className="ui-head-actions">
           <button type="button" className="ui-btn ui-btn--secondary" onClick={() => onCompartilhar(textoDoResumo(resumo))}>
             Mandar por WhatsApp

@@ -6467,7 +6467,7 @@ export default function Home() {
   const chaveMenuAtivo: NavKey | null = ehPC && VISIT_VIEWS.includes(view) ? null : chaveDaTela;
   const visitaAbertaNoMenu = !!visitaAtual && (VISIT_VIEWS.includes(view) || visitaAtual.status !== "Concluída");
   const caminhoTopo = dentroDaVisita
-    ? ["Visitas", cartaoVisita?.empresa || "Empresa", rotuloDaTela || "Central"]
+    ? ["Visitas", `Visita ${numeroVisitaPorId.get(visitaAtual?.id || "") || "—"}`, rotuloDaTela || "Central"]
     : [rotuloDaTela || "Início"];
   const iniciaisUsuario = usuarioDaSessao
     ? usuarioDaSessao.nome.split(" ").filter(Boolean).slice(0, 2).map((parte) => parte[0]).join("").toUpperCase()
@@ -6967,6 +6967,7 @@ export default function Home() {
         )}
         <AppTopbar
           caminho={caminhoTopo}
+          subtituloDoCaminho={view === "relatorio" && visitaAtual ? `${fdata(visitaAtual.data)} · ${visitaAtual.status === "Concluída" ? "inspeção concluída" : "inspeção em andamento"}` : undefined}
           onPrimeiro={() => navegarPrincipal("visitas")}
           empresaAtiva={nomeEmFormatoNatural(atual?.nomeFantasia) || null}
           empresaCor={atual ? corDaEmpresa(atual) : undefined}
@@ -7300,11 +7301,7 @@ export default function Home() {
           />
         ) : view === "pops" && atual && (telaVisivel("pops") || ehFiscal) ? (
           <section className="central-empresa" aria-label="Documentos da empresa">
-            <div className="ui-head cen-cabeca">
-              <div>
-                <h1 className="ui-title">{ROTULO_DA_SUBABA[subabaDosDocumentos]}</h1>
-              </div>
-            </div>
+            <h1 className="sr-only">{ROTULO_DA_SUBABA[subabaDosDocumentos]}</h1>
             {fichaAbertaRotulo && subabaDosDocumentos === "pops" ? (
               caminhoClicavel(fichaAbertaRotulo, false)
             ) : (
@@ -7314,9 +7311,11 @@ export default function Home() {
           </section>
         ) : view === "empresas" && showEmpresaForm && permitido("empresas.editar") ? (
           <section className="central-empresa" aria-label={editingEmpresaId ? "Central da Empresa" : "Nova empresa"}>
+            {editingEmpresaId && <h1 className="sr-only">{ROTULO_DA_SUBABA[(secaoEmpresa as SubAbaCentral) || "dados"] || "Central da Empresa"}</h1>}
+            {(!editingEmpresaId || !fichaAbertaRotulo) && (
             <div className="ui-head cen-cabeca">
               <div>
-                <h1 className="ui-title">{editingEmpresaId && empresaGerenciada ? ROTULO_DA_SUBABA[(secaoEmpresa as SubAbaCentral) || "dados"] || "Central da Empresa" : "Nova empresa"}</h1>
+                {!editingEmpresaId && <h1 className="ui-title">Nova empresa</h1>}
                 {!editingEmpresaId && <p className="ui-subtitle">Digite o CNPJ, confira os dados básicos e salve para abrir a Central da Empresa.</p>}
               </div>
               <button
@@ -7332,6 +7331,7 @@ export default function Home() {
                 {editingEmpresaId ? "← Voltar às empresas" : "Cancelar"}
               </button>
             </div>
+            )}
 
             {editingEmpresaId && (fichaAbertaRotulo && secaoEmpresa === "pops" ? (
               caminhoClicavel(fichaAbertaRotulo, true)

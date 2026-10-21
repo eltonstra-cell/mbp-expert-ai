@@ -182,11 +182,7 @@ export default function PcVisitas({ empresaAtiva, visitas, filtro, onFiltro, his
 
   return (
     <section className="ui-screen" aria-label="Visitas técnicas">
-      <div className="ui-head">
-        <div>
-          <h1 className="ui-title">Visitas</h1>
-        </div>
-      </div>
+      <h1 className="sr-only">Visitas</h1>
 
       <div className="ui-toolbar vis-toolbar">
         <SegmentedTabs<FiltroVisitas>

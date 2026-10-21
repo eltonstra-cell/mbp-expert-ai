@@ -70,10 +70,7 @@ export default function PcDossie({ dados, urlDaFoto, onImprimir, onVoltar }: Pro
   return (
     <section className="ui-screen dossie-tela" aria-label="Dossiê para fiscalização">
       <div className="ui-head no-print">
-        <div>
-          <h1 className="ui-title">Dossiê para fiscalização</h1>
-          <p className="ui-subtitle">Um PDF com índice, só desta empresa</p>
-        </div>
+        <h1 className="sr-only">Dossiê para fiscalização</h1>
         <div className="ui-head-actions">
           {gerado && (
             <button type="button" className="ui-btn ui-btn--criar" onClick={imprimir}>
