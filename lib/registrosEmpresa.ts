@@ -392,3 +392,8 @@ export function pendenciasDaEmpresa(
   }
   return lista.sort((a, b) => a.dias - b.dias);
 }
+
+/** Quem ainda não leu a versão vigente (a mesma lista de "Quem leu", só os pendentes). */
+export function pendentesDeLeitura(linhas: LinhaDeLeitura[]): LinhaDeLeitura[] {
+  return linhas.filter((linha) => !linha.lido);
+}

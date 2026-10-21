@@ -2482,6 +2482,7 @@ export default function Home() {
         online,
         salvarComprovante,
         alterarPopDoComprovante,
+        criarPopDoModelo: permitido("empresas.editar", empresaDosRegistros.id) ? (catalogoId) => criarPopDoModeloPorCatalogo(empresaDosRegistros, catalogoId) : undefined,
         removerComprovante,
         urlDoComprovante: (item) => `/api/comprovantes/file?pathname=${encodeURIComponent(item.blobPathname || "")}`,
         novoRegistro: (dados) => {

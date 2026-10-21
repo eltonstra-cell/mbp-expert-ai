@@ -77,3 +77,56 @@ test("Central em uma linha e lista de POPs: separador entre grupos e seções, a
   assert.ok(lista.indexOf('className="pgl-fim"') < lista.indexOf("Criar os ") && lista.indexOf('className="pgl-fim"') > lista.indexOf("pgl-chips"), "Criar os N POPs fica no fim da linha dos chips");
   assert.ok(ler("../app/page.tsx").includes("Vincular em Dados"));
 });
+
+import { tarjaDoComprovante } from "../lib/comprovantePop.ts";
+import { leituraDaVersao, pendentesDeLeitura } from "../lib/registrosEmpresa.ts";
+
+const popsDaEmpresa = (comReservatorio) => [
+  { id: "p1", catalogoId: "higienizacao-instalacoes" },
+  ...(comReservatorio ? [{ id: "p2", catalogoId: "higienizacao-reservatorio" }] : []),
+  { id: "p3", catalogoId: "controle-de-pragas" },
+];
+
+test("tarja do comprovante: preso a outro POP → Mover; sem POP → Vincular; POP sugerido inexistente → Criar agora", () => {
+  const preso = tarjaDoComprovante({ tipo: "reservatorio", popId: "p1" }, popsDaEmpresa(true));
+  assert.equal(preso.acao, "mover");
+  assert.equal(preso.popSugeridoId, "p2");
+  assert.ok(preso.texto.startsWith("Este tipo costuma pertencer ao POP de "));
+  const semPop = tarjaDoComprovante({ tipo: "reservatorio" }, popsDaEmpresa(true));
+  assert.equal(semPop.acao, "vincular");
+  assert.equal(semPop.popSugeridoId, "p2");
+  const inexistente = tarjaDoComprovante({ tipo: "reservatorio", popId: "p1" }, popsDaEmpresa(false));
+  assert.equal(inexistente.acao, "criar");
+  assert.equal(inexistente.popSugeridoId, undefined);
+  assert.match(inexistente.texto, /^O POP de .+ ainda não foi criado\.$/);
+  assert.equal(tarjaDoComprovante({ tipo: "reservatorio" }, popsDaEmpresa(false)).acao, "criar", "sem POP e sem o sugerido: também Criar agora");
+  // no POP certo, tipos sem POP próprio e POP sugerido arquivado
+  assert.equal(tarjaDoComprovante({ tipo: "reservatorio", popId: "p2" }, popsDaEmpresa(true)), null);
+  assert.equal(tarjaDoComprovante({ tipo: "contrato-rt", popId: "p1" }, popsDaEmpresa(true)), null);
+  assert.equal(tarjaDoComprovante({ tipo: "outro" }, popsDaEmpresa(true)), null);
+  const arquivado = [{ id: "p1", catalogoId: "higienizacao-instalacoes" }, { id: "p2", catalogoId: "higienizacao-reservatorio", arquivado: true }];
+  assert.equal(tarjaDoComprovante({ tipo: "reservatorio", popId: "p1" }, arquivado).acao, "criar");
+  const tela = ler("../components/pc/PcComprovantes.tsx");
+  assert.ok(tela.includes("Criar agora") && tela.includes('tarja.acao === "vincular" ? "Vincular" : "Mover"') && tela.includes('className="comp-tarja"'));
+  assert.ok(tela.includes("sugestaoDoPainel") && tela.includes("comp-pop-fixo"));
+  assert.ok(ler("../components/pc/PcFichaPop.tsx").includes("onCriarPopDoModelo={contexto.criarPopDoModelo}"));
+  assert.match(ler("../app/globals.css"), /\.comp-tarja\{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 12px;width:100%/);
+});
+
+test("Quem ainda não leu: só os pendentes da versão vigente; todos leram → mensagem; registrar só para quem pode", () => {
+  const colaboradores = [
+    { id: "c1", empresaId: "e1", nome: "Ana", cargo: "Cozinheira", ativo: true },
+    { id: "c2", empresaId: "e1", nome: "Bia", cargo: "Auxiliar", ativo: true },
+    { id: "c3", empresaId: "e1", nome: "Caio", cargo: "Inativo", ativo: false },
+  ];
+  const leituras = [{ id: "l1", empresaId: "e1", popId: "p1", popVersao: "1.1", colaboradorId: "c1", data: "2026-10-01" }];
+  const leitura = leituraDaVersao("p1", "1.1", colaboradores, leituras);
+  assert.deepEqual(pendentesDeLeitura(leitura.linhas).map((linha) => linha.colaborador.nome), ["Bia"]);
+  // leitura de versão anterior não conta
+  assert.equal(pendentesDeLeitura(leituraDaVersao("p1", "1.2", colaboradores, leituras).linhas).length, 2);
+  const todos = leituraDaVersao("p1", "1.1", colaboradores, [...leituras, { ...leituras[0], id: "l2", colaboradorId: "c2" }]);
+  assert.equal(pendentesDeLeitura(todos.linhas).length, 0);
+  const bloco = ler("../components/pc/QuemAindaNaoLeu.tsx");
+  assert.ok(bloco.includes("Quem ainda não leu") && bloco.includes("Todos leram a v{versao}") && bloco.includes("Registrar leitura") && bloco.includes("podeRegistrar && registrando"));
+  assert.ok(ler("../components/pc/PcFichaPop.tsx").includes("podeRegistrar={contexto.podeGerenciarPessoas}"));
+});

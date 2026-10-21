@@ -109,3 +109,34 @@ export function marcarSubstituidoNaRenovacao<T extends { id: string; substituido
   });
   return mudou ? resultado : lista;
 }
+
+export type TarjaDeTipo = {
+  /** "mover": comprovante preso a outro POP; "vincular": sem POP; "criar": o POP sugerido ainda não existe. */
+  acao: "mover" | "vincular" | "criar";
+  texto: string;
+  catalogoId: string;
+  titulo: string;
+  /** O POP sugerido que já existe na empresa (quando "criar", não há). */
+  popSugeridoId?: string;
+};
+
+/**
+ * Tarja amarela do comprovante (lista geral e ficha): o tipo tem POP próprio e o comprovante está preso a outro POP ou sem POP.
+ * Existindo o POP sugerido, o botão é "Mover" (ou "Vincular", se estava sem POP); não existindo, a tarja diz que ele ainda não foi criado
+ * e o botão é "Criar agora". Tipos sem POP próprio (contrato, outros) e comprovante já no POP certo não geram tarja.
+ */
+export function tarjaDoComprovante(
+  comprovante: { tipo: TipoComprovante; popId?: string },
+  popsDaEmpresa: { id: string; catalogoId?: string; arquivado?: boolean }[]
+): TarjaDeTipo | null {
+  const esperado = CATALOGO_DO_TIPO[comprovante.tipo];
+  if (!esperado) return null;
+  const definicao = CONJUNTO_DA_NORMA.find((item) => item.catalogoId === esperado);
+  if (!definicao) return null;
+  const atual = comprovante.popId ? popsDaEmpresa.find((pop) => pop.id === comprovante.popId) : undefined;
+  if (atual && atual.catalogoId === esperado) return null;
+  const sugerido = popsDaEmpresa.find((pop) => !pop.arquivado && pop.catalogoId === esperado);
+  const base = { catalogoId: esperado, titulo: definicao.titulo };
+  if (!sugerido) return { ...base, acao: "criar", texto: avisoDePopAusente(definicao) };
+  return { ...base, acao: comprovante.popId ? "mover" : "vincular", texto: `Este tipo costuma pertencer ao POP de ${definicao.titulo}`, popSugeridoId: sugerido.id };
+}

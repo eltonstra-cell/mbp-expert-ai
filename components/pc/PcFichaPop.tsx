@@ -6,6 +6,7 @@ import PcPopEditor from "@/components/pc/PcPopEditor";
 import type { CabecalhoDeImpressao } from "@/lib/printFooter";
 import PcRegistrosDoPop from "@/components/pc/PcRegistrosDoPop";
 import PcTreinamentoDoPop from "@/components/pc/PcTreinamentoDoPop";
+import QuemAindaNaoLeu from "@/components/pc/QuemAindaNaoLeu";
 import PcComprovantes from "@/components/pc/PcComprovantes";
 import type { RegistrosEmpresaValor } from "@/components/RegistrosEmpresaContext";
 import { CORES_DA_SITUACAO, comprovantesVigentesDoPop, montarLinhaDoPop, ultimoRegistroDoPop } from "@/lib/popGestao";
@@ -204,6 +205,10 @@ export default function PcFichaPop({ pop, empresa, usuario, podeEditar, onImprim
               )}
             </div>
 
+            {leitura && vigente && contexto && (
+              <QuemAindaNaoLeu popId={pop.id} versao={vigente.versao} linhas={leitura.linhas} podeRegistrar={contexto.podeGerenciarPessoas} onRegistrar={contexto.registrarLeitura} />
+            )}
+
           </div>
         )}
 
@@ -245,6 +250,7 @@ export default function PcFichaPop({ pop, empresa, usuario, podeEditar, onImprim
             popFixo={{ id: pop.id, rotulo: pop.titulo, catalogoId: pop.catalogoId }}
             pops={popsDaEmpresa}
             onAlterarPop={contexto.podeGerenciarComprovantes ? contexto.alterarPopDoComprovante : undefined}
+            onCriarPopDoModelo={contexto.criarPopDoModelo}
             mensagemVazia={mensagemDeComprovanteVazio(pop)}
             onVoltar={() => setAba("resumo")}
           />

@@ -36,6 +36,8 @@ export type RegistrosEmpresaValor = {
   salvarComprovante: (dados: DadosDoFormulario, arquivo: File | null) => Promise<string>;
   /** Troca o POP vinculado de um comprovante, sem apagá-lo (com histórico e auditoria). */
   alterarPopDoComprovante: (comprovante: ComprovanteTerceiro, popId: string | undefined) => void;
+  /** Cria o POP do modelo que o tipo do comprovante pede (só quem edita a empresa); devolve o id do POP novo. */
+  criarPopDoModelo?: (catalogoId: string) => string | undefined;
   removerComprovante: (comprovante: ComprovanteTerceiro) => void;
   urlDoComprovante: (comprovante: ComprovanteTerceiro) => string;
 };

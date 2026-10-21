@@ -4137,3 +4137,11 @@ html[data-modo="equilibrado"] .pc-busca,html[data-modo="completo"] .pc-busca{dis
 .pgl-fim{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px 16px}
 .pgl-secao-linha{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px}
 .pgl-secao{margin:0;font-size:15px;font-weight:500;letter-spacing:0;text-transform:none;color:#12202B}
+
+/* Comprovantes: tarja em segunda linha de largura inteira; painel Mover com rótulo de 14 px; bloco "Quem ainda não leu" */
+.comp-item{display:flex;flex-direction:column;gap:8px}
+.comp-tarja{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 12px;width:100%;box-sizing:border-box}
+.comp-alterar-pop .ui-eyebrow{font-size:.88rem}
+.ficha-leitura{margin-top:0}
+.ficha-leitura-lista{gap:8px}
+.ficha-leitura-linha{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
