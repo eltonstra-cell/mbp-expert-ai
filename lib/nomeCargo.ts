@@ -15,6 +15,22 @@ export function nomeECargo(nome: string | undefined | null, cargo: string | unde
   return [limparTextoDePessoa(nome), limparTextoDePessoa(cargo)].filter(Boolean).join(separador);
 }
 
+const SIGLAS_DA_RAZAO = new Set(["S/A", "S.A.", "S.A", "SA", "ME", "EPP", "MEI"]);
+
+/** Razão social em formato de título na exibição ("MELLO SERVICOS LTDA" vira "Mello Servicos Ltda"); siglas societárias ficam em maiúsculas. O dado salvo não muda. */
+export function razaoSocialTitulo(texto: string | undefined | null): string {
+  return (texto || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(" ")
+    .map((palavra, indice) => {
+      if (SIGLAS_DA_RAZAO.has(palavra.toLocaleUpperCase("pt-BR"))) return palavra.toLocaleUpperCase("pt-BR");
+      // "nomeProprio" só deixa preposição em minúscula fora da primeira posição: aqui a posição é a da frase inteira.
+      return indice === 0 ? nomeProprio(palavra) : nomeProprio(`x ${palavra}`).slice(2);
+    })
+    .join(" ");
+}
+
 /** Primeira letra de cada nome em maiúscula ("maria da silva" vira "Maria da Silva"); preposições ficam em minúscula. */
 export function nomeProprio(texto: string | undefined | null): string {
   const PREPOSICOES = new Set(["da", "de", "do", "das", "dos", "e"]);

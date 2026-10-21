@@ -99,7 +99,7 @@ import FiscalInicio from "@/components/FiscalInicio";
 import { AvisoFotoProvider, useAvisoAntesDeFotografar } from "@/components/AvisoAntesDeFotografar";
 import type { ItemMenu } from "@/components/ui/RowMenu";
 import { ROTULO_DE_USO, descreverAparelho } from "@/lib/screenMode";
-import { preparacaoDaEmpresa, faltasDoCadastro } from "@/lib/companyReadiness";
+import { preparacaoDaEmpresa, pendenciasDaEmpresa } from "@/lib/companyReadiness";
 import ChecklistEnvStrip from "@/components/ChecklistEnvStrip";
 import CommandPalette from "@/components/CommandPalette";
 import { construirDestinos, type Destino } from "@/lib/commandSearch";
@@ -9688,7 +9688,7 @@ export default function Home() {
                 pops: prep.contagens.pops,
                 preparacao: prep.percentual,
                 completo: prep.completo,
-                faltas: faltasDoCadastro(e),
+                faltas: pendenciasDaEmpresa(e),
                 podeGerenciar: permitido("empresas.editar", e.id),
                 podeAcessos: permitido("usuarios.gerenciar"),
                 arquivada: Boolean(e.arquivada),

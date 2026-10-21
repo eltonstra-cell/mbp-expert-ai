@@ -3941,7 +3941,7 @@ html[data-modo="campo"] .chk-foco-amb-pos{font-size:.78rem}
 /* Pacote 2 · C2: Visitas, lista por empresa com colunas fixas */
 .vis-toolbar{justify-content:space-between;align-items:center}
 .vis-toolbar-fim{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
-.vis-toolbar-fim .pc-search{width:260px}
+.vis-toolbar-fim .pc-search{width:300px;min-width:240px}
 .vis-rolagem{scrollbar-gutter:stable;scrollbar-width:auto;scrollbar-color:#B4C2CE #EEF1F5}
 .vis-rolagem::-webkit-scrollbar{width:12px}
 .vis-rolagem::-webkit-scrollbar-track{background:#EEF1F5;border-radius:999px}

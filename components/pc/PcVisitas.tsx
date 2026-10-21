@@ -204,7 +204,7 @@ export default function PcVisitas({ empresaAtiva, visitas, filtro, onFiltro, his
           <input
             type="search"
             className="ui-input pc-search"
-            placeholder="Buscar por empresa ou responsável"
+            placeholder="Buscar empresa ou responsável"
             aria-label="Buscar visitas por empresa ou responsável"
             value={busca}
             onChange={(evento) => setBusca(evento.target.value)}

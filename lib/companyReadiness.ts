@@ -145,3 +145,30 @@ export function faltasDoCadastro(empresa?: Empresa): string[] {
   if ((empresa.setoresManual || []).length === 0) faltas.push("ambientes");
   return faltas;
 }
+
+const ROTULO_CURTO_DA_PREPARACAO: Record<string, string> = {
+  responsavel: "responsável do estabelecimento (em Dados)",
+  horario: "horário de funcionamento",
+  setores: "setores",
+  equipamentos: "equipamentos",
+  programas: "programas",
+  pops: "POPs",
+};
+
+/**
+ * O que falta para a empresa estar completa: os itens da preparação ainda vazios (mais nome e CNPJ do cadastro).
+ * Lista vazia = preparação em 100% e cadastro em ordem: só então vale "Cadastro completo".
+ */
+export function pendenciasDaEmpresa(empresa?: Empresa): string[] {
+  const preparacao = preparacaoDaEmpresa(empresa);
+  const cadastro = faltasDoCadastro(empresa).filter((falta) => falta === "nome" || falta === "CNPJ");
+  const faltantes = preparacao.itens.filter((item) => !item.ok).map((item) => ROTULO_CURTO_DA_PREPARACAO[item.id] || item.titulo.toLocaleLowerCase("pt-BR"));
+  return [...cadastro, ...faltantes];
+}
+
+/** "Falta: equipamentos e programas" */
+export function textoDaPendencia(faltas: string[]): string {
+  if (faltas.length === 0) return "";
+  const lista = faltas.length === 1 ? faltas[0] : `${faltas.slice(0, -1).join(", ")} e ${faltas[faltas.length - 1]}`;
+  return `Falta: ${lista}`;
+}

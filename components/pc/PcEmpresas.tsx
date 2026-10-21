@@ -8,6 +8,8 @@ import { ProgressBar } from "@/components/ui/ProgressBar";
 import type { ItemMenu } from "@/components/ui/RowMenu";
 import { acoesDaEmpresa } from "@/lib/menuActions";
 import { nomeSemNumerosNoInicio } from "@/lib/navigation";
+import { razaoSocialTitulo } from "@/lib/nomeCargo";
+import { textoDaPendencia } from "@/lib/companyReadiness";
 import { iniciaisDaEmpresa } from "@/lib/navigation";
 
 export type LinhaEmpresa = {
@@ -187,7 +189,7 @@ export default function PcEmpresas({
                 }
                 titulo={empresa.nome}
                 chip={empresa.arquivada ? <Pill tom="na">Arquivada</Pill> : empresa.ativa ? <Pill tom="brand">Empresa ativa</Pill> : undefined}
-                secundario={<span className="pc-sub-quebra">{`${nomeSemNumerosNoInicio(empresa.razaoSocial)} · ${detalhes}`}</span>}
+                secundario={<span className="pc-sub-quebra">{`${razaoSocialTitulo(nomeSemNumerosNoInicio(empresa.razaoSocial))} · ${detalhes}`}</span>}
                 meio={
                   <>
                     <ProgressBar percentual={empresa.preparacao} largura={120} rotulo={`Preparação ${empresa.preparacao}%`} />
@@ -196,10 +198,7 @@ export default function PcEmpresas({
                 }
                 pilulas={
                   <span className="pc-cadastro-status">
-                    <Pill tom={empresa.faltas.length === 0 ? "ok" : "pend"}>
-                      {empresa.faltas.length === 0 ? "Cadastro completo" : "Cadastro incompleto"}
-                    </Pill>
-                    {empresa.faltas.length > 0 && <span className="ui-row-sub">Falta: {empresa.faltas.map((falta) => (falta === "responsável" ? "responsável do estabelecimento (em Dados)" : falta)).join(", ")}</span>}
+                    {empresa.faltas.length === 0 ? <Pill tom="ok">Cadastro completo</Pill> : <span className="ui-row-sub pc-pendencia">{textoDaPendencia(empresa.faltas)}</span>}
                   </span>
                 }
                 acao={
