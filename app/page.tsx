@@ -6192,6 +6192,7 @@ export default function Home() {
           abrirFicha={fichaPedida}
           aoConsumirPedido={() => setFichaPedida(null)}
           aoMudarFicha={setFichaAbertaRotulo}
+          responsavelDoEstabelecimento={{ nome: efetivo.nome, cargo: efetivo.cargo, usuarioId: efetivo.usuarioId }}
           pedidoDeLista={pedidoDeListaDePops}
           onImprimir={imprimirDocumento}
         />

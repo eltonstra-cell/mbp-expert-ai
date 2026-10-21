@@ -21,8 +21,13 @@ export default function PopFolha({ folha, modo, id }: Props) {
       <p className="pfolha-situacao">{folha.situacao}</p>
       {folha.blocos.map((bloco) => (
         <section key={bloco.titulo} className="pfolha-bloco">
-          <h3 className="pfolha-bloco-titulo">{bloco.titulo}</h3>
-          {bloco.tipo === "passos" ? (
+          <h3 className="pfolha-bloco-titulo">
+            {bloco.titulo}
+            {bloco.aviso && <span className="pfolha-aviso">{bloco.aviso}</span>}
+          </h3>
+          {bloco.vazia ? (
+            <p className="pfolha-linha is-branco">{bloco.linhas[0]}</p>
+          ) : bloco.tipo === "passos" ? (
             <ol className="pfolha-passos">
               {bloco.linhas.map((linha, indice) => (
                 <li key={`${indice}-${linha}`} className={linha === "(em branco)" ? "is-branco" : undefined}>

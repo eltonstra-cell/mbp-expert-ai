@@ -98,7 +98,7 @@ test("referências da folha: uma linha por norma, sem repetição nem ruído, se
   ];
   const linhas = referenciasCompactas(refs);
   assert.equal(linhas.length, 2);
-  assert.deepEqual(linhas, ["RDC 216/2004 (4.11.4 a; 4.11.5) · conferir", "Portaria SES 799/2023 (RS) (Anexo II; Anexo II, 13.7 a) · conferir"]);
+  assert.deepEqual(linhas, ["RDC 216/2004 (4.11.4 a; 4.11.5) · conferir", "Portaria SES 799/2023 (RS) (Anexo II: 13.7 a) · conferir"]);
   assert.ok(linhas.every((linha) => linha.endsWith(" · conferir") && !linha.includes("item a conferir")));
   assert.equal(itemLimpo("Anexo II (item a conferir)"), "Anexo II");
   assert.deepEqual(referenciasCompactas([]), []);

@@ -4029,3 +4029,4 @@ html:not([data-modo="campo"]) :is(.ui-row-sub,.ui-subtitle,.pgl-detalhe,.pgl-aca
 .emitir-crn-alerta{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:10px 12px;border:2px solid #D93A3A;border-radius:12px;background:#fff;color:#12202B}
 .emitir-crn-alerta strong{font-weight:600;flex:1 1 100%}
 .emitir-crn-confirma{display:inline-flex;align-items:center;gap:8px;font-size:.94rem}
+.pfolha-aviso{margin-left:10px;padding:1px 10px;border:1px solid #E8B04B;border-radius:999px;background:#FFF3D6;font-family:inherit;font-size:.82em;font-weight:400;color:#12202B}

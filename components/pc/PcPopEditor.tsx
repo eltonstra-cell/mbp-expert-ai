@@ -22,7 +22,7 @@ import {
 import { normasDaEmpresa } from "@/lib/normas";
 import { confirmar } from "@/lib/dialogos";
 import PopFolha from "@/components/pc/PopFolha";
-import { folhaDoPop, secoesDoEditor, textoDasSecoes } from "@/lib/popDocumento";
+import { AVISO_SECAO_VAZIA, folhaDoPop, secoesDoEditor, textoDasSecoes } from "@/lib/popDocumento";
 import type { CabecalhoDeImpressao } from "@/lib/printFooter";
 
 type Secao = "identificacao" | "objetivo" | "referencias" | "responsavel" | "passos" | "acao" | "registro" | "extra" | "extra2";
@@ -32,6 +32,8 @@ type Props = {
   empresa: Pick<Empresa, "normasAplicadas" | "responsavelEstabelecimento"> & Partial<Pick<Empresa, "nomeFantasia" | "razaoSocial" | "cnpj">>;
   usuario: UsuarioSistema | null;
   podeEditar: boolean;
+  /** Responsável do estabelecimento (usuário vinculado): nome e cargo da folha. */
+  responsavelDoEstabelecimento?: { nome: string; cargo: string; usuarioId?: string };
   /** Imprimir ou salvar em PDF a folha do POP (leitura). */
   onImprimir?: (titulo: string, cabecalho: CabecalhoDeImpressao) => void;
   onSalvarRascunho: (pop: ProcedimentoOperacionalPadronizado) => void;
@@ -82,7 +84,7 @@ function horaCerta(): string {
 }
 
 // Documento (editor em painéis) e Histórico (versões, aprovações e motivo) do POP. O cabeçalho e as abas ficam na ficha (PcFichaPop).
-export default function PcPopEditor({ pop, empresa, usuario, podeEditar, onImprimir, onSalvarRascunho, onEnviar, onAprovar, onNovaVersao, onDescartar, mensagem, parte = "documento" }: Props) {
+export default function PcPopEditor({ pop, empresa, usuario, podeEditar, responsavelDoEstabelecimento, onImprimir, onSalvarRascunho, onEnviar, onAprovar, onNovaVersao, onDescartar, mensagem, parte = "documento" }: Props) {
   // Mais de um passo em branco vira um só logo ao abrir.
   const [rascunho, setRascunho] = useState<ProcedimentoOperacionalPadronizado>(() => (pop.conteudo?.passos ? { ...pop, conteudo: { ...pop.conteudo, passos: juntarPassosEmBrancoRepetidos(pop.conteudo.passos) } } : pop));
   const [motivoDaNovaVersao, setMotivoDaNovaVersao] = useState("");
@@ -127,8 +129,9 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, onImpri
   const modoLeitura = parte === "documento" && !editavel;
   const secoesDaLista = secoesDoEditor(rascunho, definicao);
   const dadosDaEmpresa = { nome: (empresa.nomeFantasia || empresa.razaoSocial || "").trim(), cnpj: (empresa.cnpj || "").trim() };
-  const folhaDeLeitura = folhaDoPop(rascunho, dadosDaEmpresa);
-  const folhaDaPrevia = folhaDoPop(rascunho, dadosDaEmpresa, { marcarBranco: true });
+  const opcoesDaFolha = { responsavel: responsavelDoEstabelecimento, exigeAcaoCorretiva: exigeAcaoCorretivaSes };
+  const folhaDeLeitura = folhaDoPop(rascunho, dadosDaEmpresa, opcoesDaFolha);
+  const folhaDaPrevia = folhaDoPop(rascunho, dadosDaEmpresa, { ...opcoesDaFolha, marcarBranco: true });
   const dicaDaNorma = (conteudo.referencias || [])[0];
   function imprimirFolha() {
     onImprimir?.(`${rascunho.codigo || "POP"} - ${rascunho.titulo}`, {
@@ -333,6 +336,11 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, onImpri
 
           <SecaoRecolhivel id="acao" titulo="Ação corretiva e registro" resumo={conteudo.acaoCorretiva ? "preenchida" : exigeAcaoCorretivaSes ? "exigida na SES 799/2023" : "em branco"} aberta={secao === "acao"} onAlternar={alternar}>
             {exigeAcaoCorretivaSes && <p className="ui-row-sub">Exigido na SES 799/2023, Anexo II, 13.2.</p>}
+            {exigeAcaoCorretivaSes && !(conteudo.acaoCorretiva || "").trim() && (
+              <div className="priv-faixa pdoc-dica" role="status">
+                <span>{AVISO_SECAO_VAZIA}</span>
+              </div>
+            )}
             <Campo rotulo="Ação corretiva" linhas={3} valor={conteudo.acaoCorretiva || ""} desabilitado={!editavel} onChange={(valor) => mudar({ acaoCorretiva: valor })} />
             <Campo rotulo="Registro que prova a execução (opcional)" valor={conteudo.registroProva || ""} desabilitado={!editavel} onChange={(valor) => mudar({ registroProva: valor })} dica="A lista de registros por POP fica para um próximo pacote." />
           </SecaoRecolhivel>

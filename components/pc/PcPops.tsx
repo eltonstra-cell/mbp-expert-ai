@@ -28,12 +28,13 @@ type Props = {
   /** Avisa quando a ficha abre ou fecha (rótulo do POP para o caminho do topo) para a tela esconder grupos e sub-abas. */
   aoMudarFicha?: (rotulo: string | null) => void;
   onImprimir?: (titulo: string, cabecalho: CabecalhoDeImpressao) => void;
+  responsavelDoEstabelecimento?: { nome: string; cargo: string; usuarioId?: string };
   /** Muda a cada clique em "POPs" do caminho: fecha a ficha e volta à lista. */
   pedidoDeLista?: number;
 };
 
 // Documentos › POPs: a lista com situação e próxima ação e, ao abrir um POP, a ficha com as seis abas.
-export default function PcPops({ pops, empresa, usuario = null, podeEditar = false, onPersistir, mensagem, topo, responsavel, abrirFicha, aoConsumirPedido, aoMudarFicha, onImprimir, pedidoDeLista = 0 }: Props) {
+export default function PcPops({ pops, empresa, usuario = null, podeEditar = false, onPersistir, mensagem, topo, responsavel, abrirFicha, aoConsumirPedido, aoMudarFicha, onImprimir, responsavelDoEstabelecimento, pedidoDeLista = 0 }: Props) {
   const contexto = useRegistrosDaEmpresa();
   const [fichaId, setFichaId] = useState<string | null>(null);
   const [abaInicial, setAbaInicial] = useState<AbaFicha>("resumo");
@@ -125,6 +126,7 @@ export default function PcPops({ pops, empresa, usuario = null, podeEditar = fal
         usuario={usuario}
         podeEditar={podeEditar}
         onImprimir={onImprimir}
+        responsavelDoEstabelecimento={responsavelDoEstabelecimento}
         podeAprovar={podeAprovar}
         contexto={contexto}
         mensagem={mensagemFicha}

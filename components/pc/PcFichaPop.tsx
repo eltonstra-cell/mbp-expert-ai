@@ -22,6 +22,7 @@ type Props = {
   usuario: UsuarioSistema | null;
   podeEditar: boolean;
   onImprimir?: (titulo: string, cabecalho: CabecalhoDeImpressao) => void;
+  responsavelDoEstabelecimento?: { nome: string; cargo: string; usuarioId?: string };
   podeAprovar: boolean;
   contexto: RegistrosEmpresaValor | null;
   mensagem?: string;
@@ -50,7 +51,7 @@ const DESTINO_DA_ABA: Record<NonNullable<ReturnType<typeof montarLinhaDoPop>["ac
 };
 
 // Ficha do POP: o POP é o centro. Resumo, Documento, Registros, Comprovantes, Quem leu e Histórico no mesmo lugar.
-export default function PcFichaPop({ pop, empresa, usuario, podeEditar, onImprimir, podeAprovar, contexto, mensagem, abaInicial = "resumo", onVoltar, onSalvarRascunho, onEnviar, onAprovar, onNovaVersao, onDescartar }: Props) {
+export default function PcFichaPop({ pop, empresa, usuario, podeEditar, onImprimir, responsavelDoEstabelecimento, podeAprovar, contexto, mensagem, abaInicial = "resumo", onVoltar, onSalvarRascunho, onEnviar, onAprovar, onNovaVersao, onDescartar }: Props) {
   const [aba, setAba] = useState<AbaFicha>(abaInicial);
   const hoje = hojeISO();
   useEffect(() => setAba(abaInicial), [abaInicial]);
@@ -215,6 +216,7 @@ export default function PcFichaPop({ pop, empresa, usuario, podeEditar, onImprim
             usuario={usuario}
             podeEditar={podeEditar}
             onImprimir={onImprimir}
+            responsavelDoEstabelecimento={responsavelDoEstabelecimento}
             mensagem={mensagem}
             parte={aba === "historico" ? "historico" : "documento"}
             onSalvarRascunho={onSalvarRascunho}
