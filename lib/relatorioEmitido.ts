@@ -197,3 +197,32 @@ export async function emitirNoArmazem(armazem: ArmazemDeEmissao, pedido: PedidoD
   }
   return { ok: false, erro: "Muitas emissões ao mesmo tempo. Tente de novo.", status: 409 };
 }
+
+// ===== Lista de emitidos: uma linha por visita =====
+
+export type GrupoDeEmitidos = { visitaId: string; atual: RelatorioEmitido; anteriores: RelatorioEmitido[] };
+
+/** Agrupa por visita: a versão mais alta fica em cima (Vigente) e as outras, da mais nova para a mais antiga, são "Substituída". Não altera nenhum relatório. */
+export function agruparEmitidosPorVisita(relatorios: RelatorioEmitido[]): GrupoDeEmitidos[] {
+  const mapa = new Map<string, RelatorioEmitido[]>();
+  for (const relatorio of relatorios) mapa.set(relatorio.visitaId, [...(mapa.get(relatorio.visitaId) || []), relatorio]);
+  return [...mapa.entries()]
+    .map(([visitaId, lista]) => {
+      const ordenada = [...lista].sort((a, b) => b.versao - a.versao || b.emitidoEm.localeCompare(a.emitidoEm));
+      return { visitaId, atual: ordenada[0], anteriores: ordenada.slice(1) };
+    })
+    .sort((a, b) => b.atual.emitidoEm.localeCompare(a.atual.emitidoEm));
+}
+
+export const ETIQUETA_VIGENTE = "Vigente";
+export const ETIQUETA_SUBSTITUIDA = "Substituída";
+
+// ===== Emissão sem CRN =====
+
+export const AVISO_CRN_VAZIO = "CRN do responsável não preenchido, o relatório assinado perde valor.";
+export const ROTULO_EMITIR_SEM_CRN = "Emitir mesmo sem CRN";
+
+/** Com CRN a emissão segue direto; sem CRN só com a confirmação explícita. */
+export function emissaoLiberada(crn: string | undefined | null, confirmouSemCrn: boolean): boolean {
+  return Boolean((crn || "").trim()) || confirmouSemCrn;
+}

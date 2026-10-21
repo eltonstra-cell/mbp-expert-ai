@@ -6,7 +6,7 @@ import type { RelatorioEmitido } from "@/types";
 import { avisoDeRelatorioParcial, coberturaDoChecklist, textoDasRespostas, textoDoPercentualConforme, textoRespondidos } from "@/lib/cobertura";
 import { quantidade } from "@/lib/plural";
 import { formatarData, formatarDataHora } from "@/lib/dataLocal";
-import { TODAS_AS_SECOES } from "@/lib/relatorioEmitido";
+import { ETIQUETA_SUBSTITUIDA, ETIQUETA_VIGENTE, TODAS_AS_SECOES, agruparEmitidosPorVisita } from "@/lib/relatorioEmitido";
 import type { CabecalhoDeImpressao } from "@/lib/printFooter";
 
 const dataHoraBr = (iso: string) => formatarDataHora(iso) || iso;
@@ -37,6 +37,8 @@ export function cabecalhoDoRelatorio(relatorio: RelatorioEmitido): CabecalhoDeIm
 // Relatórios emitidos da empresa: cada versão fica guardada, nunca é alterada. Abrir mostra o instantâneo.
 export default function PcRelatoriosEmitidos({ empresa, relatorios, urlDaFoto, onImprimir, onVoltar }: ListaProps) {
   const [abertoId, setAbertoId] = useState<string | null>(null);
+  const [expandidas, setExpandidas] = useState<string[]>([]);
+  const grupos = agruparEmitidosPorVisita(relatorios);
   const ordenados = [...relatorios].sort((a, b) => b.emitidoEm.localeCompare(a.emitidoEm));
   const aberto = ordenados.find((item) => item.id === abertoId);
 
@@ -228,34 +230,53 @@ export default function PcRelatoriosEmitidos({ empresa, relatorios, urlDaFoto, o
     <section className="ui-screen" aria-label="Relatórios emitidos">
       <div className="ui-head">
         <div>
-          <h1 className="ui-title">Relatórios emitidos</h1>
-          <p className="ui-subtitle">{empresa} · cada versão fica guardada e não muda</p>
+          <h1 className="ui-title">Emitidos</h1>
+          <p className="ui-subtitle">Cada versão fica guardada e não muda</p>
         </div>
-        <button type="button" className="ui-btn ui-btn--secondary" onClick={onVoltar}>
-          ← Voltar
-        </button>
       </div>
       {ordenados.length === 0 ? (
         <div className="ui-empty">Nenhum relatório emitido. Emita pelo Relatório da visita (RT ou Administrador).</div>
       ) : (
         <div className="ui-scroll">
           <div className="ui-list">
-            {ordenados.map((item) => (
-              <article key={item.id} className="ui-card emitido-linha">
-                <div className="emitido-textos">
-                  <span className="emitido-numero">
-                    {item.numero} · versão {item.versao}
-                  </span>
-                  <span className="doc-linha">
-                    Emitido em {dataHoraBr(item.emitidoEm)} · visita de {dataBr(item.instantaneo.visita.data)} · {item.assinatura.nome}, {item.assinatura.crn}
-                  </span>
-                  {item.motivoDaNovaVersao && <span className="doc-linha">Motivo da versão {item.versao}: {item.motivoDaNovaVersao}</span>}
+            {grupos.map((grupo) => {
+              const aberta = expandidas.includes(grupo.visitaId);
+              const linha = (item: RelatorioEmitido, vigente: boolean) => (
+                <article key={item.id} className={`ui-card emitido-linha${vigente ? "" : " is-substituida"}`}>
+                  <div className="emitido-textos">
+                    <span className="emitido-numero">
+                      {item.numero} · versão {item.versao}{" "}
+                      <Pill tom={vigente ? "ok" : "na"}>{vigente ? ETIQUETA_VIGENTE : ETIQUETA_SUBSTITUIDA}</Pill>
+                    </span>
+                    <span className="doc-linha emitido-apoio">
+                      Emitido em {dataHoraBr(item.emitidoEm)} · visita de {dataBr(item.instantaneo.visita.data)} · {item.assinatura.nome}, {item.assinatura.crn}
+                    </span>
+                    {item.motivoDaNovaVersao && <span className="doc-linha emitido-apoio">Motivo da versão {item.versao}: {item.motivoDaNovaVersao}</span>}
+                  </div>
+                  <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => setAbertoId(item.id)}>
+                    Abrir
+                  </button>
+                </article>
+              );
+              return (
+                <div key={grupo.visitaId} className="emitido-grupo">
+                  {linha(grupo.atual, true)}
+                  {grupo.anteriores.length > 0 && (
+                    <>
+                      <button
+                        type="button"
+                        className="pc-link-btn emitido-anteriores"
+                        aria-expanded={aberta}
+                        onClick={() => setExpandidas((atual) => (atual.includes(grupo.visitaId) ? atual.filter((id) => id !== grupo.visitaId) : [...atual, grupo.visitaId]))}
+                      >
+                        {aberta ? "Ocultar versões anteriores" : quantidade(grupo.anteriores.length, "versão anterior", "versões anteriores")}
+                      </button>
+                      {aberta && <div className="emitido-anteriores-lista">{grupo.anteriores.map((item) => linha(item, false))}</div>}
+                    </>
+                  )}
                 </div>
-                <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => setAbertoId(item.id)}>
-                  Abrir
-                </button>
-              </article>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

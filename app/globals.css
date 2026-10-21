@@ -4019,3 +4019,13 @@ html:not([data-modo="campo"]) :is(.ui-row-sub,.ui-subtitle,.pgl-detalhe,.pgl-aca
 .comp-form :is(input:not([type="checkbox"]):not([type="file"]),select){box-sizing:border-box;height:40px;min-height:40px;padding-top:0;padding-bottom:0;border-width:1px}
 .comp-form :is(input,select,textarea):focus,.comp-form :is(input,select,textarea):focus-visible{outline:0;border-color:#E8B04B;box-shadow:inset 0 0 0 1px #E8B04B}
 .comp-form :is(input,select,textarea).is-invalid{border-width:1px;border-color:#D93A3A;box-shadow:inset 0 0 0 1px #D93A3A}
+
+/* Relatórios emitidos: grupos por visita, etiquetas e aviso de CRN */
+.emitido-grupo{display:flex;flex-direction:column;gap:6px}
+.emitido-anteriores{align-self:flex-start;margin-left:6px;font-size:.94rem}
+.emitido-anteriores-lista{display:flex;flex-direction:column;gap:6px;padding-left:18px}
+.emitido-linha.is-substituida{background:#F7F9FB}
+.emitido-apoio{font-size:.94rem;color:#2B3E4C}
+.emitir-crn-alerta{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:10px 12px;border:2px solid #D93A3A;border-radius:12px;background:#fff;color:#12202B}
+.emitir-crn-alerta strong{font-weight:600;flex:1 1 100%}
+.emitir-crn-confirma{display:inline-flex;align-items:center;gap:8px;font-size:.94rem}

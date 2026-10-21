@@ -6900,6 +6900,7 @@ export default function Home() {
             assinante={usuarioDaSessao?.nome || sessaoAtual?.name || "RT"}
             cargo={usuarioDaSessao?.cargo || ""}
             crn={usuarioDaSessao?.crn || ""}
+            onPreencherCrn={permitido("usuarios.gerenciar") ? () => { setEmitirAberto(false); setView("acessos"); } : undefined}
             emitindo={emitindoRelatorio}
             erro={erroDeEmissao}
             onConfirmar={(motivo) => void emitirRelatorioDaVisita(motivo)}

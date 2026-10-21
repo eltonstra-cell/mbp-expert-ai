@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AVISO_SEM_ICP } from "@/lib/relatorioEmitido";
+import { AVISO_CRN_VAZIO, AVISO_SEM_ICP, ROTULO_EMITIR_SEM_CRN, emissaoLiberada } from "@/lib/relatorioEmitido";
 import { confirmar } from "@/lib/dialogos";
 
 type Props = {
@@ -11,6 +11,8 @@ type Props = {
   /** Cargo que sai na assinatura (não o perfil de acesso). */
   cargo?: string;
   crn: string;
+  /** Leva a Acessos para preencher o CRN (só quem gerencia acessos); sem isso o aviso manda pedir ao Administrador. */
+  onPreencherCrn?: () => void;
   emitindo: boolean;
   erro: string;
   onConfirmar: (motivo: string) => void;
@@ -18,7 +20,8 @@ type Props = {
 };
 
 // Confirmação antes de emitir: número e data vêm do servidor; a assinatura é o nome e o CRN do RT, sem certificado digital.
-export default function PcEmitirRelatorio({ versaoAnterior, assinante, cargo, crn, emitindo, erro, onConfirmar, onCancelar }: Props) {
+export default function PcEmitirRelatorio({ versaoAnterior, assinante, cargo, crn, onPreencherCrn, emitindo, erro, onConfirmar, onCancelar }: Props) {
+  const [semCrn, setSemCrn] = useState(false);
   const [motivo, setMotivo] = useState("");
   // O campo do motivo só mostra erro depois de tocado ou digitado (ou ao tentar emitir); abre sem vermelho.
   const [motivoTocado, setMotivoTocado] = useState(false);
@@ -48,11 +51,24 @@ export default function PcEmitirRelatorio({ versaoAnterior, assinante, cargo, cr
         <p className="pc-modal-texto">
           Assinatura: <b>{assinante}</b>, {cargo || "Responsável técnico"} · {crn || "CRN a preencher"}
         </p>
-        <div className="priv-faixa" role={crn ? "note" : "alert"}>
-          <span>
-            {crn ? "" : "CRN ainda não cadastrado: o relatório sairá com “CRN a preencher”. "}
-            {AVISO_SEM_ICP}
-          </span>
+        {!crn.trim() && (
+          <div className="emitir-crn-alerta" role="alert">
+            <strong>{AVISO_CRN_VAZIO}</strong>
+            {onPreencherCrn ? (
+              <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={onPreencherCrn} disabled={emitindo}>
+                Preencher agora
+              </button>
+            ) : (
+              <span>Peça ao Administrador para preencher em Acessos.</span>
+            )}
+            <label className="emitir-crn-confirma">
+              <input type="checkbox" checked={semCrn} onChange={(evento) => setSemCrn(evento.target.checked)} />
+              <span>{ROTULO_EMITIR_SEM_CRN}</span>
+            </label>
+          </div>
+        )}
+        <div className="priv-faixa" role="note">
+          <span>{AVISO_SEM_ICP}</span>
         </div>
         {versaoAnterior && (
           <label className="pc-field">
@@ -81,7 +97,7 @@ export default function PcEmitirRelatorio({ versaoAnterior, assinante, cargo, cr
             <button
               type="button"
               className="ui-btn ui-btn--save"
-              disabled={emitindo}
+              disabled={emitindo || !emissaoLiberada(crn, semCrn)}
               onClick={() => {
                 setTentouEmitir(true);
                 if (!erroMotivo) onConfirmar(motivo.trim());
