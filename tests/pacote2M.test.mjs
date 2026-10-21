@@ -130,3 +130,40 @@ test("voz: microfone negado mostra mensagem curta no painel e a digitação segu
   const busca = ler("../components/BuscaNaBarra.tsx");
   assert.ok(busca.includes("if (voz.erro) abrir();") && busca.includes('role="alert">{voz.erro}'));
 });
+
+import { proximaAcaoDoPop } from "../lib/popGestao.ts";
+import { rotuloDoTipoNaFicha, ROTULO_OUTRO_NO_POP } from "../lib/comprovantePop.ts";
+
+test("Próxima ação de leitura: sem os nomes e com 'Ver quem falta' que leva ao bloco do Resumo", () => {
+  const pop = { id: "p1", codigo: "POP-01", titulo: "x", versao: "1.1", status: "Aprovado", proximaRevisao: "2099-01-01", conteudo: { frequencia: "diária" }, aprovacao: { nome: "A", cargo: "B", em: "2026-10-01T10:00:00.000Z", versao: "1.1" } };
+  const ultimo = { id: "r1", popId: "p1", dataHora: new Date().toISOString() };
+  const acao = proximaAcaoDoPop({ pop, definicao: undefined, hoje: new Date().toISOString().slice(0, 10), comprovantes: [], ncs: [], registros: [ultimo], leituraPendente: { lidos: 1, total: 4, faltam: ["maria", "Paulo", "Ana"] }, podeAprovar: false });
+  assert.equal(acao.tipo, "leitura-pendente");
+  assert.equal(acao.texto, "Faltam 3 pessoas lerem a v1.1");
+  assert.ok(!/maria|Paulo|Ana/.test(acao.texto));
+  assert.equal(acao.botao.rotulo, "Ver quem falta");
+  const ficha = ler("../components/pc/PcFichaPop.tsx");
+  assert.ok(ficha.includes('document.getElementById("ficha-quem-nao-leu")') && ficha.includes("scrollIntoView") && ficha.includes("onClick={() => irParaOBotao()}"));
+  assert.ok(ler("../components/pc/QuemAindaNaoLeu.tsx").includes('id="ficha-quem-nao-leu"'));
+  assert.match(ler("../app/globals.css"), /\.ficha-cartao-rotulo\{font-size:\.875rem;color:#12202B\}/);
+});
+
+test("tarja do comprovante fica dentro do cartão (filhos do ListRow), com fio de 1 px e sem borda própria", () => {
+  const tela = ler("../components/pc/PcComprovantes.tsx");
+  const i = tela.indexOf("filhos={");
+  assert.ok(i > 0 && tela.indexOf('className="comp-tarja"', i) > i, "a tarja é passada em filhos");
+  assert.ok(!tela.includes('className="comp-item"'), "sem o invólucro que deixava a tarja fora do cartão");
+  const css = ler("../app/globals.css");
+  assert.ok(css.includes(".ui-row-extra > .comp-tarja{margin:0;padding:6px 14px 6px 18px;border:0;border-top:1px solid #E8B04B;border-radius:0;background:#FFF3D6}"));
+  assert.ok(ler("../components/ui/ListRow.tsx").includes('<div className="ui-row-extra">{filhos}</div>'));
+});
+
+test("Renovar na ficha: o Tipo travado mostra o tipo herdado do comprovante, não 'Outro documento deste POP'", () => {
+  assert.equal(rotuloDoTipoNaFicha("reservatorio"), "Limpeza do reservatório");
+  assert.equal(rotuloDoTipoNaFicha("pragas"), "Controle de pragas");
+  assert.equal(rotuloDoTipoNaFicha("outro"), ROTULO_OUTRO_NO_POP);
+  const tela = ler("../components/pc/PcComprovantes.tsx");
+  assert.ok(tela.includes("Boolean(dados.renovaId)) ? (") && tela.includes("rotuloDoTipoNaFicha(dados.tipo)"));
+  // a renovação grava o mesmo tipo do original (o estado do formulário nasce dele)
+  assert.ok(tela.includes("{ tipo: item.tipo, emissor: item.emissor, dataServico: \"\", validade: \"\", observacao: \"\", renovaId: item.id"));
+});

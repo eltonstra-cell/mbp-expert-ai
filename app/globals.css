@@ -4182,3 +4182,11 @@ html[data-modo="equilibrado"] .pc-busca,html[data-modo="completo"] .pc-busca{dis
 /* Busca: um só laranja na barra (o "Ir →"); o raio fica em creme com borda dourada; rodapé do painel legível */
 .pc-bolt{background:#FEF6E6;border:1.5px solid #E8B04B;color:#12202B}
 .pc-busca-painel .pc-cmd-foot{font-size:.875rem;color:#12202B}
+
+/* Ficha, Resumo: rótulos dos quatro cartões legíveis (14 px, tinta escura) */
+.ficha-cartao-rotulo{font-size:.875rem;color:#12202B}
+.ficha-leitura:focus{outline:2px solid #E8B04B;outline-offset:4px;border-radius:8px}
+
+/* Comprovantes: a tarja é o rodapé amarelo do próprio cartão (fio de 1 px, largura inteira, sem folga nem borda própria) */
+.ui-row-extra:has(> .comp-tarja){padding:0}
+.ui-row-extra > .comp-tarja{margin:0;padding:6px 14px 6px 18px;border:0;border-top:1px solid #E8B04B;border-radius:0;background:#FFF3D6}

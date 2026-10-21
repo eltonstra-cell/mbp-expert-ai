@@ -87,7 +87,7 @@ test("comprovante na ficha: com uma só opção o Tipo vira texto fixo; com tipo
   assert.equal(tiposDoPop("higienizacao-instalacoes").length, 1);
   assert.ok(tiposDoPop("higienizacao-reservatorio").length > 1);
   const tela = ler("../components/pc/PcComprovantes.tsx");
-  assert.ok(tela.includes("popFixo && tiposDisponiveis.length === 1") && tela.includes('className="comp-tipo-fixo"'));
+  assert.ok(tela.includes("popFixo && (tiposDisponiveis.length === 1") && tela.includes('className="comp-tipo-fixo"'));
   assert.ok(tela.includes("comp-chips") && !tela.includes("comp-contadores"));
   assert.match(ler("../app/globals.css"), /\.comp-grade\{align-items:start\}/);
 });

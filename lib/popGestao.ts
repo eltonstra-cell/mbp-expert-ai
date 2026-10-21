@@ -198,12 +198,12 @@ export function proximaAcaoDoPop(entrada: EntradaDaAcao): AcaoDoPop {
   const leitura = entrada.leituraPendente;
   if (leitura && leitura.total > 0 && leitura.lidos < leitura.total && popVigente(pop)) {
     const faltam = leitura.total - leitura.lidos;
-    const nomes = leitura.faltam.slice(0, 3).join(", ");
+    // Sem os nomes: quem falta aparece no bloco "Quem ainda não leu" do Resumo, com o botão de cada pessoa.
     return {
       tipo: "leitura-pendente",
       prioridade: 5,
-      texto: `${faltam === 1 ? "Falta 1 pessoa ler" : `Faltam ${faltam} pessoas lerem`} a v${popVigente(pop)!.versao}${nomes ? ` (${nomes}${leitura.faltam.length > 3 ? "..." : ""})` : ""}`,
-      botao: { rotulo: "Registrar leitura", destino: "leitura" },
+      texto: `${faltam === 1 ? "Falta 1 pessoa ler" : `Faltam ${faltam} pessoas lerem`} a v${popVigente(pop)!.versao}`,
+      botao: { rotulo: "Ver quem falta", destino: "leitura" },
     };
   }
 

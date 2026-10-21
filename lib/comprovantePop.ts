@@ -140,3 +140,8 @@ export function tarjaDoComprovante(
   if (!sugerido) return { ...base, acao: "criar", texto: avisoDePopAusente(definicao) };
   return { ...base, acao: comprovante.popId ? "mover" : "vincular", texto: `Este tipo costuma pertencer ao POP de ${definicao.titulo}`, popSugeridoId: sugerido.id };
 }
+
+/** Rótulo do Tipo travado na ficha de um POP: o tipo do comprovante (inclusive o herdado numa renovação); "Outro documento deste POP" só para o tipo "outro". */
+export function rotuloDoTipoNaFicha(tipo: TipoComprovante): string {
+  return tipo === "outro" ? ROTULO_OUTRO_NO_POP : TIPOS_DE_COMPROVANTE.find((item) => item.id === tipo)?.rotulo || ROTULO_OUTRO_NO_POP;
+}

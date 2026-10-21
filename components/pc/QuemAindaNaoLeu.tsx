@@ -23,7 +23,7 @@ export default function QuemAindaNaoLeu({ popId, versao, linhas, podeRegistrar, 
   const erroData = !data ? "Informe a data da leitura." : data > hoje ? "A leitura não pode ser no futuro." : "";
 
   return (
-    <div className="ficha-coluna ficha-leitura">
+    <div className="ficha-coluna ficha-leitura" id="ficha-quem-nao-leu" tabIndex={-1}>
       <div className="ficha-sub-linha">
         <h3 className="ficha-sub">Quem ainda não leu</h3>
       </div>

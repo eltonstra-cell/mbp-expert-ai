@@ -125,8 +125,9 @@ test("próxima ação 4: registro atrasado em relação à frequência já cadas
 test("próxima ação 5: leitura pendente da versão vigente", () => {
   const acao = proximaAcaoDoPop(base({ registros: [ultimoRegistro], leituraPendente: { lidos: 3, total: 6, faltam: ["Diego", "Elisa", "Fábio"] } }));
   assert.equal(acao.tipo, "leitura-pendente");
-  assert.match(acao.texto, /Faltam 3 pessoas lerem a v1\.0 \(Diego, Elisa, Fábio\)/);
-  assert.equal(acao.botao.rotulo, "Registrar leitura");
+  assert.equal(acao.texto, "Faltam 3 pessoas lerem a v1.0");
+  assert.ok(!/Diego|Elisa|Fábio/.test(acao.texto), "os nomes ficam só no bloco Quem ainda não leu");
+  assert.equal(acao.botao.rotulo, "Ver quem falta");
   assert.match(proximaAcaoDoPop(base({ registros: [ultimoRegistro], leituraPendente: { lidos: 5, total: 6, faltam: ["Ana"] } })).texto, /Falta 1 pessoa ler/);
 });
 

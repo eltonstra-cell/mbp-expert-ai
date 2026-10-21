@@ -17,7 +17,7 @@ import {
   type SituacaoDaValidade,
 } from "@/lib/registrosEmpresa";
 import { hojeISO } from "@/lib/popsNorma";
-import { avisoDePopAusente, sugestaoDePopParaTipo, tarjaDoComprovante, tiposDoPop } from "@/lib/comprovantePop";
+import { avisoDePopAusente, rotuloDoTipoNaFicha, sugestaoDePopParaTipo, tarjaDoComprovante, tiposDoPop } from "@/lib/comprovantePop";
 import { confirmar } from "@/lib/dialogos";
 import { quantidade } from "@/lib/plural";
 import type { ComprovanteTerceiro, ProcedimentoOperacionalPadronizado, TipoComprovante } from "@/types";
@@ -217,8 +217,8 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
           <div className="comp-grade">
             <label className="pc-field">
               <span className="ui-eyebrow">Tipo</span>
-              {popFixo && tiposDisponiveis.length === 1 ? (
-                <span className="comp-tipo-fixo">{tiposDisponiveis[0].rotulo}</span>
+              {popFixo && (tiposDisponiveis.length === 1 || Boolean(dados.renovaId)) ? (
+                <span className="comp-tipo-fixo">{rotuloDoTipoNaFicha(dados.tipo)}</span>
               ) : (
               <select className="ui-input ui-input--lista" value={dados.tipo} onChange={(evento) => campo("tipo", evento.target.value as TipoComprovante)}>
                 {(tiposDisponiveis.some((tipo) => tipo.id === dados.tipo) ? tiposDisponiveis : [...tiposDisponiveis, { id: dados.tipo, rotulo: rotuloDoTipo(dados.tipo) }]).map((tipo) => (
@@ -409,8 +409,8 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
               const detalhe = situacao === "vencido" ? `venceu há ${quantidade(Math.abs(dias), "dia", "dias")}` : dias === 0 ? "vence hoje" : `vence em ${quantidade(dias, "dia", "dias")}`;
               const codigo = item.popId ? codigoDoPop.get(item.popId) : undefined;
               return (
-                <div key={item.id} className="comp-item">
                 <ListRow
+                  key={item.id}
                   faixa={TOM[situacao]}
                   icone={<span aria-hidden="true">▤</span>}
                   titulo={rotuloDoTipo(item.tipo)}
@@ -452,23 +452,25 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
                         ]
                       : undefined
                   }
+                  filhos={
+                    // A tarja fica DENTRO do cartão, como faixa amarela no rodapé dele (fio de 1 px, sem folga nem borda própria).
+                    tarja ? (
+                      <div className="comp-tarja" role="note">
+                        <span>{tarja.texto}</span>
+                        {podeGerenciar && tarja.acao === "criar" && onCriarPopDoModelo && (
+                          <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={criarPopDaTarja}>
+                            Criar agora
+                          </button>
+                        )}
+                        {podeGerenciar && tarja.acao !== "criar" && onAlterarPop && (
+                          <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => setAlterandoPop({ id: item.id, popId: tarja.popSugeridoId || "" })}>
+                            {tarja.acao === "vincular" ? "Vincular" : "Mover"}
+                          </button>
+                        )}
+                      </div>
+                    ) : undefined
+                  }
                 />
-                {tarja && (
-                  <div className="comp-tarja" role="note">
-                    <span>{tarja.texto}</span>
-                    {podeGerenciar && tarja.acao === "criar" && onCriarPopDoModelo && (
-                      <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={criarPopDaTarja}>
-                        Criar agora
-                      </button>
-                    )}
-                    {podeGerenciar && tarja.acao !== "criar" && onAlterarPop && (
-                      <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => setAlterandoPop({ id: item.id, popId: tarja.popSugeridoId || "" })}>
-                        {tarja.acao === "vincular" ? "Vincular" : "Mover"}
-                      </button>
-                    )}
-                  </div>
-                )}
-                </div>
               );
             })}
           </div>

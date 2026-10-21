@@ -89,6 +89,18 @@ export default function PcFichaPop({ pop, empresa, usuario, podeEditar, onImprim
   const abaDoBotao = botao ? DESTINO_DA_ABA[botao.destino] : null;
   const botaoValido = botao && abaDoBotao && abas.includes(abaDoBotao);
   const editorVisivel = aba === "documento" || aba === "historico";
+  // "Ver quem falta" rola e leva o foco ao bloco "Quem ainda não leu" do próprio Resumo; os demais botões trocam de aba.
+  function irParaOBotao() {
+    if (botao?.destino === "leitura" && aba === "resumo") {
+      const bloco = document.getElementById("ficha-quem-nao-leu");
+      if (bloco) {
+        bloco.scrollIntoView({ behavior: "smooth", block: "center" });
+        bloco.focus({ preventScroll: true });
+        return;
+      }
+    }
+    if (abaDoBotao) setAba(abaDoBotao);
+  }
 
   const tomDaValidade = situacaoComprovante === "vencido" ? "nc" : situacaoComprovante === "vence-em-breve" ? "pend" : "ok";
   const detalheValidade = proximoComprovante
@@ -150,7 +162,7 @@ export default function PcFichaPop({ pop, empresa, usuario, podeEditar, onImprim
                 <span className="ficha-proxima-texto">{linha.acao.texto}</span>
               </div>
               {botaoValido && (
-                <button type="button" className="ui-btn ui-btn--criar" onClick={() => setAba(abaDoBotao!)}>
+                <button type="button" className="ui-btn ui-btn--criar" onClick={() => irParaOBotao()}>
                   {botao!.rotulo}
                 </button>
               )}
