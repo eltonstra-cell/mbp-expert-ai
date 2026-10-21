@@ -72,7 +72,7 @@ export default function PcDossie({ dados, urlDaFoto, onImprimir, onVoltar }: Pro
       <div className="ui-head no-print">
         <div>
           <h1 className="ui-title">Dossiê para fiscalização</h1>
-          <p className="ui-subtitle">{dossie.empresaNome} · um PDF com índice, só desta empresa</p>
+          <p className="ui-subtitle">Um PDF com índice, só desta empresa</p>
         </div>
         <div className="ui-head-actions">
           {gerado && (

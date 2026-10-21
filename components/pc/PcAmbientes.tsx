@@ -81,7 +81,7 @@ export default function PcAmbientes({
         <div>
           <h1 className="ui-title">Quais ambientes serão avaliados?</h1>
           <p className="ui-subtitle">
-            {empresa} · {data}. O checklist será montado a partir desta escolha.
+            {data}. O checklist será montado a partir desta escolha.
           </p>
         </div>
       </div>

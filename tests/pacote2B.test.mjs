@@ -27,7 +27,7 @@ const entrada = {
 test("B4: 'central', 'empresa', 'pop' e 'norma' acham a Central e suas sub-abas, com o caminho", () => {
   const destinos = construirDestinos(entrada);
   const titulos = (consulta) => buscar(consulta, destinos).map((item) => item.destino.titulo);
-  assert.equal(titulos("central")[0], "Central da Empresa · Padaria Teste");
+  assert.equal(titulos("central")[0], "Central da Empresa");
   assert.ok(titulos("central").includes("POPs da empresa") && titulos("central").includes("Dados da empresa"));
   assert.ok(titulos("empresa").includes("Dados da empresa"));
   assert.ok(titulos("pop").includes("POPs da empresa"));

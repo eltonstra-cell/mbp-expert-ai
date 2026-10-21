@@ -270,7 +270,7 @@ export function construirDestinos(entrada: EntradaDeDestinos): Destino[] {
     destinos.push({
       id: "ir:central-empresa",
       grupo: "ir",
-      titulo: entrada.nomeEmpresaAtiva ? `Central da Empresa · ${entrada.nomeEmpresaAtiva}` : "Central da Empresa",
+      titulo: "Central da Empresa",
       detalhe: "Empresas › Central da Empresa",
       sinonimos: ["central", "empresa", "dados da empresa", "cadastro", "documentos", "norma", "pops"],
       acao: { tipo: "central", subaba: entrada.subabaCentralInicial && subabas.includes(entrada.subabaCentralInicial) ? entrada.subabaCentralInicial : subabas.includes("dados") ? "dados" : subabas[0] },

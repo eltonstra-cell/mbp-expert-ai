@@ -189,7 +189,6 @@ export default function PcPrivacidadeEmpresa({
           <div className="pc-modal-backdrop" onClick={() => setJanelaAberta(false)} />
           <section className="pc-modal priv-janela" role="dialog" aria-modal="true" aria-label="Liberar a IA, primeira vez nesta empresa">
             <h2 className="pc-modal-title">Liberar a IA, primeira vez nesta empresa</h2>
-            <p className="ui-subtitle">{empresaNome}</p>
             <p className="priv-texto-janela">
               A foto sai do aparelho e vai para um provedor externo de IA, que devolve uma sugestão de texto. Evite rostos, crachás e documentos. Você pode desligar quando quiser.
             </p>

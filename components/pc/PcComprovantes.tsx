@@ -182,7 +182,7 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
         {!embutido && (
           <div>
             <h1 className="ui-title">Comprovantes e documentos com validade</h1>
-            <p className="ui-subtitle">Certificados de terceiros · {empresa}</p>
+            <p className="ui-subtitle">Certificados de terceiros</p>
           </div>
         )}
         <div className="ui-head-actions">

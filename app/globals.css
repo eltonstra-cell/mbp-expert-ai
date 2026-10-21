@@ -3989,3 +3989,20 @@ select:disabled{background-color:#EEF1F5;opacity:.8}
 /* D3: contorno dos campos no contraste do padrão, inclusive onde o campo vem das classes do Tailwind */
 html:not([data-modo="campo"]) :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),select,textarea){border-color:#B4C2CE}
 html:not([data-modo="campo"]) :is(input,select,textarea):is(.is-invalid,[aria-invalid="true"]){border-color:#D93A3A}
+
+/* Rodada pós-reteste do Pacote 2: nome da página no topo e textos de apoio no PC */
+.pc-crumb-current,.pc-crumb,.pc-crumb-link{font-family:var(--font-display),"Outfit",sans-serif;font-size:18px;font-weight:500;line-height:1.1;color:#12202B}
+.pc-crumb-link:hover{text-decoration:none;color:#12202B}
+.pc-crumb-sep{font-size:18px;color:#12202B}
+html:not([data-modo="campo"]) :is(.ui-row-sub,.ui-subtitle,.pgl-detalhe,.pgl-acao,.comp-emissor,.hoje-textos .ui-row-sub){font-size:.94rem;color:#2B3E4C}
+
+/* Busca na própria barra: painel de resultados colado embaixo, da mesma largura */
+.pc-busca{position:relative;width:min(760px,100%)}
+.pc-busca .pc-smartbar{width:100%}
+.pc-smartbar.is-aberta{border-color:#E8B04B;border-bottom-left-radius:0;border-bottom-right-radius:0}
+.pc-busca-input{flex:1;min-width:0;min-height:40px;border:0!important;background:transparent;font-size:1.05rem;color:#12202B;outline:none}
+.pc-busca-input::placeholder{color:#3D5160}
+.pc-busca-painel{position:absolute;top:100%;left:0;right:0;z-index:70;display:flex;flex-direction:column;max-height:min(60vh,520px);overflow-y:auto;margin-top:-2px;padding:8px;border:2px solid #E8B04B;border-top:0;border-radius:0 0 16px 16px;background:#fff;box-shadow:0 10px 24px rgba(18,32,43,.14)}
+.pc-busca-painel .pc-cmd-option-detail{font-size:.94rem;color:#2B3E4C}
+.pc-busca-painel .pc-cmd-option-title{font-size:1rem}
+.pc-busca-painel .pc-cmd-foot{border-top:1px solid #DDE6EA;padding:8px 6px 2px}

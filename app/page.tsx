@@ -117,7 +117,7 @@ import { mostrarToast } from "@/lib/toast";
 import { limparTextoDePessoa, nomeECargo, nomeProprio } from "@/lib/nomeCargo";
 import { diasEntreDatas, formatarData, formatarDataCurta, formatarDataHora, formatarHora, hojeLocalISO } from "@/lib/dataLocal";
 import { palavra as pal, quantidade as qtd } from "@/lib/plural";
-import { gruposVisiveis, lembrarSubaba, lerSubabaLembrada, resolverSubaba, subabasVisiveis, type SubAbaCentral } from "@/lib/centralEmpresa";
+import { ROTULO_DA_SUBABA, gruposVisiveis, lembrarSubaba, lerSubabaLembrada, resolverSubaba, subabasVisiveis, type SubAbaCentral } from "@/lib/centralEmpresa";
 import { empresaTemImplantacao, implantacaoConcluida, implantacaoDeEmpresaNova, passosDeImplantacao } from "@/lib/implantacao";
 import { divergenciaDeResponsavel, responsavelEfetivo, textoDoResponsavel } from "@/lib/responsavelEstabelecimento";
 import type { AbaFicha } from "@/components/pc/PcFichaPop";
@@ -782,6 +782,8 @@ export default function Home() {
   }, [modo, view]);
   const [caixaAberta, setCaixaAberta] = useState(false);
   const [caixaComVoz, setCaixaComVoz] = useState(false);
+  const [buscaNaBarraAtiva, setBuscaNaBarraAtiva] = useState(false);
+  const [pedidoDeFocoNaBusca, setPedidoDeFocoNaBusca] = useState(0);
   // Foto escolhida em "Registrar": confirma o vínculo antes de enviar (nada é vinculado em silêncio).
   const [confirmaFoto, setConfirmaFoto] = useState<{
     arquivo: File;
@@ -819,8 +821,14 @@ export default function Home() {
     const aoTeclar = (evento: KeyboardEvent) => {
       if ((evento.ctrlKey || evento.metaKey) && evento.key.toLowerCase() === "k") {
         evento.preventDefault();
-        setCaixaComVoz(false);
-        setCaixaAberta((aberta) => !aberta);
+        // No PC a busca vive na barra do topo: Ctrl K só leva o foco para ela. Sem barra visível (celular), abre a caixa.
+        const barra = document.getElementById("pc-busca-input");
+        if (barra && barra.offsetParent !== null) {
+          setPedidoDeFocoNaBusca((n) => n + 1);
+        } else {
+          setCaixaComVoz(false);
+          setCaixaAberta((aberta) => !aberta);
+        }
       }
     };
     window.addEventListener("keydown", aoTeclar);
@@ -6283,7 +6291,7 @@ export default function Home() {
         }
       : null;
   const podeUsarChecklistNaBusca = permitido("visitas.executar", visitaAtual?.empresaId ?? atual?.id);
-  const destinosCaixa: Destino[] = caixaAberta
+  const destinosCaixa: Destino[] = caixaAberta || buscaNaBarraAtiva
     ? construirDestinos({
         itensMenu: itensVisiveis(contextoMenu),
         empresas: Object.values(db.empresas)
@@ -6937,7 +6945,10 @@ export default function Home() {
           iniciais={iniciaisUsuario}
           mostrarTodasVisitas={dentroDaVisita}
           onTodasVisitas={() => navegarPrincipal("visitas")}
-          onAbrirCaixa={(comVoz) => { setCaixaComVoz(comVoz); setCaixaAberta(true); }}
+          destinos={destinosCaixa}
+          onEscolherDestino={escolherDestinoDaCaixa}
+          onBuscaAtiva={setBuscaNaBarraAtiva}
+          pedidoDeFocoNaBusca={pedidoDeFocoNaBusca}
           micDisponivel={deveExibirRecursosDeIa(usuarioDaSessao)}
           modo={modo}
           sincronizacao={{
@@ -7262,8 +7273,7 @@ export default function Home() {
           <section className="central-empresa" aria-label="Documentos da empresa">
             <div className="ui-head cen-cabeca">
               <div>
-                <div className="ui-eyebrow">Documentos</div>
-                <h1 className="ui-title">{nomeParaExibir(atual)}</h1>
+                <h1 className="ui-title">{ROTULO_DA_SUBABA[subabaDosDocumentos]}</h1>
               </div>
             </div>
             {fichaAbertaRotulo && subabaDosDocumentos === "pops" ? (
@@ -7277,8 +7287,7 @@ export default function Home() {
           <section className="central-empresa" aria-label={editingEmpresaId ? "Central da Empresa" : "Nova empresa"}>
             <div className="ui-head cen-cabeca">
               <div>
-                <div className="ui-eyebrow">{editingEmpresaId ? "Central da Empresa" : "Cadastro"}</div>
-                <h1 className="ui-title">{editingEmpresaId && empresaGerenciada ? nomeParaExibir(empresaGerenciada) : "Nova empresa"}</h1>
+                <h1 className="ui-title">{editingEmpresaId && empresaGerenciada ? ROTULO_DA_SUBABA[(secaoEmpresa as SubAbaCentral) || "dados"] || "Central da Empresa" : "Nova empresa"}</h1>
                 {!editingEmpresaId && <p className="ui-subtitle">Digite o CNPJ, confira os dados básicos e salve para abrir a Central da Empresa.</p>}
               </div>
               <button
@@ -7871,7 +7880,7 @@ export default function Home() {
             return (
               <PcChecklist
                 titulo="Checklist"
-                subtitulo={`${respondidos} de ${totalChecklist} respondidos · ${percentualChecklist}% · ${nomeParaExibir(empresaVisita)}`}
+                subtitulo={`${respondidos} de ${totalChecklist} respondidos · ${percentualChecklist}%`}
                 ambientes={infosAmbientes}
                 ambienteAtual={ambienteDoFoco}
                 onAmbiente={(nome) => {

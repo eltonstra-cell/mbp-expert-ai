@@ -24,7 +24,7 @@ export default function PcEvolucao({ empresa, visitas, ncs, hoje, onVoltar }: Pr
       <div className="ui-head">
         <div>
           <h1 className="ui-title">Evolução</h1>
-          <p className="ui-subtitle">{empresa} · conformidade, reincidentes e tempo para resolver</p>
+          <p className="ui-subtitle">Conformidade, reincidentes e tempo para resolver</p>
         </div>
         <button type="button" className="ui-btn ui-btn--secondary" onClick={onVoltar}>
           ← Voltar

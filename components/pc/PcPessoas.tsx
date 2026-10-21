@@ -87,7 +87,7 @@ export default function PcPessoas({ empresa, normas, colaboradores, capacitacoes
         <div className="ui-head">
           <div>
             <h1 className="ui-title">Pessoas</h1>
-            <p className="ui-subtitle">Equipe e capacitação · {empresa}</p>
+            <p className="ui-subtitle">Equipe e capacitação</p>
           </div>
           <button type="button" className="ui-btn ui-btn--secondary" onClick={onVoltar}>
             ← Voltar

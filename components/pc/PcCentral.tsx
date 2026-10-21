@@ -65,7 +65,7 @@ export default function PcCentral({
     <section className="ui-screen" aria-label="Central da visita">
       <div className="ui-head">
         <div>
-          <h1 className="ui-title">{empresa}</h1>
+          <h1 className="ui-title">Central da visita</h1>
           <p className="ui-subtitle">{detalhe}</p>
         </div>
         <div className="ui-head-actions">

@@ -59,7 +59,7 @@ export default function PcPopsVisita({ empresa, data, resumo, linhas, podeCriar,
         <div>
           <h1 className="ui-title">POPs da visita</h1>
           <p className="ui-subtitle">
-            Procedimentos sugeridos para as não conformidades · {empresa} · {data}
+            Procedimentos sugeridos para as não conformidades · {data}
           </p>
         </div>
         <div className="ui-head-actions">

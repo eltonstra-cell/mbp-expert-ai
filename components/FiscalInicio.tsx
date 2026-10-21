@@ -32,7 +32,7 @@ export default function FiscalInicio({
       <div className="ui-head">
         <div>
           <h1 className="ui-title">Olá, {nome}</h1>
-          <p className="ui-subtitle">{empresa ? `Leitura · ${empresa}` : "Leitura"}</p>
+          <p className="ui-subtitle">Leitura</p>
         </div>
       </div>
       <div className="ui-scroll">

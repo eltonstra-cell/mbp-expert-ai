@@ -726,7 +726,7 @@ export default function PcEvidencias({
         <div>
           <h1 className="ui-title">Evidências</h1>
           <p className="ui-subtitle">
-            Fotos e áudios da visita · {empresa} · {data}
+            Fotos e áudios da visita · {data}
           </p>
         </div>
         {pendentesNaFila ? (

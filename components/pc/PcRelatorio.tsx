@@ -67,7 +67,7 @@ export default function PcRelatorio({
         <div>
           <h1 className="ui-title">Relatório</h1>
           <p className="ui-subtitle">
-            {empresa} · {data} · {concluida ? "inspeção concluída" : "inspeção em andamento"}
+            {data} · {concluida ? "inspeção concluída" : "inspeção em andamento"}
           </p>
         </div>
         <div className="ui-head-actions">

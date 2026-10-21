@@ -185,7 +185,6 @@ export default function PcVisitas({ empresaAtiva, visitas, filtro, onFiltro, his
       <div className="ui-head">
         <div>
           <h1 className="ui-title">Visitas</h1>
-          <p className="ui-subtitle">Por empresa · ativa: {empresaAtiva}</p>
         </div>
       </div>
 
