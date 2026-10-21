@@ -23,8 +23,17 @@ export type DadosConferencia = {
   cadastroPreenchidos: number;
   cadastroTotal: number;
   /** Quem assina o relatório (nome, cargo e CRN) e se a pessoa que olha pode abrir o cadastro (Acessos). Sem isso, a linha não aparece. */
-  assinatura?: { nome?: string; cargo?: string; crn?: string; podeAbrirCadastro: boolean };
+  assinatura?: { nome?: string; cargo?: string; crn?: string; destinoDoCrn: DestinoDoPreencherCrn };
 };
+
+/** Para onde "Preencher CRN" leva: o Administrador vai a Acessos; o próprio Consultor/RT, a Meu perfil; os demais não têm onde preencher. */
+export type DestinoDoPreencherCrn = "acessos" | "perfil" | null;
+
+export function destinoDoPreencherCrn(quem: { perfil?: string; podeGerenciarAcessos: boolean }): DestinoDoPreencherCrn {
+  if (quem.podeGerenciarAcessos) return "acessos";
+  if (quem.perfil === "Consultor/RT") return "perfil";
+  return null;
+}
 
 /** Falta alguma coisa na assinatura? Devolve o que falta ("cargo e CRN"), ou vazio quando está completa. */
 export function faltasDaAssinatura(assinatura: { nome?: string; cargo?: string; crn?: string }): string {
@@ -46,8 +55,8 @@ export function conferenciaDoRelatorio(dados: DadosConferencia): LinhaConferenci
           rotulo: "Responsável pela assinatura: nome, cargo e CRN",
           ok: !faltaNaAssinatura,
           resumo: faltaNaAssinatura ? `Falta ${faltaNaAssinatura}` : [dados.assinatura.nome, dados.assinatura.cargo, dados.assinatura.crn].map((texto) => (texto || "").trim()).join(" · "),
-          acao: dados.assinatura.podeAbrirCadastro ? "Abrir cadastro" : null,
-          ...(dados.assinatura.podeAbrirCadastro ? {} : { semAcao: "Peça ao Administrador" }),
+          acao: dados.assinatura.destinoDoCrn ? "Preencher CRN" : null,
+          ...(dados.assinatura.destinoDoCrn ? {} : { semAcao: "Peça ao Administrador" }),
         },
       ]
     : [];

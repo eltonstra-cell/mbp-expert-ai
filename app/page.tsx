@@ -50,7 +50,7 @@ import PcPopsVisita from "@/components/pc/PcPopsVisita";
 import PcRelatorio, { type SecaoRelatorio } from "@/components/pc/PcRelatorio";
 import PcAjuda from "@/components/pc/PcAjuda";
 import { passoDaView, passosDaTrilha, percentualDaVisita, type PassoVisita } from "@/lib/visitTrail";
-import { conferenciaDoRelatorio } from "@/lib/reportCheck";
+import { conferenciaDoRelatorio, destinoDoPreencherCrn } from "@/lib/reportCheck";
 import { ocultarAmbiente, mostrarAmbiente, excluirAmbienteOculto, resumoOcultos } from "@/lib/hiddenEnvs";
 import { reincidenciaDaNc } from "@/lib/actionPlan";
 import { acharItemDeDestino, mostrarCartaoProximaEtapa, primeiroItemSemResposta, proximaEtapaDaVisita, textoDoContinuar, type ItemDeDestino } from "@/lib/proximaEtapa";
@@ -6465,6 +6465,7 @@ export default function Home() {
     correcoesAbertas: ncsAbertas,
     popsPendentes: resumoPopsVisita.pendentes,
   };
+  const destinoDoCrn = destinoDoPreencherCrn({ perfil: usuarioDaSessao?.perfil, podeGerenciarAcessos: permitido("usuarios.gerenciar") });
   const linhasConferenciaRel = conferenciaDoRelatorio({
                   respondidos,
                   totalChecklist,
@@ -6476,7 +6477,7 @@ export default function Home() {
                   popsSugeridos: resumoPopsVisita.linhas.length,
                   cadastroPreenchidos: empresaVisita ? preparacaoDaEmpresa(empresaVisita).preenchidos : 0,
                   cadastroTotal: empresaVisita ? preparacaoDaEmpresa(empresaVisita).total : 0,
-                  assinatura: { nome: usuarioDaSessao?.nome || sessaoAtual?.name, cargo: usuarioDaSessao?.cargo, crn: usuarioDaSessao?.crn, podeAbrirCadastro: permitido("usuarios.gerenciar") },
+                  assinatura: { nome: usuarioDaSessao?.nome || sessaoAtual?.name, cargo: usuarioDaSessao?.cargo, crn: usuarioDaSessao?.crn, destinoDoCrn: destinoDoCrn },
   });
   const passoAtualDaTrilha = passoDaView(view);
   const percentualVisitaTrilha = percentualDaVisita(respondidos, totalChecklist);
@@ -6961,7 +6962,7 @@ export default function Home() {
             assinante={usuarioDaSessao?.nome || sessaoAtual?.name || "RT"}
             cargo={usuarioDaSessao?.cargo || ""}
             crn={usuarioDaSessao?.crn || ""}
-            onPreencherCrn={permitido("usuarios.gerenciar") ? () => { setEmitirAberto(false); setView("acessos"); } : undefined}
+            onPreencherCrn={destinoDoCrn ? () => { setEmitirAberto(false); if (destinoDoCrn === "perfil") setPerfilAberto(true); else setView("acessos"); } : undefined}
             emitindo={emitindoRelatorio}
             erro={erroDeEmissao}
             onConfirmar={(motivo) => void emitirRelatorioDaVisita(motivo)}
@@ -8691,7 +8692,10 @@ export default function Home() {
                   else if (destino === "correcoes") setView("correcoes");
                   else if (destino === "evidencias") abrirEvidencias();
                   else if (destino === "pops") setView("popsvisita");
-                  else if (destino === "assinatura") setView("acessos");
+                  else if (destino === "assinatura") {
+                    if (destinoDoCrn === "perfil") setPerfilAberto(true);
+                    else setView("acessos");
+                  }
                   else abrirSecaoEmpresaPeloMenu("dados");
                 }}
                 onSelecionavel={(tipo) => void gerarPdfSelecionavel(tipo)}

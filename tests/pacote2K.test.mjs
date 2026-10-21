@@ -103,3 +103,21 @@ test("Resumo da ficha: botões na linha do título de cada bloco e textos escuro
   assert.ok(ficha.includes("ficha-sub-linha") && !ficha.includes("ficha-rodape-resumo"));
   assert.match(ler("../app/globals.css"), /\.ficha-lista,\.ficha-vazio\{font-size:1rem;color:#12202B\}/);
 });
+
+import { conferenciaDoRelatorio, destinoDoPreencherCrn } from "../lib/reportCheck.ts";
+
+test("'Preencher CRN': Administrador vai a Acessos, o próprio RT a Meu perfil, os demais não têm botão", () => {
+  assert.equal(destinoDoPreencherCrn({ perfil: "Administrador", podeGerenciarAcessos: true }), "acessos");
+  assert.equal(destinoDoPreencherCrn({ perfil: "Consultor/RT", podeGerenciarAcessos: false }), "perfil");
+  assert.equal(destinoDoPreencherCrn({ perfil: "Cliente Gestor", podeGerenciarAcessos: false }), null);
+  assert.equal(destinoDoPreencherCrn({ perfil: "Gerente", podeGerenciarAcessos: false }), null);
+  const base = { respondidos: 1, totalChecklist: 1, ncsAbertas: 0, ncsSemResponsavelOuPrazo: 0, evidencias: 1, popsPendentes: 0, popsSugeridos: 0, cadastroPreenchidos: 1, cadastroTotal: 0 };
+  const linhas = (destinoDoCrn) => conferenciaDoRelatorio({ ...base, assinatura: { nome: "Ana", cargo: "RT", crn: "", destinoDoCrn } });
+  assert.equal(linhas("perfil").find((linha) => linha.chave === "assinatura").acao, "Preencher CRN");
+  assert.equal(linhas("acessos").find((linha) => linha.chave === "assinatura").acao, "Preencher CRN");
+  assert.equal(linhas(null).find((linha) => linha.chave === "assinatura").acao, null);
+  assert.equal(linhas(null).find((linha) => linha.chave === "assinatura").semAcao, "Peça ao Administrador");
+  assert.equal(linhas("perfil").find((linha) => linha.chave === "empresa").acao, "Abrir cadastro", "Abrir cadastro fica só no item Cadastro da empresa");
+  const pagina = ler("../app/page.tsx");
+  assert.ok(pagina.includes('if (destinoDoCrn === "perfil") setPerfilAberto(true)'));
+});

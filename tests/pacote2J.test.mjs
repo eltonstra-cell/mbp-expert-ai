@@ -86,14 +86,14 @@ const dadosBase = { respondidos: 1, totalChecklist: 1, ncsAbertas: 0, ncsSemResp
 
 test("conferência: linha 'Responsável pela assinatura' com pendência igual às outras", () => {
   assert.equal(conferenciaDoRelatorio(dadosBase).some((linha) => linha.chave === "assinatura"), false, "sem dados da assinatura a linha não aparece");
-  const semCrn = conferenciaDoRelatorio({ ...dadosBase, assinatura: { nome: "Ana", cargo: "Nutricionista RT", crn: "", podeAbrirCadastro: true } }).find((linha) => linha.chave === "assinatura");
+  const semCrn = conferenciaDoRelatorio({ ...dadosBase, assinatura: { nome: "Ana", cargo: "Nutricionista RT", crn: "", destinoDoCrn: "acessos" } }).find((linha) => linha.chave === "assinatura");
   assert.equal(semCrn.ok, false);
   assert.equal(semCrn.resumo, "Falta CRN");
-  assert.equal(semCrn.acao, "Abrir cadastro");
-  const comum = conferenciaDoRelatorio({ ...dadosBase, assinatura: { nome: "Ana", cargo: "Nutricionista RT", crn: "", podeAbrirCadastro: false } }).find((linha) => linha.chave === "assinatura");
+  assert.equal(semCrn.acao, "Preencher CRN");
+  const comum = conferenciaDoRelatorio({ ...dadosBase, assinatura: { nome: "Ana", cargo: "Nutricionista RT", crn: "", destinoDoCrn: null } }).find((linha) => linha.chave === "assinatura");
   assert.equal(comum.acao, null);
   assert.equal(comum.semAcao, "Peça ao Administrador");
-  const completa = conferenciaDoRelatorio({ ...dadosBase, assinatura: { nome: "Ana", cargo: "Nutricionista RT", crn: "CRN-2 1", podeAbrirCadastro: true } }).find((linha) => linha.chave === "assinatura");
+  const completa = conferenciaDoRelatorio({ ...dadosBase, assinatura: { nome: "Ana", cargo: "Nutricionista RT", crn: "CRN-2 1", destinoDoCrn: "acessos" } }).find((linha) => linha.chave === "assinatura");
   assert.equal(completa.ok, true);
   assert.equal(completa.resumo, "Ana · Nutricionista RT · CRN-2 1");
   assert.equal(faltasDaAssinatura({ nome: "Ana" }), "cargo e CRN");
