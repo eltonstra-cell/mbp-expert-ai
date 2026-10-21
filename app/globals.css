@@ -4190,3 +4190,7 @@ html[data-modo="equilibrado"] .pc-busca,html[data-modo="completo"] .pc-busca{dis
 /* Comprovantes: a tarja é o rodapé amarelo do próprio cartão (fio de 1 px, largura inteira, sem folga nem borda própria) */
 .ui-row-extra:has(> .comp-tarja){padding:0}
 .ui-row-extra > .comp-tarja{margin:0;padding:6px 14px 6px 18px;border:0;border-top:1px solid #E8B04B;border-radius:0;background:#FFF3D6}
+
+/* Busca por voz: pergunta do painel (você quis dizer, trocar de empresa, sem visita, não entendi) */
+.pc-busca-pergunta{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 12px;padding:8px 10px;border:1px solid #E8B04B;border-radius:10px;background:#FEF6E6;font-size:.94rem;color:#12202B}
+.pc-busca-pergunta-botoes{display:flex;gap:8px}

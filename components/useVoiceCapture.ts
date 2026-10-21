@@ -16,8 +16,11 @@ const TIPOS_PREFERIDOS = ["audio/mp4", "audio/webm;codecs=opus", "audio/webm", "
 export function useVoiceCapture({
   limiteMs = LIMITE_DA_GRAVACAO_MS,
   silencioMs = SILENCIO_PARA_PARAR_MS,
+  contexto,
   onTexto,
 }: {
+  /** "busca": o servidor acrescenta à transcrição os termos do app e os nomes das empresas da pessoa (vão à OpenAI junto com o áudio). */
+  contexto?: "busca";
   limiteMs?: number;
   /** Silêncio (depois de começar a falar) que encerra a gravação sozinha; 0 desliga. */
   silencioMs?: number;
@@ -141,6 +144,7 @@ export function useVoiceCapture({
         const extensao = tipoAudio.includes("webm") ? "webm" : tipoAudio.includes("ogg") ? "ogg" : tipoAudio.includes("wav") ? "wav" : "m4a";
         const form = new FormData();
         form.append("audio", audio, `busca.${extensao}`);
+        if (contexto) form.append("contexto", contexto);
         const resposta = await fetch(ENDPOINT, { method: "POST", credentials: "same-origin", body: form });
         const corpo = await resposta.json().catch(() => null);
         if (!resposta.ok) {
@@ -195,7 +199,7 @@ export function useVoiceCapture({
     timerRef.current = window.setTimeout(() => {
       if (gravador.state === "recording") gravador.stop();
     }, limiteMs);
-  }, [estado, limiteMs, silencioMs, soltarMicrofone]);
+  }, [estado, limiteMs, silencioMs, contexto, soltarMicrofone]);
 
   useEffect(
     () => () => {

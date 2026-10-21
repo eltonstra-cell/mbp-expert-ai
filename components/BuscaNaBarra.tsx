@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { NavIcon } from "@/components/NavIcons";
 import { useVoiceCapture } from "@/components/useVoiceCapture";
-import { ORDEM_GRUPOS_BUSCA, buscar, destinoParaAbrirSozinho, type Destino, type GrupoBusca, type Resultado } from "@/lib/commandSearch";
+import { ORDEM_GRUPOS_BUSCA, buscar, type Destino, type GrupoBusca, type Resultado } from "@/lib/commandSearch";
+import { interpretarVoz, type EmpresaDaVoz, type InterpretacaoDaVoz } from "@/lib/vozComando";
 import { lerRecentes, registrarRecente, type Recente } from "@/lib/buscaRecentes";
 import { modoDaBusca } from "@/lib/topoCompacto";
 
@@ -14,6 +15,18 @@ const LIMITE_POR_GRUPO: Record<GrupoBusca, number> = { ir: 6, agir: 4, itens: 8,
 const CONTAGEM_DA_ABERTURA_MS = 2000;
 
 export type AtalhoDaBusca = { id: string; rotulo: string; onClick: () => void };
+
+/** O que a busca por voz precisa saber para entender "[destino] em [empresa]" (só o que o perfil já acessa). */
+export type ContextoDaVoz = {
+  empresas: EmpresaDaVoz[];
+  empresaAtivaId: string | null;
+  /** Etapas da visita (Checklist, Evidências, Relatório, POPs da visita) que o perfil pode abrir, haja visita ou não. */
+  destinosDaVisita: Destino[];
+  temVisitaNaEmpresa: (empresaId: string) => boolean;
+  /** Troca de empresa e abre o destino (só depois de confirmação por clique). */
+  onTrocarEAbrir: (empresaId: string, destino: Destino) => void;
+  onAbrirVisitas: () => void;
+};
 
 type Props = {
   destinos: Destino[];
@@ -28,12 +41,13 @@ type Props = {
   micDisponivel: boolean;
   /** Muda a cada Ctrl K: leva o foco para a barra. */
   pedidoDeFoco: number;
+  voz?: ContextoDaVoz;
 };
 
 // A busca vive na linha do topo, à direita do nome da página. Janela larga (1400 px ou mais): campo na barra. Janela estreita: lupa + "Ctrl K"
 // e o campo de digitação passa para o topo do painel. Em ambos o painel abre colado (8 px), com 520 px (limitado à janela): com o campo vazio
 // mostra atalhos e recentes; ao digitar, os resultados. Por voz, destino único de navegação abre sozinho depois de 2 s, com Cancelar.
-export default function BuscaNaBarra({ destinos, atalhos, usuarioId, onAtiva, onEscolher, micDisponivel, pedidoDeFoco }: Props) {
+export default function BuscaNaBarra({ destinos, atalhos, usuarioId, onAtiva, onEscolher, micDisponivel, pedidoDeFoco, voz: contextoDaVoz }: Props) {
   const [consulta, setConsulta] = useState("");
   const [aberto, setAberto] = useState(false);
   const [indice, setIndice] = useState(0);
@@ -42,10 +56,13 @@ export default function BuscaNaBarra({ destinos, atalhos, usuarioId, onAtiva, on
   const [compacta, setCompacta] = useState(false);
   const [textoDaVoz, setTextoDaVoz] = useState<string | null>(null);
   const [abrindo, setAbrindo] = useState<Destino | null>(null);
+  /** O que a voz entendeu e ainda pede uma resposta da pessoa (você quis dizer, trocar de empresa, sem visita, não entendi). */
+  const [pergunta, setPergunta] = useState<InterpretacaoDaVoz | null>(null);
   const campoRef = useRef<HTMLInputElement | null>(null);
   const raizRef = useRef<HTMLDivElement | null>(null);
 
   const voz = useVoiceCapture({
+    contexto: "busca",
     onTexto: (texto) => {
       setConsulta(texto);
       setIndice(0);
@@ -63,6 +80,7 @@ export default function BuscaNaBarra({ destinos, atalhos, usuarioId, onAtiva, on
   function fechar() {
     setAberto(false);
     setAbrindo(null);
+    setPergunta(null);
     onAtiva(false);
   }
 
@@ -129,13 +147,49 @@ export default function BuscaNaBarra({ destinos, atalhos, usuarioId, onAtiva, on
     document.getElementById(`pc-busca-opcao-${indice}`)?.scrollIntoView({ block: "nearest" });
   }, [indice]);
 
-  // Depois da voz: se o resultado for único e claro e for só navegação, abre sozinho depois da contagem; senão a pessoa escolhe.
+  // Depois da voz: entende o comando (simples ou "[destino] em [empresa]"). Só navegação com resultado único e claro abre sozinha (contagem e
+  // Cancelar); aproximação, troca de empresa e "sem visita" sempre perguntam; sem entendimento, nunca fica calada.
   useEffect(() => {
     if (textoDaVoz === null || destinos.length === 0) return;
-    const achado = destinoParaAbrirSozinho(buscar(textoDaVoz, destinos, { limite: 60 }), textoDaVoz);
+    const interpretacao = interpretarVoz(textoDaVoz, {
+      destinos,
+      destinosDaVisita: contextoDaVoz?.destinosDaVisita ?? [],
+      empresas: contextoDaVoz?.empresas ?? [],
+      empresaAtivaId: contextoDaVoz?.empresaAtivaId ?? null,
+      temVisitaNaEmpresa: contextoDaVoz?.temVisitaNaEmpresa ?? (() => false),
+    });
     setTextoDaVoz(null);
-    if (achado) setAbrindo(achado);
+    executarInterpretacao(interpretacao);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [textoDaVoz, destinos]);
+
+  function executarInterpretacao(interpretacao: InterpretacaoDaVoz) {
+    if (interpretacao.tipo === "abrir") setAbrindo(interpretacao.destino);
+    else if (interpretacao.tipo === "abrir-agora") escolher({ destino: interpretacao.destino, pontos: 0 });
+    else if (interpretacao.tipo === "escolher") setPergunta(null);
+    else setPergunta(interpretacao);
+  }
+
+  function aoConfirmarPergunta() {
+    if (!pergunta) return;
+    if (pergunta.tipo === "quis-dizer") {
+      const proxima = pergunta.depois;
+      setPergunta(null);
+      executarInterpretacao(proxima);
+    } else if (pergunta.tipo === "trocar-e-abrir") {
+      const { empresa, destino } = pergunta;
+      registrarRecente(destino, usuarioId); // só o destino; o nome da empresa nunca entra nos recentes
+      setConsulta("");
+      setPergunta(null);
+      fechar();
+      contextoDaVoz?.onTrocarEAbrir(empresa.id, destino);
+    } else if (pergunta.tipo === "sem-visita") {
+      setConsulta("");
+      setPergunta(null);
+      fechar();
+      contextoDaVoz?.onAbrirVisitas();
+    }
+  }
 
   useEffect(() => {
     if (!abrindo) return;
@@ -151,6 +205,7 @@ export default function BuscaNaBarra({ destinos, atalhos, usuarioId, onAtiva, on
     setConsulta("");
     setIndice(0);
     setTextoDaVoz(null);
+    setPergunta(null);
     fechar();
     campoRef.current?.blur();
     onEscolher(resultado.destino);
@@ -195,6 +250,7 @@ export default function BuscaNaBarra({ destinos, atalhos, usuarioId, onAtiva, on
         setConsulta(evento.target.value);
         setIndice(0);
         setAbrindo(null);
+        setPergunta(null);
         abrir();
       }}
     />
@@ -267,6 +323,71 @@ export default function BuscaNaBarra({ destinos, atalhos, usuarioId, onAtiva, on
               <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => setAbrindo(null)}>
                 Cancelar
               </button>
+            </div>
+          )}
+
+          {pergunta && pergunta.tipo === "quis-dizer" && (
+            <div className="pc-busca-pergunta" role="status">
+              <span>
+                Você quis dizer: <strong>{pergunta.rotulo}</strong>?
+              </span>
+              <span className="pc-busca-pergunta-botoes">
+                <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={aoConfirmarPergunta}>
+                  Sim
+                </button>
+                <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => setPergunta(null)}>
+                  Não
+                </button>
+              </span>
+            </div>
+          )}
+          {pergunta && pergunta.tipo === "trocar-e-abrir" && (
+            <div className="pc-busca-pergunta" role="status">
+              <span>
+                Trocar para <strong>{pergunta.empresa.nome}</strong> e abrir <strong>{pergunta.destino.titulo}</strong>?
+              </span>
+              <span className="pc-busca-pergunta-botoes">
+                <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={aoConfirmarPergunta}>
+                  Trocar e abrir
+                </button>
+                <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => setPergunta(null)}>
+                  Cancelar
+                </button>
+              </span>
+            </div>
+          )}
+          {pergunta && pergunta.tipo === "sem-visita" && (
+            <div className="pc-busca-pergunta" role="status">
+              <span>
+                Não há visita em andamento em <strong>{pergunta.empresa.nome}</strong>. Abrir Visitas?
+              </span>
+              <span className="pc-busca-pergunta-botoes">
+                <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={aoConfirmarPergunta}>
+                  Abrir Visitas
+                </button>
+                <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => setPergunta(null)}>
+                  Cancelar
+                </button>
+              </span>
+            </div>
+          )}
+          {pergunta && pergunta.tipo === "nao-entendi" && (
+            <div className="pc-busca-pergunta" role="status">
+              <span>
+                Não entendi. Você disse: <strong>“{pergunta.texto}”</strong>. Edite o texto na barra ou fale de novo.
+              </span>
+              {micDisponivel && (
+                <button
+                  type="button"
+                  className="ui-btn ui-btn--secondary ui-btn--small"
+                  onClick={() => {
+                    setPergunta(null);
+                    void voz.iniciar();
+                  }}
+                >
+                  Falar de novo
+                </button>
+              )}
             </div>
           )}
 

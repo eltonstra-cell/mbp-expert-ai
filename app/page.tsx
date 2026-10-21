@@ -103,7 +103,8 @@ import { ROTULO_DE_USO, descreverAparelho } from "@/lib/screenMode";
 import { preparacaoDaEmpresa, pendenciasDaEmpresa, textoDaPendencia, destinoDaPendencia } from "@/lib/companyReadiness";
 import ChecklistEnvStrip from "@/components/ChecklistEnvStrip";
 import CommandPalette from "@/components/CommandPalette";
-import { construirDestinos, type Destino } from "@/lib/commandSearch";
+import { construirDestinos, construirDestinosDaVisita, type Destino, type EntradaDeDestinos } from "@/lib/commandSearch";
+import type { ContextoDaVoz } from "@/components/BuscaNaBarra";
 import { quantidadeDeAmbientes, resumoAmbientes, vizinhoDoAmbiente } from "@/lib/checklistEnvs";
 import { NavIcon } from "@/components/NavIcons";
 import { iniciaisDaEmpresa, chaveAtiva, itemDoMenu, itensVisiveis, nomeSemNumerosNoInicio, type NavContexto, type NavKey } from "@/lib/navigation";
@@ -4527,6 +4528,28 @@ export default function Home() {
     void adicionarEvidencia(arquivo, "Foto", { ambiente: item.ambiente, checklistItemId: item.id, ncId });
   }
 
+  // "Trocar para [empresa] e abrir [destino]": só depois da confirmação por clique na busca. Segue o mesmo caminho do seletor "Empresa ativa"
+  // (avisa da fila offline, troca a empresa e zera a visita aberta) e abre o destino quando a nova empresa já é a ativa.
+  const destinoAposTrocaRef = useRef<{ empresaId: string; destino: Destino } | null>(null);
+  async function trocarEmpresaEAbrir(empresaId: string, destino: Destino) {
+    if (!podeAcessarEmpresa(usuarioDaSessao, empresaId) && usuarioDaSessao) return;
+    if (empresaId === db.empresaAtualId) {
+      escolherDestinoDaCaixa(destino);
+      return;
+    }
+    if (!(await confirmarComFila("trocar"))) return;
+    destinoAposTrocaRef.current = { empresaId, destino };
+    setDb((o) => ({ ...o, empresaAtualId: empresaId }));
+    setVisitaAtualId(null);
+  }
+  useEffect(() => {
+    const pendente = destinoAposTrocaRef.current;
+    if (!pendente || db.empresaAtualId !== pendente.empresaId) return;
+    destinoAposTrocaRef.current = null;
+    escolherDestinoDaCaixa(pendente.destino);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [db.empresaAtualId]);
+
   function escolherDestinoDaCaixa(destino: Destino) {
     const acao = destino.acao;
     switch (acao.tipo) {
@@ -4540,6 +4563,16 @@ export default function Home() {
       case "central":
         abrirDocumentosOuCentral(acao.subaba);
         return;
+      case "popsvisita": {
+        const alvo = visitaAtual || visitaEmAndamentoDestaque;
+        if (!alvo) {
+          setView("visitas");
+          return;
+        }
+        setVisitaAtualId(alvo.id);
+        setView("popsvisita");
+        return;
+      }
       case "relatorios":
         irParaRelatorios(acao.aba);
         return;
@@ -6357,12 +6390,12 @@ export default function Home() {
         }
       : null;
   const podeUsarChecklistNaBusca = permitido("visitas.executar", visitaAtual?.empresaId ?? atual?.id);
-  const destinosCaixa: Destino[] = caixaAberta || buscaNaBarraAtiva
-    ? construirDestinos({
+  const entradaDeDestinos: EntradaDeDestinos | null = caixaAberta || buscaNaBarraAtiva
+    ? {
         itensMenu: itensVisiveis(contextoMenu),
         empresas: Object.values(db.empresas)
           .filter((empresa) => podeAcessarEmpresa(usuarioDaSessao, empresa.id) || !usuarioDaSessao)
-          .map((empresa) => ({ id: empresa.id, nome: nomeEmFormatoNatural(empresa.nomeFantasia) || empresa.razaoSocial || "Empresa" })),
+          .map((empresa) => ({ id: empresa.id, nome: nomeDeExibicaoDaEmpresa(empresa) })),
         empresaAtivaId: db.empresaAtualId,
         visitas: visitas.map((visita) => ({
           id: visita.id,
@@ -6379,10 +6412,23 @@ export default function Home() {
         podeChecklist: podeUsarChecklistNaBusca && !!visitaEmAndamentoDestaque,
         subabasCentral: atual ? subabasVisiveis(permitido("empresas.editar", atual.id) ? quemVeNaCentral : quemVeNosDocumentos) : [],
         subabaCentralInicial: atual ? resolverSubaba(null, lerSubabaLembrada(atual.id), subabasVisiveis(permitido("empresas.editar", atual.id) ? quemVeNaCentral : quemVeNosDocumentos)) : undefined,
-        nomeEmpresaAtiva: atual ? nomeEmFormatoNatural(atual.nomeFantasia) || undefined : undefined,
+        nomeEmpresaAtiva: atual ? nomeDeExibicaoDaEmpresa(atual) : undefined,
         abasRelatorios: atual && itensVisiveis(contextoMenu).some((item) => item.key === "relatorios") ? abasDeRelatoriosDisponiveis() : [],
-      })
-    : [];
+        temVisitaEmAndamento: Boolean(visitaEmAndamentoDestaque),
+        podePopsDaVisita: telaVisivel("popsVisita"),
+      }
+    : null;
+  const destinosCaixa: Destino[] = entradaDeDestinos ? construirDestinos(entradaDeDestinos) : [];
+  const contextoDaVoz: ContextoDaVoz | undefined = entradaDeDestinos
+    ? {
+        empresas: entradaDeDestinos.empresas,
+        empresaAtivaId: db.empresaAtualId,
+        destinosDaVisita: construirDestinosDaVisita(entradaDeDestinos),
+        temVisitaNaEmpresa: (empresaId) => db.visitas.some((visita) => visita.empresaId === empresaId && visita.status === "Em andamento" && !visita.arquivada),
+        onTrocarEAbrir: (empresaId, destino) => void trocarEmpresaEAbrir(empresaId, destino),
+        onAbrirVisitas: () => navegarPrincipal("visitas"),
+      }
+    : undefined;
   const chavesDoMenu = new Set(itensVisiveis(contextoMenu).map((item) => item.key));
   const atalhosDaBarra: { id: string; rotulo: string; onClick: () => void }[] = [
     ...(atual && permitido("visitas.criar", atual.id) ? [{ id: "nova-visita", rotulo: "Nova visita", onClick: novaVisita }] : []),
@@ -7029,6 +7075,7 @@ export default function Home() {
           onBuscaAtiva={setBuscaNaBarraAtiva}
           pedidoDeFocoNaBusca={pedidoDeFocoNaBusca}
           usuarioId={usuarioDaSessao?.id}
+          contextoDaVoz={contextoDaVoz}
           micDisponivel={deveExibirRecursosDeIa(usuarioDaSessao)}
           modo={modo}
           sincronizacao={{

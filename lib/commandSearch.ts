@@ -18,6 +18,7 @@ export type AcaoDestino =
   | { tipo: "continuar" }
   | { tipo: "central"; subaba: SubAbaCentral }
   | { tipo: "relatorios"; aba: AbaDeRelatorios }
+  | { tipo: "popsvisita" }
   | { tipo: "registrar" };
 
 export type Destino = {
@@ -30,7 +31,12 @@ export type Destino = {
   acao: AcaoDestino;
   /** Pertence ao contexto atual (ex.: etapas da visita em andamento): ganha prioridade. */
   contexto?: boolean;
+  /** Destino de uma etapa da visita em andamento (Checklist, Evidências, Relatório, POPs da visita): só entra no índice quando há visita em andamento na empresa ativa. */
+  daVisita?: boolean;
 };
+
+/** Itens do menu que são etapas da visita em andamento. (Correções funciona também sem visita, pela empresa toda, e fica sempre no índice.) */
+export const CHAVES_DA_VISITA: NavKey[] = ["checklist", "evidencias", "relatorio"];
 
 export type Resultado = { destino: Destino; pontos: number };
 
@@ -199,6 +205,10 @@ export type EntradaDeDestinos = {
   podeChecklist: boolean;
   /** Sub-abas da Central da Empresa que o perfil enxerga (vazio: sem empresa ativa ou sem acesso). */
   subabasCentral?: SubAbaCentral[];
+  /** Existe visita em andamento na empresa ativa? Sem ela, os destinos da visita ficam fora do índice. */
+  temVisitaEmAndamento?: boolean;
+  /** O perfil vê "POPs da visita"? */
+  podePopsDaVisita?: boolean;
   /** Sub-aba que "Central" abre: a última usada na empresa ou Empresa › Dados. */
   subabaCentralInicial?: SubAbaCentral;
   /** Nome da empresa ativa, para o título "Central da Empresa · Nome". */
@@ -229,7 +239,17 @@ const SINONIMOS_SUBABA: Record<SubAbaCentral, string[]> = {
   pessoas: ["equipe", "colaboradores", "treinamento", "capacitacao"],
 };
 
+/** Índice da busca: tudo o que o perfil pode abrir; os destinos da visita só entram com visita em andamento na empresa ativa. */
 export function construirDestinos(entrada: EntradaDeDestinos): Destino[] {
+  return montarDestinos(entrada).filter((destino) => !destino.daVisita || Boolean(entrada.temVisitaEmAndamento));
+}
+
+/** Todos os destinos de etapa da visita que o perfil pode abrir, haja ou não visita em andamento (para a voz explicar "não há visita em andamento"). */
+export function construirDestinosDaVisita(entrada: EntradaDeDestinos): Destino[] {
+  return montarDestinos(entrada).filter((destino) => destino.daVisita);
+}
+
+function montarDestinos(entrada: EntradaDeDestinos): Destino[] {
   const destinos: Destino[] = [];
   const etapas: NavKey[] = [
     "central",
@@ -259,6 +279,7 @@ export function construirDestinos(entrada: EntradaDeDestinos): Destino[] {
       id: `ir:${item.key}`,
       grupo: "ir",
       titulo: item.rotulo,
+      ...(CHAVES_DA_VISITA.includes(item.key) ? { daVisita: true } : {}),
       sinonimos: SINONIMOS_NAV[item.key],
       acao: { tipo: "nav", key: item.key },
       contexto: entrada.dentroDeVisita && etapas.includes(item.key),
@@ -357,14 +378,26 @@ export function construirDestinos(entrada: EntradaDeDestinos): Destino[] {
       contexto: visita.id === entrada.visitaEmAndamentoId,
     });
   }
+  if (entrada.podePopsDaVisita) {
+    destinos.push({
+      id: "ir:popsvisita",
+      grupo: "ir",
+      titulo: "POPs desta visita",
+      detalhe: "Visita em andamento › POPs da visita",
+      sinonimos: ["pops da visita", "procedimentos da visita"],
+      acao: { tipo: "popsvisita" },
+      contexto: entrada.dentroDeVisita,
+      daVisita: true,
+    });
+  }
   return destinos;
 }
 
 // ---- Abertura automática depois da busca por voz --------------------------------------------
 
-/** Destinos que SÓ levam a uma tela (menu, Central e suas sub-abas, Relatórios). Registrar, continuar inspeção, escolher empresa, visita e itens do checklist nunca abrem sozinhos. */
+/** Destinos que SÓ levam a uma tela (menu, Central e suas sub-abas, Relatórios, POPs da visita). Registrar, continuar inspeção, escolher empresa, visita e itens do checklist nunca abrem sozinhos. */
 export function ehDestinoDeNavegacao(destino: Pick<Destino, "acao">): boolean {
-  return destino.acao.tipo === "nav" || destino.acao.tipo === "central" || destino.acao.tipo === "relatorios";
+  return destino.acao.tipo === "nav" || destino.acao.tipo === "central" || destino.acao.tipo === "relatorios" || destino.acao.tipo === "popsvisita";
 }
 
 /**

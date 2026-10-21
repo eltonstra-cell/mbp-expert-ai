@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { autorizaAcaoServidor, obterAcessoServidor } from "@/lib/serverAccess";
 import { corpoExcedeLimite } from "@/lib/requestLimits";
 import { INSTRUCAO_DE_TRANSCRICAO, MENSAGEM_SEM_FALA, avaliarTranscricao } from "@/lib/transcricao";
+import { empresasDoUsuarioParaVocabulario, ehEcoDoPromptDaBusca, montarPromptDaBusca } from "@/lib/vocabularioDeVoz";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,14 +27,17 @@ async function transcreverComModelo(
   apiKey: string,
   audio: File,
   modelo: string,
-  duracaoSeg?: number
+  duracaoSeg?: number,
+  /** Contexto da transcrição (parâmetro "prompt"). Na busca por voz leva termos do app e nomes das empresas da pessoa. */
+  prompt: string = INSTRUCAO_DE_TRANSCRICAO,
+  contextoDaBusca = false
 ): Promise<{ ok: true; text: string } | { ok: false; status: number; tipo?: string; semFala?: boolean }> {
   const openAiForm = new FormData();
   openAiForm.append("file", audio, audio.name || "ditado.m4a");
   openAiForm.append("model", modelo);
   openAiForm.append("language", "pt");
   openAiForm.append("response_format", "json");
-  openAiForm.append("prompt", INSTRUCAO_DE_TRANSCRICAO);
+  openAiForm.append("prompt", prompt);
 
   const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
     method: "POST",
@@ -50,7 +54,7 @@ async function transcreverComModelo(
   const text = typeof body?.text === "string" ? body.text.trim() : "";
   // Áudio sem fala faz o serviço devolver a própria instrução: isso nunca pode virar texto do usuário.
   const avaliacao = avaliarTranscricao(text, duracaoSeg);
-  if (!avaliacao.ok) return { ok: false, status: 422, semFala: true };
+  if (!avaliacao.ok || (contextoDaBusca && ehEcoDoPromptDaBusca(text, prompt))) return { ok: false, status: 422, semFala: true };
   return { ok: true, text: avaliacao.texto };
 }
 
@@ -106,8 +110,15 @@ export async function POST(request: Request) {
     const duracaoInformada = Number(form.get("duracao"));
     const duracaoSeg = Number.isFinite(duracaoInformada) && duracaoInformada > 0 ? duracaoInformada : undefined;
 
+    // Busca por voz: o contexto leva os termos do app e os NOMES das empresas que a pessoa acessa (no máximo 20), calculados aqui no servidor
+    // pelo perfil dela, nunca vindos do navegador. Ditado de correções não recebe contexto de empresa. Sem controle de acesso ativo, só os termos do app.
+    const contextoDaBusca = form.get("contexto") === "busca";
+    const promptDaBusca = contextoDaBusca
+      ? montarPromptDaBusca(acesso.aplicado && acesso.autorizado ? empresasDoUsuarioParaVocabulario(acesso.data.empresas, acesso.usuario) : [])
+      : INSTRUCAO_DE_TRANSCRICAO;
+
     const modeloPrincipal = process.env.OPENAI_TRANSCRIBE_MODEL || "gpt-4o-mini-transcribe";
-    const principal = await transcreverComModelo(apiKey, audio, modeloPrincipal, duracaoSeg);
+    const principal = await transcreverComModelo(apiKey, audio, modeloPrincipal, duracaoSeg, promptDaBusca, contextoDaBusca);
     if (principal.ok) {
       return NextResponse.json({ text: principal.text, model: modeloPrincipal });
     }
@@ -125,7 +136,7 @@ export async function POST(request: Request) {
 
     // Fallback para compatibilidade com formatos enviados por alguns iPhones/PWAs.
     if (modeloPrincipal !== "whisper-1") {
-      const fallback = await transcreverComModelo(apiKey, audio, "whisper-1", duracaoSeg);
+      const fallback = await transcreverComModelo(apiKey, audio, "whisper-1", duracaoSeg, promptDaBusca, contextoDaBusca);
       if (fallback.ok) {
         return NextResponse.json({ text: fallback.text, model: "whisper-1" });
       }

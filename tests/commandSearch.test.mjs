@@ -41,6 +41,7 @@ function entrada(perfil, dentroDeVisita = true, extra = {}) {
         ]
       : [],
     visitaEmAndamentoId: "v1",
+    temVisitaEmAndamento: true,
     podeChecklist,
     ...extra,
   };

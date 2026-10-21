@@ -31,6 +31,7 @@ export default function CommandPalette({ aberto, comVoz, destinos, onEscolher, o
   const campoRef = useRef<HTMLInputElement | null>(null);
   const iaPermitida = useIaPermitida();
   const voz = useVoiceCapture({
+    contexto: "busca",
     onTexto: (texto) => {
       setConsulta(texto);
       setIndice(0);
