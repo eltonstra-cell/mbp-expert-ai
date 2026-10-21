@@ -15,6 +15,8 @@ export function nomeECargo(nome: string | undefined | null, cargo: string | unde
   return [limparTextoDePessoa(nome), limparTextoDePessoa(cargo)].filter(Boolean).join(separador);
 }
 
+import { nomeSemNumerosNoInicio } from "./navigation.ts";
+
 const SIGLAS_DA_RAZAO = new Set(["S/A", "S.A.", "S.A", "SA", "ME", "EPP", "MEI"]);
 
 /** Razão social em formato de título na exibição ("MELLO SERVICOS LTDA" vira "Mello Servicos Ltda"); siglas societárias ficam em maiúsculas. O dado salvo não muda. */
@@ -29,6 +31,13 @@ export function razaoSocialTitulo(texto: string | undefined | null): string {
       return indice === 0 ? nomeProprio(palavra) : nomeProprio(`x ${palavra}`).slice(2);
     })
     .join(" ");
+}
+
+/** A razão social em formato de título, só quando ela difere do nome exibido; vazio quando seria repetir o mesmo nome. */
+export function razaoSocialDiferente(nomeExibido: string, razaoSocial: string | undefined | null): string {
+  const razao = razaoSocialTitulo(nomeSemNumerosNoInicio(razaoSocial || ""));
+  const mesmo = (a: string, b: string) => a.normalize("NFD").toLocaleLowerCase("pt-BR") === b.normalize("NFD").toLocaleLowerCase("pt-BR");
+  return !razao || mesmo(razao, (nomeExibido || "").trim()) ? "" : razao;
 }
 
 /** Primeira letra de cada nome em maiúscula ("maria da silva" vira "Maria da Silva"); preposições ficam em minúscula. */

@@ -8,7 +8,7 @@ import { ProgressBar } from "@/components/ui/ProgressBar";
 import type { ItemMenu } from "@/components/ui/RowMenu";
 import { acoesDaEmpresa } from "@/lib/menuActions";
 import { nomeSemNumerosNoInicio } from "@/lib/navigation";
-import { razaoSocialTitulo } from "@/lib/nomeCargo";
+import { razaoSocialDiferente } from "@/lib/nomeCargo";
 import { textoDaPendencia, textoDaPendenciaCurta } from "@/lib/companyReadiness";
 import { iniciaisDaEmpresa } from "@/lib/navigation";
 
@@ -187,7 +187,7 @@ export default function PcEmpresas({
                 }
                 titulo={empresa.nome}
                 chip={empresa.arquivada ? <Pill tom="na">Arquivada</Pill> : empresa.ativa ? <Pill tom="brand">Empresa ativa</Pill> : undefined}
-                secundario={<span className="pc-sub-quebra">{`${razaoSocialTitulo(nomeSemNumerosNoInicio(empresa.razaoSocial))} · ${detalhes}`}</span>}
+                secundario={<span className="pc-sub-quebra">{[razaoSocialDiferente(empresa.nome, empresa.razaoSocial), detalhes].filter(Boolean).join(" · ")}</span>}
                 meio={
                   <>
                     <ProgressBar percentual={empresa.preparacao} largura={120} rotulo={`Preparação ${empresa.preparacao}%`} />

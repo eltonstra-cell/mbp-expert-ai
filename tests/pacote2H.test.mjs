@@ -41,7 +41,7 @@ test("razão social em formato de título só na exibição", () => {
   assert.equal(razaoSocialTitulo("PADARIA DO JOSE ME"), "Padaria do Jose ME");
   assert.equal(razaoSocialTitulo("Mello Serviços Alimentícios Ltda"), "Mello Serviços Alimentícios Ltda");
   assert.equal(razaoSocialTitulo(""), "");
-  assert.ok(ler("../components/pc/PcEmpresas.tsx").includes("razaoSocialTitulo("));
+  assert.ok(ler("../components/pc/PcEmpresas.tsx").includes("razaoSocialDiferente("));
 });
 
 test("visitas: placeholder da busca cabe sem corte; Início: Hoje com 'Ver todos (N)' e lista que rola por dentro", () => {

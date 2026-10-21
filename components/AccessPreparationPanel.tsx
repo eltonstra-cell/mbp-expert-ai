@@ -1,4 +1,5 @@
 "use client";
+import { nomeDeExibicaoDaEmpresa } from "@/lib/nomeEmpresa";
 
 import { formatarDataHora } from "@/lib/dataLocal";
 import { useEffect, useMemo, useState } from "react";
@@ -56,7 +57,7 @@ export default function AccessPreparationPanel(props: Props) {
   const [readiness, setReadiness] = useState<Readiness | null>(null);
   const empresas = useMemo(
     () => Object.values(props.empresas).sort((a, b) =>
-      (a.nomeFantasia || a.razaoSocial).localeCompare(b.nomeFantasia || b.razaoSocial, "pt-BR")
+      nomeDeExibicaoDaEmpresa(a).localeCompare(nomeDeExibicaoDaEmpresa(b), "pt-BR")
     ),
     [props.empresas]
   );
@@ -202,7 +203,7 @@ export default function AccessPreparationPanel(props: Props) {
                   {empresas.map((empresa) => (
                     <label key={empresa.id} className="flex gap-3 rounded-xl bg-white p-3 text-sm">
                       <input type="checkbox" checked={formulario.empresaIds.includes(empresa.id)} onChange={() => alternarEmpresa(empresa.id)} />
-                      <span className="font-bold">{empresa.nomeFantasia || empresa.razaoSocial}</span>
+                      <span className="font-bold">{nomeDeExibicaoDaEmpresa(empresa)}</span>
                     </label>
                   ))}
                 </div>

@@ -16,6 +16,7 @@ import type { ItemMenu } from "@/components/ui/RowMenu";
 import { acoesDoAcesso } from "@/lib/menuActions";
 import { contarPessoas, filtrarPessoas, type FiltroPessoas } from "@/lib/userManagement";
 import { nomeProprio } from "@/lib/nomeCargo";
+import { nomeDeExibicaoDaEmpresa } from "@/lib/nomeEmpresa";
 import { PERFIS_NOVOS, PODE_E_NAO_PODE } from "@/lib/perfisTexto";
 import { confirmar } from "@/lib/dialogos";
 import { PRAZOS_DE_VALIDADE, acessoVigente, calcularValidade, dataDaValidade, textoDoConvite } from "@/lib/validadeDeAcesso";
@@ -278,7 +279,7 @@ export default function PcAcessos({
                             checked={formulario.empresaIds.includes(empresa.id)}
                             onChange={() => onAlternarEmpresa(empresa.id)}
                           />
-                          <span>{empresa.nomeFantasia || empresa.razaoSocial}</span>
+                          <span>{nomeDeExibicaoDaEmpresa(empresa)}</span>
                         </label>
                       ))}
                     </div>

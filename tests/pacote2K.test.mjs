@@ -121,3 +121,33 @@ test("'Preencher CRN': Administrador vai a Acessos, o próprio RT a Meu perfil, 
   const pagina = ler("../app/page.tsx");
   assert.ok(pagina.includes('if (destinoDoCrn === "perfil") setPerfilAberto(true)'));
 });
+
+import { nomeDeExibicaoDaEmpresa, nomeEmFormatoNatural } from "../lib/nomeEmpresa.ts";
+import { razaoSocialDiferente } from "../lib/nomeCargo.ts";
+
+test("nome de exibição da empresa: uma função só, sem alterar o dado salvo", () => {
+  const salvas = [
+    { nomeFantasia: "44.150.273 ELTON VOLMIR STRAPAZON", razaoSocial: "ELTON VOLMIR STRAPAZON" },
+    { nomeFantasia: "BEYOND NUTRI", razaoSocial: "BEYOND NUTRI LTDA" },
+    { nomeFantasia: "CHURRASCARIA DO CHICO", razaoSocial: "CHICO ALIMENTOS ME" },
+  ];
+  const copia = JSON.stringify(salvas);
+  assert.deepEqual(salvas.map(nomeDeExibicaoDaEmpresa), ["Elton Volmir Strapazon", "Beyond Nutri", "Churrascaria do Chico"]);
+  assert.equal(JSON.stringify(salvas), copia, "o dado salvo não muda");
+  assert.equal(nomeDeExibicaoDaEmpresa({ nomeFantasia: "44.150.273", razaoSocial: "MELLO SERVICOS LTDA" }), "Mello Servicos Ltda", "fantasia que é só número cai para a razão social");
+  assert.equal(nomeDeExibicaoDaEmpresa(null), "Empresa");
+  assert.equal(nomeEmFormatoNatural("Padaria do Zé"), "Padaria do Zé", "nome que já está em formato natural não muda");
+  // o seletor "Empresa ativa" e as listas usam a mesma função
+  const pagina = ler("../app/page.tsx");
+  assert.ok(pagina.includes("empresaAtiva={atual ? nomeDeExibicaoDaEmpresa(atual) : null}") && pagina.includes("nomeDeExibicaoDaEmpresa(empresa)"));
+  for (const arquivo of ["../components/pc/PcAcessos.tsx", "../components/AccessPreparationPanel.tsx", "../components/pc/TelasLiberadasModal.tsx", "../components/pc/PcPopEditor.tsx"]) {
+    assert.ok(ler(arquivo).includes("nomeDeExibicaoDaEmpresa"), arquivo);
+  }
+});
+
+test("Empresas: razão social só quando difere do nome exibido", () => {
+  assert.equal(razaoSocialDiferente("Elton Volmir Strapazon", "ELTON VOLMIR STRAPAZON"), "");
+  assert.equal(razaoSocialDiferente("Elton Volmir Strapazon", "44.150.273 ELTON VOLMIR STRAPAZON"), "");
+  assert.equal(razaoSocialDiferente("Beyond Nutri", "BEYOND NUTRI LTDA"), "Beyond Nutri Ltda");
+  assert.equal(razaoSocialDiferente("Mello", ""), "");
+});

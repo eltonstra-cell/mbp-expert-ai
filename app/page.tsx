@@ -113,6 +113,7 @@ import QualityProgramsFields from "@/components/QualityProgramsFields";
 import CentralEmpresaNav from "@/components/pc/CentralEmpresaNav";
 import RelatoriosAbas, { type AbaDeRelatorios } from "@/components/pc/RelatoriosAbas";
 import { niveisDoCaminho } from "@/lib/caminhoDaFicha";
+import { nomeDeExibicaoDaEmpresa, nomeEmFormatoNatural } from "@/lib/nomeEmpresa";
 import PcImplantacao from "@/components/pc/PcImplantacao";
 import { mostrarToast } from "@/lib/toast";
 import { limparTextoDePessoa, nomeECargo, nomeProprio } from "@/lib/nomeCargo";
@@ -702,17 +703,6 @@ function VisitAreaIcon({ name }: { name: VisitAreaIconName }) {
 function AvisoFotoPonte({ alvo }: { alvo: { current: (acao: () => void) => void } }) {
   alvo.current = useAvisoAntesDeFotografar();
   return null;
-}
-
-function nomeEmFormatoNatural(nome?: string) {
-  if (nome) nome = nomeSemNumerosNoInicio(nome);
-  if (!nome || nome !== nome.toUpperCase()) return nome;
-  const conectores = new Set(["da", "das", "de", "do", "dos", "e"]);
-  return nome.toLocaleLowerCase("pt-BR").split(" ").map((palavra, indice) =>
-    indice > 0 && conectores.has(palavra)
-      ? palavra
-      : palavra.charAt(0).toLocaleUpperCase("pt-BR") + palavra.slice(1)
-  ).join(" ");
 }
 
 function quantidadeComNome(quantidade: number, singular: string, plural: string) {
@@ -6446,12 +6436,7 @@ export default function Home() {
           };
         }),
   };
-  const nomeParaExibir = (empresa?: Empresa) => {
-    if (!empresa) return "Empresa";
-    const fantasia = (empresa.nomeFantasia || "").trim();
-    const pareceCnpj = /^[\d.\/\-\s]+$/.test(fantasia);
-    return nomeEmFormatoNatural(pareceCnpj || !fantasia ? empresa.razaoSocial || fantasia : fantasia) || "Empresa";
-  };
+  const nomeParaExibir = (empresa?: Empresa) => nomeDeExibicaoDaEmpresa(empresa);
   const conjuntoDaVisita = conjuntoDaEmpresa(empresaVisita);
   const resumoPopsVisita = popsDaVisita(
     ncsVisita.map((nc, indice) => ({ numero: indice + 1, categoria: nc.categoria, popCatalogoId: nc.popCatalogoId })),
@@ -7030,7 +7015,7 @@ export default function Home() {
           caminho={caminhoTopo}
           subtituloDoCaminho={view === "relatorio" && visitaAtual ? `${fdata(visitaAtual.data)} · ${visitaAtual.status === "Concluída" ? "inspeção concluída" : "inspeção em andamento"}` : undefined}
           onPrimeiro={() => navegarPrincipal("visitas")}
-          empresaAtiva={nomeEmFormatoNatural(atual?.nomeFantasia) || null}
+          empresaAtiva={atual ? nomeDeExibicaoDaEmpresa(atual) : null}
           empresaCor={atual ? corDaEmpresa(atual) : undefined}
           empresaIniciais={atual ? iniciaisDaEmpresa(atual.nomeFantasia || "") : ""}
           iniciais={iniciaisUsuario}
@@ -7657,7 +7642,7 @@ export default function Home() {
                   Nova visita
                 </div>
                 <h2 className="mt-1 text-2xl font-extrabold">
-                  {nomeSemNumerosNoInicio(atual?.nomeFantasia || "")}
+                  {nomeDeExibicaoDaEmpresa(atual)}
                 </h2>
                 <p className="text-sm text-slate-500">
                   Esta visita ficará vinculada automaticamente à empresa ativa.

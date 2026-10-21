@@ -22,6 +22,7 @@ import {
 import { normasDaEmpresa } from "@/lib/normas";
 import { confirmar } from "@/lib/dialogos";
 import PopFolha from "@/components/pc/PopFolha";
+import { nomeDeExibicaoDaEmpresa } from "@/lib/nomeEmpresa";
 import { AVISO_SECAO_VAZIA, folhaDoPop, secoesDoEditor, textoDasSecoes } from "@/lib/popDocumento";
 import type { CabecalhoDeImpressao } from "@/lib/printFooter";
 
@@ -128,7 +129,7 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
   const alternar = (id: Secao) => setSecao(id);
   const modoLeitura = parte === "documento" && !editavel;
   const secoesDaLista = secoesDoEditor(rascunho, definicao);
-  const dadosDaEmpresa = { nome: (empresa.nomeFantasia || empresa.razaoSocial || "").trim(), cnpj: (empresa.cnpj || "").trim() };
+  const dadosDaEmpresa = { nome: nomeDeExibicaoDaEmpresa(empresa), cnpj: (empresa.cnpj || "").trim() };
   const opcoesDaFolha = { responsavel: responsavelDoEstabelecimento, exigeAcaoCorretiva: exigeAcaoCorretivaSes };
   const folhaDeLeitura = folhaDoPop(rascunho, dadosDaEmpresa, opcoesDaFolha);
   const folhaDaPrevia = folhaDoPop(rascunho, dadosDaEmpresa, { ...opcoesDaFolha, marcarBranco: true });

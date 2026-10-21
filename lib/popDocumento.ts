@@ -188,7 +188,8 @@ export function folhaDoPop(
   // Quem aprovou aparece com o nome e o cargo do responsável vinculado (uma só fonte); sem vínculo, vale o que foi gravado na aprovação.
   const mesmoUsuario = Boolean(aprovacao?.usuarioId && opcoes.responsavel?.usuarioId && aprovacao.usuarioId === opcoes.responsavel.usuarioId);
   const aprovador = aprovacao ? (mesmoUsuario && opcoes.responsavel ? nomeECargo(opcoes.responsavel.nome, opcoes.responsavel.cargo) : nomeECargo(aprovacao.nome, aprovacao.cargo)) : "";
-  const nomeDaEmpresa = razaoSocialTitulo(nomeSemNumerosNoInicio(empresa.nome || ""));
+  // O nome já chega no formato de exibição da empresa (lib/nomeEmpresa.ts); aqui só limpa espaços.
+  const nomeDaEmpresa = (empresa.nome || "").replace(/\s+/g, " ").trim();
   return {
     esquerda: [nomeDaEmpresa, empresa.cnpj ? `CNPJ ${empresa.cnpj}` : ""].filter(Boolean).join(" · "),
     direita: `${pop.codigo ? `${pop.codigo} · ` : ""}versão ${pop.versao}`,

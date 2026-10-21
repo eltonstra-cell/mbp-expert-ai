@@ -1,4 +1,5 @@
 "use client";
+import { nomeDeExibicaoDaEmpresa } from "@/lib/nomeEmpresa";
 
 import { useEffect, useMemo, useState } from "react";
 import type { Empresa, PerfilUsuario, UsuarioSistema } from "@/types";
@@ -52,7 +53,7 @@ function iniciais(nome: string) {
 }
 
 function nomeDaEmpresa(empresa: Empresa) {
-  return empresa.nomeFantasia || empresa.razaoSocial || "Empresa";
+  return nomeDeExibicaoDaEmpresa(empresa);
 }
 
 export default function TelasLiberadasModal({ usuario, empresas, onSalvar, onFechar }: Props) {
