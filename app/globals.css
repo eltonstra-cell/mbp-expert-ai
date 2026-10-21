@@ -3968,3 +3968,24 @@ html[data-modo="campo"] .chk-foco-amb-pos{font-size:.78rem}
 .vis-col-menu{display:flex;justify-content:center}
 .adm-visitas{margin-bottom:12px}
 @media (max-width:1099px){.vis-linha{grid-template-columns:6px minmax(0,1fr) 130px 40px}.vis-col-barra,.vis-col-contagem{grid-column:2/-1}}
+
+/* Pacote 2 · Bloco D: regras globais (rótulos pequenos, checkboxes, seletores, bordas dos campos) */
+/* D1: rótulo pequeno acima de título ou cartão = tinta escura, 13 a 14 px, sem maiúsculas e sem espaçamento de letras */
+.ui-eyebrow,.ui-group-title,.pgl-secao,.pc-env-group-title,.pc-cmd-group,.ev7-eyebrow,.ev7-ia-rotulo,.ev7-pk-rotulo,.help-section-title,.plan-action-eyebrow{font-size:.88rem;font-weight:400;letter-spacing:0;text-transform:none;color:#12202B}
+.uppercase{text-transform:none!important;letter-spacing:0!important}
+.uppercase[class*="text-[color:var(--brand)]"],.uppercase[class*="text-slate-"],.uppercase[class*="text-blue-700"]{color:#12202B!important}
+.uppercase:not(th):not(thead){font-size:max(.84rem,13px)}
+/* D1: caixas de marcar nativas, todas iguais: creme com borda dourada quando marcadas */
+input[type="checkbox"]{appearance:none;-webkit-appearance:none;display:inline-grid;flex:none;place-content:center;width:20px;height:20px;margin:0;border:2px solid #B4C2CE;border-radius:6px;background:#fff;cursor:pointer}
+input[type="checkbox"]:checked{border-color:#E8B04B;background:#FEF6E6}
+input[type="checkbox"]:checked::after{content:"";width:10px;height:5px;margin-top:-2px;border-left:2.5px solid #12202B;border-bottom:2.5px solid #12202B;transform:rotate(-45deg)}
+input[type="checkbox"]:disabled{opacity:.55;cursor:default}
+input[type="checkbox"]:focus-visible{outline:3px solid #E8B04B;outline-offset:2px}
+/* D2: seletores nativos no estilo do app: borda #B4C2CE, altura e fonte iguais, seta própria */
+select{appearance:none;-webkit-appearance:none;min-height:38px;border:1px solid #B4C2CE;border-radius:10px;background-color:#fff;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2312202B' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:32px;color:#12202B;font-size:inherit}
+select.w-full{padding-right:34px}
+select:focus-visible{outline:3px solid #E8B04B;outline-offset:1px}
+select:disabled{background-color:#EEF1F5;opacity:.8}
+/* D3: contorno dos campos no contraste do padrão, inclusive onde o campo vem das classes do Tailwind */
+html:not([data-modo="campo"]) :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),select,textarea){border-color:#B4C2CE}
+html:not([data-modo="campo"]) :is(input,select,textarea):is(.is-invalid,[aria-invalid="true"]){border-color:#D93A3A}

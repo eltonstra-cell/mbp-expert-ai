@@ -113,7 +113,7 @@ export default function PopsFields({ pops, onChange, aberto = false }: Props) {
           <input value={titulo} onChange={(event) => setTitulo(event.target.value)} placeholder="Título do POP" className="min-w-0 w-full rounded-xl border bg-white p-3 text-sm" />
           <FieldVoiceTools fieldKey="novo-pop-titulo" value={titulo} onChange={setTitulo} contexto="Título curto e objetivo de um Procedimento Operacional Padronizado." />
         </div>
-        <button type="button" onClick={adicionar} className="w-full rounded-xl bg-[var(--brand)] px-4 py-3 text-sm font-medium text-white">Adicionar POP</button>
+        <button type="button" onClick={adicionar} className="ui-btn ui-btn--criar w-full">Adicionar POP</button>
       </div>
 
       {aviso && <div className="mt-2 rounded-lg bg-[var(--pend-bg)] px-3 py-2 text-xs font-bold text-[color:var(--ink)]">{aviso}</div>}

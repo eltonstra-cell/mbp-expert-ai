@@ -67,7 +67,7 @@ function Linha({ linha, podeEditar, onAbrirFicha, onCriarDoModelo, menu }: { lin
             Abrir ficha
           </button>
         ) : podeEditar && linha.definicao ? (
-          <button type="button" className="ui-btn ui-btn--criar ui-btn--small" onClick={() => onCriarDoModelo(linha.definicao!.catalogoId)}>
+          <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => onCriarDoModelo(linha.definicao!.catalogoId)}>
             Criar do modelo
           </button>
         ) : (

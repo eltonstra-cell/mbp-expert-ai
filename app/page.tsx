@@ -6119,7 +6119,7 @@ export default function Home() {
               {efetivo.origem === "pops" ? " (vindo do campo antigo dos POPs)" : ""}
             </span>
             {podeEditarDoc && (
-              <button type="button" className="pc-link-btn" onClick={() => irParaSubaba("dados")}>
+              <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => irParaSubaba("dados")}>
                 Alterar em Dados
               </button>
             )}
@@ -8659,7 +8659,7 @@ export default function Home() {
                     )}
                   </div>
                 ) : permitido("visitas.concluir", visitaAtual.empresaId) ? (
-                  <button type="button" onClick={finalizarInspecao} className="w-full rounded-xl bg-[var(--brand)] px-5 py-4 text-base font-extrabold text-white shadow-md">
+                  <button type="button" onClick={finalizarInspecao} className="ui-btn ui-btn--save w-full">
                     ✓ Finalizar inspeção
                   </button>
                 ) : null}
