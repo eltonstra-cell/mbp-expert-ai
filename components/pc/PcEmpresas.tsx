@@ -41,6 +41,8 @@ export type Props = {
   onNova: () => void;
   onSelecionar: (id: string) => void;
   onGerenciar: (id: string) => void;
+  /** Abre a Central da empresa na sub-aba onde a pendência se resolve. */
+  onAbrirPendencia?: (empresaId: string, falta: string) => void;
   onNovaVisita: () => void;
   onHistorico: (id: string) => void;
   onAcessos: () => void;
@@ -97,6 +99,7 @@ export default function PcEmpresas({
   onNova,
   onSelecionar,
   onGerenciar,
+  onAbrirPendencia,
   onNovaVisita,
   onHistorico,
   onAcessos,
@@ -196,7 +199,7 @@ export default function PcEmpresas({
                 }
                 pilulas={
                   <span className="pc-cadastro-status">
-                    {empresa.faltas.length === 0 ? <Pill tom="ok">Cadastro completo</Pill> : <PendenciasChip faltas={empresa.faltas} />}
+                    {empresa.faltas.length === 0 ? <Pill tom="ok">Cadastro completo</Pill> : <PendenciasChip faltas={empresa.faltas} onAbrir={empresa.podeGerenciar && onAbrirPendencia ? (falta) => onAbrirPendencia(empresa.id, falta) : undefined} />}
                   </span>
                 }
                 acao={

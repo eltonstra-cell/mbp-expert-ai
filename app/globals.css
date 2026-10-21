@@ -4148,3 +4148,5 @@ html[data-modo="equilibrado"] .pc-busca,html[data-modo="completo"] .pc-busca{dis
 
 /* Impressão da folha do POP: avisos de tela ficam fora do papel e "Não preenchida" continua saindo */
 @media print{.pfolha-aviso,#pop-folha .pfolha-aviso,.no-print{display:none!important}}
+.pend-link{padding:0;border:0;background:transparent;font:inherit;color:#12202B;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.pend-link:hover{background:#FEF6E6}

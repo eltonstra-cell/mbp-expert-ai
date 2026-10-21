@@ -152,3 +152,20 @@ test("PDF da folha do POP: 'Seção vazia' fica fora do papel, 'Não preenchida'
   // cabeçalho da folha: razão social em formato de título, não o nome de exibição
   assert.ok(editor.includes("razaoSocialTitulo(nomeSemNumerosNoInicio(empresa.razaoSocial || empresa.nomeFantasia"));
 });
+
+import { destinoDaPendencia } from "../lib/companyReadiness.ts";
+
+test("pendências da empresa: cada item abre onde se resolve", () => {
+  assert.equal(destinoDaPendencia("horário de funcionamento"), "dados");
+  assert.equal(destinoDaPendencia("responsável do estabelecimento (em Dados)"), "dados");
+  assert.equal(destinoDaPendencia("nome"), "dados");
+  assert.equal(destinoDaPendencia("CNPJ"), "dados");
+  assert.equal(destinoDaPendencia("equipamentos"), "ambientes");
+  assert.equal(destinoDaPendencia("setores"), "ambientes");
+  assert.equal(destinoDaPendencia("programas"), "programas");
+  assert.equal(destinoDaPendencia("POPs"), "pops");
+  const chip = ler("../components/pc/PendenciasChip.tsx");
+  assert.ok(chip.includes('className="pend-link"') && chip.includes("onAbrir(falta)") && chip.includes('evento.key === "Escape"') && chip.includes('addEventListener("mousedown"'));
+  assert.ok(ler("../components/pc/PcEmpresas.tsx").includes("onAbrirPendencia(empresa.id, falta)"));
+  assert.ok(ler("../app/page.tsx").includes("const sub = destinoDaPendencia(falta);"));
+});

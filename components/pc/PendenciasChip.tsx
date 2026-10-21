@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { rotuloDoChipDePendencias } from "@/lib/companyReadiness";
 
 // Chip âmbar com as pendências da empresa. Com uma só, mostra o nome; com várias, "N pendências ▸" e a lista completa numa janelinha (clique ou mouse em cima).
-export default function PendenciasChip({ faltas }: { faltas: string[] }) {
+export default function PendenciasChip({ faltas, onAbrir }: { faltas: string[]; /** Abre onde a pendência se resolve; sem isso a lista é só leitura. */ onAbrir?: (falta: string) => void }) {
   const [aberta, setAberta] = useState(false);
   const [posicao, setPosicao] = useState<{ top: number; left: number } | null>(null);
   const botaoRef = useRef<HTMLButtonElement | null>(null);
@@ -41,7 +41,14 @@ export default function PendenciasChip({ faltas }: { faltas: string[] }) {
   }, [aberta]);
 
   if (faltas.length === 0) return null;
-  if (!varias) return <span className="pend-chip">{rotulo}</span>;
+  if (!varias)
+    return onAbrir ? (
+      <button type="button" className="pend-chip pend-chip--botao" onClick={() => onAbrir(faltas[0])} title="Abrir onde se resolve">
+        {rotulo}
+      </button>
+    ) : (
+      <span className="pend-chip">{rotulo}</span>
+    );
   return (
     <>
       <button
@@ -64,7 +71,22 @@ export default function PendenciasChip({ faltas }: { faltas: string[] }) {
             <strong>Falta preencher</strong>
             <ul>
               {faltas.map((falta) => (
-                <li key={falta}>{falta}</li>
+                <li key={falta}>
+                  {onAbrir ? (
+                    <button
+                      type="button"
+                      className="pend-link"
+                      onClick={() => {
+                        setAberta(false);
+                        onAbrir(falta);
+                      }}
+                    >
+                      {falta}
+                    </button>
+                  ) : (
+                    falta
+                  )}
+                </li>
               ))}
             </ul>
           </div>,

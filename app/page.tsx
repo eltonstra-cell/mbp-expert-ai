@@ -100,7 +100,7 @@ import FiscalInicio from "@/components/FiscalInicio";
 import { AvisoFotoProvider, useAvisoAntesDeFotografar } from "@/components/AvisoAntesDeFotografar";
 import type { ItemMenu } from "@/components/ui/RowMenu";
 import { ROTULO_DE_USO, descreverAparelho } from "@/lib/screenMode";
-import { preparacaoDaEmpresa, pendenciasDaEmpresa, textoDaPendencia } from "@/lib/companyReadiness";
+import { preparacaoDaEmpresa, pendenciasDaEmpresa, textoDaPendencia, destinoDaPendencia } from "@/lib/companyReadiness";
 import ChecklistEnvStrip from "@/components/ChecklistEnvStrip";
 import CommandPalette from "@/components/CommandPalette";
 import { construirDestinos, type Destino } from "@/lib/commandSearch";
@@ -9717,6 +9717,14 @@ export default function Home() {
             onNova={iniciarNovaEmpresa}
             onSelecionar={(id) => { setDb((o) => ({ ...o, empresaAtualId: id })); setVisitaAtualId(null); }}
             onGerenciar={(id) => { const alvo = db.empresas[id]; if (alvo) editarEmpresa(alvo); }}
+            onAbrirPendencia={(id, falta) => {
+              const alvo = db.empresas[id];
+              if (!alvo) return;
+              const sub = destinoDaPendencia(falta);
+              editarEmpresa(alvo);
+              setEmpresaSecao(sub);
+              lembrarSubaba(id, sub);
+            }}
             onNovaVisita={novaVisita}
             onHistorico={(id) => {
               setDb((o) => ({ ...o, empresaAtualId: id }));

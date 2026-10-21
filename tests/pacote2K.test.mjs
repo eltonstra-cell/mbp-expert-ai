@@ -163,6 +163,6 @@ test("cartão de Empresas: chip âmbar 'N pendências ▸' com a lista completa 
   assert.equal(rotuloDoChipDePendencias(["horário de funcionamento", "equipamentos", "programas"]), "3 pendências ▸");
   const chip = ler("../components/pc/PendenciasChip.tsx");
   assert.ok(chip.includes("faltas.map((falta)") && chip.includes("onMouseEnter") && chip.includes("onClick") && chip.includes('role="dialog"'));
-  assert.ok(ler("../components/pc/PcEmpresas.tsx").includes("<PendenciasChip faltas={empresa.faltas} />"));
+  assert.ok(ler("../components/pc/PcEmpresas.tsx").includes("<PendenciasChip faltas={empresa.faltas}"));
   assert.match(ler("../app/globals.css"), /\.pend-chip\{display:inline-flex;align-items:center;height:28px/);
 });
