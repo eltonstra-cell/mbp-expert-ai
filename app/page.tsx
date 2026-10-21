@@ -111,13 +111,13 @@ import OperationalFlowsFields from "@/components/OperationalFlowsFields";
 import QualityProgramsFields from "@/components/QualityProgramsFields";
 import CentralEmpresaNav from "@/components/pc/CentralEmpresaNav";
 import RelatoriosAbas, { type AbaDeRelatorios } from "@/components/pc/RelatoriosAbas";
-import { caminhoDaFicha } from "@/lib/caminhoDaFicha";
+import { niveisDoCaminho } from "@/lib/caminhoDaFicha";
 import PcImplantacao from "@/components/pc/PcImplantacao";
 import { mostrarToast } from "@/lib/toast";
 import { limparTextoDePessoa, nomeECargo, nomeProprio } from "@/lib/nomeCargo";
 import { diasEntreDatas, formatarData, formatarDataCurta, formatarDataHora, formatarHora, hojeLocalISO } from "@/lib/dataLocal";
 import { palavra as pal, quantidade as qtd } from "@/lib/plural";
-import { ROTULO_DA_SUBABA, gruposVisiveis, lembrarSubaba, lerSubabaLembrada, resolverSubaba, subabasVisiveis, type SubAbaCentral } from "@/lib/centralEmpresa";
+import { ROTULO_DA_SUBABA, grupoDaSubaba, gruposVisiveis, lembrarSubaba, lerSubabaLembrada, resolverSubaba, subabasVisiveis, type SubAbaCentral } from "@/lib/centralEmpresa";
 import { empresaTemImplantacao, implantacaoConcluida, implantacaoDeEmpresaNova, passosDeImplantacao } from "@/lib/implantacao";
 import { divergenciaDeResponsavel, responsavelEfetivo, textoDoResponsavel } from "@/lib/responsavelEstabelecimento";
 import type { AbaFicha } from "@/components/pc/PcFichaPop";
@@ -1064,6 +1064,7 @@ export default function Home() {
   const [docSecao, setDocSecao] = useState<SubAbaCentral>("pops");
   // Pedido para abrir a ficha de um POP (vindo do painel, de uma correção ou de outra tela).
   const [fichaAbertaRotulo, setFichaAbertaRotulo] = useState<string | null>(null);
+  const [pedidoDeListaDePops, setPedidoDeListaDePops] = useState(0);
   const [fichaPedida, setFichaPedida] = useState<{ popId: string; aba?: AbaFicha; chave: number } | null>(null);
   const [verPassosDeImplantacao, setVerPassosDeImplantacao] = useState(false);
   const [showVisitaForm, setShowVisitaForm] = useState(false);
@@ -4913,6 +4914,31 @@ export default function Home() {
     window.print();
   }
 
+  // Caminho da ficha do POP, com cada nível clicável: Central (quem edita), Documentos e a lista de POPs.
+  function caminhoClicavel(rotuloDoPop: string, naCentral: boolean) {
+    const niveis = niveisDoCaminho(rotuloDoPop, {
+      central: atual && permitido("empresas.editar", atual.id) ? () => void abrirSecaoEmpresaPeloMenu("dados") : undefined,
+      documentos: () => abrirDocumentos(subabasVisiveis(naCentral ? quemVeNaCentral : quemVeNosDocumentos).find((sub) => grupoDaSubaba(sub) === "documentos") || "pops"),
+      pops: () => setPedidoDeListaDePops((n) => n + 1),
+    });
+    return (
+      <nav className="ficha-caminho" aria-label="Caminho">
+        {niveis.map((nivel, indice) => (
+          <span key={nivel.rotulo} className="ficha-caminho-nivel">
+            {nivel.ir ? (
+              <button type="button" className="ficha-caminho-link" onClick={nivel.ir}>
+                {nivel.rotulo}
+              </button>
+            ) : (
+              <span aria-current={indice === niveis.length - 1 ? "page" : undefined}>{nivel.rotulo}</span>
+            )}
+            {indice < niveis.length - 1 && <span aria-hidden="true"> › </span>}
+          </span>
+        ))}
+      </nav>
+    );
+  }
+
   function irParaRelatorios(aba: AbaDeRelatorios) {
     if (!atual) {
       void avisar("Escolha a empresa para abrir os relatórios.", { titulo: "Escolha a empresa" });
@@ -6166,6 +6192,7 @@ export default function Home() {
           abrirFicha={fichaPedida}
           aoConsumirPedido={() => setFichaPedida(null)}
           aoMudarFicha={setFichaAbertaRotulo}
+          pedidoDeLista={pedidoDeListaDePops}
           onImprimir={imprimirDocumento}
         />
       );
@@ -7277,7 +7304,7 @@ export default function Home() {
               </div>
             </div>
             {fichaAbertaRotulo && subabaDosDocumentos === "pops" ? (
-              <nav className="ficha-caminho" aria-label="Caminho">{caminhoDaFicha(fichaAbertaRotulo).join(" › ")}</nav>
+              caminhoClicavel(fichaAbertaRotulo, false)
             ) : (
               <CentralEmpresaNav grupos={gruposVisiveis(quemVeNosDocumentos)} subaba={subabaDosDocumentos} onSubaba={setDocSecao} />
             )}
@@ -7305,7 +7332,7 @@ export default function Home() {
             </div>
 
             {editingEmpresaId && (fichaAbertaRotulo && secaoEmpresa === "pops" ? (
-              <nav className="ficha-caminho" aria-label="Caminho">{caminhoDaFicha(fichaAbertaRotulo).join(" › ")}</nav>
+              caminhoClicavel(fichaAbertaRotulo, true)
             ) : (
               <CentralEmpresaNav grupos={gruposVisiveis(quemVeNaCentral)} subaba={secaoEmpresa as SubAbaCentral} onSubaba={irParaSubaba} />
             ))}

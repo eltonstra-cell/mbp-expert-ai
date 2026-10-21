@@ -42,6 +42,33 @@ export function textoDasSecoes(secoes: Pick<SecaoDoEditor, "preenchida">[]): str
   return `${feitas} de ${secoes.length} ${feitas === 1 ? "preenchida" : "preenchidas"}`;
 }
 
+const SEM_RUIDO = /\s*\((?:item\s+)?a\s+conferir\)\s*/gi;
+
+/** Item de norma sem o ruído do catálogo: "Anexo II (item a conferir)" vira "Anexo II". */
+export function itemLimpo(item: string): string {
+  return item.replace(SEM_RUIDO, " ").replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Referências da folha em poucas linhas: uma por norma, itens sem repetição, cada linha terminando em "conferir".
+ * Só limpa e agrupa o que já existe no POP (nenhum item de norma é acrescentado). Passando de duas normas, as demais entram na segunda linha.
+ */
+export function referenciasCompactas(referencias: { norma: string; item: string }[] | undefined): string[] {
+  const porNorma = new Map<string, string[]>();
+  for (const ref of referencias || []) {
+    const norma = ref.norma.trim();
+    if (!norma) continue;
+    const itens = porNorma.get(norma) || [];
+    const item = itemLimpo(ref.item || "");
+    if (item && !itens.some((existente) => existente.toLocaleLowerCase("pt-BR") === item.toLocaleLowerCase("pt-BR"))) itens.push(item);
+    porNorma.set(norma, itens);
+  }
+  const partes = [...porNorma.entries()].map(([norma, itens]) => (itens.length ? `${norma} (${itens.join("; ")})` : norma));
+  if (partes.length === 0) return [];
+  const linhas = partes.length <= 2 ? partes : [partes[0], partes.slice(1).join(" · ")];
+  return linhas.map((linha) => `${linha} · conferir`);
+}
+
 export type BlocoDaFolha = { titulo: string; tipo: "texto" | "passos" | "lista"; linhas: string[] };
 
 export type FolhaDoPop = {
@@ -65,7 +92,7 @@ export function folhaDoPop(
   const blocos: BlocoDaFolha[] = [];
   const objetivo = [c.objetivo, c.campoAplicacao].filter((texto): texto is string => escrito(texto)).map((texto) => texto.trim());
   if (objetivo.length) blocos.push({ titulo: "Objetivo", tipo: "texto", linhas: objetivo });
-  const referencias = (c.referencias || []).map((ref) => `${ref.norma} (${ref.item})${ref.conferir ? " · conferir" : ""}`);
+  const referencias = referenciasCompactas(c.referencias);
   if (referencias.length) blocos.push({ titulo: "Referências", tipo: "lista", linhas: referencias });
   const responsavel = [nomeECargo(c.responsavelExecucao?.nome, c.responsavelExecucao?.cargo), (c.frequencia || "").trim()].filter(Boolean).join(" · ");
   if (responsavel) blocos.push({ titulo: "Responsável e frequência", tipo: "texto", linhas: [responsavel] });

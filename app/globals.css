@@ -4006,3 +4006,8 @@ html:not([data-modo="campo"]) :is(.ui-row-sub,.ui-subtitle,.pgl-detalhe,.pgl-aca
 .pc-busca-painel .pc-cmd-option-detail{font-size:.94rem;color:#2B3E4C}
 .pc-busca-painel .pc-cmd-option-title{font-size:1rem}
 .pc-busca-painel .pc-cmd-foot{border-top:1px solid #DDE6EA;padding:8px 6px 2px}
+.pfolha-passos{list-style:decimal outside}
+.pfolha-passos li::marker{color:#12202B}
+.ficha-caminho{font-size:1rem}
+.ficha-caminho-link{padding:0;border:0;background:transparent;font:inherit;color:#12202B;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.ficha-caminho-link:hover{background:#FEF6E6}

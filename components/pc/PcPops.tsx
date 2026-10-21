@@ -28,10 +28,12 @@ type Props = {
   /** Avisa quando a ficha abre ou fecha (rótulo do POP para o caminho do topo) para a tela esconder grupos e sub-abas. */
   aoMudarFicha?: (rotulo: string | null) => void;
   onImprimir?: (titulo: string, cabecalho: CabecalhoDeImpressao) => void;
+  /** Muda a cada clique em "POPs" do caminho: fecha a ficha e volta à lista. */
+  pedidoDeLista?: number;
 };
 
 // Documentos › POPs: a lista com situação e próxima ação e, ao abrir um POP, a ficha com as seis abas.
-export default function PcPops({ pops, empresa, usuario = null, podeEditar = false, onPersistir, mensagem, topo, responsavel, abrirFicha, aoConsumirPedido, aoMudarFicha, onImprimir }: Props) {
+export default function PcPops({ pops, empresa, usuario = null, podeEditar = false, onPersistir, mensagem, topo, responsavel, abrirFicha, aoConsumirPedido, aoMudarFicha, onImprimir, pedidoDeLista = 0 }: Props) {
   const contexto = useRegistrosDaEmpresa();
   const [fichaId, setFichaId] = useState<string | null>(null);
   const [abaInicial, setAbaInicial] = useState<AbaFicha>("resumo");
@@ -47,6 +49,12 @@ export default function PcPops({ pops, empresa, usuario = null, podeEditar = fal
     aoConsumirPedido?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [abrirFicha]);
+
+  useEffect(() => {
+    if (!pedidoDeLista) return;
+    setFichaId(null);
+    setMensagemFicha("");
+  }, [pedidoDeLista]);
 
   const podeAprovar = podeAprovarPop(usuario, empresa);
   const empresaDaLista = useMemo(() => ({ normasAplicadas: empresa.normasAplicadas, pops }), [empresa.normasAplicadas, pops]);

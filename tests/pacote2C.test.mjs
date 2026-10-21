@@ -83,3 +83,37 @@ test("D: regras globais de rótulo pequeno, caixas de marcar e seletores; botõe
   assert.ok(ler("../app/page.tsx").includes('className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => irParaSubaba("dados")}'));
   assert.ok(!ler("../components/PopsFields.tsx").includes("bg-[var(--brand)] px-4 py-3"));
 });
+
+import { itemLimpo, referenciasCompactas } from "../lib/popDocumento.ts";
+import { niveisDoCaminho } from "../lib/caminhoDaFicha.ts";
+
+test("referências da folha: uma linha por norma, sem repetição nem ruído, sempre terminando em conferir", () => {
+  const refs = [
+    { norma: "RDC 216/2004", item: "4.11.4 a", orientacao: "x" },
+    { norma: "RDC 216/2004", item: "4.11.4 a", orientacao: "y" },
+    { norma: "RDC 216/2004", item: "4.11.5", orientacao: "z", conferir: true },
+    { norma: "Portaria SES 799/2023 (RS)", item: "Anexo II (item a conferir)", orientacao: "a" },
+    { norma: "Portaria SES 799/2023 (RS)", item: "Anexo II", orientacao: "b" },
+    { norma: "Portaria SES 799/2023 (RS)", item: "Anexo II, 13.7 a", orientacao: "c" },
+  ];
+  const linhas = referenciasCompactas(refs);
+  assert.equal(linhas.length, 2);
+  assert.deepEqual(linhas, ["RDC 216/2004 (4.11.4 a; 4.11.5) · conferir", "Portaria SES 799/2023 (RS) (Anexo II; Anexo II, 13.7 a) · conferir"]);
+  assert.ok(linhas.every((linha) => linha.endsWith(" · conferir") && !linha.includes("item a conferir")));
+  assert.equal(itemLimpo("Anexo II (item a conferir)"), "Anexo II");
+  assert.deepEqual(referenciasCompactas([]), []);
+  const tres = referenciasCompactas([...refs, { norma: "Outra norma", item: "1", orientacao: "" }]);
+  assert.equal(tres.length, 2, "nunca passa de duas linhas");
+  const folha = folhaDoPop({ codigo: "POP-01", titulo: "x", versao: "1.0", status: "Rascunho", conteudo: { referencias: refs } }, {});
+  assert.deepEqual(folha.blocos.find((bloco) => bloco.titulo === "Referências").linhas, linhas);
+});
+
+test("caminho da ficha: só os níveis com destino são link; o POP aberto nunca", () => {
+  const chamadas = [];
+  const niveis = niveisDoCaminho("POP-01", { documentos: () => chamadas.push("d"), pops: () => chamadas.push("p") });
+  assert.deepEqual(niveis.map((nivel) => nivel.rotulo), ["Central", "Documentos", "POPs", "POP-01"]);
+  assert.deepEqual(niveis.map((nivel) => Boolean(nivel.ir)), [false, true, true, false]);
+  niveis[2].ir();
+  assert.deepEqual(chamadas, ["p"]);
+  assert.match(ler("../app/globals.css"), /\.pfolha-passos\{list-style:decimal outside\}/);
+});
