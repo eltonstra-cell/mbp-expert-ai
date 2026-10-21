@@ -267,7 +267,7 @@ export default function PcRelatoriosEmitidos({ empresa, relatorios, urlDaFoto, o
                         aria-expanded={aberta}
                         onClick={() => setExpandidas((atual) => (atual.includes(grupo.visitaId) ? atual.filter((id) => id !== grupo.visitaId) : [...atual, grupo.visitaId]))}
                       >
-                        {aberta ? "Ocultar versões anteriores" : quantidade(grupo.anteriores.length, "versão anterior", "versões anteriores")}
+                        <span aria-hidden="true">{aberta ? "▾" : "▸"}</span> {quantidade(grupo.anteriores.length, "versão anterior", "versões anteriores")}
                       </button>
                       {aberta && <div className="emitido-anteriores-lista">{grupo.anteriores.map((item) => linha(item, false))}</div>}
                     </>

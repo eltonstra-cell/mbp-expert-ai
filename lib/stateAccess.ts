@@ -4,6 +4,7 @@ import { protegerCarimboDasEvidencias } from "./fotosDoItem.ts";
 import { preservarEvidenciasEmRelatorio } from "./relatorioEmitido.ts";
 import { podeEditarQuestionario } from "./questionarioAmbiente.ts";
 import { popComoVigente } from "./popsNorma.ts";
+import { comPerfilProprio } from "./userManagement.ts";
 import { permissoesEfetivas } from "./screenAccess.ts";
 import { acessoVigente } from "./validadeDeAcesso.ts";
 
@@ -299,13 +300,19 @@ export function mesclarEstadoPorUsuario(
 
   const efetivo = usuarioEfetivo(usuario);
   const empresaIds = new Set(usuario.empresaIds);
-  const usuarioVinculado: UsuarioSistema = {
+  let usuarioVinculado: UsuarioSistema = {
     ...usuario,
     authId: usuario.authId || authId,
     status: usuario.status === "Convidado" ? "Ativo" : usuario.status,
     ultimoAcessoEm: agora,
     atualizadoEm: agora,
   };
+  // Consultor/RT altera do PRÓPRIO registro só CRN, cargo na assinatura e telefone. O registro é o do usuário autenticado
+  // (já resolvido acima), nunca um id vindo do navegador; perfil, e-mail, status e os dados de outras pessoas não passam.
+  if (usuario.perfil === "Consultor/RT") {
+    const proprio = (recebido.usuarios || []).find((item) => item.id === usuario.id);
+    if (proprio) usuarioVinculado = comPerfilProprio(usuarioVinculado, proprio);
+  }
 
   let empresas = atual.empresas;
   let visitas = atual.visitas;

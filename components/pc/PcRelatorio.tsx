@@ -143,11 +143,12 @@ export default function PcRelatorio({
                     <span className="pc-rep-item-title">{linha.rotulo}</span>
                     <span className="ui-row-sub">{linha.resumo}</span>
                   </span>
-                  {!linha.ok && (
+                  {!linha.ok && linha.acao && (
                     <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => onIr(linha.chave)}>
                       {linha.acao}
                     </button>
                   )}
+                  {!linha.ok && !linha.acao && linha.semAcao && <span className="ui-row-sub">{linha.semAcao}</span>}
                 </li>
               ))}
             </ul>

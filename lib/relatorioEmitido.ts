@@ -223,6 +223,13 @@ export const ETIQUETA_SUBSTITUIDA = "Substituída";
 export const AVISO_CRN_VAZIO = "CRN do responsável não preenchido, o relatório assinado perde valor.";
 export const ROTULO_EMITIR_SEM_CRN = "Emitir mesmo sem CRN";
 
+/** Por que o botão Emitir está desabilitado, numa linha; vazio quando pode emitir. */
+export function motivoDoBotaoDesabilitado(dados: { crn?: string | null; confirmouSemCrn: boolean; precisaMotivo: boolean; motivoValido: boolean }): string {
+  const faltaCrn = !emissaoLiberada(dados.crn, dados.confirmouSemCrn);
+  if (!faltaCrn) return "";
+  return dados.precisaMotivo && !dados.motivoValido ? "Marque a caixa ou preencha o CRN, e informe o motivo." : "Marque a caixa ou preencha o CRN.";
+}
+
 /** Com CRN a emissão segue direto; sem CRN só com a confirmação explícita. */
 export function emissaoLiberada(crn: string | undefined | null, confirmouSemCrn: boolean): boolean {
   return Boolean((crn || "").trim()) || confirmouSemCrn;

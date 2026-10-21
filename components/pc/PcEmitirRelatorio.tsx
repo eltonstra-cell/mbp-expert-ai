@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AVISO_CRN_VAZIO, AVISO_SEM_ICP, ROTULO_EMITIR_SEM_CRN, emissaoLiberada } from "@/lib/relatorioEmitido";
+import { AVISO_CRN_VAZIO, AVISO_SEM_ICP, ROTULO_EMITIR_SEM_CRN, emissaoLiberada, motivoDoBotaoDesabilitado } from "@/lib/relatorioEmitido";
 import { confirmar } from "@/lib/dialogos";
 
 type Props = {
@@ -98,6 +98,7 @@ export default function PcEmitirRelatorio({ versaoAnterior, assinante, cargo, cr
               type="button"
               className="ui-btn ui-btn--save"
               disabled={emitindo || !emissaoLiberada(crn, semCrn)}
+              aria-describedby="emitir-motivo-bloqueio"
               onClick={() => {
                 setTentouEmitir(true);
                 if (!erroMotivo) onConfirmar(motivo.trim());
@@ -107,6 +108,11 @@ export default function PcEmitirRelatorio({ versaoAnterior, assinante, cargo, cr
             </button>
           </div>
         </div>
+        {motivoDoBotaoDesabilitado({ crn, confirmouSemCrn: semCrn, precisaMotivo: Boolean(versaoAnterior), motivoValido: !erroMotivo }) && (
+          <p id="emitir-motivo-bloqueio" className="emitir-bloqueio">
+            {motivoDoBotaoDesabilitado({ crn, confirmouSemCrn: semCrn, precisaMotivo: Boolean(versaoAnterior), motivoValido: !erroMotivo })}
+          </p>
+        )}
       </section>
     </div>
   );

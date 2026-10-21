@@ -58,7 +58,7 @@ import { corDaEmpresa, proximaCorLivre } from "@/lib/empresaCor";
 import { BolinhasDeCor } from "@/components/CorDaEmpresa";
 import { avisoDeDivergencia, conciliarNcs } from "@/lib/ncReconcile";
 import { contagemDeEvidencias, correcoesAbertas, itensNaoConformes, progressoDoChecklist } from "@/lib/contagens";
-import { motivoParaNaoExcluir } from "@/lib/userManagement";
+import { comPerfilProprio, motivoParaNaoExcluir } from "@/lib/userManagement";
 import { dataDaValidade, diasRestantes, expiracoesSemRegistro, faixaDeLeitura } from "@/lib/validadeDeAcesso";
 import { diferencasDeTelas, nivelDaTela, telaDaVisao, telasDiferentesDoPadrao, telasEfetivas, type NivelTela, type TelaKey, type TelasDoUsuario } from "@/lib/screenAccess";
 import { maisRecentesPrimeiro, visitaPadraoParaRegistro } from "@/lib/registerTarget";
@@ -6460,6 +6460,7 @@ export default function Home() {
                   popsSugeridos: resumoPopsVisita.linhas.length,
                   cadastroPreenchidos: empresaVisita ? preparacaoDaEmpresa(empresaVisita).preenchidos : 0,
                   cadastroTotal: empresaVisita ? preparacaoDaEmpresa(empresaVisita).total : 0,
+                  assinatura: { nome: usuarioDaSessao?.nome || sessaoAtual?.name, cargo: usuarioDaSessao?.cargo, crn: usuarioDaSessao?.crn, podeAbrirCadastro: permitido("usuarios.gerenciar") },
   });
   const passoAtualDaTrilha = passoDaView(view);
   const percentualVisitaTrilha = percentualDaVisita(respondidos, totalChecklist);
@@ -6525,6 +6526,20 @@ export default function Home() {
           perfil={usuarioDaSessao.perfil}
           empresas={usuarioDaSessao.perfil === "Administrador" ? ["Todas as empresas"] : usuarioDaSessao.empresaIds.map((id) => nomeParaExibir(db.empresas[id])).filter(Boolean)}
           versao={pacote.version}
+          editavel={usuarioDaSessao.perfil === "Consultor/RT" ? { crn: usuarioDaSessao.crn, cargo: usuarioDaSessao.cargo, telefone: usuarioDaSessao.telefone } : undefined}
+          onSalvar={
+            usuarioDaSessao.perfil === "Consultor/RT"
+              ? (dados) => {
+                  const idDoProprio = usuarioDaSessao.id;
+                  setDb((o) => {
+                    const atualizado: AppDB = { ...o, usuarios: o.usuarios.map((item) => (item.id === idDoProprio ? comPerfilProprio(item, dados) : item)) };
+                    salvarDBLocal(atualizado);
+                    return atualizado;
+                  });
+                  mostrarToast("Perfil salvo");
+                }
+              : undefined
+          }
           onFechar={() => setPerfilAberto(false)}
         />
       )}
@@ -8655,6 +8670,7 @@ export default function Home() {
                   else if (destino === "correcoes") setView("correcoes");
                   else if (destino === "evidencias") abrirEvidencias();
                   else if (destino === "pops") setView("popsvisita");
+                  else if (destino === "assinatura") setView("acessos");
                   else abrirSecaoEmpresaPeloMenu("dados");
                 }}
                 onSelecionavel={(tipo) => void gerarPdfSelecionavel(tipo)}

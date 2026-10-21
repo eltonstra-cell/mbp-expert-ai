@@ -4065,3 +4065,11 @@ html:not([data-modo="campo"]) :is(.ui-row-sub,.ui-subtitle,.pgl-detalhe,.pgl-aca
 .comp-grade .ui-field-error--forte{font-size:.88rem;line-height:1.25}
 .comp-form{gap:6px;padding:10px 14px}
 .comp-alterar-pop{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+
+/* Relatórios: link das versões anteriores, motivo do botão desabilitado e foco dos campos sem anel grosso */
+.emitido-anteriores{font-size:1rem;font-weight:500;color:#12202B;text-decoration:none}
+.emitido-anteriores:hover{background:#FEF6E6}
+.emitir-bloqueio{margin:0;text-align:right;font-size:.84rem;color:#2B3E4C}
+.ui-input:focus,.ui-input:focus-visible{outline:0;border-color:#E8B04B;box-shadow:inset 0 0 0 1px #E8B04B}
+.perfil-edicao{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+@media (max-width:719px){.perfil-edicao{grid-template-columns:1fr}}

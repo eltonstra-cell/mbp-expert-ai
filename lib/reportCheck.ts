@@ -1,12 +1,14 @@
-export type DestinoConferencia = "checklist" | "correcoes" | "evidencias" | "pops" | "empresa";
+export type DestinoConferencia = "checklist" | "correcoes" | "evidencias" | "pops" | "empresa" | "assinatura";
 
 export type LinhaConferencia = {
   chave: DestinoConferencia;
   rotulo: string;
   ok: boolean;
   resumo: string;
-  /** Texto do botão que leva à tela do problema. */
-  acao: string;
+  /** Texto do botão que leva à tela do problema; null quando a pessoa não tem acesso à tela (veja "semAcao"). */
+  acao: string | null;
+  /** Texto no lugar do botão quando a pessoa não pode resolver sozinha. */
+  semAcao?: string;
 };
 
 export type DadosConferencia = {
@@ -20,13 +22,35 @@ export type DadosConferencia = {
   popsSugeridos: number;
   cadastroPreenchidos: number;
   cadastroTotal: number;
+  /** Quem assina o relatório (nome, cargo e CRN) e se a pessoa que olha pode abrir o cadastro (Acessos). Sem isso, a linha não aparece. */
+  assinatura?: { nome?: string; cargo?: string; crn?: string; podeAbrirCadastro: boolean };
 };
+
+/** Falta alguma coisa na assinatura? Devolve o que falta ("cargo e CRN"), ou vazio quando está completa. */
+export function faltasDaAssinatura(assinatura: { nome?: string; cargo?: string; crn?: string }): string {
+  const faltas = [!(assinatura.nome || "").trim() && "nome", !(assinatura.cargo || "").trim() && "cargo", !(assinatura.crn || "").trim() && "CRN"].filter((item): item is string => Boolean(item));
+  if (faltas.length <= 1) return faltas.join("");
+  return `${faltas.slice(0, -1).join(", ")} e ${faltas[faltas.length - 1]}`;
+}
 
 const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`;
 
 export function conferenciaDoRelatorio(dados: DadosConferencia): LinhaConferencia[] {
   const checklistOk = dados.totalChecklist > 0 && dados.respondidos >= dados.totalChecklist;
   const planoOk = dados.ncsSemResponsavelOuPrazo === 0;
+  const faltaNaAssinatura = dados.assinatura ? faltasDaAssinatura(dados.assinatura) : "";
+  const linhaDaAssinatura: LinhaConferencia[] = dados.assinatura
+    ? [
+        {
+          chave: "assinatura",
+          rotulo: "Responsável pela assinatura: nome, cargo e CRN",
+          ok: !faltaNaAssinatura,
+          resumo: faltaNaAssinatura ? `Falta ${faltaNaAssinatura}` : [dados.assinatura.nome, dados.assinatura.cargo, dados.assinatura.crn].map((texto) => (texto || "").trim()).join(" · "),
+          acao: dados.assinatura.podeAbrirCadastro ? "Abrir cadastro" : null,
+          ...(dados.assinatura.podeAbrirCadastro ? {} : { semAcao: "Peça ao Administrador" }),
+        },
+      ]
+    : [];
   return [
     {
       chave: "checklist",
@@ -72,6 +96,7 @@ export function conferenciaDoRelatorio(dados: DadosConferencia): LinhaConferenci
       resumo: `${dados.cadastroPreenchidos} de ${dados.cadastroTotal} itens do cadastro preenchidos`,
       acao: "Abrir cadastro",
     },
+    ...linhaDaAssinatura,
   ];
 }
 

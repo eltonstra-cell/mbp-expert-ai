@@ -270,3 +270,20 @@ export const PALAVRA_DE_CONFIRMACAO = "EXCLUIR";
 export function confirmacaoDeExclusaoValida(texto: string): boolean {
   return texto.trim() === PALAVRA_DE_CONFIRMACAO;
 }
+
+/** Os únicos campos que o Consultor/RT altera do próprio cadastro sem passar por Acessos. */
+export const CAMPOS_DO_PERFIL_PROPRIO = ["crn", "cargo", "telefone"] as const;
+
+export type DadosDoPerfilProprio = { crn?: string; cargo?: string; telefone?: string };
+
+/** Só CRN, cargo na assinatura e telefone, limpos; vazio vira undefined (remove o campo). Perfil, e-mail, status e o resto nunca passam por aqui. */
+export function camposDoPerfilProprio(dados: DadosDoPerfilProprio | undefined | null): DadosDoPerfilProprio {
+  const crn = (dados?.crn || "").replace(/\s+/g, " ").trim().slice(0, 40);
+  const cargo = limparTextoDePessoa(dados?.cargo).slice(0, 80);
+  return { crn: crn || undefined, cargo: cargo || undefined, telefone: limparTelefone(dados?.telefone) };
+}
+
+/** O usuário com os três campos do perfil próprio trocados; o resto fica exatamente como estava. */
+export function comPerfilProprio<T extends UsuarioSistema>(usuario: T, dados: DadosDoPerfilProprio | undefined | null): T {
+  return { ...usuario, ...camposDoPerfilProprio(dados) };
+}
