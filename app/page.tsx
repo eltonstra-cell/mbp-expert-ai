@@ -23,7 +23,7 @@ import PcFilaDeEnvio from "@/components/pc/PcFilaDeEnvio";
 import PcComprovantes, { type DadosDoFormulario } from "@/components/pc/PcComprovantes";
 import { RegistrosEmpresaContext, type RegistrosEmpresaValor } from "@/components/RegistrosEmpresaContext";
 import { criarRegistroPop, podeCriarRegistroPop, podeGerenciarComprovantes, podeGerenciarPessoas, podeVerComprovantes, rotuloDoTipo } from "@/lib/registrosEmpresa";
-import { alterarPopVinculado } from "@/lib/comprovantePop";
+import { alterarPopVinculado, marcarSubstituidoNaRenovacao } from "@/lib/comprovantePop";
 import PcPessoas from "@/components/pc/PcPessoas";
 import PcEmitirRelatorio from "@/components/pc/PcEmitirRelatorio";
 import PcRelatoriosEmitidos from "@/components/pc/PcRelatoriosEmitidos";
@@ -2029,7 +2029,9 @@ export default function Home() {
     };
     setDb((o) => {
       const lista = o.comprovantes || [];
-      const atualizado: AppDB = { ...o, comprovantes: anterior ? lista.map((item) => (item.id === id ? comprovante : item)) : [...lista, comprovante] };
+      const aplicada = anterior ? lista.map((item) => (item.id === id ? comprovante : item)) : [...lista, comprovante];
+      // Renovação: o comprovante anterior (mesmo tipo e POP) ganha "Substituído"; nada é apagado.
+      const atualizado: AppDB = { ...o, comprovantes: comprovante.renovaId ? marcarSubstituidoNaRenovacao(aplicada, comprovante) : aplicada };
       salvarDBLocal(atualizado);
       return atualizado;
     });
@@ -2487,6 +2489,7 @@ export default function Home() {
         podeVerComprovantes: podeVerComprovantesAqui,
         online,
         salvarComprovante,
+        alterarPopDoComprovante,
         removerComprovante,
         urlDoComprovante: (item) => `/api/comprovantes/file?pathname=${encodeURIComponent(item.blobPathname || "")}`,
         novoRegistro: (dados) => {
@@ -6185,7 +6188,7 @@ export default function Home() {
                 Alterar em Dados
               </button>
             )}
-            {!efetivo.vinculado && <span className="pgl-resp-aviso">Sem pessoa de Acessos vinculada, ninguém aprova POP.</span>}
+
           </div>
           {divergencia && (
             <div className="priv-faixa" role="status">
@@ -6217,6 +6220,19 @@ export default function Home() {
           onPersistir={(novos) => persistirPopsDaEmpresa(empresaDoc.id, novos)}
           topo={topo}
           responsavel={responsavel}
+          avisoSemVinculo={
+            efetivo.vinculado ? undefined : (
+              <div className="priv-faixa" role="status">
+                <span>Sem pessoa de Acessos vinculada, ninguém aprova POP.</span>
+                {podeEditarDoc && (
+                  <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => irParaSubaba("dados")}>
+                    Vincular em Acessos
+                  </button>
+                )}
+              </div>
+            )
+          }
+          onIrParaNorma={podeEditarDoc ? () => irParaSubaba("norma") : undefined}
           abrirFicha={fichaPedida}
           aoConsumirPedido={() => setFichaPedida(null)}
           aoMudarFicha={setFichaAbertaRotulo}
@@ -7356,7 +7372,7 @@ export default function Home() {
         ) : view === "empresas" && showEmpresaForm && permitido("empresas.editar") ? (
           <section className="central-empresa" aria-label={editingEmpresaId ? "Central da Empresa" : "Nova empresa"}>
             {editingEmpresaId && <h1 className="sr-only">{ROTULO_DA_SUBABA[(secaoEmpresa as SubAbaCentral) || "dados"] || "Central da Empresa"}</h1>}
-            {(!editingEmpresaId || !fichaAbertaRotulo) && (
+            {!editingEmpresaId && (
             <div className="ui-head cen-cabeca">
               <div>
                 {!editingEmpresaId && <h1 className="ui-title">Nova empresa</h1>}
@@ -7372,7 +7388,7 @@ export default function Home() {
                   setEmpresaSecao(null);
                 }}
               >
-                {editingEmpresaId ? "← Voltar às empresas" : "Cancelar"}
+                Cancelar
               </button>
             </div>
             )}

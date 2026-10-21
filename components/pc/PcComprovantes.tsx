@@ -17,7 +17,8 @@ import {
   type SituacaoDaValidade,
 } from "@/lib/registrosEmpresa";
 import { hojeISO } from "@/lib/popsNorma";
-import { avisoDePopAusente, sugestaoDePopParaTipo, tiposDoPop } from "@/lib/comprovantePop";
+import { avisoDePopAusente, sugestaoDePopParaTipo, tipoDeOutroPop, tiposDoPop } from "@/lib/comprovantePop";
+import { confirmar } from "@/lib/dialogos";
 import { quantidade } from "@/lib/plural";
 import type { ComprovanteTerceiro, ProcedimentoOperacionalPadronizado, TipoComprovante } from "@/types";
 
@@ -96,6 +97,8 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
   const entrada = useRef<HTMLInputElement | null>(null);
 
   const vigentes = comprovantesVigentes(comprovantes).sort((a, b) => a.validade.localeCompare(b.validade));
+  // Renovados de agora em diante ficam na lista com a etiqueta "Substituído" e fora das contagens (os antigos, sem o campo, seguem como estavam).
+  const substituidos = comprovantes.filter((item) => Boolean(item.substituidoPor)).sort((a, b) => b.validade.localeCompare(a.validade));
   const contagem = contarPorValidade(vigentes, hoje);
   const erros = validarComprovante(dados);
   const editando = Boolean(dados.id);
@@ -326,12 +329,12 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
 
       <div className="comp-lista">
         {alterandoPop && onAlterarPop && (
-          <div className="ui-card comp-alterar-pop" role="group" aria-label="Alterar POP vinculado">
+          <div className="ui-card comp-alterar-pop" role="group" aria-label={popFixo ? "Mover para outro POP" : "Alterar POP vinculado"}>
             <label className="pc-field">
-              <span className="ui-eyebrow">POP vinculado de {rotuloDoTipo(comprovantes.find((item) => item.id === alterandoPop.id)?.tipo || "outro")}</span>
+              <span className="ui-eyebrow">{popFixo ? "Mover" : "POP vinculado de"} {rotuloDoTipo(comprovantes.find((item) => item.id === alterandoPop.id)?.tipo || "outro")}{popFixo ? " para o POP" : ""}</span>
               <select className="ui-input ui-input--lista" value={alterandoPop.popId} onChange={(evento) => setAlterandoPop({ ...alterandoPop, popId: evento.target.value })}>
-                <option value="">Nenhum (comprovante geral da empresa)</option>
-                {listaDePops.filter((pop) => !pop.arquivado).map((pop) => (
+                {popFixo ? <option value="">Escolha o POP…</option> : <option value="">Nenhum (comprovante geral da empresa)</option>}
+                {listaDePops.filter((pop) => !pop.arquivado && pop.id !== popFixo?.id).map((pop) => (
                   <option key={pop.id} value={pop.id}>
                     {rotuloDoPop(pop)}
                   </option>
@@ -345,23 +348,32 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
               <button
                 type="button"
                 className="ui-btn ui-btn--save ui-btn--small"
-                onClick={() => {
+                disabled={Boolean(popFixo) && !alterandoPop.popId}
+                onClick={async () => {
                   const alvo = comprovantes.find((item) => item.id === alterandoPop.id);
+                  const destino = listaDePops.find((pop) => pop.id === alterandoPop.popId);
+                  if (alvo && popFixo) {
+                    const nome = destino?.codigo || destino?.titulo || "outro POP";
+                    if (!(await confirmar(`O comprovante sai desta ficha e vai para o ${nome}. O histórico fica registrado.`, { titulo: "Mover comprovante", confirmarRotulo: "Mover", cancelarRotulo: "Cancelar" }))) return;
+                  }
                   if (alvo) onAlterarPop(alvo, alterandoPop.popId || undefined);
                   setAlterandoPop(null);
                 }}
               >
-                Salvar
+                {popFixo ? "Mover" : "Salvar"}
               </button>
             </div>
           </div>
         )}
-        {vigentes.length === 0 ? (
+        {vigentes.length + substituidos.length === 0 ? (
           <div className="ui-empty">{mensagemVazia || "Nenhum comprovante anexado. Anexe o certificado de controle de pragas, da limpeza do reservatório ou o contrato do RT."}</div>
         ) : (
           <div className="ui-list">
-            {vigentes.map((item) => {
-              const situacao = situacaoDaValidade(item.validade, hoje);
+            {[...vigentes, ...substituidos].map((item) => {
+              const substituido = Boolean(item.substituidoPor);
+              const situacao = substituido ? "sem-validade" : situacaoDaValidade(item.validade, hoje);
+              const popDoItem = item.popId ? listaDePops.find((pop) => pop.id === item.popId) : undefined;
+              const deOutroPop = substituido ? null : tipoDeOutroPop(item.tipo, popDoItem);
               const dias = diasEntre(hoje, item.validade);
               const detalhe = situacao === "vencido" ? `venceu há ${quantidade(Math.abs(dias), "dia", "dias")}` : dias === 0 ? "vence hoje" : `vence em ${quantidade(dias, "dia", "dias")}`;
               const codigo = item.popId ? codigoDoPop.get(item.popId) : undefined;
@@ -371,15 +383,31 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
                   faixa={TOM[situacao]}
                   icone={<span aria-hidden="true">▤</span>}
                   titulo={rotuloDoTipo(item.tipo)}
-                  chip={!embutido && item.popId ? <span className="comp-selo-pop">{codigo || "POP"}</span> : undefined}
+                  chip={!popFixo ? <span className="comp-selo-pop">{item.popId ? codigo || "POP" : "Sem POP vinculado"}</span> : undefined}
+                  meio={
+                    deOutroPop && podeGerenciar && onAlterarPop ? (
+                      <span className="comp-tarja" role="note">
+                        {deOutroPop.texto}
+                        <button
+                          type="button"
+                          className="ui-btn ui-btn--secondary ui-btn--small"
+                          onClick={() => setAlterandoPop({ id: item.id, popId: listaDePops.find((pop) => !pop.arquivado && pop.catalogoId === deOutroPop.catalogoId)?.id || "" })}
+                        >
+                          Mover
+                        </button>
+                      </span>
+                    ) : deOutroPop ? (
+                      <span className="comp-tarja" role="note">{deOutroPop.texto}</span>
+                    ) : undefined
+                  }
                   secundario={
                     <>
                       <span>
-                        <span className="comp-emissor">{item.emissor}</span> · Serviço em {dataBr(item.dataServico)} · validade {dataBr(item.validade)} ({detalhe}){item.observacao ? ` · ${item.observacao}` : ""}
+                        <span className="comp-emissor">{item.emissor}</span> · Serviço em {dataBr(item.dataServico)} · validade {dataBr(item.validade)}{substituido ? "" : ` (${detalhe})`}{item.observacao ? ` · ${item.observacao}` : ""}
                       </span>
                     </>
                   }
-                  pilulas={<Pill tom={TOM[situacao]}>{ROTULO_DA_VALIDADE[situacao]}</Pill>}
+                  pilulas={<Pill tom={TOM[situacao]}>{substituido ? "Substituído" : ROTULO_DA_VALIDADE[situacao]}</Pill>}
                   acao={
                     <span className="comp-acoes">
                       {item.blobPathname && (
@@ -387,7 +415,7 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
                           Abrir
                         </a>
                       )}
-                      {podeGerenciar && (
+                      {podeGerenciar && !substituido && (
                         <button
                           type="button"
                           className="ui-btn ui-btn--secondary ui-btn--small"
@@ -399,9 +427,11 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
                     </span>
                   }
                   menu={
-                    podeGerenciar
+                    podeGerenciar && !substituido
                       ? [
-                          ...(onAlterarPop && !popFixo && listaDePops.some((pop) => !pop.arquivado) ? [{ rotulo: "Alterar POP vinculado", onClick: () => setAlterandoPop({ id: item.id, popId: item.popId || "" }) }] : []),
+                          ...(onAlterarPop && listaDePops.some((pop) => !pop.arquivado && pop.id !== popFixo?.id)
+                            ? [{ rotulo: popFixo ? "Mover para outro POP" : "Alterar POP vinculado", onClick: () => setAlterandoPop({ id: item.id, popId: popFixo ? "" : item.popId || "" }) }]
+                            : []),
                           { rotulo: "Editar", onClick: () => abrir({ id: item.id, tipo: item.tipo, emissor: item.emissor, dataServico: item.dataServico, validade: item.validade, observacao: item.observacao, ...(item.popId ? { popId: item.popId } : {}) }) },
                           { rotulo: "Remover comprovante", perigo: true, confirmar: "Remover este comprovante? O arquivo anexado também será apagado.", onClick: () => onRemover(item) },
                         ]

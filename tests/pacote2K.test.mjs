@@ -1,0 +1,105 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import test from "node:test";
+
+import { alterarPopVinculado, marcarSubstituidoNaRenovacao, tipoDeOutroPop } from "../lib/comprovantePop.ts";
+import { comprovantesVigentes, contarPorValidade } from "../lib/registrosEmpresa.ts";
+import { mesclarEstadoPorUsuario } from "../lib/stateAccess.ts";
+
+const ler = (c) => readFileSync(new URL(c, import.meta.url), "utf8");
+const agora = "2026-10-21T10:00:00.000Z";
+
+test("tarja: tipo que pertence a outro POP (reservatório preso ao POP-01) avisa; tipo certo ou sem POP próprio não", () => {
+  const aviso = tipoDeOutroPop("reservatorio", { catalogoId: "higienizacao-instalacoes" });
+  assert.ok(aviso && aviso.texto.startsWith("Este tipo costuma pertencer ao POP de "));
+  assert.equal(aviso.catalogoId, "higienizacao-reservatorio");
+  assert.equal(tipoDeOutroPop("reservatorio", { catalogoId: "higienizacao-reservatorio" }), null);
+  assert.equal(tipoDeOutroPop("pragas", { catalogoId: "higienizacao-instalacoes" })?.catalogoId, "controle-de-pragas");
+  assert.equal(tipoDeOutroPop("contrato-rt", { catalogoId: "higienizacao-instalacoes" }), null);
+  assert.equal(tipoDeOutroPop("outro", { catalogoId: "x" }), null);
+  assert.equal(tipoDeOutroPop("reservatorio", undefined), null, "comprovante sem POP não tem tarja");
+});
+
+test("renovar: o anterior do mesmo tipo e POP vira 'Substituído' e sai das contagens; nada é apagado", () => {
+  const velho = { id: "c1", tipo: "pragas", popId: "p1", validade: "2026-10-01" };
+  const outro = { id: "c9", tipo: "reservatorio", popId: "p2", validade: "2026-10-01" };
+  const novo = { id: "c2", tipo: "pragas", popId: "p1", validade: "2027-10-01", renovaId: "c1" };
+  const lista = [velho, outro, novo];
+  const marcada = marcarSubstituidoNaRenovacao(lista, novo);
+  assert.equal(marcada.length, 3, "nada some");
+  assert.equal(marcada.find((item) => item.id === "c1").substituidoPor, "c2");
+  assert.equal(marcada.find((item) => item.id === "c9").substituidoPor, undefined);
+  assert.equal(velho.substituidoPor, undefined, "o original não muda");
+  // contagens: o substituído (vencido) não conta
+  const vigentes = comprovantesVigentes(marcada);
+  assert.deepEqual(vigentes.map((item) => item.id).sort(), ["c2", "c9"]);
+  assert.equal(contarPorValidade(vigentes, "2026-10-21").vencidos, 1, "só o do reservatório, que segue vencido");
+  // tipo ou POP diferente: não marca; antigo sem campo continua como estava
+  assert.equal(marcarSubstituidoNaRenovacao(lista, { ...novo, popId: "p9" }), lista);
+  assert.equal(marcarSubstituidoNaRenovacao(lista, { id: "c3", tipo: "pragas", popId: "p1" }), lista, "sem renovaId nada acontece");
+  assert.equal(marcarSubstituidoNaRenovacao(marcada, novo), marcada, "já marcado: sem mudança");
+  const tela = ler("../components/pc/PcComprovantes.tsx");
+  assert.ok(tela.includes('"Substituído"') && tela.includes("substituidos") && tela.includes("comp-selo-pop") && tela.includes("Sem POP vinculado"));
+});
+
+const usuario = (id, perfil, empresaIds = ["e1"]) => ({ id, nome: id, email: `${id}@example.com`, perfil, status: "Ativo", empresaIds, authId: `auth-${id}`, criadoEm: agora, atualizadoEm: agora });
+function estadoComComprovante() {
+  const comprovante = { id: "c1", empresaId: "e1", tipo: "reservatorio", popId: "p1", emissor: "X", dataServico: "2026-10-01", validade: "2027-04-01", observacao: "", criadoEm: agora };
+  return {
+    empresas: {
+      e1: { id: "e1", nomeFantasia: "E1", pops: [{ id: "p1", codigo: "POP-01" }, { id: "p3", codigo: "POP-03" }] },
+      e2: { id: "e2", nomeFantasia: "E2", pops: [{ id: "p9", codigo: "POP-09" }] },
+    },
+    empresaAtualId: "e1", usuarios: [], visitas: [], ncs: [], evidencias: [], registrosAuditoria: [], comprovantes: [comprovante],
+  };
+}
+
+test("mover comprovante para outro POP: com histórico, sem apagar; só quem gerencia comprovantes; POP de outra empresa é recusado", () => {
+  const original = estadoComComprovante().comprovantes[0];
+  const movido = alterarPopVinculado(original, "p3", [{ id: "p1" }, { id: "p3" }], { id: "rt", nome: "RT" }, agora);
+  assert.equal(movido.popId, "p3");
+  assert.equal(movido.historicoDePop.length, 1);
+  assert.equal(movido.historicoDePop[0].de, "p1");
+  assert.equal(movido.historicoDePop[0].para, "p3");
+  assert.equal(alterarPopVinculado(original, "p9", [{ id: "p1" }, { id: "p3" }], {}, agora), original, "POP de outra empresa não existe aqui");
+
+  // servidor: o RT consegue
+  const rt = usuario("rt", "Consultor/RT");
+  const atual = { ...estadoComComprovante(), usuarios: [rt] };
+  const comoRt = mesclarEstadoPorUsuario(atual, { ...atual, comprovantes: [movido] }, rt, "auth-rt", agora);
+  assert.equal(comoRt.comprovantes.find((item) => item.id === "c1").popId, "p3");
+  assert.equal(comoRt.comprovantes.find((item) => item.id === "c1").historicoDePop.length, 1);
+  // servidor: POP de outra empresa vira "sem POP", nunca vincula fora da empresa
+  const fora = mesclarEstadoPorUsuario(atual, { ...atual, comprovantes: [{ ...original, popId: "p9" }] }, rt, "auth-rt", agora);
+  assert.equal(fora.comprovantes.find((item) => item.id === "c1").popId, undefined);
+  // servidor: quem não gerencia comprovantes não consegue mover
+  for (const perfil of ["Executor de campo", "Fiscal"]) {
+    const pessoa = usuario("x", perfil);
+    const base = { ...estadoComComprovante(), usuarios: [pessoa] };
+    const tentativa = mesclarEstadoPorUsuario(base, { ...base, comprovantes: [movido] }, pessoa, "auth-x", agora);
+    assert.equal(tentativa.comprovantes.find((item) => item.id === "c1").popId, "p1", perfil);
+  }
+  // a ficha passa a lista de POPs e a função de mover, e o menu mostra a opção
+  const ficha = ler("../components/pc/PcFichaPop.tsx");
+  assert.ok(ficha.includes("onAlterarPop={contexto.podeGerenciarComprovantes ? contexto.alterarPopDoComprovante : undefined}") && ficha.includes("pops={popsDaEmpresa}"));
+  const tela = ler("../components/pc/PcComprovantes.tsx");
+  assert.ok(tela.includes('"Mover para outro POP"') && tela.includes("O comprovante sai desta ficha e vai para o") && tela.includes("O histórico fica registrado."));
+});
+
+test("Central e lista de POPs: sem 'Voltar às empresas', sem frase repetida e sem botão de criar quando falta norma", () => {
+  const pagina = ler("../app/page.tsx");
+  assert.ok(!pagina.includes("Voltar às empresas"));
+  assert.ok(pagina.includes("{!editingEmpresaId && (\n            <div className=\"ui-head cen-cabeca\">") || pagina.includes("{!editingEmpresaId && (\r\n            <div className=\"ui-head cen-cabeca\">"));
+  const lista = ler("../components/pc/PcPopsLista.tsx");
+  assert.ok(lista.includes("podeEditar && conjunto.length > 0 &&") && lista.includes("Ir para Norma aplicável") && lista.includes("{avisoSemVinculo}"));
+  assert.ok(!ler("../components/pc/PcPops.tsx").includes("motivoSemCriar={definicoes.length === 0"));
+  assert.ok(pagina.includes("Vincular em Acessos") && !pagina.includes('<span className="pgl-resp-aviso">'));
+  const css = ler("../app/globals.css");
+  assert.ok(css.includes(".central-empresa,.cen-conteudo,.pgl,.comp,.pess{gap:16px}") && css.includes(".comp-form.is-aberto{max-height:none;overflow:visible}"));
+});
+
+test("Resumo da ficha: botões na linha do título de cada bloco e textos escuros", () => {
+  const ficha = ler("../components/pc/PcFichaPop.tsx");
+  assert.ok(ficha.includes("ficha-sub-linha") && !ficha.includes("ficha-rodape-resumo"));
+  assert.match(ler("../app/globals.css"), /\.ficha-lista,\.ficha-vazio\{font-size:1rem;color:#12202B\}/);
+});

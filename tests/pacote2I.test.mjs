@@ -88,7 +88,7 @@ test("comprovante na ficha: com uma só opção o Tipo vira texto fixo; com tipo
   const tela = ler("../components/pc/PcComprovantes.tsx");
   assert.ok(tela.includes("popFixo && tiposDisponiveis.length === 1") && tela.includes('className="comp-tipo-fixo"'));
   assert.ok(tela.includes("comp-chips") && !tela.includes("comp-contadores"));
-  assert.match(ler("../app/globals.css"), /\.comp-grade \.pc-field\{display:grid;grid-template-rows:auto auto minmax\(1\.3rem,auto\)/);
+  assert.match(ler("../app/globals.css"), /\.comp-grade\{align-items:start\}/);
 });
 
 test("Alterar POP vinculado: troca sem apagar o comprovante e registra no histórico", () => {
@@ -107,7 +107,7 @@ test("Alterar POP vinculado: troca sem apagar o comprovante e registra no histó
   assert.equal(alterarPopVinculado(base, "p1", pops, {}, "x"), base);
   assert.equal(alterarPopVinculado(base, "nao-existe", pops, {}, "x"), base);
   const tela = ler("../components/pc/PcComprovantes.tsx");
-  assert.ok(tela.includes('rotulo: "Alterar POP vinculado"') && tela.includes("onAlterarPop"));
+  assert.ok(tela.includes('"Alterar POP vinculado"') && tela.includes("onAlterarPop"));
   assert.ok(ler("../app/page.tsx").includes('acao: "comprovante.pop_alterado"'));
 });
 

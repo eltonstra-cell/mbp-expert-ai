@@ -23,6 +23,8 @@ type Props = {
   podeEditar: boolean;
   onImprimir?: (titulo: string, cabecalho: CabecalhoDeImpressao) => void;
   responsavelDoEstabelecimento?: { nome: string; cargo: string; usuarioId?: string };
+  /** Todos os POPs da empresa (destinos de "Mover para outro POP"). */
+  popsDaEmpresa?: ProcedimentoOperacionalPadronizado[];
   podeAprovar: boolean;
   contexto: RegistrosEmpresaValor | null;
   mensagem?: string;
@@ -51,7 +53,7 @@ const DESTINO_DA_ABA: Record<NonNullable<ReturnType<typeof montarLinhaDoPop>["ac
 };
 
 // Ficha do POP: o POP é o centro. Resumo, Documento, Registros, Comprovantes, Quem leu e Histórico no mesmo lugar.
-export default function PcFichaPop({ pop, empresa, usuario, podeEditar, onImprimir, responsavelDoEstabelecimento, podeAprovar, contexto, mensagem, abaInicial = "resumo", onVoltar, onSalvarRascunho, onEnviar, onAprovar, onNovaVersao, onDescartar }: Props) {
+export default function PcFichaPop({ pop, empresa, usuario, podeEditar, onImprimir, responsavelDoEstabelecimento, popsDaEmpresa, podeAprovar, contexto, mensagem, abaInicial = "resumo", onVoltar, onSalvarRascunho, onEnviar, onAprovar, onNovaVersao, onDescartar }: Props) {
   const [aba, setAba] = useState<AbaFicha>(abaInicial);
   const hoje = hojeISO();
   useEffect(() => setAba(abaInicial), [abaInicial]);
@@ -155,7 +157,14 @@ export default function PcFichaPop({ pop, empresa, usuario, podeEditar, onImprim
 
             <div className="ficha-duas">
               <div className="ficha-coluna">
-                <h3 className="ficha-sub">Registros recentes</h3>
+                <div className="ficha-sub-linha">
+                  <h3 className="ficha-sub">Registros recentes</h3>
+                  {contexto?.podeCriarRegistro && vigente && abas.includes("registros") && (
+                    <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => setAba("registros")}>
+                      + Registrar execução
+                    </button>
+                  )}
+                </div>
                 {recentes.length === 0 ? (
                   <p className="ficha-vazio">Nenhum registro ainda.</p>
                 ) : (
@@ -171,7 +180,14 @@ export default function PcFichaPop({ pop, empresa, usuario, podeEditar, onImprim
               </div>
               {verComprovantes && (
                 <div className="ficha-coluna">
-                  <h3 className="ficha-sub">Comprovante vinculado</h3>
+                  <div className="ficha-sub-linha">
+                    <h3 className="ficha-sub">Comprovante vinculado</h3>
+                    {contexto?.podeGerenciarComprovantes && abas.includes("comprovantes") && (
+                      <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => setAba("comprovantes")}>
+                        + Anexar comprovante
+                      </button>
+                    )}
+                  </div>
                   {proximoComprovante ? (
                     <ul className="ficha-lista">
                       <li>
@@ -188,20 +204,6 @@ export default function PcFichaPop({ pop, empresa, usuario, podeEditar, onImprim
               )}
             </div>
 
-            <div className="ficha-rodape-resumo">
-              <span className="ficha-botoes">
-                {contexto?.podeCriarRegistro && vigente && abas.includes("registros") && (
-                  <button type="button" className="ui-btn ui-btn--secondary" onClick={() => setAba("registros")}>
-                    + Registrar execução
-                  </button>
-                )}
-                {contexto?.podeGerenciarComprovantes && abas.includes("comprovantes") && (
-                  <button type="button" className="ui-btn ui-btn--secondary" onClick={() => setAba("comprovantes")}>
-                    + Anexar comprovante
-                  </button>
-                )}
-              </span>
-            </div>
           </div>
         )}
 
@@ -241,6 +243,8 @@ export default function PcFichaPop({ pop, empresa, usuario, podeEditar, onImprim
             onRemover={contexto.removerComprovante}
             urlDoArquivo={contexto.urlDoComprovante}
             popFixo={{ id: pop.id, rotulo: pop.titulo, catalogoId: pop.catalogoId }}
+            pops={popsDaEmpresa}
+            onAlterarPop={contexto.podeGerenciarComprovantes ? contexto.alterarPopDoComprovante : undefined}
             mensagemVazia={mensagemDeComprovanteVazio(pop)}
             onVoltar={() => setAba("resumo")}
           />

@@ -21,6 +21,8 @@ type Props = {
   /** Faltam POPs do conjunto para criar de uma vez (só RT e Administrador). */
   faltamCriar: number;
   motivoSemCriar: string;
+  avisoSemVinculo?: ReactNode;
+  onIrParaNorma?: () => void;
   onCriarFaltantes: () => void;
   onCriarDoModelo: (catalogoId: string) => void;
   onAbrirFicha: (popId: string) => void;
@@ -91,6 +93,8 @@ export default function PcPopsLista({
   onVerArquivados,
   faltamCriar,
   motivoSemCriar,
+  avisoSemVinculo,
+  onIrParaNorma,
   onCriarFaltantes,
   onCriarDoModelo,
   onAbrirFicha,
@@ -140,7 +144,7 @@ export default function PcPopsLista({
   return (
     <div className="pgl">
       <h2 className="sr-only">POPs</h2>
-      {podeEditar &&
+      {podeEditar && conjunto.length > 0 &&
         (() => {
           const botao = (
             <div className="pgl-criar">
@@ -154,6 +158,8 @@ export default function PcPopsLista({
         })()}
 
       {topo}
+
+      {avisoSemVinculo}
 
       <div className="pgl-faixa-topo">
         <div className="pgl-chips" role="group" aria-label="Situação dos POPs">
@@ -170,6 +176,11 @@ export default function PcPopsLista({
         {conjunto.length === 0 ? (
           <div className="priv-faixa" role="status">
             <span>{MENSAGEM_SEM_NORMA_APLICADA}</span>
+            {onIrParaNorma && (
+              <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={onIrParaNorma}>
+                Ir para Norma aplicável
+              </button>
+            )}
           </div>
         ) : (
           <>

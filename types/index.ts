@@ -559,6 +559,8 @@ export type ComprovanteTerceiro = {
   popId?: string;
   /** Comprovante que este renovou. */
   renovaId?: string;
+  /** Id do comprovante que o substituiu numa renovação (opcional): o antigo ganha a etiqueta "Substituído" e sai das contagens. */
+  substituidoPor?: string;
   /** Histórico das trocas de POP vinculado (opcional); o comprovante nunca é apagado ao trocar. */
   historicoDePop?: { em: string; porId?: string; porNome?: string; de?: string; para?: string }[];
   criadoPorId?: string;

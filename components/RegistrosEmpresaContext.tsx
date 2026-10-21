@@ -34,6 +34,8 @@ export type RegistrosEmpresaValor = {
   podeVerComprovantes: boolean;
   online: boolean;
   salvarComprovante: (dados: DadosDoFormulario, arquivo: File | null) => Promise<string>;
+  /** Troca o POP vinculado de um comprovante, sem apagá-lo (com histórico e auditoria). */
+  alterarPopDoComprovante: (comprovante: ComprovanteTerceiro, popId: string | undefined) => void;
   removerComprovante: (comprovante: ComprovanteTerceiro) => void;
   urlDoComprovante: (comprovante: ComprovanteTerceiro) => string;
 };

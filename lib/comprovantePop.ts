@@ -77,3 +77,35 @@ export function alterarPopVinculado<T extends { popId?: string; historicoDePop?:
     historicoDePop: [...(comprovante.historicoDePop || []), { em: agora, ...(quem.id ? { porId: quem.id } : {}), ...(quem.nome ? { porNome: quem.nome } : {}), ...(comprovante.popId ? { de: comprovante.popId } : {}), ...(destino ? { para: destino } : {}) }],
   } as T;
 }
+
+/**
+ * O tipo do comprovante costuma pertencer a outro POP? (ex.: "Limpeza do reservatório" preso ao POP-01).
+ * Usa só o mapeamento tipo→POP já existente; tipos sem POP próprio (contrato, outros) nunca geram aviso.
+ */
+export function tipoDeOutroPop(
+  tipo: TipoComprovante,
+  popAtual: { catalogoId?: string } | undefined
+): { catalogoId: string; titulo: string; texto: string } | null {
+  const esperado = CATALOGO_DO_TIPO[tipo];
+  if (!esperado || !popAtual) return null;
+  if (popAtual.catalogoId === esperado) return null;
+  const definicao = CONJUNTO_DA_NORMA.find((item) => item.catalogoId === esperado);
+  if (!definicao) return null;
+  return { catalogoId: esperado, titulo: definicao.titulo, texto: `Este tipo costuma pertencer ao POP de ${definicao.titulo}` };
+}
+
+/**
+ * Renovou um comprovante: o anterior, do mesmo tipo e do mesmo POP, ganha "substituidoPor" (etiqueta "Substituído"). Nada é apagado e
+ * comprovante antigo sem o campo continua como estava. Devolve a mesma lista quando não há o que marcar.
+ */
+export function marcarSubstituidoNaRenovacao<T extends { id: string; tipo: TipoComprovante; popId?: string; substituidoPor?: string }>(lista: T[], novo: { id: string; tipo: TipoComprovante; popId?: string; renovaId?: string }): T[] {
+  if (!novo.renovaId) return lista;
+  let mudou = false;
+  const resultado = lista.map((item) => {
+    if (item.id !== novo.renovaId || item.substituidoPor) return item;
+    if (item.tipo !== novo.tipo || (item.popId || "") !== (novo.popId || "")) return item;
+    mudou = true;
+    return { ...item, substituidoPor: novo.id };
+  });
+  return mudou ? resultado : lista;
+}

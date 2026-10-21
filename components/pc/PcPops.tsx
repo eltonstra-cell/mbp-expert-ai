@@ -6,7 +6,7 @@ import PcFichaPop, { type AbaFicha } from "@/components/pc/PcFichaPop";
 import PcPopsLista from "@/components/pc/PcPopsLista";
 import type { CabecalhoDeImpressao } from "@/lib/printFooter";
 import { useRegistrosDaEmpresa } from "@/components/RegistrosEmpresaContext";
-import { aprovarPop, criarPopDoTextoBase, criarPopsFaltantesDoConjunto, descartarRascunho, conjuntoDaEmpresa, enviarParaAprovacao, hojeISO, iniciarNovaVersao, podeAprovarPop, MENSAGEM_SEM_NORMA_APLICADA } from "@/lib/popsNorma";
+import { aprovarPop, criarPopDoTextoBase, criarPopsFaltantesDoConjunto, descartarRascunho, conjuntoDaEmpresa, enviarParaAprovacao, hojeISO, iniciarNovaVersao, podeAprovarPop } from "@/lib/popsNorma";
 import { montarListaDePops } from "@/lib/popGestao";
 
 type Props = {
@@ -21,6 +21,10 @@ type Props = {
   /** Cartão "Colocar a empresa em dia" e aviso de responsável, quando houver. */
   topo?: ReactNode;
   responsavel: ReactNode;
+  /** Faixa própria quando o responsável do estabelecimento não tem pessoa de Acessos vinculada. */
+  avisoSemVinculo?: ReactNode;
+  /** Leva a Empresa › Norma aplicável (só quem edita a empresa). */
+  onIrParaNorma?: () => void;
   /** Abre a ficha deste POP (vindo do painel, da Correção ou de outra tela). */
   abrirFicha?: { popId: string; aba?: AbaFicha; chave: number } | null;
   /** Avisa que o pedido de abrir a ficha já foi atendido (para não reabrir ao voltar à lista). */
@@ -34,7 +38,7 @@ type Props = {
 };
 
 // Documentos › POPs: a lista com situação e próxima ação e, ao abrir um POP, a ficha com as seis abas.
-export default function PcPops({ pops, empresa, usuario = null, podeEditar = false, onPersistir, mensagem, topo, responsavel, abrirFicha, aoConsumirPedido, aoMudarFicha, onImprimir, responsavelDoEstabelecimento, pedidoDeLista = 0 }: Props) {
+export default function PcPops({ pops, empresa, usuario = null, podeEditar = false, onPersistir, mensagem, topo, responsavel, avisoSemVinculo, onIrParaNorma, abrirFicha, aoConsumirPedido, aoMudarFicha, onImprimir, responsavelDoEstabelecimento, pedidoDeLista = 0 }: Props) {
   const contexto = useRegistrosDaEmpresa();
   const [fichaId, setFichaId] = useState<string | null>(null);
   const [abaInicial, setAbaInicial] = useState<AbaFicha>("resumo");
@@ -127,6 +131,7 @@ export default function PcPops({ pops, empresa, usuario = null, podeEditar = fal
         podeEditar={podeEditar}
         onImprimir={onImprimir}
         responsavelDoEstabelecimento={responsavelDoEstabelecimento}
+        popsDaEmpresa={pops}
         podeAprovar={podeAprovar}
         contexto={contexto}
         mensagem={mensagemFicha}
@@ -154,7 +159,9 @@ export default function PcPops({ pops, empresa, usuario = null, podeEditar = fal
       verArquivados={verArquivados}
       onVerArquivados={() => setVerArquivados((valor) => !valor)}
       faltamCriar={faltamCriar}
-      motivoSemCriar={definicoes.length === 0 ? MENSAGEM_SEM_NORMA_APLICADA : "Os POPs do modelo já foram criados."}
+      motivoSemCriar="Os POPs do modelo já foram criados."
+      avisoSemVinculo={avisoSemVinculo}
+      onIrParaNorma={onIrParaNorma}
       onCriarFaltantes={criarFaltantes}
       onCriarDoModelo={criarDoModelo}
       onAbrirFicha={abrir}
