@@ -93,7 +93,7 @@ test("Central e lista de POPs: sem 'Voltar às empresas', sem frase repetida e s
   const lista = ler("../components/pc/PcPopsLista.tsx");
   assert.ok(lista.includes("podeEditar && conjunto.length > 0 &&") && lista.includes("Ir para Norma aplicável") && lista.includes("{avisoSemVinculo}"));
   assert.ok(!ler("../components/pc/PcPops.tsx").includes("motivoSemCriar={definicoes.length === 0"));
-  assert.ok(pagina.includes("Vincular em Acessos") && !pagina.includes('<span className="pgl-resp-aviso">'));
+  assert.ok(pagina.includes("Vincular em Dados") && !pagina.includes('<span className="pgl-resp-aviso">'));
   const css = ler("../app/globals.css");
   assert.ok(css.includes(".central-empresa,.cen-conteudo,.pgl,.comp,.pess{gap:16px}") && css.includes(".comp-form.is-aberto{max-height:none;overflow:visible}"));
 });

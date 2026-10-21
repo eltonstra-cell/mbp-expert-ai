@@ -4126,3 +4126,14 @@ html[data-modo="equilibrado"] .pc-busca,html[data-modo="completo"] .pc-busca{dis
 .pc-busca-titulo{padding:4px 6px 0;font-size:.88rem;font-weight:500;color:#12202B}
 .pc-busca-chips{display:flex;flex-wrap:wrap;gap:8px}
 @media (max-width:1180px){.pc-topbar .pc-busca{min-width:280px}.pc-topbar .pc-kbd{display:none}}
+
+/* Central: grupos e seções do grupo aberto na mesma linha (abaixo de ~1280 px voltam a duas linhas) */
+.cen-nav{flex-direction:row;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.cen-separador{display:none;width:1px;height:28px;background:#B4C2CE}
+@media (min-width:1280px){.cen-separador{display:block}}
+@media (max-width:1279px){.cen-nav{flex-direction:column;align-items:stretch}}
+/* Lista de POPs: avisos juntos, chips + responsável + criar na mesma faixa, rótulos de seção a 15 px */
+.pgl-avisos{display:flex;flex-direction:column;gap:8px}
+.pgl-fim{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px 16px}
+.pgl-secao-linha{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px}
+.pgl-secao{margin:0;font-size:15px;font-weight:500;letter-spacing:0;text-transform:none;color:#12202B}

@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
-import { createPortal } from "react-dom";
+import { useState, type ReactNode } from "react";
 import type { Empresa, ProcedimentoOperacionalPadronizado } from "@/types";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
 import { RowMenu, type ItemMenu } from "@/components/ui/RowMenu";
@@ -104,13 +103,12 @@ export default function PcPopsLista({
   topo,
   mensagem,
 }: Props) {
+  const [adicionando, setAdicionando] = useState(false);
   const [codigo, setCodigo] = useState("");
   const [titulo, setTitulo] = useState("");
   const [erro, setErro] = useState<{ campo: "titulo" | "codigo"; aviso: string } | null>(null);
   const contadores = contadoresDaLista([...conjunto, ...outros]);
-  // "Criar os N POPs de uma vez" vai para a linha das abas da Central, à direita; sem a linha (tela fora da Central), fica no topo da lista.
-  const [lugarDoBotao, setLugarDoBotao] = useState<HTMLElement | null>(null);
-  useEffect(() => setLugarDoBotao(document.getElementById("cen-acoes-slot")), []);
+
 
   function adicionar() {
     const resultado = adicionarPop(pops, codigo, titulo, crypto.randomUUID());
@@ -119,6 +117,14 @@ export default function PcPopsLista({
       return;
     }
     onPersistir(resultado.pops);
+    setCodigo("");
+    setTitulo("");
+    setErro(null);
+    setAdicionando(false);
+  }
+
+  function cancelarAdicao() {
+    setAdicionando(false);
     setCodigo("");
     setTitulo("");
     setErro(null);
@@ -144,22 +150,24 @@ export default function PcPopsLista({
   return (
     <div className="pgl">
       <h2 className="sr-only">POPs</h2>
-      {podeEditar && conjunto.length > 0 &&
-        (() => {
-          const botao = (
-            <div className="pgl-criar">
-              {faltamCriar === 0 && motivoSemCriar && <span className="pgl-motivo">{motivoSemCriar}</span>}
-              <button type="button" className="ui-btn ui-btn--criar ui-btn--small" disabled={faltamCriar === 0} onClick={onCriarFaltantes}>
-                {faltamCriar === 0 ? "Criar POPs de uma vez" : faltamCriar === 1 ? "Criar 1 POP de uma vez" : `Criar os ${faltamCriar} POPs de uma vez`}
-              </button>
-            </div>
-          );
-          return lugarDoBotao ? createPortal(botao, lugarDoBotao) : <div className="pgl-topo">{botao}</div>;
-        })()}
 
       {topo}
 
-      {avisoSemVinculo}
+      {(conjunto.length === 0 || avisoSemVinculo) && (
+        <div className="pgl-avisos">
+          {conjunto.length === 0 && (
+            <div className="priv-faixa" role="status">
+              <span>{MENSAGEM_SEM_NORMA_APLICADA}</span>
+              {onIrParaNorma && (
+                <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={onIrParaNorma}>
+                  Ir para Norma aplicável
+                </button>
+              )}
+            </div>
+          )}
+          {avisoSemVinculo}
+        </div>
+      )}
 
       <div className="pgl-faixa-topo">
         <div className="pgl-chips" role="group" aria-label="Situação dos POPs">
@@ -169,20 +177,21 @@ export default function PcPopsLista({
           <span className="pgl-chip pgl-conta--rascunho"><b>{contadores.rascunho}</b> rascunho</span>
           <span className="pgl-chip pgl-conta--falta"><b>{contadores.faltaCriar}</b> falta criar</span>
         </div>
-        <div className="pgl-resp">{responsavel}</div>
+        <div className="pgl-fim">
+          <div className="pgl-resp">{responsavel}</div>
+          {podeEditar && conjunto.length > 0 && (
+            <div className="pgl-criar">
+              {faltamCriar === 0 && motivoSemCriar && <span className="pgl-motivo">{motivoSemCriar}</span>}
+              <button type="button" className="ui-btn ui-btn--criar ui-btn--small" disabled={faltamCriar === 0} onClick={onCriarFaltantes}>
+                {faltamCriar === 0 ? "Criar POPs de uma vez" : faltamCriar === 1 ? "Criar 1 POP de uma vez" : `Criar os ${faltamCriar} POPs de uma vez`}
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="pgl-lista">
-        {conjunto.length === 0 ? (
-          <div className="priv-faixa" role="status">
-            <span>{MENSAGEM_SEM_NORMA_APLICADA}</span>
-            {onIrParaNorma && (
-              <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={onIrParaNorma}>
-                Ir para Norma aplicável
-              </button>
-            )}
-          </div>
-        ) : (
+        {conjunto.length === 0 ? null : (
           <>
             <div className="pgl-secao">Conjunto da norma</div>
             {conjunto.map((linha) => (
@@ -191,8 +200,15 @@ export default function PcPopsLista({
           </>
         )}
 
-        <div className="pgl-secao">Outros POPs e documentos da empresa</div>
-        {podeEditar && (
+        <div className="pgl-secao-linha">
+          <div className="pgl-secao">Outros POPs e documentos da empresa</div>
+          {podeEditar && !adicionando && (
+            <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => setAdicionando(true)}>
+              + Adicionar POP
+            </button>
+          )}
+        </div>
+        {podeEditar && adicionando && (
           <div className="pgl-adicionar">
             <label className="pc-add-code">
               <input
@@ -227,8 +243,11 @@ export default function PcPopsLista({
               </span>
               {erro?.campo === "titulo" && <span className="ui-field-error">{erro.aviso}</span>}
             </label>
-            <button type="button" className="ui-btn ui-btn--criar" onClick={adicionar}>
-              + Adicionar POP
+            <button type="button" className="ui-btn ui-btn--secondary" onClick={cancelarAdicao}>
+              Cancelar
+            </button>
+            <button type="button" className="ui-btn ui-btn--save" onClick={adicionar}>
+              Salvar
             </button>
           </div>
         )}

@@ -114,8 +114,8 @@ test("Alterar POP vinculado: troca sem apagar o comprovante e registra no histó
 
 test("lista de POPs: chips em uma linha, botão de criar na linha das abas e sem 'Criar do modelo e revisar'", () => {
   const lista = ler("../components/pc/PcPopsLista.tsx");
-  assert.ok(lista.includes("pgl-chips") && !lista.includes("pgl-contadores") && lista.includes("createPortal"));
+  assert.ok(lista.includes("pgl-chips") && !lista.includes("pgl-contadores"));
   assert.ok(lista.includes('linha.situacao !== "Falta criar" && <div className="pgl-acao">'));
-  assert.ok(ler("../components/pc/CentralEmpresaNav.tsx").includes('id="cen-acoes-slot"'));
+  assert.ok(!ler("../components/pc/CentralEmpresaNav.tsx").includes("cen-acoes-slot"), "o botão de criar fica na linha dos chips, não na das abas");
   assert.match(ler("../app/globals.css"), /\.pgl-linha\{min-height:56px/);
 });

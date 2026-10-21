@@ -6216,7 +6216,7 @@ export default function Home() {
                 <span>Sem pessoa de Acessos vinculada, ninguém aprova POP.</span>
                 {podeEditarDoc && (
                   <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => irParaSubaba("dados")}>
-                    Vincular em Acessos
+                    Vincular em Dados
                   </button>
                 )}
               </div>

@@ -64,3 +64,16 @@ test("busca no topo: na linha do nome da página, atalhos e recentes dentro do p
   const css = ler("../app/globals.css");
   assert.ok(css.includes(".pc-topbar .pc-busca{flex:0 1 520px") && css.includes(".pc-busca-painel{top:100%;margin-top:8px"));
 });
+
+test("Central em uma linha e lista de POPs: separador entre grupos e seções, avisos juntos, '+ Adicionar POP' abre o formulário", () => {
+  const nav = ler("../components/pc/CentralEmpresaNav.tsx");
+  assert.ok(nav.includes('className="cen-separador"'));
+  const css = ler("../app/globals.css");
+  assert.ok(css.includes(".cen-separador{display:none;width:1px;height:28px;background:#B4C2CE}") && css.includes("@media (min-width:1280px){.cen-separador{display:block}}"));
+  assert.ok(css.includes(".pgl-secao{margin:0;font-size:15px;font-weight:500"));
+  const lista = ler("../components/pc/PcPopsLista.tsx");
+  assert.ok(lista.includes('className="pgl-avisos"') && lista.indexOf("pgl-avisos") < lista.indexOf("pgl-faixa-topo"));
+  assert.ok(lista.includes("podeEditar && !adicionando") && lista.includes("podeEditar && adicionando") && lista.includes("cancelarAdicao"));
+  assert.ok(lista.indexOf('className="pgl-fim"') < lista.indexOf("Criar os ") && lista.indexOf('className="pgl-fim"') > lista.indexOf("pgl-chips"), "Criar os N POPs fica no fim da linha dos chips");
+  assert.ok(ler("../app/page.tsx").includes("Vincular em Dados"));
+});

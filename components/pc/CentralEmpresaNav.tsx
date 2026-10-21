@@ -30,8 +30,8 @@ export default function CentralEmpresaNav({ grupos, subaba, onSubaba, contagens 
           </button>
         ))}
       </div>
+      {doGrupo && doGrupo.subabas.length > 1 && <span className="cen-separador" aria-hidden="true" />}
       {doGrupo && doGrupo.subabas.length > 1 && (
-        <div className="cen-subabas-linha">
         <div className="cen-subabas" role="tablist" aria-label={`Seções de ${doGrupo.rotulo}`}>
           {doGrupo.subabas.map((id) => (
             <button key={id} type="button" role="tab" aria-selected={id === subaba} className={`cen-sub${id === subaba ? " is-ativa" : ""}`} onClick={() => onSubaba(id)}>
@@ -39,9 +39,6 @@ export default function CentralEmpresaNav({ grupos, subaba, onSubaba, contagens 
               {contagens?.[id] ? <span className="cen-sub-conta">{contagens[id]}</span> : null}
             </button>
           ))}
-        </div>
-        {/* Ação principal da tela aberta (ex.: criar os POPs de uma vez) entra aqui, na linha das abas, à direita. */}
-        <span id="cen-acoes-slot" className="cen-acoes-slot" />
         </div>
       )}
     </nav>
