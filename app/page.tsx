@@ -70,6 +70,7 @@ import PcAmbientes from "@/components/pc/PcAmbientes";
 import PcCentral, { type PassoCentral } from "@/components/pc/PcCentral";
 import PcPops from "@/components/pc/PcPops";
 import PcVisitas, { type FiltroVisitas } from "@/components/pc/PcVisitas";
+import ConfiguracaoDeVisitas from "@/components/pc/ConfiguracaoDeVisitas";
 import { avisoDeVisitaAberta, limiteDeDiasDaVisita, motivoParaNaoExcluirVisita, textoDeProgressoDaVisita } from "@/lib/visitasLista";
 import PcEmpresas from "@/components/pc/PcEmpresas";
 import CampoEmpresas from "@/components/campo/CampoEmpresas";
@@ -6157,6 +6158,7 @@ export default function Home() {
           abrirFicha={fichaPedida}
           aoConsumirPedido={() => setFichaPedida(null)}
           aoMudarFicha={setFichaAbertaRotulo}
+          onImprimir={imprimirDocumento}
         />
       );
     }
@@ -7161,6 +7163,12 @@ export default function Home() {
         ) : modo === "campo" && view === "correcoes" && visitaAtual ? (
           correcoesDoCelular()
         ) : view === "acessos" && permitido("usuarios.gerenciar") ? (
+          <>
+          <ConfiguracaoDeVisitas
+            dias={limiteDeDiasDaVisita(db.configuracaoVisitas?.diasAvisoVisitaAberta)}
+            podeEditar={!usuarioDaSessao || usuarioDaSessao.perfil === "Administrador"}
+            onDias={(dias) => setDb((o) => ({ ...o, configuracaoVisitas: { ...o.configuracaoVisitas, diasAvisoVisitaAberta: dias } }))}
+          />
           <AccessPreparationPanel
             pc={telaEmLista}
             usuarios={db.usuarios}
@@ -7175,6 +7183,7 @@ export default function Home() {
             onEncerrarAcesso={encerrarAcessoDoFiscal}
             motivoNaoExcluir={(usuario) => motivoParaNaoExcluir(usuario, contextoExclusaoUsuario())}
           />
+          </>
         ) : view === "relatoriosemitidos" && atual ? (
           <>
           {abasDeRelatorios("emitidos")}
@@ -9962,11 +9971,7 @@ export default function Home() {
             novaDesabilitada={!atual || !permitido("visitas.criar", atual.id)}
             onHistorico={() => setView("historico")}
             onNova={novaVisita}
-            onNovaDaEmpresa={novaVisitaDaEmpresa}
             onArquivar={arquivarVisita}
-            diasDeAviso={limiteDeDiasDaVisita(db.configuracaoVisitas?.diasAvisoVisitaAberta)}
-            podeConfigurarAviso={!usuarioDaSessao || usuarioDaSessao.perfil === "Administrador"}
-            onDiasDeAviso={(dias) => setDb((o) => ({ ...o, configuracaoVisitas: { ...o.configuracaoVisitas, diasAvisoVisitaAberta: dias } }))}
             onContinuar={(id) => continuar(id)}
             onConcluir={(id) => void concluir(id)}
             onReabrir={(id) => void reabrir(id)}
@@ -9986,7 +9991,8 @@ export default function Home() {
               return {
                 id: v.id,
                 empresaId: v.empresaId,
-                progressoTexto: textoDeProgressoDaVisita(pct, { evidencias: nEvidencias, naoConformidades: nNcs }),
+                evidencias: nEvidencias,
+                naoConformidades: nNcs,
                 aviso: avisoDeVisitaAberta(v.status, v.data, hojeISO(), limiteDeDiasDaVisita(db.configuracaoVisitas?.diasAvisoVisitaAberta)),
                 arquivada: Boolean(v.arquivada),
                 podeArquivar: permitido("visitas.concluir", v.empresaId),

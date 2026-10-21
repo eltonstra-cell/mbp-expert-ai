@@ -101,3 +101,30 @@ export function motivoParaNaoExcluirVisita(dados: { respostas: number; naoConfor
   }
   return "";
 }
+
+// ===== Grupos abertos e fechados: só a empresa ativa começa aberta; as outras começam recolhidas =====
+
+const CHAVE_DOS_ALTERNADOS = "mbp-visitas-grupos-alternados";
+
+/** Grupo recolhido? A empresa ativa começa aberta e as outras recolhidas; "alternado" inverte esse começo. */
+export function grupoRecolhido(empresaAtiva: boolean, alternado: boolean): boolean {
+  return empresaAtiva ? alternado : !alternado;
+}
+
+/** Grupos que a pessoa abriu ou fechou à mão (guardado só neste aparelho; falha de armazenamento nunca quebra a lista). */
+export function lerGruposAlternados(armazem: Armazem | null = armazemPadrao()): string[] {
+  try {
+    const lista = JSON.parse(armazem?.getItem(CHAVE_DOS_ALTERNADOS) || "[]");
+    return Array.isArray(lista) ? lista.filter((id): id is string => typeof id === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+export function gravarGruposAlternados(ids: string[], armazem: Armazem | null = armazemPadrao()): void {
+  try {
+    armazem?.setItem(CHAVE_DOS_ALTERNADOS, JSON.stringify(ids));
+  } catch {
+    /* sem armazenamento: só não lembra */
+  }
+}

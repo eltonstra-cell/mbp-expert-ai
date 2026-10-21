@@ -3893,3 +3893,78 @@ html[data-modo="campo"] .chk-foco-amb-pos{font-size:.78rem}
 
 /* Pacote 2 · B6: Trocar empresa */
 .campo-btn--cinza{background:#EEF1F5;border-color:#EEF1F5;color:#12202B}
+
+/* Pacote 2 · C1: aba Documento do POP (leitura em folha; edição em 3 colunas com pré-visualização) */
+.pdoc-leitura{display:flex;flex-direction:column;gap:12px}
+.pdoc-barra{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px}
+.pfolha{display:flex;flex-direction:column;gap:10px;box-sizing:border-box;background:#fff;color:#12202B;border:1px solid #B4C2CE;border-radius:6px;box-shadow:0 4px 14px rgba(18,32,43,.12)}
+.pfolha--leitura{width:min(780px,100%);align-self:center;padding:34px 38px;font-size:15px}
+.pfolha--previa{padding:14px 16px;font-size:12px;gap:6px}
+.pfolha-topo{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;font-size:.85em;color:#3D5160}
+.pfolha-titulo{margin:6px 0 0;font-family:var(--font-display),"Outfit",sans-serif;font-size:1.7em;font-weight:500;line-height:1.2;color:#12202B}
+.pfolha-situacao{margin:0;font-size:.85em;color:#3D5160}
+.pfolha-bloco{display:flex;flex-direction:column;gap:2px;margin-top:6px}
+.pfolha-bloco-titulo{margin:0;font-family:var(--font-display),"Outfit",sans-serif;font-size:1.05em;font-weight:500;color:#12202B}
+.pfolha-linha{margin:0;line-height:1.45;overflow-wrap:anywhere}
+.pfolha-passos{display:flex;flex-direction:column;gap:2px;margin:0;padding-left:1.4em;line-height:1.45}
+.pfolha .is-branco{color:#3D5160}
+.pdoc{display:grid;grid-template-columns:250px minmax(0,1fr) 320px;gap:16px;align-items:start}
+.pdoc-lados{display:none;grid-column:1/-1;gap:6px}
+.pdoc-secoes,.pdoc-meio,.pdoc-previa{min-width:0;min-height:0;max-height:calc(100vh - 380px);overflow-y:auto;padding-right:4px}
+.pdoc-lista-titulo{margin:0 0 8px;font-size:.95rem;font-weight:400;color:#12202B}
+.pdoc-lista{display:flex;flex-direction:column;gap:8px;margin:0;padding:0;list-style:none}
+.pdoc-item{display:flex;align-items:center;gap:10px;width:100%;min-height:40px;padding:0 12px;border:2px solid #B4C2CE;border-radius:12px;background:#fff;font-size:.95rem;color:#12202B;text-align:left;cursor:pointer}
+.pdoc-item.is-ativa{border-color:#E8B04B;background:#FEF6E6}
+.pdoc-marca{display:grid;flex:none;place-items:center;width:22px;height:22px;border:2px solid #B4C2CE;border-radius:50%;font-size:.8rem;color:#fff}
+.pdoc-marca.is-ok{border-color:#15803D;background:#15803D}
+.pdoc-secao{display:flex;flex-direction:column;gap:10px}
+.pdoc-secao-titulo{margin:0;font-family:var(--font-display),"Outfit",sans-serif;font-size:1.3rem;font-weight:500;color:#12202B}
+.pdoc-barra-ia{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
+.pdoc-dica{background:#FFF3D6;border-color:#E8B04B}
+.pdoc-add{justify-content:flex-start;width:100%}
+.pdoc-passos .pop-passo{align-items:center}
+.pdoc-passos .pop-passo-campo .ui-input{min-height:38px}
+.pdoc-rodape{position:sticky;bottom:0;z-index:5;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid #DDE6EA;background:#fff}
+@media (max-width:1099px){
+  .pdoc{grid-template-columns:240px minmax(0,1fr)}
+  .pdoc-lados{display:flex}
+  .pdoc--editar .pdoc-previa{display:none}
+  .pdoc--previa{grid-template-columns:minmax(0,1fr)}
+  .pdoc--previa .pdoc-meio,.pdoc--previa .pdoc-secoes{display:none}
+}
+@media (max-width:719px){.pdoc{grid-template-columns:minmax(0,1fr)}.pdoc-secoes,.pdoc-meio,.pdoc-previa{max-height:none}}
+@media print{
+  #pop-folha,#pop-folha *{visibility:visible}
+  #pop-folha{position:absolute;inset:0 auto auto 0;width:100%;max-width:none;padding:0;border:0;border-radius:0;box-shadow:none;font-size:10.5pt}
+}
+
+/* Pacote 2 · C2: Visitas, lista por empresa com colunas fixas */
+.vis-toolbar{justify-content:space-between;align-items:center}
+.vis-toolbar-fim{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.vis-toolbar-fim .pc-search{width:260px}
+.vis-rolagem{scrollbar-gutter:stable;scrollbar-width:auto;scrollbar-color:#B4C2CE #EEF1F5}
+.vis-rolagem::-webkit-scrollbar{width:12px}
+.vis-rolagem::-webkit-scrollbar-track{background:#EEF1F5;border-radius:999px}
+.vis-rolagem::-webkit-scrollbar-thumb{background:#B4C2CE;border-radius:999px;border:2px solid #EEF1F5}
+.vis-grupo-inteiro{width:100%;flex:none}
+.vis-grupo-inteiro .vis-chevron{flex:none;color:#12202B}
+.vis-chip-ativa{flex:none;padding:2px 10px;border:1px solid #E8B04B;border-radius:999px;background:#FEF6E6;font-size:.84rem;color:#12202B}
+.vis-grupo-lista{display:flex;flex-direction:column;gap:8px;padding-left:8px}
+.vis-linha{display:grid;grid-template-columns:6px minmax(200px,1.5fr) 190px 200px 130px 40px;align-items:center;gap:12px;padding:8px 10px 8px 8px;border:2px solid #B4C2CE;border-radius:14px;background:#fff}
+.vis-linha.is-arquivada{opacity:.7}
+.vis-faixa{align-self:stretch;border-radius:999px}
+.vis-faixa--pend{background:#E8B04B}
+.vis-faixa--ok{background:#15803D}
+.vis-col-titulo{display:flex;min-width:0;flex-direction:column;gap:2px}
+.vis-titulo-linha{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.vis-titulo{font-family:var(--font-display),"Outfit",sans-serif;font-size:1.02rem;font-weight:500;color:#12202B}
+.vis-aviso-terra{padding:1px 10px;border-radius:999px;background:#B35A36;font-size:.82rem;color:#fff}
+.vis-col-barra{display:flex;align-items:center;gap:8px}
+.vis-pct{width:40px;font-size:.9rem;color:#12202B}
+.vis-col-contagem{display:flex;align-items:center;gap:14px;font-size:.9rem;color:#12202B;white-space:nowrap}
+.vis-conta--nc{color:#B42318}
+.vis-conta--nc.is-zero{color:#3D5160}
+.vis-col-acao{display:flex;justify-content:flex-end}
+.vis-col-menu{display:flex;justify-content:center}
+.adm-visitas{margin-bottom:12px}
+@media (max-width:1099px){.vis-linha{grid-template-columns:6px minmax(0,1fr) 130px 40px}.vis-col-barra,.vis-col-contagem{grid-column:2/-1}}

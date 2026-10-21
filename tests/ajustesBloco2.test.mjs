@@ -261,8 +261,8 @@ test("POP: aprovar e assinar pede confirmação com nome e cargo; passos em uma 
   const editor = ler("../components/pc/PcPopEditor.tsx");
   assert.ok(editor.includes("Você está aprovando e assinando este POP como"));
   assert.ok(editor.includes("setConfirmandoAprovacao(true)") && editor.includes("Confirmar") && editor.includes("Cancelar"));
-  assert.ok(editor.includes("Rascunho salvo às {salvoEm}"));
-  assert.ok(editor.includes("pop-passos-barra") && editor.includes("passos.indexOf(passoFocado)"));
+  assert.ok(editor.includes("Rascunho salvo às ${salvoEm}"));
+  assert.ok(editor.includes("pdoc-barra-ia") && editor.includes("passos.indexOf(passoFocado)"));
   assert.ok(!editor.includes("PASSOS_POR_PAGINA"), "sem paginar de 5 em 5");
 });
 

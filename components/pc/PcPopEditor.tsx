@@ -19,14 +19,19 @@ import {
   textoDaFaixaDoTextoBase,
 } from "@/lib/popsNorma";
 import { normasDaEmpresa } from "@/lib/normas";
+import PopFolha from "@/components/pc/PopFolha";
+import { folhaDoPop, secoesDoEditor, textoDasSecoes } from "@/lib/popDocumento";
+import type { CabecalhoDeImpressao } from "@/lib/printFooter";
 
 type Secao = "identificacao" | "objetivo" | "referencias" | "responsavel" | "passos" | "acao" | "registro" | "extra" | "extra2";
 
 type Props = {
   pop: ProcedimentoOperacionalPadronizado;
-  empresa: Pick<Empresa, "normasAplicadas" | "responsavelEstabelecimento">;
+  empresa: Pick<Empresa, "normasAplicadas" | "responsavelEstabelecimento"> & Partial<Pick<Empresa, "nomeFantasia" | "razaoSocial" | "cnpj">>;
   usuario: UsuarioSistema | null;
   podeEditar: boolean;
+  /** Imprimir ou salvar em PDF a folha do POP (leitura). */
+  onImprimir?: (titulo: string, cabecalho: CabecalhoDeImpressao) => void;
   onSalvarRascunho: (pop: ProcedimentoOperacionalPadronizado) => void;
   onEnviar: (pop: ProcedimentoOperacionalPadronizado) => void;
   onAprovar: (pop: ProcedimentoOperacionalPadronizado) => void;
@@ -36,15 +41,12 @@ type Props = {
   parte?: "documento" | "historico";
 };
 
-function SecaoRecolhivel({ id, titulo, resumo, aberta, onAlternar, children }: { id: Secao; titulo: string; resumo?: string; aberta: boolean; onAlternar: (id: Secao) => void; children: ReactNode }) {
+function SecaoRecolhivel({ titulo, aberta, children }: { id: Secao; titulo: string; resumo?: string; aberta: boolean; onAlternar?: (id: Secao) => void; children: ReactNode }) {
+  if (!aberta) return null;
   return (
-    <section className={`pop-secao${aberta ? " is-aberta" : ""}`}>
-      <button type="button" className="pop-secao-topo" aria-expanded={aberta} onClick={() => onAlternar(id)}>
-        <span className="pop-secao-titulo">{titulo}</span>
-        {resumo && <span className="ui-row-sub pop-secao-resumo">{resumo}</span>}
-        <span aria-hidden="true">{aberta ? "▴" : "▾"}</span>
-      </button>
-      {aberta && <div className="pop-secao-corpo">{children}</div>}
+    <section className="pdoc-secao">
+      <h2 className="pdoc-secao-titulo">{titulo}</h2>
+      {children}
     </section>
   );
 }
@@ -76,7 +78,7 @@ function horaCerta(): string {
 }
 
 // Documento (editor em painéis) e Histórico (versões, aprovações e motivo) do POP. O cabeçalho e as abas ficam na ficha (PcFichaPop).
-export default function PcPopEditor({ pop, empresa, usuario, podeEditar, onSalvarRascunho, onEnviar, onAprovar, onNovaVersao, mensagem, parte = "documento" }: Props) {
+export default function PcPopEditor({ pop, empresa, usuario, podeEditar, onImprimir, onSalvarRascunho, onEnviar, onAprovar, onNovaVersao, mensagem, parte = "documento" }: Props) {
   // Mais de um passo em branco vira um só logo ao abrir.
   const [rascunho, setRascunho] = useState<ProcedimentoOperacionalPadronizado>(() => (pop.conteudo?.passos ? { ...pop, conteudo: { ...pop.conteudo, passos: juntarPassosEmBrancoRepetidos(pop.conteudo.passos) } } : pop));
   const [motivoDaNovaVersao, setMotivoDaNovaVersao] = useState("");
@@ -86,6 +88,7 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, onSalva
   const [passosTocados, setPassosTocados] = useState<Record<string, boolean>>({});
   const [salvoEm, setSalvoEm] = useState("");
   const [confirmandoAprovacao, setConfirmandoAprovacao] = useState(false);
+  const [lado, setLado] = useState<"editar" | "previa">("editar");
   const [versaoA, setVersaoA] = useState("");
   const [versaoB, setVersaoB] = useState("");
 
@@ -117,6 +120,19 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, onSalva
     mudar({ passos: lista });
   }
   const alternar = (id: Secao) => setSecao(id);
+  const modoLeitura = parte === "documento" && !editavel;
+  const secoesDaLista = secoesDoEditor(rascunho, definicao);
+  const dadosDaEmpresa = { nome: (empresa.nomeFantasia || empresa.razaoSocial || "").trim(), cnpj: (empresa.cnpj || "").trim() };
+  const folhaDeLeitura = folhaDoPop(rascunho, dadosDaEmpresa);
+  const folhaDaPrevia = folhaDoPop(rascunho, dadosDaEmpresa, { marcarBranco: true });
+  const dicaDaNorma = (conteudo.referencias || [])[0];
+  function imprimirFolha() {
+    onImprimir?.(`${rascunho.codigo || "POP"} - ${rascunho.titulo}`, {
+      esquerda: [dadosDaEmpresa.nome, dadosDaEmpresa.cnpj ? `CNPJ ${dadosDaEmpresa.cnpj}` : ""],
+      direita: [`${rascunho.codigo ? `${rascunho.codigo} · ` : ""}versão ${rascunho.versao}`, folhaDeLeitura.situacao],
+      rodape: rascunho.titulo,
+    });
+  }
 
   const versoes = useMemo(() => {
     const guardadas = rascunho.versoes || [];
@@ -142,8 +158,54 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, onSalva
         </div>
       )}
 
-      {parte === "documento" && (
-        <div className="pop-secoes">
+      {modoLeitura && (
+        <div className="pdoc-leitura">
+          <div className="pdoc-barra">
+            {onImprimir && (
+              <button type="button" className="ui-btn ui-btn--secondary" onClick={imprimirFolha}>
+                Imprimir / PDF
+              </button>
+            )}
+            {aguardando && podeAprovar && (
+              <button type="button" className="ui-btn ui-btn--criar" onClick={() => setConfirmandoAprovacao(true)}>
+                Aprovar e assinar
+              </button>
+            )}
+            {podeEditar && rascunho.status === "Aprovado" && (
+              <button type="button" className="ui-btn ui-btn--criar" onClick={() => onNovaVersao({ ...rascunho, motivoDaVersao: undefined })}>
+                Editar (cria nova versão)
+              </button>
+            )}
+          </div>
+          <PopFolha folha={folhaDeLeitura} modo="leitura" id="pop-folha" />
+        </div>
+      )}
+
+      {parte === "documento" && !modoLeitura && (
+        <div className={`pdoc pdoc--${lado}`}>
+          <div className="pdoc-lados" role="tablist" aria-label="Editar ou ver a folha">
+            <button type="button" role="tab" aria-selected={lado === "editar"} className={`rel-aba${lado === "editar" ? " is-ativa" : ""}`} onClick={() => setLado("editar")}>
+              Editar
+            </button>
+            <button type="button" role="tab" aria-selected={lado === "previa"} className={`rel-aba${lado === "previa" ? " is-ativa" : ""}`} onClick={() => setLado("previa")}>
+              Pré-visualização
+            </button>
+          </div>
+          <aside className="pdoc-secoes" aria-label="Seções do POP">
+            <h2 className="pdoc-lista-titulo">Seções · {textoDasSecoes(secoesDaLista)}</h2>
+            <ul className="pdoc-lista">
+              {secoesDaLista.map((item) => (
+                <li key={`${item.id}-${item.titulo}`}>
+                  <button type="button" className={`pdoc-item${secao === item.id ? " is-ativa" : ""}`} aria-current={secao === item.id ? "true" : undefined} onClick={() => alternar(item.id)}>
+                    <span className={`pdoc-marca${item.preenchida ? " is-ok" : ""}`} aria-hidden="true">{item.preenchida ? "✓" : ""}</span>
+                    <span>{item.titulo}</span>
+                    <span className="sr-only">{item.preenchida ? " (preenchida)" : " (falta preencher)"}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </aside>
+          <div className="pdoc-meio">
           <SecaoRecolhivel id="identificacao" titulo="Identificação" resumo={rascunho.proximaRevisao ? `revisar até ${rascunho.proximaRevisao.split("-").reverse().join("/")}` : "revisar até: não definido"} aberta={secao === "identificacao"} onAlternar={alternar}>
             <div className="pop-grade">
               <Campo rotulo="Código" valor={rascunho.codigo} desabilitado={!editavel} onChange={(valor) => setRascunho({ ...rascunho, codigo: valor })} />
@@ -192,30 +254,23 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, onSalva
 
           <SecaoRecolhivel id="passos" titulo="Passos" resumo={`${(conteudo.passos || []).filter((passo) => passo.texto.trim()).length === 1 ? "1 escrito" : `${(conteudo.passos || []).filter((passo) => passo.texto.trim()).length} escritos`}`} aberta={secao === "passos"} onAlternar={alternar}>
             {editavel && (
-              <div className="pop-passos-barra">
+              <div className="pdoc-barra-ia">
                 <span className="ui-row-sub">{passoFocado ? `Passo ${passos.indexOf(passoFocado) + 1} em foco` : "Toque em um passo para ditar ou melhorar o texto"}</span>
-                <span className="pop-passos-barra-acoes">
-                  {passoFocado && (
-                    <FieldVoiceTools key={passoFocado.id} fieldKey={`pop-passo-${passoFocado.id}`} value={passoFocado.texto} onChange={(texto) => mudarPasso(passoFocado.id, texto)} contexto="Passo de um Procedimento Operacional Padronizado de segurança dos alimentos." />
-                  )}
-                  <button
-                    type="button"
-                    className="ui-btn ui-btn--criar ui-btn--small"
-                    disabled={temPassoEmBranco}
-                    title={temPassoEmBranco ? "Escreva o passo em branco antes de adicionar outro" : undefined}
-                    onClick={() => {
-                      const novo = { id: crypto.randomUUID(), texto: "" };
-                      mudar({ passos: [...passos, novo] });
-                      setPassoEmFoco(novo.id);
-                    }}
-                  >
-                    + Adicionar passo
-                  </button>
+                {passoFocado && (
+                  <FieldVoiceTools key={passoFocado.id} fieldKey={`pop-passo-${passoFocado.id}`} value={passoFocado.texto} onChange={(texto) => mudarPasso(passoFocado.id, texto)} contexto="Passo de um Procedimento Operacional Padronizado de segurança dos alimentos." />
+                )}
+              </div>
+            )}
+            {dicaDaNorma && (
+              <div className="priv-faixa pdoc-dica" role="status">
+                <span title={dicaDaNorma.orientacao}>
+                  {dicaDaNorma.orientacao} ({dicaDaNorma.norma}, {dicaDaNorma.item})
                 </span>
+                {dicaDaNorma.conferir && <span className="pop-conferir">conferir</span>}
               </div>
             )}
             {editavel && temPassoEmBranco && <span className="ui-row-sub">Escreva o passo em branco antes de adicionar outro.</span>}
-            <ol className="pop-passos pop-passos--rolagem">
+            <ol className="pop-passos pop-passos--rolagem pdoc-passos">
               {passos.map((passo: PassoPop, indice) => {
                 const vazio = !passo.texto.trim();
                 const avisar = vazio && (tocado || passosTocados[passo.id]);
@@ -223,10 +278,11 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, onSalva
                   <li key={passo.id} className={`pop-passo${passo.id === passoEmFoco ? " is-foco" : ""}`}>
                     <span className="pop-passo-n">{indice + 1}</span>
                     <span className="pop-passo-campo">
-                      <textarea
-                        className={`ui-input pop-area${avisar ? " is-invalid" : ""}`}
-                        rows={2}
+                      <input
+                        type="text"
+                        className={`ui-input${avisar ? " is-invalid" : ""}`}
                         value={passo.texto}
+                        placeholder={vazio ? "Descreva o passo" : undefined}
                         disabled={!editavel}
                         aria-label={`Passo ${indice + 1}`}
                         aria-invalid={Boolean(avisar)}
@@ -234,7 +290,7 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, onSalva
                         onBlur={() => setPassosTocados((atual) => ({ ...atual, [passo.id]: true }))}
                         onChange={(evento) => mudarPasso(passo.id, evento.target.value)}
                       />
-                      {avisar && <span className="ui-field-error">Escreva este passo ou remova.</span>}
+                      {avisar && <span className="ui-field-error ui-field-error--forte">Escreva este passo ou remova.</span>}
                     </span>
                     {editavel && (
                       <span className="pop-passo-acoes">
@@ -247,6 +303,21 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, onSalva
                 );
               })}
             </ol>
+            {editavel && (
+              <button
+                type="button"
+                className="ui-btn ui-btn--secondary pdoc-add"
+                disabled={temPassoEmBranco}
+                title={temPassoEmBranco ? "Escreva o passo em branco antes de adicionar outro" : undefined}
+                onClick={() => {
+                  const novo = { id: crypto.randomUUID(), texto: "" };
+                  mudar({ passos: [...passos, novo] });
+                  setPassoEmFoco(novo.id);
+                }}
+              >
+                + Adicionar passo
+              </button>
+            )}
             {passos.length === 0 && <p className="ui-row-sub">Nenhum passo ainda. Os passos ficam em branco para o RT e a empresa preencherem.</p>}
             {tocado && !passos.some((passo) => passo.texto.trim()) && <span className="ui-field-error">Escreva ao menos um passo.</span>}
             {tocado && temPassoEmBranco && passos.some((passo) => passo.texto.trim()) && (
@@ -319,6 +390,12 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, onSalva
             </SecaoRecolhivel>
             </>
           )}
+          </div>
+          <aside className="pdoc-previa" aria-label="Pré-visualização da folha">
+            <h2 className="pdoc-lista-titulo">Pré-visualização da folha</h2>
+            <PopFolha folha={folhaDaPrevia} modo="previa" />
+            <p className="ui-row-sub">Atualiza enquanto você escreve.</p>
+          </aside>
         </div>
       )}
 
@@ -386,55 +463,42 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, onSalva
       {parte === "documento" && mensagem && <div className="ui-note">{mensagem}</div>}
       {parte === "documento" && aguardando && !podeAprovar && <p className="ui-row-sub pop-aviso-aprovacao">{motivoParaNaoAprovar(usuario, empresa) || "Aguardando a aprovação do responsável do estabelecimento."}</p>}
 
-      {parte === "documento" && (
-      <div className="ui-footer pop-rodape">
-        <span className="ui-row-sub">{alterou ? "● Alterações ainda não salvas" : "✓ Tudo salvo"}</span>
-        <div className="pop-rodape-acoes">
-          {podeEditar && rascunho.status === "Rascunho" && (
-            <>
-              {salvoEm && <span className="pop-salvo-sinal" role="status">Rascunho salvo às {salvoEm}</span>}
-              <button type="button" className="ui-btn ui-btn--secondary" onClick={() => { setTocado(true); if (faltas.length === 0 && !erroTitulo) onEnviar(rascunho); }}>
-                Enviar para aprovação
-              </button>
-              <button
-                type="button"
-                className="ui-btn ui-btn--save"
-                disabled={Boolean(erroTitulo)}
-                onClick={() => {
-                  // Salvar rascunho não guarda passo em branco: sobra só o que foi escrito.
-                  const exec = (rascunho.conteudo || conteudo).responsavelExecucao;
-                  const limpo = {
-                    ...rascunho,
-                    conteudo: {
-                      ...(rascunho.conteudo || conteudo),
-                      passos: limparPassosEmBranco(passos),
-                      ...(exec ? { responsavelExecucao: { nome: limparTextoDePessoa(exec.nome), cargo: limparTextoDePessoa(exec.cargo) } } : {}),
-                    },
-                  };
-                  setRascunho(limpo);
-                  onSalvarRascunho(limpo);
-                  setSalvoEm(horaCerta());
-                }}
-              >
-                Salvar rascunho
-              </button>
-            </>
-          )}
-          {aguardando && podeAprovar && (
-            <button type="button" className="ui-btn ui-btn--criar" onClick={() => setConfirmandoAprovacao(true)}>
-              Aprovar e assinar
+      {parte === "documento" && !modoLeitura && (
+        <div className="ui-footer pop-rodape pdoc-rodape">
+          <span className="pop-salvo-sinal" role="status">
+            {alterou ? "● Alterações ainda não salvas" : salvoEm ? `✓ Rascunho salvo às ${salvoEm}` : "✓ Tudo salvo"}
+          </span>
+          <div className="pop-rodape-acoes">
+            {(rascunho.versoes || []).length > 0 && (
+              <input className="ui-input pop-motivo-versao" value={rascunho.motivoDaVersao || ""} onChange={(evento) => { setSalvoEm(""); setRascunho({ ...rascunho, motivoDaVersao: evento.target.value }); }} placeholder="Motivo da nova versão (opcional)" aria-label="Motivo da nova versão" />
+            )}
+            <button
+              type="button"
+              className="ui-btn ui-btn--save"
+              disabled={Boolean(erroTitulo)}
+              onClick={() => {
+                // Salvar rascunho não guarda passo em branco: sobra só o que foi escrito.
+                const exec = (rascunho.conteudo || conteudo).responsavelExecucao;
+                const limpo = {
+                  ...rascunho,
+                  conteudo: {
+                    ...(rascunho.conteudo || conteudo),
+                    passos: limparPassosEmBranco(passos),
+                    ...(exec ? { responsavelExecucao: { nome: limparTextoDePessoa(exec.nome), cargo: limparTextoDePessoa(exec.cargo) } } : {}),
+                  },
+                };
+                setRascunho(limpo);
+                onSalvarRascunho(limpo);
+                setSalvoEm(horaCerta());
+              }}
+            >
+              Salvar rascunho
             </button>
-          )}
-          {podeEditar && (rascunho.status === "Aprovado") && (
-            <>
-              <input className="ui-input pop-motivo-versao" value={motivoDaNovaVersao} onChange={(evento) => setMotivoDaNovaVersao(evento.target.value)} placeholder="Motivo da nova versão (opcional)" aria-label="Motivo da nova versão" />
-              <button type="button" className="ui-btn ui-btn--criar" onClick={() => onNovaVersao({ ...rascunho, motivoDaVersao: motivoDaNovaVersao.trim() || undefined })}>
-                Editar (cria nova versão)
-              </button>
-            </>
-          )}
+            <button type="button" className="ui-btn ui-btn--criar" onClick={() => { setTocado(true); if (faltas.length === 0 && !erroTitulo) onEnviar(rascunho); }}>
+              Enviar para aprovação
+            </button>
+          </div>
         </div>
-      </div>
       )}
       {confirmandoAprovacao && (
         <div className="pc-modal-layer" role="presentation">

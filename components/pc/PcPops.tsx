@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Empresa, ProcedimentoOperacionalPadronizado, UsuarioSistema } from "@/types";
 import PcFichaPop, { type AbaFicha } from "@/components/pc/PcFichaPop";
 import PcPopsLista from "@/components/pc/PcPopsLista";
+import type { CabecalhoDeImpressao } from "@/lib/printFooter";
 import { useRegistrosDaEmpresa } from "@/components/RegistrosEmpresaContext";
 import { aprovarPop, criarPopDoTextoBase, criarPopsFaltantesDoConjunto, conjuntoDaEmpresa, enviarParaAprovacao, hojeISO, iniciarNovaVersao, podeAprovarPop, MENSAGEM_SEM_NORMA_APLICADA } from "@/lib/popsNorma";
 import { montarListaDePops } from "@/lib/popGestao";
@@ -26,10 +27,11 @@ type Props = {
   aoConsumirPedido?: () => void;
   /** Avisa quando a ficha abre ou fecha (rótulo do POP para o caminho do topo) para a tela esconder grupos e sub-abas. */
   aoMudarFicha?: (rotulo: string | null) => void;
+  onImprimir?: (titulo: string, cabecalho: CabecalhoDeImpressao) => void;
 };
 
 // Documentos › POPs: a lista com situação e próxima ação e, ao abrir um POP, a ficha com as seis abas.
-export default function PcPops({ pops, empresa, usuario = null, podeEditar = false, onPersistir, mensagem, topo, responsavel, abrirFicha, aoConsumirPedido, aoMudarFicha }: Props) {
+export default function PcPops({ pops, empresa, usuario = null, podeEditar = false, onPersistir, mensagem, topo, responsavel, abrirFicha, aoConsumirPedido, aoMudarFicha, onImprimir }: Props) {
   const contexto = useRegistrosDaEmpresa();
   const [fichaId, setFichaId] = useState<string | null>(null);
   const [abaInicial, setAbaInicial] = useState<AbaFicha>("resumo");
@@ -114,6 +116,7 @@ export default function PcPops({ pops, empresa, usuario = null, podeEditar = fal
         empresa={empresa}
         usuario={usuario}
         podeEditar={podeEditar}
+        onImprimir={onImprimir}
         podeAprovar={podeAprovar}
         contexto={contexto}
         mensagem={mensagemFicha}

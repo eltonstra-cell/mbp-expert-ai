@@ -2,14 +2,13 @@
 
 import { useMemo, useState } from "react";
 import type { CSSProperties } from "react";
-import { ListRow } from "@/components/ui/ListRow";
 import { Pill } from "@/components/ui/Pill";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
-import type { ItemMenu } from "@/components/ui/RowMenu";
+import { RowMenu, type ItemMenu } from "@/components/ui/RowMenu";
 import { acoesDaVisita } from "@/lib/menuActions";
 import { iniciaisDaEmpresa } from "@/lib/navigation";
-import { agruparPorEmpresa, gravarGruposRecolhidos, lerGruposRecolhidos } from "@/lib/visitasLista";
+import { agruparPorEmpresa, gravarGruposAlternados, grupoRecolhido, lerGruposAlternados } from "@/lib/visitasLista";
 import { quantidade } from "@/lib/plural";
 
 export type LinhaVisita = {
@@ -23,8 +22,9 @@ export type LinhaVisita = {
   data: string;
   responsavel: string;
   percentual: number;
-  /** Texto ao lado da barra: "0% concluída" só quando está vazia; com evidências ou não conformidades mostra o que existe. */
-  progressoTexto: string;
+  /** Quantas evidências e não conformidades a visita tem (colunas fixas da linha). */
+  evidencias: number;
+  naoConformidades: number;
   /** "Aberta há 5 dias" quando passou do limite; vazio caso contrário. */
   aviso: string;
   status: "Em andamento" | "Concluída";
@@ -50,48 +50,29 @@ type Props = {
   novaDesabilitada: boolean;
   onHistorico: () => void;
   onNova: () => void;
-  /** Nova visita já na empresa do grupo. */
-  onNovaDaEmpresa: (empresaId: string) => void;
   onContinuar: (id: string) => void;
   onConcluir: (id: string) => void;
   onReabrir: (id: string) => void;
   onRelatorio: (id: string) => void;
   onArquivar: (id: string, arquivar: boolean) => void;
   onExcluir: (id: string) => void;
-  /** Só o Administrador muda o limite do aviso "visita aberta há X dias". */
-  diasDeAviso: number;
-  podeConfigurarAviso: boolean;
-  onDiasDeAviso: (dias: number) => void;
 };
 
 function normalizar(texto: string) {
   return texto.normalize("NFD").replace(/[̀-ͯ]/g, "").toLocaleLowerCase("pt-BR");
 }
 
-export default function PcVisitas({
-  empresaAtiva,
-  visitas,
-  filtro,
-  onFiltro,
-  historicoDesabilitado,
-  novaDesabilitada,
-  onHistorico,
-  onNova,
-  onNovaDaEmpresa,
-  onContinuar,
-  onConcluir,
-  onReabrir,
-  onRelatorio,
-  onArquivar,
-  onExcluir,
-  diasDeAviso,
-  podeConfigurarAviso,
-  onDiasDeAviso,
-}: Props) {
+function Chevron({ aberto }: { aberto: boolean }) {
+  return (
+    <svg className="vis-chevron" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+      <path d={aberto ? "M6 15l6-6 6 6" : "M9 6l6 6-6 6"} />
+    </svg>
+  );
+}
+
+export default function PcVisitas({ empresaAtiva, visitas, filtro, onFiltro, historicoDesabilitado, novaDesabilitada, onHistorico, onNova, onContinuar, onConcluir, onReabrir, onRelatorio, onArquivar, onExcluir }: Props) {
   const [busca, setBusca] = useState("");
-  const [recolhidos, setRecolhidos] = useState<string[]>(() => lerGruposRecolhidos());
-  const [textoDias, setTextoDias] = useState(String(diasDeAviso));
-  const erroDias = textoDias !== "" && (!/^\d+$/.test(textoDias) || Number(textoDias) < 1 || Number(textoDias) > 60) ? "Use de 1 a 60 dias." : "";
+  const [alternados, setAlternados] = useState<string[]>(() => lerGruposAlternados());
 
   const doFiltro = useMemo(
     () =>
@@ -102,11 +83,8 @@ export default function PcVisitas({
       }),
     [visitas, filtro]
   );
-  const visiveis = useMemo(() => {
-    const termo = normalizar(busca.trim());
-    if (!termo) return doFiltro;
-    return doFiltro.filter((visita) => normalizar(`${visita.empresa} ${visita.responsavel}`).includes(termo));
-  }, [doFiltro, busca]);
+  const termo = normalizar(busca.trim());
+  const visiveis = useMemo(() => (termo ? doFiltro.filter((visita) => normalizar(`${visita.empresa} ${visita.responsavel}`).includes(termo)) : doFiltro), [doFiltro, termo]);
   const grupos = useMemo(
     () =>
       agruparPorEmpresa(visiveis).map((grupo) => ({
@@ -119,9 +97,9 @@ export default function PcVisitas({
   const naoArquivadas = visitas.filter((visita) => !visita.arquivada);
 
   function alternarGrupo(empresaId: string) {
-    setRecolhidos((atual) => {
+    setAlternados((atual) => {
       const novo = atual.includes(empresaId) ? atual.filter((id) => id !== empresaId) : [...atual, empresaId];
-      gravarGruposRecolhidos(novo);
+      gravarGruposAlternados(novo);
       return novo;
     });
   }
@@ -151,51 +129,54 @@ export default function PcVisitas({
           return { rotulo: "Excluir visita…", perigo: true, onClick: () => onExcluir(visita.id) };
       }
     });
+    const concluida = visita.status === "Concluída" && !visita.arquivada;
     return (
-      <ListRow
-        key={visita.id}
-        faixa={visita.status === "Concluída" ? "ok" : "pend"}
-        esmaecida={visita.arquivada}
-        titulo={`Visita ${visita.numero} · ${visita.data}`}
-        chip={visita.aviso ? <Pill tom="amber">{visita.aviso}</Pill> : undefined}
-        secundario={visita.responsavel}
-        meio={
-          <>
-            <ProgressBar percentual={visita.percentual} largura={150} rotulo={visita.progressoTexto} />
-            <span className="ui-row-sub vis-progresso-texto">{visita.progressoTexto}</span>
-          </>
-        }
-        pilulas={<Pill tom={visita.status === "Concluída" ? "ok" : "pend"}>{visita.arquivada ? "Arquivada" : visita.status}</Pill>}
-        acao={
-          visita.arquivada ? (
-            <button type="button" className="ui-btn ui-btn--secondary" onClick={() => onArquivar(visita.id, false)}>
-              Desarquivar
-            </button>
+      <div key={visita.id} className={`vis-linha${visita.arquivada ? " is-arquivada" : ""}`}>
+        <span className={`vis-faixa vis-faixa--${visita.status === "Concluída" ? "ok" : "pend"}`} aria-hidden="true" />
+        <div className="vis-col-titulo">
+          <span className="vis-titulo-linha">
+            <span className="vis-titulo">{`Visita ${visita.numero} · ${visita.data}`}</span>
+            {visita.aviso && <span className="vis-aviso-terra">{visita.aviso}</span>}
+            {concluida && <Pill tom="ok">Concluída</Pill>}
+            {visita.arquivada && <Pill tom="na">Arquivada</Pill>}
+          </span>
+          <span className="ui-row-sub">{visita.responsavel}</span>
+        </div>
+        <div className="vis-col-barra">
+          <ProgressBar percentual={visita.percentual} largura={140} rotulo={`${visita.percentual}% concluída`} />
+          <span className="vis-pct">{visita.percentual}%</span>
+        </div>
+        <div className="vis-col-contagem">
+          <span className="vis-conta">▣ {quantidade(visita.evidencias, "evidência", "evidências")}</span>
+          <span className={`vis-conta vis-conta--nc${visita.naoConformidades === 0 ? " is-zero" : ""}`}>▲ {visita.naoConformidades} NC</span>
+        </div>
+        <div className="vis-col-acao">
+          {visita.arquivada ? (
+            visita.podeArquivar && (
+              <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => onArquivar(visita.id, false)}>
+                Desarquivar
+              </button>
+            )
           ) : visita.status === "Em andamento" ? (
-            <>
-              {visita.podeContinuar && (
-                <button type="button" className="ui-btn ui-btn--criar" onClick={() => onContinuar(visita.id)}>
-                  Continuar →
-                </button>
-              )}
-              {visita.podeArquivar && visita.aviso && (
-                <button type="button" className="ui-btn ui-btn--secondary" onClick={() => onArquivar(visita.id, true)}>
-                  Arquivar
-                </button>
-              )}
-            </>
+            visita.podeContinuar && (
+              <button type="button" className="ui-btn ui-btn--criar ui-btn--small" onClick={() => onContinuar(visita.id)}>
+                Continuar →
+              </button>
+            )
           ) : visita.podeReabrir ? (
-            <button type="button" className="ui-btn ui-btn--secondary" onClick={() => onReabrir(visita.id)}>
+            <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => onReabrir(visita.id)}>
               Reabrir
             </button>
           ) : visita.podeRelatorio ? (
-            <button type="button" className="ui-btn ui-btn--secondary" onClick={() => onRelatorio(visita.id)}>
+            <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => onRelatorio(visita.id)}>
               Abrir relatório →
             </button>
-          ) : undefined
-        }
-        menu={menu}
-      />
+          ) : null}
+        </div>
+        <div className="vis-col-menu">
+          <RowMenu itens={menu} />
+        </div>
+      </div>
     );
   };
 
@@ -203,20 +184,12 @@ export default function PcVisitas({
     <section className="ui-screen" aria-label="Visitas técnicas">
       <div className="ui-head">
         <div>
-          <h1 className="ui-title">Visitas técnicas</h1>
+          <h1 className="ui-title">Visitas</h1>
           <p className="ui-subtitle">Por empresa · ativa: {empresaAtiva}</p>
-        </div>
-        <div className="ui-head-actions">
-          <button type="button" className="ui-btn ui-btn--secondary" onClick={onHistorico} disabled={historicoDesabilitado}>
-            Histórico da empresa
-          </button>
-          <button type="button" className="ui-btn ui-btn--criar" onClick={onNova} disabled={novaDesabilitada}>
-            + Nova visita
-          </button>
         </div>
       </div>
 
-      <div className="ui-toolbar">
+      <div className="ui-toolbar vis-toolbar">
         <SegmentedTabs<FiltroVisitas>
           rotulo="Situação das visitas"
           valor={filtro}
@@ -225,70 +198,50 @@ export default function PcVisitas({
             { id: "Todas", rotulo: "Todas", contagem: naoArquivadas.length },
             { id: "Em andamento", rotulo: "Em andamento", contagem: naoArquivadas.filter((v) => v.status === "Em andamento").length },
             { id: "Concluída", rotulo: "Concluídas", contagem: naoArquivadas.filter((v) => v.status === "Concluída").length },
-            ...(visitas.some((visita) => visita.arquivada) ? [{ id: "Arquivadas" as const, rotulo: "Arquivadas", contagem: visitas.filter((v) => v.arquivada).length }] : []),
+            { id: "Arquivadas", rotulo: "Arquivadas", contagem: visitas.filter((v) => v.arquivada).length },
           ]}
         />
-        <input
-          type="search"
-          className="ui-input pc-search"
-          placeholder="Buscar por empresa ou responsável"
-          aria-label="Buscar visitas por empresa ou responsável"
-          value={busca}
-          onChange={(evento) => setBusca(evento.target.value)}
-        />
-        {podeConfigurarAviso && (
-          <label className="vis-aviso-config">
-            <span className="ui-row-sub">Avisar visita aberta após</span>
-            <input
-              className={`ui-input vis-aviso-dias${erroDias ? " is-invalid" : ""}`}
-              inputMode="numeric"
-              value={textoDias}
-              aria-label="Dias para avisar visita aberta"
-              aria-invalid={Boolean(erroDias)}
-              onChange={(evento) => {
-                const texto = evento.target.value.replace(/\D/g, "").slice(0, 2);
-                setTextoDias(texto);
-                const n = Number(texto);
-                if (texto && n >= 1 && n <= 60) onDiasDeAviso(n);
-              }}
-            />
-            <span className="ui-row-sub">dias</span>
-            {erroDias && <span className="ui-field-error">{erroDias}</span>}
-          </label>
-        )}
+        <span className="vis-toolbar-fim">
+          <input
+            type="search"
+            className="ui-input pc-search"
+            placeholder="Buscar por empresa ou responsável"
+            aria-label="Buscar visitas por empresa ou responsável"
+            value={busca}
+            onChange={(evento) => setBusca(evento.target.value)}
+          />
+          <button type="button" className="ui-btn ui-btn--secondary" onClick={onHistorico} disabled={historicoDesabilitado}>
+            Histórico da empresa
+          </button>
+          <button type="button" className="ui-btn ui-btn--criar" onClick={onNova} disabled={novaDesabilitada}>
+            + Nova visita
+          </button>
+        </span>
       </div>
 
-      <div className="ui-scroll">
+      <div className="ui-scroll vis-rolagem">
         {grupos.map((grupo) => {
-          const recolhido = recolhidos.includes(grupo.empresaId);
+          // Buscando, os grupos com resultado ficam abertos para mostrar o que foi achado.
+          const recolhido = termo ? false : grupoRecolhido(grupo.ativa, alternados.includes(grupo.empresaId));
           const primeira = grupo.itens[0];
           const emAndamento = grupo.itens.filter((visita) => visita.status === "Em andamento").length;
           return (
             <section key={grupo.empresaId} className="vis-grupo" aria-label={`Visitas de ${grupo.empresa}`}>
-              <div className="vis-grupo-topo">
-                <button type="button" className="vis-grupo-alternar" aria-expanded={!recolhido} onClick={() => alternarGrupo(grupo.empresaId)}>
-                  <span className="ui-avatar ui-avatar--round emp-avatar-cor" style={{ "--emp-cor": primeira.cor } as CSSProperties} aria-hidden="true">
-                    {iniciaisDaEmpresa(grupo.empresa)}
+              <button type="button" className="vis-grupo-alternar vis-grupo-inteiro" aria-expanded={!recolhido} onClick={() => alternarGrupo(grupo.empresaId)}>
+                <span className="ui-avatar ui-avatar--round emp-avatar-cor" style={{ "--emp-cor": primeira.cor } as CSSProperties} aria-hidden="true">
+                  {iniciaisDaEmpresa(grupo.empresa)}
+                </span>
+                <span className="vis-grupo-textos">
+                  <span className="vis-grupo-nome">{grupo.empresa}</span>
+                  <span className="ui-row-sub">
+                    {quantidade(grupo.itens.length, "visita", "visitas")}
+                    {emAndamento > 0 ? ` · ${emAndamento} em andamento` : ""}
                   </span>
-                  <span className="vis-grupo-textos">
-                    <span className="vis-grupo-nome">{grupo.empresa}</span>
-                    <span className="ui-row-sub">
-                      {quantidade(grupo.itens.length, "visita", "visitas")}
-                      {emAndamento > 0 ? ` · ${emAndamento} em andamento` : ""}
-                    </span>
-                  </span>
-                  {grupo.ativa && <Pill tom="brand">Empresa ativa</Pill>}
-                  <span aria-hidden="true" className="vis-grupo-seta">
-                    {recolhido ? "▾" : "▴"}
-                  </span>
-                </button>
-                {primeira.podeCriarNesta && !primeira.arquivada && (
-                  <button type="button" className="ui-btn ui-btn--criar ui-btn--small" onClick={() => onNovaDaEmpresa(grupo.empresaId)}>
-                    + Nova visita
-                  </button>
-                )}
-              </div>
-              {!recolhido && <div className="ui-list vis-grupo-lista">{grupo.itens.map(linha)}</div>}
+                </span>
+                {grupo.ativa && <span className="vis-chip-ativa">Empresa ativa</span>}
+                <Chevron aberto={!recolhido} />
+              </button>
+              {!recolhido && <div className="vis-grupo-lista">{grupo.itens.map(linha)}</div>}
             </section>
           );
         })}

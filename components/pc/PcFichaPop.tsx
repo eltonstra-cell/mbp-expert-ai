@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ComprovanteTerceiro, Empresa, ProcedimentoOperacionalPadronizado, UsuarioSistema } from "@/types";
 import PcPopEditor from "@/components/pc/PcPopEditor";
+import type { CabecalhoDeImpressao } from "@/lib/printFooter";
 import PcRegistrosDoPop from "@/components/pc/PcRegistrosDoPop";
 import PcTreinamentoDoPop from "@/components/pc/PcTreinamentoDoPop";
 import PcComprovantes from "@/components/pc/PcComprovantes";
@@ -17,9 +18,10 @@ export type AbaFicha = "resumo" | "documento" | "registros" | "comprovantes" | "
 
 type Props = {
   pop: ProcedimentoOperacionalPadronizado;
-  empresa: Pick<Empresa, "normasAplicadas" | "responsavelEstabelecimento">;
+  empresa: Pick<Empresa, "normasAplicadas" | "responsavelEstabelecimento"> & Partial<Pick<Empresa, "nomeFantasia" | "razaoSocial" | "cnpj">>;
   usuario: UsuarioSistema | null;
   podeEditar: boolean;
+  onImprimir?: (titulo: string, cabecalho: CabecalhoDeImpressao) => void;
   podeAprovar: boolean;
   contexto: RegistrosEmpresaValor | null;
   mensagem?: string;
@@ -47,7 +49,7 @@ const DESTINO_DA_ABA: Record<NonNullable<ReturnType<typeof montarLinhaDoPop>["ac
 };
 
 // Ficha do POP: o POP é o centro. Resumo, Documento, Registros, Comprovantes, Quem leu e Histórico no mesmo lugar.
-export default function PcFichaPop({ pop, empresa, usuario, podeEditar, podeAprovar, contexto, mensagem, abaInicial = "resumo", onVoltar, onSalvarRascunho, onEnviar, onAprovar, onNovaVersao }: Props) {
+export default function PcFichaPop({ pop, empresa, usuario, podeEditar, onImprimir, podeAprovar, contexto, mensagem, abaInicial = "resumo", onVoltar, onSalvarRascunho, onEnviar, onAprovar, onNovaVersao }: Props) {
   const [aba, setAba] = useState<AbaFicha>(abaInicial);
   const hoje = hojeISO();
   useEffect(() => setAba(abaInicial), [abaInicial]);
@@ -211,6 +213,7 @@ export default function PcFichaPop({ pop, empresa, usuario, podeEditar, podeApro
             empresa={empresa}
             usuario={usuario}
             podeEditar={podeEditar}
+            onImprimir={onImprimir}
             mensagem={mensagem}
             parte={aba === "historico" ? "historico" : "documento"}
             onSalvarRascunho={onSalvarRascunho}
