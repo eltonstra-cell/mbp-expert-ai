@@ -31,7 +31,6 @@ export default function CommandPalette({ aberto, comVoz, destinos, onEscolher, o
   const campoRef = useRef<HTMLInputElement | null>(null);
   const iaPermitida = useIaPermitida();
   const voz = useVoiceCapture({
-    limiteMs: 10000,
     onTexto: (texto) => {
       setConsulta(texto);
       setIndice(0);
@@ -143,7 +142,7 @@ export default function CommandPalette({ aberto, comVoz, destinos, onEscolher, o
 
         {voz.estado === "ouvindo" && (
           <div className="pc-cmd-status" role="status">
-            <span className="pc-cmd-pulse" aria-hidden="true" /> Ouvindo… (até 10 segundos)
+            <span className="pc-cmd-pulse" aria-hidden="true" /> Ouvindo… (até 8 segundos; para sozinho no silêncio)
             <button type="button" className="pc-cmd-status-btn" onClick={voz.parar}>Parar</button>
           </div>
         )}

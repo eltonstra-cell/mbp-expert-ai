@@ -359,3 +359,22 @@ export function construirDestinos(entrada: EntradaDeDestinos): Destino[] {
   }
   return destinos;
 }
+
+// ---- Abertura automática depois da busca por voz --------------------------------------------
+
+/** Destinos que SÓ levam a uma tela (menu, Central e suas sub-abas, Relatórios). Registrar, continuar inspeção, escolher empresa, visita e itens do checklist nunca abrem sozinhos. */
+export function ehDestinoDeNavegacao(destino: Pick<Destino, "acao">): boolean {
+  return destino.acao.tipo === "nav" || destino.acao.tipo === "central" || destino.acao.tipo === "relatorios";
+}
+
+/**
+ * Resultado da voz que pode abrir sozinho (com contagem e botão Cancelar): um único resultado, ou um único cujo título é exatamente o que foi dito,
+ * e só se for destino de navegação. Mais de um parecido: o usuário escolhe. Ação que grava ou altera dado: sempre por clique.
+ */
+export function destinoParaAbrirSozinho(resultados: Resultado[], consulta: string): Destino | null {
+  if (resultados.length === 0) return null;
+  const dito = normalizar(consulta);
+  const exatos = resultados.filter((resultado) => normalizar(resultado.destino.titulo) === dito);
+  const unico = resultados.length === 1 ? resultados[0] : exatos.length === 1 ? exatos[0] : null;
+  return unico && ehDestinoDeNavegacao(unico.destino) ? unico.destino : null;
+}

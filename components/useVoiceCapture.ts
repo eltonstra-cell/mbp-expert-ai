@@ -1,21 +1,26 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { LIMITE_DA_GRAVACAO_MS, SILENCIO_PARA_PARAR_MS, criarDetectorDeFimDeFala } from "@/lib/fimDeFala";
 
 export type EstadoVoz = "parado" | "ouvindo" | "transcrevendo";
 
 // Mesma rota de transcrição e mesma autenticação (cookie da sessão) do ditado das não
 // conformidades. A rota continua exigindo a permissão de IA no servidor. O áudio fica só na
-// memória durante a gravação e nunca é guardado nem registrado em log.
+// memória durante a gravação e nunca é guardado nem registrado em log. O fim de fala por silêncio (1 s, só depois de a pessoa começar a
+// falar) é medido no próprio aparelho, pelo nível do microfone; nenhum áudio vai para o estado, para o Blob ou para log.
 const ENDPOINT = "/api/audio/transcrever";
 
 const TIPOS_PREFERIDOS = ["audio/mp4", "audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus"];
 
 export function useVoiceCapture({
-  limiteMs = 10000,
+  limiteMs = LIMITE_DA_GRAVACAO_MS,
+  silencioMs = SILENCIO_PARA_PARAR_MS,
   onTexto,
 }: {
   limiteMs?: number;
+  /** Silêncio (depois de começar a falar) que encerra a gravação sozinha; 0 desliga. */
+  silencioMs?: number;
   onTexto: (texto: string) => void;
 }) {
   const [estado, setEstado] = useState<EstadoVoz>("parado");
@@ -23,11 +28,17 @@ export function useVoiceCapture({
   const gravadorRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const timerRef = useRef<number | null>(null);
+  const medidorRef = useRef<{ intervalo: number; contexto: AudioContext } | null>(null);
   const canceladoRef = useRef(false);
   const onTextoRef = useRef(onTexto);
   onTextoRef.current = onTexto;
 
   const soltarMicrofone = useCallback(() => {
+    if (medidorRef.current) {
+      window.clearInterval(medidorRef.current.intervalo);
+      void medidorRef.current.contexto.close().catch(() => undefined);
+      medidorRef.current = null;
+    }
     if (timerRef.current) {
       window.clearTimeout(timerRef.current);
       timerRef.current = null;
@@ -81,8 +92,8 @@ export function useVoiceCapture({
       const nome = (error as { name?: string })?.name;
       setErro(
         nome === "NotAllowedError" || nome === "SecurityError"
-          ? "Microfone bloqueado. Libere a permissão do microfone no navegador ou digite no campo."
-          : "Não foi possível acessar o microfone. Digite no campo."
+          ? "Microfone bloqueado: libere a permissão no navegador ou digite."
+          : "Microfone indisponível: digite no campo."
       );
       return;
     }
@@ -150,11 +161,41 @@ export function useVoiceCapture({
 
     gravador.start(250);
     setEstado("ouvindo");
-    // Limite de 10 segundos: comando curto, nunca uma gravação esquecida aberta.
+    // Fim de fala: mede o nível do microfone a cada 100 ms; 1 s de silêncio depois da primeira fala encerra e transcreve.
+    if (silencioMs > 0) {
+      try {
+        const Contexto = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        if (Contexto) {
+          const contexto = new Contexto();
+          const analisador = contexto.createAnalyser();
+          analisador.fftSize = 1024;
+          contexto.createMediaStreamSource(stream).connect(analisador);
+          const amostras = new Uint8Array(analisador.fftSize);
+          const detector = criarDetectorDeFimDeFala({ silencioMs, limiteMs, inicioMs: performance.now() });
+          const intervalo = window.setInterval(() => {
+            analisador.getByteTimeDomainData(amostras);
+            let soma = 0;
+            for (const amostra of amostras) {
+              const x = (amostra - 128) / 128;
+              soma += x * x;
+            }
+            const decisao = detector.processar(Math.sqrt(soma / amostras.length), performance.now());
+            if (decisao !== "continuar" && gravador.state === "recording") {
+              window.clearInterval(intervalo);
+              gravador.stop();
+            }
+          }, 100);
+          medidorRef.current = { intervalo, contexto };
+        }
+      } catch {
+        // Sem medidor, vale o botão do microfone e o limite de tempo.
+      }
+    }
+    // Limite máximo de gravação: comando curto, nunca uma gravação esquecida aberta.
     timerRef.current = window.setTimeout(() => {
       if (gravador.state === "recording") gravador.stop();
     }, limiteMs);
-  }, [estado, limiteMs, soltarMicrofone]);
+  }, [estado, limiteMs, silencioMs, soltarMicrofone]);
 
   useEffect(
     () => () => {

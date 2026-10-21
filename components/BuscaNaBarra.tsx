@@ -3,12 +3,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { NavIcon } from "@/components/NavIcons";
 import { useVoiceCapture } from "@/components/useVoiceCapture";
-import { ORDEM_GRUPOS_BUSCA, buscar, type Destino, type GrupoBusca, type Resultado } from "@/lib/commandSearch";
+import { ORDEM_GRUPOS_BUSCA, buscar, destinoParaAbrirSozinho, type Destino, type GrupoBusca, type Resultado } from "@/lib/commandSearch";
 import { lerRecentes, registrarRecente, type Recente } from "@/lib/buscaRecentes";
+import { modoDaBusca } from "@/lib/topoCompacto";
 
 // Exemplos que trocam a cada poucos segundos (só o texto de ajuda; nada é buscado sozinho).
 const EXEMPLOS = ["nova visita, POPs, correções abertas", "relatório emitido, dossiê, norma", "ambientes, comprovantes, pessoas", "central da empresa, dados, responsável"];
 const LIMITE_POR_GRUPO: Record<GrupoBusca, number> = { ir: 6, agir: 4, itens: 8, empresas: 6 };
+/** Depois da voz, destino único de navegação abre sozinho depois desta contagem (com botão Cancelar). */
+const CONTAGEM_DA_ABERTURA_MS = 2000;
 
 export type AtalhoDaBusca = { id: string; rotulo: string; onClick: () => void };
 
@@ -27,22 +30,26 @@ type Props = {
   pedidoDeFoco: number;
 };
 
-// A busca vive na própria linha do topo, à direita do nome da página. Ao clicar, abre um painel colado embaixo (8 px), da mesma largura:
-// com a barra vazia mostra os atalhos e os recentes; ao digitar, os resultados.
+// A busca vive na linha do topo, à direita do nome da página. Janela larga (1400 px ou mais): campo na barra. Janela estreita: lupa + "Ctrl K"
+// e o campo de digitação passa para o topo do painel. Em ambos o painel abre colado (8 px), com 520 px (limitado à janela): com o campo vazio
+// mostra atalhos e recentes; ao digitar, os resultados. Por voz, destino único de navegação abre sozinho depois de 2 s, com Cancelar.
 export default function BuscaNaBarra({ destinos, atalhos, usuarioId, onAtiva, onEscolher, micDisponivel, pedidoDeFoco }: Props) {
   const [consulta, setConsulta] = useState("");
   const [aberto, setAberto] = useState(false);
   const [indice, setIndice] = useState(0);
   const [exemplo, setExemplo] = useState(0);
   const [recentes, setRecentes] = useState<Recente[]>([]);
+  const [compacta, setCompacta] = useState(false);
+  const [textoDaVoz, setTextoDaVoz] = useState<string | null>(null);
+  const [abrindo, setAbrindo] = useState<Destino | null>(null);
   const campoRef = useRef<HTMLInputElement | null>(null);
   const raizRef = useRef<HTMLDivElement | null>(null);
 
   const voz = useVoiceCapture({
-    limiteMs: 10000,
     onTexto: (texto) => {
       setConsulta(texto);
       setIndice(0);
+      setTextoDaVoz(texto);
       abrir();
       campoRef.current?.focus();
     },
@@ -55,8 +62,16 @@ export default function BuscaNaBarra({ destinos, atalhos, usuarioId, onAtiva, on
   }
   function fechar() {
     setAberto(false);
+    setAbrindo(null);
     onAtiva(false);
   }
+
+  useEffect(() => {
+    const medir = () => setCompacta(modoDaBusca(window.innerWidth) === "compacta");
+    medir();
+    window.addEventListener("resize", medir);
+    return () => window.removeEventListener("resize", medir);
+  }, []);
 
   useEffect(() => {
     const timer = window.setInterval(() => setExemplo((atual) => (atual + 1) % EXEMPLOS.length), 4500);
@@ -65,11 +80,22 @@ export default function BuscaNaBarra({ destinos, atalhos, usuarioId, onAtiva, on
 
   useEffect(() => {
     if (!pedidoDeFoco) return;
+    abrir();
     campoRef.current?.focus();
     campoRef.current?.select();
-    abrir();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pedidoDeFoco]);
+
+  // Na janela estreita o campo nasce junto com o painel: leva o foco para ele.
+  useEffect(() => {
+    if (aberto && compacta) campoRef.current?.focus();
+  }, [aberto, compacta]);
+
+  // Erro do microfone (negado ou indisponível) aparece no painel; a digitação segue funcionando.
+  useEffect(() => {
+    if (voz.erro) abrir();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [voz.erro]);
 
   useEffect(() => {
     if (!aberto) return;
@@ -103,11 +129,29 @@ export default function BuscaNaBarra({ destinos, atalhos, usuarioId, onAtiva, on
     document.getElementById(`pc-busca-opcao-${indice}`)?.scrollIntoView({ block: "nearest" });
   }, [indice]);
 
+  // Depois da voz: se o resultado for único e claro e for só navegação, abre sozinho depois da contagem; senão a pessoa escolhe.
+  useEffect(() => {
+    if (textoDaVoz === null || destinos.length === 0) return;
+    const achado = destinoParaAbrirSozinho(buscar(textoDaVoz, destinos, { limite: 60 }), textoDaVoz);
+    setTextoDaVoz(null);
+    if (achado) setAbrindo(achado);
+  }, [textoDaVoz, destinos]);
+
+  useEffect(() => {
+    if (!abrindo) return;
+    const timer = window.setTimeout(() => escolher({ destino: abrindo, pontos: 0 }), CONTAGEM_DA_ABERTURA_MS);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [abrindo]);
+
+  /** Abre o destino e limpa a busca: o texto digitado some, o painel fecha e a barra volta ao placeholder. */
   function escolher(resultado: Resultado | undefined) {
     if (!resultado) return;
     registrarRecente(resultado.destino, usuarioId);
-    fechar();
     setConsulta("");
+    setIndice(0);
+    setTextoDaVoz(null);
+    fechar();
     campoRef.current?.blur();
     onEscolher(resultado.destino);
   }
@@ -130,66 +174,86 @@ export default function BuscaNaBarra({ destinos, atalhos, usuarioId, onAtiva, on
     }
   }
 
+  const campo = (
+    <input
+      id="pc-busca-input"
+      ref={campoRef}
+      type="text"
+      className="pc-busca-input"
+      placeholder={`Ex.: ${EXEMPLOS[exemplo]}`}
+      aria-label="Busca inteligente: diga o que quer fazer ou para onde quer ir"
+      role="combobox"
+      aria-expanded={aberto}
+      aria-controls="pc-busca-lista"
+      aria-activedescendant={aberto && lista.length ? `pc-busca-opcao-${indice}` : undefined}
+      autoComplete="off"
+      spellCheck={false}
+      value={consulta}
+      onFocus={abrir}
+      onClick={abrir}
+      onChange={(evento) => {
+        setConsulta(evento.target.value);
+        setIndice(0);
+        setAbrindo(null);
+        abrir();
+      }}
+    />
+  );
+  const microfone = micDisponivel && (
+    <button
+      type="button"
+      className={`pc-mic${voz.estado === "ouvindo" ? " is-listening" : ""}`}
+      aria-label={voz.estado === "ouvindo" ? "Parar de ouvir" : "Falar em vez de digitar"}
+      disabled={voz.estado === "transcrevendo"}
+      onClick={() => (voz.estado === "ouvindo" ? voz.parar() : void voz.iniciar())}
+    >
+      <NavIcon name="microfone" size={16} />
+    </button>
+  );
+  const ir = (
+    <button
+      type="button"
+      className="pc-go"
+      onClick={() => {
+        if (lista.length && digitando) escolher(lista[indice]);
+        else {
+          campoRef.current?.focus();
+          abrir();
+        }
+      }}
+    >
+      Ir →
+    </button>
+  );
+  const barra = (
+    <div className="pc-smartbar-campos">
+      <span className="pc-bolt" aria-hidden="true">
+        <NavIcon name="raio" size={20} />
+      </span>
+      {campo}
+      <kbd className="pc-kbd">Ctrl K</kbd>
+      {microfone}
+      {ir}
+    </div>
+  );
+
   return (
-    <div className="pc-busca" ref={raizRef} onKeyDown={aoTeclar}>
-      <div className={`pc-smartbar${aberto ? " is-aberta" : ""}`}>
-        <span className="pc-bolt" aria-hidden="true">
-          <NavIcon name="raio" size={20} />
-        </span>
-        <input
-          id="pc-busca-input"
-          ref={campoRef}
-          type="text"
-          className="pc-busca-input"
-          placeholder={`Ex.: ${EXEMPLOS[exemplo]}`}
-          aria-label="Busca inteligente: diga o que quer fazer ou para onde quer ir"
-          role="combobox"
-          aria-expanded={aberto}
-          aria-controls="pc-busca-lista"
-          aria-activedescendant={aberto && lista.length ? `pc-busca-opcao-${indice}` : undefined}
-          autoComplete="off"
-          spellCheck={false}
-          value={consulta}
-          onFocus={abrir}
-          onClick={abrir}
-          onChange={(evento) => {
-            setConsulta(evento.target.value);
-            setIndice(0);
-            abrir();
-          }}
-        />
-        <kbd className="pc-kbd">Ctrl K</kbd>
-        {micDisponivel && (
-          <button
-            type="button"
-            className={`pc-mic${voz.estado === "ouvindo" ? " is-listening" : ""}`}
-            aria-label={voz.estado === "ouvindo" ? "Parar de ouvir" : "Falar em vez de digitar"}
-            disabled={voz.estado === "transcrevendo"}
-            onClick={() => (voz.estado === "ouvindo" ? voz.parar() : void voz.iniciar())}
-          >
-            <NavIcon name="microfone" size={16} />
-          </button>
-        )}
-        <button
-          type="button"
-          className="pc-go"
-          onClick={() => {
-            if (lista.length && digitando) escolher(lista[indice]);
-            else {
-              campoRef.current?.focus();
-              abrir();
-            }
-          }}
-        >
-          Ir →
+    <div className={`pc-busca${compacta ? " pc-busca--compacta" : ""}`} ref={raizRef} onKeyDown={aoTeclar}>
+      {compacta ? (
+        <button type="button" className={`pc-busca-gatilho${aberto ? " is-aberta" : ""}`} aria-label="Abrir a busca (Ctrl K)" aria-expanded={aberto} onClick={() => (aberto ? fechar() : abrir())}>
+          <NavIcon name="lupa" size={18} />
+          <kbd className="pc-kbd">Ctrl K</kbd>
         </button>
-      </div>
+      ) : (
+        <div className={`pc-smartbar${aberto ? " is-aberta" : ""}`}>{barra}</div>
+      )}
 
       {aberto && (
         <div className="pc-busca-painel" id="pc-busca-lista" role="listbox" aria-label="Resultados">
+          {compacta && <div className="pc-smartbar pc-smartbar--no-painel">{barra}</div>}
           {voz.estado === "ouvindo" && (
             <div className="pc-cmd-status" role="status">
-              <span className="pc-cmd-pulse" aria-hidden="true" /> Ouvindo… (até 10 segundos)
+              <span className="pc-cmd-pulse" aria-hidden="true" /> Ouvindo… (para sozinho depois de 1 s de silêncio)
               <button type="button" className="pc-cmd-status-btn" onClick={voz.parar}>
                 Parar
               </button>
@@ -197,6 +261,14 @@ export default function BuscaNaBarra({ destinos, atalhos, usuarioId, onAtiva, on
           )}
           {voz.estado === "transcrevendo" && <div className="pc-cmd-status" role="status">Transcrevendo…</div>}
           {voz.erro && <div className="pc-cmd-error" role="alert">{voz.erro}</div>}
+          {abrindo && (
+            <div className="pc-busca-abrindo" role="status">
+              <span>Abrindo {abrindo.titulo}…</span>
+              <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => setAbrindo(null)}>
+                Cancelar
+              </button>
+            </div>
+          )}
 
           {!digitando && atalhos.length > 0 && (
             <div className="pc-busca-bloco" role="group" aria-label="Atalhos">

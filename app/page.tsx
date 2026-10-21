@@ -813,7 +813,7 @@ export default function Home() {
       if ((evento.ctrlKey || evento.metaKey) && evento.key.toLowerCase() === "k") {
         evento.preventDefault();
         // No PC a busca vive na barra do topo: Ctrl K só leva o foco para ela. Sem barra visível (celular), abre a caixa.
-        const barra = document.getElementById("pc-busca-input");
+        const barra = document.querySelector<HTMLElement>(".pc-busca");
         if (barra && barra.offsetParent !== null) {
           setPedidoDeFocoNaBusca((n) => n + 1);
         } else {

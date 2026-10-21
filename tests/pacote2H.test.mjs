@@ -67,7 +67,7 @@ test("busca na própria barra: Ctrl K só foca, Esc devolve o foco, clique fora 
   assert.ok(busca.includes('evento.key === "Escape"') && busca.includes("campoRef.current?.focus()") && busca.includes('addEventListener("mousedown"'));
   assert.ok(busca.includes("pc-busca-painel") && !busca.includes("pc-cmd-backdrop"));
   const pagina = ler("../app/page.tsx");
-  assert.ok(pagina.includes('document.getElementById("pc-busca-input")') && pagina.includes("setPedidoDeFocoNaBusca"));
+  assert.ok(pagina.includes('document.querySelector<HTMLElement>(".pc-busca")') && pagina.includes("setPedidoDeFocoNaBusca"));
   const css = ler("../app/globals.css");
   assert.ok(css.includes(".pc-busca-painel{position:absolute;top:100%;left:0;right:0"));
 });

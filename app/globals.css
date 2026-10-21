@@ -4150,3 +4150,35 @@ html[data-modo="equilibrado"] .pc-busca,html[data-modo="completo"] .pc-busca{dis
 @media print{.pfolha-aviso,#pop-folha .pfolha-aviso,.no-print{display:none!important}}
 .pend-link{padding:0;border:0;background:transparent;font:inherit;color:#12202B;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 .pend-link:hover{background:#FEF6E6}
+
+/* Linha do topo em janela estreita. Prioridade: nome da página, empresa ativa, busca, status.
+   As larguras abaixo são as de lib/topoCompacto.ts (1100, 1400 e 1500 px). */
+.pc-topbar{flex-wrap:nowrap}
+.pc-crumbs{flex:0 0 auto}
+.pc-crumb-wrap{flex:none}
+.pc-crumb-apoio{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
+@media (min-width:1100px){.pc-crumb-current,.pc-crumb{overflow:visible;text-overflow:clip;white-space:nowrap}}
+.pc-topbar-end{flex:1 1 auto;justify-content:flex-end;flex-wrap:nowrap;min-width:0}
+.pc-sync-chip,.pc-mode-chip{flex:none;white-space:nowrap}
+.emp-ativa{flex:1 1 180px;min-width:180px;max-width:22rem}
+.emp-ativa-caixa{min-width:180px}
+.emp-ativa-nome{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pc-mode-icone{display:none}
+@media (max-width:1499px){
+  .pc-sync-texto,.pc-mode-texto{display:none}
+  .pc-sync-chip{padding:0;width:26px;height:26px;justify-content:center}
+  .pc-mode-chip{padding:0;width:26px;height:26px;display:inline-grid;place-items:center}
+  .pc-mode-icone{display:inline}
+}
+/* Busca compacta (abaixo de 1400 px): gatilho com lupa e "Ctrl K"; o campo vai para o topo do painel */
+.pc-busca-gatilho{display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 12px;border:2px solid #B4C2CE;border-radius:12px;background:#fff;color:#12202B;cursor:pointer}
+.pc-busca-gatilho.is-aberta{border-color:#E8B04B}
+.pc-topbar .pc-busca--compacta{flex:0 0 auto;min-width:0;width:auto}
+.pc-busca--compacta .pc-busca-painel{width:min(520px,calc(100vw - 32px));right:auto;left:0}
+.pc-smartbar-campos{display:flex;flex:1;align-items:center;gap:8px;min-width:0}
+.pc-smartbar--no-painel{display:flex;border:2px solid #E8B04B;border-radius:14px;box-shadow:none;margin-bottom:4px}
+.pc-busca-abrindo{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;border:1px solid #E8B04B;border-radius:10px;background:#FEF6E6;font-size:.94rem;color:#12202B}
+@media (min-width:1400px){.pc-topbar .pc-busca:not(.pc-busca--compacta){min-width:360px}}
+/* Busca: um só laranja na barra (o "Ir →"); o raio fica em creme com borda dourada; rodapé do painel legível */
+.pc-bolt{background:#FEF6E6;border:1.5px solid #E8B04B;color:#12202B}
+.pc-busca-painel .pc-cmd-foot{font-size:.875rem;color:#12202B}

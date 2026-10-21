@@ -118,10 +118,11 @@ export default function AppTopbar({
             type="button"
             className={`pc-sync-chip is-${sincronizacao.estado}`}
             onClick={sincronizacao.onClick}
-            title="Toque para atualizar agora"
+            title={`${ROTULO_SYNC[sincronizacao.estado]}. Toque para atualizar agora`}
+            aria-label={`${ROTULO_SYNC[sincronizacao.estado]}. Toque para atualizar agora`}
           >
             <span className="pc-sync-dot" aria-hidden="true" />
-            {ROTULO_SYNC[sincronizacao.estado]}
+            <span className="pc-sync-texto">{ROTULO_SYNC[sincronizacao.estado]}</span>
           </button>
         )}
         {empresaAtiva && (
@@ -137,8 +138,9 @@ export default function AppTopbar({
           </div>
         )}
         {modo && onAbrirConfigModo && (
-          <button type="button" className="pc-mode-chip" onClick={onAbrirConfigModo} title="Configurar o modo de tela">
-            {ROTULO_DE_USO[modo]}
+          <button type="button" className="pc-mode-chip" onClick={onAbrirConfigModo} title={`${ROTULO_DE_USO[modo]}. Configurar o modo de tela`} aria-label={`${ROTULO_DE_USO[modo]}. Configurar o modo de tela`}>
+            <span className="pc-mode-texto">{ROTULO_DE_USO[modo]}</span>
+            <span className="pc-mode-icone" aria-hidden="true">▭</span>
           </button>
         )}
         {itensModo.length > 0 && <RowMenu itens={itensModo} rotulo="Modo de tela" />}
