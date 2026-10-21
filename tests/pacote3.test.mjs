@@ -102,17 +102,15 @@ test("monograma da empresa no menu: só letras, sem número no começo, com rese
   assert.equal(nomeSemNumerosNoInicio("44.150.273"), "44.150.273");
 });
 
-test("nome do ambiente: 'Câmara fria' e variações aparecem como 'Câmara refrigerada'; o resto não muda", async () => {
+test("nome do ambiente: sempre o que a empresa cadastrou, igual em todas as telas e documentos (sem troca de 'Câmara fria')", async () => {
   const { nomeDeExibicaoDoAmbiente, resumoAmbientes } = await import("../lib/checklistEnvs.ts");
-  for (const nome of ["Câmara Fria", "Câmara fria", "câmara  fria", "CÂMARA FRIA", "Camara refrigerada", "Câmara frigorífica"]) {
-    assert.equal(nomeDeExibicaoDoAmbiente(nome), "Câmara refrigerada", nome);
+  for (const nome of ["Câmara Fria", "Câmara fria", "câmara  fria", "CÂMARA FRIA", "Camara refrigerada", "Câmara frigorífica", "Cozinha", "Câmara de congelamento", "Estoque seco", ""]) {
+    assert.equal(nomeDeExibicaoDoAmbiente(nome), nome, nome);
   }
-  for (const nome of ["Cozinha", "Câmara de congelamento", "Estoque seco", ""]) assert.equal(nomeDeExibicaoDoAmbiente(nome), nome);
-  // o dado salvo (nome) não muda; só o rótulo exibido
   const infos = resumoAmbientes(["Câmara Fria"], [{ ambiente: "Câmara Fria", status: "Pendente" }]);
   assert.equal(infos[0].nome, "Câmara Fria");
-  assert.equal(infos[0].rotulo, "Câmara refrigerada");
-  assert.equal(linhaDaCorrecao({ titulo: "x", ambiente: "Câmara Fria", numero: 1 }).ambiente, "Câmara refrigerada");
+  assert.equal(infos[0].rotulo, "Câmara Fria");
+  assert.equal(linhaDaCorrecao({ titulo: "x", ambiente: "Câmara Fria", numero: 1 }).ambiente, "Câmara Fria");
 });
 
 test("plano de correção: mensagem de campos faltantes e foco no primeiro", async () => {

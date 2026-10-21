@@ -44,9 +44,9 @@ export function situacaoDoAmbiente(
  * UMA fonte para o menu e para a lista: os ambientes reais vêm de `ordem` (a ordem da visita,
  * nunca reordenada) e as verificações gerais entram depois, marcadas como `geral`.
  */
-/** Nome padronizado para exibir ("Câmara fria" e variações viram "Câmara refrigerada"); não altera o dado salvo. */
+/** Nome do ambiente como a empresa cadastrou, igual em todas as telas e documentos (não há mais nome "padronizado" que troque "Câmara fria" por outro). */
 export function nomeDeExibicaoDoAmbiente(nome: string): string {
-  return /^c[aâ]mara\s+(fria|refrigerada|frigor[ií]fica)$/i.test((nome || "").trim()) ? "Câmara refrigerada" : nome;
+  return nome;
 }
 
 export function resumoAmbientes(

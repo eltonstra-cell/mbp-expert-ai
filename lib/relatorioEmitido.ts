@@ -4,6 +4,7 @@
 import type { AppDB, Evidencia, InstantaneoDoRelatorio, RelatorioEmitido, UsuarioSistema } from "../types/index.ts";
 import { comprovacaoDaCorrecao } from "./fotosDoItem.ts";
 import { hojeISO, popVigente, situacaoDoPop } from "./popsNorma.ts";
+import { hojeLocalISO } from "./dataLocal.ts";
 import { acessoVigente } from "./validadeDeAcesso.ts";
 
 export const AVISO_SEM_ICP = "Não é assinatura digital com certificado ICP-Brasil.";
@@ -148,7 +149,7 @@ export function emitir(data: AppDB, pedido: PedidoDeEmissao, emissor: Emissor | 
   if (!anterior && pedido.novaVersao) return { ok: false, erro: "Ainda não há relatório emitido desta visita.", status: 409 };
   if (anterior && !(pedido.motivo || "").trim()) return { ok: false, erro: "Informe o motivo da nova versão.", status: 400 };
 
-  const ano = Number(new Date(agora.getTime() - 3 * 60 * 60 * 1000).toISOString().slice(0, 4));
+  const ano = Number(hojeLocalISO(agora).slice(0, 4));
   const sequencia = anterior ? anterior.sequencia : proximaSequencia(relatorios, visita.empresaId, anterior ? (anterior as RelatorioEmitido).ano : ano);
   const anoDoNumero = anterior ? anterior.ano : ano;
   const crn = (emissor?.crn || "").trim();

@@ -13,7 +13,7 @@ test("painel Hoje: tipo em cada item, sem chip 'Vencido' redundante e '1 vence' 
   for (const tipo of ["Correção", "Comprovante", "Capacitação", "POP"]) assert.ok(painel.includes(`"${tipo}"`), tipo);
   // a etiqueta de situação só aparece para "aguardando"; vencido e vence em breve já têm faixa de cor e prazo
   assert.ok(painel.includes('item.situacao === "aguardando" && <Pill'));
-  assert.ok(painel.includes("vencem(painel.vencemEm7Dias)"));
+  assert.ok(painel.includes("vencem(painel.vencemEm30Dias)"));
   assert.equal(vencem(1), "1 vence");
   assert.equal(vencem(2), "2 vencem");
   assert.ok(!painel.includes("POR_PAGINA"), "lista rola por dentro, sem paginar");

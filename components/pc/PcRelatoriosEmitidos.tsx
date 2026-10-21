@@ -5,14 +5,12 @@ import { Pill } from "@/components/ui/Pill";
 import type { RelatorioEmitido } from "@/types";
 import { avisoDeRelatorioParcial, coberturaDoChecklist, textoDasRespostas, textoDoPercentualConforme, textoRespondidos } from "@/lib/cobertura";
 import { quantidade } from "@/lib/plural";
+import { formatarData, formatarDataHora } from "@/lib/dataLocal";
 import { TODAS_AS_SECOES } from "@/lib/relatorioEmitido";
 import type { CabecalhoDeImpressao } from "@/lib/printFooter";
 
-function dataHoraBr(iso: string) {
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? iso : `${d.toLocaleDateString("pt-BR")} ${d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
-}
-const dataBr = (iso: string) => iso.slice(0, 10).split("-").reverse().join("/");
+const dataHoraBr = (iso: string) => formatarDataHora(iso) || iso;
+const dataBr = (iso: string) => formatarData(iso);
 
 type ListaProps = {
   empresa: string;
@@ -219,9 +217,7 @@ export default function PcRelatoriosEmitidos({ empresa, relatorios, urlDaFoto, o
           <div className="emitido-assinatura">
             <span>
               Assinado por <b>{aberto.assinatura.nome}</b>, {aberto.assinatura.cargo} · {aberto.assinatura.crn}
-              {aberto.assinatura.crnPendente ? " (preencher no cadastro do RT)" : ""}
             </span>
-            <span className="doc-linha">{aberto.aviso}</span>
           </div>
         </article>
       </section>

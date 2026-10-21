@@ -1,5 +1,6 @@
 "use client";
 
+import { dataISOLocal, formatarDataCurta, formatarHora, hojeLocalISO } from "@/lib/dataLocal";
 import type { ReactNode } from "react";
 
 import { useRef, useState, type CSSProperties } from "react";
@@ -739,11 +740,9 @@ function DetalheCampo({
 }
 
 function quandoCurtoCampo(iso: string) {
-  const data = new Date(iso);
-  if (Number.isNaN(data.getTime())) return "";
-  const mesmoDia = data.toDateString() === new Date().toDateString();
-  const hora = data.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-  return mesmoDia ? `hoje ${hora}` : `${data.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} ${hora}`;
+  if (!iso || Number.isNaN(new Date(iso).getTime())) return "";
+  const hora = formatarHora(iso);
+  return dataISOLocal(iso) === hojeLocalISO() ? `hoje ${hora}` : `${formatarDataCurta(iso)} ${hora}`;
 }
 
 export type CartaoMais = { id: string; rotulo: string; icone: NavIconName; tom: string; onClick: () => void };

@@ -9,6 +9,8 @@ import PcComprovantes from "@/components/pc/PcComprovantes";
 import type { RegistrosEmpresaValor } from "@/components/RegistrosEmpresaContext";
 import { CORES_DA_SITUACAO, comprovantesVigentesDoPop, montarLinhaDoPop, ultimoRegistroDoPop } from "@/lib/popGestao";
 import { CONJUNTO_DA_NORMA, MENSAGEM_NORMA_ALTERADA, hojeISO, popPrecisaRevisarPorNorma, popVigente } from "@/lib/popsNorma";
+import { formatarData, formatarDataCurta, formatarHora } from "@/lib/dataLocal";
+import { mensagemDeComprovanteVazio } from "@/lib/comprovantePop";
 import { ROTULO_DA_VALIDADE, diasEntre, leituraDaVersao, rotuloDoTipo, situacaoDaValidade } from "@/lib/registrosEmpresa";
 
 export type AbaFicha = "resumo" | "documento" | "registros" | "comprovantes" | "quemleu" | "historico";
@@ -31,16 +33,10 @@ type Props = {
 
 const ROTULO: Record<AbaFicha, string> = { resumo: "Resumo", documento: "Documento", registros: "Registros", comprovantes: "Comprovantes", quemleu: "Quem leu", historico: "Histórico" };
 
-function dataBr(iso?: string) {
-  if (!iso) return "";
-  const [ano, mes, dia] = iso.slice(0, 10).split("-");
-  return `${dia}/${mes}/${ano}`;
-}
-const dataCurta = (iso?: string) => (iso ? dataBr(iso).slice(0, 5) : "");
-function horaBr(iso: string) {
-  const data = new Date(iso);
-  return Number.isNaN(data.getTime()) ? "" : data.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-}
+// Datas e horas sempre em São Paulo (lib/dataLocal.ts): o texto ISO em UTC nunca é cortado na mão.
+const dataBr = (iso?: string) => formatarData(iso);
+const dataCurta = (iso?: string) => formatarDataCurta(iso);
+const horaBr = (iso: string) => formatarHora(iso);
 
 const DESTINO_DA_ABA: Record<NonNullable<ReturnType<typeof montarLinhaDoPop>["acao"]["botao"]>["destino"], AbaFicha> = {
   comprovantes: "comprovantes",
@@ -192,7 +188,6 @@ export default function PcFichaPop({ pop, empresa, usuario, podeEditar, podeApro
             </div>
 
             <div className="ficha-rodape-resumo">
-              <span className="ficha-nota">Registros, comprovantes e leituras deste POP ficam aqui, não em áreas separadas.</span>
               <span className="ficha-botoes">
                 {contexto?.podeCriarRegistro && vigente && abas.includes("registros") && (
                   <button type="button" className="ui-btn ui-btn--criar" onClick={() => setAba("registros")}>
@@ -242,6 +237,7 @@ export default function PcFichaPop({ pop, empresa, usuario, podeEditar, podeApro
             onRemover={contexto.removerComprovante}
             urlDoArquivo={contexto.urlDoComprovante}
             popFixo={{ id: pop.id, rotulo: pop.titulo }}
+            mensagemVazia={mensagemDeComprovanteVazio(pop)}
             onVoltar={() => setAba("resumo")}
           />
         )}

@@ -2,6 +2,7 @@
 // Lógica pura: os números vêm dos dados que o app já tem; nada é inventado nem arredondado de forma enganosa.
 import type { Capacitacao, Colaborador, ComprovanteTerceiro, Empresa, NaoConformidade, PerfilUsuario, ProcedimentoOperacionalPadronizado, UsuarioSistema, Visita } from "../types/index.ts";
 import { hojeISO, situacaoDoPop } from "./popsNorma.ts";
+import { dataISOLocal } from "./dataLocal.ts";
 import { coberturaDoChecklist, textoDoPercentualConforme } from "./cobertura.ts";
 import { quantidade } from "./plural.ts";
 import { diasEntre, pendenciasDaEmpresa, podeGerenciarComprovantes, podeGerenciarPessoas, podeVerComprovantes } from "./registrosEmpresa.ts";
@@ -43,12 +44,13 @@ export type ItemDoPainel = {
 
 export type PainelHoje = {
   vencidos: number;
-  vencemEm7Dias: number;
+  vencemEm30Dias: number;
   aguardando: number;
   itens: ItemDoPainel[];
 };
 
-export const DIAS_DO_CONTADOR = 7;
+/** Um critério só para "vencendo": 30 dias, o mesmo do painel Hoje, do resumo e do dossiê. */
+export const DIAS_DO_CONTADOR = 30;
 
 function textoDoPrazo(dias: number): string {
   if (dias < 0) return `venceu há ${Math.abs(dias)} ${Math.abs(dias) === 1 ? "dia" : "dias"}`;
@@ -135,13 +137,13 @@ export function montarPainelHoje(entrada: EntradaDoPainel): PainelHoje {
     });
   }
 
-  // Vencidos primeiro (os mais atrasados antes); depois o que vence logo; POP aguardando entra junto dos prazos de até 7 dias.
+  // Vencidos primeiro (os mais atrasados antes); depois o que vence logo; POP aguardando entra depois dos prazos de até 30 dias.
   const ordem = (item: ItemDoPainel) => (item.situacao === "aguardando" ? DIAS_DO_CONTADOR : (item.dias as number));
   itens.sort((a, b) => ordem(a) - ordem(b) || a.titulo.localeCompare(b.titulo, "pt-BR"));
 
   return {
     vencidos: itens.filter((item) => item.situacao === "vencido").length,
-    vencemEm7Dias: itens.filter((item) => item.situacao === "vence-em-breve" && (item.dias as number) <= DIAS_DO_CONTADOR).length,
+    vencemEm30Dias: itens.filter((item) => item.situacao === "vence-em-breve" && (item.dias as number) <= DIAS_DO_CONTADOR).length,
     aguardando: itens.filter((item) => item.situacao === "aguardando").length,
     itens,
   };
@@ -206,6 +208,8 @@ export type ResumoDeUmaPagina = {
   empresaNome: string;
   empresaCnpj?: string;
   geradoEm: string;
+  /** Último relatório emitido da visita mostrada (o resumo é o estado ATUAL; o relatório é a foto do dia da emissão). */
+  relatorioDaVisita?: { numero: string; versao: number } | null;
   /** Percentual de conformidade da última visita com respostas; null quando não há respostas. */
   conformidade: {
     /** Conforme ÷ itens avaliados (nunca da visita inteira quando ela ficou parcial). */
@@ -252,6 +256,8 @@ export function percentualDeConformidade(visita: Pick<Visita, "checklist">): num
 export function montarResumo(dados: {
   empresaNome: string;
   empresaCnpj?: string;
+  /** Relatórios emitidos, para dizer qual deles corresponde à visita mostrada. */
+  relatorios?: { visitaId: string; numero: string; versao: number }[];
   visitas: Visita[];
   ncs: NaoConformidade[];
   painel: PainelHoje;
@@ -270,7 +276,7 @@ export function montarResumo(dados: {
   if (ultima && anterior) {
     const a = respostasDaVisita(anterior);
     const atual = respostasDaVisita(ultima);
-    const resolvidasNoPeriodo = dados.ncs.filter((nc) => nc.status === "Resolvida" && !!nc.resolvidaEm && nc.resolvidaEm.slice(0, 10) > anterior.data && nc.resolvidaEm.slice(0, 10) <= hoje).length;
+    const resolvidasNoPeriodo = dados.ncs.filter((nc) => nc.status === "Resolvida" && !!nc.resolvidaEm && dataISOLocal(nc.resolvidaEm) > anterior.data && dataISOLocal(nc.resolvidaEm) <= hoje).length;
     if (a.respondidos >= MINIMO_DE_RESPOSTAS_PARA_COMPARAR && atual.respondidos >= MINIMO_DE_RESPOSTAS_PARA_COMPARAR) {
       const pontos = Math.round((atual.conformes / atual.respondidos) * 100) - Math.round((a.conformes / a.respondidos) * 100);
       melhoria = {
@@ -287,6 +293,11 @@ export function montarResumo(dados: {
     empresaNome: dados.empresaNome,
     empresaCnpj: dados.empresaCnpj,
     geradoEm: hoje,
+    relatorioDaVisita: (() => {
+      const emitidos = (dados.relatorios || []).filter((item) => ultima && item.visitaId === ultima.id).sort((a, b) => a.versao - b.versao);
+      const ultimo = emitidos[emitidos.length - 1];
+      return ultimo ? { numero: ultimo.numero, versao: ultimo.versao } : null;
+    })(),
     conformidade:
       ultima && r && cobertura
         ? {
@@ -315,7 +326,7 @@ export function textoDoResumo(resumo: ResumoDeUmaPagina): string {
   const linhas = [`Resumo · ${resumo.empresaNome} · ${dataBr(resumo.geradoEm)}`];
   linhas.push(
     resumo.conformidade
-      ? `Visita de ${dataBr(resumo.conformidade.dataDaVisita)}: ${resumo.conformidade.percentual}% conforme entre os itens avaliados (${resumo.conformidade.conformes} de ${resumo.conformidade.respondidos}); ${resumo.conformidade.respondidosNoChecklist} de ${resumo.conformidade.totalDeItens} itens respondidos${resumo.conformidade.parcial ? " (visita parcial)" : ""}`
+      ? `Visita de ${dataBr(resumo.conformidade.dataDaVisita)} (estado atual${resumo.relatorioDaVisita ? `; o relatório emitido é ${resumo.relatorioDaVisita.numero} v${resumo.relatorioDaVisita.versao}` : ""}): ${resumo.conformidade.percentual}% conforme entre os itens avaliados (${resumo.conformidade.conformes} de ${resumo.conformidade.respondidos}); ${resumo.conformidade.respondidosNoChecklist} de ${resumo.conformidade.totalDeItens} itens respondidos${resumo.conformidade.parcial ? " (visita parcial)" : ""}`
       : "Visita: sem itens respondidos ainda"
   );
   linhas.push(`Da empresa: ${quantidade(resumo.abertas, "não conformidade aberta", "não conformidades abertas")}`);

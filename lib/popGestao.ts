@@ -4,6 +4,7 @@ import type { Colaborador, ComprovanteTerceiro, Empresa, LeituraPop, NaoConformi
 import { CONJUNTO_DA_NORMA, conjuntoDaEmpresa, hojeISO, popDoConjunto, popPrecisaRevisarPorNorma, popVigente, type DefinicaoPopDoConjunto } from "./popsNorma.ts";
 import { diasEntre, leituraDaVersao, situacaoDaValidade } from "./registrosEmpresa.ts";
 import { palavra } from "./plural.ts";
+import { dataISOLocal, formatarDataCurta } from "./dataLocal.ts";
 
 export type SituacaoDeGestao = "Falta criar" | "Rascunho" | "Aguardando aprovação" | "Vigente" | "Revisão vencida" | "Inativo";
 
@@ -104,8 +105,7 @@ export const PRIORIDADE_DA_ACAO: Record<TipoDaAcao, number> = {
 };
 
 function dataCurta(iso: string): string {
-  const [, mes, dia] = iso.split("-");
-  return `${dia}/${mes}`;
+  return formatarDataCurta(iso);
 }
 
 /** Comprovantes ligados a este POP (campo "POP vinculado"). */
@@ -142,8 +142,8 @@ export function registroAtrasado(pop: ProcedimentoOperacionalPadronizado, regist
   const dias = diasDaFrequencia(vigente.conteudo?.frequencia);
   if (!dias) return false;
   const doPop = (registros || []).filter((registro) => registro.popId === pop.id);
-  const ultimo = doPop.map((registro) => registro.dataHora.slice(0, 10)).sort().pop();
-  const base = ultimo || vigente.aprovacao?.em?.slice(0, 10);
+  const ultimo = doPop.map((registro) => dataISOLocal(registro.dataHora)).sort().pop();
+  const base = ultimo || (vigente.aprovacao?.em ? dataISOLocal(vigente.aprovacao.em) : undefined);
   if (!base) return false;
   return diasEntre(base, hoje) > dias;
 }
@@ -220,6 +220,8 @@ export function proximaAcaoDoPop(entrada: EntradaDaAcao): AcaoDoPop {
 
 export type LinhaDaLista = {
   chave: string;
+  /** "POP-01": o do POP, ou o do modelo quando o POP ainda falta criar; vazio só em "Outros" sem código. */
+  codigo: string;
   pop?: ProcedimentoOperacionalPadronizado;
   definicao?: DefinicaoPopDoConjunto;
   titulo: string;
@@ -235,22 +237,24 @@ export function ordenarLinhas<T extends { acao: AcaoDoPop }>(linhas: T[]): T[] {
     .map(({ linha }) => linha);
 }
 
-export type ContadoresDaLista = { vigentes: number; total: number; aguardando: number; pendencia: number; faltaCriar: number };
+/** Cada POP cai em UMA só caixa, então a soma é sempre o total de POPs. */
+export type ContadoresDaLista = { total: number; vigentesEmDia: number; vigentesComPendencia: number; aguardando: number; rascunho: number; faltaCriar: number };
 
-/** vigentes de total, aguardando aprovação, com pendência (ações 1, 2, 4, 5, 6 ou revisão vencida) e falta criar. */
+/**
+ * Contadores exclusivos: vigentes em dia, vigentes com pendência (ação diferente de "Em dia" ou revisão vencida), aguardando aprovação,
+ * em rascunho e falta criar. Inativo não conta.
+ */
 export function contadoresDaLista(linhas: Pick<LinhaDaLista, "situacao" | "acao">[]): ContadoresDaLista {
   const ativas = linhas.filter((linha) => linha.situacao !== "Inativo");
+  const quantas = (regra: (linha: Pick<LinhaDaLista, "situacao" | "acao">) => boolean) => ativas.filter(regra).length;
+  const vigente = (linha: Pick<LinhaDaLista, "situacao">) => linha.situacao === "Vigente" || linha.situacao === "Revisão vencida";
   return {
-    vigentes: ativas.filter((linha) => linha.situacao === "Vigente").length,
     total: ativas.length,
-    aguardando: ativas.filter((linha) => linha.situacao === "Aguardando aprovação").length,
-    pendencia: ativas.filter(
-      (linha) =>
-        linha.situacao !== "Falta criar" &&
-        linha.situacao !== "Aguardando aprovação" &&
-        (["comprovante-vencido", "correcao-atrasada", "registro-atrasado", "leitura-pendente", "comprovante-vence"].includes(linha.acao.tipo) || linha.situacao === "Revisão vencida")
-    ).length,
-    faltaCriar: ativas.filter((linha) => linha.situacao === "Falta criar").length,
+    vigentesEmDia: quantas((linha) => vigente(linha) && linha.situacao !== "Revisão vencida" && linha.acao.tipo === "em-dia"),
+    vigentesComPendencia: quantas((linha) => vigente(linha) && (linha.situacao === "Revisão vencida" || linha.acao.tipo !== "em-dia")),
+    aguardando: quantas((linha) => linha.situacao === "Aguardando aprovação"),
+    rascunho: quantas((linha) => linha.situacao === "Rascunho"),
+    faltaCriar: quantas((linha) => linha.situacao === "Falta criar"),
   };
 }
 
@@ -263,7 +267,7 @@ export function detalheDaLinha(
   if (!pop) return "sem versão";
   const partes = [`v${pop.versao || "—"}`];
   if (leitura && leitura.total > 0 && popVigente(pop)) partes.push(`leram ${leitura.lidos} de ${leitura.total}`);
-  if (ultimo) partes.push(`último registro ${dataCurta(ultimo.dataHora.slice(0, 10))}`);
+  if (ultimo) partes.push(`último registro ${dataCurta(ultimo.dataHora)}`);
   return partes.join(" · ");
 }
 
@@ -310,6 +314,7 @@ export function montarLinhaDoPop(
   });
   return {
     chave: pop?.id || definicao?.catalogoId || "",
+    codigo: pop ? pop.codigo || "" : definicao?.codigo || "",
     pop,
     definicao,
     titulo: pop?.titulo || definicao?.titulo || "POP sem título",

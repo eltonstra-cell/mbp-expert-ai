@@ -1,6 +1,7 @@
 "use client";
 
 import { Pill } from "@/components/ui/Pill";
+import { formatarData } from "@/lib/dataLocal";
 
 export type PopAprovadoLinha = { id: string; codigo: string; titulo: string; versao: string; aprovadoEm?: string };
 export type RelatorioEmitidoLinha = { id: string; numero: string; versao: number; emitidoEm: string; motivo?: string };
@@ -53,7 +54,7 @@ export default function FiscalInicio({
                 {relatorios.slice(0, 5).map((item) => (
                   <li key={item.id}>
                     <span className="fiscal-pop-titulo">{item.numero} · versão {item.versao}</span>
-                    <span className="doc-linha">emitido em {new Date(item.emitidoEm).toLocaleDateString("pt-BR")}{item.motivo ? ` · motivo: ${item.motivo}` : ""}</span>
+                    <span className="doc-linha">emitido em {formatarData(item.emitidoEm)}{item.motivo ? ` · motivo: ${item.motivo}` : ""}</span>
                   </li>
                 ))}
               </ul>

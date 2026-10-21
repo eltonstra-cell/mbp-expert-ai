@@ -27,7 +27,7 @@ const nc = (id, prazo, extra = {}) => ({ id, empresaId: "e1", visitaId: "v1", ti
 const colaborador = (id, nome) => ({ id, empresaId: "e1", nome, cargo: "Auxiliar", ativo: true, criadoEm: "" });
 const capacitacao = (id, colaboradorId, venceEm, conteudo = "Boas práticas") => ({ id, empresaId: "e1", colaboradorId, conteudo, cargaHoraria: 4, data: "2025-10-01", venceEm, criadoEm: "2025-10-01" });
 
-test("Painel: vencidos primeiro, contadores de vencidos e de 7 dias, e quem age em cada item", () => {
+test("Painel: vencidos primeiro, contadores de vencidos e de 30 dias, e quem age em cada item", () => {
   const painel = montarPainelHoje({
     empresa: empresa({ pops: [{ id: "p1", codigo: "POP-01", titulo: "Higienização", versao: "1.1", status: "Aguardando aprovação" }] }),
     usuario: usuario("Consultor/RT"),
@@ -43,7 +43,7 @@ test("Painel: vencidos primeiro, contadores de vencidos e de 7 dias, e quem age 
   const vencidos = painel.itens.filter((item) => item.situacao === "vencido").map((item) => item.id);
   assert.deepEqual(ids.slice(0, vencidos.length).sort(), vencidos.sort(), "vencidos vêm antes");
   assert.equal(painel.vencidos, 3, "comprovante b, capacitação k1 e correção n1");
-  assert.equal(painel.vencemEm7Dias, 2, "comprovante a (5 dias) e correção n2 (2 dias)");
+  assert.equal(painel.vencemEm30Dias, 3, "comprovante a (5 dias), comprovante c (26 dias) e correção n2 (2 dias)");
   assert.equal(painel.aguardando, 1);
   assert.ok(!ids.includes("correcao:n3") && !ids.includes("correcao:n4") && !ids.includes("comprovante:d"), "fora da janela e resolvida não entram");
   assert.equal(painel.itens[0].dias <= painel.itens[1].dias, true);
@@ -166,5 +166,5 @@ test("Telas: o painel só aparece para o gestor, o lembrete abre no e-mail da pe
   const resumo = readFileSync(new URL("../components/pc/PcResumo.tsx", import.meta.url), "utf8");
   assert.ok(resumo.includes("Não substitui o relatório completo."));
   const painel = readFileSync(new URL("../components/PainelHoje.tsx", import.meta.url), "utf8");
-  assert.ok(painel.includes("Hoje precisa de você") && painel.includes("em 7 dias") && painel.includes("vencem(") && painel.includes("quem age"));
+  assert.ok(painel.includes("Hoje precisa de você") && painel.includes("em 30 dias") && painel.includes("vencem(") && painel.includes("quem age"));
 });

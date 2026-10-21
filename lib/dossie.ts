@@ -2,7 +2,9 @@
 // Fotos ficam DESLIGADAS por padrão (LGPD e tamanho). Aqui só se monta o conteúdo; a impressão é a do navegador.
 import type { Capacitacao, Colaborador, ComprovanteTerceiro, Empresa, PerfilUsuario, RegistroPop, RelatorioEmitido, UsuarioSistema } from "../types/index.ts";
 import { hojeISO, linhasDoConteudo, popVigente } from "./popsNorma.ts";
-import { ROTULO_DA_VALIDADE, comprovantesVigentes, rotuloDoTipo, situacaoDaValidade, capacitacoesVigentes } from "./registrosEmpresa.ts";
+import { dataISOLocal, formatarData, formatarDataHora } from "./dataLocal.ts";
+import { nomeECargo } from "./nomeCargo.ts";
+import { ROTULO_DA_CAPACITACAO, ROTULO_DA_VALIDADE, comprovantesVigentes, rotuloDoTipo, situacaoDaValidade, capacitacoesVigentes } from "./registrosEmpresa.ts";
 
 export type OpcoesDoDossie = {
   relatorios: boolean;
@@ -54,17 +56,14 @@ export type DadosDoDossie = {
   capacitacoes?: Capacitacao[];
 };
 
-const dataBr = (iso?: string) => (iso ? iso.slice(0, 10).split("-").reverse().join("/") : "—");
-const dataHoraBr = (iso: string) => {
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? iso : `${d.toLocaleDateString("pt-BR")} ${d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
-};
+const dataBr = (iso?: string) => formatarData(iso) || "—";
+const dataHoraBr = (iso: string) => formatarDataHora(iso) || iso;
 
 /** Relatórios emitidos dos últimos 12 meses (a data de emissão decide). */
 export function relatoriosDosUltimos12Meses(relatorios: RelatorioEmitido[], hoje: string): RelatorioEmitido[] {
   const [ano, mes, dia] = hoje.split("-").map(Number);
   const corte = `${String(ano - 1).padStart(4, "0")}-${String(mes).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
-  return relatorios.filter((item) => item.emitidoEm.slice(0, 10) >= corte).sort((a, b) => b.emitidoEm.localeCompare(a.emitidoEm));
+  return relatorios.filter((item) => dataISOLocal(item.emitidoEm) >= corte).sort((a, b) => b.emitidoEm.localeCompare(a.emitidoEm));
 }
 
 export function montarDossie(dados: DadosDoDossie, opcoes: OpcoesDoDossie, hoje: string = hojeISO()): Dossie {
@@ -79,7 +78,7 @@ export function montarDossie(dados: DadosDoDossie, opcoes: OpcoesDoDossie, hoje:
       linhas: relatorios.length
         ? relatorios.map((item) => {
             const c = item.instantaneo.conformidade;
-            return `${item.numero} · versão ${item.versao} · emitido em ${dataHoraBr(item.emitidoEm)} · visita de ${dataBr(item.instantaneo.visita.data)} · ${c.percentual === null ? "sem itens respondidos" : `${c.percentual}% de conformidade (${c.conformes} de ${c.respondidos})`} · assinado por ${item.assinatura.nome}, ${item.assinatura.crn}. ${item.aviso}`;
+            return `${item.numero} · versão ${item.versao} · emitido em ${dataHoraBr(item.emitidoEm)} · visita de ${dataBr(item.instantaneo.visita.data)} · ${c.percentual === null ? "sem itens respondidos" : `${c.percentual}% de conformidade (${c.conformes} de ${c.respondidos})`} · assinado por ${item.assinatura.nome}, ${item.assinatura.cargo || "Responsável técnico"}, ${item.assinatura.crn}${item.motivoDaNovaVersao ? ` · motivo da versão ${item.versao}: ${item.motivoDaNovaVersao}` : ""}.`;
           })
         : ["Nenhum relatório emitido nos últimos 12 meses."],
       contagem: relatorios.length,
@@ -121,13 +120,17 @@ export function montarDossie(dados: DadosDoDossie, opcoes: OpcoesDoDossie, hoje:
   }
 
   if (opcoes.capacitacao) {
-    const nomes = new Map((dados.colaboradores || []).filter((item) => item.empresaId === empresaId).map((item) => [item.id, `${item.nome} (${item.cargo})`]));
+    const nomes = new Map((dados.colaboradores || []).filter((item) => item.empresaId === empresaId).map((item) => [item.id, `${nomeECargo(item.nome, item.cargo, " · ")}`]));
     const lista = capacitacoesVigentes((dados.capacitacoes || []).filter((item) => item.empresaId === empresaId));
     secoes.push({
       id: "capacitacao",
       titulo: "Capacitação nominal",
       linhas: lista.length
-        ? lista.map((item) => `${nomes.get(item.colaboradorId) || "Pessoa"} · ${item.conteudo} · ${item.cargaHoraria} h · feito em ${dataBr(item.data)} · ${item.venceEm ? `vence em ${dataBr(item.venceEm)}` : "sem vencimento"}`)
+        ? lista.map((item) => {
+            const situacao = situacaoDaValidade(item.venceEm || undefined, hoje);
+            const prazo = !item.venceEm ? "sem vencimento" : situacao === "vencido" ? `venceu em ${dataBr(item.venceEm)}` : `vence em ${dataBr(item.venceEm)}`;
+            return `${nomes.get(item.colaboradorId) || "Pessoa"} · ${item.conteudo} · ${item.cargaHoraria} h · feito em ${dataBr(item.data)} · ${prazo} (${ROTULO_DA_CAPACITACAO[situacao]})`;
+          })
         : ["Nenhuma capacitação registrada."],
       contagem: lista.length,
     });

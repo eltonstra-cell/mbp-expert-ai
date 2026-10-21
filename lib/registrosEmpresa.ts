@@ -4,6 +4,7 @@
 import type { Capacitacao, Colaborador, ComprovanteTerceiro, Empresa, LeituraPop, PerfilUsuario, RegistroPop, TipoComprovante, UsuarioSistema } from "../types/index.ts";
 import { CATALOGO_DE_NORMAS, normasDaEmpresa, type Norma } from "./normas/index.ts";
 import { hojeISO } from "./popsNorma.ts";
+import { dataISOLocal, diasEntreDatas } from "./dataLocal.ts";
 import { acessoVigente } from "./validadeDeAcesso.ts";
 
 // ===== Quem pode o quê (por perfil; o servidor repete a mesma conta) =====
@@ -143,11 +144,10 @@ export function separarRegistros(
 ): { recentes: RegistroPop[]; revisar: RegistroPop[] } {
   const doPop = registros.filter((registro) => registro.popId === popId).sort((a, b) => b.dataHora.localeCompare(a.dataHora));
   if (!guardaDias) return { recentes: doPop, revisar: [] };
-  const corte = agora.getTime() - guardaDias * DIA_MS;
-  return {
-    recentes: doPop.filter((registro) => new Date(registro.dataHora).getTime() >= corte),
-    revisar: doPop.filter((registro) => new Date(registro.dataHora).getTime() < corte),
-  };
+  // A guarda conta dias de calendário de São Paulo: o registro de 21:26 de 20/10 é do dia 20, mesmo sendo 21/10 em UTC.
+  const hoje = dataISOLocal(agora);
+  const dentro = (registro: RegistroPop) => diasEntreDatas(registro.dataHora, hoje) <= guardaDias;
+  return { recentes: doPop.filter(dentro), revisar: doPop.filter((registro) => !dentro(registro)) };
 }
 
 export type DadosDoRegistro = {

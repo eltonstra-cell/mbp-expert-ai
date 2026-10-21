@@ -1,3 +1,4 @@
+import { limparTextoDePessoa } from "./nomeCargo.ts";
 import type { PerfilUsuario, StatusUsuario, UsuarioSistema } from "@/types";
 import type { TelasDoUsuario } from "./screenAccess.ts";
 import { calcularValidade, prazoPermitido } from "./validadeDeAcesso.ts";
@@ -97,7 +98,7 @@ export function criarUsuarioPreparacao(
         : Array.from(new Set(dados.empresaIds)),
     ...(dados.telas && Object.keys(dados.telas).length > 0 ? { telas: dados.telas } : {}),
     ...(dados.crn?.trim() && (dados.perfil === "Consultor/RT" || dados.perfil === "Administrador") ? { crn: dados.crn.trim() } : {}),
-    ...(dados.cargo?.trim() && (dados.perfil === "Consultor/RT" || dados.perfil === "Administrador") ? { cargo: dados.cargo.trim().slice(0, 80) } : {}),
+    ...(limparTextoDePessoa(dados.cargo) ? { cargo: limparTextoDePessoa(dados.cargo).slice(0, 80) } : {}),
     ...(dados.perfil === "Fiscal" && dados.validadeDias !== undefined ? { validoAte: calcularValidade(dados.validadeDias, new Date(criadoEm)) } : {}),
     criadoEm,
     atualizadoEm: criadoEm,
@@ -125,7 +126,7 @@ export function atualizarUsuarioPreparacao(
         ? []
         : Array.from(new Set(dados.empresaIds)),
     crn: dados.crn?.trim() && (dados.perfil === "Consultor/RT" || dados.perfil === "Administrador") ? dados.crn.trim() : undefined,
-    cargo: dados.cargo?.trim() && (dados.perfil === "Consultor/RT" || dados.perfil === "Administrador") ? dados.cargo.trim().slice(0, 80) : undefined,
+    cargo: limparTextoDePessoa(dados.cargo) ? limparTextoDePessoa(dados.cargo).slice(0, 80) : undefined,
     atualizadoEm,
   };
 }

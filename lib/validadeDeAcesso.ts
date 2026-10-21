@@ -3,6 +3,8 @@
 export const PRAZOS_DE_VALIDADE = [3, 7, 15, 30] as const;
 export type PrazoDeValidade = (typeof PRAZOS_DE_VALIDADE)[number];
 
+import { dataISOLocal } from "./dataLocal.ts";
+
 type ComValidade = { validoAte?: string; acessoEncerradoEm?: string };
 
 const DIA_MS = 24 * 60 * 60 * 1000;
@@ -10,7 +12,7 @@ const DIA_MS = 24 * 60 * 60 * 1000;
 const FUSO = "-03:00";
 
 function dataNoFuso(data: Date): string {
-  return new Date(data.getTime() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  return dataISOLocal(data);
 }
 
 /** Último instante (23:59:59) do dia que fica `dias` dias depois de `agora`. */

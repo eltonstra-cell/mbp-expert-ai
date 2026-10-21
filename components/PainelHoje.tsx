@@ -31,7 +31,7 @@ export default function PainelHoje({ painel, onAcao, onLembrete, onResumo, onEvo
           <Pill tom={painel.vencidos ? "nc" : "ok"}>
             {painel.vencidos} {painel.vencidos === 1 ? "vencido" : "vencidos"}
           </Pill>
-          <Pill tom={painel.vencemEm7Dias ? "amber" : "ok"}>{vencem(painel.vencemEm7Dias)} em 7 dias</Pill>
+          <Pill tom={painel.vencemEm30Dias ? "amber" : "ok"}>{vencem(painel.vencemEm30Dias)} em 30 dias</Pill>
           {painel.aguardando > 0 && <Pill tom="info">{painel.aguardando} aguardando aprovação</Pill>}
         </div>
       </div>

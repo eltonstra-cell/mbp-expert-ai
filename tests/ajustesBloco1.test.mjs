@@ -182,7 +182,9 @@ test("ordem da lista: quem precisa de alguém primeiro, depois Em dia, depois Fa
   assert.deepEqual(ordenarLinhas(linhas).map((item) => item.nome), ["aguardando", "leitura", "em dia", "criar"]);
   // empate: mantém a ordem de entrada
   assert.deepEqual(ordenarLinhas([linha("a", aprovado(), leitura), linha("b", aprovado(), leitura)]).map((item) => item.nome), ["a", "b"]);
-  assert.deepEqual(contadoresDaLista(linhas), { vigentes: 2, total: 4, aguardando: 1, pendencia: 1, faltaCriar: 1 });
+  const c = contadoresDaLista(linhas);
+  assert.deepEqual(c, { total: 4, vigentesEmDia: 1, vigentesComPendencia: 1, aguardando: 1, rascunho: 0, faltaCriar: 1 });
+  assert.equal(c.vigentesEmDia + c.vigentesComPendencia + c.aguardando + c.rascunho + c.faltaCriar, c.total, "contadores exclusivos: a soma é o total");
 });
 
 // ===== Central em 3 grupos =====

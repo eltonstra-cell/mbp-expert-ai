@@ -1,4 +1,5 @@
 import type { ProcedimentoOperacionalPadronizado } from "@/types";
+import { hojeLocalISO } from "./dataLocal.ts";
 import { CONJUNTO_DA_NORMA, popDoConjunto, popSugeridoParaNcDoConjunto, type DefinicaoPopDoConjunto } from "./popsNorma.ts";
 
 export type SituacaoRevisaoPOP = {
@@ -17,7 +18,7 @@ export const SUGESTOES_POPS_MANUAL = CONJUNTO_DA_NORMA.map((definicao) => ({
 
 export function situacaoRevisaoPOP(
   pop: ProcedimentoOperacionalPadronizado,
-  hoje = new Date().toISOString().slice(0, 10)
+  hoje = hojeLocalISO()
 ): SituacaoRevisaoPOP {
   if (pop.status === "Inativo") {
     return { label: "Inativo", classe: "bg-slate-100 text-slate-600" };

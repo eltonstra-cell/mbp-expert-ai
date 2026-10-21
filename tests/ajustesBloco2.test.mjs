@@ -201,7 +201,7 @@ test("dossiê: cada parte do índice traz a contagem de itens", () => {
 // ===== (d) resumo de uma página =====
 test("resumo: percentual só entre itens avaliados, denominador visível e escopos separados", () => {
   const dados = base();
-  const painel = { vencidos: 0, vencemEm7Dias: 0, aguardando: 0, itens: [] };
+  const painel = { vencidos: 0, vencemEm30Dias: 0, aguardando: 0, itens: [] };
   const resumo = montarResumo({ empresaNome: "Padaria", empresaCnpj: "00", visitas: dados.visitas, ncs: dados.ncs, painel, hoje: "2026-10-20" });
   assert.equal(resumo.empresaCnpj, "00");
   assert.equal(resumo.conformidade.percentual, 50);

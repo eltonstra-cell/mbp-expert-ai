@@ -9,7 +9,7 @@ test("Norma aplicável: textos, avisos do RS e confirmação do RT", () => {
   assert.ok(painel.includes("Vigência da Portaria SES 799/2023: confirmar no diário oficial."));
   assert.ok(painel.includes("Exigência municipal: confirmar com a Vigilância Sanitária."));
   assert.ok(painel.includes("O RT confirmou estas normas"));
-  assert.ok(painel.includes("Conferir no texto oficial da ANVISA antes de usar com clientes."));
+  assert.ok(!painel.includes("Conferir no texto oficial da ANVISA antes de usar com clientes."), "nota de desenvolvedor não vai para a tela");
   assert.ok(painel.includes("AVISO_SEM_NORMA_ESTADUAL"));
   // o responsável do estabelecimento tem fonte única, em Dados: a norma só mostra o nome e leva para lá
   assert.ok(painel.includes("Alterar em Dados") && !painel.includes("Pessoa em Acessos"));

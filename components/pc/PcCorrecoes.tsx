@@ -1,5 +1,6 @@
 "use client";
 
+import { dataISOLocal, formatarDataCurta, formatarDataHora, formatarHora, hojeLocalISO } from "@/lib/dataLocal";
 import AntesDepois, { type FotoDoPar } from "@/components/AntesDepois";
 import { confirmar } from "@/lib/dialogos";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -109,12 +110,9 @@ function dataCurta(iso: string) {
   return ano && mes && dia ? `${dia}/${mes}/${ano}` : iso;
 }
 function quandoCurto(iso: string) {
-  const data = new Date(iso);
-  if (Number.isNaN(data.getTime())) return "";
-  const hoje = new Date();
-  const mesmoDia = data.toDateString() === hoje.toDateString();
-  const hora = data.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-  return mesmoDia ? `hoje ${hora}` : `${data.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} ${hora}`;
+  if (!iso || Number.isNaN(new Date(iso).getTime())) return "";
+  const hora = formatarHora(iso);
+  return dataISOLocal(iso) === hojeLocalISO() ? `hoje ${hora}` : `${formatarDataCurta(iso)} ${hora}`;
 }
 function dataMes(iso: string) {
   const [, mes, dia] = iso.split("-");
@@ -536,7 +534,7 @@ function Detalhe({
             {nc.marcadaFeita && !resolvida && (
               <div className="pc-feita" role="status">
                 <span>
-                  Feita, aguardando confirmação · por {nc.marcadaFeita.por} em {new Date(nc.marcadaFeita.em).toLocaleString("pt-BR")}
+                  Feita, aguardando confirmação · por {nc.marcadaFeita.por} em {formatarDataHora(nc.marcadaFeita.em)}
                   {nc.marcadaFeita.observacao ? ` — ${nc.marcadaFeita.observacao}` : ""}
                 </span>
                 {podeEditar ? (

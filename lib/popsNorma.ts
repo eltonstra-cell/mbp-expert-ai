@@ -13,6 +13,8 @@ import type {
 } from "../types/index.ts";
 import { CATALOGO_DE_NORMAS, normasDaEmpresa, type Norma } from "./normas/index.ts";
 import { acessoVigente } from "./validadeDeAcesso.ts";
+import { hojeLocalISO } from "./dataLocal.ts";
+import { limparTextoDePessoa, nomeECargo } from "./nomeCargo.ts";
 
 export type BlocoExtraDoPop = "higienizacao" | "pragas" | "manipuladores";
 
@@ -103,7 +105,7 @@ export function popDoConjunto(pops: ProcedimentoOperacionalPadronizado[], defini
 export type SituacaoDoPop = "Falta criar" | "Rascunho" | "Aguardando aprovação" | "Aprovado" | "Vencido" | "Inativo";
 
 export function hojeISO(agora: Date = new Date()): string {
-  return new Date(agora.getTime() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  return hojeLocalISO(agora);
 }
 
 /** Situação mostrada: "Revisar até" vencido torna o POP aprovado "Vencido". */
@@ -364,7 +366,7 @@ export function aprovarPop(
   if (pop.status !== "Aguardando aprovação" && pop.status !== "Em revisão") throw new Error("O POP precisa estar aguardando aprovação.");
   const aprovacao: AprovacaoPop = {
     nome: usuario.nome,
-    cargo: empresa.responsavelEstabelecimento?.cargo || "",
+    cargo: limparTextoDePessoa(empresa.responsavelEstabelecimento?.cargo),
     usuarioId: usuario.id,
     em: agora,
     versao: pop.versao,
@@ -409,7 +411,7 @@ export function linhasDoConteudo(conteudo: ConteudoPop | undefined): { campo: st
   const linhas: { campo: string; valor: string }[] = [
     { campo: "Objetivo", valor: c.objetivo || "" },
     { campo: "Campo de aplicação", valor: c.campoAplicacao || "" },
-    { campo: "Responsável pela execução", valor: [c.responsavelExecucao?.nome, c.responsavelExecucao?.cargo].filter(Boolean).join(", ") },
+    { campo: "Responsável pela execução", valor: nomeECargo(c.responsavelExecucao?.nome, c.responsavelExecucao?.cargo) },
     { campo: "Frequência", valor: c.frequencia || "" },
     ...(c.passos || []).map((passo, indice) => ({ campo: `Passo ${indice + 1}`, valor: passo.texto })),
     { campo: "Ação corretiva", valor: c.acaoCorretiva || "" },

@@ -1,5 +1,7 @@
 "use client";
 
+import { formatarData } from "@/lib/dataLocal";
+import { nomeECargo } from "@/lib/nomeCargo";
 import { useEffect } from "react";
 import { linhasDoConteudo, popVigente } from "@/lib/popsNorma";
 import type { ProcedimentoOperacionalPadronizado } from "@/types";
@@ -36,7 +38,7 @@ export default function PopLeituraFolha({ pop, onFechar }: Props) {
             {vigente && (
               <p className="ui-row-sub">
                 Versão {vigente.versao} aprovada
-                {vigente.aprovacao ? ` por ${vigente.aprovacao.nome}${vigente.aprovacao.cargo ? ` (${vigente.aprovacao.cargo})` : ""} em ${new Date(vigente.aprovacao.em).toLocaleDateString("pt-BR")}` : ""} · somente leitura
+                {vigente.aprovacao ? ` por ${nomeECargo(vigente.aprovacao.nome, vigente.aprovacao.cargo, " · ")} em ${formatarData(vigente.aprovacao.em)}` : ""} · somente leitura
               </p>
             )}
           </div>

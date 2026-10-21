@@ -60,6 +60,11 @@ export default function PcResumo({ resumo, onImprimir, onCompartilhar, onVoltar 
         </header>
 
         <h3 className="resumo-sub">{c ? `Da visita de ${dataBr(c.dataDaVisita)}` : "Da visita"}</h3>
+        {c && (
+          <p className="doc-linha">
+            Estado atual da visita. {resumo.relatorioDaVisita ? `O relatório emitido é ${resumo.relatorioDaVisita.numero} v${resumo.relatorioDaVisita.versao}; ele guarda o estado do dia da emissão e este resumo não o substitui.` : "Ainda não há relatório emitido desta visita."}
+          </p>
+        )}
         <div className="resumo-numeros">
           <div className="resumo-numero">
             <span className="resumo-valor">{c ? `${c.percentual}%` : "—"}</span>

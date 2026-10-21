@@ -1,6 +1,7 @@
 // Um só responsável do estabelecimento: a fonte é Empresa › Dados (nome, cargo e usuário de Acessos vinculado).
 // Quem só tem o campo antigo de POPs continua aparecendo (fallback de leitura) e divergências viram aviso ao RT.
 import type { Empresa, ProcedimentoOperacionalPadronizado } from "../types/index.ts";
+import { limparTextoDePessoa } from "./nomeCargo.ts";
 
 export type ResponsavelEfetivo = {
   nome: string;
@@ -12,7 +13,7 @@ export type ResponsavelEfetivo = {
   vinculado: boolean;
 };
 
-const limpo = (texto?: string) => (texto || "").trim();
+const limpo = (texto?: string) => limparTextoDePessoa(texto);
 const mesmo = (a: string, b: string) => a.trim().toLocaleLowerCase("pt-BR") === b.trim().toLocaleLowerCase("pt-BR");
 
 /** Nomes que o campo antigo "Responsável" dos POPs guarda e que diferem do de Dados. */

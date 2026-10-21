@@ -1,5 +1,6 @@
 "use client";
 
+import { formatarDataCurtaHora } from "@/lib/dataLocal";
 import { Pill, type Tom } from "@/components/ui/Pill";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { TEXTO_DA_CAUSA, textoDeEspaco, type ItemSemArquivo, type ResumoDaFila } from "@/lib/filaEvidencias";
@@ -24,9 +25,7 @@ const ROTULO = { aguardando: "Aguardando", enviando: "Enviando", falhou: "Falhou
 const TOM: Record<ItemSemArquivo["estado"], Tom> = { aguardando: "pend", enviando: "info", falhou: "nc", enviado: "ok" };
 
 function quando(iso: string) {
-  const data = new Date(iso);
-  if (Number.isNaN(data.getTime())) return "";
-  return `${data.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} ${data.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+  return formatarDataCurtaHora(iso).replace(" · ", " ");
 }
 
 // Mais › Sincronizar › Fila de envio: evidências feitas sem sinal, que ainda estão só neste aparelho.

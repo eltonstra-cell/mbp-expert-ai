@@ -1,5 +1,6 @@
 "use client";
 
+import { limparTextoDePessoa, nomeProprio } from "@/lib/nomeCargo";
 import { useState } from "react";
 import { ListRow } from "@/components/ui/ListRow";
 import { Pill, type Tom } from "@/components/ui/Pill";
@@ -67,7 +68,7 @@ export default function PcPessoas({ empresa, normas, colaboradores, capacitacoes
   function salvarPessoa() {
     setPessoaTocada(true);
     if (Object.keys(errosPessoa).length) return;
-    onSalvarColaborador({ ...pessoa, nome: pessoa.nome.trim(), cargo: pessoa.cargo.trim() });
+    onSalvarColaborador({ ...pessoa, nome: nomeProprio(pessoa.nome), cargo: limparTextoDePessoa(pessoa.cargo) });
     setPessoa({ nome: "", cargo: "" });
     setPessoaTocada(false);
   }

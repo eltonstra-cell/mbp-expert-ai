@@ -1,5 +1,7 @@
 "use client";
 
+import { formatarData, formatarHora, hojeLocalISO } from "@/lib/dataLocal";
+import { limparTextoDePessoa, nomeECargo } from "@/lib/nomeCargo";
 import { useMemo, useState, type ReactNode } from "react";
 import type { ConteudoPop, Empresa, PassoPop, ProcedimentoOperacionalPadronizado, UsuarioSistema } from "@/types";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
@@ -62,16 +64,15 @@ function Campo({ rotulo, valor, onChange, linhas, desabilitado, erro, tipo = "te
 }
 
 function umAnoDepois(): string {
-  const data = new Date();
-  data.setFullYear(data.getFullYear() + 1);
-  return data.toISOString().slice(0, 10);
+  const [ano, mes, dia] = hojeLocalISO().split("-");
+  return `${Number(ano) + 1}-${mes}-${dia}`;
 }
 
 // Cargo sem vírgula, ponto ou espaço no começo (digitando).
 const semPontuacaoNoInicio = (valor: string) => valor.replace(/^[\s,;:.\-–]+/, "");
 
 function horaCerta(): string {
-  return new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  return formatarHora(new Date());
 }
 
 // Documento (editor em painéis) e Histórico (versões, aprovações e motivo) do POP. O cabeçalho e as abas ficam na ficha (PcFichaPop).
@@ -329,8 +330,8 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, onSalva
                 <span className="pop-versao-n">v{versao.versao}</span>
                 <span className="pop-versao-textos">
                   <span className="pop-versao-linha1">
-                    {versao.status}
-                    {versao.aprovacao ? ` · aprovada por ${versao.aprovacao.nome}${versao.aprovacao.cargo ? `, ${versao.aprovacao.cargo}` : ""} em ${new Date(versao.aprovacao.em).toLocaleDateString("pt-BR")}` : ""}
+                    {!versao.aprovacao ? versao.status : ""}
+                    {versao.aprovacao ? `Aprovada por ${nomeECargo(versao.aprovacao.nome, versao.aprovacao.cargo)} em ${formatarData(versao.aprovacao.em)}` : ""}
                   </span>
                   <span className="pop-versao-motivo">Motivo: {versao.motivo?.trim() || (versao.versao === versoes[0]?.versao ? "primeira versão" : "não informado")}</span>
                 </span>
@@ -342,7 +343,7 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, onSalva
               <div className="pop-comparar-escolha">
                 <label className="pc-field">
                   <span className="ui-eyebrow">Comparar</span>
-                  <select className="ui-input" value={escolhidaA?.versao} onChange={(evento) => setVersaoA(evento.target.value)}>
+                  <select className="ui-input ui-input--lista pop-seletor-baixo" value={escolhidaA?.versao} onChange={(evento) => setVersaoA(evento.target.value)}>
                     {versoes.map((versao) => (
                       <option key={versao.versao} value={versao.versao}>v{versao.versao}</option>
                     ))}
@@ -350,7 +351,7 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, onSalva
                 </label>
                 <label className="pc-field">
                   <span className="ui-eyebrow">com</span>
-                  <select className="ui-input" value={escolhidaB?.versao} onChange={(evento) => setVersaoB(evento.target.value)}>
+                  <select className="ui-input ui-input--lista pop-seletor-baixo" value={escolhidaB?.versao} onChange={(evento) => setVersaoB(evento.target.value)}>
                     {versoes.map((versao) => (
                       <option key={versao.versao} value={versao.versao}>v{versao.versao}</option>
                     ))}
@@ -365,7 +366,10 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, onSalva
                 </div>
                 {comparacao.map((linha) => (
                   <div key={linha.campo} className={`pop-comparacao-linha${linha.igual ? "" : " is-diferente"}`} role="row">
-                    <span role="cell">{linha.campo}</span>
+                    <span role="cell">
+                    {linha.campo}
+                    {!linha.igual && <span className="pop-alterado">alterado</span>}
+                  </span>
                     <span role="cell">{linha.a || "—"}</span>
                     <span role="cell">{linha.b || "—"}</span>
                   </div>
@@ -398,7 +402,15 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, onSalva
                 disabled={Boolean(erroTitulo)}
                 onClick={() => {
                   // Salvar rascunho não guarda passo em branco: sobra só o que foi escrito.
-                  const limpo = { ...rascunho, conteudo: { ...(rascunho.conteudo || conteudo), passos: limparPassosEmBranco(passos) } };
+                  const exec = (rascunho.conteudo || conteudo).responsavelExecucao;
+                  const limpo = {
+                    ...rascunho,
+                    conteudo: {
+                      ...(rascunho.conteudo || conteudo),
+                      passos: limparPassosEmBranco(passos),
+                      ...(exec ? { responsavelExecucao: { nome: limparTextoDePessoa(exec.nome), cargo: limparTextoDePessoa(exec.cargo) } } : {}),
+                    },
+                  };
                   setRascunho(limpo);
                   onSalvarRascunho(limpo);
                   setSalvoEm(horaCerta());
@@ -430,7 +442,7 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, onSalva
           <section className="pc-modal" role="dialog" aria-modal="true" aria-label="Aprovar e assinar o POP">
             <h2 className="pc-modal-title">Aprovar e assinar</h2>
             <p className="resumo-texto">
-              Você está aprovando e assinando este POP como <b>{[usuario?.nome, empresa.responsavelEstabelecimento?.cargo].filter(Boolean).join(", ") || "responsável do estabelecimento"}</b>. Confirmar?
+              Você está aprovando e assinando este POP como <b>{nomeECargo(usuario?.nome, empresa.responsavelEstabelecimento?.cargo) || "responsável do estabelecimento"}</b>. Confirmar?
             </p>
             <p className="ui-row-sub">
               Fica gravado o seu nome, o cargo, a data e a versão {rascunho.versao}.

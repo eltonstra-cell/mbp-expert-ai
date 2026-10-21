@@ -1,10 +1,9 @@
 "use client";
 
-import { useRef, useState, type DragEvent } from "react";
+import { useEffect, useRef, useState, type DragEvent } from "react";
 import { mostrarToast } from "@/lib/toast";
 import { ListRow } from "@/components/ui/ListRow";
 import { Pill, type Tom } from "@/components/ui/Pill";
-import { StatStrip } from "@/components/ui/StatStrip";
 import {
   ROTULO_DA_VALIDADE,
   TIPOS_DE_COMPROVANTE,
@@ -18,7 +17,9 @@ import {
   type SituacaoDaValidade,
 } from "@/lib/registrosEmpresa";
 import { hojeISO } from "@/lib/popsNorma";
-import type { ComprovanteTerceiro, TipoComprovante } from "@/types";
+import { avisoDePopAusente, sugestaoDePopParaTipo } from "@/lib/comprovantePop";
+import { quantidade } from "@/lib/plural";
+import type { ComprovanteTerceiro, ProcedimentoOperacionalPadronizado, TipoComprovante } from "@/types";
 
 export type DadosDoFormulario = Pick<ComprovanteTerceiro, "tipo" | "emissor" | "dataServico" | "validade" | "observacao"> & { id?: string; renovaId?: string; popId?: string };
 
@@ -39,8 +40,12 @@ type Props = {
   embutido?: boolean;
   /** Dentro da ficha do POP o vínculo já está escolhido. */
   popFixo?: { id: string; rotulo: string };
-  /** Fora da ficha: lista dos POPs que existem, para o campo opcional "POP vinculado". */
-  popsParaVincular?: { id: string; rotulo: string }[];
+  /** Fora da ficha: os POPs que existem (campo opcional "POP vinculado" e selo na lista). */
+  pops?: ProcedimentoOperacionalPadronizado[];
+  /** Cria o POP do modelo que o tipo pede (devolve o id do POP novo). */
+  onCriarPopDoModelo?: (catalogoId: string) => string | undefined;
+  /** O que dizer quando a lista está vazia (dentro da ficha, o que vale para aquele POP). */
+  mensagemVazia?: string;
 };
 
 const TOM: Record<SituacaoDaValidade, Tom> = { vencido: "nc", "vence-em-breve": "amber", "em-dia": "ok", "sem-validade": "na" };
@@ -55,8 +60,22 @@ function vazio(): DadosDoFormulario {
   return { tipo: "pragas", emissor: "", dataServico: "", validade: "", observacao: "" };
 }
 
+const rotuloDoPop = (pop: Pick<ProcedimentoOperacionalPadronizado, "codigo" | "titulo">) => `${pop.codigo ? `${pop.codigo} · ` : ""}${pop.titulo}`;
+
+// Erro de campo: borda vermelha firme (na caixa) e, logo abaixo, ícone de alerta com o texto.
+function ErroDeCampo({ texto, id }: { texto: string; id?: string }) {
+  return (
+    <span className="ui-field-error ui-field-error--forte" role="alert" id={id}>
+      <span className="ui-field-error-icone" aria-hidden="true">
+        !
+      </span>
+      {texto}
+    </span>
+  );
+}
+
 // "Comprovantes e documentos com validade": certificados de terceiros com semáforo por item.
-export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, online, onSalvar, onRemover, urlDoArquivo, onVoltar, renovarId, embutido = false, popFixo, popsParaVincular }: Props) {
+export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, online, onSalvar, onRemover, urlDoArquivo, onVoltar, renovarId, embutido = false, popFixo, pops, onCriarPopDoModelo, mensagemVazia }: Props) {
   const hoje = hojeISO();
   const [formAberto, setFormAberto] = useState(Boolean(renovarId && podeGerenciar));
   const [dados, setDados] = useState<DadosDoFormulario>(() => {
@@ -78,12 +97,27 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
   const erros = validarComprovante(dados);
   const editando = Boolean(dados.id);
   const exigeArquivo = !editando || !comprovantes.find((item) => item.id === dados.id)?.blobPathname;
-  const erroArquivo = !arquivo && exigeArquivo ? "Anexe o PDF ou a foto do comprovante." : "";
+  const erroArquivo = !arquivo && exigeArquivo ? "Anexe o PDF ou a foto do comprovante" : "";
   // A sugestão some depois de "Usar" (a validade passa a ser a sugerida) e volta se a pessoa mudar a data.
   const sugestaoBruta = sugerirValidade(dados.tipo, dados.dataServico);
   const sugestao = sugestaoBruta && dados.validade !== sugestaoBruta.validade ? sugestaoBruta : null;
   const mostrar = (nome: "emissor" | "dataServico" | "validade") => Boolean(tocado || campos[nome]);
   const tocar = (nome: "emissor" | "dataServico" | "validade") => setCampos((atual) => (atual[nome] ? atual : { ...atual, [nome]: true }));
+  const listaDePops = pops || [];
+  const codigoDoPop = new Map(listaDePops.map((pop) => [pop.id, pop.codigo]));
+  const sugestaoDePop = popFixo ? null : sugestaoDePopParaTipo(dados.tipo, listaDePops);
+  const popsParaEscolher = popFixo ? [{ id: popFixo.id, rotulo: popFixo.rotulo }] : listaDePops.filter((pop) => !pop.arquivado).map((pop) => ({ id: pop.id, rotulo: rotuloDoPop(pop) }));
+
+  // O "POP vinculado" acompanha o "Tipo": só vem preenchido quando o tipo combina com um POP que existe.
+  useEffect(() => {
+    if (popFixo || !formAberto || editando) return;
+    if (!sugestaoDePop) return;
+    setDados((atual) => {
+      const novo = sugestaoDePop.situacao === "existe" ? sugestaoDePop.popId : undefined;
+      return atual.popId === novo ? atual : { ...atual, popId: novo };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dados.tipo, formAberto, editando, sugestaoDePop?.situacao]);
 
   function abrir(inicial: DadosDoFormulario) {
     setDados(inicial);
@@ -115,11 +149,12 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
   async function salvar() {
     setTocado(true);
     if (Object.keys(erros).length || erroArquivo) {
-      // Leva a pessoa ao primeiro campo com problema (o formulário pode estar abaixo da tela).
+      // Marca TODOS os campos que faltam de uma vez e leva a pessoa ao primeiro (o formulário pode estar fora da vista).
       window.setTimeout(() => {
-        const primeiro = formularioRef.current?.querySelector<HTMLElement>(".is-invalid, .is-invalida, .ui-field-error");
+        const primeiro = formularioRef.current?.querySelector<HTMLElement>(".is-invalid, .is-invalida");
         primeiro?.scrollIntoView({ block: "center", behavior: "smooth" });
-        if (primeiro && "focus" in primeiro && primeiro.tagName !== "SPAN" && primeiro.tagName !== "DIV") primeiro.focus({ preventScroll: true });
+        const campoDentro = primeiro?.matches("input, select, textarea") ? primeiro : primeiro?.querySelector<HTMLElement>("input, button");
+        campoDentro?.focus({ preventScroll: true });
       }, 0);
       return;
     }
@@ -138,8 +173,6 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
     setFormAberto(false);
     mostrarToast("Salvo");
   }
-
-  const todosOsPops = popFixo ? [popFixo] : popsParaVincular || [];
 
   const campo = (nome: keyof DadosDoFormulario, valor: string) => setDados((atual) => ({ ...atual, [nome]: valor }));
 
@@ -166,72 +199,28 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
         </div>
       </div>
 
-      <StatStrip
-        rotulo="Situação dos comprovantes"
-        itens={[
-          { rotulo: "Vencidos", valor: contagem.vencidos, tom: "nc" },
-          { rotulo: "Vencem em 30 dias", valor: contagem.venceEmBreve, tom: "amber" },
-          { rotulo: "Em dia", valor: contagem.emDia, tom: "ok" },
-        ]}
-      />
-
-      <div className={`comp-cols${podeGerenciar && formAberto ? " tem-form" : " is-single"}`}>
-        <div className="comp-lista">
-          {vigentes.length === 0 ? (
-            <div className="ui-empty">Nenhum comprovante anexado. Anexe o certificado de controle de pragas, da limpeza do reservatório ou o contrato do RT.</div>
-          ) : (
-            <div className="ui-list">
-              {vigentes.map((item) => {
-                const situacao = situacaoDaValidade(item.validade, hoje);
-                const dias = diasEntre(hoje, item.validade);
-                const detalhe = situacao === "vencido" ? `venceu há ${Math.abs(dias)} ${Math.abs(dias) === 1 ? "dia" : "dias"}` : dias === 0 ? "vence hoje" : `vence em ${dias} ${dias === 1 ? "dia" : "dias"}`;
-                return (
-                  <ListRow
-                    key={item.id}
-                    faixa={TOM[situacao]}
-                    icone={<span aria-hidden="true">▤</span>}
-                    titulo={`${rotuloDoTipo(item.tipo)} · ${item.emissor}`}
-                    secundario={`Serviço em ${dataBr(item.dataServico)} · validade ${dataBr(item.validade)} (${detalhe})${item.observacao ? ` · ${item.observacao}` : ""}`}
-                    pilulas={<Pill tom={TOM[situacao]}>{ROTULO_DA_VALIDADE[situacao]}</Pill>}
-                    acao={
-                      <span className="comp-acoes">
-                        {item.blobPathname && (
-                          <a className="ui-btn ui-btn--secondary ui-btn--small" href={urlDoArquivo(item)} target="_blank" rel="noopener noreferrer">
-                            Abrir
-                          </a>
-                        )}
-                        {podeGerenciar && (
-                          <button
-                            type="button"
-                            className="ui-btn ui-btn--primary ui-btn--small"
-                            onClick={() => abrir({ tipo: item.tipo, emissor: item.emissor, dataServico: "", validade: "", observacao: "", renovaId: item.id, ...(item.popId ? { popId: item.popId } : {}) })}
-                          >
-                            Renovar
-                          </button>
-                        )}
-                      </span>
-                    }
-                    menu={
-                      podeGerenciar
-                        ? [
-                            { rotulo: "Editar", onClick: () => abrir({ id: item.id, tipo: item.tipo, emissor: item.emissor, dataServico: item.dataServico, validade: item.validade, observacao: item.observacao, ...(item.popId ? { popId: item.popId } : {}) }) },
-                            { rotulo: "Remover comprovante", perigo: true, confirmar: "Remover este comprovante? O arquivo anexado também será apagado.", onClick: () => onRemover(item) },
-                          ]
-                        : undefined
-                    }
-                  />
-                );
-              })}
-            </div>
-          )}
+      <div className="comp-contadores" role="group" aria-label="Situação dos comprovantes">
+        <div className="ficha-cartao ficha-cartao--nc">
+          <span className="ficha-cartao-rotulo">Vencidos</span>
+          <span className="ficha-cartao-valor">{contagem.vencidos}</span>
         </div>
+        <div className="ficha-cartao ficha-cartao--pend">
+          <span className="ficha-cartao-rotulo">Vencem em 30 dias</span>
+          <span className="ficha-cartao-valor">{contagem.venceEmBreve}</span>
+        </div>
+        <div className="ficha-cartao ficha-cartao--ok">
+          <span className="ficha-cartao-rotulo">Em dia</span>
+          <span className="ficha-cartao-valor">{contagem.emDia}</span>
+        </div>
+      </div>
 
-        {podeGerenciar && (
-          <div ref={formularioRef} className={`ui-card comp-form${formAberto ? " is-aberto" : ""}`}>
-            <h2 className="ui-card-title">{editando ? "Editar comprovante" : dados.renovaId ? "Renovar comprovante" : "Anexar comprovante"}</h2>
+      {podeGerenciar && formAberto && (
+        <div ref={formularioRef} className="ui-card comp-form is-aberto">
+          <h2 className="ui-card-title">{editando ? "Editar comprovante" : dados.renovaId ? "Renovar comprovante" : "Anexar comprovante"}</h2>
+          <div className="comp-grade">
             <label className="pc-field">
               <span className="ui-eyebrow">Tipo</span>
-              <select className="ui-input" value={dados.tipo} onChange={(evento) => campo("tipo", evento.target.value as TipoComprovante)}>
+              <select className="ui-input ui-input--lista" value={dados.tipo} onChange={(evento) => campo("tipo", evento.target.value as TipoComprovante)}>
                 {TIPOS_DE_COMPROVANTE.map((tipo) => (
                   <option key={tipo.id} value={tipo.id}>
                     {tipo.rotulo}
@@ -239,77 +228,159 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
                 ))}
               </select>
             </label>
-            {todosOsPops.length > 0 && (
+            {popsParaEscolher.length > 0 && (
               <label className="pc-field">
                 <span className="ui-eyebrow">POP vinculado (opcional)</span>
-                <select className="ui-input" value={popFixo ? popFixo.id : dados.popId || ""} disabled={Boolean(popFixo)} onChange={(evento) => setDados((atual) => ({ ...atual, popId: evento.target.value || undefined }))}>
+                <select className="ui-input ui-input--lista" value={popFixo ? popFixo.id : dados.popId || ""} disabled={Boolean(popFixo)} onChange={(evento) => setDados((atual) => ({ ...atual, popId: evento.target.value || undefined }))}>
                   {!popFixo && <option value="">Nenhum (comprovante geral da empresa)</option>}
-                  {todosOsPops.map((pop) => (
+                  {popsParaEscolher.map((pop) => (
                     <option key={pop.id} value={pop.id}>
                       {pop.rotulo}
                     </option>
                   ))}
                 </select>
+                {sugestaoDePop?.situacao === "falta-criar" && (
+                  <span className="comp-aviso-pop">
+                    {avisoDePopAusente(sugestaoDePop.definicao)}
+                    {onCriarPopDoModelo && (
+                      <button
+                        type="button"
+                        className="pc-link-btn"
+                        onClick={() => {
+                          const id = onCriarPopDoModelo(sugestaoDePop.definicao.catalogoId);
+                          if (id) setDados((atual) => ({ ...atual, popId: id }));
+                        }}
+                      >
+                        Criar agora
+                      </button>
+                    )}
+                  </span>
+                )}
               </label>
             )}
             <label className="pc-field">
               <span className="ui-eyebrow">Emissor</span>
               <input className={`ui-input${mostrar("emissor") && erros.emissor ? " is-invalid" : ""}`} value={dados.emissor} onChange={(evento) => campo("emissor", evento.target.value)} onBlur={() => tocar("emissor")} aria-invalid={Boolean(mostrar("emissor") && erros.emissor)} />
-              {mostrar("emissor") && erros.emissor && <span className="ui-field-error">{erros.emissor}</span>}
+              {mostrar("emissor") && erros.emissor && <ErroDeCampo texto={erros.emissor} />}
             </label>
-            <div className="comp-duplo">
-              <label className="pc-field">
-                <span className="ui-eyebrow">Data do serviço</span>
-                <input type="date" className={`ui-input${mostrar("dataServico") && erros.dataServico ? " is-invalid" : ""}`} value={dados.dataServico} max={hoje} onChange={(evento) => campo("dataServico", evento.target.value)} onBlur={() => tocar("dataServico")} aria-invalid={Boolean(mostrar("dataServico") && erros.dataServico)} />
-                {mostrar("dataServico") && erros.dataServico && <span className="ui-field-error">{erros.dataServico}</span>}
-              </label>
-              <label className="pc-field">
-                <span className="ui-eyebrow">Validade</span>
-                <input type="date" className={`ui-input${(mostrar("validade") || dados.validade) && erros.validade ? " is-invalid" : ""}`} value={dados.validade} onChange={(evento) => campo("validade", evento.target.value)} onBlur={() => tocar("validade")} aria-invalid={Boolean((mostrar("validade") || dados.validade) && erros.validade)} />
-                {(mostrar("validade") || dados.validade) && erros.validade && <span className="ui-field-error">{erros.validade}</span>}
-              </label>
-            </div>
-            {sugestao && (
-              <div className="comp-sugestao" role="status">
-                <span>
-                  Sugestão: {dataBr(sugestao.validade)} · {sugestao.fonte}
-                  {sugestao.conferir ? <span className="pop-conferir comp-conferir">conferir</span> : null}
-                </span>
-                <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => campo("validade", sugestao.validade)}>
-                  Usar
-                </button>
-              </div>
-            )}
             <label className="pc-field">
               <span className="ui-eyebrow">Observação (opcional)</span>
               <input className="ui-input" value={dados.observacao} onChange={(evento) => campo("observacao", evento.target.value)} />
             </label>
-            <div
-              className={`comp-solta${arrastando ? " is-arrastando" : ""}${tocado && erroArquivo ? " is-invalida" : ""}`}
-              onDragOver={(evento) => {
-                evento.preventDefault();
-                setArrastando(true);
+            <label className="pc-field">
+              <span className="ui-eyebrow">Data do serviço</span>
+              <input type="date" className={`ui-input${mostrar("dataServico") && erros.dataServico ? " is-invalid" : ""}`} value={dados.dataServico} max={hoje} onChange={(evento) => campo("dataServico", evento.target.value)} onBlur={() => tocar("dataServico")} aria-invalid={Boolean(mostrar("dataServico") && erros.dataServico)} />
+              {mostrar("dataServico") && erros.dataServico && <ErroDeCampo texto={erros.dataServico} />}
+            </label>
+            <label className="pc-field">
+              <span className="ui-eyebrow">Validade</span>
+              <input type="date" className={`ui-input${(mostrar("validade") || dados.validade) && erros.validade ? " is-invalid" : ""}`} value={dados.validade} onChange={(evento) => campo("validade", evento.target.value)} onBlur={() => tocar("validade")} aria-invalid={Boolean((mostrar("validade") || dados.validade) && erros.validade)} />
+              {(mostrar("validade") || dados.validade) && erros.validade && <ErroDeCampo texto={erros.validade} />}
+            </label>
+          </div>
+          {sugestao && (
+            <div className="comp-sugestao" role="status">
+              <span>
+                Sugestão: {dataBr(sugestao.validade)} · {sugestao.fonte}
+                {sugestao.conferir ? <span className="pop-conferir comp-conferir">conferir</span> : null}
+              </span>
+              <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => campo("validade", sugestao.validade)}>
+                Usar
+              </button>
+            </div>
+          )}
+          <div
+            className={`comp-solta${arrastando ? " is-arrastando" : ""}${tocado && erroArquivo ? " is-invalida" : ""}`}
+            onDragOver={(evento) => {
+              evento.preventDefault();
+              setArrastando(true);
+            }}
+            onDragLeave={() => setArrastando(false)}
+            onDrop={soltar}
+          >
+            <input ref={entrada} type="file" accept="application/pdf,image/*" hidden onChange={(evento) => escolher(evento.target.files)} />
+            <span className="ui-row-sub">{arquivo ? `${arquivo.name}` : editando && !exigeArquivo ? "Arquivo já anexado. Escolha outro só para trocar." : "Arraste o PDF ou a foto aqui, ou"}</span>
+            <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => entrada.current?.click()}>
+              Escolher arquivo
+            </button>
+          </div>
+          {tocado && erroArquivo && <ErroDeCampo texto={erroArquivo} />}
+          {arquivo && !online && <ErroDeCampo texto="Precisa de internet para enviar o arquivo." />}
+          {erro && <ErroDeCampo texto={erro} />}
+          <div className="comp-form-acoes">
+            <button
+              type="button"
+              className="ui-btn ui-btn--secondary"
+              onClick={() => {
+                setFormAberto(false);
+                setTocado(false);
+                setCampos({});
               }}
-              onDragLeave={() => setArrastando(false)}
-              onDrop={soltar}
             >
-              <input ref={entrada} type="file" accept="application/pdf,image/*" hidden onChange={(evento) => escolher(evento.target.files)} />
-              <span className="ui-row-sub">{arquivo ? `${arquivo.name}` : editando && !exigeArquivo ? "Arquivo já anexado. Escolha outro só para trocar." : "Arraste o PDF ou a foto aqui, ou"}</span>
-              <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => entrada.current?.click()}>
-                Escolher arquivo
-              </button>
-            </div>
-            {tocado && erroArquivo && <span className="ui-field-error" role="alert">{erroArquivo}</span>}
-            {arquivo && !online && <span className="ui-field-error">Precisa de internet para enviar o arquivo.</span>}
-            {erro && <span className="ui-field-error">{erro}</span>}
-            <div className="comp-form-acoes">
-              <button type="button" className="ui-btn ui-btn--secondary" onClick={() => { setFormAberto(false); setTocado(false); setCampos({}); }}>
-                Cancelar
-              </button>
-              <button type="button" className="ui-btn ui-btn--save" onClick={() => void salvar()} disabled={salvando || Boolean(arquivo && !online)}>
-                {arquivo && !online ? "Precisa de internet" : salvando ? "Enviando…" : "Salvar comprovante"}
-              </button>
-            </div>
+              Cancelar
+            </button>
+            <button type="button" className="ui-btn ui-btn--save" onClick={() => void salvar()} disabled={salvando || Boolean(arquivo && !online)}>
+              {arquivo && !online ? "Precisa de internet" : salvando ? "Enviando…" : "Salvar comprovante"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="comp-lista">
+        {vigentes.length === 0 ? (
+          <div className="ui-empty">{mensagemVazia || "Nenhum comprovante anexado. Anexe o certificado de controle de pragas, da limpeza do reservatório ou o contrato do RT."}</div>
+        ) : (
+          <div className="ui-list">
+            {vigentes.map((item) => {
+              const situacao = situacaoDaValidade(item.validade, hoje);
+              const dias = diasEntre(hoje, item.validade);
+              const detalhe = situacao === "vencido" ? `venceu há ${quantidade(Math.abs(dias), "dia", "dias")}` : dias === 0 ? "vence hoje" : `vence em ${quantidade(dias, "dia", "dias")}`;
+              const codigo = item.popId ? codigoDoPop.get(item.popId) : undefined;
+              return (
+                <ListRow
+                  key={item.id}
+                  faixa={TOM[situacao]}
+                  icone={<span aria-hidden="true">▤</span>}
+                  titulo={rotuloDoTipo(item.tipo)}
+                  chip={!embutido && item.popId ? <span className="comp-selo-pop">{codigo || "POP"}</span> : undefined}
+                  secundario={
+                    <>
+                      <span className="comp-emissor">{item.emissor}</span>
+                      <span>
+                        Serviço em {dataBr(item.dataServico)} · validade {dataBr(item.validade)} ({detalhe}){item.observacao ? ` · ${item.observacao}` : ""}
+                      </span>
+                    </>
+                  }
+                  pilulas={<Pill tom={TOM[situacao]}>{ROTULO_DA_VALIDADE[situacao]}</Pill>}
+                  acao={
+                    <span className="comp-acoes">
+                      {item.blobPathname && (
+                        <a className="ui-btn ui-btn--secondary ui-btn--small" href={urlDoArquivo(item)} target="_blank" rel="noopener noreferrer">
+                          Abrir
+                        </a>
+                      )}
+                      {podeGerenciar && (
+                        <button
+                          type="button"
+                          className="ui-btn ui-btn--secondary ui-btn--small"
+                          onClick={() => abrir({ tipo: item.tipo, emissor: item.emissor, dataServico: "", validade: "", observacao: "", renovaId: item.id, ...(item.popId ? { popId: item.popId } : {}) })}
+                        >
+                          Renovar
+                        </button>
+                      )}
+                    </span>
+                  }
+                  menu={
+                    podeGerenciar
+                      ? [
+                          { rotulo: "Editar", onClick: () => abrir({ id: item.id, tipo: item.tipo, emissor: item.emissor, dataServico: item.dataServico, validade: item.validade, observacao: item.observacao, ...(item.popId ? { popId: item.popId } : {}) }) },
+                          { rotulo: "Remover comprovante", perigo: true, confirmar: "Remover este comprovante? O arquivo anexado também será apagado.", onClick: () => onRemover(item) },
+                        ]
+                      : undefined
+                  }
+                />
+              );
+            })}
           </div>
         )}
       </div>

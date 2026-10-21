@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Pill } from "@/components/ui/Pill";
+import { formatarData } from "@/lib/dataLocal";
 import { AVISO_SEM_NORMA_ESTADUAL, normasDisponiveis, temNormaEstadual } from "@/lib/normas";
 
 export type DadosDaNorma = {
@@ -23,6 +24,12 @@ type Props = {
   onSalvar: (dados: DadosDaNorma) => void;
 };
 
+/** "RDC 216/2004 (ANVISA) · federal"; a norma estadual já traz a UF no nome ("Portaria SES 799/2023 (RS)"), então não repete. */
+function rotuloDaNorma(norma: { nome: string; esfera: string; uf?: string }): string {
+  if (norma.esfera === "federal") return `${norma.nome} · federal`;
+  return !norma.uf || norma.nome.includes(`(${norma.uf})`) ? norma.nome : `${norma.nome} · ${norma.uf}`;
+}
+
 // Empresas › Norma aplicável: normas do catálogo, confirmação do RT e responsável do estabelecimento.
 export default function PcNormaAplicavel({ uf, municipio, normasAplicadas, confirmacao, responsavel, responsavelTexto, podeEditar, somenteLeitura, onAlterarEmDados, onSalvar }: Props) {
   const disponiveis = normasDisponiveis(uf);
@@ -32,6 +39,8 @@ export default function PcNormaAplicavel({ uf, municipio, normasAplicadas, confi
 
   const erroConfirmacao = rtConfirmou && escolhidas.length === 0 ? "Escolha ao menos uma norma para confirmar." : "";
   const valido = !erroConfirmacao;
+  const mesmasNormas = escolhidas.length === normasAplicadas.length && escolhidas.every((id) => normasAplicadas.includes(id));
+  const alterou = !mesmasNormas || rtConfirmou !== Boolean(confirmacao);
   const rs = uf.trim().toUpperCase() === "RS";
 
   return (
@@ -54,28 +63,15 @@ export default function PcNormaAplicavel({ uf, municipio, normasAplicadas, confi
                     disabled={!editavel}
                     onChange={() => setEscolhidas((atual) => (atual.includes(norma.id) ? atual.filter((id) => id !== norma.id) : [...atual, norma.id]))}
                   />
-                  <span>
-                    {norma.nome} · {norma.esfera === "federal" ? "federal" : norma.uf}
-                  </span>
+                  <span>{rotuloDaNorma(norma)}</span>
                 </label>
               ))}
             </div>
-            {disponiveis.some((norma) => escolhidas.includes(norma.id) && norma.id === "rdc-216-2004") && (
-              <p className="ui-row-sub priv-texto">Conferir no texto oficial da ANVISA antes de usar com clientes.</p>
-            )}
-            {!temNormaEstadual(uf) && (
-              <div className="priv-faixa" role="status">
-                <span>{AVISO_SEM_NORMA_ESTADUAL}</span>
-              </div>
-            )}
-            {rs && (
-              <div className="norma-avisos">
-                <div className="priv-faixa" role="status">
-                  <span>Vigência da Portaria SES 799/2023: confirmar no diário oficial.</span>
-                </div>
-                <div className="priv-faixa" role="status">
-                  <span>Exigência municipal: confirmar com a Vigilância Sanitária.</span>
-                </div>
+            {(!temNormaEstadual(uf) || rs) && (
+              <div className="priv-faixa norma-aviso-unico" role="status">
+                <span>
+                  {!temNormaEstadual(uf) ? AVISO_SEM_NORMA_ESTADUAL : "Vigência da Portaria SES 799/2023: confirmar no diário oficial. Exigência municipal: confirmar com a Vigilância Sanitária."}
+                </span>
               </div>
             )}
             <label className="pc-check priv-aceite">
@@ -85,7 +81,7 @@ export default function PcNormaAplicavel({ uf, municipio, normasAplicadas, confi
             {erroConfirmacao && <span className="ui-field-error">{erroConfirmacao}</span>}
             {confirmacao && rtConfirmou && (
               <p className="ui-row-sub priv-texto">
-                Confirmado por {confirmacao.nome} em {new Date(confirmacao.em).toLocaleDateString("pt-BR")}.
+                Confirmado por {confirmacao.nome} em {formatarData(confirmacao.em)}.
               </p>
             )}
         </>
@@ -107,9 +103,10 @@ export default function PcNormaAplicavel({ uf, municipio, normasAplicadas, confi
       {somenteLeitura ? (
         <p className="ui-row-sub priv-texto">Alterar no computador.</p>
       ) : editavel ? (
-        <div className="priv-acoes">
-          <button type="button" className="ui-btn ui-btn--save ui-btn--small" disabled={!valido} onClick={() => onSalvar({ normasAplicadas: escolhidas, rtConfirmou })}>
-            Salvar norma
+        <div className="cen-salvar">
+          <span className={`cen-salvar-aviso${alterou ? " is-pendente" : ""}`}>{alterou ? "● Alterações ainda não salvas" : "✓ Todas as alterações desta área estão salvas"}</span>
+          <button type="button" className="ui-btn ui-btn--save" disabled={!valido || !alterou} onClick={() => onSalvar({ normasAplicadas: escolhidas, rtConfirmou })}>
+            Salvar
           </button>
         </div>
       ) : null}

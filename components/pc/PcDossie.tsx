@@ -64,7 +64,6 @@ export default function PcDossie({ dados, urlDaFoto, onImprimir, onVoltar }: Pro
     onImprimir(`Dossie - ${dossie.empresaNome}`, {
       esquerda: [dossie.empresaNome, `CNPJ ${dados.empresa.cnpj}`],
       direita: ["Dossiê para fiscalização", `Gerado em ${dataBr(dossie.geradoEm)}`],
-      rodape: "Não é assinatura digital com certificado ICP-Brasil",
     });
   }
 

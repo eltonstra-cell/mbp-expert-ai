@@ -38,7 +38,7 @@ import { montarLembrete, montarPainelHoje, montarResumo, podeEnviarLembrete, pod
 import { useFilaDeEvidencias } from "@/components/useFilaDeEvidencias";
 import { useOnline } from "@/components/useOnline";
 import { FalhaDeEnvio, LIMITE_AVISO_FILA_BYTES, causaDaResposta, textoDeEspaco, type ItemSemArquivo } from "@/lib/filaEvidencias";
-import { MENSAGEM_SEM_NORMA_APLICADA, acaoCorretivaDoPopVigente, popVigente, avisoDePopsComNormaAlterada, conjuntoDaEmpresa, criarPopsFaltantesDoConjunto } from "@/lib/popsNorma";
+import { MENSAGEM_SEM_NORMA_APLICADA, acaoCorretivaDoPopVigente, popVigente, avisoDePopsComNormaAlterada, conjuntoDaEmpresa, criarPopsFaltantesDoConjunto, CONJUNTO_DA_NORMA, criarPopDoTextoBase } from "@/lib/popsNorma";
 import AccessPreparationPanel from "@/components/AccessPreparationPanel";
 import AppNavigation, { type CartaoVisita, type ContagemEtapa } from "@/components/AppNavigation";
 import AppTopbar from "@/components/AppTopbar";
@@ -111,6 +111,8 @@ import QualityProgramsFields from "@/components/QualityProgramsFields";
 import CentralEmpresaNav from "@/components/pc/CentralEmpresaNav";
 import PcImplantacao from "@/components/pc/PcImplantacao";
 import { mostrarToast } from "@/lib/toast";
+import { limparTextoDePessoa, nomeECargo, nomeProprio } from "@/lib/nomeCargo";
+import { diasEntreDatas, formatarData, formatarDataCurta, formatarDataHora, formatarHora, hojeLocalISO } from "@/lib/dataLocal";
 import { palavra as pal, quantidade as qtd } from "@/lib/plural";
 import { gruposVisiveis, lembrarSubaba, lerSubabaLembrada, resolverSubaba, subabasVisiveis, type SubAbaCentral } from "@/lib/centralEmpresa";
 import { empresaTemImplantacao, implantacaoConcluida, implantacaoDeEmpresaNova, passosDeImplantacao } from "@/lib/implantacao";
@@ -256,7 +258,7 @@ const labels: Record<string, string> = {
   uf: "UF",
   telefone: "Telefone",
   email: "E-mail",
-  responsavel: "Responsável pelo estabelecimento",
+  responsavel: "Responsável do estabelecimento",
   horarioFuncionamento: "Horário de funcionamento",
   atividadeDescricao: "Atividades, produção e serviços realizados",
   cargoResponsavel: "Cargo do responsável pelo estabelecimento",
@@ -523,13 +525,11 @@ const modelosChecklist: Record<
 };
 
 function hojeISO() {
-  const n = new Date();
-  const o = n.getTimezoneOffset();
-  return new Date(n.getTime() - o * 60000).toISOString().slice(0, 10);
+  return hojeLocalISO();
 }
 
 function fdata(d: string) {
-  return d ? new Date(d.length === 10 ? d + "T12:00:00" : d).toLocaleDateString("pt-BR") : "—";
+  return d ? formatarData(d) || "—" : "—";
 }
 
 function criarChecklist(
@@ -602,33 +602,8 @@ function situacaoPrazoNC(prazo?: string, status?: string) {
     return { label: "Sem prazo", classe: "bg-[var(--na-bg)] text-[color:var(--ink)]" };
   }
 
-  const [ano, mes, dia] = partes;
-
-  // Usa datas locais ao meio-dia para evitar qualquer deslocamento de fuso/DST.
-  const agora = new Date();
-  const hojeLocal = new Date(
-    agora.getFullYear(),
-    agora.getMonth(),
-    agora.getDate(),
-    12,
-    0,
-    0,
-    0
-  );
-
-  const prazoLocal = new Date(
-    ano,
-    mes - 1,
-    dia,
-    12,
-    0,
-    0,
-    0
-  );
-
-  const diffDias = Math.round(
-    (prazoLocal.getTime() - hojeLocal.getTime()) / 86400000
-  );
+  // Dias de calendário de São Paulo entre hoje e o prazo (AAAA-MM-DD).
+  const diffDias = diasEntreDatas(hojeLocalISO(), prazo);
 
   if (diffDias < 0) {
     return { label: "Vencida", classe: "bg-red-600 text-white" };
@@ -1321,7 +1296,7 @@ export default function Home() {
       setSyncStatus("sincronizado");
       setSyncAtualizadoEm(
         conflito.updatedAt
-          ? new Date(conflito.updatedAt).toLocaleString("pt-BR")
+          ? formatarDataHora(conflito.updatedAt)
           : ""
       );
     }
@@ -1372,14 +1347,14 @@ export default function Home() {
 
         setSyncAtualizadoEm(
           cloud?.updatedAt
-            ? new Date(cloud.updatedAt).toLocaleString("pt-BR")
+            ? formatarDataHora(cloud.updatedAt)
             : ""
         );
       } else if (meta.updatedAt) {
         ultimaNuvemVersaoRef.current = meta.updatedAt;
         ultimaNuvemRef.current = new Date(meta.updatedAt).getTime();
         setSyncAtualizadoEm(
-          new Date(meta.updatedAt).toLocaleString("pt-BR")
+          formatarDataHora(meta.updatedAt)
         );
       }
 
@@ -1479,7 +1454,7 @@ export default function Home() {
             ultimaNuvemVersaoRef.current = cloud.updatedAt || null;
             setSyncAtualizadoEm(
               cloud.updatedAt
-                ? new Date(cloud.updatedAt).toLocaleString("pt-BR")
+                ? formatarDataHora(cloud.updatedAt)
                 : ""
             );
           } else {
@@ -1511,7 +1486,7 @@ export default function Home() {
             setSyncStatus("sincronizado");
                 setSyncAtualizadoEm(
                   salvo.updatedAt
-                    ? new Date(salvo.updatedAt).toLocaleString("pt-BR")
+                    ? formatarDataHora(salvo.updatedAt)
                     : ""
                 );
               } else {
@@ -1937,8 +1912,8 @@ export default function Home() {
       const lista = o.colaboradores || [];
       const existente = dados.id ? lista.find((item) => item.id === dados.id) : undefined;
       const novo: Colaborador = existente
-        ? { ...existente, nome: dados.nome, cargo: dados.cargo }
-        : { id: crypto.randomUUID(), empresaId: atual.id, nome: dados.nome, cargo: dados.cargo, ativo: true, criadoEm: new Date().toISOString() };
+        ? { ...existente, nome: nomeProprio(dados.nome), cargo: limparTextoDePessoa(dados.cargo) }
+        : { id: crypto.randomUUID(), empresaId: atual.id, nome: nomeProprio(dados.nome), cargo: limparTextoDePessoa(dados.cargo), ativo: true, criadoEm: new Date().toISOString() };
       const atualizado: AppDB = { ...o, colaboradores: existente ? lista.map((item) => (item.id === novo.id ? novo : item)) : [...lista, novo] };
       salvarDBLocal(atualizado);
       return atualizado;
@@ -2233,7 +2208,7 @@ export default function Home() {
           setSyncStatus("sincronizado");
           setSyncAtualizadoEm(
             cloud?.updatedAt
-              ? new Date(cloud.updatedAt).toLocaleString("pt-BR")
+              ? formatarDataHora(cloud.updatedAt)
               : ""
           );
           return;
@@ -2263,8 +2238,8 @@ export default function Home() {
             setSyncStatus("sincronizado");
             setSyncAtualizadoEm(
               result.updatedAt
-                ? new Date(result.updatedAt).toLocaleString("pt-BR")
-                : new Date().toLocaleString("pt-BR")
+                ? formatarDataHora(result.updatedAt)
+                : formatarDataHora(new Date())
             );
           } else {
             setSyncStatus("local");
@@ -2692,7 +2667,7 @@ export default function Home() {
     [visitasSemArquivadas, filtroListaVisitas]
   );
 
-  const prefixoMesAtual = new Date().toISOString().slice(0, 7);
+  const prefixoMesAtual = hojeLocalISO().slice(0, 7);
   const visitasDoMes = visitas.filter((visita) => visita.data?.startsWith(prefixoMesAtual));
   const visitasRecentesInicio = visitasSemArquivadas
     .filter((visita) => visita.status === filtroInicio)
@@ -3117,8 +3092,8 @@ export default function Home() {
     setSyncStatus("sincronizado");
     setSyncAtualizadoEm(
       updatedAt
-        ? new Date(updatedAt).toLocaleString("pt-BR")
-        : new Date().toLocaleString("pt-BR")
+        ? formatarDataHora(updatedAt)
+        : formatarDataHora(new Date())
     );
   }
 
@@ -3187,7 +3162,7 @@ export default function Home() {
               setSyncStatus("sincronizado");
               setSyncAtualizadoEm(
                 conflito.updatedAt
-                  ? new Date(conflito.updatedAt).toLocaleString("pt-BR")
+                  ? formatarDataHora(conflito.updatedAt)
                   : ""
               );
             }
@@ -3373,9 +3348,11 @@ export default function Home() {
     const id = editingEmpresaId || form.cnpj.replace(/\D/g, "") || crypto.randomUUID();
     const anterior = editingEmpresaId ? db.empresas[editingEmpresaId] : undefined;
     // Responsável do estabelecimento: fonte única em Dados. Só o Administrador escolhe a pessoa de Acessos (o servidor repete a regra).
-    const nomeResponsavel = form.responsavel.trim();
-    const cargoResponsavel = form.cargoResponsavel.trim();
     const vinculoResponsavel = !usuarioDaSessao || usuarioDaSessao.perfil === "Administrador" ? usuarioResponsavelForm || undefined : anterior?.responsavelEstabelecimento?.usuarioId;
+    // Com acesso vinculado, nome e cargo vêm do usuário (se ele não tiver cargo, vale o que foi informado aqui).
+    const usuarioVinculado = vinculoResponsavel ? db.usuarios.find((pessoa) => pessoa.id === vinculoResponsavel) : undefined;
+    const nomeResponsavel = limparTextoDePessoa(usuarioVinculado ? usuarioVinculado.nome : form.responsavel);
+    const cargoResponsavel = limparTextoDePessoa(limparTextoDePessoa(usuarioVinculado?.cargo) || form.cargoResponsavel);
     const emp: Empresa = {
       id,
       ...form,
@@ -3435,6 +3412,12 @@ export default function Home() {
     setView("empresas");
   }
 
+  // RT da empresa para preencher a identificação do Manual: a pessoa logada (se for RT) ou o primeiro RT com acesso à empresa.
+  function usuarioRtDaEmpresa(empresa: Empresa) {
+    if (usuarioDaSessao?.perfil === "Consultor/RT") return usuarioDaSessao;
+    return db.usuarios.find((pessoa) => pessoa.perfil === "Consultor/RT" && pessoa.status !== "Suspenso" && pessoa.empresaIds.includes(empresa.id));
+  }
+
   function editarEmpresa(empresa: Empresa) {
     if (!exigirPermissao("empresas.editar", empresa.id)) return;
     const formCarregado = {
@@ -3463,11 +3446,12 @@ export default function Home() {
           : ""),
       atividadeDescricao: empresa.atividadeDescricao || "",
       cargoResponsavel: responsavelEfetivo(empresa).cargo,
-      consultorNome: empresa.consultorNome || "",
+      // Identificação do Consultor/RT: se estiver em branco, vem do usuário RT (nome, cargo e CRN de Acessos); continua editável.
+      consultorNome: empresa.consultorNome || usuarioRtDaEmpresa(empresa)?.nome || "",
       consultorCpfCnpj: empresa.consultorCpfCnpj || "",
       consultorEndereco: empresa.consultorEndereco || "",
       consultorTelefone: empresa.consultorTelefone || "",
-      consultorRegistro: empresa.consultorRegistro || "",
+      consultorRegistro: empresa.consultorRegistro || nomeECargo(usuarioRtDaEmpresa(empresa)?.cargo, usuarioRtDaEmpresa(empresa)?.crn, " ") || "",
       dataElaboracaoManual: empresa.dataElaboracaoManual || "",
       elaboradoPor: empresa.elaboradoPor || "",
       revisadoPor: empresa.revisadoPor || "",
@@ -4710,15 +4694,15 @@ export default function Home() {
           ultimaOcorrencia: ultimaOcorrenciaDaNc(nc),
           par: (() => {
             const comp = comprovacaoDaCorrecao(nc, db.evidencias || []);
-            const paraFoto = (ev: Evidencia) => ({ id: ev.id, url: urlEvidencia(ev), nome: ev.descricao?.trim() || ev.nomeArquivo, quando: new Date(ev.criadoEm).toLocaleString("pt-BR") });
+            const paraFoto = (ev: Evidencia) => ({ id: ev.id, url: urlEvidencia(ev), nome: ev.descricao?.trim() || `${ev.tipo} · ${ev.ambiente ? nomeDeExibicaoDoAmbiente(ev.ambiente) : "Sem ambiente"}`, quando: formatarDataHora(ev.criadoEm) });
             return { antes: comp.antes.map(paraFoto), depois: comp.depois.map(paraFoto) };
           })(),
           evidencias: (db.evidencias || [])
             .filter((ev) => ev.ncId === nc.id)
-            .map((ev) => ({ id: ev.id, tipo: ev.tipo, nome: ev.descricao?.trim() || ev.nomeArquivo, quando: new Date(ev.criadoEm).toLocaleString("pt-BR"), url: urlEvidencia(ev) })),
+            .map((ev) => ({ id: ev.id, tipo: ev.tipo, nome: ev.descricao?.trim() || `${ev.tipo} · ${ev.ambiente ? nomeDeExibicaoDoAmbiente(ev.ambiente) : "Sem ambiente"}`, quando: formatarDataHora(ev.criadoEm), url: urlEvidencia(ev) })),
           historico: [...(nc.historicoAcompanhamento || [])]
             .sort((a, b) => b.criadoEm.localeCompare(a.criadoEm))
-            .map((item) => ({ id: item.id, quando: new Date(item.criadoEm).toLocaleString("pt-BR"), status: item.status, observacao: item.observacao })),
+            .map((item) => ({ id: item.id, quando: formatarDataHora(item.criadoEm), status: item.status, observacao: item.observacao })),
         };
     });
   }
@@ -5526,7 +5510,7 @@ export default function Home() {
     const observacaoHistorico = concluidaAposPrazo
       ? `${texto} • Concluída após o prazo. Prazo original: ${fdata(
           ncAtual.prazo || ""
-        )} | Conclusão: ${new Date(agora).toLocaleString("pt-BR")}.`
+        )} | Conclusão: ${formatarDataHora(agora)}.`
       : texto;
 
     setDb((o) => ({
@@ -6065,6 +6049,17 @@ export default function Home() {
     setMsg("");
   }
 
+  // "Criar agora" no comprovante: cria o rascunho do POP do modelo que o tipo pede e devolve o id para vincular.
+  function criarPopDoModeloPorCatalogo(empresaDoc: Empresa, catalogoId: string): string | undefined {
+    if (!permitido("empresas.editar", empresaDoc.id)) return undefined;
+    const definicao = CONJUNTO_DA_NORMA.find((item) => item.catalogoId === catalogoId);
+    if (!definicao) return undefined;
+    const novo = criarPopDoTextoBase(definicao, { normasAplicadas: empresaDoc.normasAplicadas, pops: empresaDoc.pops || [] }, crypto.randomUUID());
+    persistirPopsDaEmpresa(empresaDoc.id, [...(empresaDoc.pops || []), novo]);
+    mostrarToast("POP criado como rascunho");
+    return novo.id;
+  }
+
   // Documentos (POPs, Comprovantes, Pessoas): o mesmo conteúdo na Central de quem edita e no Documentos de quem só lê.
   function conteudoDeDocumentos(sub: SubAbaCentral, empresaDoc: Empresa, podeEditarDoc: boolean) {
     if (sub === "pops") {
@@ -6145,7 +6140,8 @@ export default function Home() {
           urlDoArquivo={(item) => `/api/comprovantes/file?pathname=${encodeURIComponent(item.blobPathname || "")}`}
           onVoltar={() => setRenovarComprovanteId(undefined)}
           renovarId={renovarComprovanteId}
-          popsParaVincular={(empresaDoc.pops || []).filter((pop) => !pop.arquivado).map((pop) => ({ id: pop.id, rotulo: `${pop.codigo ? `${pop.codigo} · ` : ""}${pop.titulo}` }))}
+          pops={empresaDoc.pops || []}
+          onCriarPopDoModelo={podeEditarDoc ? (catalogoId) => criarPopDoModeloPorCatalogo(empresaDoc, catalogoId) : undefined}
         />
       );
     }
@@ -7163,6 +7159,7 @@ export default function Home() {
             resumo={montarResumo({
               empresaNome: nomeParaExibir(atual),
               empresaCnpj: atual.cnpj,
+              relatorios: (db.relatoriosEmitidos || []).filter((item) => item.empresaId === atual.id).map((item) => ({ visitaId: item.visitaId, numero: item.numero, versao: item.versao })),
               visitas: db.visitas.filter((visita) => visita.empresaId === atual.id),
               ncs: (db.ncs || []).filter((nc) => nc.empresaId === atual.id),
               painel: painelHoje,
@@ -7253,42 +7250,85 @@ export default function Home() {
                       </div>
                     </label>
 
-                    {camposEmpresaPrincipais.map((k) => (
-                  <label key={k}>
+                    {camposEmpresaPrincipais.filter((k) => k !== "responsavel" && k !== "cargoResponsavel").map((k) => (
+                  <label key={k} className={k === "cnaeDescricao" ? "md:col-span-2" : undefined}>
                     <span className="mb-1 block text-xs font-bold text-slate-500">
                       {labels[k] || k}
                     </span>
-                    <input
-                      type="text"
-                      className="w-full rounded-xl border p-3"
-                      value={form[k]}
-                      onChange={(e) =>
-                        setForm({ ...form, [k]: e.target.value })
-                      }
-                    />
+                    {k === "cnaeDescricao" ? (
+                      <textarea
+                        className="w-full resize-none rounded-xl border p-3"
+                        rows={2}
+                        value={form[k]}
+                        onChange={(e) => setForm({ ...form, [k]: e.target.value })}
+                      />
+                    ) : (
+                      <input
+                        type="text"
+                        className="w-full rounded-xl border p-3"
+                        value={form[k]}
+                        placeholder={k === "horarioFuncionamento" ? "Ex.: Seg a sáb, 11h às 23h" : undefined}
+                        onChange={(e) =>
+                          setForm({ ...form, [k]: e.target.value })
+                        }
+                      />
+                    )}
                   </label>
                     ))}
-                    {editingEmpresaId && (
-                      <label>
-                        <span className="mb-1 block text-xs font-bold text-slate-500">Acesso vinculado do responsável (quem aprova os POPs)</span>
-                        <select
-                          className="w-full rounded-xl border p-3"
-                          value={usuarioResponsavelForm}
-                          disabled={Boolean(usuarioDaSessao) && usuarioDaSessao?.perfil !== "Administrador"}
-                          onChange={(e) => setUsuarioResponsavelForm(e.target.value)}
-                        >
-                          <option value="">Ainda não vinculada</option>
-                          {db.usuarios
-                            .filter((pessoa) => pessoa.perfil === "Administrador" || pessoa.empresaIds.includes(editingEmpresaId))
-                            .map((pessoa) => (
-                              <option key={pessoa.id} value={pessoa.id}>
-                                {pessoa.nome} · {pessoa.perfil}
-                              </option>
-                            ))}
-                        </select>
-                        {Boolean(usuarioDaSessao) && usuarioDaSessao?.perfil !== "Administrador" && <span className="mt-1 block text-xs text-slate-500">Só o Administrador vincula a pessoa de Acessos.</span>}
-                      </label>
-                    )}
+                    {(() => {
+                      // Responsável do estabelecimento: escolhe-se primeiro o acesso vinculado; nome e cargo vêm desse usuário (em leitura).
+                      const vinculado = db.usuarios.find((pessoa) => pessoa.id === usuarioResponsavelForm);
+                      const cargoDoUsuario = limparTextoDePessoa(vinculado?.cargo);
+                      const podeVincular = !usuarioDaSessao || usuarioDaSessao.perfil === "Administrador";
+                      return (
+                        <fieldset className="md:col-span-2 rounded-xl border border-slate-200 p-3">
+                          <legend className="px-1 text-xs font-bold text-slate-500">Responsável do estabelecimento</legend>
+                          <div className="grid gap-3 md:grid-cols-3">
+                            {editingEmpresaId && (
+                              <label>
+                                <span className="mb-1 block text-xs font-bold text-slate-500">Acesso vinculado (quem aprova os POPs)</span>
+                                <select
+                                  className="w-full rounded-xl border p-3"
+                                  value={usuarioResponsavelForm}
+                                  disabled={!podeVincular}
+                                  onChange={(e) => {
+                                    const escolhido = db.usuarios.find((pessoa) => pessoa.id === e.target.value);
+                                    setUsuarioResponsavelForm(e.target.value);
+                                    if (escolhido) setForm((atual) => ({ ...atual, responsavel: escolhido.nome, cargoResponsavel: limparTextoDePessoa(escolhido.cargo) || atual.cargoResponsavel }));
+                                  }}
+                                >
+                                  <option value="">Ainda não vinculada</option>
+                                  {db.usuarios
+                                    .filter((pessoa) => pessoa.perfil === "Administrador" || pessoa.empresaIds.includes(editingEmpresaId))
+                                    .map((pessoa) => (
+                                      <option key={pessoa.id} value={pessoa.id}>
+                                        {pessoa.nome} · {pessoa.perfil}
+                                      </option>
+                                    ))}
+                                </select>
+                                {!podeVincular && <span className="mt-1 block text-xs text-slate-500">Só o Administrador vincula a pessoa de Acessos.</span>}
+                              </label>
+                            )}
+                            <label>
+                              <span className="mb-1 block text-xs font-bold text-slate-500">Nome</span>
+                              <input type="text" className="w-full rounded-xl border p-3 disabled:bg-slate-100" value={vinculado ? vinculado.nome : form.responsavel} readOnly={Boolean(vinculado)} onChange={(e) => setForm({ ...form, responsavel: e.target.value })} />
+                            </label>
+                            <label>
+                              <span className="mb-1 block text-xs font-bold text-slate-500">Cargo</span>
+                              <input
+                                type="text"
+                                className="w-full rounded-xl border p-3 disabled:bg-slate-100"
+                                value={vinculado && cargoDoUsuario ? cargoDoUsuario : form.cargoResponsavel}
+                                readOnly={Boolean(vinculado && cargoDoUsuario)}
+                                onChange={(e) => setForm({ ...form, cargoResponsavel: e.target.value })}
+                              />
+                              {vinculado && !cargoDoUsuario && <span className="mt-1 block text-xs text-slate-500">Sem cargo em Acessos: informe aqui ou cadastre em Acessos.</span>}
+                            </label>
+                          </div>
+                          {!editingEmpresaId && <p className="mt-2 text-xs text-slate-500">Depois de salvar a empresa, escolha o acesso vinculado: nome e cargo passam a vir dele.</p>}
+                        </fieldset>
+                      );
+                    })()}
                     {editingEmpresaId && (
                       <fieldset className="md:col-span-2 rounded-xl border border-slate-200 p-3">
                         <legend className="px-1 text-xs font-bold text-slate-500">Capacidade e turnos</legend>
@@ -7404,8 +7444,8 @@ export default function Home() {
                     ).map((linha) => ({
                       ...linha,
                       rotulo: `Visita ${numeroVisitaPorId.get(linha.visitaId) || "—"}`,
-                      concluidaTexto: new Date(linha.concluidaEm).toLocaleDateString("pt-BR"),
-                      venceTexto: new Date(linha.venceEm).toLocaleDateString("pt-BR"),
+                      concluidaTexto: formatarData(linha.concluidaEm),
+                      venceTexto: formatarData(linha.venceEm),
                     }))}
                     onLiberarIa={(aceite) => alterarPrivacidadeDaEmpresa(empresaGerenciada.id, "ia", { aceite })}
                     onDesligarIa={() => alterarPrivacidadeDaEmpresa(empresaGerenciada.id, "desligar")}
@@ -7609,8 +7649,7 @@ export default function Home() {
               const numeroDoItem = itemDaEvidencia ? checklistAtual.filter((registro) => registro.ambiente === itemDaEvidencia.ambiente).findIndex((registro) => registro.id === itemDaEvidencia.id) + 1 : 0;
               const ambienteDaEvidencia = ev.ambiente ? nomeDeExibicaoDoAmbiente(ev.ambiente) : "Sem ambiente";
               const titulo = numeroDoItem ? `${ambienteDaEvidencia} · Item ${numeroDoItem}` : ambienteDaEvidencia;
-              const criada = new Date(ev.criadoEm);
-              const hora = criada.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+              const hora = formatarHora(ev.criadoEm);
               return {
                 id: ev.id,
                 tipo: ev.tipo,
@@ -7619,8 +7658,8 @@ export default function Home() {
                 titulo,
                 descricao: ev.descricao || "",
                 vinculo: itemDaEvidencia ? `${titulo} · ${itemDaEvidencia.titulo}` : titulo,
-                dataCurta: `${criada.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} · ${hora}`,
-                dataCompleta: `${criada.toLocaleDateString("pt-BR")} · ${hora}`,
+                dataCurta: `${formatarDataCurta(ev.criadoEm)} · ${hora}`,
+                dataCompleta: `${formatarData(ev.criadoEm)} · ${hora}`,
                 url: urlEvidencia(ev),
                 envio: ev.envio,
                 registradoPor: ev.registradoPorNome,
@@ -8556,7 +8595,7 @@ export default function Home() {
 
               {pendentesVisita > 0 && (
                 <div className="mt-5 rounded-xl border border-amber-200 bg-[var(--pend-bg)] p-4 text-sm text-[color:var(--ink)]">
-                  <strong>Atenção:</strong> ainda {pal(pendentesVisita, "existe", "existem")} {qtd(pendentesVisita, "item pendente", "itens pendentes")}
+                  <strong>Atenção:</strong> ainda {pal(pendentesVisita, "existe", "existem")} {qtd(pendentesVisita, "item pendente", "itens pendentes")}{" "}
                   no checklist. O relatório pode ser revisado, mas a
                   inspeção ainda não está totalmente preenchida.
                 </div>
@@ -8928,7 +8967,7 @@ export default function Home() {
                               // eslint-disable-next-line @next/next/no-img-element
                               <img src={urlEvidencia(fotos[0])} alt={titulo} className="rep-antes-depois-foto" />
                             )}
-                            {fotos[0] && <div className="text-[11px] text-slate-500">{new Date(fotos[0].criadoEm).toLocaleString("pt-BR")}</div>}
+                            {fotos[0] && <div className="text-[11px] text-slate-500">{formatarDataHora(fotos[0].criadoEm)}</div>}
                           </div>
                         );
                         return (
@@ -9032,12 +9071,12 @@ export default function Home() {
                             </div>
                             <div className="mt-2 text-[10px] text-emerald-800">
                               Revisão: {analiseConfirmada.revisadaPor || "Profissional responsável"}
-                              {analiseConfirmada.revisadaEm ? ` • ${new Date(analiseConfirmada.revisadaEm).toLocaleString("pt-BR")}` : ""}
+                              {analiseConfirmada.revisadaEm ? ` • ${formatarDataHora(analiseConfirmada.revisadaEm)}` : ""}
                             </div>
                           </div>
                         )}
                         <div className="mt-2 text-[11px] text-slate-400">
-                          Registro: {new Date(ev.criadoEm).toLocaleString("pt-BR")}
+                          Registro: {formatarDataHora(ev.criadoEm)}
                         </div>
                       </div>
                       {ev.tipo === "Foto" ? (
@@ -9235,10 +9274,10 @@ export default function Home() {
                 <div className="font-extrabold uppercase text-slate-700">Rastreabilidade do relatório</div>
                 <div className="mt-2 grid gap-2 md:grid-cols-2">
                   <div><strong>Empresa:</strong> {empresaVisita?.cnpj || "CNPJ não informado"} — {nomeSemNumerosNoInicio(empresaVisita?.nomeFantasia || empresaVisita?.razaoSocial || "Empresa")}</div>
-                  <div><strong>Visita:</strong> {fdata(visitaAtual.data)} — {visitaAtual.id}</div>
+                  <div><strong>Visita:</strong> {fdata(visitaAtual.data)} — {numeroVisitaPorId.get(visitaAtual.id) ? `visita ${numeroVisitaPorId.get(visitaAtual.id)}` : "visita"}{visitaAtual.responsavel ? ` · responsável ${visitaAtual.responsavel}` : ""}</div>
                   <div><strong>Status:</strong> {visitaAtual.status}</div>
-                  <div><strong>Último encerramento:</strong> {visitaAtual.encerradaEm ? new Date(visitaAtual.encerradaEm).toLocaleString("pt-BR") : "Não registrado"}</div>
-                  <div><strong>Relatório gerado em:</strong> {new Date().toLocaleString("pt-BR")}</div>
+                  <div><strong>Último encerramento:</strong> {visitaAtual.encerradaEm ? formatarDataHora(visitaAtual.encerradaEm) : "Não registrado"}</div>
+                  <div><strong>Relatório gerado em:</strong> {formatarDataHora(new Date())}</div>
                 </div>
                 <div className="mt-4 border-t border-slate-200 pt-3">
                   <div className="font-extrabold text-slate-700">
@@ -9251,7 +9290,7 @@ export default function Home() {
                         .map((evento, indice) => (
                           <li key={evento.id} className="rounded-lg bg-slate-50 p-2">
                             <div className="font-bold text-slate-700">
-                              {indice + 1}. {new Date(evento.criadoEm).toLocaleString("pt-BR")} — {evento.de} → {evento.para}
+                              {indice + 1}. {formatarDataHora(evento.criadoEm)} — {evento.de} → {evento.para}
                             </div>
                             <div className="mt-1 text-slate-500">
                               {evento.motivo} • Responsável: {evento.responsavel || visitaAtual.responsavel || "Não informado"}
@@ -9261,9 +9300,7 @@ export default function Home() {
                         ))}
                     </ol>
                   ) : (
-                    <p className="mt-2 text-slate-500">
-                      Nenhuma mudança de status registrada nesta visita. Registros anteriores à v2.44 podem não possuir o histórico retroativo.
-                    </p>
+                    <p className="mt-2 text-slate-500">Nenhuma mudança de status registrada nesta visita.</p>
                   )}
                 </div>
                 <p className="mt-2">

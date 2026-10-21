@@ -1,5 +1,6 @@
 "use client";
 
+import { formatarDataHora } from "@/lib/dataLocal";
 import { useMemo, useState } from "react";
 import type { Empresa, PerfilUsuario, RegistroAuditoria, StatusUsuario, UsuarioSistema } from "@/types";
 import type { DadosUsuarioPreparacao } from "@/lib/userManagement";
@@ -213,11 +214,11 @@ export default function PcAcessos({
                     {!(formulario.crn || "").trim() && <span className="ui-row-sub">Sem CRN, o relatório emitido mostra “CRN a preencher”.</span>}
                   </label>
                 )}
-                {(formulario.perfil === "Consultor/RT" || formulario.perfil === "Administrador") && (
+                {(
                   <label className="pc-field">
-                    <span className="ui-eyebrow">Cargo na assinatura do relatório (opcional)</span>
+                    <span className="ui-eyebrow">{formulario.perfil === "Consultor/RT" || formulario.perfil === "Administrador" ? "Cargo na assinatura do relatório (opcional)" : "Cargo (opcional)"}</span>
                     <input className="ui-input" value={formulario.cargo || ""} onChange={(evento) => onCampo({ cargo: evento.target.value })} placeholder="Ex.: Nutricionista RT" />
-                    {!(formulario.cargo || "").trim() && <span className="ui-row-sub">Sem cargo, a assinatura mostra “Responsável técnico” (nunca o perfil de acesso).</span>}
+                    {!(formulario.cargo || "").trim() && (formulario.perfil === "Consultor/RT" || formulario.perfil === "Administrador") && <span className="ui-row-sub">Sem cargo, a assinatura mostra “Responsável técnico” (nunca o perfil de acesso).</span>}
                   </label>
                 )}
                 {formulario.perfil === "Fiscal" && !formulario.jaEraFiscal && (
@@ -271,7 +272,7 @@ export default function PcAcessos({
                       if (formularioValido) onSalvar();
                     }}
                   >
-                    Salvar preparação
+                    Salvar
                   </button>
                   {!editando && (
                     <button type="button" className="ui-btn ui-btn--soft" onClick={() => setTelasDoNovo(true)}>
@@ -429,7 +430,7 @@ export default function PcAcessos({
             {historico.map((registro) => (
               <div key={registro.id} className="ui-card pc-history-row">
                 <span>{registro.detalhes}</span>
-                <span className="ui-row-sub">{new Date(registro.criadoEm).toLocaleString("pt-BR")}</span>
+                <span className="ui-row-sub">{formatarDataHora(registro.criadoEm)}</span>
               </div>
             ))}
             {historico.length === 0 && <div className="ui-empty">Nenhum registro de acesso ainda.</div>}

@@ -49,7 +49,7 @@ function Linha({ linha, podeEditar, onAbrirFicha, onCriarDoModelo, menu }: { lin
     <div className={`pgl-linha${destaque ? " is-destaque" : ""}${linha.pop?.arquivado ? " is-arquivado" : ""}`}>
       <span className="pgl-faixa" style={{ background: cor.faixa }} aria-hidden="true" />
       <div className="pgl-textos">
-        <span className="pgl-titulo">{linha.pop?.codigo ? `${linha.pop.codigo} · ${linha.titulo}` : linha.titulo}</span>
+        <span className="pgl-titulo">{linha.codigo ? `${linha.codigo} · ${linha.titulo}` : linha.titulo}</span>
         <span className="pgl-detalhe">{linha.detalhe}</span>
       </div>
       <div className="pgl-situacao">
@@ -156,18 +156,20 @@ export default function PcPopsLista({
 
       <div className="pgl-contadores" role="group" aria-label="Situação dos POPs">
         <div className="pgl-conta pgl-conta--ok">
-          <span className="pgl-conta-n">
-            {contadores.vigentes} de {contadores.total}
-          </span>
-          <span>vigentes</span>
+          <span className="pgl-conta-n">{contadores.vigentesEmDia}</span>
+          <span>vigentes em dia</span>
+        </div>
+        <div className="pgl-conta pgl-conta--pend">
+          <span className="pgl-conta-n">{contadores.vigentesComPendencia}</span>
+          <span>vigentes com pendência</span>
         </div>
         <div className="pgl-conta pgl-conta--aguarda">
           <span className="pgl-conta-n">{contadores.aguardando}</span>
           <span>aguardando aprovação</span>
         </div>
-        <div className="pgl-conta pgl-conta--pend">
-          <span className="pgl-conta-n">{contadores.pendencia}</span>
-          <span>com pendência</span>
+        <div className="pgl-conta pgl-conta--rascunho">
+          <span className="pgl-conta-n">{contadores.rascunho}</span>
+          <span>em rascunho</span>
         </div>
         <div className="pgl-conta pgl-conta--falta">
           <span className="pgl-conta-n">{contadores.faltaCriar}</span>
@@ -241,7 +243,6 @@ export default function PcPopsLista({
         )}
       </div>
       {mensagem && <div className="ui-note">{mensagem}</div>}
-      <p className="pgl-rodape">Cada linha diz a situação e UMA próxima ação. Ordem: o que precisa de alguém primeiro, depois o que está em dia, depois o que falta criar.</p>
     </div>
   );
 }

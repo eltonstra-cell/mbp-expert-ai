@@ -1,5 +1,6 @@
 "use client";
 
+import { formatarDataHora } from "@/lib/dataLocal";
 import { useEffect, useMemo, useState } from "react";
 import type {
   Empresa,
@@ -213,7 +214,7 @@ export default function AccessPreparationPanel(props: Props) {
                 className="inline-flex items-center justify-center rounded-xl px-4 py-3 font-medium shadow-sm"
                 style={{ backgroundColor: "var(--ok)", color: "#ffffff" }}
               >
-                Salvar preparação
+                Salvar
               </button>
               <button type="button" onClick={() => setFormulario(null)} className="rounded-xl border-2 border-[var(--brand)] bg-white px-4 py-3 font-medium text-[color:var(--ink)]">Cancelar</button>
             </div>
@@ -265,7 +266,7 @@ export default function AccessPreparationPanel(props: Props) {
         <h2 className="text-xl font-extrabold">Auditoria do diretório</h2>
         <div className="mt-3 space-y-2">
           {props.registrosAuditoria.filter((r) => r.entidade === "Usuário").slice(-10).reverse().map((registro) => (
-            <div key={registro.id} className="rounded-xl bg-slate-50 p-3 text-sm"><div className="font-bold">{registro.detalhes}</div><div className="mt-1 text-xs text-slate-500">{new Date(registro.criadoEm).toLocaleString("pt-BR")}</div></div>
+            <div key={registro.id} className="rounded-xl bg-slate-50 p-3 text-sm"><div className="font-bold">{registro.detalhes}</div><div className="mt-1 text-xs text-slate-500">{formatarDataHora(registro.criadoEm)}</div></div>
           ))}
         </div>
       </div>

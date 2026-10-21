@@ -2,21 +2,18 @@
 
 import { useMemo, useState } from "react";
 import { Pill } from "@/components/ui/Pill";
+import { agoraParaCampoLocal, formatarDataHora, localParaISO } from "@/lib/dataLocal";
 import { useRegistrosDaEmpresa } from "@/components/RegistrosEmpresaContext";
 import { popVigente } from "@/lib/popsNorma";
 import { guardaDosRegistros, separarRegistros } from "@/lib/registrosEmpresa";
 import type { ProcedimentoOperacionalPadronizado, RegistroPop } from "@/types";
 
 function agoraParaCampo(): string {
-  const agora = new Date();
-  const local = new Date(agora.getTime() - agora.getTimezoneOffset() * 60000);
-  return local.toISOString().slice(0, 16);
+  return agoraParaCampoLocal();
 }
 
 function quando(iso: string) {
-  const data = new Date(iso);
-  if (Number.isNaN(data.getTime())) return "";
-  return `${data.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" })} ${data.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+  return formatarDataHora(iso);
 }
 
 // Aba "Registros" do POP aprovado: o que foi feito, quando e por quem. Registro nunca é editado; correção vira outro registro.
@@ -41,7 +38,7 @@ export default function PcRegistrosDoPop({ pop }: { pop: ProcedimentoOperacional
 
   const provaId = contexto.empresa?.registroProvaPorPop?.[pop.id] || "";
   const erroDescricao = !descricao.trim() ? "Descreva o que foi feito." : "";
-  const erroData = !dataHora ? "Informe a data e a hora." : new Date(dataHora).getTime() > Date.now() + 5 * 60 * 1000 ? "A data e a hora não podem estar no futuro." : "";
+  const erroData = !dataHora ? "Informe a data e a hora." : Date.parse(localParaISO(dataHora)) > Date.now() + 5 * 60 * 1000 ? "A data e a hora não podem estar no futuro." : "";
 
   function salvar() {
     setTocado(true);
@@ -50,7 +47,7 @@ export default function PcRegistrosDoPop({ pop }: { pop: ProcedimentoOperacional
     const resultado = contexto!.novoRegistro({
       popId: pop.id,
       popVersao: vigente.versao,
-      dataHora: new Date(dataHora).toISOString(),
+      dataHora: localParaISO(dataHora),
       descricao,
       ambiente,
       corrigeRegistroId: corrigindo?.id,
@@ -76,7 +73,7 @@ export default function PcRegistrosDoPop({ pop }: { pop: ProcedimentoOperacional
           {guarda?.dias ? (
             <span>
               Guarda dos registros: {guarda.dias} dias · {guarda.citacao}
-              {guarda.conferir ? <span className="em-breve pop-conferir"> conferir</span> : null} {guarda.aviso}
+              {guarda.conferir ? <span className="pop-conferir pop-conferir--colado">conferir</span> : null}
             </span>
           ) : (
             <span>{guarda?.aviso}</span>

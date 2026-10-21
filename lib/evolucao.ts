@@ -1,5 +1,6 @@
 // Aba Evolução: conformidade por ambiente no mês e comparação com os meses anteriores, reincidentes, tempo médio para
 // resolver e correções resolvidas no mês. Tudo calculado dos dados que o app já tem; com pouco dado, não compara.
+import { dataISOLocal, diasEntreDatas } from "./dataLocal.ts";
 import type { NaoConformidade, Visita } from "../types/index.ts";
 
 export const MINIMO_GERAL = 10;
@@ -47,7 +48,7 @@ export type EvolucaoDaEmpresa = {
 const NOMES_DOS_MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 
 export function mesDe(dataIso: string): string {
-  return dataIso.slice(0, 7);
+  return dataISOLocal(dataIso).slice(0, 7);
 }
 
 export function rotuloDoMes(mes: string): string {
@@ -69,7 +70,6 @@ function contar(itens: { status: string }[]): ContagemDeRespostas {
 
 const percentual = (c: ContagemDeRespostas) => (c.respondidos ? Math.round((c.conformes / c.respondidos) * 100) : null);
 
-const diasEntreDatas = (de: string, ate: string) => Math.round((Date.parse(`${ate.slice(0, 10)}T12:00:00Z`) - Date.parse(`${de.slice(0, 10)}T12:00:00Z`)) / 86400000);
 
 /** Mesmo critério: mesma categoria e mesmo título no mesmo ambiente; reincidente = aparece em 3 visitas ou mais. */
 export function reincidentesDaEmpresa(ncs: Pick<NaoConformidade, "titulo" | "categoria" | "ambiente" | "visitaId" | "inativaNoChecklist">[], minimo = REINCIDENCIA_MINIMA): Reincidente[] {

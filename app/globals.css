@@ -3833,3 +3833,23 @@ html[data-modo="campo"] .chk-foco-amb-pos{font-size:.78rem}
 .pc-route-model{min-width:0}
 .pc-route-model select{width:100%;min-width:0}
 .pc-amb-right .ui-head .ui-row-sub{white-space:normal;overflow:visible;text-overflow:clip}
+
+/* Pacote 2 · Bloco A: comprovantes, modal de emissão, lista de POPs, comparação de versões */
+.pgl-contadores{grid-template-columns:repeat(5,minmax(0,1fr))}
+.pgl-conta--rascunho{background:#E8EEF5}
+.pop-conferir--colado{margin-left:4px;white-space:nowrap}
+.pop-guarda{align-items:center}
+.pop-alterado{margin-left:8px;padding:0 8px;border:1px solid #E8B04B;border-radius:999px;background:#FEF6E6;font-size:.78rem;color:#12202B}
+.pop-seletor-baixo{height:36px;padding-top:0;padding-bottom:0}
+.comp-contadores{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.comp-grade{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px}
+.comp-selo-pop{padding:0 8px;border-radius:999px;background:#EEF1F5;font-size:.78rem;color:#12202B}
+.comp-aviso-pop{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:4px;font-size:.84rem;color:#12202B}
+.comp-emissor{font-size:.84rem;color:#3D5160}
+.ui-field-error--forte{display:flex;align-items:center;gap:6px;font-size:.84rem;font-weight:600;color:#B42318}
+.ui-field-error--forte::before{content:"!";display:inline-grid;place-items:center;flex:none;width:16px;height:16px;border-radius:50%;background:#B42318;color:#fff;font-size:.72rem;font-weight:700}
+.comp-solta.is-invalida{border-width:2px}
+.ui-input.is-invalid{border-width:2px}
+.pc-modal-x{position:absolute;top:10px;right:12px;width:32px;height:32px;border:0;border-radius:8px;background:#EEF1F5;font-size:1.3rem;line-height:1;color:#12202B;cursor:pointer}
+.pc-modal-x:disabled{opacity:.5;cursor:default}
+@media (max-width:900px){.comp-contadores{grid-template-columns:1fr}.comp-grade{grid-template-columns:1fr}}
