@@ -24,10 +24,12 @@ type Props = {
   abrirFicha?: { popId: string; aba?: AbaFicha; chave: number } | null;
   /** Avisa que o pedido de abrir a ficha já foi atendido (para não reabrir ao voltar à lista). */
   aoConsumirPedido?: () => void;
+  /** Avisa quando a ficha abre ou fecha (rótulo do POP para o caminho do topo) para a tela esconder grupos e sub-abas. */
+  aoMudarFicha?: (rotulo: string | null) => void;
 };
 
 // Documentos › POPs: a lista com situação e próxima ação e, ao abrir um POP, a ficha com as seis abas.
-export default function PcPops({ pops, empresa, usuario = null, podeEditar = false, onPersistir, mensagem, topo, responsavel, abrirFicha, aoConsumirPedido }: Props) {
+export default function PcPops({ pops, empresa, usuario = null, podeEditar = false, onPersistir, mensagem, topo, responsavel, abrirFicha, aoConsumirPedido, aoMudarFicha }: Props) {
   const contexto = useRegistrosDaEmpresa();
   const [fichaId, setFichaId] = useState<string | null>(null);
   const [abaInicial, setAbaInicial] = useState<AbaFicha>("resumo");
@@ -65,6 +67,13 @@ export default function PcPops({ pops, empresa, usuario = null, podeEditar = fal
   const definicoes = conjuntoDaEmpresa(empresaDaLista);
   const faltamCriar = conjunto.filter((linha) => !linha.pop).length;
   const popEmFicha = fichaId ? pops.find((pop) => pop.id === fichaId) : undefined;
+
+  const rotuloDaFicha = popEmFicha ? popEmFicha.codigo || popEmFicha.titulo || "POP" : null;
+  useEffect(() => {
+    aoMudarFicha?.(rotuloDaFicha);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rotuloDaFicha]);
+  useEffect(() => () => aoMudarFicha?.(null), []); // eslint-disable-line react-hooks/exhaustive-deps
 
   function abrir(id: string) {
     setMensagemFicha("");

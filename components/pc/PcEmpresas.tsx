@@ -70,8 +70,8 @@ export function menuDaEmpresa(
     arquivada: empresa.arquivada,
   }).map((acao): ItemMenu => {
     switch (acao) {
-      case "editar":
-        return { rotulo: "Editar empresa", onClick: () => acoes.onGerenciar(empresa.id) };
+      case "central":
+        return { rotulo: "Central da Empresa", onClick: () => acoes.onGerenciar(empresa.id) };
       case "cor":
         return { rotulo: "Mudar cor", onClick: () => acoes.onCor(empresa.id) };
       case "historico":
@@ -119,7 +119,7 @@ export default function PcEmpresas({
           <p className="ui-subtitle">{plural(totalClientes, "cliente", "clientes")} · escolha a empresa ativa para trabalhar</p>
         </div>
         {podeCriar && (
-          <button type="button" className="ui-btn ui-btn--primary" onClick={onNova}>
+          <button type="button" className="ui-btn ui-btn--criar" onClick={onNova}>
             + Nova empresa
           </button>
         )}
@@ -211,8 +211,11 @@ export default function PcEmpresas({
                         Selecionar
                       </button>
                     )}
+                    <button type="button" className="ui-btn ui-btn--secondary" onClick={() => onGerenciar(empresa.id)}>
+                      Central da Empresa
+                    </button>
                     {empresa.ativa && empresa.podeNovaVisita && (
-                      <button type="button" className="ui-btn ui-btn--primary" onClick={onNovaVisita}>
+                      <button type="button" className="ui-btn ui-btn--criar" onClick={onNovaVisita}>
                         Nova visita
                       </button>
                     )}

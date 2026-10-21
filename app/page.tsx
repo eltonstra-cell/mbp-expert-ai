@@ -109,6 +109,8 @@ import ManualBaseFields from "@/components/ManualBaseFields";
 import OperationalFlowsFields from "@/components/OperationalFlowsFields";
 import QualityProgramsFields from "@/components/QualityProgramsFields";
 import CentralEmpresaNav from "@/components/pc/CentralEmpresaNav";
+import RelatoriosAbas, { type AbaDeRelatorios } from "@/components/pc/RelatoriosAbas";
+import { caminhoDaFicha } from "@/lib/caminhoDaFicha";
 import PcImplantacao from "@/components/pc/PcImplantacao";
 import { mostrarToast } from "@/lib/toast";
 import { limparTextoDePessoa, nomeECargo, nomeProprio } from "@/lib/nomeCargo";
@@ -727,6 +729,8 @@ function assinaturaEdicaoEmpresa(valor: {
   return JSON.stringify(valor);
 }
 
+const SUBABA_DO_ITEM_DE_PREPARACAO: Record<string, SubAbaCentral> = { responsavel: "dados", horario: "dados", setores: "ambientes", equipamentos: "ambientes", programas: "programas", pops: "pops" };
+
 export default function Home() {
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
@@ -1050,6 +1054,7 @@ export default function Home() {
   const [usuarioResponsavelForm, setUsuarioResponsavelForm] = useState("");
   const [docSecao, setDocSecao] = useState<SubAbaCentral>("pops");
   // Pedido para abrir a ficha de um POP (vindo do painel, de uma correção ou de outra tela).
+  const [fichaAbertaRotulo, setFichaAbertaRotulo] = useState<string | null>(null);
   const [fichaPedida, setFichaPedida] = useState<{ popId: string; aba?: AbaFicha; chave: number } | null>(null);
   const [verPassosDeImplantacao, setVerPassosDeImplantacao] = useState(false);
   const [showVisitaForm, setShowVisitaForm] = useState(false);
@@ -4501,6 +4506,9 @@ export default function Home() {
       case "central":
         abrirDocumentosOuCentral(acao.subaba);
         return;
+      case "relatorios":
+        irParaRelatorios(acao.aba);
+        return;
       case "continuar":
         if (visitaEmAndamentoDestaque) continuar(visitaEmAndamentoDestaque.id, true);
         return;
@@ -4896,6 +4904,27 @@ export default function Home() {
     window.print();
   }
 
+  function irParaRelatorios(aba: AbaDeRelatorios) {
+    if (!atual) {
+      void avisar("Escolha a empresa para abrir os relatórios.", { titulo: "Escolha a empresa" });
+      setView("empresas");
+      return;
+    }
+    setView(aba === "emitidos" ? "relatoriosemitidos" : aba);
+  }
+
+  function abasDeRelatoriosDisponiveis(): AbaDeRelatorios[] {
+    const disponiveis: AbaDeRelatorios[] = ["emitidos"];
+    if (painelHoje) disponiveis.push("resumo");
+    if (podeGerarDossie(usuarioDaSessao)) disponiveis.push("dossie");
+    if (painelHoje) disponiveis.push("evolucao");
+    return disponiveis;
+  }
+
+  function abasDeRelatorios(atualAba: AbaDeRelatorios) {
+    return <RelatoriosAbas atual={atualAba} disponiveis={abasDeRelatoriosDisponiveis()} onIr={irParaRelatorios} />;
+  }
+
   function irParaMenu(key: NavKey) {
     setMenuMaisAberto(false);
     switch (key) {
@@ -4926,6 +4955,9 @@ export default function Home() {
         return;
       case "acompanhamento":
         setView("acompanhamento");
+        return;
+      case "relatorios":
+        irParaRelatorios("emitidos");
         return;
       case "ajuda":
         abrirAjudaRapida();
@@ -6124,6 +6156,7 @@ export default function Home() {
           responsavel={responsavel}
           abrirFicha={fichaPedida}
           aoConsumirPedido={() => setFichaPedida(null)}
+          aoMudarFicha={setFichaAbertaRotulo}
         />
       );
     }
@@ -6269,8 +6302,18 @@ export default function Home() {
         visitaEmAndamentoId: visitaEmAndamentoDestaque?.id ?? null,
         podeChecklist: podeUsarChecklistNaBusca && !!visitaEmAndamentoDestaque,
         subabasCentral: atual ? subabasVisiveis(permitido("empresas.editar", atual.id) ? quemVeNaCentral : quemVeNosDocumentos) : [],
+        subabaCentralInicial: atual ? resolverSubaba(null, lerSubabaLembrada(atual.id), subabasVisiveis(permitido("empresas.editar", atual.id) ? quemVeNaCentral : quemVeNosDocumentos)) : undefined,
+        nomeEmpresaAtiva: atual ? nomeEmFormatoNatural(atual.nomeFantasia) || undefined : undefined,
+        abasRelatorios: atual && itensVisiveis(contextoMenu).some((item) => item.key === "relatorios") ? abasDeRelatoriosDisponiveis() : [],
       })
     : [];
+  const chavesDoMenu = new Set(itensVisiveis(contextoMenu).map((item) => item.key));
+  const atalhosDaBarra: { id: string; rotulo: string; onClick: () => void }[] = [
+    ...(atual && permitido("visitas.criar", atual.id) ? [{ id: "nova-visita", rotulo: "Nova visita", onClick: novaVisita }] : []),
+    ...(atual && chavesDoMenu.has("empresas") && permitido("empresas.editar", atual.id) ? [{ id: "central", rotulo: "Central da Empresa", onClick: () => editarEmpresa(atual) }] : []),
+    ...(chavesDoMenu.has("ncs") ? [{ id: "correcoes", rotulo: "Correções abertas", onClick: () => irParaMenu("ncs") }] : []),
+    ...(chavesDoMenu.has("relatorios") ? [{ id: "relatorios", rotulo: "Relatórios", onClick: () => irParaMenu("relatorios") }] : []),
+  ];
   const checklistDestaque = visitaEmAndamentoDestaque?.checklist || [];
   const inicioPc = {
     continuar: visitaEmAndamentoDestaque
@@ -6904,6 +6947,7 @@ export default function Home() {
           onVoltarAoAutomatico={telaModo.voltarAoAutomatico}
           onAbrirConfigModo={() => setView("modotela")}
           onTrocarEmpresa={() => setTrocarEmpresaAberto(true)}
+          atalhos={atalhosDaBarra}
         />
         <nav className="hidden">
           <button
@@ -6961,7 +7005,7 @@ export default function Home() {
 
         {trocarEmpresaAberto && (
           <TrocarEmpresaPainel
-            opcoes={opcoesTrocaDeEmpresa}
+            opcoes={opcoesTrocaDeEmpresa.map((opcao) => ({ ...opcao, nome: nomeParaExibir(db.empresas[opcao.id]) }))}
             corDe={(id) => (db.empresas[id] ? corDaEmpresa(db.empresas[id]) : "#4A5D73")}
             onFechar={() => setTrocarEmpresaAberto(false)}
             onEscolher={async (id) => {
@@ -7132,6 +7176,8 @@ export default function Home() {
             motivoNaoExcluir={(usuario) => motivoParaNaoExcluir(usuario, contextoExclusaoUsuario())}
           />
         ) : view === "relatoriosemitidos" && atual ? (
+          <>
+          {abasDeRelatorios("emitidos")}
           <PcRelatoriosEmitidos
             empresa={nomeParaExibir(atual)}
             relatorios={(db.relatoriosEmitidos || []).filter((item) => item.empresaId === atual.id)}
@@ -7139,14 +7185,20 @@ export default function Home() {
             onImprimir={imprimirDocumento}
             onVoltar={() => setView(visitaAtual ? "relatorio" : "inicio")}
           />
+          </>
         ) : view === "dossie" && atual && podeGerarDossie(usuarioDaSessao) ? (
+          <>
+          {abasDeRelatorios("dossie")}
           <PcDossie
             dados={{ empresa: atual, relatorios: db.relatoriosEmitidos, registros: db.registrosPop, comprovantes: db.comprovantes, colaboradores: db.colaboradores, capacitacoes: db.capacitacoes }}
             urlDaFoto={(pathname) => `/api/evidencias/file?pathname=${encodeURIComponent(pathname)}`}
             onImprimir={imprimirDocumento}
             onVoltar={() => setView("inicio")}
           />
+          </>
         ) : view === "evolucao" && atual && painelHoje ? (
+          <>
+          {abasDeRelatorios("evolucao")}
           <PcEvolucao
             empresa={nomeParaExibir(atual)}
             visitas={db.visitas.filter((visita) => visita.empresaId === atual.id)}
@@ -7154,7 +7206,10 @@ export default function Home() {
             hoje={hojeISO()}
             onVoltar={() => setView("inicio")}
           />
+          </>
         ) : view === "resumo" && atual && painelHoje ? (
+          <>
+          {abasDeRelatorios("resumo")}
           <PcResumo
             resumo={montarResumo({
               empresaNome: nomeParaExibir(atual),
@@ -7168,6 +7223,7 @@ export default function Home() {
             onCompartilhar={(texto) => void compartilharResumo(texto)}
             onVoltar={() => setView("inicio")}
           />
+          </>
         ) : view === "fila" ? (
           <PcFilaDeEnvio
             itens={fila.itens}
@@ -7201,7 +7257,11 @@ export default function Home() {
                 <h1 className="ui-title">{nomeParaExibir(atual)}</h1>
               </div>
             </div>
-            <CentralEmpresaNav grupos={gruposVisiveis(quemVeNosDocumentos)} subaba={subabaDosDocumentos} onSubaba={setDocSecao} />
+            {fichaAbertaRotulo && subabaDosDocumentos === "pops" ? (
+              <nav className="ficha-caminho" aria-label="Caminho">{caminhoDaFicha(fichaAbertaRotulo).join(" › ")}</nav>
+            ) : (
+              <CentralEmpresaNav grupos={gruposVisiveis(quemVeNosDocumentos)} subaba={subabaDosDocumentos} onSubaba={setDocSecao} />
+            )}
             <div className="cen-conteudo">{conteudoDeDocumentos(subabaDosDocumentos, atual, false)}</div>
           </section>
         ) : view === "empresas" && showEmpresaForm && permitido("empresas.editar") ? (
@@ -7226,7 +7286,11 @@ export default function Home() {
               </button>
             </div>
 
-            {editingEmpresaId && <CentralEmpresaNav grupos={gruposVisiveis(quemVeNaCentral)} subaba={secaoEmpresa as SubAbaCentral} onSubaba={irParaSubaba} />}
+            {editingEmpresaId && (fichaAbertaRotulo && secaoEmpresa === "pops" ? (
+              <nav className="ficha-caminho" aria-label="Caminho">{caminhoDaFicha(fichaAbertaRotulo).join(" › ")}</nav>
+            ) : (
+              <CentralEmpresaNav grupos={gruposVisiveis(quemVeNaCentral)} subaba={secaoEmpresa as SubAbaCentral} onSubaba={irParaSubaba} />
+            ))}
             {editingEmpresaId && msg && <div className="ui-note cen-msg">{msg}</div>}
 
             <div className="cen-conteudo">
@@ -9400,6 +9464,11 @@ export default function Home() {
                         ? "Cadastro completo"
                         : `${inicioPc.preparacaoAtual.preenchidos} de ${inicioPc.preparacaoAtual.total} itens preenchidos`,
                       onAbrir: () => editarEmpresa(atual),
+                      faltam: permitido("empresas.editar", atual.id)
+                        ? inicioPc.preparacaoAtual.itens
+                            .filter((item) => !item.ok)
+                            .map((item) => ({ id: item.id, titulo: item.titulo, onAbrir: () => void abrirSecaoEmpresaPeloMenu(SUBABA_DO_ITEM_DE_PREPARACAO[item.id] || "dados") }))
+                        : [],
                     }
                   : null
               }

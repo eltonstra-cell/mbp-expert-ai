@@ -1,9 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
-
-import type { CSSProperties } from "react";
-import { useCabem } from "@/components/useFit";
+import type { CSSProperties, ReactNode } from "react";
 import { iniciaisDaEmpresa } from "@/lib/navigation";
 import { Pill } from "@/components/ui/Pill";
 import { ProgressBar, SegmentedProgress } from "@/components/ui/ProgressBar";
@@ -38,7 +35,8 @@ type Props = {
   } | null;
   novaVisita: { texto: string; botao: string; onClick: () => void };
   indicadores: { emAndamento: number; ncAcompanhamento: number; concluidasMes: number; empresasAtivas: number };
-  preparacao: { percentual: number; texto: string; onAbrir: () => void } | null;
+  /** "faltam" lista o que ainda não está preenchido; cada um abre a sub-aba da Central onde se resolve. */
+  preparacao: { percentual: number; texto: string; faltam: { id: string; titulo: string; onAbrir: () => void }[]; onAbrir: () => void } | null;
   pendencias: { texto: string; onVer: (() => void) | null };
   filtro: "Em andamento" | "Concluída";
   onFiltro: (filtro: "Em andamento" | "Concluída") => void;
@@ -76,7 +74,6 @@ export default function PcInicio({
   avisoPops = null,
   painel = null,
 }: Props) {
-  const recentesFit = useCabem<HTMLDivElement>(48, 4, 1);
   return (
     <section className="ui-screen" aria-label="Início">
       <div className="ui-head">
@@ -103,7 +100,7 @@ export default function PcInicio({
               </div>
               {continuar.divergencia && <div className="ui-nota-divergencia">{continuar.divergencia}</div>}
             </div>
-            <button type="button" className="ui-btn ui-btn--primary" onClick={continuar.onContinuar}>
+            <button type="button" className="ui-btn ui-btn--criar" onClick={continuar.onContinuar}>
               Continuar visita →
             </button>
           </>
@@ -114,7 +111,7 @@ export default function PcInicio({
               <div className="ui-row-sub">{novaVisita.texto}</div>
             </div>
             {!somenteCampo && (
-              <button type="button" className="ui-btn ui-btn--primary" onClick={novaVisita.onClick}>
+              <button type="button" className="ui-btn ui-btn--criar" onClick={novaVisita.onClick}>
                 {novaVisita.botao}
               </button>
             )}
@@ -134,8 +131,7 @@ export default function PcInicio({
       <StatStrip
         rotulo="Indicadores"
         itens={[
-          { rotulo: "Em andamento", valor: indicadores.emAndamento, tom: "pend" },
-          { rotulo: "Correções abertas na empresa", valor: indicadores.ncAcompanhamento, tom: "nc", detalhe: "na empresa ativa" },
+          { rotulo: "Visitas em andamento", valor: indicadores.emAndamento, tom: "pend" },
           { rotulo: "Concluídas este mês", valor: indicadores.concluidasMes, tom: "ok" },
           { rotulo: "Empresas ativas", valor: indicadores.empresasAtivas, tom: "brand" },
         ]}
@@ -145,14 +141,25 @@ export default function PcInicio({
       {!simples && (
       <div className="pc-two">
         {preparacao && (
-          <button type="button" className="ui-card pc-card-btn" onClick={preparacao.onAbrir}>
+          <div className="ui-card pc-card-btn">
             <div className="pc-card-head">
               <span className="ui-eyebrow">Preparação da empresa</span>
               <Pill tom={preparacao.percentual === 100 ? "ok" : "brand"}>{preparacao.percentual}%</Pill>
             </div>
             <div className="ui-row-sub">{preparacao.texto}</div>
             <ProgressBar percentual={preparacao.percentual} rotulo="Preparação da empresa" />
-          </button>
+            {preparacao.faltam.length > 0 && (
+              <ul className="prep-faltam" aria-label="O que falta">
+                {preparacao.faltam.map((item) => (
+                  <li key={item.id}>
+                    <button type="button" className="pc-link-btn" onClick={item.onAbrir}>
+                      {item.titulo} →
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         )}
         <div className="ui-card pc-card-btn">
           <div className="pc-card-head">
@@ -185,9 +192,9 @@ export default function PcInicio({
             ]}
           />
         </div>
-        <div className="pc-recent-list" ref={recentesFit.ref}>
+        <div className="pc-recent-list">
           {recentes.length === 0 && <div className="ui-empty">Nenhuma visita nesta situação.</div>}
-          {recentes.slice(0, recentesFit.quantos).map((visita) => (
+          {recentes.map((visita) => (
             <button key={visita.id} type="button" className="pc-recent-row" onClick={() => onAbrirVisita(visita.id)}>
               <span className="emp-avatar-mini" style={{ "--emp-cor": visita.cor || "#4A5D73" } as CSSProperties} aria-hidden="true">
                 {iniciaisDaEmpresa(visita.empresa)}

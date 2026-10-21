@@ -104,7 +104,7 @@ export default function CommandPalette({ aberto, comVoz, destinos, onEscolher, o
       <div className="pc-cmd" role="dialog" aria-modal="true" aria-label="Caixa inteligente">
         <div className="pc-cmd-field">
           <span className="pc-bolt" aria-hidden="true">
-            <NavIcon name="raio" size={16} />
+            <NavIcon name="raio" size={22} />
           </span>
           <input
             ref={campoRef}
@@ -157,7 +157,6 @@ export default function CommandPalette({ aberto, comVoz, destinos, onEscolher, o
         <div id="pc-cmd-lista" className="pc-cmd-list" role="listbox" aria-label="Resultados">
           {grupos.map(({ grupo, itens }) => (
             <div key={grupo} role="group" aria-label={ROTULOS_GRUPO_BUSCA[grupo]}>
-              <div className="pc-cmd-group">{ROTULOS_GRUPO_BUSCA[grupo]}</div>
               {itens.map((resultado) => {
                 posicao += 1;
                 const minha = posicao;
@@ -172,10 +171,14 @@ export default function CommandPalette({ aberto, comVoz, destinos, onEscolher, o
                     onMouseMove={() => setIndice(minha)}
                     onClick={() => escolher(resultado)}
                   >
-                    <span className="pc-cmd-option-title">{resultado.destino.titulo}</span>
-                    {resultado.destino.detalhe && (
-                      <span className="pc-cmd-option-detail">{resultado.destino.detalhe}</span>
-                    )}
+                    <span className="pc-cmd-seta" aria-hidden="true">↗</span>
+                    <span className="pc-cmd-option-textos">
+                      <span className="pc-cmd-option-title">{resultado.destino.titulo}</span>
+                      {resultado.destino.detalhe && (
+                        <span className="pc-cmd-option-detail">{resultado.destino.detalhe}</span>
+                      )}
+                    </span>
+                    {minha === 0 && consulta.trim() && <span className="pc-cmd-enter">Enter</span>}
                   </button>
                 );
               })}
@@ -189,9 +192,7 @@ export default function CommandPalette({ aberto, comVoz, destinos, onEscolher, o
         </div>
 
         <div className="pc-cmd-foot" aria-hidden="true">
-          <span>↑↓ navegar</span>
-          <span>Enter abrir</span>
-          <span>Esc fechar</span>
+          <span>Enter abre o primeiro resultado · ↑↓ navegam · Esc fecha</span>
         </div>
       </div>
     </div>

@@ -190,12 +190,12 @@ export default function PcFichaPop({ pop, empresa, usuario, podeEditar, podeApro
             <div className="ficha-rodape-resumo">
               <span className="ficha-botoes">
                 {contexto?.podeCriarRegistro && vigente && abas.includes("registros") && (
-                  <button type="button" className="ui-btn ui-btn--criar" onClick={() => setAba("registros")}>
+                  <button type="button" className="ui-btn ui-btn--secondary" onClick={() => setAba("registros")}>
                     + Registrar execução
                   </button>
                 )}
                 {contexto?.podeGerenciarComprovantes && abas.includes("comprovantes") && (
-                  <button type="button" className="ui-btn ui-btn--criar" onClick={() => setAba("comprovantes")}>
+                  <button type="button" className="ui-btn ui-btn--secondary" onClick={() => setAba("comprovantes")}>
                     + Anexar comprovante
                   </button>
                 )}

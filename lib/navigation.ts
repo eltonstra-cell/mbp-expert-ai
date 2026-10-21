@@ -17,6 +17,7 @@ export type NavKey =
   | "plano"
   | "acompanhamento"
   | "relatorio"
+  | "relatorios"
   | "empresas"
   | "pops"
   | "acessos"
@@ -145,6 +146,14 @@ const CATALOGO: NavItem[] = [
     grupo: "acompanhamento",
     requer: (pode) => pode("relatorios.exportar") || pode("relatorios.aprovar"),
   },
+  {
+    key: "relatorios",
+    rotulo: "Relatórios",
+    curto: "Relatórios",
+    tom: "ardosia",
+    grupo: "acompanhamento",
+    requer: (pode) => pode("relatorios.exportar") || pode("relatorios.aprovar"),
+  },
   { key: "empresas", rotulo: "Empresas", curto: "Empresas", tom: "turquesa", grupo: "administracao" },
   {
     key: "pops",
@@ -228,7 +237,7 @@ export function menuLateralPC(ctx: NavContexto): {
       .map((key) => visiveis.find((item) => item.key === key))
       .filter((item): item is NavItem => Boolean(item));
   return {
-    topo: pegar(["inicio", "visitas", "empresas", "pops"]),
+    topo: pegar(["inicio", "visitas", "empresas", "pops", "relatorios"]),
     etapas: ctx.dentroDeVisita ? pegar(ETAPAS_PC) : [],
     apoio: pegar(["ajuda"]),
     admin: pegar(["acessos"]),
@@ -334,6 +343,11 @@ export function chaveAtiva(view: string): NavKey | null {
     case "acessos":
     case "pops":
       return view;
+    case "relatoriosemitidos":
+    case "dossie":
+    case "resumo":
+    case "evolucao":
+      return "relatorios";
     default:
       return null;
   }

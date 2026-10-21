@@ -89,7 +89,7 @@ test("itens exclusivos da visita só aparecem dentro dela", () => {
 
 test("PC: topo, grupo da visita (só dentro dela), apoio e administração; Registrar fica fora", () => {
   const dentro = menuLateralPC(contexto("Administrador", true));
-  assert.deepEqual(chaves(dentro.topo), ["inicio", "visitas", "empresas", "pops"]);
+  assert.deepEqual(chaves(dentro.topo), ["inicio", "visitas", "empresas", "pops", "relatorios"]);
   assert.deepEqual(chaves(dentro.etapas), ["central", "checklist", "evidencias", "ncs", "plano", "acompanhamento", "relatorio"]);
   assert.deepEqual(chaves(dentro.apoio), ["ajuda"]);
   assert.deepEqual(chaves(dentro.admin), ["acessos"]);
@@ -128,7 +128,7 @@ test("etapas: cada perfil vê só o que pode usar", () => {
   ]);
   assert.deepEqual(chaves(etapasDaVisita(semUsuario(true))), ["central"]);
   const cliente = menuLateralPC(contexto("Cliente Gestor", true));
-  assert.deepEqual(chaves(cliente.topo), ["inicio", "visitas", "empresas"]);
+  assert.deepEqual(chaves(cliente.topo), ["inicio", "visitas", "empresas", "relatorios"]);
   assert.deepEqual(chaves(cliente.etapas), ["central", "ncs", "plano", "acompanhamento", "relatorio"]);
   assert.deepEqual(chaves(cliente.apoio), ["ajuda"]);
   assert.deepEqual(cliente.admin, []);

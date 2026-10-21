@@ -28,9 +28,9 @@ test("Registrar agora: empresa ativa sem visita aberta não sugere a de outra em
 });
 
 test("⋯ de Empresas por perfil", () => {
-  assert.deepEqual(acoesDaEmpresa({ podeEditar: true, podeGerenciarAcessos: true, arquivada: false }), ["editar", "cor", "historico", "acessos", "arquivar"]);
-  assert.deepEqual(acoesDaEmpresa({ podeEditar: true, podeGerenciarAcessos: false, arquivada: true }), ["editar", "cor", "historico", "desarquivar"]);
-  assert.deepEqual(acoesDaEmpresa({ podeEditar: false, podeGerenciarAcessos: false, arquivada: false }), ["historico"]);
+  assert.deepEqual(acoesDaEmpresa({ podeEditar: true, podeGerenciarAcessos: true, arquivada: false }), ["central", "cor", "historico", "acessos", "arquivar"]);
+  assert.deepEqual(acoesDaEmpresa({ podeEditar: true, podeGerenciarAcessos: false, arquivada: true }), ["central", "cor", "historico", "desarquivar"]);
+  assert.deepEqual(acoesDaEmpresa({ podeEditar: false, podeGerenciarAcessos: false, arquivada: false }), ["central", "historico"]);
 });
 
 test("⋯ de Visitas por perfil e situação", () => {

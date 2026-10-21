@@ -59,7 +59,7 @@ export default function TrocarEmpresaPainel({
           )}
         </div>
         <div className="campo-sheet-foot">
-          <button type="button" className="campo-btn campo-btn--outline" onClick={onFechar}>
+          <button type="button" className="campo-btn campo-btn--cinza" onClick={onFechar}>
             Fechar
           </button>
         </div>

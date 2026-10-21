@@ -12,6 +12,7 @@ export type NavIconName =
   | "plano"
   | "acompanhamento"
   | "relatorio"
+  | "relatorios"
   | "empresas"
   | "pops"
   | "acessos"
@@ -101,6 +102,13 @@ const TRACADOS: Record<NavIconName, ReactNode> = {
       <path d="M6 3h8l4 4v14H6z" />
       <path d="M14 3v4h4" />
       <path d="M9 13h6M9 17h6" />
+    </>
+  ),
+  relatorios: (
+    <>
+      <path d="M7 3h8l3 3v13H7z" />
+      <path d="M4 7v14h11" />
+      <path d="M10 12h5M10 16h5" />
     </>
   ),
   pops: (

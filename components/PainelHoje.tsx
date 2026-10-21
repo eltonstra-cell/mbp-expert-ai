@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { Pill, type Tom } from "@/components/ui/Pill";
 import type { ItemDoPainel, OrigemDoItem, PainelHoje as Painel, SituacaoDoItem } from "@/lib/painelHoje";
 import { vencem } from "@/lib/plural";
 
+const ITENS_INICIAIS = 3;
 const TOM: Record<SituacaoDoItem, Tom> = { vencido: "nc", "vence-em-breve": "amber", aguardando: "info" };
 const ROTULO: Record<SituacaoDoItem, string> = { vencido: "Vencido", "vence-em-breve": "Vence em breve", aguardando: "Aguardando" };
 // Tipo de cada item: correção, comprovante, capacitação ou POP.
@@ -23,6 +25,8 @@ type Props = {
 
 // "Hoje precisa de você": contadores e lista por urgência, com a ação ao lado de cada item.
 export default function PainelHoje({ painel, onAcao, onLembrete, onResumo, onEvolucao, onDossie, onEmitidos }: Props) {
+  const [verTodos, setVerTodos] = useState(false);
+  const visiveis = verTodos ? painel.itens : painel.itens.slice(0, ITENS_INICIAIS);
   return (
     <section className="ui-card hoje" aria-label="Hoje precisa de você">
       <div className="pc-card-head">
@@ -39,7 +43,7 @@ export default function PainelHoje({ painel, onAcao, onLembrete, onResumo, onEvo
         <p className="ui-row-sub">Nada vencido nem vencendo.</p>
       ) : (
         <ul className="hoje-lista">
-          {painel.itens.map((item) => (
+          {visiveis.map((item) => (
             <li key={item.id} className={`hoje-item hoje-item--${item.situacao}`}>
               <span className={`hoje-tipo hoje-tipo--${item.origem}`}>{TIPO[item.origem]}</span>
               <div className="hoje-textos">
@@ -50,12 +54,17 @@ export default function PainelHoje({ painel, onAcao, onLembrete, onResumo, onEvo
               </div>
               {/* A faixa colorida e o prazo já dizem "vencido" e "vence em breve"; a etiqueta só entra quando acrescenta algo. */}
               {item.situacao === "aguardando" && <Pill tom={TOM[item.situacao]}>{ROTULO[item.situacao]}</Pill>}
-              <button type="button" className={`ui-btn ui-btn--small ${item.acao === "aprovar" || item.acao === "renovar" ? "ui-btn--primary" : "ui-btn--secondary"}`} onClick={() => onAcao(item)}>
+              <button type="button" className={`ui-btn ui-btn--small ${item.acao === "aprovar" || item.acao === "renovar" ? "ui-btn--criar" : "ui-btn--secondary"}`} onClick={() => onAcao(item)}>
                 {item.rotuloDaAcao}
               </button>
             </li>
           ))}
         </ul>
+      )}
+      {painel.itens.length > ITENS_INICIAIS && (
+        <button type="button" className="pc-link-btn pc-self-start" onClick={() => setVerTodos((valor) => !valor)}>
+          {verTodos ? "Mostrar só os 3 primeiros" : `Ver todos (${painel.itens.length})`}
+        </button>
       )}
       <div className="hoje-rodape">
         <span className="hoje-botoes">

@@ -1,9 +1,11 @@
 import type { NavItem, NavKey } from "@/lib/navigation";
-import { ROTULO_DA_SUBABA, type SubAbaCentral } from "./centralEmpresa.ts";
+import { GRUPOS_DA_CENTRAL, ROTULO_DA_SUBABA, grupoDaSubaba, type SubAbaCentral } from "./centralEmpresa.ts";
 
 // Busca LOCAL da caixa inteligente (Ctrl K): sem IA e sem chamada externa.
 // O índice é montado só com o que o perfil já pode ver (itens do menu filtrados por
 // permissão, empresas/visitas/ambientes/itens que a tela já carregou). Nada é registrado em log.
+
+export type AbaDeRelatorios = "emitidos" | "resumo" | "dossie" | "evolucao";
 
 export type GrupoBusca = "ir" | "agir" | "itens" | "empresas";
 
@@ -15,6 +17,7 @@ export type AcaoDestino =
   | { tipo: "item"; id: string; ambiente: string }
   | { tipo: "continuar" }
   | { tipo: "central"; subaba: SubAbaCentral }
+  | { tipo: "relatorios"; aba: AbaDeRelatorios }
   | { tipo: "registrar" };
 
 export type Destino = {
@@ -174,7 +177,8 @@ const SINONIMOS_NAV: Partial<Record<NavKey, string[]>> = {
   plano: ["acoes", "acao corretiva", "prazos"],
   acompanhamento: ["acompanhar", "correcao"],
   relatorio: ["pdf", "imprimir", "exportar"],
-  pops: ["procedimentos", "documentos", "pops", "central da empresa", "norma"],
+  pops: ["procedimentos", "documentos"],
+  relatorios: ["relatorios emitidos", "dossie", "resumo", "evolucao"],
   acessos: ["usuarios", "permissoes", "pessoas"],
   ajuda: ["guias", "duvidas", "manual"],
 };
@@ -195,6 +199,21 @@ export type EntradaDeDestinos = {
   podeChecklist: boolean;
   /** Sub-abas da Central da Empresa que o perfil enxerga (vazio: sem empresa ativa ou sem acesso). */
   subabasCentral?: SubAbaCentral[];
+  /** Sub-aba que "Central" abre: a última usada na empresa ou Empresa › Dados. */
+  subabaCentralInicial?: SubAbaCentral;
+  /** Nome da empresa ativa, para o título "Central da Empresa · Nome". */
+  nomeEmpresaAtiva?: string;
+  /** Abas de Relatórios que o perfil enxerga (vazio: sem acesso ou sem empresa ativa). */
+  abasRelatorios?: AbaDeRelatorios[];
+};
+
+const TITULO_DA_SUBABA: Partial<Record<SubAbaCentral, string>> = { dados: "Dados da empresa", pops: "POPs da empresa" };
+
+const ROTULO_DA_ABA_DE_RELATORIOS: Record<AbaDeRelatorios, { titulo: string; rotulo: string; sinonimos: string[] }> = {
+  emitidos: { titulo: "Relatórios emitidos", rotulo: "Emitidos", sinonimos: ["assinados", "numero do relatorio", "pdf"] },
+  resumo: { titulo: "Resumo de uma página", rotulo: "Resumo", sinonimos: ["resumo", "uma pagina", "enviar resumo"] },
+  dossie: { titulo: "Dossiê da empresa", rotulo: "Dossiê", sinonimos: ["dossie", "fiscalizacao", "documentos reunidos"] },
+  evolucao: { titulo: "Evolução da empresa", rotulo: "Evolução", sinonimos: ["evolucao", "historico de notas", "melhora"] },
 };
 
 const SINONIMOS_SUBABA: Record<SubAbaCentral, string[]> = {
@@ -251,21 +270,34 @@ export function construirDestinos(entrada: EntradaDeDestinos): Destino[] {
     destinos.push({
       id: "ir:central-empresa",
       grupo: "ir",
-      titulo: "Central da Empresa",
-      detalhe: "Dados, norma, ambientes e documentos da empresa ativa",
+      titulo: entrada.nomeEmpresaAtiva ? `Central da Empresa · ${entrada.nomeEmpresaAtiva}` : "Central da Empresa",
+      detalhe: "Empresas › Central da Empresa",
       sinonimos: ["central", "empresa", "dados da empresa", "cadastro", "documentos", "norma", "pops"],
-      acao: { tipo: "central", subaba: subabas.includes("dados") ? "dados" : subabas[0] },
+      acao: { tipo: "central", subaba: entrada.subabaCentralInicial && subabas.includes(entrada.subabaCentralInicial) ? entrada.subabaCentralInicial : subabas.includes("dados") ? "dados" : subabas[0] },
     });
     for (const subaba of subabas) {
+      const grupo = GRUPOS_DA_CENTRAL.find((item) => item.id === grupoDaSubaba(subaba));
       destinos.push({
         id: `ir:central:${subaba}`,
         grupo: "ir",
-        titulo: `Central › ${ROTULO_DA_SUBABA[subaba]}`,
-        detalhe: "Empresa ativa",
-        sinonimos: ["central da empresa", ...SINONIMOS_SUBABA[subaba]],
+        titulo: TITULO_DA_SUBABA[subaba] || ROTULO_DA_SUBABA[subaba],
+        detalhe: `Central › ${grupo?.rotulo ?? ""} › ${ROTULO_DA_SUBABA[subaba]}`,
+        sinonimos: ["central", "central da empresa", "empresa", ...SINONIMOS_SUBABA[subaba]],
         acao: { tipo: "central", subaba },
       });
     }
+  }
+
+  for (const aba of entrada.abasRelatorios || []) {
+    const dados = ROTULO_DA_ABA_DE_RELATORIOS[aba];
+    destinos.push({
+      id: `ir:relatorios:${aba}`,
+      grupo: "ir",
+      titulo: dados.titulo,
+      detalhe: `Relatórios › ${dados.rotulo}`,
+      sinonimos: ["relatorio", "relatorios", ...dados.sinonimos],
+      acao: { tipo: "relatorios", aba },
+    });
   }
 
   if (entrada.visitaEmAndamentoId && entrada.podeChecklist) {

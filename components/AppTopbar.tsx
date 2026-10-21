@@ -1,9 +1,12 @@
 "use client";
 
-import type { CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { NavIcon } from "@/components/NavIcons";
 import { RowMenu, type ItemMenu } from "@/components/ui/RowMenu";
 import { ROTULO_DE_USO, type ModoTela } from "@/lib/screenMode";
+
+// Exemplos que trocam a cada poucos segundos na barra (só o texto de ajuda; nada é buscado sozinho).
+const EXEMPLOS_DA_BARRA = ["nova visita, POPs, correções abertas", "relatório emitido, dossiê, norma", "ambientes, comprovantes, pessoas", "central da empresa, dados, responsável"];
 
 const ROTULO_SYNC = { ok: "Sincronizado", pendente: "Sincronizando…", erro: "Sem conexão" } as const;
 
@@ -33,6 +36,8 @@ type Props = {
   onAbrirConfigModo?: () => void;
   /** Abre o painel de trocar empresa sobre a tela atual (o chip vira botão). */
   onTrocarEmpresa?: () => void;
+  /** Chips logo abaixo da barra; cada um chama a mesma ação do menu. */
+  atalhos?: { id: string; rotulo: string; onClick: () => void }[];
 };
 
 export default function AppTopbar({
@@ -53,7 +58,13 @@ export default function AppTopbar({
   onVoltarAoAutomatico,
   onAbrirConfigModo,
   onTrocarEmpresa,
+  atalhos = [],
 }: Props) {
+  const [exemplo, setExemplo] = useState(0);
+  useEffect(() => {
+    const timer = window.setInterval(() => setExemplo((atual) => (atual + 1) % EXEMPLOS_DA_BARRA.length), 4500);
+    return () => window.clearInterval(timer);
+  }, []);
   const itensModo: ItemMenu[] =
     modo && onEscolherModo
       ? [
@@ -130,12 +141,13 @@ export default function AppTopbar({
           </span>
         )}
       </div>    </div>
+    <div className="pc-smartwrap">
     <div className="pc-smartbar">
       <span className="pc-bolt" aria-hidden="true">
-        <NavIcon name="raio" size={16} />
+        <NavIcon name="raio" size={22} />
       </span>
       <button type="button" className="pc-smartbar-field" onClick={() => onAbrirCaixa(false)} aria-label="Abrir a caixa inteligente (Ctrl K)">
-        <span className="pc-smartbar-text">Diga o que quer fazer ou para onde quer ir</span>
+        <span className="pc-smartbar-text">Ex.: {EXEMPLOS_DA_BARRA[exemplo]}</span>
         <span className="pc-smartbar-text-short">Diga o que quer fazer</span>
         <kbd className="pc-kbd">Ctrl K</kbd>
       </button>
@@ -147,6 +159,17 @@ export default function AppTopbar({
       <button type="button" className="pc-go" onClick={() => onAbrirCaixa(false)}>
         Ir →
       </button>
+    </div>
+    {atalhos.length > 0 && (
+      <div className="pc-atalhos" role="group" aria-label="Atalhos">
+        <span className="pc-atalhos-rotulo">Atalhos</span>
+        {atalhos.map((atalho) => (
+          <button key={atalho.id} type="button" className="pc-atalho" onClick={atalho.onClick}>
+            {atalho.rotulo}
+          </button>
+        ))}
+      </div>
+    )}
     </div>
     </>
   );
