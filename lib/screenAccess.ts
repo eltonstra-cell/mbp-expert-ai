@@ -93,11 +93,11 @@ export const PADRAO_DO_PERFIL: Record<PerfilUsuario, Record<TelaKey, NivelTela>>
   // Executor de campo: só Início, Checklist e Evidências (com Registrar agora), nas empresas atribuídas.
   "Executor de campo": montar({ inicio: "simples", checklist: "editar", evidencias: "editar" }),
   // Fiscal: leitura, só do que está pronto (POPs aprovados; relatórios emitidos e dossiê ainda não existem).
-  Fiscal: montar({ inicio: "simples", guiaRapido: "ver" }),
+  Fiscal: montar({ inicio: "simples", guiaRapido: "ver", pops: "ver" }),
 };
 
 /** Telas que o Fiscal pode ter, sempre sem edição. Ajustes por pessoa nunca passam disto. */
-const TELAS_DO_FISCAL: TelaKey[] = ["inicio", "guiaRapido", "manualCompleto"];
+const TELAS_DO_FISCAL: TelaKey[] = ["inicio", "guiaRapido", "manualCompleto", "pops"];
 const NIVEIS_DO_FISCAL: NivelTela[] = ["oculta", "ver", "simples", "completo"];
 
 /** Ações liberadas por cada (tela, nível). Telas só de leitura liberam só a visão. */

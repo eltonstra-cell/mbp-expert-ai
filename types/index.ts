@@ -61,6 +61,8 @@ export type Empresa = {
   registroProvaPorPop?: Record<string, string>;
   /** Responsável do estabelecimento (RDC 216, 4.11.2): só a pessoa vinculada em Acessos aprova POPs. */
   responsavelEstabelecimento?: { nome: string; cargo: string; usuarioId?: string };
+  /** Passos de implantação ("Colocar a empresa em dia"). Ausente = empresa antiga: tratada como concluída, sem o cartão. */
+  implantacao?: { ativa: boolean; criadaEm: string };
 };
 
 export type PrivacidadeEmpresa = {
@@ -230,6 +232,8 @@ export type VersaoPop = {
   aprovacao?: AprovacaoPop;
   revisarAte?: string;
   versaoCatalogo?: Record<string, string>;
+  /** Por que esta versão foi criada (opcional, escrito por quem iniciou a nova versão). */
+  motivo?: string;
 };
 
 export type ProcedimentoOperacionalPadronizado = {
@@ -255,6 +259,8 @@ export type ProcedimentoOperacionalPadronizado = {
   versoes?: VersaoPop[];
   /** Versão do catálogo de cada norma no momento da aprovação. */
   versaoCatalogoAprovada?: Record<string, string>;
+  /** Motivo da versão em edição (vai para o histórico quando a versão é aprovada). */
+  motivoDaVersao?: string;
 };
 
 export type ChecklistStatus = "Pendente" | "Conforme" | "Não Conforme" | "Não se aplica";
@@ -540,6 +546,8 @@ export type ComprovanteTerceiro = {
   nomeArquivo?: string;
   mimeType?: string;
   observacao: string;
+  /** POP a que o comprovante pertence (opcional). Sem POP: comprovante geral da empresa. */
+  popId?: string;
   /** Comprovante que este renovou. */
   renovaId?: string;
   criadoPorId?: string;

@@ -3,11 +3,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { ConteudoPop, Empresa, PassoPop, ProcedimentoOperacionalPadronizado, UsuarioSistema } from "@/types";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
-import { Pill } from "@/components/ui/Pill";
-import PcRegistrosDoPop from "@/components/pc/PcRegistrosDoPop";
-import PcTreinamentoDoPop from "@/components/pc/PcTreinamentoDoPop";
-import { useRegistrosDaEmpresa } from "@/components/RegistrosEmpresaContext";
-import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import {
   CONJUNTO_DA_NORMA,
   MENSAGEM_NORMA_ALTERADA,
@@ -17,12 +12,10 @@ import {
   motivoParaNaoAprovar,
   podeAprovarPop,
   popPrecisaRevisarPorNorma,
-  situacaoDoPop,
   textoDaFaixaDoTextoBase,
 } from "@/lib/popsNorma";
 import { normasDaEmpresa } from "@/lib/normas";
 
-type Aba = "procedimento" | "versoes" | "registros" | "treinamento";
 type Secao = "identificacao" | "objetivo" | "referencias" | "responsavel" | "passos" | "acao" | "registro" | "extra" | "extra2";
 
 type Props = {
@@ -34,8 +27,9 @@ type Props = {
   onEnviar: (pop: ProcedimentoOperacionalPadronizado) => void;
   onAprovar: (pop: ProcedimentoOperacionalPadronizado) => void;
   onNovaVersao: (pop: ProcedimentoOperacionalPadronizado) => void;
-  onVoltar: () => void;
   mensagem?: string;
+  /** Documento (editor) ou Histórico (versões, aprovações e motivo). O cabeçalho e as abas ficam na ficha do POP. */
+  parte?: "documento" | "historico";
 };
 
 function SecaoRecolhivel({ id, titulo, resumo, aberta, onAlternar, children }: { id: Secao; titulo: string; resumo?: string; aberta: boolean; onAlternar: (id: Secao) => void; children: ReactNode }) {
@@ -75,15 +69,10 @@ function umAnoDepois(): string {
 const passosPorPagina = (largo: boolean) => (largo ? 4 : 2);
 
 // POP em campos: Procedimento e Versões. Registros e Treinamento aparecem como "em breve".
-export default function PcPopEditor({ pop, empresa, usuario, podeEditar, onSalvarRascunho, onEnviar, onAprovar, onNovaVersao, onVoltar, mensagem }: Props) {
+export default function PcPopEditor({ pop, empresa, usuario, podeEditar, onSalvarRascunho, onEnviar, onAprovar, onNovaVersao, mensagem, parte = "documento" }: Props) {
   const [rascunho, setRascunho] = useState<ProcedimentoOperacionalPadronizado>(pop);
-  const contextoDaEmpresa = useRegistrosDaEmpresa();
-  const temRegistros = Boolean(contextoDaEmpresa);
-  // Treinamento nominal: só para quem gerencia pessoas (nem Fiscal nem Executor).
-  const temTreinamento = Boolean(contextoDaEmpresa?.podeGerenciarPessoas);
-  const [aba, setAba] = useState<Aba>("procedimento");
+  const [motivoDaNovaVersao, setMotivoDaNovaVersao] = useState("");
   const [secao, setSecao] = useState<Secao | null>("passos");
-  const [emBreve, setEmBreve] = useState("");
   const [tocado, setTocado] = useState(false);
   // Com muitos passos a lista não rola por dentro do editor: eles ficam em páginas.
   const [paginaPassos, setPaginaPassos] = useState(0);
@@ -107,7 +96,6 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, onSalva
   const paginaDosPassos = Math.min(paginaPassos, totalDePaginasDosPassos - 1);
   const totalDePaginasDasRefs = Math.max(1, Math.ceil((conteudo.referencias || []).length / REFS_POR_PAGINA));
   const paginaDasRefs = Math.min(paginaRefs, totalDePaginasDasRefs - 1);
-  const situacao = situacaoDoPop(rascunho);
   const editavel = podeEditar && (rascunho.status === "Rascunho");
   const faltas = faltasParaEnviar(rascunho);
   const normas = normasDaEmpresa(empresa);
@@ -134,7 +122,7 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, onSalva
 
   const versoes = useMemo(() => {
     const guardadas = rascunho.versoes || [];
-    const atual = { versao: rascunho.versao, status: rascunho.status, conteudo: rascunho.conteudo, aprovacao: rascunho.aprovacao, criadaEm: "" };
+    const atual = { versao: rascunho.versao, status: rascunho.status, conteudo: rascunho.conteudo, aprovacao: rascunho.aprovacao, criadaEm: "", motivo: rascunho.motivoDaVersao };
     return guardadas.some((versao) => versao.versao === rascunho.versao) ? guardadas : [...guardadas, atual];
   }, [rascunho]);
   const escolhidaA = versoes.find((versao) => versao.versao === versaoA) || versoes[0];
@@ -144,21 +132,7 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, onSalva
   const erroTitulo = !rascunho.titulo.trim() ? "Informe o título do POP." : "";
 
   return (
-    <section className="ui-screen pop-editor" aria-label="POP em campos">
-      <div className="ui-head">
-        <div>
-          <h1 className="ui-title">{`${rascunho.codigo ? `${rascunho.codigo} · ` : ""}${rascunho.titulo || "POP"}`}</h1>
-          <div className="pc-badges">
-            <Pill tom={situacao === "Aprovado" ? "ok" : situacao === "Vencido" ? "nc" : situacao === "Aguardando aprovação" ? "info" : "pend"}>{situacao}</Pill>
-            <Pill tom="na">versão {rascunho.versao}</Pill>
-            {popPrecisaRevisarPorNorma(rascunho) && <span className="pop-revisar">Revisar</span>}
-          </div>
-        </div>
-        <button type="button" className="ui-btn ui-btn--secondary" onClick={onVoltar}>
-          ← Voltar
-        </button>
-      </div>
-
+    <section className="pop-editor pop-editor--ficha" aria-label={parte === "historico" ? "Histórico do POP" : "Documento do POP"}>
       {rascunho.origemTextoBase && rascunho.status === "Rascunho" && (
         <div className="priv-faixa" role="status">
           <span>{textoDaFaixaDoTextoBase(rascunho)}</span>
@@ -170,22 +144,7 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, onSalva
         </div>
       )}
 
-      <div className="pop-abas">
-        <SegmentedTabs<Aba>
-          rotulo="Partes do POP"
-          valor={aba}
-          onChange={setAba}
-          abas={[
-            { id: "procedimento", rotulo: "Procedimento" },
-            { id: "versoes", rotulo: "Versões", contagem: versoes.length },
-            ...(temRegistros ? [{ id: "registros" as const, rotulo: "Registros" }] : []),
-            ...(temTreinamento ? [{ id: "treinamento" as const, rotulo: "Treinamento" }] : []),
-          ]}
-        />
-      </div>
-      {emBreve && <p className="ui-row-sub pop-breve-nota">{emBreve} ainda não está disponível: fica para um próximo pacote.</p>}
-
-      {aba === "procedimento" && (
+      {parte === "documento" && (
         <div className="pop-secoes">
           <SecaoRecolhivel id="identificacao" titulo="Identificação" resumo={rascunho.proximaRevisao ? `revisar até ${rascunho.proximaRevisao.split("-").reverse().join("/")}` : "revisar até: não definido"} aberta={secao === "identificacao"} onAlternar={alternar}>
             <div className="pop-grade">
@@ -369,27 +328,18 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, onSalva
         </div>
       )}
 
-      {aba === "treinamento" && temTreinamento && (
-        <div className="pop-registros-area">
-          <PcTreinamentoDoPop pop={rascunho} />
-        </div>
-      )}
-
-      {aba === "registros" && temRegistros && (
-        <div className="pop-registros-area">
-          <PcRegistrosDoPop pop={rascunho} />
-        </div>
-      )}
-
-      {aba === "versoes" && (
+      {parte === "historico" && (
         <div className="pop-versoes">
           <div className="ui-list">
             {versoes.map((versao) => (
               <div key={versao.versao} className="ui-card pop-versao-linha">
                 <span className="pop-versao-n">v{versao.versao}</span>
-                <span className="ui-row-sub">
-                  {versao.status}
-                  {versao.aprovacao ? ` · aprovada por ${versao.aprovacao.nome}${versao.aprovacao.cargo ? `, ${versao.aprovacao.cargo}` : ""} em ${new Date(versao.aprovacao.em).toLocaleDateString("pt-BR")}` : ""}
+                <span className="pop-versao-textos">
+                  <span className="pop-versao-linha1">
+                    {versao.status}
+                    {versao.aprovacao ? ` · aprovada por ${versao.aprovacao.nome}${versao.aprovacao.cargo ? `, ${versao.aprovacao.cargo}` : ""} em ${new Date(versao.aprovacao.em).toLocaleDateString("pt-BR")}` : ""}
+                  </span>
+                  <span className="pop-versao-motivo">Motivo: {versao.motivo?.trim() || (versao.versao === versoes[0]?.versao ? "primeira versão" : "não informado")}</span>
                 </span>
               </div>
             ))}
@@ -436,9 +386,10 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, onSalva
         </div>
       )}
 
-      {mensagem && <div className="ui-note">{mensagem}</div>}
-      {aguardando && !podeAprovar && <p className="ui-row-sub pop-aviso-aprovacao">{motivoParaNaoAprovar(usuario, empresa) || "Aguardando a aprovação do responsável do estabelecimento."}</p>}
+      {parte === "documento" && mensagem && <div className="ui-note">{mensagem}</div>}
+      {parte === "documento" && aguardando && !podeAprovar && <p className="ui-row-sub pop-aviso-aprovacao">{motivoParaNaoAprovar(usuario, empresa) || "Aguardando a aprovação do responsável do estabelecimento."}</p>}
 
+      {parte === "documento" && (
       <div className="ui-footer pop-rodape">
         <span className="ui-row-sub">{alterou ? "● Alterações ainda não salvas" : "✓ Tudo salvo"}</span>
         <div className="pop-rodape-acoes">
@@ -458,12 +409,16 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, onSalva
             </button>
           )}
           {podeEditar && (rascunho.status === "Aprovado") && (
-            <button type="button" className="ui-btn ui-btn--criar" onClick={() => onNovaVersao(rascunho)}>
-              Editar (cria nova versão)
-            </button>
+            <>
+              <input className="ui-input pop-motivo-versao" value={motivoDaNovaVersao} onChange={(evento) => setMotivoDaNovaVersao(evento.target.value)} placeholder="Motivo da nova versão (opcional)" aria-label="Motivo da nova versão" />
+              <button type="button" className="ui-btn ui-btn--criar" onClick={() => onNovaVersao({ ...rascunho, motivoDaVersao: motivoDaNovaVersao.trim() || undefined })}>
+                Editar (cria nova versão)
+              </button>
+            </>
           )}
         </div>
       </div>
+      )}
     </section>
   );
 }

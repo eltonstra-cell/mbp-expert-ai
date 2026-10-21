@@ -19,7 +19,7 @@ import {
 import { hojeISO } from "@/lib/popsNorma";
 import type { ComprovanteTerceiro, TipoComprovante } from "@/types";
 
-export type DadosDoFormulario = Pick<ComprovanteTerceiro, "tipo" | "emissor" | "dataServico" | "validade" | "observacao"> & { id?: string; renovaId?: string };
+export type DadosDoFormulario = Pick<ComprovanteTerceiro, "tipo" | "emissor" | "dataServico" | "validade" | "observacao"> & { id?: string; renovaId?: string; popId?: string };
 
 type Props = {
   empresa: string;
@@ -34,6 +34,12 @@ type Props = {
   onVoltar: () => void;
   /** Abre direto o formulário de renovação deste comprovante (vindo do painel "Hoje"). */
   renovarId?: string;
+  /** Dentro da ficha do POP: sem título nem "Voltar" próprios. */
+  embutido?: boolean;
+  /** Dentro da ficha do POP o vínculo já está escolhido. */
+  popFixo?: { id: string; rotulo: string };
+  /** Fora da ficha: lista dos POPs que existem, para o campo opcional "POP vinculado". */
+  popsParaVincular?: { id: string; rotulo: string }[];
 };
 
 const TOM: Record<SituacaoDaValidade, Tom> = { vencido: "nc", "vence-em-breve": "amber", "em-dia": "ok", "sem-validade": "na" };
@@ -49,12 +55,12 @@ function vazio(): DadosDoFormulario {
 }
 
 // "Comprovantes e documentos com validade": certificados de terceiros com semáforo por item.
-export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, online, onSalvar, onRemover, urlDoArquivo, onVoltar, renovarId }: Props) {
+export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, online, onSalvar, onRemover, urlDoArquivo, onVoltar, renovarId, embutido = false, popFixo, popsParaVincular }: Props) {
   const hoje = hojeISO();
   const [formAberto, setFormAberto] = useState(Boolean(renovarId && podeGerenciar));
   const [dados, setDados] = useState<DadosDoFormulario>(() => {
     const origem = renovarId ? comprovantes.find((item) => item.id === renovarId) : undefined;
-    return origem && podeGerenciar ? { tipo: origem.tipo, emissor: origem.emissor, dataServico: "", validade: "", observacao: "", renovaId: origem.id } : vazio();
+    return origem && podeGerenciar ? { tipo: origem.tipo, emissor: origem.emissor, dataServico: "", validade: "", observacao: "", renovaId: origem.id, ...(origem.popId ? { popId: origem.popId } : {}) } : vazio();
   });
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [arrastando, setArrastando] = useState(false);
@@ -114,24 +120,30 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
     setFormAberto(false);
   }
 
+  const todosOsPops = popFixo ? [popFixo] : popsParaVincular || [];
+
   const campo = (nome: keyof DadosDoFormulario, valor: string) => setDados((atual) => ({ ...atual, [nome]: valor }));
 
   return (
-    <section className="ui-screen comp" aria-label="Comprovantes e documentos com validade">
+    <section className={`${embutido ? "ui-embed comp--embutido" : "ui-screen"} comp`} aria-label="Comprovantes e documentos com validade">
       <div className="ui-head">
-        <div>
-          <h1 className="ui-title">Comprovantes e documentos com validade</h1>
-          <p className="ui-subtitle">Certificados de terceiros · {empresa}</p>
-        </div>
+        {!embutido && (
+          <div>
+            <h1 className="ui-title">Comprovantes e documentos com validade</h1>
+            <p className="ui-subtitle">Certificados de terceiros · {empresa}</p>
+          </div>
+        )}
         <div className="ui-head-actions">
           {podeGerenciar && (
             <button type="button" className="ui-btn ui-btn--criar" onClick={() => abrir(vazio())}>
               + Anexar comprovante
             </button>
           )}
-          <button type="button" className="ui-btn ui-btn--secondary" onClick={onVoltar}>
-            ← Voltar
-          </button>
+          {!embutido && (
+            <button type="button" className="ui-btn ui-btn--secondary" onClick={onVoltar}>
+              ← Voltar
+            </button>
+          )}
         </div>
       </div>
 
@@ -173,7 +185,7 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
                           <button
                             type="button"
                             className="ui-btn ui-btn--primary ui-btn--small"
-                            onClick={() => abrir({ tipo: item.tipo, emissor: item.emissor, dataServico: "", validade: "", observacao: "", renovaId: item.id })}
+                            onClick={() => abrir({ tipo: item.tipo, emissor: item.emissor, dataServico: "", validade: "", observacao: "", renovaId: item.id, ...(item.popId ? { popId: item.popId } : {}) })}
                           >
                             Renovar
                           </button>
@@ -183,7 +195,7 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
                     menu={
                       podeGerenciar
                         ? [
-                            { rotulo: "Editar", onClick: () => abrir({ id: item.id, tipo: item.tipo, emissor: item.emissor, dataServico: item.dataServico, validade: item.validade, observacao: item.observacao }) },
+                            { rotulo: "Editar", onClick: () => abrir({ id: item.id, tipo: item.tipo, emissor: item.emissor, dataServico: item.dataServico, validade: item.validade, observacao: item.observacao, ...(item.popId ? { popId: item.popId } : {}) }) },
                             { rotulo: "Remover comprovante", perigo: true, confirmar: "Remover este comprovante? O arquivo anexado também será apagado.", onClick: () => onRemover(item) },
                           ]
                         : undefined
@@ -208,6 +220,19 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
                 ))}
               </select>
             </label>
+            {todosOsPops.length > 0 && (
+              <label className="pc-field">
+                <span className="ui-eyebrow">POP vinculado (opcional)</span>
+                <select className="ui-input" value={popFixo ? popFixo.id : dados.popId || ""} disabled={Boolean(popFixo)} onChange={(evento) => setDados((atual) => ({ ...atual, popId: evento.target.value || undefined }))}>
+                  {!popFixo && <option value="">Nenhum (comprovante geral da empresa)</option>}
+                  {todosOsPops.map((pop) => (
+                    <option key={pop.id} value={pop.id}>
+                      {pop.rotulo}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
             <label className="pc-field">
               <span className="ui-eyebrow">Emissor</span>
               <input className={`ui-input${tocado && erros.emissor ? " is-invalid" : ""}`} value={dados.emissor} onChange={(evento) => campo("emissor", evento.target.value)} aria-invalid={Boolean(tocado && erros.emissor)} />

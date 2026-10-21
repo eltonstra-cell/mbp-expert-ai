@@ -2,11 +2,12 @@
 
 import { createContext, useContext } from "react";
 import type { ResultadoDoRegistro, DadosDoRegistro } from "@/lib/registrosEmpresa";
-import type { Colaborador, ComprovanteTerceiro, Empresa, LeituraPop, RegistroPop, UsuarioSistema } from "@/types";
+import type { Colaborador, ComprovanteTerceiro, Empresa, LeituraPop, NaoConformidade, RegistroPop, UsuarioSistema } from "@/types";
+import type { DadosDoFormulario } from "@/components/pc/PcComprovantes";
 
 export type NovoRegistroDados = Pick<DadosDoRegistro, "popId" | "popVersao" | "dataHora" | "descricao" | "ambiente" | "corrigeRegistroId">;
 
-// Dados da empresa que as abas Registros e Treinamento do POP usam, sem passar prop por todos os níveis.
+// Dados da empresa que a lista de POPs e a ficha do POP (Registros, Comprovantes, Quem leu) usam, sem passar prop por todos os níveis.
 export type RegistrosEmpresaValor = {
   empresaId: string;
   empresa?: Empresa;
@@ -24,6 +25,17 @@ export type RegistrosEmpresaValor = {
   novoRegistro: (dados: NovoRegistroDados) => ResultadoDoRegistro;
   definirGuarda: (dias: number) => void;
   definirProva: (popId: string, registroId: string) => void;
+  /** Correções da empresa (só para quem acompanha correções): a lista de POPs usa para "correção atrasada". */
+  ncs: NaoConformidade[];
+  /** Ambientes cadastrados na empresa (o registro escolhe de uma lista, não digita). */
+  ambientes: string[];
+  /** Comprovantes: Administrador, RT, Gestor e Gerente gerenciam; o Fiscal lê; o Executor não vê. */
+  podeGerenciarComprovantes: boolean;
+  podeVerComprovantes: boolean;
+  online: boolean;
+  salvarComprovante: (dados: DadosDoFormulario, arquivo: File | null) => Promise<string>;
+  removerComprovante: (comprovante: ComprovanteTerceiro) => void;
+  urlDoComprovante: (comprovante: ComprovanteTerceiro) => string;
 };
 
 export const RegistrosEmpresaContext = createContext<RegistrosEmpresaValor | null>(null);

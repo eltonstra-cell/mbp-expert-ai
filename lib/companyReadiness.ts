@@ -1,4 +1,5 @@
 import type { Empresa } from "@/types";
+import { responsavelEfetivo } from "./responsavelEstabelecimento.ts";
 
 export type EtapaConfiguracaoEmpresa = {
   id: "dados" | "manual" | "ambientes" | "fluxos" | "programas" | "pops";
@@ -33,7 +34,7 @@ export function etapasConfiguracaoEmpresa(
       concluida:
         preenchido(empresa.nomeFantasia || empresa.razaoSocial) &&
         preenchido(empresa.cnpj) &&
-        preenchido(empresa.responsavel),
+        Boolean(responsavelEfetivo(empresa).nome),
       essencial: true,
     },
     {
@@ -111,7 +112,7 @@ export function preparacaoDaEmpresa(empresa?: Empresa) {
     preenchido(empresa?.horarioFuncionamento) ||
     (empresa?.horariosFuncionamento || []).some((dia) => dia.aberto);
   const itens: ItemPreparacao[] = [
-    { id: "responsavel", titulo: "Responsável", ok: preenchido(empresa?.responsavel) },
+    { id: "responsavel", titulo: "Responsável", ok: Boolean(responsavelEfetivo(empresa).nome) },
     { id: "horario", titulo: "Horário de funcionamento", ok: temHorario },
     { id: "setores", titulo: "Pelo menos 1 setor", ok: setores > 0 },
     { id: "equipamentos", titulo: "Pelo menos 1 equipamento", ok: equipamentos > 0 },
@@ -140,7 +141,7 @@ export function faltasDoCadastro(empresa?: Empresa): string[] {
   const faltas: string[] = [];
   if (!preenchido(empresa.nomeFantasia || empresa.razaoSocial)) faltas.push("nome");
   if (!preenchido(empresa.cnpj)) faltas.push("CNPJ");
-  if (!preenchido(empresa.responsavel)) faltas.push("responsável");
+  if (!responsavelEfetivo(empresa).nome) faltas.push("responsável");
   if ((empresa.setoresManual || []).length === 0) faltas.push("ambientes");
   return faltas;
 }

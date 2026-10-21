@@ -199,7 +199,7 @@ export default function PcEmpresas({
                     <Pill tom={empresa.faltas.length === 0 ? "ok" : "pend"}>
                       {empresa.faltas.length === 0 ? "Cadastro completo" : "Cadastro incompleto"}
                     </Pill>
-                    {empresa.faltas.length > 0 && <span className="ui-row-sub">Falta: {empresa.faltas.join(", ")}</span>}
+                    {empresa.faltas.length > 0 && <span className="ui-row-sub">Falta: {empresa.faltas.map((falta) => (falta === "responsável" ? "responsável do estabelecimento (em Dados)" : falta)).join(", ")}</span>}
                   </span>
                 }
                 acao={

@@ -136,7 +136,15 @@ export default function PcRegistrosDoPop({ pop }: { pop: ProcedimentoOperacional
               </label>
               <label className="pc-field">
                 <span className="ui-eyebrow">Ambiente (opcional)</span>
-                <input className="ui-input" value={ambiente} onChange={(evento) => setAmbiente(evento.target.value)} />
+                <select className="ui-input ui-input--lista" value={ambiente} onChange={(evento) => setAmbiente(evento.target.value)}>
+                  <option value="">Sem ambiente</option>
+                  {contexto.ambientes.map((nome) => (
+                    <option key={nome} value={nome}>
+                      {nome}
+                    </option>
+                  ))}
+                </select>
+                {contexto.ambientes.length === 0 && <span className="ui-row-sub">Cadastre os ambientes em Estrutura › Ambientes e equipamentos.</span>}
               </label>
             </div>
             <label className="pc-field">

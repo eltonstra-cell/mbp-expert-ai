@@ -3562,3 +3562,114 @@ html[data-modo="equilibrado"] .campo-tela{height:calc(100dvh - 190px - var(--fai
   #relatorio-emitido-doc,#relatorio-emitido-doc *,#dossie-pagina,#dossie-pagina *{visibility:visible}
   #relatorio-emitido-doc,#dossie-pagina{position:absolute;inset:0 auto auto 0;width:100%;max-width:none;border:0;border-radius:0}
 }
+
+/* ===== Ajustes: Central em 3 grupos, lista de POPs com situação, ficha do POP, "Colocar em dia" ===== */
+.central-empresa{display:flex;flex-direction:column;gap:12px;padding-bottom:24px}
+.cen-cabeca{align-items:flex-end}
+.cen-cabeca .ui-title{font-size:1.8rem;font-weight:500;color:#12202B}
+.cen-nav{display:flex;flex-direction:column;gap:8px}
+.cen-grupos,.cen-subabas{display:flex;flex-wrap:wrap;gap:8px}
+.cen-grupo{min-height:38px;padding:0 20px;border:2px solid transparent;border-radius:12px;background:#EEF1F5;font-size:.98rem;color:#12202B;cursor:pointer}
+.cen-sub{min-height:34px;padding:0 14px;border:2px solid transparent;border-radius:12px;background:#EEF1F5;font-size:.88rem;color:#12202B;cursor:pointer}
+.cen-grupo.is-ativo,.cen-sub.is-ativa{border-color:#E8B04B;background:#FEF6E6}
+.cen-sub-conta{margin-left:6px;padding:0 7px;border-radius:999px;background:#B35A36;font-size:.72rem;color:#fff}
+.cen-conteudo{display:flex;flex-direction:column;gap:12px}
+.cen-msg{margin:0}
+.cen-salvar{position:sticky;bottom:0;z-index:5;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;border:1px solid var(--border);border-radius:14px;background:#fff}
+.cen-salvar-aviso{font-size:.88rem;color:#3D5160}
+.cen-salvar-aviso.is-pendente{color:#12202B}
+
+/* Lista de POPs */
+.pgl{display:flex;flex-direction:column;gap:12px}
+.pgl-topo{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:10px}
+.pgl-h{margin:0;font-family:var(--font-display),"Outfit",sans-serif;font-size:1.6rem;font-weight:500;color:#12202B}
+.pgl-sub{margin:2px 0 0;font-size:.92rem;color:#3D5160}
+.pgl-criar{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.pgl-motivo{font-size:.84rem;color:#3D5160}
+.pgl-resp{display:flex;flex-direction:column;gap:8px}
+.pgl-resp-linha{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;font-size:.92rem;color:#12202B}
+.pgl-resp-aviso{padding:2px 10px;border:1px solid #E8B04B;border-radius:999px;background:#FFF3D6;font-size:.82rem;color:#12202B}
+.pgl-resp-botoes{display:flex;flex-wrap:wrap;gap:8px}
+.pgl-contadores{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.pgl-conta{display:flex;flex-direction:column;padding:10px 14px;border-radius:14px;font-size:.88rem;color:#12202B}
+.pgl-conta-n{font-family:var(--font-display),"Outfit",sans-serif;font-size:1.7rem;font-weight:500;line-height:1.15}
+.pgl-conta--ok{background:#E3F6EA}.pgl-conta--aguarda{background:#FFF3D6}.pgl-conta--pend{background:#FDE7E7}.pgl-conta--falta{background:#EEF1F5}
+.pgl-lista{display:flex;flex-direction:column;gap:8px}
+.pgl-secao{margin-top:4px;font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;color:#3D5160}
+.pgl-linha{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:10px 14px;border:2px solid #B4C2CE;border-radius:16px;background:#fff}
+.pgl-linha.is-destaque{border-color:#E8B04B;background:#FEF6E6}
+.pgl-linha.is-arquivado{opacity:.7}
+.pgl-faixa{flex:0 0 8px;align-self:stretch;min-height:36px;border-radius:4px}
+.pgl-textos{display:flex;min-width:0;flex:1 1 260px;flex-direction:column;gap:2px}
+.pgl-titulo{font-family:var(--font-display),"Outfit",sans-serif;font-size:1.1rem;font-weight:500;line-height:1.25;color:#12202B;overflow-wrap:anywhere}
+.pgl-detalhe{font-size:.88rem;color:#3D5160}
+.pgl-situacao{display:flex;flex:0 0 170px;flex-wrap:wrap;align-items:center;gap:6px}
+.pgl-etiqueta{display:inline-flex;align-items:center;padding:2px 12px;border-radius:999px;font-size:.82rem;font-weight:400;white-space:nowrap}
+.pgl-acao{flex:0 1 240px;font-size:.92rem;color:#12202B}
+.pgl-botoes{display:flex;flex:none;align-items:center;gap:6px}
+.pgl-sem-botao{font-size:.84rem;color:#3D5160}
+.pgl-adicionar{display:flex;flex-wrap:wrap;align-items:flex-start;gap:8px}
+.pgl-rodape{margin:0;font-size:.84rem;color:#3D5160}
+@media (max-width:900px){.pgl-contadores{grid-template-columns:repeat(2,minmax(0,1fr))}.pgl-situacao,.pgl-acao{flex:1 1 100%}}
+
+/* Ficha do POP */
+.ficha{display:flex;flex-direction:column;gap:12px}
+.ficha-topo{display:flex;flex-direction:column;gap:10px}
+.ficha-titulo-linha{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.ficha-titulo{margin:0;font-family:var(--font-display),"Outfit",sans-serif;font-size:1.6rem;font-weight:500;line-height:1.2;color:#12202B}
+.ficha-chip{display:inline-flex;align-items:center;padding:2px 12px;border-radius:999px;background:#EEF1F5;font-size:.82rem;color:#12202B}
+.ficha-chip--modelo{border:1px solid #E8B04B;background:#FEF6E6}
+.ficha-abas{display:flex;flex-wrap:wrap;gap:8px}
+.ficha-aba{min-height:38px;padding:0 18px;border:2px solid transparent;border-radius:12px;background:#EEF1F5;font-size:.95rem;color:#12202B;cursor:pointer}
+.ficha-aba.is-ativa{border-color:#E8B04B;background:#FEF6E6}
+.ficha-corpo{display:flex;flex-direction:column;gap:12px}
+.ficha-resumo{display:flex;flex-direction:column;gap:12px}
+.ficha-cartoes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.ficha-cartao{display:flex;flex-direction:column;padding:10px 14px;border-radius:14px}
+.ficha-cartao--ok{background:#E3F6EA}.ficha-cartao--pend{background:#FFF3D6}.ficha-cartao--nc{background:#FDE7E7}.ficha-cartao--na{background:#EEF1F5}
+.ficha-cartao-rotulo{font-size:.84rem;color:#3D5160}
+.ficha-cartao-valor{font-family:var(--font-display),"Outfit",sans-serif;font-size:1.15rem;font-weight:500;color:#12202B}
+.ficha-proxima{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border:2px solid #E8B04B;border-radius:14px;background:#FEF6E6}
+.ficha-proxima-textos{display:flex;flex-direction:column;gap:2px}
+.ficha-proxima-titulo{font-family:var(--font-display),"Outfit",sans-serif;font-size:1.1rem;font-weight:500;color:#12202B}
+.ficha-proxima-texto{font-size:.98rem;color:#12202B}
+.ficha-duas{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.ficha-coluna{display:flex;flex-direction:column;gap:6px}
+.ficha-sub{margin:0;font-family:var(--font-display),"Outfit",sans-serif;font-size:1rem;font-weight:500;color:#12202B}
+.ficha-lista{display:flex;flex-direction:column;gap:4px;margin:0;padding:0;list-style:none;font-size:.9rem;color:#3D5160}
+.ficha-vazio{margin:0;font-size:.9rem;color:#3D5160}
+.ficha-rodape-resumo{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px}
+.ficha-nota{font-size:.84rem;color:#3D5160}
+.ficha-botoes{display:flex;flex-wrap:wrap;gap:10px}
+.ficha-editor[hidden]{display:none}
+.pop-editor--ficha{display:flex;flex-direction:column;gap:10px}
+.pop-editor--ficha .pop-secoes{overflow:visible}
+.pop-versao-textos{display:flex;flex-direction:column;gap:2px}
+.pop-versao-linha1{font-size:.92rem;color:#12202B}
+.pop-versao-motivo{font-size:.86rem;color:#3D5160}
+.pop-motivo-versao{min-width:220px;max-width:320px}
+.norma-responsavel{margin:0;font-family:var(--font-display),"Outfit",sans-serif;font-size:1.1rem;font-weight:500;color:#12202B}
+@media (max-width:900px){.ficha-cartoes{grid-template-columns:repeat(2,minmax(0,1fr))}.ficha-duas{grid-template-columns:1fr}}
+.ui-embed{display:flex;flex-direction:column;gap:14px}
+
+/* Colocar a empresa em dia */
+.impl-cartao{display:flex;flex-direction:column;gap:10px;padding:14px 18px;border:2px solid #B4C2CE;border-radius:16px;background:#fff}
+.impl-topo{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.impl-titulo{margin:0;font-family:var(--font-display),"Outfit",sans-serif;font-size:1.25rem;font-weight:500;color:#12202B}
+.impl-conta{font-size:.92rem;color:#3D5160}
+.impl-barra{height:10px;border-radius:5px;background:#EEF1F5}
+.impl-barra-cheia{height:10px;border-radius:5px;background:#E8B04B}
+.impl-passos{display:flex;flex-direction:column;gap:8px;margin:0;padding:0;list-style:none}
+.impl-passo{display:flex;align-items:center;gap:14px;padding:8px 14px;border:2px solid #B4C2CE;border-radius:14px;background:#fff}
+.impl-passo.is-atual{border-color:#E8B04B;background:#FEF6E6}
+.impl-bolinha{display:grid;flex:0 0 32px;place-items:center;width:32px;height:32px;border-radius:50%;background:#EEF1F5;font-size:.95rem;color:#12202B}
+.impl-passo.is-feito .impl-bolinha{background:#2E8B57;color:#fff}
+.impl-passo.is-atual .impl-bolinha{background:#E8B04B;color:#12202B}
+.impl-textos{display:flex;flex:1;min-width:0;flex-direction:column}
+.impl-passo-titulo{font-family:var(--font-display),"Outfit",sans-serif;font-size:1.02rem;font-weight:500;color:#12202B}
+.impl-passo-detalhe{font-size:.88rem;color:#3D5160}
+.quest-origem{display:inline-flex;align-items:center;min-height:24px;padding:0 10px;border-radius:999px;font-size:.84rem;font-weight:400;white-space:nowrap}
+.quest-origem--modelo{background:#2F6FB5;color:#fff}
+.quest-origem--empresa{background:#FFF3D6;color:#12202B;border:1px solid #E8B04B}
+.em-breve{min-height:26px;font-size:.86rem;color:#12202B}
+.pop-conferir{font-size:.86rem;color:#12202B}

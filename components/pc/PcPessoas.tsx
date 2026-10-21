@@ -31,6 +31,8 @@ type Props = {
   onSalvarCapacitacao: (dados: DadosDaCapacitacaoForm) => void;
   onRemoverCapacitacao: (id: string) => void;
   onVoltar: () => void;
+  /** Dentro da Central (Documentos › Pessoas): sem título nem Voltar próprios. */
+  embutido?: boolean;
 };
 
 type Aba = "colaboradores" | "capacitacao";
@@ -44,7 +46,7 @@ function dataBr(iso: string) {
 }
 
 // Pessoas da empresa: cadastro leve (nome e cargo) e capacitação nominal com vencimento. Não é conta de acesso.
-export default function PcPessoas({ empresa, normas, colaboradores, capacitacoes, onSalvarColaborador, onAlternarAtivo, onSalvarCapacitacao, onRemoverCapacitacao, onVoltar }: Props) {
+export default function PcPessoas({ empresa, normas, colaboradores, capacitacoes, onSalvarColaborador, onAlternarAtivo, onSalvarCapacitacao, onRemoverCapacitacao, onVoltar, embutido = false }: Props) {
   const [aba, setAba] = useState<Aba>("colaboradores");
   const [pessoa, setPessoa] = useState<DadosDoColaboradorForm>({ nome: "", cargo: "" });
   const [pessoaTocada, setPessoaTocada] = useState(false);
@@ -79,16 +81,18 @@ export default function PcPessoas({ empresa, normas, colaboradores, capacitacoes
   }
 
   return (
-    <section className="ui-screen pess" aria-label="Pessoas da empresa">
-      <div className="ui-head">
-        <div>
-          <h1 className="ui-title">Pessoas</h1>
-          <p className="ui-subtitle">Equipe e capacitação · {empresa}</p>
+    <section className={`${embutido ? "ui-embed pess--embutido" : "ui-screen"} pess`} aria-label="Pessoas da empresa">
+      {!embutido && (
+        <div className="ui-head">
+          <div>
+            <h1 className="ui-title">Pessoas</h1>
+            <p className="ui-subtitle">Equipe e capacitação · {empresa}</p>
+          </div>
+          <button type="button" className="ui-btn ui-btn--secondary" onClick={onVoltar}>
+            ← Voltar
+          </button>
         </div>
-        <button type="button" className="ui-btn ui-btn--secondary" onClick={onVoltar}>
-          ← Voltar
-        </button>
-      </div>
+      )}
 
       <SegmentedTabs<Aba>
         rotulo="Pessoas"

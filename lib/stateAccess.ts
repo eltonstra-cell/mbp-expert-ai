@@ -309,7 +309,12 @@ export function mesclarEstadoPorUsuario(
     registrosPop = mesclarRegistrosPop(atual.registrosPop || [], recebido.registrosPop || [], atual.empresas, empresaIds, usuario.id);
   }
   if (podeGerenciarComprovantes(efetivo)) {
-    comprovantes = mesclarPorEscopo("comprovantes", atual.comprovantes || [], recebido.comprovantes || [], empresaIds, true).map((item) => ({ ...item, criadoPorId: item.criadoPorId || usuario.id }));
+    comprovantes = mesclarPorEscopo("comprovantes", atual.comprovantes || [], recebido.comprovantes || [], empresaIds, true).map((item) => {
+      // POP vinculado só vale se o POP existe na empresa do comprovante (no que já estava gravado ou no que chegou agora).
+      const existe = [...(atual.empresas[item.empresaId]?.pops || []), ...(recebido.empresas[item.empresaId]?.pops || [])].some((pop) => pop.id === item.popId);
+      const { popId: _popId, ...semPop } = item;
+      return { ...semPop, ...(item.popId && existe ? { popId: item.popId } : {}), criadoPorId: item.criadoPorId || usuario.id };
+    });
   }
 
   if (podeGerenciarPessoas(efetivo)) {
@@ -334,6 +339,8 @@ export function mesclarEstadoPorUsuario(
         empresas[empresaId] = {
           ...comIa,
           questionarios: podeEditarQuestionario(efetivo) ? comIa.questionarios : gravada?.questionarios,
+          // Os passos de "Colocar a empresa em dia" só nascem com a empresa (Administrador): quem edita não liga nem desliga.
+          implantacao: gravada?.implantacao,
           responsavelEstabelecimento: comIa.responsavelEstabelecimento
             ? { ...comIa.responsavelEstabelecimento, usuarioId: gravada?.responsavelEstabelecimento?.usuarioId }
             : gravada?.responsavelEstabelecimento,

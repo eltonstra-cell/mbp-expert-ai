@@ -107,7 +107,12 @@ import { iniciaisDaEmpresa, chaveAtiva, itemDoMenu, itensVisiveis, nomeSemNumero
 import ManualBaseFields from "@/components/ManualBaseFields";
 import OperationalFlowsFields from "@/components/OperationalFlowsFields";
 import QualityProgramsFields from "@/components/QualityProgramsFields";
-import PopsFields from "@/components/PopsFields";
+import CentralEmpresaNav from "@/components/pc/CentralEmpresaNav";
+import PcImplantacao from "@/components/pc/PcImplantacao";
+import { gruposVisiveis, lembrarSubaba, lerSubabaLembrada, resolverSubaba, subabasVisiveis, type SubAbaCentral } from "@/lib/centralEmpresa";
+import { empresaTemImplantacao, implantacaoConcluida, implantacaoDeEmpresaNova, passosDeImplantacao } from "@/lib/implantacao";
+import { divergenciaDeResponsavel, responsavelEfetivo, textoDoResponsavel } from "@/lib/responsavelEstabelecimento";
+import type { AbaFicha } from "@/components/pc/PcFichaPop";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
 import { BRAND } from "@/lib/brand";
 import pacote from "../package.json";
@@ -224,7 +229,7 @@ import {
 import { resumoConfiguracaoEmpresa } from "@/lib/companyReadiness";
 
 type View = "inicio" | "pops" | "ajuda" | "empresas" | "visitas" | "visita" | "ambientes" | "checklist" | "ncs" | "plano" | "acompanhamento" | "historico" | "evidencias" | "relatorio" | "acessos" | "correcoes" | "popsvisita" | "modotela" | "campomais" | "fila" | "comprovantes" | "pessoas" | "resumo" | "relatoriosemitidos" | "dossie" | "evolucao";
-type EmpresaSecao = "dados" | "manual" | "ambientes" | "fluxos" | "programas" | "pops" | "privacidade" | "norma";
+type EmpresaSecao = SubAbaCentral;
 type FiltroChecklistRapido = "Todos" | "Pendentes" | "Não conformes";
 
 const NAV_STORAGE_KEY = "mbp-expert-ai:navegacao:v1";
@@ -699,18 +704,6 @@ function VoiceDictationButton({
   );
 }
 
-function CompanySectionIcon({ name }: { name: EmpresaSecao }) {
-  const common = { width: 23, height: 23, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, "aria-hidden": true };
-  if (name === "dados") return <svg {...common}><path d="M4 5h16v14H4z" /><path d="M8 9h4M8 13h8M8 16h6" /></svg>;
-  if (name === "manual") return <svg {...common}><path d="M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3Z" /><path d="M8 17h10M9 8h5M9 11h6" /></svg>;
-  if (name === "ambientes") return <svg {...common}><path d="M3 21h18M5 21V7h9v14M14 11h5v10" /><path d="M8 10h3M8 14h3M17 14h.01M17 18h.01" /></svg>;
-  if (name === "fluxos") return <svg {...common}><path d="M4 6h11M15 6l-2-2M15 6l-2 2M20 12H9M9 12l2-2M9 12l2 2M4 18h11M15 18l-2-2M15 18l-2 2" /></svg>;
-  if (name === "programas") return <svg {...common}><path d="M7 4h10v4H7z" /><path d="M5 6H4v15h16V6h-1" /><path d="m8 14 2 2 5-5" /></svg>;
-  if (name === "norma") return <svg {...common}><path d="M6 3h9l4 4v14H6z" /><path d="M15 3v5h5M9 12h6M9 16h4" /></svg>;
-  if (name === "privacidade") return <svg {...common}><path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6z" /><path d="m9 12 2 2 4-4" /></svg>;
-  return <svg {...common}><path d="M7 3h8l4 4v14H7z" /><path d="M15 3v5h5M10 12h6M10 16h6" /><path d="M4 7v13" /></svg>;
-}
-
 type VisitAreaIconName = "evidencias" | "plano" | "relatorio" | "equipamentos" | "programas";
 
 function VisitAreaIcon({ name }: { name: VisitAreaIconName }) {
@@ -1074,6 +1067,12 @@ export default function Home() {
   const [showEmpresaForm, setShowEmpresaForm] = useState(false);
   const [editingEmpresaId, setEditingEmpresaId] = useState<string | null>(null);
   const [empresaSecao, setEmpresaSecao] = useState<EmpresaSecao | null>(null);
+  // Quem não edita a empresa vê só Documentos (POPs, Comprovantes, Pessoas): a sub-aba aberta fica aqui.
+  const [usuarioResponsavelForm, setUsuarioResponsavelForm] = useState("");
+  const [docSecao, setDocSecao] = useState<SubAbaCentral>("pops");
+  // Pedido para abrir a ficha de um POP (vindo do painel, de uma correção ou de outra tela).
+  const [fichaPedida, setFichaPedida] = useState<{ popId: string; aba?: AbaFicha; chave: number } | null>(null);
+  const [verPassosDeImplantacao, setVerPassosDeImplantacao] = useState(false);
   const [showVisitaForm, setShowVisitaForm] = useState(false);
   const [visitaAtualId, setVisitaAtualId] = useState<string | null>(null);
   const [criandoVisita, setCriandoVisita] = useState(false);
@@ -1202,7 +1201,6 @@ export default function Home() {
   });
   const empresaTemAlteracoes =
     showEmpresaForm &&
-    empresaSecao !== null &&
     Boolean(assinaturaEmpresaSalva) &&
     assinaturaEmpresaAtual !== assinaturaEmpresaSalva;
   const popsComRevisaoVencida = popsEmpresa.filter(
@@ -1898,16 +1896,33 @@ export default function Home() {
     window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, "_blank", "noopener");
   }
 
+  // Uma porta só: POPs, Comprovantes e Pessoas ficam em Central › Documentos. Quem edita a empresa abre a Central;
+  // quem só lê (Gerente, Gestor, Fiscal) abre o mesmo Documentos, sem as áreas de configuração.
+  function abrirDocumentos(sub: SubAbaCentral) {
+    if (!atual) {
+      void avisar("Escolha a empresa para abrir os documentos.", { titulo: "Escolha a empresa" });
+      setView("empresas");
+      return;
+    }
+    if (permitido("empresas.editar", atual.id)) {
+      void abrirSecaoEmpresaPeloMenu(sub);
+      return;
+    }
+    setDocSecao(sub);
+    setView("pops");
+  }
+
   function abrirComprovantes() {
-    setOrigemDosRegistros({ view, secao: empresaSecao });
-    if (view === "empresas" && editingEmpresaId) setDb((o) => ({ ...o, empresaAtualId: editingEmpresaId }));
-    setView("comprovantes");
+    abrirDocumentos("comprovantes");
   }
 
   function abrirPessoas() {
-    setOrigemDosRegistros({ view, secao: empresaSecao });
-    if (view === "empresas" && editingEmpresaId) setDb((o) => ({ ...o, empresaAtualId: editingEmpresaId }));
-    setView("pessoas");
+    abrirDocumentos("pessoas");
+  }
+
+  function abrirFichaDoPop(popId: string, aba?: AbaFicha) {
+    setFichaPedida({ popId, aba, chave: Date.now() });
+    abrirDocumentos("pops");
   }
 
   function salvarColaborador(dados: { id?: string; nome: string; cargo: string }) {
@@ -1963,17 +1978,6 @@ export default function Home() {
     });
   }
 
-  function voltarDosComprovantes() {
-    const origem = origemDosRegistros;
-    setOrigemDosRegistros(null);
-    if (origem) {
-      setView(origem.view);
-      setEmpresaSecao(origem.secao);
-    } else {
-      setView("inicio");
-    }
-  }
-
   // Comprovante: o arquivo vai para o armazenamento (exige internet; não entra na fila offline) e só então o registro é salvo.
   async function salvarComprovante(dados: DadosDoFormulario, arquivo: File | null): Promise<string> {
     const empresaId = atual?.id;
@@ -2021,6 +2025,8 @@ export default function Home() {
       ...(nomeArquivo ? { nomeArquivo } : {}),
       ...(mimeType ? { mimeType } : {}),
       ...(dados.renovaId || anterior?.renovaId ? { renovaId: dados.renovaId || anterior?.renovaId } : {}),
+      // POP vinculado: só vale se o POP existe nesta empresa (sem POP: comprovante geral da empresa).
+      ...(dados.popId && (db.empresas[empresaId]?.pops || []).some((pop) => pop.id === dados.popId) ? { popId: dados.popId } : {}),
       criadoPorId: anterior?.criadoPorId || usuarioDaSessao?.id,
       criadoEm: anterior?.criadoEm || new Date().toISOString(),
     };
@@ -2414,7 +2420,6 @@ export default function Home() {
   // O RT é avisado no Início quando a norma citada por um POP aprovado mudou no catálogo.
   const avisoPopsDoInicio = atual && usuarioDaSessao && permitido("empresas.editar", atual.id) ? avisoDePopsComNormaAlterada(atual.pops || []) : null;
 
-  const [origemDosRegistros, setOrigemDosRegistros] = useState<{ view: View; secao: typeof empresaSecao } | null>(null);
   const empresaDosRegistros = view === "empresas" && editingEmpresaId ? db.empresas[editingEmpresaId] : atual;
   const podeCriarRegistro = !usuarioDaSessao || podeCriarRegistroPop(usuarioDaSessao);
   const podeGerenciarComprovantesAqui = !usuarioDaSessao || podeGerenciarComprovantes(usuarioDaSessao);
@@ -2452,6 +2457,14 @@ export default function Home() {
           });
         },
         podeEditarEmpresa: permitido("empresas.editar", empresaDosRegistros.id),
+        ncs: permitido("ncs.acompanhar", empresaDosRegistros.id) ? db.ncs.filter((nc) => nc.empresaId === empresaDosRegistros.id) : [],
+        ambientes: empresaDosRegistros.setoresManual || [],
+        podeGerenciarComprovantes: podeGerenciarComprovantesAqui,
+        podeVerComprovantes: podeVerComprovantesAqui,
+        online,
+        salvarComprovante,
+        removerComprovante,
+        urlDoComprovante: (item) => `/api/comprovantes/file?pathname=${encodeURIComponent(item.blobPathname || "")}`,
         novoRegistro: (dados) => {
           const resultado = criarRegistroPop({
             ...dados,
@@ -2515,7 +2528,18 @@ export default function Home() {
   const empresaGerenciada = editingEmpresaId
     ? db.empresas[editingEmpresaId]
     : atual;
+  // Telas antigas de Comprovantes e Pessoas: levam para a sub-aba correspondente de Documentos.
+  useEffect(() => {
+    if (view === "comprovantes") abrirDocumentos("comprovantes");
+    else if (view === "pessoas") abrirDocumentos("pessoas");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view]);
   const configuracaoEmpresaGerenciada = resumoConfiguracaoEmpresa(empresaGerenciada);
+  // Central da Empresa (quem edita) e Documentos (quem só lê): o que cada perfil enxerga e qual sub-aba está aberta.
+  const quemVeNaCentral = { editar: true, verComprovantes: podeVerComprovantesAqui, gerenciarPessoas: podeGerenciarPessoasAqui && usuarioDaSessao?.perfil !== "Fiscal" && usuarioDaSessao?.perfil !== "Executor de campo" };
+  const quemVeNosDocumentos = { ...quemVeNaCentral, editar: false };
+  const secaoEmpresa: EmpresaSecao | null = editingEmpresaId ? resolverSubaba(empresaSecao, lerSubabaLembrada(editingEmpresaId), subabasVisiveis(quemVeNaCentral)) : empresaSecao;
+  const subabaDosDocumentos = resolverSubaba(docSecao, null, subabasVisiveis(quemVeNosDocumentos));
   const visitaAtualCadastrada = visitaAtualId
     ? db.visitas.find((v) => v.id === visitaAtualId)
     : undefined;
@@ -3340,6 +3364,10 @@ export default function Home() {
     }
     const id = editingEmpresaId || form.cnpj.replace(/\D/g, "") || crypto.randomUUID();
     const anterior = editingEmpresaId ? db.empresas[editingEmpresaId] : undefined;
+    // Responsável do estabelecimento: fonte única em Dados. Só o Administrador escolhe a pessoa de Acessos (o servidor repete a regra).
+    const nomeResponsavel = form.responsavel.trim();
+    const cargoResponsavel = form.cargoResponsavel.trim();
+    const vinculoResponsavel = !usuarioDaSessao || usuarioDaSessao.perfil === "Administrador" ? usuarioResponsavelForm || undefined : anterior?.responsavelEstabelecimento?.usuarioId;
     const emp: Empresa = {
       id,
       ...form,
@@ -3370,8 +3398,14 @@ export default function Home() {
             guardaRegistrosDias: anterior.guardaRegistrosDias,
             questionarios: anterior.questionarios,
             registroProvaPorPop: anterior.registroProvaPorPop,
+            // Empresa cadastrada antes do "Colocar em dia" não ganha o cartão: o campo só existe em empresa nova.
+            ...(anterior.implantacao ? { implantacao: anterior.implantacao } : {}),
           }
-        : {}),
+        : { implantacao: implantacaoDeEmpresaNova(new Date().toISOString()) }),
+      responsavelEstabelecimento:
+        nomeResponsavel || cargoResponsavel || vinculoResponsavel
+          ? { nome: nomeResponsavel, cargo: cargoResponsavel, ...(vinculoResponsavel ? { usuarioId: vinculoResponsavel } : {}) }
+          : undefined,
     };
     setDb((o) => ({
       ...o,
@@ -3413,14 +3447,14 @@ export default function Home() {
       uf: empresa.uf || "",
       telefone: empresa.telefone || "",
       email: empresa.email || "",
-      responsavel: empresa.responsavel || "",
+      responsavel: responsavelEfetivo(empresa).nome,
       horarioFuncionamento:
         empresa.horarioFuncionamento ||
         (empresa.horariosFuncionamento?.some((item) => item.aberto)
           ? resumirHorarioFuncionamento(empresa.horariosFuncionamento)
           : ""),
       atividadeDescricao: empresa.atividadeDescricao || "",
-      cargoResponsavel: empresa.cargoResponsavel || "",
+      cargoResponsavel: responsavelEfetivo(empresa).cargo,
       consultorNome: empresa.consultorNome || "",
       consultorCpfCnpj: empresa.consultorCpfCnpj || "",
       consultorEndereco: empresa.consultorEndereco || "",
@@ -3461,6 +3495,9 @@ export default function Home() {
       programas: programasCarregados,
       pops: popsCarregados,
     }));
+    setUsuarioResponsavelForm(empresa.responsavelEstabelecimento?.usuarioId || "");
+    // A Central trabalha na empresa aberta: comprovantes, pessoas e registros usam a empresa ativa.
+    setDb((o) => (o.empresaAtualId === empresa.id ? o : { ...o, empresaAtualId: empresa.id }));
     setEditingEmpresaId(empresa.id);
     setEmpresaSecao(null);
     setMsg("");
@@ -4246,17 +4283,9 @@ export default function Home() {
     setView(destino);
   }
 
+  // "POPs e documentos": uma porta só, Central › Documentos › POPs da empresa ativa (sem empresa, pede para escolher).
   function abrirPopsPeloAtalho() {
-    if (!atual) {
-      setView("empresas");
-      return;
-    }
-    // Sem permissão de editar, quem tem a tela POPs só lê e, sendo o responsável do estabelecimento, aprova.
-    if (!permitido("empresas.editar", atual.id) && telaVisivel("pops")) {
-      setView("pops");
-      return;
-    }
-    abrirSecaoEmpresaPeloMenu("pops");
+    abrirDocumentos("pops");
   }
 
   // abrirCamera=false (caixa inteligente): só leva à tela de captura, sem tentar abrir a câmera.
@@ -4283,6 +4312,7 @@ export default function Home() {
       programas: programasIniciais,
       pops: [],
     }));
+    setUsuarioResponsavelForm("");
     setEmpresaSecao("dados");
     setMsg("");
     setShowEmpresaForm(true);
@@ -5648,7 +5678,7 @@ export default function Home() {
     }));
   }
 
-  // Norma aplicável e responsável do estabelecimento: vale na hora e fica no histórico.
+  // Norma aplicável: vale na hora e fica no histórico. O responsável do estabelecimento é definido em Dados.
   function salvarNormaDaEmpresa(empresaId: string, dados: DadosDaNorma) {
     const alvo = db.empresas[empresaId];
     if (!alvo) return;
@@ -5666,7 +5696,7 @@ export default function Home() {
         entidade: "Empresa",
         entidadeId: empresaId,
         empresaId,
-        detalhes: `${alvo.nomeFantasia} • normas: ${dados.normasAplicadas.join(", ") || "nenhuma"}${confirmou ? " • confirmadas pelo RT" : ""} • responsável do estabelecimento: ${dados.responsavel.nome || "não informado"}.`,
+        detalhes: `${alvo.nomeFantasia} • normas: ${dados.normasAplicadas.join(", ") || "nenhuma"}${confirmou ? " • confirmadas pelo RT" : ""}.`,
       },
       agora
     );
@@ -5678,7 +5708,6 @@ export default function Home() {
           ...estado.empresas[empresaId],
           normasAplicadas: dados.normasAplicadas,
           normasConfirmadasPeloRt: confirmou,
-          responsavelEstabelecimento: dados.responsavel.nome || dados.responsavel.cargo ? dados.responsavel : undefined,
         },
       },
       registrosAuditoria: [...estado.registrosAuditoria, registro],
@@ -5953,8 +5982,119 @@ export default function Home() {
     setView(destino);
   }
 
+  // Central da Empresa: ir para uma sub-aba lembra a escolha por empresa (estado local).
+  function irParaSubaba(sub: SubAbaCentral) {
+    setEmpresaSecao(sub);
+    if (editingEmpresaId) lembrarSubaba(editingEmpresaId, sub);
+    setMsg("");
+  }
+
+  // Documentos (POPs, Comprovantes, Pessoas): o mesmo conteúdo na Central de quem edita e no Documentos de quem só lê.
+  function conteudoDeDocumentos(sub: SubAbaCentral, empresaDoc: Empresa, podeEditarDoc: boolean) {
+    if (sub === "pops") {
+      const efetivo = responsavelEfetivo(empresaDoc);
+      const divergencia = podeEditarDoc ? divergenciaDeResponsavel(empresaDoc) : null;
+      const passos = podeEditarDoc && empresaTemImplantacao(empresaDoc)
+        ? passosDeImplantacao(empresaDoc, { colaboradores: (db.colaboradores || []).filter((pessoa) => pessoa.empresaId === empresaDoc.id), leiturasPop: db.leiturasPop, registrosPop: db.registrosPop })
+        : null;
+      const concluida = passos ? implantacaoConcluida(passos) : false;
+      const topo = passos ? (
+        concluida && !verPassosDeImplantacao ? (
+          <button type="button" className="pc-link-btn pc-self-start" onClick={() => setVerPassosDeImplantacao(true)}>
+            Ver passos de implantação
+          </button>
+        ) : (
+          <PcImplantacao passos={passos} onContinuar={(destino) => (destino === "pops" ? undefined : irParaSubaba(destino))} />
+        )
+      ) : null;
+      const responsavel = (
+        <>
+          <div className="pgl-resp-linha">
+            <span>
+              Responsável do estabelecimento: <strong>{textoDoResponsavel(efetivo) || "ainda não definido"}</strong>
+              {efetivo.origem === "pops" ? " (vindo do campo antigo dos POPs)" : ""}
+            </span>
+            {podeEditarDoc && (
+              <button type="button" className="pc-link-btn" onClick={() => irParaSubaba("dados")}>
+                Alterar em Dados
+              </button>
+            )}
+            {!efetivo.vinculado && <span className="pgl-resp-aviso">Sem pessoa de Acessos vinculada, ninguém aprova POP.</span>}
+          </div>
+          {divergencia && (
+            <div className="priv-faixa" role="status">
+              <span>
+                Dados diz “{divergencia.dados}” e os POPs trazem {divergencia.pops.map((nome) => `“${nome}”`).join(", ")}. Escolha qual vale.
+              </span>
+              <span className="pgl-resp-botoes">
+                <button
+                  type="button"
+                  className="ui-btn ui-btn--secondary ui-btn--small"
+                  onClick={() => persistirPopsDaEmpresa(empresaDoc.id, (empresaDoc.pops || []).map((pop) => (pop.responsavel ? { ...pop, responsavel: "" } : pop)))}
+                >
+                  Usar o de Dados
+                </button>
+                <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => irParaSubaba("dados")}>
+                  Trocar em Dados
+                </button>
+              </span>
+            </div>
+          )}
+        </>
+      );
+      return (
+        <PcPops
+          pops={empresaDoc.pops || []}
+          empresa={empresaDoc}
+          usuario={usuarioDaSessao}
+          podeEditar={podeEditarDoc}
+          onPersistir={(novos) => persistirPopsDaEmpresa(empresaDoc.id, novos)}
+          topo={topo}
+          responsavel={responsavel}
+          abrirFicha={fichaPedida}
+          aoConsumirPedido={() => setFichaPedida(null)}
+        />
+      );
+    }
+    if (sub === "comprovantes" && podeVerComprovantesAqui) {
+      return (
+        <PcComprovantes
+          embutido
+          empresa={nomeParaExibir(empresaDoc)}
+          comprovantes={(db.comprovantes || []).filter((item) => item.empresaId === empresaDoc.id)}
+          podeGerenciar={podeGerenciarComprovantesAqui}
+          online={online}
+          onSalvar={salvarComprovante}
+          onRemover={removerComprovante}
+          urlDoArquivo={(item) => `/api/comprovantes/file?pathname=${encodeURIComponent(item.blobPathname || "")}`}
+          onVoltar={() => setRenovarComprovanteId(undefined)}
+          renovarId={renovarComprovanteId}
+          popsParaVincular={(empresaDoc.pops || []).filter((pop) => !pop.arquivado).map((pop) => ({ id: pop.id, rotulo: `${pop.codigo ? `${pop.codigo} · ` : ""}${pop.titulo}` }))}
+        />
+      );
+    }
+    if (sub === "pessoas" && podeGerenciarPessoasAqui && usuarioDaSessao?.perfil !== "Fiscal" && usuarioDaSessao?.perfil !== "Executor de campo") {
+      return (
+        <PcPessoas
+          embutido
+          empresa={nomeParaExibir(empresaDoc)}
+          normas={empresaDoc}
+          colaboradores={(db.colaboradores || []).filter((item) => item.empresaId === empresaDoc.id)}
+          capacitacoes={(db.capacitacoes || []).filter((item) => item.empresaId === empresaDoc.id)}
+          onSalvarColaborador={salvarColaborador}
+          onAlternarAtivo={alternarColaborador}
+          onSalvarCapacitacao={salvarCapacitacao}
+          onRemoverCapacitacao={(id) => void removerCapacitacao(id)}
+          onVoltar={() => undefined}
+        />
+      );
+    }
+    return null;
+  }
+
   async function abrirSecaoEmpresaPeloMenu(secao: EmpresaSecao) {
     if (!atual || !permitido("empresas.editar", atual.id)) return;
+    lembrarSubaba(atual.id, secao);
     if (showEmpresaForm && editingEmpresaId === atual.id) {
       if (!(await confirmarSaidaDaEdicao())) return;
       setEmpresaSecao(secao);
@@ -6145,7 +6285,7 @@ export default function Home() {
     .map((chave) => `rep-off-${chave}`)
     .join(" ");
   const chaveDaTela: NavKey | null =
-    view === "empresas" && showEmpresaForm && empresaSecao === "pops" ? "pops" : chaveAtiva(view);
+    view === "empresas" && showEmpresaForm && ["pops", "comprovantes", "pessoas"].includes(secaoEmpresa || "") ? "pops" : chaveAtiva(view);
   const itemDaTela = chaveDaTela ? itemDoMenu(chaveDaTela) : undefined;
   const rotuloDaTela =
     view === "historico"
@@ -6905,18 +7045,6 @@ export default function Home() {
             onEncerrarAcesso={encerrarAcessoDoFiscal}
             motivoNaoExcluir={(usuario) => motivoParaNaoExcluir(usuario, contextoExclusaoUsuario())}
           />
-        ) : view === "comprovantes" && atual && podeVerComprovantesAqui && (!usuarioDaSessao || usuarioDaSessao.perfil !== "Executor de campo") ? (
-          <PcComprovantes
-            empresa={nomeParaExibir(atual)}
-            comprovantes={(db.comprovantes || []).filter((item) => item.empresaId === atual.id)}
-            podeGerenciar={podeGerenciarComprovantesAqui}
-            online={online}
-            onSalvar={salvarComprovante}
-            onRemover={removerComprovante}
-            urlDoArquivo={(item) => `/api/comprovantes/file?pathname=${encodeURIComponent(item.blobPathname || "")}`}
-            onVoltar={() => { setRenovarComprovanteId(undefined); voltarDosComprovantes(); }}
-            renovarId={renovarComprovanteId}
-          />
         ) : view === "relatoriosemitidos" && atual ? (
           <PcRelatoriosEmitidos
             empresa={nomeParaExibir(atual)}
@@ -6952,18 +7080,6 @@ export default function Home() {
             onCompartilhar={(texto) => void compartilharResumo(texto)}
             onVoltar={() => setView("inicio")}
           />
-        ) : view === "pessoas" && atual && podeGerenciarPessoasAqui && (!usuarioDaSessao || (usuarioDaSessao.perfil !== "Executor de campo" && usuarioDaSessao.perfil !== "Fiscal")) ? (
-          <PcPessoas
-            empresa={nomeParaExibir(atual)}
-            normas={atual}
-            colaboradores={(db.colaboradores || []).filter((item) => item.empresaId === atual.id)}
-            capacitacoes={(db.capacitacoes || []).filter((item) => item.empresaId === atual.id)}
-            onSalvarColaborador={salvarColaborador}
-            onAlternarAtivo={alternarColaborador}
-            onSalvarCapacitacao={salvarCapacitacao}
-            onRemoverCapacitacao={(id) => void removerCapacitacao(id)}
-            onVoltar={voltarDosComprovantes}
-          />
         ) : view === "fila" ? (
           <PcFilaDeEnvio
             itens={fila.itens}
@@ -6989,249 +7105,45 @@ export default function Home() {
             onEntrar={() => window.location.assign("/auth/sign-in")}
             onVoltar={() => setView(modo === "campo" ? "campomais" : "inicio")}
           />
-        ) : view === "pops" && atual && telaVisivel("pops") ? (
-          <PcPops
-            pops={atual.pops || []}
-            onChange={() => undefined}
-            empresa={atual}
-            usuario={usuarioDaSessao}
-            podeEditar={false}
-            onPersistir={(novos) => persistirPopsDaEmpresa(atual.id, novos)}
-            onAbrirComprovantes={podeVerComprovantesAqui ? abrirComprovantes : undefined}
-            onAbrirPessoas={podeGerenciarPessoasAqui ? abrirPessoas : undefined}
-            temAlteracoes={false}
-            onSalvar={() => undefined}
-            onVoltar={() => setView("inicio")}
-          />
-        ) : view === "empresas" && showEmpresaForm && permitido("empresas.editar") ? (
-          telaEmLista && !!editingEmpresaId && empresaSecao === "pops" ? (
-            <PcPops
-              pops={popsEmpresa}
-              onChange={setPopsEmpresa}
-              empresa={empresaGerenciada ? { ...empresaGerenciada, normasAplicadas: empresaGerenciada.normasAplicadas } : undefined}
-              usuario={usuarioDaSessao}
-              onPersistir={(novos) => empresaGerenciada && persistirPopsDaEmpresa(empresaGerenciada.id, novos)}
-              onAbrirComprovantes={podeVerComprovantesAqui ? abrirComprovantes : undefined}
-              onAbrirPessoas={podeGerenciarPessoasAqui ? abrirPessoas : undefined}
-              temAlteracoes={empresaTemAlteracoes}
-              mensagem={msg}
-              onSalvar={salvarEmpresa}
-              onVoltar={async () => { if (await confirmarSaidaDaEdicao()) setEmpresaSecao(null); }}
-            />
-          ) : (
-          <section className="rounded-2xl bg-white p-5 shadow-sm">
-            <div className="flex justify-between gap-4">
+        ) : view === "pops" && atual && (telaVisivel("pops") || ehFiscal) ? (
+          <section className="central-empresa" aria-label="Documentos da empresa">
+            <div className="ui-head cen-cabeca">
               <div>
-                <div className="text-xs font-extrabold uppercase tracking-wide text-[color:var(--brand)]">
-                  {editingEmpresaId ? "Gestão da empresa" : "Cadastro"}
-                </div>
-                <h2 className="mt-1 text-2xl font-extrabold">
-                  {!editingEmpresaId
-                    ? "Nova empresa"
-                    : empresaSecao === null
-                    ? "Central da Empresa"
-                    : empresaSecao === "dados"
-                    ? "Dados da empresa"
-                    : empresaSecao === "manual"
-                    ? "Manual e responsabilidades"
-                    : empresaSecao === "ambientes"
-                    ? "Ambientes e equipamentos"
-                    : empresaSecao === "fluxos"
-                    ? "Fluxos operacionais"
-                    : empresaSecao === "programas"
-                    ? "Programas de Controle"
-                    : "POPs"}
-                </h2>
-                <p className="text-sm text-slate-500">
-                  {!editingEmpresaId
-                    ? "Digite o CNPJ, confira os dados básicos e salve para abrir a Central da Empresa."
-                    : empresaSecao === null
-                    ? `${form.nomeFantasia || "Empresa"} • escolha somente a área que deseja consultar ou alterar.`
-                    : form.nomeFantasia || "Empresa"}
-                </p>
+                <div className="ui-eyebrow">Documentos</div>
+                <h1 className="ui-title">{nomeParaExibir(atual)}</h1>
+              </div>
+            </div>
+            <CentralEmpresaNav grupos={gruposVisiveis(quemVeNosDocumentos)} subaba={subabaDosDocumentos} onSubaba={setDocSecao} />
+            <div className="cen-conteudo">{conteudoDeDocumentos(subabaDosDocumentos, atual, false)}</div>
+          </section>
+        ) : view === "empresas" && showEmpresaForm && permitido("empresas.editar") ? (
+          <section className="central-empresa" aria-label={editingEmpresaId ? "Central da Empresa" : "Nova empresa"}>
+            <div className="ui-head cen-cabeca">
+              <div>
+                <div className="ui-eyebrow">{editingEmpresaId ? "Central da Empresa" : "Cadastro"}</div>
+                <h1 className="ui-title">{editingEmpresaId && empresaGerenciada ? nomeParaExibir(empresaGerenciada) : "Nova empresa"}</h1>
+                {!editingEmpresaId && <p className="ui-subtitle">Digite o CNPJ, confira os dados básicos e salve para abrir a Central da Empresa.</p>}
               </div>
               <button
+                type="button"
+                className="ui-btn ui-btn--secondary"
                 onClick={async () => {
-                  if (editingEmpresaId && empresaSecao !== null) {
-                    if (!(await confirmarSaidaDaEdicao())) return;
-                    setEmpresaSecao(null);
-                    setMsg("");
-                    return;
-                  }
                   if (!(await confirmarSaidaDaEdicao())) return;
                   setShowEmpresaForm(false);
                   setEditingEmpresaId(null);
                   setEmpresaSecao(null);
                 }}
-                className="h-fit shrink-0 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-600 shadow-sm"
               >
-                {editingEmpresaId && empresaSecao !== null
-                  ? "← Central"
-                  : editingEmpresaId
-                  ? "← Voltar às empresas"
-                  : "Cancelar"}
+                {editingEmpresaId ? "← Voltar às empresas" : "Cancelar"}
               </button>
             </div>
 
-            {editingEmpresaId && empresaSecao === null ? (
-              <div className="mt-5">
-                {msg && (
-                  <div className="mb-4 rounded-xl border border-emerald-200 bg-[var(--ok-bg)] p-3 text-sm font-bold text-[color:var(--ink)]">
-                    {msg}
-                  </div>
-                )}
+            {editingEmpresaId && <CentralEmpresaNav grupos={gruposVisiveis(quemVeNaCentral)} subaba={secaoEmpresa as SubAbaCentral} onSubaba={irParaSubaba} />}
+            {editingEmpresaId && msg && <div className="ui-note cen-msg">{msg}</div>}
 
-                <div className="mb-4 rounded-2xl border border-blue-100 bg-[var(--brand-soft)]/70 p-4">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <div className="text-[11px] font-extrabold uppercase tracking-wider text-[color:var(--brand)]">
-                        Preparação da empresa
-                      </div>
-                      <div className="mt-1 font-extrabold text-slate-950">
-                        {configuracaoEmpresaGerenciada.prontaParaVisita
-                          ? "Dados essenciais prontos para iniciar visitas"
-                          : "Complete os dados essenciais antes da primeira visita"}
-                      </div>
-                      <div className="mt-1 text-xs text-slate-600">
-                        {configuracaoEmpresaGerenciada.concluidas} de {configuracaoEmpresaGerenciada.total} áreas configuradas. As áreas técnicas podem ser concluídas gradualmente.
-                      </div>
-                    </div>
-                    <span className={`w-fit shrink-0 rounded-full px-3 py-1.5 text-xs font-extrabold ${
-                      configuracaoEmpresaGerenciada.prontaParaVisita
-                        ? "bg-[var(--ok-bg)] text-[color:var(--ink)]"
-                        : "bg-[var(--pend-bg)] text-[color:var(--ink)]"
-                    }`}>
-                      {configuracaoEmpresaGerenciada.percentual}% configurada
-                    </span>
-                  </div>
-                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-white">
-                    <div
-                      className="h-full rounded-full bg-[var(--brand)] transition-all"
-                      style={{ width: `${configuracaoEmpresaGerenciada.percentual}%` }}
-                    />
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-blue-50/60 p-3 sm:p-4">
-                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    {([
-                      {
-                        secao: "dados" as EmpresaSecao,
-                        categoria: "Cadastro",
-                        titulo: "Dados da empresa",
-                        resumo: "Endereço, contato, responsável e horário.",
-                        cor: "bg-[var(--brand-soft)] text-[color:var(--ink)]",
-                      },
-                      {
-                        secao: "manual" as EmpresaSecao,
-                        categoria: "Manual",
-                        titulo: "Manual e responsabilidades",
-                        resumo: `${quantidadeComNome(responsabilidadesEmpresa.filter((item) => item.ativa).length, "responsabilidade ativa", "responsabilidades ativas")}.`,
-                        cor: "bg-[#EEF1F5] text-[color:var(--ink)]",
-                      },
-                      {
-                        secao: "ambientes" as EmpresaSecao,
-                        categoria: "Estrutura",
-                        titulo: "Ambientes e equipamentos",
-                        resumo: `${quantidadeComNome(setoresEmpresa.length, "ambiente", "ambientes")} • ${quantidadeComNome(equipamentosEmpresa.length, "tipo de equipamento", "tipos de equipamento")}.`,
-                        cor: "bg-cyan-100 text-cyan-700",
-                      },
-                      {
-                        secao: "fluxos" as EmpresaSecao,
-                        categoria: "Operação",
-                        titulo: "Fluxos operacionais",
-                        resumo: `${quantidadeComNome(fluxosEmpresa.filter((fluxo) => fluxo.aplicavel).length, "fluxo ativo", "fluxos ativos")} de ${fluxosEmpresa.length}.`,
-                        cor: "bg-[var(--pend-bg)] text-[color:var(--ink)]",
-                      },
-                      {
-                        secao: "programas" as EmpresaSecao,
-                        categoria: "Qualidade",
-                        titulo: "Programas de Controle",
-                        resumo: `${quantidadeComNome(programasEmpresa.filter((programa) => programa.status === "Implantado" || programa.status === "Em implantação").length, "programa ativo ou em implantação", "programas ativos ou em implantação")}.`,
-                        cor: "bg-[#EEF1F5] text-[color:var(--ink)]",
-                      },
-                      {
-                        secao: "norma" as EmpresaSecao,
-                        categoria: "Norma",
-                        titulo: "Norma aplicável",
-                        resumo: empresaGerenciada && normasDaEmpresa(empresaGerenciada).length > 0 ? `${normasDaEmpresa(empresaGerenciada).map((norma) => norma.nome).join(" • ")}.` : "Normas aplicadas, RT e responsável do estabelecimento.",
-                        cor: "bg-[var(--pend-bg)] text-[color:var(--ink)]",
-                      },
-                      {
-                        secao: "privacidade" as EmpresaSecao,
-                        categoria: "Privacidade",
-                        titulo: "Privacidade e guarda",
-                        resumo: `IA nas fotos ${iaLiberada(empresaGerenciada) ? "ligada" : "desligada"} • guarda de ${guardaDaEmpresa(empresaGerenciada)} dias.`,
-                        cor: "bg-[#EEF1F5] text-[color:var(--ink)]",
-                      },
-                      {
-                        secao: "pops" as EmpresaSecao,
-                        categoria: "Procedimentos",
-                        titulo: "POPs",
-                        resumo: popsComRevisaoVencida > 0
-                          ? `${quantidadeComNome(popsEmpresa.length, "POP cadastrado", "POPs cadastrados")} • ${quantidadeComNome(popsComRevisaoVencida, "revisão vencida", "revisões vencidas")}.`
-                          : `${quantidadeComNome(popsEmpresa.length, "POP cadastrado", "POPs cadastrados")} • nenhuma revisão vencida.`,
-                        cor: "bg-[var(--ok-bg)] text-[color:var(--ink)]",
-                      },
-                    ]).map((item) => (
-                      <button
-                        key={item.secao}
-                        type="button"
-                        onClick={() => { setEmpresaSecao(item.secao); setMsg(""); }}
-                        className="group rounded-2xl border border-slate-200 bg-white p-3.5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-300 sm:p-4"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <span className={`grid h-10 w-10 place-items-center rounded-xl ${item.cor}`}>
-                            <CompanySectionIcon name={item.secao} />
-                          </span>
-                          <span className="grid h-8 w-8 place-items-center rounded-full bg-slate-50 text-lg font-bold text-[color:var(--brand)] transition group-hover:bg-[var(--brand-soft)]">→</span>
-                        </div>
-                        <div className="mt-3 text-[10px] font-extrabold uppercase tracking-wider text-[color:var(--brand)]">{item.categoria}</div>
-                        <div className="mt-0.5 font-extrabold text-slate-950">{item.titulo}</div>
-                        <div className="mt-1 text-xs leading-5 text-slate-500">{item.resumo}</div>
-                        <div className={`mt-3 text-[11px] font-extrabold ${
-                          configuracaoEmpresaGerenciada.etapas.find((etapa) => etapa.id === item.secao)?.concluida
-                            ? "text-emerald-700"
-                            : "text-amber-700"
-                        }`}>
-                          {configuracaoEmpresaGerenciada.etapas.find((etapa) => etapa.id === item.secao)?.concluida
-                            ? "✓ Configurado"
-                            : item.secao === "dados" || item.secao === "ambientes"
-                            ? "Essencial • completar"
-                            : "Pode ser concluído depois"}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ) : (
+            <div className="cen-conteudo">
               <>
-                {editingEmpresaId && empresaSecao !== null && (
-                  <details className="mt-4 rounded-xl border border-blue-100 bg-[var(--brand-soft)]/70 p-3">
-                    <summary className="cursor-pointer text-sm font-extrabold text-[color:var(--brand)]">
-                      Para que serve esta área?
-                    </summary>
-                    <p className="mt-2 text-sm leading-6 text-slate-600">
-                      {empresaSecao === "dados"
-                        ? "Reúne a identificação, os contatos e o funcionamento do estabelecimento. Esses dados aparecem nas visitas e nos relatórios."
-                        : empresaSecao === "manual"
-                        ? "Registra quem elabora, revisa, aprova e executa as responsabilidades previstas no Manual de Boas Práticas."
-                        : empresaSecao === "ambientes"
-                        ? "Define os locais que poderão ser selecionados em uma visita e os equipamentos existentes em cada ambiente."
-                        : empresaSecao === "fluxos"
-                        ? "Informa como as atividades acontecem na prática. Os fluxos marcados como aplicáveis acrescentam verificações ao checklist."
-                        : empresaSecao === "programas"
-                        ? "Acompanha os controles permanentes de qualidade, sua implantação, responsáveis, registros e documentos relacionados."
-                        : empresaSecao === "norma"
-                        ? "Mostra as normas que valem para esta empresa, quem do RT as confirmou e quem é o responsável do estabelecimento, que aprova e assina os POPs."
-                        : empresaSecao === "privacidade"
-                        ? "Define se a IA pode analisar as fotos desta empresa e por quantos dias fotos e áudios são guardados."
-                        : "Organiza os procedimentos escritos da empresa, indicando situação, responsável, versão e próxima revisão."}
-                    </p>
-                  </details>
-                )}
-                {(!editingEmpresaId || empresaSecao === "dados") && (
+                {(!editingEmpresaId || secaoEmpresa === "dados") && (
                   <div className="mt-4 grid gap-3 md:grid-cols-2">
                     <label>
                       <span className="mb-1 block text-xs font-bold text-slate-500">CNPJ</span>
@@ -7265,6 +7177,27 @@ export default function Home() {
                     />
                   </label>
                     ))}
+                    {editingEmpresaId && (
+                      <label>
+                        <span className="mb-1 block text-xs font-bold text-slate-500">Acesso vinculado do responsável (quem aprova os POPs)</span>
+                        <select
+                          className="w-full rounded-xl border p-3"
+                          value={usuarioResponsavelForm}
+                          disabled={Boolean(usuarioDaSessao) && usuarioDaSessao?.perfil !== "Administrador"}
+                          onChange={(e) => setUsuarioResponsavelForm(e.target.value)}
+                        >
+                          <option value="">Ainda não vinculada</option>
+                          {db.usuarios
+                            .filter((pessoa) => pessoa.perfil === "Administrador" || pessoa.empresaIds.includes(editingEmpresaId))
+                            .map((pessoa) => (
+                              <option key={pessoa.id} value={pessoa.id}>
+                                {pessoa.nome} · {pessoa.perfil}
+                              </option>
+                            ))}
+                        </select>
+                        {Boolean(usuarioDaSessao) && usuarioDaSessao?.perfil !== "Administrador" && <span className="mt-1 block text-xs text-slate-500">Só o Administrador vincula a pessoa de Acessos.</span>}
+                      </label>
+                    )}
                     {editingEmpresaId && (
                       <fieldset className="md:col-span-2 rounded-xl border border-slate-200 p-3">
                         <legend className="px-1 text-xs font-bold text-slate-500">Capacidade e turnos</legend>
@@ -7310,7 +7243,7 @@ export default function Home() {
                   </div>
                 )}
 
-                {editingEmpresaId && empresaSecao === "manual" && (
+                {editingEmpresaId && secaoEmpresa === "manual" && (
                   <div className="mt-4 space-y-4">
                     <details open className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                       <summary className="cursor-pointer list-none">
@@ -7330,41 +7263,37 @@ export default function Home() {
                   </div>
                 )}
 
-                {editingEmpresaId && empresaSecao === "ambientes" && (
+                {editingEmpresaId && secaoEmpresa === "ambientes" && (
                   <div className="mt-4">
                     <ManualBaseFields responsabilidades={responsabilidadesEmpresa} onResponsabilidadesChange={setResponsabilidadesEmpresa} setores={setoresEmpresa} onSetoresChange={setSetoresEmpresa} equipamentos={equipamentosEmpresa} onEquipamentosChange={setEquipamentosEmpresa} modo="ambientes" />
                   </div>
                 )}
 
-                {editingEmpresaId && empresaSecao === "fluxos" && (
+                {editingEmpresaId && secaoEmpresa === "fluxos" && (
                   <OperationalFlowsFields fluxos={fluxosEmpresa} setores={setoresEmpresa} onChange={setFluxosEmpresa} aberto />
                 )}
 
-                {editingEmpresaId && empresaSecao === "programas" && (
+                {editingEmpresaId && secaoEmpresa === "programas" && (
                   <QualityProgramsFields programas={programasEmpresa} onChange={setProgramasEmpresa} aberto />
                 )}
 
-                {editingEmpresaId && empresaSecao === "pops" && (
-                  <PopsFields pops={popsEmpresa} onChange={setPopsEmpresa} aberto />
-                )}
-
-                {editingEmpresaId && empresaSecao === "norma" && empresaGerenciada && (
+                {editingEmpresaId && secaoEmpresa === "norma" && empresaGerenciada && (
                   <PcNormaAplicavel
                     key={empresaGerenciada.id}
                     uf={empresaGerenciada.uf || ""}
                     municipio={empresaGerenciada.municipio || ""}
                     normasAplicadas={empresaGerenciada.normasAplicadas || []}
                     confirmacao={empresaGerenciada.normasConfirmadasPeloRt}
-                    responsavel={empresaGerenciada.responsavelEstabelecimento || { nome: empresaGerenciada.responsavel || "", cargo: empresaGerenciada.cargoResponsavel || "" }}
-                    pessoas={db.usuarios.filter((pessoa) => pessoa.perfil === "Administrador" || pessoa.empresaIds.includes(empresaGerenciada.id)).map((pessoa) => ({ id: pessoa.id, nome: pessoa.nome, perfil: pessoa.perfil }))}
+                    responsavel={responsavelEfetivo(empresaGerenciada)}
+                    responsavelTexto={textoDoResponsavel(responsavelEfetivo(empresaGerenciada))}
+                    onAlterarEmDados={() => irParaSubaba("dados")}
                     podeEditar={permitido("empresas.editar", empresaGerenciada.id)}
-                    podeVincular={usuarioDaSessao?.perfil === "Administrador"}
                     somenteLeitura={modo === "campo"}
                     onSalvar={(dados) => salvarNormaDaEmpresa(empresaGerenciada.id, dados)}
                   />
                 )}
 
-                {editingEmpresaId && empresaSecao === "privacidade" && empresaGerenciada && (
+                {editingEmpresaId && secaoEmpresa === "privacidade" && empresaGerenciada && (
                   <PcPrivacidadeEmpresa
                     empresaNome={nomeParaExibir(empresaGerenciada)}
                     iaLiberada={iaLiberada(empresaGerenciada)}
@@ -7393,23 +7322,25 @@ export default function Home() {
                   />
                 )}
 
-                {msg && <div className="mt-3 rounded-xl bg-[var(--pend-bg)] p-3 text-sm">{msg}</div>}
 
-                <div className="sticky bottom-20 z-20 mt-4 rounded-2xl border border-blue-100 bg-white/95 p-2 shadow-lg backdrop-blur md:bottom-4">
-                  {editingEmpresaId && (
-                    <div className={`mb-2 px-1 text-xs font-bold ${empresaTemAlteracoes ? "text-amber-700" : "text-emerald-700"}`}>
-                      {empresaTemAlteracoes
-                        ? "● Alterações ainda não salvas"
-                        : "✓ Todas as alterações desta área estão salvas"}
-                    </div>
-                  )}
-                  <button onClick={salvarEmpresa} className="w-full rounded-xl bg-[var(--brand)] p-3 font-medium text-white">
-                    {editingEmpresaId ? "Salvar e voltar à Central" : "Salvar e abrir a Central"}
-                  </button>
-                </div>
+                {editingEmpresaId && empresaGerenciada && ["pops", "comprovantes", "pessoas"].includes(secaoEmpresa || "") && conteudoDeDocumentos(secaoEmpresa as SubAbaCentral, empresaGerenciada, true)}
               </>
+            </div>
+
+            {(!editingEmpresaId || ["dados", "manual", "ambientes", "fluxos", "programas"].includes(secaoEmpresa || "")) && (
+              <div className="cen-salvar">
+                {!editingEmpresaId && msg && <span className="cen-salvar-aviso">{msg}</span>}
+                {editingEmpresaId && (
+                  <span className={`cen-salvar-aviso${empresaTemAlteracoes ? " is-pendente" : ""}`}>
+                    {empresaTemAlteracoes ? "● Alterações ainda não salvas" : "✓ Todas as alterações desta área estão salvas"}
+                  </span>
+                )}
+                <button type="button" onClick={salvarEmpresa} className="ui-btn ui-btn--save">
+                  {editingEmpresaId ? "Salvar" : "Salvar e abrir a Central"}
+                </button>
+              </div>
             )}
-          </section>)
+          </section>
         ) : view === "visitas" && showVisitaForm ? (
           <section className="rounded-2xl bg-white p-5 shadow-sm">
             <div className="flex justify-between gap-4">

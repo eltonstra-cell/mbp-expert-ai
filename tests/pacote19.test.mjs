@@ -171,7 +171,7 @@ test("Telas: edição do questionário só no PC e só para quem pode; foto até
   assert.ok(page.includes("onQuestionario={ehPC && (!usuarioDaSessao || podeEditarQuestionario(usuarioDaSessao)) ? abrirQuestionario : undefined}"));
   assert.ok(page.includes("fotosNoItem={fotosDoItem("));
   const quest = readFileSync(new URL("../components/pc/PcQuestionario.tsx", import.meta.url), "utf8");
-  assert.ok(readFileSync(new URL("../lib/questionarioAmbiente.ts", import.meta.url), "utf8").includes("Modelo da norma"));
+  assert.ok(readFileSync(new URL("../lib/questionarioAmbiente.ts", import.meta.url), "utf8").includes("Modelo do app"));
   for (const texto of ["conferir", "ORIGEM_DA_PERGUNTA", "Por que desligar esta pergunta do modelo?"]) assert.ok(quest.includes(texto), texto);
   const ad = readFileSync(new URL("../components/AntesDepois.tsx", import.meta.url), "utf8");
   assert.ok(ad.includes("Adicionar foto do depois") && ad.includes("sem comprovação"));

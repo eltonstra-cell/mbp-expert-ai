@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Pill } from "@/components/ui/Pill";
 import {
   MENSAGEM_JUSTIFICATIVA,
   ORIGEM_DA_PERGUNTA,
@@ -86,7 +85,7 @@ export default function PcQuestionario({ ambiente, config, foiUsada, quem, onSal
                 <div className="quest-textos">
                   <span className="quest-titulo">{pergunta.titulo}</span>
                   <span className="ui-row-sub">
-                    <Pill tom={pergunta.origem === "modelo" ? "info" : "amber"}>{ORIGEM_DA_PERGUNTA[pergunta.origem]}</Pill>{" "}
+                    <span className={`quest-origem quest-origem--${pergunta.origem}`}>{ORIGEM_DA_PERGUNTA[pergunta.origem]}</span>{" "}
                     {pergunta.referencia ? (
                       <>
                         Fonte: {pergunta.referencia}

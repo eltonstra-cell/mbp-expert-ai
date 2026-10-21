@@ -108,7 +108,9 @@ test("Fiscal: permissão só de leitura, sem ajuste que eleve", () => {
   assert.deepEqual(permissoesEfetivas(fiscal()), ["empresas.ver"]);
   const elevado = fiscal({ telas: { checklist: "editar", correcoes: "concluir", pops: "editar", inicio: "completo", relatorio: "editar", acessos: "ver" } });
   const telas = telasEfetivas(elevado);
-  for (const tela of ["checklist", "evidencias", "correcoes", "relatorio", "pops", "acessos", "empresas", "visitas"]) assert.equal(telas[tela], "oculta", tela);
+  for (const tela of ["checklist", "evidencias", "correcoes", "relatorio", "acessos", "empresas", "visitas"]) assert.equal(telas[tela], "oculta", tela);
+  // POPs vigentes (só leitura): o Fiscal vê, mas o ajuste "editar" nunca vale
+  assert.equal(telas.pops, "ver");
   assert.deepEqual(permissoesEfetivas(elevado), ["empresas.ver"]);
 });
 

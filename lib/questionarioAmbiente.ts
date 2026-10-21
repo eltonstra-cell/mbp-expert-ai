@@ -13,7 +13,7 @@ export function podeEditarQuestionario(usuario: Pick<UsuarioSistema, "perfil" | 
   return Boolean(usuario) && usuario!.status !== "Suspenso" && acessoVigente(usuario!) && EDITORES.includes(usuario!.perfil);
 }
 
-export const ORIGEM_DA_PERGUNTA = { modelo: "Modelo da norma", empresa: "Pergunta da empresa" } as const;
+export const ORIGEM_DA_PERGUNTA = { modelo: "Modelo do app", empresa: "Pergunta da empresa" } as const;
 export const MENSAGEM_JUSTIFICATIVA = "Explique por que desligar esta pergunta do modelo (mínimo de 5 letras).";
 
 export function chaveDaPergunta(item: { categoria: string; titulo: string }): string {

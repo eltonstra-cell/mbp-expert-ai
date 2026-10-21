@@ -353,6 +353,7 @@ export function aprovarPop(
     aprovacao,
     revisarAte: pop.proximaRevisao || undefined,
     versaoCatalogo: catalogoUsado,
+    ...(pop.motivoDaVersao?.trim() ? { motivo: pop.motivoDaVersao.trim() } : {}),
   };
   return {
     ...pop,
@@ -371,6 +372,7 @@ export function iniciarNovaVersao(pop: ProcedimentoOperacionalPadronizado): Proc
   const snapshot: VersaoPop[] = jaGuardada
     ? guardadas
     : [...guardadas, { versao: pop.versao, status: "Aprovado", criadaEm: pop.aprovacao?.em || "", conteudo: pop.conteudo, aprovacao: pop.aprovacao, revisarAte: pop.proximaRevisao || undefined, versaoCatalogo: pop.versaoCatalogoAprovada }];
+  // `motivoDaVersao` que chega junto é o motivo da versão nova (digitado ao pedir a edição) e fica nela.
   const { aprovacao: _aprovacao, versaoCatalogoAprovada: _usada, ...resto } = pop;
   return { ...resto, versao: proximaVersao(pop.versao), status: "Rascunho", versoes: snapshot };
 }

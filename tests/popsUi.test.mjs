@@ -11,17 +11,18 @@ test("Norma aplicável: textos, avisos do RS e confirmação do RT", () => {
   assert.ok(painel.includes("O RT confirmou estas normas"));
   assert.ok(painel.includes("Conferir no texto oficial da ANVISA antes de usar com clientes."));
   assert.ok(painel.includes("AVISO_SEM_NORMA_ESTADUAL"));
-  assert.ok(painel.includes("Só o Administrador vincula a pessoa de Acessos."));
+  // o responsável do estabelecimento tem fonte única, em Dados: a norma só mostra o nome e leva para lá
+  assert.ok(painel.includes("Alterar em Dados") && !painel.includes("Pessoa em Acessos"));
   const pagina = ler("../app/page.tsx");
-  assert.ok(pagina.includes('secao: "norma" as EmpresaSecao') && pagina.includes("salvarNormaDaEmpresa"));
-  // o cadastro salvo não perde a norma nem o responsável
-  assert.ok(pagina.includes("normasAplicadas: anterior.normasAplicadas") && pagina.includes("responsavelEstabelecimento: anterior.responsavelEstabelecimento"));
+  assert.ok(pagina.includes("salvarNormaDaEmpresa") && pagina.includes("<PcNormaAplicavel"));
+  // o cadastro salvo não perde a norma; o responsável sai de Dados e só o Administrador escolhe o acesso vinculado
+  assert.ok(pagina.includes("normasAplicadas: anterior.normasAplicadas") && pagina.includes("vinculoResponsavel"));
 });
 
-test("Conjunto da norma em POPs e documentos: criar do texto-base em laranja e Outros POPs mantido", () => {
-  const tela = ler("../components/pc/PcPops.tsx");
-  assert.ok(tela.includes("Conjunto da norma") && tela.includes("Criar do texto-base") && tela.includes("Outros POPs e documentos da empresa"));
-  assert.ok(tela.includes("aprovados") && tela.includes("faltam criar"));
+test("Conjunto da norma em POPs e documentos: criar do modelo em laranja e Outros POPs mantido", () => {
+  const tela = ler("../components/pc/PcPopsLista.tsx");
+  assert.ok(tela.includes("Conjunto da norma") && tela.includes("Criar do modelo") && tela.includes("Outros POPs e documentos da empresa"));
+  assert.ok(tela.includes("vigentes") && tela.includes("falta criar") && tela.includes("aguardando aprovação") && tela.includes("com pendência"));
   assert.ok(tela.includes("ui-btn--criar"));
   assert.ok(!tela.includes("Sugeridos pelo Manual de Boas Práticas"));
   assert.ok(!tela.includes('STATUS: StatusPOP[] = ["Rascunho", "Em revisão", "Aprovado"'));

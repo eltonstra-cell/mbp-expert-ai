@@ -38,8 +38,10 @@ const TOM: Record<SituacaoPopVisita, Tom> = { "a-criar": "nc", rascunho: "pend",
 
 const codigoNc = (n: number) => `NC${String(n).padStart(2, "0")}`;
 
-function faixaDeNcs(ncs: number[]) {
-  return ncs.length > 3 ? `${codigoNc(ncs[0])}–${ncs[ncs.length - 1]}` : ncs.map(codigoNc).join(", ");
+// NC01 · título curto; com mais de duas, mostra as duas primeiras e quantas faltam.
+function descricaoDasNcs(numeros: number[], titulos: Map<number, string>) {
+  const nome = (n: number) => (titulos.get(n) ? `${codigoNc(n)} · ${titulos.get(n)}` : codigoNc(n));
+  return numeros.length > 2 ? `${numeros.slice(0, 2).map(nome).join("; ")}; e mais ${numeros.length - 2}` : numeros.map(nome).join("; ");
 }
 
 export default function PcPopsVisita({ empresa, data, resumo, linhas, podeCriar, semNorma, ncsDaVisita, opcoesDeVinculo, onTrocarVinculo, onCriar, onAbrir, onCriarTodos, onContinuar, onTodosPops, onVoltar }: Props) {
@@ -48,6 +50,8 @@ export default function PcPopsVisita({ empresa, data, resumo, linhas, podeCriar,
   const [trocando, setTrocando] = useState<number[] | null>(null);
   const ncsParaTrocar = ncsDaVisita.filter((nc) => trocando?.includes(nc.numero));
   const faltantes = linhas.filter((linha) => linha.situacao === "a-criar");
+  const titulosDasNcs = new Map(ncsDaVisita.map((nc) => [nc.numero, nc.titulo]));
+  const motivoSemCriar = semNorma || (linhas.length === 0 ? "Nenhuma não conformidade com POP sugerido." : "Todos os POPs sugeridos já foram criados.");
 
   return (
     <section className="ui-screen" aria-label="POPs da visita">
@@ -63,9 +67,12 @@ export default function PcPopsVisita({ empresa, data, resumo, linhas, podeCriar,
             Ver todos os POPs da empresa →
           </button>
           {podeCriar && (
-            <button type="button" className="ui-btn ui-btn--primary" disabled={faltantes.length === 0} onClick={() => setConfirmando(true)}>
-              {faltantes.length === 0 ? "Criar POPs de uma vez" : faltantes.length === 1 ? "Criar 1 POP de uma vez" : `Criar os ${faltantes.length} POPs de uma vez`}
-            </button>
+            <span className="pgl-criar">
+              <button type="button" className="ui-btn ui-btn--criar" disabled={faltantes.length === 0} onClick={() => setConfirmando(true)}>
+                {faltantes.length === 0 ? "Criar POPs de uma vez" : faltantes.length === 1 ? "Criar 1 POP de uma vez" : `Criar os ${faltantes.length} POPs de uma vez`}
+              </button>
+              {faltantes.length === 0 && <span className="pgl-motivo">{motivoSemCriar}</span>}
+            </span>
           )}
         </div>
       </div>
@@ -97,13 +104,13 @@ export default function PcPopsVisita({ empresa, data, resumo, linhas, podeCriar,
                 faixa={TOM[linha.situacao]}
                 icone={<span aria-hidden="true">≡</span>}
                 titulo={linha.sugestao.titulo}
-                secundario={`${linha.sugestao.codigo} · NCs: ${faixaDeNcs(linha.ncs)}`}
+                secundario={`${linha.sugestao.codigo} · ${descricaoDasNcs(linha.ncs, titulosDasNcs)}`}
                 pilulas={<Pill tom={TOM[linha.situacao]}>{ROTULO[linha.situacao]}</Pill>}
                 menu={podeCriar ? [{ rotulo: "Trocar vínculo", onClick: () => setTrocando(linha.ncs) }] : undefined}
                 acao={
                   linha.situacao === "a-criar" ? (
                     podeCriar ? (
-                      <button type="button" className="ui-btn ui-btn--primary" onClick={() => onCriar(linha.sugestao.codigo)}>
+                      <button type="button" className="ui-btn ui-btn--criar" onClick={() => onCriar(linha.sugestao.codigo)}>
                         Criar POP
                       </button>
                     ) : null
@@ -123,7 +130,7 @@ export default function PcPopsVisita({ empresa, data, resumo, linhas, podeCriar,
             {podeCriar && opcoesDeVinculo.length > 0 && (
               <>
                 {" "}
-                <button type="button" className="pc-link-btn" onClick={() => setTrocando(resumo.semPop)}>
+                <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => setTrocando(resumo.semPop)}>
                   Vincular a um POP
                 </button>
               </>
@@ -202,7 +209,7 @@ export default function PcPopsVisita({ empresa, data, resumo, linhas, podeCriar,
                 </button>
                 <button
                   type="button"
-                  className="ui-btn ui-btn--primary"
+                  className="ui-btn ui-btn--criar"
                   onClick={() => {
                     onCriarTodos();
                     setConfirmando(false);
