@@ -44,6 +44,8 @@ type Props = {
   pops?: ProcedimentoOperacionalPadronizado[];
   /** Cria o POP do modelo que o tipo pede (devolve o id do POP novo). */
   onCriarPopDoModelo?: (catalogoId: string) => string | undefined;
+  /** Troca o POP vinculado de um comprovante (sem apagá-lo); fora da ficha de um POP. */
+  onAlterarPop?: (comprovante: ComprovanteTerceiro, popId: string | undefined) => void;
   /** O que dizer quando a lista está vazia (dentro da ficha, o que vale para aquele POP). */
   mensagemVazia?: string;
 };
@@ -72,7 +74,8 @@ function ErroDeCampo({ texto, id }: { texto: string; id?: string }) {
 }
 
 // "Comprovantes e documentos com validade": certificados de terceiros com semáforo por item.
-export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, online, onSalvar, onRemover, urlDoArquivo, onVoltar, renovarId, embutido = false, popFixo, pops, onCriarPopDoModelo, mensagemVazia }: Props) {
+export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, online, onSalvar, onRemover, urlDoArquivo, onVoltar, renovarId, embutido = false, popFixo, pops, onCriarPopDoModelo, onAlterarPop, mensagemVazia }: Props) {
+  const [alterandoPop, setAlterandoPop] = useState<{ id: string; popId: string } | null>(null);
   const hoje = hojeISO();
   // Dentro da ficha de um POP, o Tipo só oferece o que se liga àquele POP (mais "Outro documento deste POP").
   const tiposDisponiveis = popFixo ? tiposDoPop(popFixo.catalogoId) : TIPOS_DE_COMPROVANTE;
@@ -199,19 +202,10 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
         </div>
       </div>
 
-      <div className="comp-contadores" role="group" aria-label="Situação dos comprovantes">
-        <div className="ficha-cartao ficha-cartao--nc">
-          <span className="ficha-cartao-rotulo">Vencidos</span>
-          <span className="ficha-cartao-valor">{contagem.vencidos}</span>
-        </div>
-        <div className="ficha-cartao ficha-cartao--pend">
-          <span className="ficha-cartao-rotulo">Vencem em 30 dias</span>
-          <span className="ficha-cartao-valor">{contagem.venceEmBreve}</span>
-        </div>
-        <div className="ficha-cartao ficha-cartao--ok">
-          <span className="ficha-cartao-rotulo">Em dia</span>
-          <span className="ficha-cartao-valor">{contagem.emDia}</span>
-        </div>
+      <div className="comp-chips" role="group" aria-label="Situação dos comprovantes">
+        <span className="comp-chip comp-chip--nc"><b>{contagem.vencidos}</b> vencidos</span>
+        <span className="comp-chip comp-chip--pend"><b>{contagem.venceEmBreve}</b> vencem em 30 dias</span>
+        <span className="comp-chip comp-chip--ok"><b>{contagem.emDia}</b> em dia</span>
       </div>
 
       {podeGerenciar && formAberto && (
@@ -220,6 +214,9 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
           <div className="comp-grade">
             <label className="pc-field">
               <span className="ui-eyebrow">Tipo</span>
+              {popFixo && tiposDisponiveis.length === 1 ? (
+                <span className="comp-tipo-fixo">{tiposDisponiveis[0].rotulo}</span>
+              ) : (
               <select className="ui-input ui-input--lista" value={dados.tipo} onChange={(evento) => campo("tipo", evento.target.value as TipoComprovante)}>
                 {(tiposDisponiveis.some((tipo) => tipo.id === dados.tipo) ? tiposDisponiveis : [...tiposDisponiveis, { id: dados.tipo, rotulo: rotuloDoTipo(dados.tipo) }]).map((tipo) => (
                   <option key={tipo.id} value={tipo.id}>
@@ -227,6 +224,7 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
                   </option>
                 ))}
               </select>
+              )}
             </label>
             {popsParaEscolher.length > 0 && (
               <label className="pc-field">
@@ -327,6 +325,37 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
       )}
 
       <div className="comp-lista">
+        {alterandoPop && onAlterarPop && (
+          <div className="ui-card comp-alterar-pop" role="group" aria-label="Alterar POP vinculado">
+            <label className="pc-field">
+              <span className="ui-eyebrow">POP vinculado de {rotuloDoTipo(comprovantes.find((item) => item.id === alterandoPop.id)?.tipo || "outro")}</span>
+              <select className="ui-input ui-input--lista" value={alterandoPop.popId} onChange={(evento) => setAlterandoPop({ ...alterandoPop, popId: evento.target.value })}>
+                <option value="">Nenhum (comprovante geral da empresa)</option>
+                {listaDePops.filter((pop) => !pop.arquivado).map((pop) => (
+                  <option key={pop.id} value={pop.id}>
+                    {rotuloDoPop(pop)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="comp-form-acoes">
+              <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => setAlterandoPop(null)}>
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="ui-btn ui-btn--save ui-btn--small"
+                onClick={() => {
+                  const alvo = comprovantes.find((item) => item.id === alterandoPop.id);
+                  if (alvo) onAlterarPop(alvo, alterandoPop.popId || undefined);
+                  setAlterandoPop(null);
+                }}
+              >
+                Salvar
+              </button>
+            </div>
+          </div>
+        )}
         {vigentes.length === 0 ? (
           <div className="ui-empty">{mensagemVazia || "Nenhum comprovante anexado. Anexe o certificado de controle de pragas, da limpeza do reservatório ou o contrato do RT."}</div>
         ) : (
@@ -372,6 +401,7 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
                   menu={
                     podeGerenciar
                       ? [
+                          ...(onAlterarPop && !popFixo && listaDePops.some((pop) => !pop.arquivado) ? [{ rotulo: "Alterar POP vinculado", onClick: () => setAlterandoPop({ id: item.id, popId: item.popId || "" }) }] : []),
                           { rotulo: "Editar", onClick: () => abrir({ id: item.id, tipo: item.tipo, emissor: item.emissor, dataServico: item.dataServico, validade: item.validade, observacao: item.observacao, ...(item.popId ? { popId: item.popId } : {}) }) },
                           { rotulo: "Remover comprovante", perigo: true, confirmar: "Remover este comprovante? O arquivo anexado também será apagado.", onClick: () => onRemover(item) },
                         ]

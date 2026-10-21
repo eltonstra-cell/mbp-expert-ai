@@ -55,3 +55,25 @@ export function tiposDoPop(catalogoId: string | undefined): { id: TipoComprovant
   const ligados = TIPOS_DE_COMPROVANTE.filter((tipo) => Boolean(catalogoId) && CATALOGO_DO_TIPO[tipo.id] === catalogoId);
   return [...ligados, { id: "outro", rotulo: ROTULO_OUTRO_NO_POP }];
 }
+
+/**
+ * Troca o POP vinculado de um comprovante sem apagar nada: o registro ganha uma linha no histórico (de, para, quem e quando).
+ * Sem mudança, ou POP que não existe na empresa, devolve o mesmo comprovante.
+ */
+export function alterarPopVinculado<T extends { popId?: string; historicoDePop?: { em: string; porId?: string; porNome?: string; de?: string; para?: string }[] }>(
+  comprovante: T,
+  novoPopId: string | undefined,
+  popsDaEmpresa: { id: string }[],
+  quem: { id?: string; nome?: string },
+  agora: string
+): T {
+  const destino = novoPopId && popsDaEmpresa.some((pop) => pop.id === novoPopId) ? novoPopId : undefined;
+  if (novoPopId && !destino) return comprovante;
+  if ((comprovante.popId || undefined) === destino) return comprovante;
+  const { popId: _antigo, ...resto } = comprovante;
+  return {
+    ...resto,
+    ...(destino ? { popId: destino } : {}),
+    historicoDePop: [...(comprovante.historicoDePop || []), { em: agora, ...(quem.id ? { porId: quem.id } : {}), ...(quem.nome ? { porNome: quem.nome } : {}), ...(comprovante.popId ? { de: comprovante.popId } : {}), ...(destino ? { para: destino } : {}) }],
+  } as T;
+}

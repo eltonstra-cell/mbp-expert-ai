@@ -79,3 +79,42 @@ test("cabeçalho: título grande que repete o topo sai (só para leitores de tel
   assert.ok(!ler("../components/pc/PcFichaPop.tsx").includes("← Lista de POPs"));
   assert.ok(!ler("../components/pc/PcPopsLista.tsx").includes("Procedimentos Operacionais Padronizados: situação"));
 });
+
+import { alterarPopVinculado, tiposDoPop } from "../lib/comprovantePop.ts";
+
+test("comprovante na ficha: com uma só opção o Tipo vira texto fixo; com tipos próprios a lista continua", () => {
+  assert.equal(tiposDoPop("higienizacao-instalacoes").length, 1);
+  assert.ok(tiposDoPop("higienizacao-reservatorio").length > 1);
+  const tela = ler("../components/pc/PcComprovantes.tsx");
+  assert.ok(tela.includes("popFixo && tiposDisponiveis.length === 1") && tela.includes('className="comp-tipo-fixo"'));
+  assert.ok(tela.includes("comp-chips") && !tela.includes("comp-contadores"));
+  assert.match(ler("../app/globals.css"), /\.comp-grade \.pc-field\{display:grid;grid-template-rows:auto auto minmax\(1\.3rem,auto\)/);
+});
+
+test("Alterar POP vinculado: troca sem apagar o comprovante e registra no histórico", () => {
+  const pops = [{ id: "p1" }, { id: "p2" }];
+  const base = { id: "c1", tipo: "pragas", popId: "p1" };
+  const novo = alterarPopVinculado(base, "p2", pops, { id: "u1", nome: "Ana" }, "2026-10-21T10:00:00.000Z");
+  assert.equal(novo.popId, "p2");
+  assert.equal(novo.id, "c1");
+  assert.deepEqual(novo.historicoDePop, [{ em: "2026-10-21T10:00:00.000Z", porId: "u1", porNome: "Ana", de: "p1", para: "p2" }]);
+  assert.equal(base.popId, "p1", "o original não muda");
+  // desvincular mantém o comprovante e anota
+  const geral = alterarPopVinculado(novo, undefined, pops, { id: "u1" }, "2026-10-22T10:00:00.000Z");
+  assert.equal(geral.popId, undefined);
+  assert.equal(geral.historicoDePop.length, 2);
+  // sem mudança ou POP inexistente: nada acontece
+  assert.equal(alterarPopVinculado(base, "p1", pops, {}, "x"), base);
+  assert.equal(alterarPopVinculado(base, "nao-existe", pops, {}, "x"), base);
+  const tela = ler("../components/pc/PcComprovantes.tsx");
+  assert.ok(tela.includes('rotulo: "Alterar POP vinculado"') && tela.includes("onAlterarPop"));
+  assert.ok(ler("../app/page.tsx").includes('acao: "comprovante.pop_alterado"'));
+});
+
+test("lista de POPs: chips em uma linha, botão de criar na linha das abas e sem 'Criar do modelo e revisar'", () => {
+  const lista = ler("../components/pc/PcPopsLista.tsx");
+  assert.ok(lista.includes("pgl-chips") && !lista.includes("pgl-contadores") && lista.includes("createPortal"));
+  assert.ok(lista.includes('linha.situacao !== "Falta criar" && <div className="pgl-acao">'));
+  assert.ok(ler("../components/pc/CentralEmpresaNav.tsx").includes('id="cen-acoes-slot"'));
+  assert.match(ler("../app/globals.css"), /\.pgl-linha\{min-height:56px/);
+});

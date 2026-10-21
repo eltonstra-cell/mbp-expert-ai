@@ -4039,3 +4039,29 @@ html:not([data-modo="campo"]) :is(.ui-row-sub,.ui-subtitle,.pgl-detalhe,.pgl-aca
 .rel-abas-apoio{margin-left:auto;font-size:.88rem;color:#2B3E4C}
 .ui-head--so-direita{justify-content:flex-end;align-items:center;gap:12px}
 .ui-subtitle--linha{font-size:.88rem;color:#2B3E4C}
+
+/* Lista de POPs: chips baixos, responsável na mesma linha, linhas de ~56 px e rolagem só na lista */
+.cen-subabas-linha{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
+.cen-acoes-slot{display:flex;align-items:center;margin-left:auto}
+.pgl-faixa-topo{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 16px}
+.pgl-chips{display:flex;flex-wrap:wrap;align-items:center;gap:6px;min-height:40px}
+.pgl-chip{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:999px;font-size:.88rem;color:#12202B;white-space:nowrap}
+.pgl-chip b{font-family:var(--font-display),"Outfit",sans-serif;font-weight:500}
+.pgl-resp{flex-direction:row;align-items:center}
+.pgl-faixa-topo .pgl-resp-linha{flex-wrap:wrap;gap:4px 12px;font-size:.9rem}
+.pgl-lista{max-height:calc(100vh - 300px);min-height:0;overflow-y:auto;padding-right:4px;gap:6px}
+.pgl-linha{min-height:56px;padding:6px 14px;gap:6px 14px;border-radius:14px}
+.pgl-faixa{min-height:32px}
+.pgl-titulo{font-size:1.02rem;line-height:1.2}
+.pgl-detalhe{font-size:.86rem}
+
+/* Comprovantes: contadores em chips, Tipo fixo, espaço reservado para o erro e formulário mais compacto */
+.comp-chips{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.comp-chip{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:999px;font-size:.88rem;color:#12202B;white-space:nowrap}
+.comp-chip b{font-family:var(--font-display),"Outfit",sans-serif;font-weight:500}
+.comp-chip--nc{background:#FDE7E7}.comp-chip--pend{background:#FFF3D6}.comp-chip--ok{background:#E3F6EA}
+.comp-tipo-fixo{display:flex;align-items:center;height:40px;font-size:.95rem;color:#12202B}
+.comp-grade .pc-field{display:grid;grid-template-rows:auto auto minmax(1.3rem,auto);align-content:start;gap:4px}
+.comp-grade .ui-field-error--forte{font-size:.88rem;line-height:1.25}
+.comp-form{gap:6px;padding:10px 14px}
+.comp-alterar-pop{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}

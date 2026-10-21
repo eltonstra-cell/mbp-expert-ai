@@ -22,7 +22,8 @@ import PopLeituraFolha from "@/components/PopLeituraFolha";
 import PcFilaDeEnvio from "@/components/pc/PcFilaDeEnvio";
 import PcComprovantes, { type DadosDoFormulario } from "@/components/pc/PcComprovantes";
 import { RegistrosEmpresaContext, type RegistrosEmpresaValor } from "@/components/RegistrosEmpresaContext";
-import { criarRegistroPop, podeCriarRegistroPop, podeGerenciarComprovantes, podeGerenciarPessoas, podeVerComprovantes } from "@/lib/registrosEmpresa";
+import { criarRegistroPop, podeCriarRegistroPop, podeGerenciarComprovantes, podeGerenciarPessoas, podeVerComprovantes, rotuloDoTipo } from "@/lib/registrosEmpresa";
+import { alterarPopVinculado } from "@/lib/comprovantePop";
 import PcPessoas from "@/components/pc/PcPessoas";
 import PcEmitirRelatorio from "@/components/pc/PcEmitirRelatorio";
 import PcRelatoriosEmitidos from "@/components/pc/PcRelatoriosEmitidos";
@@ -2037,6 +2038,33 @@ export default function Home() {
       void fetch(`/api/comprovantes/file?pathname=${encodeURIComponent(anterior.blobPathname)}`, { method: "DELETE" }).catch(() => undefined);
     }
     return "";
+  }
+
+  // Troca o POP vinculado sem apagar o comprovante: fica uma linha no histórico dele e um registro de auditoria.
+  function alterarPopDoComprovante(item: ComprovanteTerceiro, popId: string | undefined) {
+    if (!exigirPermissao("empresas.ver", item.empresaId) || !podeGerenciarComprovantesAqui) return;
+    const agora = new Date().toISOString();
+    const quem = { id: usuarioDaSessao?.id, nome: usuarioDaSessao?.nome };
+    const novo = alterarPopVinculado(item, popId, db.empresas[item.empresaId]?.pops || [], quem, agora);
+    if (novo === item) return;
+    const registro = criarRegistroAuditoria(
+      {
+        usuarioId: usuarioDaSessao?.id || "local",
+        usuarioNome: usuarioDaSessao?.nome || "Usuário local",
+        acao: "comprovante.pop_alterado",
+        entidade: "Empresa",
+        entidadeId: item.id,
+        empresaId: item.empresaId,
+        detalhes: `${rotuloDoTipo(item.tipo)} • POP vinculado alterado.`,
+      },
+      agora
+    );
+    setDb((o) => {
+      const atualizado: AppDB = { ...o, comprovantes: (o.comprovantes || []).map((registroAtual) => (registroAtual.id === item.id ? novo : registroAtual)), registrosAuditoria: [...o.registrosAuditoria, registro] };
+      salvarDBLocal(atualizado);
+      return atualizado;
+    });
+    mostrarToast("POP vinculado alterado");
   }
 
   function removerComprovante(item: ComprovanteTerceiro) {
@@ -6208,6 +6236,7 @@ export default function Home() {
           online={online}
           onSalvar={salvarComprovante}
           onRemover={removerComprovante}
+          onAlterarPop={alterarPopDoComprovante}
           urlDoArquivo={(item) => `/api/comprovantes/file?pathname=${encodeURIComponent(item.blobPathname || "")}`}
           onVoltar={() => setRenovarComprovanteId(undefined)}
           renovarId={renovarComprovanteId}

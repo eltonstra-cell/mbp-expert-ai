@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import type { Empresa, ProcedimentoOperacionalPadronizado } from "@/types";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
 import { RowMenu, type ItemMenu } from "@/components/ui/RowMenu";
@@ -60,7 +61,7 @@ function Linha({ linha, podeEditar, onAbrirFicha, onCriarDoModelo, menu }: { lin
           </span>
         )}
       </div>
-      <div className="pgl-acao">{linha.acao.texto}</div>
+      {linha.situacao !== "Falta criar" && <div className="pgl-acao">{linha.acao.texto}</div>}
       <div className="pgl-botoes">
         {linha.pop ? (
           <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => onAbrirFicha(linha.pop!.id)}>
@@ -103,6 +104,9 @@ export default function PcPopsLista({
   const [titulo, setTitulo] = useState("");
   const [erro, setErro] = useState<{ campo: "titulo" | "codigo"; aviso: string } | null>(null);
   const contadores = contadoresDaLista([...conjunto, ...outros]);
+  // "Criar os N POPs de uma vez" vai para a linha das abas da Central, à direita; sem a linha (tela fora da Central), fica no topo da lista.
+  const [lugarDoBotao, setLugarDoBotao] = useState<HTMLElement | null>(null);
+  useEffect(() => setLugarDoBotao(document.getElementById("cen-acoes-slot")), []);
 
   function adicionar() {
     const resultado = adicionarPop(pops, codigo, titulo, crypto.randomUUID());
@@ -135,45 +139,31 @@ export default function PcPopsLista({
 
   return (
     <div className="pgl">
-      <div className="pgl-topo">
-        <div className="pgl-cabecalho">
-          <h2 className="sr-only">POPs</h2>
-        </div>
-        {podeEditar && (
-          <div className="pgl-criar">
-            <button type="button" className="ui-btn ui-btn--criar" disabled={faltamCriar === 0} onClick={onCriarFaltantes}>
-              {faltamCriar === 0 ? "Criar POPs de uma vez" : faltamCriar === 1 ? "Criar 1 POP de uma vez" : `Criar os ${faltamCriar} POPs de uma vez`}
-            </button>
-            {faltamCriar === 0 && motivoSemCriar && <span className="pgl-motivo">{motivoSemCriar}</span>}
-          </div>
-        )}
-      </div>
+      <h2 className="sr-only">POPs</h2>
+      {podeEditar &&
+        (() => {
+          const botao = (
+            <div className="pgl-criar">
+              {faltamCriar === 0 && motivoSemCriar && <span className="pgl-motivo">{motivoSemCriar}</span>}
+              <button type="button" className="ui-btn ui-btn--criar ui-btn--small" disabled={faltamCriar === 0} onClick={onCriarFaltantes}>
+                {faltamCriar === 0 ? "Criar POPs de uma vez" : faltamCriar === 1 ? "Criar 1 POP de uma vez" : `Criar os ${faltamCriar} POPs de uma vez`}
+              </button>
+            </div>
+          );
+          return lugarDoBotao ? createPortal(botao, lugarDoBotao) : <div className="pgl-topo">{botao}</div>;
+        })()}
 
       {topo}
 
-      <div className="pgl-resp">{responsavel}</div>
-
-      <div className="pgl-contadores" role="group" aria-label="Situação dos POPs">
-        <div className="pgl-conta pgl-conta--ok">
-          <span className="pgl-conta-n">{contadores.vigentesEmDia}</span>
-          <span>vigentes em dia</span>
+      <div className="pgl-faixa-topo">
+        <div className="pgl-chips" role="group" aria-label="Situação dos POPs">
+          <span className="pgl-chip pgl-conta--ok"><b>{contadores.vigentesEmDia}</b> em dia</span>
+          <span className="pgl-chip pgl-conta--pend"><b>{contadores.vigentesComPendencia}</b> com pendência</span>
+          <span className="pgl-chip pgl-conta--aguarda"><b>{contadores.aguardando}</b> aguardando aprovação</span>
+          <span className="pgl-chip pgl-conta--rascunho"><b>{contadores.rascunho}</b> rascunho</span>
+          <span className="pgl-chip pgl-conta--falta"><b>{contadores.faltaCriar}</b> falta criar</span>
         </div>
-        <div className="pgl-conta pgl-conta--pend">
-          <span className="pgl-conta-n">{contadores.vigentesComPendencia}</span>
-          <span>vigentes com pendência</span>
-        </div>
-        <div className="pgl-conta pgl-conta--aguarda">
-          <span className="pgl-conta-n">{contadores.aguardando}</span>
-          <span>aguardando aprovação</span>
-        </div>
-        <div className="pgl-conta pgl-conta--rascunho">
-          <span className="pgl-conta-n">{contadores.rascunho}</span>
-          <span>em rascunho</span>
-        </div>
-        <div className="pgl-conta pgl-conta--falta">
-          <span className="pgl-conta-n">{contadores.faltaCriar}</span>
-          <span>falta criar</span>
-        </div>
+        <div className="pgl-resp">{responsavel}</div>
       </div>
 
       <div className="pgl-lista">
