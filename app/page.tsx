@@ -100,7 +100,7 @@ import FiscalInicio from "@/components/FiscalInicio";
 import { AvisoFotoProvider, useAvisoAntesDeFotografar } from "@/components/AvisoAntesDeFotografar";
 import type { ItemMenu } from "@/components/ui/RowMenu";
 import { ROTULO_DE_USO, descreverAparelho } from "@/lib/screenMode";
-import { preparacaoDaEmpresa, pendenciasDaEmpresa } from "@/lib/companyReadiness";
+import { preparacaoDaEmpresa, pendenciasDaEmpresa, textoDaPendencia } from "@/lib/companyReadiness";
 import ChecklistEnvStrip from "@/components/ChecklistEnvStrip";
 import CommandPalette from "@/components/CommandPalette";
 import { construirDestinos, type Destino } from "@/lib/commandSearch";
@@ -7383,6 +7383,11 @@ export default function Home() {
               <CentralEmpresaNav grupos={gruposVisiveis(quemVeNaCentral)} subaba={secaoEmpresa as SubAbaCentral} onSubaba={irParaSubaba} />
             ))}
             {editingEmpresaId && msg && <div className="ui-note cen-msg">{msg}</div>}
+            {editingEmpresaId && empresaGerenciada && secaoEmpresa === "dados" && pendenciasDaEmpresa(empresaGerenciada).length > 0 && (
+              <div className="priv-faixa" role="status">
+                <span>{textoDaPendencia(pendenciasDaEmpresa(empresaGerenciada))}</span>
+              </div>
+            )}
 
             <div className="cen-conteudo">
               <>

@@ -112,3 +112,16 @@ test("modal de emissão: linha pequena com o motivo do botão desabilitado", () 
   const lista = ler("../components/pc/PcRelatoriosEmitidos.tsx");
   assert.ok(lista.includes('{aberta ? "▾" : "▸"}'));
 });
+
+import { textoDaPendencia, textoDaPendenciaCurta } from "../lib/companyReadiness.ts";
+
+test("Empresas: 'Falta: …' em uma linha, primeira pendência + N, lista inteira na dica", () => {
+  assert.equal(textoDaPendenciaCurta([]), "");
+  assert.equal(textoDaPendenciaCurta(["horário de funcionamento"]), "Falta: horário de funcionamento");
+  assert.equal(textoDaPendenciaCurta(["horário de funcionamento", "setores", "POPs"]), "Falta: horário de funcionamento +2");
+  assert.equal(textoDaPendencia(["horário de funcionamento", "setores", "POPs"]), "Falta: horário de funcionamento, setores e POPs");
+  const tela = ler("../components/pc/PcEmpresas.tsx");
+  assert.ok(tela.includes("title={textoDaPendencia(empresa.faltas)}") && tela.includes("textoDaPendenciaCurta(empresa.faltas)"));
+  assert.match(ler("../app/globals.css"), /\.pc-cadastro-status \.pc-pendencia\{display:block;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap\}/);
+  assert.ok(ler("../app/page.tsx").includes('secaoEmpresa === "dados" && pendenciasDaEmpresa(empresaGerenciada).length > 0'));
+});

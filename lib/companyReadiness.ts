@@ -166,6 +166,12 @@ export function pendenciasDaEmpresa(empresa?: Empresa): string[] {
   return [...cadastro, ...faltantes];
 }
 
+/** Para o cartão da lista: a primeira pendência e quantas mais ("Falta: horário de funcionamento +2"); a lista inteira vai na dica. */
+export function textoDaPendenciaCurta(faltas: string[]): string {
+  if (faltas.length === 0) return "";
+  return faltas.length === 1 ? `Falta: ${faltas[0]}` : `Falta: ${faltas[0]} +${faltas.length - 1}`;
+}
+
 /** "Falta: equipamentos e programas" */
 export function textoDaPendencia(faltas: string[]): string {
   if (faltas.length === 0) return "";

@@ -9,7 +9,7 @@ import type { ItemMenu } from "@/components/ui/RowMenu";
 import { acoesDaEmpresa } from "@/lib/menuActions";
 import { nomeSemNumerosNoInicio } from "@/lib/navigation";
 import { razaoSocialTitulo } from "@/lib/nomeCargo";
-import { textoDaPendencia } from "@/lib/companyReadiness";
+import { textoDaPendencia, textoDaPendenciaCurta } from "@/lib/companyReadiness";
 import { iniciaisDaEmpresa } from "@/lib/navigation";
 
 export type LinhaEmpresa = {
@@ -196,7 +196,7 @@ export default function PcEmpresas({
                 }
                 pilulas={
                   <span className="pc-cadastro-status">
-                    {empresa.faltas.length === 0 ? <Pill tom="ok">Cadastro completo</Pill> : <span className="ui-row-sub pc-pendencia">{textoDaPendencia(empresa.faltas)}</span>}
+                    {empresa.faltas.length === 0 ? <Pill tom="ok">Cadastro completo</Pill> : <span className="ui-row-sub pc-pendencia" title={textoDaPendencia(empresa.faltas)} aria-label={textoDaPendencia(empresa.faltas)}>{textoDaPendenciaCurta(empresa.faltas)}</span>}
                   </span>
                 }
                 acao={

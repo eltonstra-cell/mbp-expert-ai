@@ -4073,3 +4073,6 @@ html:not([data-modo="campo"]) :is(.ui-row-sub,.ui-subtitle,.pgl-detalhe,.pgl-aca
 .ui-input:focus,.ui-input:focus-visible{outline:0;border-color:#E8B04B;box-shadow:inset 0 0 0 1px #E8B04B}
 .perfil-edicao{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
 @media (max-width:719px){.perfil-edicao{grid-template-columns:1fr}}
+
+/* Empresas: uma só linha de pendência, cartões de altura uniforme */
+.pc-cadastro-status .pc-pendencia{display:block;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
