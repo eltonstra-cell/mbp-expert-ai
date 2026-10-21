@@ -166,5 +166,5 @@ test("Telas: o painel só aparece para o gestor, o lembrete abre no e-mail da pe
   const resumo = readFileSync(new URL("../components/pc/PcResumo.tsx", import.meta.url), "utf8");
   assert.ok(resumo.includes("Não substitui o relatório completo."));
   const painel = readFileSync(new URL("../components/PainelHoje.tsx", import.meta.url), "utf8");
-  assert.ok(painel.includes("Hoje precisa de você") && painel.includes("vencem em 7 dias") && painel.includes("quem age"));
+  assert.ok(painel.includes("Hoje precisa de você") && painel.includes("em 7 dias") && painel.includes("vencem(") && painel.includes("quem age"));
 });

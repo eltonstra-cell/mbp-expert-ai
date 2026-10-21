@@ -1,7 +1,7 @@
 "use client";
 
 import { nomeDeExibicaoDoAmbiente } from "@/lib/checklistEnvs";
-import { resumoDosSetores } from "@/lib/manualBase";
+import { resumoCurtoDosSetores } from "@/lib/manualBase";
 
 import { useState } from "react";
 
@@ -140,7 +140,7 @@ export default function PcAmbientes({
                 />
                 {duplicado && <span className="ui-field-error">Esse ambiente já está na lista.</span>}
               </label>
-              <button type="button" className="ui-btn ui-btn--primary" disabled={!novoNome || duplicado} onClick={onAdicionar}>
+              <button type="button" className="ui-btn ui-btn--criar" disabled={!novoNome || duplicado} onClick={onAdicionar}>
                 + Adicionar
               </button>
             </div>
@@ -150,7 +150,7 @@ export default function PcAmbientes({
         <div className="ui-card pc-amb-right">
           <div className="ui-head">
             <h2 className="ui-card-title">Roteiro da visita</h2>
-            <span className="ui-row-sub">{resumoDosSetores(selecionados)}</span>
+            <span className="ui-row-sub">{resumoCurtoDosSetores(selecionados)}</span>
           </div>
           <div className="ui-scroll">
             {semAmbientes && <div className="ui-empty">Nenhum ambiente escolhido ainda.</div>}

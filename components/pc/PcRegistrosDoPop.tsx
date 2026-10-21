@@ -7,8 +7,6 @@ import { popVigente } from "@/lib/popsNorma";
 import { guardaDosRegistros, separarRegistros } from "@/lib/registrosEmpresa";
 import type { ProcedimentoOperacionalPadronizado, RegistroPop } from "@/types";
 
-const POR_PAGINA = 4;
-
 function agoraParaCampo(): string {
   const agora = new Date();
   const local = new Date(agora.getTime() - agora.getTimezoneOffset() * 60000);
@@ -30,7 +28,6 @@ export default function PcRegistrosDoPop({ pop }: { pop: ProcedimentoOperacional
   const [corrigindo, setCorrigindo] = useState<RegistroPop | null>(null);
   const [tocado, setTocado] = useState(false);
   const [erroGeral, setErroGeral] = useState("");
-  const [pagina, setPagina] = useState(0);
   const [mostrarRevisar, setMostrarRevisar] = useState(false);
   const [guardaTexto, setGuardaTexto] = useState("");
 
@@ -43,8 +40,6 @@ export default function PcRegistrosDoPop({ pop }: { pop: ProcedimentoOperacional
   if (!contexto) return null;
 
   const provaId = contexto.empresa?.registroProvaPorPop?.[pop.id] || "";
-  const totalPaginas = Math.max(1, Math.ceil(recentes.length / POR_PAGINA));
-  const paginaAtual = Math.min(pagina, totalPaginas - 1);
   const erroDescricao = !descricao.trim() ? "Descreva o que foi feito." : "";
   const erroData = !dataHora ? "Informe a data e a hora." : new Date(dataHora).getTime() > Date.now() + 5 * 60 * 1000 ? "A data e a hora não podem estar no futuro." : "";
 
@@ -69,7 +64,6 @@ export default function PcRegistrosDoPop({ pop }: { pop: ProcedimentoOperacional
     setCorrigindo(null);
     setTocado(false);
     setDataHora(agoraParaCampo());
-    setPagina(0);
   }
 
   const diasDefinidos = Number(guardaTexto);
@@ -173,8 +167,8 @@ export default function PcRegistrosDoPop({ pop }: { pop: ProcedimentoOperacional
         {recentes.length === 0 ? (
           <p className="ui-row-sub">Nenhum registro dentro do prazo de guarda.</p>
         ) : (
-          <ul className="pop-registro-lista">
-            {recentes.slice(paginaAtual * POR_PAGINA, (paginaAtual + 1) * POR_PAGINA).map((registro) => (
+          <ul className="pop-registro-lista pop-registro-lista--rolagem">
+            {recentes.map((registro) => (
               <li key={registro.id} className="pop-registro-item">
                 <span className="pop-registro-quando">
                   {quando(registro.dataHora)} · {registro.responsavel}
@@ -201,20 +195,7 @@ export default function PcRegistrosDoPop({ pop }: { pop: ProcedimentoOperacional
             ))}
           </ul>
         )}
-        <div className="pop-passos-pagina" role="group" aria-label="Páginas dos registros">
-          {totalPaginas > 1 && (
-            <>
-              <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" disabled={paginaAtual === 0} onClick={() => setPagina(paginaAtual - 1)}>
-                ‹ Mais novos
-              </button>
-              <span className="ui-row-sub">
-                {paginaAtual + 1} de {totalPaginas}
-              </span>
-              <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" disabled={paginaAtual >= totalPaginas - 1} onClick={() => setPagina(paginaAtual + 1)}>
-                Mais antigos ›
-              </button>
-            </>
-          )}
+        <div className="pop-passos-pagina" role="group" aria-label="Registros fora do prazo">
           {revisar.length > 0 && (
             <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => setMostrarRevisar((valor) => !valor)}>
               Revisar ({revisar.length}) fora do prazo

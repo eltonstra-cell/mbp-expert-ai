@@ -6365,7 +6365,19 @@ export default function Home() {
     view === "empresas" && showEmpresaForm && ["pops", "comprovantes", "pessoas"].includes(secaoEmpresa || "") ? "pops" : chaveAtiva(view);
   const itemDaTela = chaveDaTela ? itemDoMenu(chaveDaTela) : undefined;
   const rotuloDaTela =
-    view === "historico"
+    view === "relatoriosemitidos"
+      ? "Relatórios emitidos"
+      : view === "dossie"
+        ? "Dossiê"
+        : view === "evolucao"
+          ? "Evolução"
+          : view === "resumo"
+            ? "Resumo de uma página"
+            : view === "fila"
+              ? "Fila de envio"
+              : view === "empresas" && showEmpresaForm && editingEmpresaId
+                ? "Central da Empresa"
+                : view === "historico"
       ? "Histórico"
       : view === "correcoes"
         ? "Correções"
@@ -6810,6 +6822,7 @@ export default function Home() {
               return ultimo ? { numero: ultimo.numero, versao: ultimo.versao } : undefined;
             })()}
             assinante={usuarioDaSessao?.nome || sessaoAtual?.name || "RT"}
+            cargo={usuarioDaSessao?.cargo || ""}
             crn={usuarioDaSessao?.crn || ""}
             emitindo={emitindoRelatorio}
             erro={erroDeEmissao}

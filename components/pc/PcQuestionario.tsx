@@ -23,11 +23,8 @@ type Props = {
   onFechar: () => void;
 };
 
-const POR_PAGINA = 5;
-
 // Questionário do ambiente (só no PC; só Administrador e RT): modelo da norma + perguntas da empresa.
 export default function PcQuestionario({ ambiente, config, foiUsada, quem, onSalvar, onFechar }: Props) {
-  const [pagina, setPagina] = useState(0);
   const [desligando, setDesligando] = useState<string | null>(null);
   const [justificativa, setJustificativa] = useState("");
   const [tocado, setTocado] = useState(false);
@@ -37,8 +34,6 @@ export default function PcQuestionario({ ambiente, config, foiUsada, quem, onSal
   const agora = () => new Date().toISOString();
 
   const lista = [...config.perguntas].sort((a, b) => a.ordem - b.ordem);
-  const totalPaginas = Math.max(1, Math.ceil(lista.length / POR_PAGINA));
-  const paginaAtual = Math.min(pagina, totalPaginas - 1);
   const ativas = perguntasVigentes(config).length;
   const erroJustificativa = desligando && justificativa.trim().length < 5 ? MENSAGEM_JUSTIFICATIVA : "";
 
@@ -65,7 +60,6 @@ export default function PcQuestionario({ ambiente, config, foiUsada, quem, onSal
     setNova("");
     setNovaTocada(false);
     setErroNova("");
-    setPagina(Math.ceil(resultado.config.perguntas.length / POR_PAGINA) - 1);
   }
 
   return (
@@ -73,11 +67,12 @@ export default function PcQuestionario({ ambiente, config, foiUsada, quem, onSal
       <div className="pc-modal-backdrop" onClick={onFechar} />
       <section className="pc-modal quest" role="dialog" aria-modal="true" aria-label={`Questionário de ${ambiente}`}>
         <h2 className="pc-modal-title">Questionário · {ambiente}</h2>
-        <p className="ui-row-sub">
+        <p className="quest-intro">
           {ativas} de {lista.length} perguntas ligadas. Vale para as próximas visitas; as visitas já iniciadas mantêm as perguntas que já usam. Pergunta usada em visita nunca é apagada, só desativada.
         </p>
+        <div className="quest-rolagem">
         <ul className="quest-lista">
-          {lista.slice(paginaAtual * POR_PAGINA, (paginaAtual + 1) * POR_PAGINA).map((pergunta) => {
+          {lista.map((pergunta) => {
             const usada = foiUsada(pergunta);
             const posicao = lista.findIndex((item) => item.id === pergunta.id);
             return (
@@ -88,7 +83,7 @@ export default function PcQuestionario({ ambiente, config, foiUsada, quem, onSal
                     <span className={`quest-origem quest-origem--${pergunta.origem}`}>{ORIGEM_DA_PERGUNTA[pergunta.origem]}</span>{" "}
                     {pergunta.nova && (
                       <>
-                        <span className="quest-nova">Nova no modelo</span>{" "}
+                        <span className="quest-etiqueta-nova">Nova no modelo</span>{" "}
                         <button type="button" className="pc-link-btn" onClick={() => onSalvar({ ...config, perguntas: config.perguntas.map((item) => (item.id === pergunta.id ? { ...item, nova: false } : item)) })}>
                           Marcar como vista
                         </button>{" "}
@@ -159,19 +154,7 @@ export default function PcQuestionario({ ambiente, config, foiUsada, quem, onSal
             );
           })}
         </ul>
-        {totalPaginas > 1 && (
-          <div className="pop-passos-pagina" role="group" aria-label="Páginas das perguntas">
-            <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" disabled={paginaAtual === 0} onClick={() => setPagina(paginaAtual - 1)}>
-              ‹ Anteriores
-            </button>
-            <span className="ui-row-sub">
-              {paginaAtual + 1} de {totalPaginas}
-            </span>
-            <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" disabled={paginaAtual >= totalPaginas - 1} onClick={() => setPagina(paginaAtual + 1)}>
-              Próximas ›
-            </button>
-          </div>
-        )}
+        </div>
         <div className="quest-nova">
           <label className="pc-field">
             <span className="ui-eyebrow">Nova pergunta da empresa</span>

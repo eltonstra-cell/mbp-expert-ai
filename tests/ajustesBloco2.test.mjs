@@ -451,5 +451,5 @@ test("causa da rolagem cortada: o contêiner das telas rola em vez de esconder o
   const antigo = css.indexOf(':is(html[data-modo="completo"],html[data-modo="equilibrado"]) .pc-offset:has(.ui-screen){height:100vh;overflow:hidden}');
   assert.ok(ultimo > antigo && antigo >= 0, "a regra nova vem depois da antiga e a substitui");
   assert.ok(css.includes('html[data-modo="campo"] .ui-screen{overflow-x:hidden;overflow-y:auto}'));
-  assert.ok(css.includes(".ui-scroll{min-height:min(200px,40vh)}"));
+  assert.ok(css.includes(".ui-screen>.ui-scroll{min-height:min(200px,40vh)}"));
 });

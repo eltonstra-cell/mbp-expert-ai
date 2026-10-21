@@ -3677,7 +3677,7 @@ html[data-modo="equilibrado"] .campo-tela{height:calc(100dvh - 190px - var(--fai
 /* ===== Bloco 2a: a página sempre rola até o fim (causa: o contêiner das telas cortava o que passava da altura) ===== */
 :is(html[data-modo="completo"],html[data-modo="equilibrado"]) .pc-offset:has(.ui-screen){height:100vh;overflow-x:hidden;overflow-y:auto}
 :is(html[data-modo="completo"],html[data-modo="equilibrado"]) .pc-offset:has(.ui-screen)::after{content:"";flex:none;height:24px}
-.ui-scroll{min-height:min(200px,40vh)}
+.ui-screen>.ui-scroll{min-height:min(200px,40vh)}
 html[data-modo="campo"] .ui-screen{overflow-x:hidden;overflow-y:auto}
 .toast-salvo{z-index:150;gap:8px;padding:8px 16px;font-size:.95rem;color:#12202B}
 
@@ -3753,8 +3753,83 @@ html[data-modo="campo"] .ui-screen{overflow-x:hidden;overflow-y:auto}
   .doc-foto,.dossie-fotos figure{break-inside:avoid}
   .doc-tabela tr{break-inside:avoid}
 }
-.quest-nova{display:inline-flex;align-items:center;min-height:24px;padding:0 10px;border-radius:999px;background:#E8760A;font-size:.84rem;color:#fff}
+.quest-etiqueta-nova{display:inline-flex;align-items:center;min-height:24px;padding:0 10px;border-radius:999px;background:#E8760A;font-size:.84rem;color:#fff}
 /* A regra geral de impressão esconde header e nav (menu do app); dentro dos documentos impressos eles são o cabeçalho e o índice. */
 @media print{.doc-impresso header,.doc-impresso nav{display:flex!important;flex-direction:column}}
 .emitido-assinatura,.doc-parcial,.doc-secao>h3{break-inside:avoid;break-after:avoid}
 .doc-lista li .ui-pill{align-self:flex-start}
+
+/* ===== Bloco 3: painel Hoje com tipo em cada item, lista rolável por dentro ===== */
+.hoje-lista{max-height:min(30vh,210px);overflow-y:auto;padding-right:4px}
+.hoje-tipo{flex:none;display:inline-flex;align-items:center;min-height:24px;padding:0 10px;border-radius:999px;font-size:.84rem;color:#fff}
+.hoje-tipo--correcao{background:#B35A36}
+.hoje-tipo--comprovante{background:#2F6FB5}
+.hoje-tipo--capacitacao{background:#0E8088}
+.hoje-tipo--pop{background:#9A6B12}
+
+/* ===== Bloco 3: fonte e contraste no PC, seleção creme, Início sem corte, Roteiro sem corte ===== */
+/* Caixas de campo com borda firme (não a fraca) em todos os formulários; erro continua vermelho. */
+.ui-input,.ui-input--lista{border-color:#B4C2CE}
+.central-empresa :is(input,select,textarea):not([type="checkbox"]):not([type="radio"]):not([type="file"]){border:1.5px solid #B4C2CE}
+.central-empresa :is(input,select,textarea).is-invalid,.ui-input.is-invalid{border-color:#D93A3A;background:#fff}
+.central-empresa :is(input,select,textarea):focus-visible{outline:3px solid var(--brand);outline-offset:1px}
+
+/* Rótulos de campo: tinta escura, sem maiúsculas, 13 a 14 px; nunca azul-claro. */
+.pc-field>.ui-eyebrow,label>.ui-eyebrow,.pc-amb-add-field>.ui-eyebrow,.central-empresa label>span[class*="text-xs"],.central-empresa legend[class*="text-xs"]{font-size:.88rem;font-weight:400;letter-spacing:0;text-transform:none;color:#12202B}
+
+/* PC: fonte base de 14 a 15 px nas telas e nos formulários (no celular nada muda). */
+:is(html[data-modo="completo"],html[data-modo="equilibrado"]) .pc-offset{font-size:15px}
+:is(html[data-modo="completo"],html[data-modo="equilibrado"]) .ui-row-sub{font-size:.9rem}
+:is(html[data-modo="completo"],html[data-modo="equilibrado"]) .ui-pill,:is(html[data-modo="completo"],html[data-modo="equilibrado"]) .ui-tab{font-size:.88rem}
+:is(html[data-modo="completo"],html[data-modo="equilibrado"]) .ui-btn{font-size:.95rem}
+:is(html[data-modo="completo"],html[data-modo="equilibrado"]) .ui-btn--small{font-size:.9rem}
+:is(html[data-modo="completo"],html[data-modo="equilibrado"]) .ui-input,:is(html[data-modo="completo"],html[data-modo="equilibrado"]) .central-empresa :is(input,select,textarea){font-size:.98rem}
+:is(html[data-modo="completo"],html[data-modo="equilibrado"]) .central-empresa [class*="text-sm"]{font-size:.95rem}
+:is(html[data-modo="completo"],html[data-modo="equilibrado"]) .central-empresa [class*="text-xs"]{font-size:.88rem}
+:is(html[data-modo="completo"],html[data-modo="equilibrado"]) .ui-title{font-weight:500}
+
+/* Selecionado em creme com borda dourada (nada de lilás). */
+.pc-env-pill.is-active,.pc-env-cell.is-active,.pc-env-panel .pc-env-cell.is-active,.chk-pc-aba.is-on{border-color:#E8B04B;background:#FEF6E6;color:#12202B}
+.pc-env-pill.is-active .pc-env-dot{box-shadow:0 0 0 2px #FEF6E6}
+/* Checklist: o nome do ambiente em destaque e o contador menor. */
+.chk-pc-aba{font-family:var(--font-display),"Outfit",sans-serif;font-size:.95rem;font-weight:500}
+.chk-pc-aba-n,.pc-env-cell-count{font-size:.72rem;font-weight:400}
+.pc-env-pill,.pc-env-cell-name{font-family:var(--font-display),"Outfit",sans-serif;font-weight:500}
+.pc-env-cell-name{font-size:.95rem}
+
+/* Roteiro da visita: nomes de ambiente e de questionário inteiros, em mais de uma linha se precisar. */
+.pc-route-row{flex-wrap:wrap}
+.pc-route-name{flex:1 1 220px;overflow:visible;text-overflow:clip;white-space:normal;overflow-wrap:anywhere;line-height:1.3}
+.pc-route-model{flex:1 1 220px;flex-wrap:wrap}
+.pc-route-model select{max-width:min(320px,100%);text-overflow:ellipsis}
+:is(html[data-modo="completo"],html[data-modo="equilibrado"]) .pc-route-model select{max-width:min(280px,100%)}
+.pc-choice-name{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere}
+
+/* Início: o cartão de visitas recentes nunca fica espremido; sobrando altura ele cresce, faltando a página rola. */
+.pc-recent{flex:1 0 auto;min-height:230px}
+.pc-recent-list{min-height:96px}
+
+/* Questionário: lista de perguntas rola por dentro; título e botões ficam fixos; texto do topo inteiro. */
+.pc-modal.quest{height:min(90vh,780px);width:min(820px,94vw)}
+.quest-intro{margin:0;font-size:.92rem;line-height:1.4;color:#3D5160}
+.quest-rolagem{flex:1;min-height:0;overflow-y:auto;padding-right:4px}
+.quest-item .quest-titulo{overflow-wrap:anywhere}
+.pop-registro-lista--rolagem,.pop-treino-rolagem{max-height:min(46vh,420px);overflow-y:auto;padding-right:4px}
+.pop-treino-form{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px}
+.pop-treino-form .pop-treino-data{max-width:190px}
+
+/* Textos de janela inteiros (a regra de uma linha com reticências é só para linhas de lista). */
+.pc-modal-texto{margin:0;font-size:.95rem;line-height:1.45;color:#12202B}
+.pc-modal .ui-row-sub{white-space:normal;overflow:visible;text-overflow:clip}
+.chk-sel-botao{border-color:#E8B04B;background:#FEF6E6}
+.chk-sel-nome{font-family:var(--font-display),"Outfit",sans-serif;font-size:1.15rem;font-weight:500;color:#12202B}
+.chk-sel-pos{padding:0 8px;font-family:inherit;font-size:.8rem;color:#3D5160}
+.chk-foco-amb{background:#FEF6E6;border-color:#E8B04B}
+.chk-foco-amb-nome{font-weight:500}
+.chk-foco-amb-pos{font-family:inherit;font-size:.82rem;color:#3D5160}
+html[data-modo="campo"] .chk-foco-amb-pos{font-size:.78rem}
+
+.pop-conferir{margin-left:6px}
+.pc-route-model{min-width:0}
+.pc-route-model select{width:100%;min-width:0}
+.pc-amb-right .ui-head .ui-row-sub{white-space:normal;overflow:visible;text-overflow:clip}

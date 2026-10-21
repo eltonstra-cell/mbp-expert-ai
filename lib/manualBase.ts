@@ -357,3 +357,9 @@ export function resumoDosSetores(setores: string[]): string {
   const proprios = daEmpresa.length === 1 ? "1 ambiente próprio da empresa" : `${daEmpresa.length} ambientes próprios da empresa`;
   return `${modelo} · ${proprios}`;
 }
+
+/** "3 do modelo · 2 da empresa": versão curta para cabeçalhos estreitos. */
+export function resumoCurtoDosSetores(setores: string[]): string {
+  const { doModelo, daEmpresa } = separarSetores(setores);
+  return `${doModelo.length} do modelo · ${daEmpresa.length} da empresa`;
+}
