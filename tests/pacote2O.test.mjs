@@ -203,17 +203,17 @@ test("mapeamento: objetivos, frequência não inferida, referências vazias, aç
   assert.ok(cuidados.subitens.length > 3);
 });
 
-test("mapeamento dos passos: sem subtítulo (curto) e com subtítulo prefixado (longo)", () => {
+test("mapeamento dos passos: modelo curto sem subtítulo; modelo longo com subtítulo no primeiro passo de cada grupo (sem prefixo)", () => {
   const curto = criar("comp-02");
-  assert.equal(curto.conteudo.passos.every((passo) => !passo.texto.includes(": ") || !passo.texto.startsWith("Opção")), true);
+  assert.equal(curto.conteudo.passos.every((passo) => !passo.subtitulo), true);
   const longo = criar("comp-19");
   const textos = longo.conteudo.passos.map((passo) => passo.texto);
-  assert.ok(textos[0].startsWith("O descongelamento"), "grupo sem título não leva prefixo");
-  assert.ok(textos.some((texto) => texto.startsWith("Opção 01: Em refrigerador: ")));
-  assert.ok(textos.some((texto) => texto.startsWith("Opção 02: Micro-ondas: ")));
-  assert.ok(textos.some((texto) => texto.startsWith("Observações importantes: ")));
+  assert.ok(textos[0].startsWith("O descongelamento"), "grupo sem título não leva subtítulo");
+  assert.equal(longo.conteudo.passos[0].subtitulo, undefined);
+  assert.ok(textos.every((texto) => !/^(Opção|Observações importantes)[^:]*: /.test(texto)), "o título do grupo não é mais prefixado no texto");
+  assert.deepEqual(longo.conteudo.passos.filter((passo) => passo.subtitulo).map((passo) => passo.subtitulo), ["Opção 01: Em refrigerador", "Opção 02: Micro-ondas", "Observações importantes"]);
   const residuos = criar("res-01");
-  assert.ok(residuos.conteudo.passos.some((passo) => passo.texto.startsWith("Higienização de caixa de gordura: ")));
+  assert.ok(residuos.conteudo.passos.some((passo) => passo.subtitulo === "Higienização de caixa de gordura"));
   assert.ok(residuos.conteudo.frequenciaDetalhe.length > 1);
   assert.equal(residuos.conteudo.frequencia, "");
 });
@@ -427,15 +427,15 @@ test("registros sugeridos: só linha de apoio nos modelos de resíduos e de temp
 });
 
 // ===== Telas =====
-test("lista de POPs: '+ Adicionar POP' abre 'POP em branco' e 'A partir de modelo'; chip âmbar até conferir", () => {
+test("lista de POPs: '+ Adicionar POP' abre direto a janela de modelos (com 'Começar em branco'); chip âmbar até conferir", () => {
   const lista = ler("../components/pc/PcPopsLista.tsx");
-  assert.match(lista, /POP em branco/);
-  assert.match(lista, /A partir de modelo/);
+  assert.match(lista, /Começar em branco|onEmBranco/);
+  assert.match(lista, /setDeModelo\(true\)/);
   assert.match(lista, /popNaoConferido\(linha\.pop\)/);
   const ficha = ler("../components/pc/PcFichaPop.tsx");
   assert.match(ficha, /Para conferir antes de aprovar/);
   assert.match(ficha, /Marcar como conferido/);
-  assert.match(ficha, /popNaoConferido\(pop\) && <span className="pop-revisar">\{ROTULO_NAO_CONFERIDO\}/);
+  assert.match(ficha, /popNaoConferido\(pop\) && <span className="pop-revisar pop-nao-conferido" title=\{ROTULO_NAO_CONFERIDO\}>\{ROTULO_CURTO_NAO_CONFERIDO\}/);
   const painel = ler("../components/pc/PcModelosPop.tsx");
   assert.match(painel, /Criar POP/);
   assert.match(painel, /aria-label="Buscar modelo de POP"/);

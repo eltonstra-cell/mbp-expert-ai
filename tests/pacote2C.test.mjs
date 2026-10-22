@@ -69,7 +69,7 @@ test("C1: Documento tem leitura com Imprimir/PDF e Editar, e edição em três c
   assert.ok(editor.includes("Imprimir / PDF") && editor.includes("Editar (cria nova versão)") && editor.includes("pdoc-previa") && editor.includes("pdoc-secoes"));
   assert.ok(editor.includes("Pré-visualização da folha") && editor.includes("Motivo da nova versão (opcional)") && editor.includes("Enviar para aprovação"));
   assert.ok(editor.includes("Salvar rascunho") && editor.includes("limparPassosEmBranco(passos)"), "salvar rascunho segue descartando passo em branco");
-  assert.ok(editor.includes("setTocado(true); if (faltas.length === 0 && !erroTitulo) onEnviar(comConferenciaAtual(rascunho))"), "enviar para aprovação segue validando");
+  assert.ok(editor.includes("onEnviar(comConferenciaAtual(limpoParaGravar(rascunho)))") && editor.includes("secoesQueFaltam.length > 0 || faltas.length > 0 || erroTitulo"), "enviar para aprovação segue validando");
   const css = ler("../app/globals.css");
   assert.ok(css.includes(".pdoc-rodape{position:sticky;bottom:0") && css.includes("#pop-folha,#pop-folha *{visibility:visible}"));
 });

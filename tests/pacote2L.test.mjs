@@ -73,7 +73,7 @@ test("Central em uma linha e lista de POPs: separador entre grupos e seções, a
   assert.ok(css.includes(".pgl-secao{margin:0;font-size:15px;font-weight:500"));
   const lista = ler("../components/pc/PcPopsLista.tsx");
   assert.ok(lista.includes('className="pgl-avisos"') && lista.indexOf("pgl-avisos") < lista.indexOf("pgl-faixa-topo"));
-  assert.ok(lista.includes("podeEditar && !adicionando") && lista.includes("podeEditar && adicionando") && lista.includes("cancelarAdicao"));
+  assert.ok(lista.includes("podeEditar && adicionando") && lista.includes("onEmBranco") && lista.includes("cancelarAdicao"));
   assert.ok(lista.indexOf('className="pgl-fim"') < lista.indexOf("Criar os ") && lista.indexOf('className="pgl-fim"') > lista.indexOf("pgl-chips"), "Criar os N POPs fica no fim da linha dos chips");
   assert.ok(ler("../app/page.tsx").includes("Vincular em Dados"));
 });

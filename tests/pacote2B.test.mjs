@@ -63,7 +63,7 @@ test("B2: ficha do POP mostra só o caminho e o cabeçalho fica fixo", () => {
   const css = ler("../app/globals.css");
   assert.ok(css.includes(".ficha-topo{position:sticky;top:0"));
   const pagina = ler("../app/page.tsx");
-  assert.ok(pagina.includes("fichaAbertaRotulo && subabaDosDocumentos") && pagina.includes("aoMudarFicha={setFichaAbertaRotulo}"));
+  assert.ok(pagina.includes("fichaAbertaRotulo && subabaDosDocumentos") && pagina.includes("aoMudarFicha={(rotulo, info) =>"));
 });
 
 test("B3: Relatórios é item do menu e ativa nas quatro telas", () => {
