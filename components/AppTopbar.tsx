@@ -4,6 +4,7 @@ import type { CSSProperties } from "react";
 import BuscaNaBarra, { type ContextoDaVoz } from "@/components/BuscaNaBarra";
 import type { Destino } from "@/lib/commandSearch";
 import { RowMenu, type ItemMenu } from "@/components/ui/RowMenu";
+import SeletorDeSecao, { type OpcaoDeSecao } from "@/components/SeletorDeSecao";
 import { ROTULO_DE_USO, type ModoTela } from "@/lib/screenMode";
 
 const ROTULO_SYNC = { ok: "Sincronizado", pendente: "Sincronizando…", erro: "Sem conexão" } as const;
@@ -36,7 +37,7 @@ type Props = {
   /** Modo de tela em uso e ações da troca rápida (menu ⋯ do topo). */
   modo?: ModoTela;
   /** Situação da sincronização: chip discreto no topo. */
-  sincronizacao?: { estado: "ok" | "pendente" | "erro"; onClick: () => void };
+  sincronizacao?: { estado: "ok" | "pendente" | "erro"; /** "Sem conexão" ou "Não sincronizou" quando o estado é erro. */ rotulo?: string; onClick: () => void };
   automatico?: boolean;
   onEscolherModo?: (modo: ModoTela) => void;
   onVoltarAoAutomatico?: () => void;
@@ -47,6 +48,8 @@ type Props = {
   atalhos?: { id: string; rotulo: string; onClick: () => void }[];
   /** Botão "←" no canto esquerdo das telas internas: volta uma tela (ou ao nível acima). Ausente no Início. */
   onVoltar?: () => void;
+  /** Central da Empresa: "Central da Empresa › Documentos ▾". O menu troca de seção (Empresa, Estrutura, Documentos). */
+  secao?: { rotulo: string; opcoes: OpcaoDeSecao[]; onEscolher: (id: string) => void };
 };
 
 export default function AppTopbar({
@@ -75,6 +78,7 @@ export default function AppTopbar({
   onTrocarEmpresa,
   atalhos = [],
   onVoltar,
+  secao,
 }: Props) {
   const itensModo: ItemMenu[] =
     modo && onEscolherModo
@@ -95,7 +99,7 @@ export default function AppTopbar({
           <span aria-hidden="true">←</span>
         </button>
       )}
-      <nav className="pc-crumbs" aria-label="Caminho">
+      <nav className={`pc-crumbs${secao ? " pc-crumbs--secao" : ""}`} aria-label="Caminho">
         {caminho.map((parte, indice) => {
           const ultimo = indice === caminho.length - 1;
           return (
@@ -105,14 +109,15 @@ export default function AppTopbar({
                   {parte}
                 </button>
               ) : (
-                <span className={ultimo ? "pc-crumb-current" : "pc-crumb"} aria-current={ultimo ? "page" : undefined}>
+                <span className={ultimo ? "pc-crumb-current" : "pc-crumb"} aria-current={ultimo && !secao ? "page" : undefined}>
                   {parte}
                 </span>
               )}
-              {!ultimo && <span className="pc-crumb-sep" aria-hidden="true">›</span>}
+              {(!ultimo || secao) && <span className="pc-crumb-sep" aria-hidden="true">›</span>}
             </span>
           );
         })}
+        {secao && (secao.opcoes.length > 1 ? <SeletorDeSecao rotulo={secao.rotulo} opcoes={secao.opcoes} onEscolher={secao.onEscolher} /> : <span className="sec-menu-botao sec-menu-botao--so" aria-current="page">{secao.rotulo}</span>)}
       </nav>
       <BuscaNaBarra destinos={destinos} atalhos={atalhos} usuarioId={usuarioId} onAtiva={onBuscaAtiva} onEscolher={onEscolherDestino} micDisponivel={micDisponivel} pedidoDeFoco={pedidoDeFocoNaBusca} voz={contextoDaVoz} />
       {subtituloDoCaminho && <span className="pc-crumb-apoio">{subtituloDoCaminho}</span>}
@@ -129,11 +134,11 @@ export default function AppTopbar({
             type="button"
             className={`pc-sync-chip is-${sincronizacao.estado}`}
             onClick={sincronizacao.onClick}
-            title={`${ROTULO_SYNC[sincronizacao.estado]}. Toque para atualizar agora`}
-            aria-label={`${ROTULO_SYNC[sincronizacao.estado]}. Toque para atualizar agora`}
+            title={`${sincronizacao.rotulo || ROTULO_SYNC[sincronizacao.estado]}. Toque para atualizar agora`}
+            aria-label={`${sincronizacao.rotulo || ROTULO_SYNC[sincronizacao.estado]}. Toque para atualizar agora`}
           >
             <span className="pc-sync-dot" aria-hidden="true" />
-            <span className="pc-sync-texto">{ROTULO_SYNC[sincronizacao.estado]}</span>
+            <span className="pc-sync-texto">{sincronizacao.rotulo || ROTULO_SYNC[sincronizacao.estado]}</span>
           </button>
         )}
         {empresaAtiva && (

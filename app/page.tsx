@@ -114,7 +114,7 @@ import QualityProgramsFields from "@/components/QualityProgramsFields";
 import CentralEmpresaNav from "@/components/pc/CentralEmpresaNav";
 import RelatoriosAbas, { type AbaDeRelatorios } from "@/components/pc/RelatoriosAbas";
 import { niveisDoCaminho } from "@/lib/caminhoDaFicha";
-import { conexaoAtual, umaTentativa } from "@/lib/conexao";
+import { TENTATIVAS_DA_NUVEM, conexaoAtual, esperaAposFalhaDaNuvem, rotuloDoSeloComProblema, umaTentativa } from "@/lib/conexao";
 import { mostrarVoltar, nivelAcima, registrarLocal, voltarUma, type LocalDeTela } from "@/lib/historicoDeTelas";
 import { esquecerTela, lerContinuar, limparContinuar, registrarTela, type TelaRecente } from "@/lib/continuarDeOndeParei";
 import { nomeDeExibicaoDaEmpresa, nomeEmFormatoNatural } from "@/lib/nomeEmpresa";
@@ -123,7 +123,7 @@ import { mostrarToast } from "@/lib/toast";
 import { limparTextoDePessoa, nomeECargo, nomeProprio } from "@/lib/nomeCargo";
 import { diasEntreDatas, formatarData, formatarDataCurta, formatarDataHora, formatarHora, hojeLocalISO } from "@/lib/dataLocal";
 import { palavra as pal, quantidade as qtd } from "@/lib/plural";
-import { ROTULO_DA_SUBABA, grupoDaSubaba, gruposVisiveis, lembrarSubaba, lerSubabaLembrada, resolverSubaba, subabasVisiveis, type SubAbaCentral } from "@/lib/centralEmpresa";
+import { ROTULO_DA_SUBABA, grupoDaSubaba, gruposVisiveis, lembrarSubaba, lerSubabaLembrada, opcoesDoSeletorDeSecao, resolverSubaba, subabaAoEscolherSecao, subabasVisiveis, type GrupoCentral, type SubAbaCentral } from "@/lib/centralEmpresa";
 import { empresaTemImplantacao, implantacaoConcluida, implantacaoDeEmpresaNova, passosDeImplantacao } from "@/lib/implantacao";
 import { divergenciaDeResponsavel, responsavelEfetivo, textoDoResponsavel } from "@/lib/responsavelEstabelecimento";
 import type { AbaFicha } from "@/components/pc/PcFichaPop";
@@ -1264,10 +1264,11 @@ export default function Home() {
   function registrarFalhaSincronizacao() {
     falhasSyncRef.current += 1;
 
-    // Falhas rápidas de rede são comuns durante F5/reconexão.
+    // Falhas rápidas de rede são comuns durante F5/reconexão e quando o banco "acorda".
     // Nas primeiras tentativas, mostramos "Conectando..." em vez de
-    // assustar o usuário com um falso erro.
-    if (falhasSyncRef.current < 3) {
+    // assustar o usuário com um falso erro. A espera cresce (1,5 / 4 / 8 s).
+    const espera = esperaAposFalhaDaNuvem(falhasSyncRef.current);
+    if (espera !== null) {
       setSyncStatus("conectando");
 
       if (retrySyncTimerRef.current !== null) {
@@ -1277,12 +1278,12 @@ export default function Home() {
       retrySyncTimerRef.current = window.setTimeout(() => {
         retrySyncTimerRef.current = null;
         void buscarEstadoNuvem(false);
-      }, 1500);
+      }, espera);
 
       return;
     }
 
-    // Só após três falhas consecutivas mostramos erro real.
+    // Só depois da última tentativa mostramos erro real.
     setSyncStatus("erro");
   }
 
@@ -1533,7 +1534,7 @@ export default function Home() {
         // Preserva o localStorage, mas bloqueia qualquer gravação automática.
         // Uma falha de leitura nunca pode ser tratada como nuvem vazia.
         syncBloqueadaRef.current = true;
-        falhasSyncRef.current = 3;
+        falhasSyncRef.current = TENTATIVAS_DA_NUVEM;
         setSyncStatus("erro");
         setSyncErroVisivel(true);
         setProtecaoLocalAtiva(true);
@@ -6277,7 +6278,6 @@ export default function Home() {
   function conteudoDeDocumentos(sub: SubAbaCentral, empresaDoc: Empresa, podeEditarDoc: boolean) {
     if (sub === "pops") {
       const efetivo = responsavelEfetivo(empresaDoc, db.usuarios);
-      const divergencia = podeEditarDoc ? divergenciaDeResponsavel(empresaDoc) : null;
       const passos = podeEditarDoc && empresaTemImplantacao(empresaDoc)
         ? passosDeImplantacao(empresaDoc, { colaboradores: (db.colaboradores || []).filter((pessoa) => pessoa.empresaId === empresaDoc.id), leiturasPop: db.leiturasPop, registrosPop: db.registrosPop })
         : null;
@@ -6291,41 +6291,6 @@ export default function Home() {
           <PcImplantacao passos={passos} onContinuar={(destino) => (destino === "pops" ? undefined : irParaSubaba(destino))} />
         )
       ) : null;
-      const responsavel = (
-        <>
-          <div className="pgl-resp-linha">
-            <span>
-              Responsável do estabelecimento: <strong>{textoDoResponsavel(efetivo) || "ainda não definido"}</strong>
-              {efetivo.origem === "pops" ? " (vindo do campo antigo dos POPs)" : ""}
-            </span>
-            {podeEditarDoc && (
-              <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => irParaSubaba("dados")}>
-                Alterar em Dados
-              </button>
-            )}
-
-          </div>
-          {divergencia && (
-            <div className="priv-faixa" role="status">
-              <span>
-                Dados diz “{divergencia.dados}” e os POPs trazem {divergencia.pops.map((nome) => `“${nome}”`).join(", ")}. Escolha qual vale.
-              </span>
-              <span className="pgl-resp-botoes">
-                <button
-                  type="button"
-                  className="ui-btn ui-btn--secondary ui-btn--small"
-                  onClick={() => persistirPopsDaEmpresa(empresaDoc.id, (empresaDoc.pops || []).map((pop) => (pop.responsavel ? { ...pop, responsavel: "" } : pop)))}
-                >
-                  Usar o de Dados
-                </button>
-                <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => irParaSubaba("dados")}>
-                  Trocar em Dados
-                </button>
-              </span>
-            </div>
-          )}
-        </>
-      );
       return (
         <PcPops
           pops={empresaDoc.pops || []}
@@ -6334,7 +6299,14 @@ export default function Home() {
           podeEditar={podeEditarDoc}
           onPersistir={(novos) => persistirPopsDaEmpresa(empresaDoc.id, novos)}
           topo={topo}
-          responsavel={responsavel}
+          abas={
+            <CentralEmpresaNav
+              grupos={gruposVisiveis(podeEditarDoc ? quemVeNaCentral : quemVeNosDocumentos)}
+              subaba="pops"
+              onSubaba={podeEditarDoc ? irParaSubaba : setDocSecao}
+            />
+          }
+          onAlterarEmDados={podeEditarDoc ? () => irParaSubaba("dados") : undefined}
           avisoSemVinculo={
             efetivo.vinculado ? undefined : (
               <div className="priv-faixa" role="status">
@@ -6640,9 +6612,29 @@ export default function Home() {
   // No PC o menu não lista as etapas da visita: dentro dela, o item ativo é "Visitas".
   const chaveMenuAtivo: NavKey | null = ehPC && VISIT_VIEWS.includes(view) ? null : chaveDaTela;
   const visitaAbertaNoMenu = !!visitaAtual && (VISIT_VIEWS.includes(view) || visitaAtual.status !== "Concluída");
+  // Central da Empresa: "← Central da Empresa › Documentos ▾". O menu troca de seção e substitui os três botões que ficavam numa linha própria.
+  const naCentralComMenu =
+    !dentroDaVisita && !!atual && ((view === "pops" && (telaVisivel("pops") || ehFiscal)) || (view === "empresas" && showEmpresaForm && !!editingEmpresaId && permitido("empresas.editar")));
+  const gruposDoMenu = view === "pops" ? gruposVisiveis(quemVeNosDocumentos) : gruposVisiveis(quemVeNaCentral);
+  const subabaDoMenu: SubAbaCentral = view === "pops" ? subabaDosDocumentos : ((secaoEmpresa as SubAbaCentral) || "dados");
+  const secaoDoTopo =
+    naCentralComMenu && !(fichaAbertaRotulo && subabaDoMenu === "pops")
+      ? {
+          rotulo: gruposDoMenu.find((grupo) => grupo.id === grupoDaSubaba(subabaDoMenu))?.rotulo || "Documentos",
+          opcoes: opcoesDoSeletorDeSecao(gruposDoMenu, subabaDoMenu),
+          onEscolher: (id: string) => {
+            const alvo = subabaAoEscolherSecao(gruposDoMenu, id as GrupoCentral, subabaDoMenu);
+            if (!alvo) return;
+            if (view === "pops") setDocSecao(alvo);
+            else irParaSubaba(alvo);
+          },
+        }
+      : undefined;
   const caminhoTopo = dentroDaVisita
     ? ["Visitas", `Visita ${numeroVisitaPorId.get(visitaAtual?.id || "") || "—"}`, rotuloDaTela || "Central"]
-    : [rotuloDaTela || "Início"];
+    : secaoDoTopo
+      ? ["Central da Empresa"]
+      : [rotuloDaTela || "Início"];
   const iniciaisUsuario = usuarioDaSessao
     ? usuarioDaSessao.nome.split(" ").filter(Boolean).slice(0, 2).map((parte) => parte[0]).join("").toUpperCase()
     : null;
@@ -7137,11 +7129,12 @@ export default function Home() {
               empresaIniciais={atual ? iniciaisDaEmpresa(atual.nomeFantasia || "") : ""}
               sincronizacao={{
                 estado: !estaOnline || syncStatus === "erro" ? "erro" : syncStatus === "sincronizado" ? "ok" : "pendente",
-                rotulo: !estaOnline ? "Sem conexão" : syncStatus === "sincronizado" ? "Sincronizado" : syncStatus === "conectando" ? "Sincronizando…" : "Verificar sincronização",
+                rotulo: !estaOnline || syncStatus === "erro" ? rotuloDoSeloComProblema(estaOnline) : syncStatus === "sincronizado" ? "Sincronizado" : syncStatus === "conectando" ? "Sincronizando…" : "Verificar sincronização",
                 onClick: () => void atualizarNuvemManualmente(),
               }}
               menuModo={itensMenuModo}
               onTrocarEmpresa={() => setTrocarEmpresaAberto(true)}
+              onVoltar={mostrarVoltar(localDaTela) ? () => void voltarUmaTela() : undefined}
             />
             <CampoBarra
               tela={view === "inicio" ? "inicio" : view === "checklist" ? "checklist" : view === "correcoes" ? "correcoes" : view === "evidencias" ? "evidencias" : view === "campomais" || view === "empresas" ? "mais" : null}
@@ -7173,6 +7166,7 @@ export default function Home() {
           modo={modo}
           sincronizacao={{
             estado: !estaOnline || syncStatus === "erro" ? "erro" : syncStatus === "sincronizado" ? "ok" : "pendente",
+            rotulo: !estaOnline || syncStatus === "erro" ? rotuloDoSeloComProblema(estaOnline) : undefined,
             onClick: () => void atualizarNuvemManualmente(),
           }}
           automatico={telaModo.preferencia.automatico}
@@ -7182,6 +7176,7 @@ export default function Home() {
           onTrocarEmpresa={() => setTrocarEmpresaAberto(true)}
           atalhos={atalhosDaBarra}
           onVoltar={mostrarVoltar(localDaTela) ? () => void voltarUmaTela() : undefined}
+          secao={secaoDoTopo}
         />
         <nav className="hidden">
           <button
@@ -7495,7 +7490,7 @@ export default function Home() {
             <h1 className="sr-only">{ROTULO_DA_SUBABA[subabaDosDocumentos]}</h1>
             {fichaAbertaRotulo && subabaDosDocumentos === "pops" ? (
               caminhoClicavel(fichaAbertaRotulo, false)
-            ) : (
+            ) : subabaDosDocumentos === "pops" ? null : (
               <CentralEmpresaNav grupos={gruposVisiveis(quemVeNosDocumentos)} subaba={subabaDosDocumentos} onSubaba={setDocSecao} />
             )}
             <div className="cen-conteudo">{conteudoDeDocumentos(subabaDosDocumentos, atual, false)}</div>
@@ -7526,7 +7521,7 @@ export default function Home() {
 
             {editingEmpresaId && (fichaAbertaRotulo && secaoEmpresa === "pops" ? (
               caminhoClicavel(fichaAbertaRotulo, true)
-            ) : (
+            ) : secaoEmpresa === "pops" ? null : (
               <CentralEmpresaNav grupos={gruposVisiveis(quemVeNaCentral)} subaba={secaoEmpresa as SubAbaCentral} onSubaba={irParaSubaba} />
             ))}
             {editingEmpresaId && msg && <div className="ui-note cen-msg">{msg}</div>}

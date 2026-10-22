@@ -22,7 +22,10 @@ type Props = {
   mensagem?: string;
   /** Cartão "Colocar a empresa em dia" e aviso de responsável, quando houver. */
   topo?: ReactNode;
-  responsavel: ReactNode;
+  /** Abas da seção (Manual, POPs, Programas…), desenhadas na linha 2 da lista. */
+  abas?: ReactNode;
+  /** Leva a Empresa › Dados (só quem edita a empresa): link "Alterar em Dados" ao lado do responsável. */
+  onAlterarEmDados?: () => void;
   /** Faixa própria quando o responsável do estabelecimento não tem pessoa de Acessos vinculada. */
   avisoSemVinculo?: ReactNode;
   /** Leva a Empresa › Norma aplicável (só quem edita a empresa). */
@@ -40,7 +43,7 @@ type Props = {
 };
 
 // Documentos › POPs: a lista com situação e próxima ação e, ao abrir um POP, a ficha com as seis abas.
-export default function PcPops({ pops, empresa, usuario = null, podeEditar = false, onPersistir, mensagem, topo, responsavel, avisoSemVinculo, onIrParaNorma, abrirFicha, aoConsumirPedido, aoMudarFicha, onImprimir, responsavelDoEstabelecimento, pedidoDeLista = 0 }: Props) {
+export default function PcPops({ pops, empresa, usuario = null, podeEditar = false, onPersistir, mensagem, topo, abas, onAlterarEmDados, avisoSemVinculo, onIrParaNorma, abrirFicha, aoConsumirPedido, aoMudarFicha, onImprimir, responsavelDoEstabelecimento, pedidoDeLista = 0 }: Props) {
   const contexto = useRegistrosDaEmpresa();
   const [fichaId, setFichaId] = useState<string | null>(null);
   const [abaInicial, setAbaInicial] = useState<AbaFicha>("resumo");
@@ -94,9 +97,9 @@ export default function PcPops({ pops, empresa, usuario = null, podeEditar = fal
   }, [rotuloDaFicha, rotuloCompleto]);
   useEffect(() => () => aoMudarFicha?.(null, null), []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  function abrir(id: string) {
+  function abrir(id: string, aba?: AbaFicha) {
     setMensagemFicha("");
-    setAbaInicial("resumo");
+    setAbaInicial(aba || "resumo");
     setFichaId(id);
   }
 
@@ -187,7 +190,6 @@ export default function PcPops({ pops, empresa, usuario = null, podeEditar = fal
       verArquivados={verArquivados}
       onVerArquivados={() => setVerArquivados((valor) => !valor)}
       faltamCriar={faltamCriar}
-      motivoSemCriar="Os POPs do modelo já foram criados."
       avisoSemVinculo={avisoSemVinculo}
       onIrParaNorma={onIrParaNorma}
       onCriarFaltantes={criarFaltantes}
@@ -196,7 +198,9 @@ export default function PcPops({ pops, empresa, usuario = null, podeEditar = fal
       onAbrirFicha={abrir}
       pops={pops}
       onPersistir={onPersistir}
-      responsavel={responsavel}
+      abas={abas}
+      responsavel={responsavelDoEstabelecimento ? { nome: responsavelDoEstabelecimento.nome, cargo: responsavelDoEstabelecimento.cargo } : undefined}
+      onAlterarEmDados={onAlterarEmDados}
       topo={topo}
       mensagem={mensagem}
     />

@@ -24,8 +24,8 @@ export function situacaoDeGestao(pop: ProcedimentoOperacionalPadronizado | undef
 /** Cores das etiquetas: fundo, texto e cor da faixa à esquerda (texto branco nas fortes). */
 export const CORES_DA_SITUACAO: Record<SituacaoDeGestao, { fundo: string; texto: string; faixa: string }> = {
   "Falta criar": { fundo: "#EEF1F5", texto: "#12202B", faixa: "#C9D3DB" },
-  Rascunho: { fundo: "#FFF3D6", texto: "#12202B", faixa: "#E8B04B" },
-  "Aguardando aprovação": { fundo: "#2F6FB5", texto: "#FFFFFF", faixa: "#2F6FB5" },
+  Rascunho: { fundo: "#FDEBC2", texto: "#12202B", faixa: "#E8B04B" },
+  "Aguardando aprovação": { fundo: "#F6C65B", texto: "#12202B", faixa: "#E8760A" },
   Vigente: { fundo: "#2E8B57", texto: "#FFFFFF", faixa: "#2E8B57" },
   "Revisão vencida": { fundo: "#B35A36", texto: "#FFFFFF", faixa: "#B35A36" },
   Inativo: { fundo: "#EEF1F5", texto: "#12202B", faixa: "#C9D3DB" },
@@ -227,7 +227,46 @@ export type LinhaDaLista = {
   titulo: string;
   situacao: SituacaoDeGestao;
   acao: AcaoDoPop;
+  /** O último registro (ou a aprovação) é mais antigo que a frequência do POP, mesmo que outra ação venha primeiro. */
+  registroAtrasado?: boolean;
+  /** Está aguardando aprovação E quem olha é quem pode aprovar: só então a lista mostra o botão "Aprovar". */
+  podeAprovar?: boolean;
 };
+
+/** Filtro por chip de contagem da lista (só no cliente, sem guardar): cada valor é exatamente uma das contagens. */
+export type FiltroDaLista = "em-dia" | "com-pendencia" | "aguardando" | "rascunho" | "falta-criar";
+
+/** Em qual contagem a linha cai (a mesma regra de `contadoresDaLista`); POP inativo não cai em nenhuma. */
+export function filtroDaLinha(linha: Pick<LinhaDaLista, "situacao" | "acao">): FiltroDaLista | null {
+  if (linha.situacao === "Inativo") return null;
+  if (linha.situacao === "Falta criar") return "falta-criar";
+  if (linha.situacao === "Rascunho") return "rascunho";
+  if (linha.situacao === "Aguardando aprovação") return "aguardando";
+  if (linha.situacao === "Revisão vencida" || linha.acao.tipo !== "em-dia") return "com-pendencia";
+  return "em-dia";
+}
+
+/** Sem filtro (null) devolve tudo; com filtro, só as linhas daquela contagem. */
+export function filtrarLinhas<T extends Pick<LinhaDaLista, "situacao" | "acao">>(linhas: T[], filtro: FiltroDaLista | null): T[] {
+  return filtro ? linhas.filter((linha) => filtroDaLinha(linha) === filtro) : linhas;
+}
+
+/** O botão da linha: "Aprovar" (laranja) só para quem pode aprovar um POP que aguarda aprovação; senão "Abrir" (cinza). */
+export function botaoDaLinha(linha: Pick<LinhaDaLista, "situacao" | "podeAprovar">): { rotulo: "Aprovar" | "Abrir"; principal: boolean } {
+  return linha.situacao === "Aguardando aprovação" && linha.podeAprovar ? { rotulo: "Aprovar", principal: true } : { rotulo: "Abrir", principal: false };
+}
+
+/** Texto de apoio do botão "Criar POPs da norma": o que ele faz agora (N real, sem "(s)"). */
+export function textoDoCriarDaNorma(faltam: number): string {
+  if (faltam <= 0) return "Os POPs do modelo já foram criados.";
+  return faltam === 1 ? "Cria o POP da norma que ainda não existe." : `Cria os ${faltam} POPs da norma que ainda não existem.`;
+}
+
+/** Linha de atenção (fundo creme com borda âmbar): algo atrasado ou aguardando alguém. */
+export function linhaPedeAtencao(linha: Pick<LinhaDaLista, "situacao" | "acao" | "registroAtrasado">): boolean {
+  if (linha.situacao === "Falta criar") return false;
+  return Boolean(linha.registroAtrasado) || ["comprovante-vencido", "correcao-atrasada", "registro-atrasado", "leitura-pendente", "comprovante-vence", "aguardando-aprovacao"].includes(linha.acao.tipo);
+}
 
 /** O que precisa de alguém primeiro (1 a 6 e rascunho), depois "Em dia", depois "Falta criar"; empate pela ordem de entrada. */
 export function ordenarLinhas<T extends { acao: AcaoDoPop }>(linhas: T[]): T[] {
@@ -320,6 +359,8 @@ export function montarLinhaDoPop(
     titulo: pop?.titulo || definicao?.titulo || "POP sem título",
     situacao: situacaoDeGestao(pop, hoje),
     acao,
+    registroAtrasado: pop ? registroAtrasado(pop, entrada.registros, hoje) : false,
+    podeAprovar: Boolean(pop && entrada.podeAprovar && situacaoDeGestao(pop, hoje) === "Aguardando aprovação"),
     detalhe: detalheDaLinha(pop, leitura ? { lidos: leitura.lidos, total: leitura.total } : undefined, pop ? ultimoRegistroDoPop(entrada.registros, pop.id) : undefined),
   };
 }

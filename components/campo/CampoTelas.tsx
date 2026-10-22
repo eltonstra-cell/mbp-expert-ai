@@ -39,9 +39,16 @@ export function CampoCabecalho({
   sincronizacao,
   menuModo,
   onTrocarEmpresa,
-}: Pick<Chrome, "empresa" | "sincronizacao" | "menuModo"> & { empresaCor?: string; empresaIniciais?: string; onTrocarEmpresa?: () => void }) {
+  onVoltar,
+}: Pick<Chrome, "empresa" | "sincronizacao" | "menuModo"> & { empresaCor?: string; empresaIniciais?: string; onTrocarEmpresa?: () => void; onVoltar?: () => void }) {
   return (
     <header className="campo-head">
+      {onVoltar && (
+        // Mesma pilha de telas do PC; no celular a área de toque é de 44 px.
+        <button type="button" className="pc-voltar campo-voltar-pilha" aria-label="Voltar" title="Voltar" onClick={onVoltar}>
+          <span aria-hidden="true">←</span>
+        </button>
+      )}
       <div className="emp-ativa" style={{ "--emp-cor": empresaCor } as CSSProperties}>
         <span className="emp-ativa-avatar" aria-hidden="true">
           {empresaIniciais}

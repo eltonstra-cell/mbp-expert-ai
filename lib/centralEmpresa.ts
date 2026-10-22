@@ -28,6 +28,20 @@ export function grupoDaSubaba(subaba: SubAbaCentral): GrupoCentral {
   return GRUPOS_DA_CENTRAL.find((grupo) => grupo.subabas.includes(subaba))!.id;
 }
 
+type GrupoVisivel = { id: GrupoCentral; rotulo: string; subabas: SubAbaCentral[] };
+
+/** Opções do menu "Documentos ▾" da barra do topo: uma por grupo que o perfil enxerga; a atual vem marcada (fundo creme e ✓). */
+export function opcoesDoSeletorDeSecao(grupos: GrupoVisivel[], subabaAtual: SubAbaCentral): { id: GrupoCentral; rotulo: string; atual: boolean }[] {
+  const atual = grupoDaSubaba(subabaAtual);
+  return grupos.map((grupo) => ({ id: grupo.id, rotulo: grupo.rotulo, atual: grupo.id === atual }));
+}
+
+/** Escolher uma seção no menu leva à primeira aba dela; escolher a que já está aberta não muda nada (null). */
+export function subabaAoEscolherSecao(grupos: GrupoVisivel[], escolhida: GrupoCentral, subabaAtual: SubAbaCentral): SubAbaCentral | null {
+  if (escolhida === grupoDaSubaba(subabaAtual)) return null;
+  return grupos.find((grupo) => grupo.id === escolhida)?.subabas[0] ?? null;
+}
+
 export type QuemVe = {
   /** Cria e edita empresas (Administrador e RT). */
   editar: boolean;

@@ -130,6 +130,12 @@ export default function PcFichaPop({ pop, empresa, usuario, podeEditar, onImprim
             </span>
           )}
         </div>
+        {/* A frase completa da próxima ação (que saiu da lista) fica no topo da ficha; no Resumo o cartão "Próxima ação" já a mostra. */}
+        {aba !== "resumo" && (
+          <p className="ficha-proxima-linha">
+            <span className="ficha-proxima-linha-rotulo">Próxima ação:</span> {linha.acao.texto}
+          </p>
+        )}
         <div className="ficha-abas" role="tablist" aria-label="Partes do POP">
           {abas.map((id) => (
             <button key={id} type="button" role="tab" aria-selected={aba === id} className={`ficha-aba${aba === id ? " is-ativa" : ""}`} onClick={() => setAba(id)}>
