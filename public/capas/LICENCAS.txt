@@ -1,0 +1,18 @@
+Ícones usados nas capas dos POPs
+
+1) Ícones coloridos (pasta icones/): imagens do conjunto Noto Emoji (Google).
+   Fonte: https://github.com/googlefonts/noto-emoji
+   Licenças (conferidas no repositório oficial em 22/10/2026): "Emoji fonts (under the fonts subdirectory) are under the SIL Open Font License, version 1.1"
+   License, version 1.1" e "Tools and most image resources are under the Apache license, version 2.0". As imagens PNG usadas aqui
+   são recursos de imagem, portanto sob Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0), que permite uso
+   comercial, modificação (redução e conversão) e redistribuição desde que o aviso de licença seja mantido. Copyright Google LLC.
+   Os ícones foram reduzidos de tamanho (440 px) e mantidos com fundo transparente.
+
+2) Ícones de traço (pasta icones-traco/): Material Design Icons (Pictogrammers / Templarian).
+   Fonte: https://pictogrammers.com/library/mdi/ e https://github.com/Templarian/MaterialDesign
+   Licença (conferida em 22/10/2026): Apache License, Version 2.0; a página de licença informa "You may use it for commercial projects".
+   Ícones da categoria "Brand / Logos" não são cobertos por essa licença e não são usados aqui.
+   Copyright dos autores dos Material Design Icons.
+
+Conclusão: o uso comercial é permitido nos dois conjuntos. Mantenha este aviso (e o texto da Apache License 2.0, disponível no endereço
+acima) junto dos ícones, e a linha de créditos no guia rápido.

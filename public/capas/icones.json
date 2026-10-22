@@ -1,0 +1,98 @@
+[
+ {
+  "id": "maos",
+  "rotulo": "Higiene de mãos",
+  "png": "icones/maos.png",
+  "traco": "icones-traco/maos.svg"
+ },
+ {
+  "id": "superficies",
+  "rotulo": "Higienização de superfícies",
+  "png": "icones/superficies.png",
+  "traco": "icones-traco/superficies.svg"
+ },
+ {
+  "id": "utensilios",
+  "rotulo": "Utensílios",
+  "png": "icones/utensilios.png",
+  "traco": "icones-traco/utensilios.svg"
+ },
+ {
+  "id": "tomadas",
+  "rotulo": "Interruptores e tomadas",
+  "png": "icones/tomadas.png",
+  "traco": "icones-traco/tomadas.svg"
+ },
+ {
+  "id": "refrigeracao",
+  "rotulo": "Equipamentos de refrigeração",
+  "png": "icones/refrigeracao.png",
+  "traco": "icones-traco/refrigeracao.svg"
+ },
+ {
+  "id": "temperatura",
+  "rotulo": "Controle de temperatura",
+  "png": "icones/temperatura.png",
+  "traco": "icones-traco/temperatura.svg"
+ },
+ {
+  "id": "recebimento",
+  "rotulo": "Recebimento",
+  "png": "icones/recebimento.png",
+  "traco": "icones-traco/recebimento.svg"
+ },
+ {
+  "id": "estocagem",
+  "rotulo": "Estocagem",
+  "png": "icones/estocagem.png",
+  "traco": "icones-traco/estocagem.svg"
+ },
+ {
+  "id": "descongelamento",
+  "rotulo": "Descongelamento",
+  "png": "icones/descongelamento.png",
+  "traco": "icones-traco/descongelamento.svg"
+ },
+ {
+  "id": "residuos",
+  "rotulo": "Resíduos e lixeiras",
+  "png": "icones/residuos.png",
+  "traco": "icones-traco/residuos.svg"
+ },
+ {
+  "id": "pisos",
+  "rotulo": "Pisos, rodapés e ralos",
+  "png": "icones/pisos.png",
+  "traco": "icones-traco/pisos.svg"
+ },
+ {
+  "id": "portas",
+  "rotulo": "Portas",
+  "png": "icones/portas.png",
+  "traco": "icones-traco/portas.svg"
+ },
+ {
+  "id": "fogo",
+  "rotulo": "Forno e fogão",
+  "png": "icones/fogo.png",
+  "traco": "icones-traco/fogo.svg"
+ },
+ {
+  "id": "limpeza",
+  "rotulo": "Panos e baldes de limpeza",
+  "png": "icones/limpeza.png",
+  "traco": "icones-traco/limpeza.svg"
+ },
+ {
+  "id": "coifas",
+  "rotulo": "Coifas e exaustão",
+  "png": "icones/coifas.png",
+  "traco": "icones-traco/coifas.svg"
+ },
+ {
+  "id": "padrao",
+  "rotulo": "Padrão (sem tema)",
+  "png": "icones/padrao.png",
+  "traco": "icones-traco/padrao.svg"
+ }
+]
