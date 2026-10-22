@@ -31,6 +31,7 @@ import { SECOES_DO_MODELO, itensParaTexto, limparConteudoDoModelo, secoesDoModel
 import { avisoDeConferenciaObrigatoria, secoesQueFaltamParaEnviar, textoDaFalta } from "@/lib/popEnvio";
 import { numerosDosPassos, semSubtitulosVazios } from "@/lib/popPassos";
 import { popNaoConferido } from "@/lib/popConferencia";
+import { conteudoComResponsavelEfetivo, diferencaComDados, marcaManualApos, responsavelDaExecucao } from "@/lib/responsavelDoPop";
 import CaixaQueCresce from "@/components/CaixaQueCresce";
 import { modeloPorId } from "@/lib/popModelos";
 
@@ -216,7 +217,10 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
   const temPassoEmBranco = passos.some((passo) => !passo.texto.trim());
   const passoFocado = passos.find((passo) => passo.id === passoEmFoco);
   const editavel = podeEditar && (rascunho.status === "Rascunho");
-  const faltas = faltasParaEnviar(rascunho);
+  const dadosDoResponsavel = responsavelDoEstabelecimento;
+  const executorNaTela = responsavelDaExecucao(conteudo, dadosDoResponsavel);
+  const diferencaDeDados = diferencaComDados(conteudo, dadosDoResponsavel);
+  const faltas = faltasParaEnviar({ ...rascunho, conteudo: conteudoComResponsavelEfetivo(conteudo, dadosDoResponsavel) });
   const normas = normasDaEmpresa(empresa);
   const exigeAcaoCorretivaSes = normas.some((norma) => norma.id === "ses-799-2023-rs");
   const podeAprovar = podeAprovarPop(usuario, empresa);
@@ -233,7 +237,7 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
   const modeloDeOrigem = modeloPorId(pop.origemModelo?.id);
   const notasDoModelo = podeEditar ? modeloDeOrigem?.notasParaOConsultor || [] : [];
   const sugestaoDaFrequencia = sugestaoDeFrequencia(conteudo.frequenciaDetalhe);
-  const secoesQueFaltam = secoesQueFaltamParaEnviar(rascunho);
+  const secoesQueFaltam = secoesQueFaltamParaEnviar(rascunho, dadosDoResponsavel);
   const textoFalta = textoDaFalta(secoesQueFaltam);
   const avisoDeConferencia = avisoDeConferenciaObrigatoria(pop);
   const numerosDosPassosNaTela = numerosDosPassos(passos);
@@ -241,6 +245,13 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
   function mudar(alteracao: Partial<ConteudoPop>) {
     setSalvoEm("");
     setRascunho((atual) => ({ ...atual, conteudo: { ...(atual.conteudo || conteudo), ...alteracao } }));
+  }
+  // Digitar outro nome (ou cargo) à mão trava o POP nesse texto; voltar a ser igual a Dados volta a acompanhar Dados.
+  function mudarResponsavel(novo: { nome: string; cargo: string }) {
+    mudar({ responsavelExecucao: novo, responsavelManual: marcaManualApos(novo, dadosDoResponsavel, conteudo.responsavelManual) });
+  }
+  function usarOResponsavelDeDados() {
+    mudar({ responsavelExecucao: { nome: dadosDoResponsavel?.nome || "", cargo: dadosDoResponsavel?.cargo || "" }, responsavelManual: false });
   }
   function mudarPasso(id: string, texto: string) {
     mudar({ passos: (conteudo.passos || []).map((passo) => (passo.id === id ? { ...passo, texto } : passo)) });
@@ -265,7 +276,8 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
   // O que sobra em branco na edição (passos, subtítulos, definições, grupos) não é gravado.
   const limpoParaGravar = (atual: ProcedimentoOperacionalPadronizado): ProcedimentoOperacionalPadronizado => {
     const base = atual.conteudo || conteudo;
-    const limpoDoModelo = limparConteudoDoModelo({ ...base, passos: semSubtitulosVazios(base.passos || []) });
+    // Quem acompanha Dados grava o responsável de Dados de hoje (a leitura e a impressão continuam lendo de Dados na hora).
+    const limpoDoModelo = limparConteudoDoModelo({ ...conteudoComResponsavelEfetivo(base, dadosDoResponsavel), passos: semSubtitulosVazios(base.passos || []) });
     return { ...atual, conteudo: { ...limpoDoModelo, passos: limparPassosEmBranco(limpoDoModelo.passos) } };
   };
   const alternar = (id: Secao) => setSecao(id);
@@ -282,7 +294,7 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
     onEnviar(comConferenciaAtual(limpoParaGravar(rascunho)));
   }
   const modoLeitura = parte === "documento" && !editavel;
-  const secoesDaLista = secoesDoEditor(rascunho, definicao);
+  const secoesDaLista = secoesDoEditor(rascunho, definicao, dadosDoResponsavel);
   // O documento (folha, PDF) leva a razão social em formato de título; o nome de exibição vale só para as telas.
   const dadosDaEmpresa = { nome: razaoSocialTitulo(nomeSemNumerosNoInicio(empresa.razaoSocial || empresa.nomeFantasia || "")), cnpj: (empresa.cnpj || "").trim() };
   const opcoesDaFolha = { responsavel: responsavelDoEstabelecimento, exigeAcaoCorretiva: exigeAcaoCorretivaSes };
@@ -424,10 +436,25 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
             )}
           </SecaoRecolhivel>
 
-          <SecaoRecolhivel id="responsavel" titulo="Responsável e frequência" resumo={conteudo.responsavelExecucao?.nome ? `${conteudo.responsavelExecucao.nome}${conteudo.frequencia ? ` · ${conteudo.frequencia}` : ""}` : "em branco"} aberta={secao === "responsavel"} onAlternar={alternar}>
+          <SecaoRecolhivel id="responsavel" titulo="Responsável e frequência" resumo={executorNaTela.nome ? `${executorNaTela.nome}${conteudo.frequencia ? ` · ${conteudo.frequencia}` : ""}` : "em branco"} aberta={secao === "responsavel"} onAlternar={alternar}>
             <div className="pop-grade">
-              <Campo rotulo="Responsável pela execução (nome)" valor={conteudo.responsavelExecucao?.nome || ""} desabilitado={!editavel} erro={tocado && !(conteudo.responsavelExecucao?.nome || "").trim() ? "Informe o nome." : ""} onChange={(valor) => mudar({ responsavelExecucao: { nome: valor, cargo: conteudo.responsavelExecucao?.cargo || "" } })} />
-              <Campo rotulo="Cargo ou função" valor={conteudo.responsavelExecucao?.cargo || ""} desabilitado={!editavel} erro={tocado && !(conteudo.responsavelExecucao?.cargo || "").trim() ? "Informe o cargo ou a função." : ""} onChange={(valor) => mudar({ responsavelExecucao: { nome: conteudo.responsavelExecucao?.nome || "", cargo: semPontuacaoNoInicio(valor) } })} />
+              <div className="pc-field">
+                <Campo rotulo="Responsável pela execução (nome)" valor={executorNaTela.nome} desabilitado={!editavel} erro={tocado && !executorNaTela.nome.trim() ? "Informe o nome." : ""} onChange={(valor) => mudarResponsavel({ nome: valor, cargo: executorNaTela.cargo })} />
+                {diferencaDeDados && (
+                  <span className="ui-row-sub pdoc-sugestao">
+                    Os Dados trazem “{diferencaDeDados}”
+                    {editavel && (
+                      <>
+                        {" · "}
+                        <button type="button" className="pc-link-btn" title="Voltar a acompanhar o responsável de Empresa › Dados" onClick={usarOResponsavelDeDados}>
+                          Usar o de Dados
+                        </button>
+                      </>
+                    )}
+                  </span>
+                )}
+              </div>
+              <Campo rotulo="Cargo ou função" valor={executorNaTela.cargo} desabilitado={!editavel} erro={tocado && !executorNaTela.cargo.trim() ? "Informe o cargo ou a função." : ""} onChange={(valor) => mudarResponsavel({ nome: executorNaTela.nome, cargo: semPontuacaoNoInicio(valor) })} />
               <div className="pc-field">
                 <Campo rotulo="Frequência" valor={conteudo.frequencia || ""} desabilitado={!editavel} erro={tocado && !(conteudo.frequencia || "").trim() ? "Informe a frequência." : ""} onChange={(valor) => mudar({ frequencia: valor })} />
                 {editavel && sugestaoDaFrequencia && sugestaoDaFrequencia !== (conteudo.frequencia || "").trim() && (

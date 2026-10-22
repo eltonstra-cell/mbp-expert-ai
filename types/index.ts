@@ -204,6 +204,11 @@ export type ConteudoPop = {
   campoAplicacao?: string;
   referencias?: ReferenciaPop[];
   responsavelExecucao?: { nome: string; cargo: string };
+  /**
+   * true: o nome/cargo acima foi digitado à mão e vale como está. false: acompanha o responsável de Empresa › Dados (lido na hora de
+   * exibir e imprimir). Ausente (POP antigo): vale o texto gravado, como sempre foi.
+   */
+  responsavelManual?: boolean;
   frequencia?: string;
   passos?: PassoPop[];
   acaoCorretiva?: string;

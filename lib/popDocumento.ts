@@ -7,6 +7,7 @@ import { nomeECargo, razaoSocialTitulo } from "./nomeCargo.ts";
 import { nomeSemNumerosNoInicio } from "./navigation.ts";
 import { linhasDoConteudo, type DefinicaoPopDoConjunto } from "./popsNorma.ts";
 import { subtitulosEmVigor } from "./popPassos.ts";
+import { responsavelDaExecucao, type NomeECargo } from "./responsavelDoPop.ts";
 
 export type IdDaSecao = "identificacao" | "objetivo" | "referencias" | "responsavel" | "passos" | "acao" | "extra" | "extra2" | "modelo";
 
@@ -15,13 +16,14 @@ export type SecaoDoEditor = { id: IdDaSecao; titulo: string; preenchida: boolean
 const escrito = (valor: string | undefined | null) => Boolean((valor || "").trim());
 
 /** Seções na ordem do editor. "Preenchida" só olha os campos que a pessoa escreve; Referências vêm da norma. */
-export function secoesDoEditor(pop: Pick<ProcedimentoOperacionalPadronizado, "codigo" | "titulo" | "conteudo"> & Partial<Pick<ProcedimentoOperacionalPadronizado, "origemModelo">>, definicao?: Pick<DefinicaoPopDoConjunto, "bloco" | "eReservatorio">): SecaoDoEditor[] {
+export function secoesDoEditor(pop: Pick<ProcedimentoOperacionalPadronizado, "codigo" | "titulo" | "conteudo"> & Partial<Pick<ProcedimentoOperacionalPadronizado, "origemModelo">>, definicao?: Pick<DefinicaoPopDoConjunto, "bloco" | "eReservatorio">, dados?: NomeECargo): SecaoDoEditor[] {
   const c: ConteudoPop = pop.conteudo || {};
+  const executor = responsavelDaExecucao(c, dados);
   const secoes: SecaoDoEditor[] = [
     { id: "identificacao", titulo: "Identificação", preenchida: escrito(pop.titulo) },
     { id: "objetivo", titulo: "Objetivo e aplicação", preenchida: escrito(c.objetivo) },
     { id: "referencias", titulo: "Referências", preenchida: true },
-    { id: "responsavel", titulo: "Responsável e frequência", preenchida: escrito(c.responsavelExecucao?.nome) && escrito(c.responsavelExecucao?.cargo) && escrito(c.frequencia) },
+    { id: "responsavel", titulo: "Responsável e frequência", preenchida: escrito(executor.nome) && escrito(executor.cargo) && escrito(c.frequencia) },
     { id: "passos", titulo: "Passos", preenchida: (c.passos || []).some((passo) => escrito(passo.texto)) && (c.passos || []).every((passo) => escrito(passo.texto)) },
     { id: "acao", titulo: "Ação corretiva e registro", preenchida: escrito(c.acaoCorretiva) },
   ];
@@ -226,7 +228,9 @@ export function folhaDoPop(
     }),
     "lista"
   );
-  const executor = nomeECargo(c.responsavelExecucao?.nome, c.responsavelExecucao?.cargo) || nomeECargo(opcoes.responsavel?.nome, opcoes.responsavel?.cargo);
+  // Fonte única: o POP que acompanha Dados mostra e imprime o responsável de Dados na hora; o digitado à mão vale como está.
+  const doExecutor = responsavelDaExecucao(c, opcoes.responsavel);
+  const executor = nomeECargo(doExecutor.nome, doExecutor.cargo) || nomeECargo(opcoes.responsavel?.nome, opcoes.responsavel?.cargo);
   bloco("Responsável e frequência", "texto", [executor, (c.frequencia || "").trim()].filter(Boolean).join(" · ") ? [[executor, (c.frequencia || "").trim()].filter(Boolean).join(" · ")] : []);
   const doModelo = (chave: (typeof SECOES_DE_LISTA)[number]["chave"]) => blocoDeItens(SECOES_DE_LISTA.find((secao) => secao.chave === chave)!.titulo, c[chave]);
   SECOES_ANTES_DOS_PASSOS.forEach(doModelo);

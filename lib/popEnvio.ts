@@ -2,6 +2,7 @@
 import type { ProcedimentoOperacionalPadronizado } from "../types/index.ts";
 import { MODELOS_COM_BLOQUEIO } from "./popConferencia.ts";
 import type { IdDaSecao } from "./popDocumento.ts";
+import { responsavelDaExecucao, type NomeECargo } from "./responsavelDoPop.ts";
 
 export type FaltaDoEnvio = { id: IdDaSecao; titulo: string };
 
@@ -10,11 +11,12 @@ export const AVISO_CONFERIR_ITENS_DE_SEGURANCA = "Será preciso conferir os iten
 const escrito = (texto: string | undefined) => Boolean((texto || "").trim());
 
 /** Seções incompletas, na ordem do editor. O título é o mesmo da lista da esquerda. */
-export function secoesQueFaltamParaEnviar(pop: Pick<ProcedimentoOperacionalPadronizado, "titulo" | "conteudo">): FaltaDoEnvio[] {
+export function secoesQueFaltamParaEnviar(pop: Pick<ProcedimentoOperacionalPadronizado, "titulo" | "conteudo">, dados?: NomeECargo): FaltaDoEnvio[] {
   const c = pop.conteudo || {};
   const faltas: FaltaDoEnvio[] = [];
   if (!escrito(pop.titulo)) faltas.push({ id: "identificacao", titulo: "Identificação" });
-  const semResponsavel = !escrito(c.responsavelExecucao?.nome) || !escrito(c.responsavelExecucao?.cargo);
+  const executor = responsavelDaExecucao(c, dados);
+  const semResponsavel = !escrito(executor.nome) || !escrito(executor.cargo);
   if (semResponsavel || !escrito(c.frequencia)) faltas.push({ id: "responsavel", titulo: "Responsável e frequência" });
   const passos = c.passos || [];
   if (!passos.some((passo) => escrito(passo.texto)) || (passos.some((passo) => !escrito(passo.texto)) && passos.some((passo) => escrito(passo.texto)))) {

@@ -168,6 +168,8 @@ export function conteudoDoModelo(modelo: ModeloDePop, variaveis: VariaveisDoMode
     referencias: [],
     // Só o responsável da empresa; sem responsável cadastrado, os campos ficam vazios.
     responsavelExecucao: { nome: limparTextoDePessoa(variaveis.responsavel.nome), cargo: limparTextoDePessoa(variaveis.responsavel.cargo) },
+    // Acompanha Empresa › Dados (lido na hora de exibir e imprimir) até alguém digitar outro nome no POP.
+    responsavelManual: false,
     // A frequência do modelo é só sugestão: o campo existente fica vazio.
     frequencia: "",
     passos: passosDoModelo(modelo, variaveis, gerarId),
