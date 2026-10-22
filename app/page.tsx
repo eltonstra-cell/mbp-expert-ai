@@ -114,6 +114,7 @@ import QualityProgramsFields from "@/components/QualityProgramsFields";
 import CentralEmpresaNav from "@/components/pc/CentralEmpresaNav";
 import RelatoriosAbas, { type AbaDeRelatorios } from "@/components/pc/RelatoriosAbas";
 import { niveisDoCaminho } from "@/lib/caminhoDaFicha";
+import { assinaturaEdicaoEmpresa, temAlteracoesNaoSalvas } from "@/lib/estadoNaoSalvo";
 import { TENTATIVAS_DA_NUVEM, conexaoAtual, esperaAposFalhaDaNuvem, rotuloDoSeloComProblema, umaTentativa } from "@/lib/conexao";
 import { mostrarVoltar, nivelAcima, registrarLocal, voltarUma, type LocalDeTela } from "@/lib/historicoDeTelas";
 import { esquecerTela, lerContinuar, limparContinuar, registrarTela, type TelaRecente } from "@/lib/continuarDeOndeParei";
@@ -713,18 +714,6 @@ function quantidadeComNome(quantidade: number, singular: string, plural: string)
   return `${quantidade} ${quantidade === 1 ? singular : plural}`;
 }
 
-function assinaturaEdicaoEmpresa(valor: {
-  form: typeof formEmpresaVazio;
-  responsabilidades: ResponsabilidadeManual[];
-  setores: string[];
-  equipamentos: EquipamentoSetor[];
-  fluxos: FluxoOperacional[];
-  programas: ProgramaControleQualidade[];
-  pops: ProcedimentoOperacionalPadronizado[];
-}) {
-  return JSON.stringify(valor);
-}
-
 const SUBABA_DO_ITEM_DE_PREPARACAO: Record<string, SubAbaCentral> = { responsavel: "dados", horario: "dados", setores: "ambientes", equipamentos: "equipamentos", programas: "programas", pops: "pops" };
 
 export default function Home() {
@@ -1205,10 +1194,7 @@ export default function Home() {
     programas: programasEmpresa,
     pops: popsEmpresa,
   });
-  const empresaTemAlteracoes =
-    showEmpresaForm &&
-    Boolean(assinaturaEmpresaSalva) &&
-    assinaturaEmpresaAtual !== assinaturaEmpresaSalva;
+  const empresaTemAlteracoes = temAlteracoesNaoSalvas(showEmpresaForm, assinaturaEmpresaSalva, assinaturaEmpresaAtual);
   const popsComRevisaoVencida = popsEmpresa.filter(
     (pop) => situacaoRevisaoPOP(pop).label === "Revisão vencida"
   ).length;
