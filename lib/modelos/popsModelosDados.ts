@@ -83,8 +83,8 @@ export const CATALOGO_DE_MODELOS_POP: CatalogoDeModelosPop = {
    "tabelas": [],
    "notasParaOConsultor": [],
    "pendencias": [
-    "Objetivos: Texto de contexto hospitalar (\"infecções relacionadas com a assistência à saúde\"; \"contato com sangue e outros fluidos corporais\"; \"ao cliente\"): revisar para serviço de alimentação.",
-    "Ações corretivas: Mantida a frase genérica \"Tomar medidas previstas em Regulamento Interno\" (sem advertência/suspensão): decidir se mantém, suaviza ou retira."
+    "Objetivos: o texto cita contexto hospitalar (\"infecções relacionadas com a assistência à saúde\", \"contato com sangue e outros fluidos corporais\", \"ao cliente\"): adaptar para serviço de alimentação.",
+    "Ações corretivas: frase genérica \"Tomar medidas previstas em Regulamento Interno\" (sem advertência nem suspensão): decidir se mantém, suaviza ou retira."
    ],
    "registrosSugeridos": []
   },
@@ -113,20 +113,20 @@ export const CATALOGO_DE_MODELOS_POP: CatalogoDeModelosPop = {
      "Detergente neutro",
      "Esponja de limpeza",
      "Álcool 70",
-     "Pano descartável - perfex",
-     "Na ausência de equipamento que dê suporte, utilizar caixa de isopor e gelo ou caixa termobox"
+     "Pano descartável",
+     "Na ausência de equipamento que dê suporte, utilizar caixa térmica com gelo"
     ],
     "passos": [
      {
       "titulo": null,
       "itens": [
        "Desligar o equipamento da tomada.",
-       "Retirar todos os itens e passar para outro equipamento a fim de evitar que ocorra perdas de temperatura ou caixa de isopor com gelo ou caixa termobox.",
+       "Retirar todos os itens e passar para outro equipamento a fim de evitar que ocorra perdas de temperatura ou caixa térmica com gelo.",
        "Realizar o degelo do equipamento quando necessário.",
        "Escorrer a água do degelo.",
        "No balde coloque a água com detergente neutro.",
        "Esfregar com esponja e sabão as paredes internas do equipamento e por meio das borrachas e as paredes externas, retirando resíduos de alimentos.",
-       "Enxaguar com água ou passar o perfex úmido para retirar o excesso de sabão existente.",
+       "Enxaguar com água ou passar o pano descartável úmido para retirar o excesso de sabão existente.",
        "Borrifar com álcool 70% em toda a superfície e deixar secar naturalmente.",
        "Após 20 minutos ligar o equipamento e retornar os alimentos."
       ]
@@ -160,11 +160,11 @@ export const CATALOGO_DE_MODELOS_POP: CatalogoDeModelosPop = {
     "[Responsabilidade] Verificar se é o ajudante de cozinha ou auxiliar de serviços gerais que fará esta ação e colocar o(s) nome(s) do(s) responsável(is)."
    ],
    "pendencias": [
-    "Procedimento: Passo 3.2 (\"...a fim de evitar que ocorra perdas de temperatura ou caixa de isopor com gelo ou caixa termobox\") está truncado/confuso no original.",
-    "Procedimento: Passo 3.6 (\"...as paredes internas do equipamento e por meio das borrachas e as paredes externas\") está confuso no original.",
-    "Procedimento: Passo 3.9 (20 minutos antes de religar): confirmar tempo.",
-    "Ações corretivas: Mantida a frase \"Aplicar medidas previstas em regulamento interno para descumprimento das atividades acordadas entre gerência e colaboradores\": decidir se mantém, suaviza ou retira.",
-    "Materiais / procedimento: \"Álcool 70\" aparece com grafias diferentes (70, 70%, 70 °, 70 º): especificar (% v/v ou °INPM) antes de padronizar."
+    "Procedimento (retirar os itens): a frase sobre passar os itens para outro equipamento ou caixa térmica com gelo está incompleta e confusa: reescrever.",
+    "Procedimento (limpeza interna): a frase sobre esfregar as paredes internas, as borrachas e as paredes externas está confusa: reescrever.",
+    "Procedimento (religar): confirmar o tempo de espera de 20 minutos antes de religar o equipamento.",
+    "Ações corretivas: frase genérica \"Aplicar medidas previstas em regulamento interno para descumprimento das atividades acordadas entre gerência e colaboradores\": decidir se mantém, suaviza ou retira.",
+    "Materiais e procedimento: \"Álcool 70\" aparece escrito de formas diferentes (70, 70%, 70 °, 70 º): padronizar e informar se é 70 % (v/v) ou 70 °INPM."
    ],
    "registrosSugeridos": []
   },
@@ -183,13 +183,13 @@ export const CATALOGO_DE_MODELOS_POP: CatalogoDeModelosPop = {
      "Detergente neutro",
      "Esponja de limpeza",
      "Álcool 70",
-     "Pano descartável tipo Perfex"
+     "Pano descartável"
     ],
     "passos": [
      {
       "titulo": null,
       "itens": [
-       "Retirar a sujidade grossa (restos de alimentos) das bancadas, mesas ou pia com perfex.",
+       "Retirar a sujidade grossa (restos de alimentos) das bancadas, mesas ou pia com pano descartável.",
        "Jogar água sobre a bancada.",
        "Esfregar com esponja e detergente neutro até que toda a superfície esteja limpa.",
        "Enxaguar jogando bastante água até retirar todo o resíduo de detergente.",
@@ -229,8 +229,8 @@ export const CATALOGO_DE_MODELOS_POP: CatalogoDeModelosPop = {
     "[Quem realiza] Verificar se existe nesta empresa, colaboradores específicos para a realização desta tarefa."
    ],
    "pendencias": [
-    "Ações corretivas: Mantida a frase \"Aplicar medidas previstas em regulamento interno para descumprimento das atividades acordadas entre gerência e colaboradores\": decidir se mantém, suaviza ou retira.",
-    "Materiais / procedimento: \"Álcool 70\" aparece com grafias diferentes (70, 70%, 70 °, 70 º): especificar (% v/v ou °INPM) antes de padronizar."
+    "Ações corretivas: frase genérica \"Aplicar medidas previstas em regulamento interno para descumprimento das atividades acordadas entre gerência e colaboradores\": decidir se mantém, suaviza ou retira.",
+    "Materiais e procedimento: \"Álcool 70\" aparece escrito de formas diferentes (70, 70%, 70 °, 70 º): padronizar e informar se é 70 % (v/v) ou 70 °INPM."
    ],
    "registrosSugeridos": []
   },
@@ -290,9 +290,9 @@ export const CATALOGO_DE_MODELOS_POP: CatalogoDeModelosPop = {
     "[Quem realiza] Verificar se existe nesta empresa, colaboradores específicos para a realização desta tarefa."
    ],
    "pendencias": [
-    "Materiais necessários: Solução clorada \"20 ml ou duas colheres de sopa de água sanitária por litro\": a concentração depende do teor de hipoclorito do produto; conferir rótulo/norma aplicada. Imersão de 15 min a confirmar.",
-    "Ações corretivas: Mantida a frase \"Aplicar medidas previstas em regulamento interno para descumprimento das atividades acordadas entre gerência e colaboradores\": decidir se mantém, suaviza ou retira.",
-    "Materiais / procedimento: \"Álcool 70\" aparece com grafias diferentes (70, 70%, 70 °, 70 º): especificar (% v/v ou °INPM) antes de padronizar."
+    "Materiais (solução clorada): \"20 ml ou duas colheres de sopa de água sanitária por litro\" depende do teor de hipoclorito do produto: conferir o rótulo e a norma aplicada, e confirmar o tempo de imersão de 15 minutos.",
+    "Ações corretivas: frase genérica \"Aplicar medidas previstas em regulamento interno para descumprimento das atividades acordadas entre gerência e colaboradores\": decidir se mantém, suaviza ou retira.",
+    "Materiais e procedimento: \"Álcool 70\" aparece escrito de formas diferentes (70, 70%, 70 °, 70 º): padronizar e informar se é 70 % (v/v) ou 70 °INPM."
    ],
    "registrosSugeridos": []
   },
@@ -353,8 +353,8 @@ export const CATALOGO_DE_MODELOS_POP: CatalogoDeModelosPop = {
     "[Quem realiza] Verificar se existe nesta empresa, colaboradores específicos para a realização desta tarefa."
    ],
    "pendencias": [
-    "Ações corretivas: Mantida a frase \"Aplicar medidas previstas em regulamento interno para descumprimento das atividades acordadas entre gerência e colaboradores\": decidir se mantém, suaviza ou retira.",
-    "Materiais / procedimento: \"Álcool 70\" aparece com grafias diferentes (70, 70%, 70 °, 70 º): especificar (% v/v ou °INPM) antes de padronizar."
+    "Ações corretivas: frase genérica \"Aplicar medidas previstas em regulamento interno para descumprimento das atividades acordadas entre gerência e colaboradores\": decidir se mantém, suaviza ou retira.",
+    "Materiais e procedimento: \"Álcool 70\" aparece escrito de formas diferentes (70, 70%, 70 °, 70 º): padronizar e informar se é 70 % (v/v) ou 70 °INPM."
    ],
    "registrosSugeridos": []
   },
@@ -423,9 +423,9 @@ export const CATALOGO_DE_MODELOS_POP: CatalogoDeModelosPop = {
     "[Quem realiza] Verificar se existe nesta empresa, colaboradores específicos para a realização desta tarefa."
    ],
    "pendencias": [
-    "Materiais necessários: Solução clorada \"20 ml ou 02 colheres de sopa por litro\": conferir concentração pelo teor do produto.",
-    "Procedimento: O passo 3.1 usa \"rodo\", que não consta em Materiais necessários (o original lista \"Pano de limpeza de chão\", \"Pá\", \"Vassoura\"...). Não acrescentei.",
-    "Ações corretivas: Mantida a frase \"Aplicar medidas previstas em regulamento interno para descumprimento das atividades acordadas entre gerência e colaboradores\": decidir se mantém, suaviza ou retira."
+    "Materiais (solução clorada): \"20 ml ou 02 colheres de sopa por litro\": conferir a concentração pelo teor do produto.",
+    "Procedimento: o primeiro passo usa \"rodo\", que não está na lista de materiais: decidir se acrescenta o rodo à lista.",
+    "Ações corretivas: frase genérica \"Aplicar medidas previstas em regulamento interno para descumprimento das atividades acordadas entre gerência e colaboradores\": decidir se mantém, suaviza ou retira."
    ],
    "registrosSugeridos": []
   },
@@ -495,9 +495,9 @@ export const CATALOGO_DE_MODELOS_POP: CatalogoDeModelosPop = {
     "[Quem realiza] Verificar se existe nesta empresa, colaboradores específicos para a realização desta tarefa."
    ],
    "pendencias": [
-    "Materiais necessários: \"Solução clorada\" sem concentração; \"Álcool 70\" sem especificação (% v/v ou °INPM).",
-    "Ações corretivas: Mantida a frase \"Aplicar medidas previstas em regulamento interno para descumprimento das atividades acordadas entre gerência e colaboradores\": decidir se mantém, suaviza ou retira.",
-    "Materiais / procedimento: \"Álcool 70\" aparece com grafias diferentes (70, 70%, 70 °, 70 º): especificar (% v/v ou °INPM) antes de padronizar."
+    "Materiais: \"Solução clorada\" está sem concentração: completar.",
+    "Ações corretivas: frase genérica \"Aplicar medidas previstas em regulamento interno para descumprimento das atividades acordadas entre gerência e colaboradores\": decidir se mantém, suaviza ou retira.",
+    "Materiais e procedimento: \"Álcool 70\" aparece escrito de formas diferentes (70, 70%, 70 °, 70 º): padronizar e informar se é 70 % (v/v) ou 70 °INPM."
    ],
    "registrosSugeridos": []
   },
@@ -564,9 +564,9 @@ export const CATALOGO_DE_MODELOS_POP: CatalogoDeModelosPop = {
     "[Quem realiza] Verificar se existe nesta empresa, colaboradores específicos para a realização desta tarefa."
    ],
    "pendencias": [
-    "Materiais necessários: Materiais citam \"Água sanitária\"; o passo 3.6 manda \"solução clorada\" (sem concentração). Padronizar.",
-    "Procedimento: O passo 3.1 usa \"rodo\", que não consta em Materiais necessários.",
-    "Ações corretivas: Mantida a frase \"Aplicar medidas previstas em regulamento interno para descumprimento das atividades acordadas entre gerência e colaboradores\": decidir se mantém, suaviza ou retira."
+    "Materiais: a lista traz \"Água sanitária\" e um passo manda usar \"solução clorada\" sem concentração: padronizar o nome e informar a concentração.",
+    "Procedimento: o primeiro passo usa \"rodo\", que não está na lista de materiais: decidir se acrescenta o rodo à lista.",
+    "Ações corretivas: frase genérica \"Aplicar medidas previstas em regulamento interno para descumprimento das atividades acordadas entre gerência e colaboradores\": decidir se mantém, suaviza ou retira."
    ],
    "registrosSugeridos": []
   },
@@ -628,9 +628,9 @@ export const CATALOGO_DE_MODELOS_POP: CatalogoDeModelosPop = {
     "[Quem realiza] Verificar se existe nesta empresa, colaboradores específicos para a realização desta tarefa."
    ],
    "pendencias": [
-    "Procedimento: O passo 3.4 usa \"pano específico\", que não consta em Materiais necessários.",
-    "Ações corretivas: Mantida a frase \"Aplicar medidas previstas em regulamento interno para descumprimento das atividades acordadas entre gerência e colaboradores\": decidir se mantém, suaviza ou retira.",
-    "Materiais / procedimento: \"Álcool 70\" aparece com grafias diferentes (70, 70%, 70 °, 70 º): especificar (% v/v ou °INPM) antes de padronizar."
+    "Procedimento: um passo manda usar \"pano específico\", que não está na lista de materiais: acrescentar o pano à lista ou ajustar o passo.",
+    "Ações corretivas: frase genérica \"Aplicar medidas previstas em regulamento interno para descumprimento das atividades acordadas entre gerência e colaboradores\": decidir se mantém, suaviza ou retira.",
+    "Materiais e procedimento: \"Álcool 70\" aparece escrito de formas diferentes (70, 70%, 70 °, 70 º): padronizar e informar se é 70 % (v/v) ou 70 °INPM."
    ],
    "registrosSugeridos": []
   },
@@ -695,9 +695,9 @@ export const CATALOGO_DE_MODELOS_POP: CatalogoDeModelosPop = {
     "[Quem realiza] Verificar se existe nesta empresa, colaboradores específicos para a realização desta tarefa."
    ],
    "pendencias": [
-    "Procedimento: O passo 3.6 usa \"pano específico\", que não consta em Materiais necessários.",
-    "Ações corretivas: Mantida a frase \"Aplicar medidas previstas em regulamento interno para descumprimento das atividades acordadas entre gerência e colaboradores\": decidir se mantém, suaviza ou retira.",
-    "Materiais / procedimento: \"Álcool 70\" aparece com grafias diferentes (70, 70%, 70 °, 70 º): especificar (% v/v ou °INPM) antes de padronizar."
+    "Procedimento: um passo manda usar \"pano específico\", que não está na lista de materiais: acrescentar o pano à lista ou ajustar o passo.",
+    "Ações corretivas: frase genérica \"Aplicar medidas previstas em regulamento interno para descumprimento das atividades acordadas entre gerência e colaboradores\": decidir se mantém, suaviza ou retira.",
+    "Materiais e procedimento: \"Álcool 70\" aparece escrito de formas diferentes (70, 70%, 70 °, 70 º): padronizar e informar se é 70 % (v/v) ou 70 °INPM."
    ],
    "registrosSugeridos": []
   },
@@ -766,8 +766,8 @@ export const CATALOGO_DE_MODELOS_POP: CatalogoDeModelosPop = {
     "[Quem realiza] Verificar se existe nesta empresa, colaboradores específicos para a realização desta tarefa."
    ],
    "pendencias": [
-    "Ações corretivas: Mantida a frase \"Aplicar medidas previstas em regulamento interno para descumprimento das atividades acordadas entre gerência e colaboradores\": decidir se mantém, suaviza ou retira.",
-    "Materiais / procedimento: \"Álcool 70\" aparece com grafias diferentes (70, 70%, 70 °, 70 º): especificar (% v/v ou °INPM) antes de padronizar."
+    "Ações corretivas: frase genérica \"Aplicar medidas previstas em regulamento interno para descumprimento das atividades acordadas entre gerência e colaboradores\": decidir se mantém, suaviza ou retira.",
+    "Materiais e procedimento: \"Álcool 70\" aparece escrito de formas diferentes (70, 70%, 70 °, 70 º): padronizar e informar se é 70 % (v/v) ou 70 °INPM."
    ],
    "registrosSugeridos": []
   },
@@ -830,8 +830,8 @@ export const CATALOGO_DE_MODELOS_POP: CatalogoDeModelosPop = {
     "[Quem realiza] Verificar se existe nesta empresa, colaboradores específicos para a realização desta tarefa."
    ],
    "pendencias": [
-    "Procedimento: O passo 3.5 usa \"pano umedecido com solução clorada\", mas Materiais não lista pano; \"Solução clorada\" sem concentração.",
-    "Ações corretivas: Mantida a frase \"Aplicar medidas previstas em regulamento interno para descumprimento das atividades acordadas entre gerência e colaboradores\": decidir se mantém, suaviza ou retira."
+    "Procedimento: um passo usa \"pano umedecido com solução clorada\", mas a lista de materiais não traz pano, e a solução clorada está sem concentração: completar.",
+    "Ações corretivas: frase genérica \"Aplicar medidas previstas em regulamento interno para descumprimento das atividades acordadas entre gerência e colaboradores\": decidir se mantém, suaviza ou retira."
    ],
    "registrosSugeridos": []
   },
@@ -865,8 +865,7 @@ export const CATALOGO_DE_MODELOS_POP: CatalogoDeModelosPop = {
     ],
     "cuidadosEspeciais": [
      "Não utilize produtos químicos com alvejante ou abrasivos pois eles podem retirar a proteção anti-UV da peça.",
-     "Para tirar poeira ou ferrugem dos pinos das tomadas, você pode escová-los com escova de dente, utilizando um limpador específico para contato elétrico ou vinagre.",
-     "Para retirar amarelado do espelho das tomadas faça uma mistura de água quente, água sanitária e 1 colher de sopa de bicarbonato de sódio, deixe de molho essa mistura nas tomadas por 30 minutos, enxágue e seque com um pano seco, preferencialmente retire o espelho das tomadas.",
+     "Para tirar poeira ou ferrugem dos pinos das tomadas, você pode escová-los com escova de dente, utilizando um limpador específico para contato elétrico.",
      "Caso não consiga desligar a chave geral, utilize uma fita isolante de boa qualidade para cobrir o espaço de tomadas e interruptores, lacrando todas as entradas de áreas energizadas, a fim de proteger contra choques."
     ],
     "verificacao": [
@@ -892,13 +891,13 @@ export const CATALOGO_DE_MODELOS_POP: CatalogoDeModelosPop = {
    },
    "tabelas": [],
    "notasParaOConsultor": [
-    "[Quem realiza] Verificar se existe nesta empresa, colaboradores específicos para a realização desta tarefa."
+    "[Quem realiza] Verificar se existe nesta empresa, colaboradores específicos para a realização desta tarefa.",
+    "Trecho de limpeza química das tomadas removido do modelo por risco elétrico e químico."
    ],
    "pendencias": [
-    "Procedimento: Segurança elétrica: o POP manda limpar tomadas e interruptores; confirmar com o RT se mantém, e se a frase \"se não desligar, não use panos encharcados\" é suficiente.",
-    "Cuidados especiais: 4.1 diz para não usar alvejante; 4.3 usa água sanitária misturada com água quente e bicarbonato. Contradição e risco químico (água sanitária não deve ser aquecida nem misturada com outros produtos): revisar antes de usar.",
-    "Ações corretivas: Mantida a frase \"Aplicar medidas previstas em regulamento interno para descumprimento das atividades acordadas entre gerência e colaboradores\": decidir se mantém, suaviza ou retira.",
-    "Materiais / procedimento: \"Álcool 70\" aparece com grafias diferentes (70, 70%, 70 °, 70 º): especificar (% v/v ou °INPM) antes de padronizar."
+    "Procedimento (segurança elétrica): confirmar com o RT se o POP deve mesmo mandar limpar tomadas e interruptores e se a frase \"se não desligar, não use panos encharcados\" é suficiente.",
+    "Ações corretivas: frase genérica \"Aplicar medidas previstas em regulamento interno para descumprimento das atividades acordadas entre gerência e colaboradores\": decidir se mantém, suaviza ou retira.",
+    "Materiais e procedimento: \"Álcool 70\" aparece escrito de formas diferentes (70, 70%, 70 °, 70 º): padronizar e informar se é 70 % (v/v) ou 70 °INPM."
    ],
    "registrosSugeridos": []
   },
@@ -960,8 +959,8 @@ export const CATALOGO_DE_MODELOS_POP: CatalogoDeModelosPop = {
     "[Quem realiza] Verificar se existe nesta empresa, colaboradores específicos para a realização desta tarefa."
    ],
    "pendencias": [
-    "Ações corretivas: Mantida a frase \"Aplicar medidas previstas em regulamento interno para descumprimento das atividades acordadas entre gerência e colaboradores\": decidir se mantém, suaviza ou retira.",
-    "Materiais / procedimento: \"Álcool 70\" aparece com grafias diferentes (70, 70%, 70 °, 70 º): especificar (% v/v ou °INPM) antes de padronizar."
+    "Ações corretivas: frase genérica \"Aplicar medidas previstas em regulamento interno para descumprimento das atividades acordadas entre gerência e colaboradores\": decidir se mantém, suaviza ou retira.",
+    "Materiais e procedimento: \"Álcool 70\" aparece escrito de formas diferentes (70, 70%, 70 °, 70 º): padronizar e informar se é 70 % (v/v) ou 70 °INPM."
    ],
    "registrosSugeridos": []
   },
@@ -995,7 +994,7 @@ export const CATALOGO_DE_MODELOS_POP: CatalogoDeModelosPop = {
      }
     ],
     "cuidadosEspeciais": [
-     "Os panos de cozinha ou de mão representam grandes focos de contaminação e com o surgimento de legislações sanitárias ficou proibido o uso de panos convencionais para secagem de equipamentos, utensílios e mãos. Devendo ser usados para essas tarefas panos descartáveis (PERFEX).",
+     "Os panos de cozinha ou de mão representam grandes focos de contaminação. Para a secagem de equipamentos, utensílios e mãos, devem ser usados panos descartáveis.",
      "Os panos convencionais só podem ser utilizados em limpeza ambiental, devendo ser separados por áreas, ou seja, pano usado em banheiro e vestiários não podem ser utilizados em áreas de processamento, os da área externa não devem ser usados em áreas internas.",
      "Não devem secar sobre equipamentos, grades de ar, etc."
     ],
@@ -1025,9 +1024,9 @@ export const CATALOGO_DE_MODELOS_POP: CatalogoDeModelosPop = {
     "[Quem realiza] Verificar se existe nesta empresa, colaboradores específicos para a realização desta tarefa."
    ],
    "pendencias": [
-    "Cuidados especiais: Afirma que \"com o surgimento de legislações sanitárias ficou proibido o uso de panos convencionais\" sem citar a norma: conferir na norma aplicada antes de manter.",
-    "Ações corretivas: Mantida a frase \"Aplicar medidas previstas em regulamento interno para descumprimento das atividades acordadas entre gerência e colaboradores\": decidir se mantém, suaviza ou retira.",
-    "Materiais: Água sanitária / solução clorada sem concentração informada."
+    "Conferir na norma aplicada se há exigência sobre uso de panos para secagem.",
+    "Ações corretivas: frase genérica \"Aplicar medidas previstas em regulamento interno para descumprimento das atividades acordadas entre gerência e colaboradores\": decidir se mantém, suaviza ou retira.",
+    "Materiais: \"Água sanitária\" / solução clorada sem concentração informada: completar."
    ],
    "registrosSugeridos": []
   },
@@ -1087,7 +1086,7 @@ export const CATALOGO_DE_MODELOS_POP: CatalogoDeModelosPop = {
    "tabelas": [
     {
      "id": "comp-16-t1",
-     "titulo": "Temperaturas de recebimento (conforme o material)",
+     "titulo": "Temperaturas de recebimento",
      "colunas": [
       "Categoria",
       "Item",
@@ -1096,7 +1095,7 @@ export const CATALOGO_DE_MODELOS_POP: CatalogoDeModelosPop = {
      "linhas": [
       [
        "Congelados",
-       "null",
+       "—",
        "-12 °C ou temperatura menor, ou conforme recomendação do fabricante."
       ],
       [
@@ -1119,8 +1118,8 @@ export const CATALOGO_DE_MODELOS_POP: CatalogoDeModelosPop = {
    ],
    "notasParaOConsultor": [],
    "pendencias": [
-    "Procedimento: Tabela de temperaturas de recebimento (congelados, pescados, carnes, demais): valores do material, sem fonte citada. Conferir com a norma aplicada.",
-    "Procedimento: O original cita \"O Estoquista\" e \"Encarregado ou Responsável\": cargos genéricos."
+    "Procedimento (tabela de temperaturas de recebimento: congelados, pescados, carnes e demais produtos): valores sem fonte citada. Conferir com a norma aplicada.",
+    "Procedimento: o texto cita \"O Estoquista\" e \"Encarregado ou Responsável\", cargos genéricos: adaptar aos cargos da empresa."
    ],
    "registrosSugeridos": []
   },
@@ -1178,7 +1177,7 @@ export const CATALOGO_DE_MODELOS_POP: CatalogoDeModelosPop = {
    "tabelas": [],
    "notasParaOConsultor": [],
    "pendencias": [
-    "Procedimento: Sigla \"PVPS\" sem definição no texto (primeiro que vence, primeiro que sai)."
+    "Procedimento: a sigla \"PVPS\" não é explicada no texto (primeiro que vence, primeiro que sai): escrever o significado na primeira vez em que aparece."
    ],
    "registrosSugeridos": []
   },
@@ -1241,9 +1240,9 @@ export const CATALOGO_DE_MODELOS_POP: CatalogoDeModelosPop = {
     "[Quem realiza] Verificar se existe nesta empresa, existe colaboradores específicos para a realização desta tarefa."
    ],
    "pendencias": [
-    "Procedimento: O texto não informa as faixas de temperatura; a planilha anexa (imagem) traz 0 °C a 5 °C (refrigerador) e −18 °C ou mais frio (freezer). Conferir com a norma aplicada.",
-    "Cuidados especiais: Há repetição de ideias (manter equipamento aberto pouco tempo aparece nos passos e duas vezes nos cuidados).",
-    "Ações corretivas: Mantida a frase \"Aplicar medidas previstas em regulamento interno para descumprimento das atividades acordadas entre gerência e colaboradores\": decidir se mantém, suaviza ou retira."
+    "Procedimento: o texto não informa as faixas de temperatura. Valores de exemplo: refrigerador de 0 °C a 5 °C e freezer a −18 °C ou mais frio. Conferir com a norma aplicada e informar no passo.",
+    "Cuidados especiais: a ideia de manter o equipamento aberto o menor tempo possível se repete nos passos e duas vezes nos cuidados: deixar só uma vez.",
+    "Ações corretivas: frase genérica \"Aplicar medidas previstas em regulamento interno para descumprimento das atividades acordadas entre gerência e colaboradores\": decidir se mantém, suaviza ou retira."
    ],
    "registrosSugeridos": [
     "Registro de monitoramento da temperatura de equipamentos: colunas nº, temperatura adequada, equipamento e, por dia, hora e temperatura; linha de assinatura do responsável; cabeçalho com empresa, responsável pela aferição e mês/ano."
@@ -1378,7 +1377,7 @@ export const CATALOGO_DE_MODELOS_POP: CatalogoDeModelosPop = {
    "tabelas": [
     {
      "id": "comp-19-t1",
-     "titulo": "Tempo de descongelamento em refrigerador (conforme o material)",
+     "titulo": "Tempo de descongelamento em refrigerador",
      "colunas": [
       "Alimento",
       "Temperatura",
@@ -1413,12 +1412,12 @@ export const CATALOGO_DE_MODELOS_POP: CatalogoDeModelosPop = {
     "[Planilhas] Coloque o modelo de planilha de controle e placas orientativas utilizadas em seu cliente."
    ],
    "pendencias": [
-    "Procedimentos: Temperaturas, tempos e prazos (0 °C a 5 °C; 12 a 48 h por porte; carnes cruas até 2 dias; peixes e frutos do mar 24 h; alimentos prontos 2 a 3 dias; micro-ondas a 30 % a 50 %): valores do material, sem fonte citada. Conferir com a norma aplicada.",
-    "Procedimentos: A opção 02 vinha com o parêntese truncado \"(permitido apenas para alimentos\"; a ideia completa já está no primeiro passo da opção.",
-    "Procedimentos: O texto mistura imperativo (\"Coloque\", \"Leve\") e infinitivo; mantido como no original.",
-    "Ações corretivas: Primeiro item reescrito de forma mínima (frase confusa no original): conferir se o sentido está certo.",
-    "Responsabilidades: \"Cargo responsável\" é um rótulo genérico; \"Encarregados — Monitorar\" ficou sem complemento no original.",
-    "Definições: Definições sem fonte citada; conferir antes de manter."
+    "Procedimentos: temperaturas, tempos e prazos (0 °C a 5 °C; 12 a 48 h por porte; carnes cruas até 2 dias; peixes e frutos do mar 24 h; alimentos prontos 2 a 3 dias; micro-ondas a 30 % a 50 %) sem fonte citada. Conferir com a norma aplicada.",
+    "Procedimentos (micro-ondas): a frase sobre \"permitido apenas para alimentos…\" estava incompleta e a ideia já está no primeiro passo da opção: conferir se ficou clara.",
+    "Procedimentos: o texto mistura imperativo (\"Coloque\", \"Leve\") e infinitivo: padronizar o tom.",
+    "Ações corretivas: o primeiro item foi reescrito de forma mínima por estar confuso: conferir se o sentido está certo.",
+    "Responsabilidades: \"Cargo responsável\" é um rótulo genérico e \"Encarregados — Monitorar\" ficou sem complemento: adaptar à empresa.",
+    "Definições: sem fonte citada; conferir antes de manter."
    ],
    "registrosSugeridos": []
   },
@@ -1730,13 +1729,13 @@ export const CATALOGO_DE_MODELOS_POP: CatalogoDeModelosPop = {
     "[Ações corretivas] Verifique e faça as alterações se necessário."
    ],
    "pendencias": [
-    "Responsabilidades: Cargos genéricos do material (\"Setor de compras, RH ou cargo do responsável\", \"Controle de qualidade\", \"Empresa de coleta…\"): adaptar por empresa.",
-    "Responsabilidades: \"Entregar recebido e laudo de destinação final\" (3 grupos): provável \"recibo\" (o item de documentação fala em recibo de recolhimento); não alterei.",
-    "Definições: Definições copiadas de outras fontes (inclui texto de área da saúde e o de \"alimentos impróprios para o consumo\") sem citar fonte; conferir antes de manter.",
-    "Procedimentos: As três coletas por empresa especializada dizem só \"de acordo com a metodologia da empresa especializada\"; o original sugere anexar o POP da empresa.",
-    "Procedimentos: Sigla \"DML\" não definida no texto (depósito de material de limpeza).",
-    "Frequência: Frequências de exemplo do material (3x por semana, 15 em 15 dias etc.): ajustar à realidade de cada empresa.",
-    "Ações corretivas: Retirados os itens \"aplicar as punições…\" e \"realizar o desligamento do colaborador\" (decisão acordada). Restam: reciclagem de treinamento e revisão do procedimento."
+    "Responsabilidades: cargos genéricos (\"Setor de compras, RH ou cargo do responsável\", \"Controle de qualidade\", \"Empresa de coleta…\"): adaptar a cada empresa.",
+    "Responsabilidades: \"Entregar recebido e laudo de destinação final\" (3 grupos) provavelmente deveria ser \"recibo\", como no item de documentação: conferir.",
+    "Definições: copiadas de outras fontes (inclui texto da área da saúde e o de \"alimentos impróprios para o consumo\") sem citar a fonte: conferir antes de manter.",
+    "Procedimentos: as três coletas por empresa especializada dizem só \"de acordo com a metodologia da empresa especializada\": avaliar se anexa o POP da empresa.",
+    "Procedimentos: a sigla \"DML\" não está explicada (depósito de material de limpeza): escrever o significado.",
+    "Frequência: as frequências são exemplos (3x por semana, 15 em 15 dias etc.): ajustar à realidade de cada empresa.",
+    "Ações corretivas: restam reciclagem de treinamento e revisão do procedimento, porque as medidas punitivas foram retiradas do modelo: conferir se basta."
    ],
    "registrosSugeridos": [
     "Registro de recolhimento de resíduos — tipo \"Orgânico\": cabeçalho (empresa, consultor(a), responsável pelo envio) e colunas data do recolhimento, descrição do resíduo recolhido, quantidade (kg/L), empresa recolhedora, assinatura do responsável pelo envio, assinatura do responsável pelo recolhimento.",

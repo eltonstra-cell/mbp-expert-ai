@@ -116,7 +116,7 @@ export function enxugarPop(pop) {
     id: t.id,
     titulo: t.titulo.trim(),
     colunas: t.colunas.map((c) => c.trim()),
-    linhas: t.linhas.map((linha) => Object.values(linha).map((v) => String(v).trim())),
+    linhas: t.linhas.map((linha) => Object.values(linha).map((v) => (v === null || v === undefined ? "" : String(v).trim()))),
   }));
   const pendencias = pop.pendencias
     .filter((p) => !MOTIVO_SO_DE_AUDITORIA.has(p.motivo) && !PENDENCIA_SO_DE_AUDITORIA.test(p.texto.trim()))
@@ -136,6 +136,146 @@ export function enxugarPop(pop) {
   };
 }
 
+
+// ---- Texto das pendências: ações claras, sem números nem verbos de auditoria do material de origem. ----
+const FRASE_GENERICA = 'Ações corretivas: frase genérica "Aplicar medidas previstas em regulamento interno para descumprimento das atividades acordadas entre gerência e colaboradores": decidir se mantém, suaviza ou retira.';
+const ALCOOL_70 = 'Materiais e procedimento: "Álcool 70" aparece escrito de formas diferentes (70, 70%, 70 °, 70 º): padronizar e informar se é 70 % (v/v) ou 70 °INPM.';
+const RODO_FORA_DOS_MATERIAIS = 'Procedimento: o primeiro passo usa "rodo", que não está na lista de materiais: decidir se acrescenta o rodo à lista.';
+const PANO_ESPECIFICO = 'Procedimento: um passo manda usar "pano específico", que não está na lista de materiais: acrescentar o pano à lista ou ajustar o passo.';
+
+export const PENDENCIAS_REESCRITAS = {
+  "comp-01": [
+    'Objetivos: o texto cita contexto hospitalar ("infecções relacionadas com a assistência à saúde", "contato com sangue e outros fluidos corporais", "ao cliente"): adaptar para serviço de alimentação.',
+    'Ações corretivas: frase genérica "Tomar medidas previstas em Regulamento Interno" (sem advertência nem suspensão): decidir se mantém, suaviza ou retira.',
+  ],
+  "comp-02": [
+    "Procedimento (retirar os itens): a frase sobre passar os itens para outro equipamento ou caixa térmica com gelo está incompleta e confusa: reescrever.",
+    "Procedimento (limpeza interna): a frase sobre esfregar as paredes internas, as borrachas e as paredes externas está confusa: reescrever.",
+    "Procedimento (religar): confirmar o tempo de espera de 20 minutos antes de religar o equipamento.",
+    FRASE_GENERICA,
+    ALCOOL_70,
+  ],
+  "comp-03": [FRASE_GENERICA, ALCOOL_70],
+  "comp-04": [
+    'Materiais (solução clorada): "20 ml ou duas colheres de sopa de água sanitária por litro" depende do teor de hipoclorito do produto: conferir o rótulo e a norma aplicada, e confirmar o tempo de imersão de 15 minutos.',
+    FRASE_GENERICA,
+    ALCOOL_70,
+  ],
+  "comp-05": [FRASE_GENERICA, ALCOOL_70],
+  "comp-06": [
+    'Materiais (solução clorada): "20 ml ou 02 colheres de sopa por litro": conferir a concentração pelo teor do produto.',
+    RODO_FORA_DOS_MATERIAIS,
+    FRASE_GENERICA,
+  ],
+  "comp-07": ['Materiais: "Solução clorada" está sem concentração: completar.', FRASE_GENERICA, ALCOOL_70],
+  "comp-08": [
+    'Materiais: a lista traz "Água sanitária" e um passo manda usar "solução clorada" sem concentração: padronizar o nome e informar a concentração.',
+    RODO_FORA_DOS_MATERIAIS,
+    FRASE_GENERICA,
+  ],
+  "comp-09": [PANO_ESPECIFICO, FRASE_GENERICA, ALCOOL_70],
+  "comp-10": [PANO_ESPECIFICO, FRASE_GENERICA, ALCOOL_70],
+  "comp-11": [FRASE_GENERICA, ALCOOL_70],
+  "comp-12": [
+    'Procedimento: um passo usa "pano umedecido com solução clorada", mas a lista de materiais não traz pano, e a solução clorada está sem concentração: completar.',
+    FRASE_GENERICA,
+  ],
+  "comp-13": [
+    'Procedimento (segurança elétrica): confirmar com o RT se o POP deve mesmo mandar limpar tomadas e interruptores e se a frase "se não desligar, não use panos encharcados" é suficiente.',
+    FRASE_GENERICA,
+    ALCOOL_70,
+  ],
+  "comp-14": [FRASE_GENERICA, ALCOOL_70],
+  "comp-15": [
+    "Conferir na norma aplicada se há exigência sobre uso de panos para secagem.",
+    FRASE_GENERICA,
+    'Materiais: "Água sanitária" / solução clorada sem concentração informada: completar.',
+  ],
+  "comp-16": [
+    "Procedimento (tabela de temperaturas de recebimento: congelados, pescados, carnes e demais produtos): valores sem fonte citada. Conferir com a norma aplicada.",
+    'Procedimento: o texto cita "O Estoquista" e "Encarregado ou Responsável", cargos genéricos: adaptar aos cargos da empresa.',
+  ],
+  "comp-17": ['Procedimento: a sigla "PVPS" não é explicada no texto (primeiro que vence, primeiro que sai): escrever o significado na primeira vez em que aparece.'],
+  "comp-18": [
+    "Procedimento: o texto não informa as faixas de temperatura. Valores de exemplo: refrigerador de 0 °C a 5 °C e freezer a −18 °C ou mais frio. Conferir com a norma aplicada e informar no passo.",
+    "Cuidados especiais: a ideia de manter o equipamento aberto o menor tempo possível se repete nos passos e duas vezes nos cuidados: deixar só uma vez.",
+    FRASE_GENERICA,
+  ],
+  "comp-19": [
+    "Procedimentos: temperaturas, tempos e prazos (0 °C a 5 °C; 12 a 48 h por porte; carnes cruas até 2 dias; peixes e frutos do mar 24 h; alimentos prontos 2 a 3 dias; micro-ondas a 30 % a 50 %) sem fonte citada. Conferir com a norma aplicada.",
+    'Procedimentos (micro-ondas): a frase sobre "permitido apenas para alimentos…" estava incompleta e a ideia já está no primeiro passo da opção: conferir se ficou clara.',
+    'Procedimentos: o texto mistura imperativo ("Coloque", "Leve") e infinitivo: padronizar o tom.',
+    "Ações corretivas: o primeiro item foi reescrito de forma mínima por estar confuso: conferir se o sentido está certo.",
+    'Responsabilidades: "Cargo responsável" é um rótulo genérico e "Encarregados — Monitorar" ficou sem complemento: adaptar à empresa.',
+    "Definições: sem fonte citada; conferir antes de manter.",
+  ],
+  "res-01": [
+    'Responsabilidades: cargos genéricos ("Setor de compras, RH ou cargo do responsável", "Controle de qualidade", "Empresa de coleta…"): adaptar a cada empresa.',
+    'Responsabilidades: "Entregar recebido e laudo de destinação final" (3 grupos) provavelmente deveria ser "recibo", como no item de documentação: conferir.',
+    'Definições: copiadas de outras fontes (inclui texto da área da saúde e o de "alimentos impróprios para o consumo") sem citar a fonte: conferir antes de manter.',
+    'Procedimentos: as três coletas por empresa especializada dizem só "de acordo com a metodologia da empresa especializada": avaliar se anexa o POP da empresa.',
+    'Procedimentos: a sigla "DML" não está explicada (depósito de material de limpeza): escrever o significado.',
+    "Frequência: as frequências são exemplos (3x por semana, 15 em 15 dias etc.): ajustar à realidade de cada empresa.",
+    "Ações corretivas: restam reciclagem de treinamento e revisão do procedimento, porque as medidas punitivas foram retiradas do modelo: conferir se basta.",
+  ],
+};
+
+// ---- Ajustes de conteúdo: marcas viram termo genérico; trechos de risco saem; nada aqui altera valores numéricos. ----
+const NOTA_TOMADAS = "Trecho de limpeza química das tomadas removido do modelo por risco elétrico e químico.";
+const CUIDADO_PANOS = "Os panos de cozinha ou de mão representam grandes focos de contaminação. Para a secagem de equipamentos, utensílios e mãos, devem ser usados panos descartáveis.";
+const SUBSTITUICOES_DE_TEXTO = [
+  [/Pano descartável\s*-\s*perfex/gi, "Pano descartável"],
+  [/Pano descartável tipo Perfex/gi, "Pano descartável"],
+  [/passar o perfex úmido/gi, "passar o pano descartável úmido"],
+  [/com perfex\./gi, "com pano descartável."],
+  [/caixa de isopor (?:e|com) gelo ou caixa termobox/gi, "caixa térmica com gelo"],
+  [/\s*\(conforme o material\)/gi, ""],
+];
+export const TERMOS_PROIBIDOS = /perfex|isopor|termobox|conforme o material|do original|no original|do curso|do material de origem|valores do material|\bnull\b|undefined/i;
+
+function trocarTextos(valor) {
+  if (typeof valor === "string") return SUBSTITUICOES_DE_TEXTO.reduce((texto, [de, para]) => texto.replace(de, para), valor);
+  if (Array.isArray(valor)) return valor.map(trocarTextos);
+  if (valor && typeof valor === "object") return Object.fromEntries(Object.entries(valor).map(([chave, v]) => [chave, trocarTextos(v)]));
+  return valor;
+}
+
+const textoDoItem = (item) => (typeof item === "string" ? item : item.texto);
+
+function trocarItem(lista, procurado, fazer) {
+  const indice = lista.findIndex((item) => procurado.test(textoDoItem(item)));
+  if (indice < 0) throw new Error(`Ajuste de conteúdo não encontrou o trecho ${procurado}.`);
+  const resultado = fazer(lista[indice]);
+  if (resultado === null) lista.splice(indice, 1);
+  else lista[indice] = resultado;
+}
+
+/** Ajustes pedidos para modelos específicos (conteúdo de risco ou afirmação não sustentada). */
+function ajustarConteudo(pop) {
+  const s = pop.secoes;
+  if (pop.id === "comp-13") {
+    trocarItem(s.cuidadosEspeciais, /^Para retirar amarelado do espelho das tomadas/, () => null);
+    trocarItem(s.cuidadosEspeciais, /limpador específico para contato elétrico ou vinagre/, (item) => item.replace(/ ou vinagre\.?$/, "."));
+    pop.notasParaOConsultor = [...pop.notasParaOConsultor, NOTA_TOMADAS];
+  }
+  if (pop.id === "comp-15") trocarItem(s.cuidadosEspeciais, /^Os panos de cozinha ou de mão/, () => CUIDADO_PANOS);
+  return pop;
+}
+
+const celulasSemNulo = (tabela) => ({ ...tabela, linhas: tabela.linhas.map((linha) => linha.map((celula) => (celula === "null" || celula === "" ? "—" : celula))) });
+
+export function varrerTermosProibidos(catalogo) {
+  const achados = [];
+  const andar = (valor, caminho) => {
+    if (typeof valor === "string") {
+      if (TERMOS_PROIBIDOS.test(valor)) achados.push(`${caminho}: ${valor.slice(0, 80)}`);
+    } else if (Array.isArray(valor)) valor.forEach((v, i) => andar(v, `${caminho}[${i}]`));
+    else if (valor && typeof valor === "object") for (const [chave, v] of Object.entries(valor)) andar(v, `${caminho}.${chave}`);
+  };
+  andar(catalogo, "catalogo");
+  return achados;
+}
+
 /** No arquivo, o registro de temperatura dos equipamentos está listado no modelo de descongelamento; ele pertence ao controle de temperatura (comp-18). */
 function realocarRegistroDeTemperatura(pops) {
   const origem = pops.find((pop) => pop.id === "comp-19");
@@ -148,10 +288,11 @@ function realocarRegistroDeTemperatura(pops) {
 }
 
 export function enxugar(original) {
-  return {
-    versao: original.versao,
-    pops: realocarRegistroDeTemperatura([...original.pops].sort((a, b) => a.ordem - b.ordem).map(enxugarPop)),
-  };
+  const pops = realocarRegistroDeTemperatura([...original.pops].sort((a, b) => a.ordem - b.ordem).map(enxugarPop)).map((pop) => {
+    const ajustado = trocarTextos(ajustarConteudo(pop));
+    return { ...ajustado, tabelas: ajustado.tabelas.map(celulasSemNulo), pendencias: PENDENCIAS_REESCRITAS[pop.id] ?? ajustado.pendencias };
+  });
+  return { versao: original.versao, pops };
 }
 
 export function textoDoArquivoGerado(catalogo) {
@@ -175,6 +316,11 @@ function principal() {
     process.exit(1);
   }
   const catalogo = enxugar(original);
+  const achados = varrerTermosProibidos(catalogo);
+  if (achados.length) {
+    console.error(`Termos proibidos no catálogo (${achados.length}):\n- ${achados.join("\n- ")}`);
+    process.exit(1);
+  }
   mkdirSync(dirname(DESTINO), { recursive: true });
   writeFileSync(DESTINO, textoDoArquivoGerado(catalogo));
   console.log(`Gerado ${catalogo.pops.length} modelos em lib/modelos/popsModelosDados.ts`);
