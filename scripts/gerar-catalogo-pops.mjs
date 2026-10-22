@@ -167,7 +167,12 @@ export const PENDENCIAS_REESCRITAS = {
     RODO_FORA_DOS_MATERIAIS,
     FRASE_GENERICA,
   ],
-  "comp-07": ['Materiais: "Solução clorada" está sem concentração: completar.', FRASE_GENERICA, ALCOOL_70],
+  "comp-07": [
+    'Materiais: "Solução clorada" está sem concentração: completar.',
+    FRASE_GENERICA,
+    ALCOOL_70,
+    'Procedimento: os passos mandam borrifar álcool 70 e depois finalizar com solução clorada na mesma superfície, dois sanitizantes em sequência: decidir qual dos dois mantém, ou se há enxágue entre eles.',
+  ],
   "comp-08": [
     'Materiais: a lista traz "Água sanitária" e um passo manda usar "solução clorada" sem concentração: padronizar o nome e informar a concentração.',
     RODO_FORA_DOS_MATERIAIS,
@@ -190,6 +195,7 @@ export const PENDENCIAS_REESCRITAS = {
     "Conferir na norma aplicada se há exigência sobre uso de panos para secagem.",
     FRASE_GENERICA,
     'Materiais: "Água sanitária" / solução clorada sem concentração informada: completar.',
+    'Materiais e procedimento: a lista de materiais traz água sanitária, mas nenhum passo a usa: completar o passo ou retirar o item.',
   ],
   "comp-16": [
     "Procedimento (tabela de temperaturas de recebimento: congelados, pescados, carnes e demais produtos): valores sem fonte citada. Conferir com a norma aplicada.",

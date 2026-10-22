@@ -497,7 +497,8 @@ export const CATALOGO_DE_MODELOS_POP: CatalogoDeModelosPop = {
    "pendencias": [
     "Materiais: \"Solução clorada\" está sem concentração: completar.",
     "Ações corretivas: frase genérica \"Aplicar medidas previstas em regulamento interno para descumprimento das atividades acordadas entre gerência e colaboradores\": decidir se mantém, suaviza ou retira.",
-    "Materiais e procedimento: \"Álcool 70\" aparece escrito de formas diferentes (70, 70%, 70 °, 70 º): padronizar e informar se é 70 % (v/v) ou 70 °INPM."
+    "Materiais e procedimento: \"Álcool 70\" aparece escrito de formas diferentes (70, 70%, 70 °, 70 º): padronizar e informar se é 70 % (v/v) ou 70 °INPM.",
+    "Procedimento: os passos mandam borrifar álcool 70 e depois finalizar com solução clorada na mesma superfície, dois sanitizantes em sequência: decidir qual dos dois mantém, ou se há enxágue entre eles."
    ],
    "registrosSugeridos": []
   },
@@ -1026,7 +1027,8 @@ export const CATALOGO_DE_MODELOS_POP: CatalogoDeModelosPop = {
    "pendencias": [
     "Conferir na norma aplicada se há exigência sobre uso de panos para secagem.",
     "Ações corretivas: frase genérica \"Aplicar medidas previstas em regulamento interno para descumprimento das atividades acordadas entre gerência e colaboradores\": decidir se mantém, suaviza ou retira.",
-    "Materiais: \"Água sanitária\" / solução clorada sem concentração informada: completar."
+    "Materiais: \"Água sanitária\" / solução clorada sem concentração informada: completar.",
+    "Materiais e procedimento: a lista de materiais traz água sanitária, mas nenhum passo a usa: completar o passo ou retirar o item."
    ],
    "registrosSugeridos": []
   },
