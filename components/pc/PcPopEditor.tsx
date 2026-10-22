@@ -2,8 +2,8 @@
 
 import { formatarData, formatarHora, hojeLocalISO } from "@/lib/dataLocal";
 import { limparTextoDePessoa, nomeECargo } from "@/lib/nomeCargo";
-import { useMemo, useState, type ReactNode } from "react";
-import type { ConteudoPop, Empresa, PassoPop, ProcedimentoOperacionalPadronizado, UsuarioSistema } from "@/types";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import type { ConteudoPop, Empresa, GrupoDeModeloPop, ItemDeModeloPop, PassoPop, ProcedimentoOperacionalPadronizado, UsuarioSistema } from "@/types";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
 import {
   CONJUNTO_DA_NORMA,
@@ -27,7 +27,11 @@ import { nomeSemNumerosNoInicio } from "@/lib/navigation";
 import { AVISO_SECAO_VAZIA, folhaDoPop, secoesDoEditor, textoDasSecoes } from "@/lib/popDocumento";
 import type { CabecalhoDeImpressao } from "@/lib/printFooter";
 import { MENSAGEM_APROVAR_NAO_CONFERIDO, bloqueioDeAprovacao, exigenciaDeAprovacao } from "@/lib/popConferencia";
-import { SECOES_DE_LISTA, definicoesParaTexto, gruposParaTexto, itensParaTexto, sugestaoDeFrequencia, textoParaDefinicoes, textoParaGrupos, textoParaItens } from "@/lib/popConteudoModelo";
+import { SECOES_DO_MODELO, itensParaTexto, limparConteudoDoModelo, secoesDoModeloComConteudo, sugestaoDeFrequencia, textoParaItens, type IdDaSecaoDoModelo } from "@/lib/popConteudoModelo";
+import { avisoDeConferenciaObrigatoria, secoesQueFaltamParaEnviar, textoDaFalta } from "@/lib/popEnvio";
+import { numerosDosPassos, semSubtitulosVazios } from "@/lib/popPassos";
+import { popNaoConferido } from "@/lib/popConferencia";
+import CaixaQueCresce from "@/components/CaixaQueCresce";
 import { modeloPorId } from "@/lib/popModelos";
 
 type Secao = "identificacao" | "objetivo" | "referencias" | "responsavel" | "passos" | "acao" | "registro" | "extra" | "extra2" | "modelo";
@@ -67,7 +71,7 @@ function Campo({ rotulo, valor, onChange, linhas, desabilitado, erro, tipo = "te
     <label className="pc-field">
       <span className="ui-eyebrow">{rotulo}</span>
       {linhas ? (
-        <textarea className={`ui-input pop-area${erro ? " is-invalid" : ""}`} rows={linhas} value={valor} disabled={desabilitado} onChange={(evento) => onChange(evento.target.value)} aria-invalid={Boolean(erro)} />
+        <CaixaQueCresce className={`ui-input pop-area${erro ? " is-invalid" : ""}`} linhasMinimas={linhas} value={valor} disabled={desabilitado} onChange={(evento) => onChange(evento.target.value)} aria-invalid={Boolean(erro)} />
       ) : (
         <input type={tipo === "data" ? "date" : "text"} className={`ui-input${erro ? " is-invalid" : ""}`} value={valor} disabled={desabilitado} onChange={(evento) => onChange(evento.target.value)} aria-invalid={Boolean(erro)} />
       )}
@@ -76,12 +80,85 @@ function Campo({ rotulo, valor, onChange, linhas, desabilitado, erro, tipo = "te
   );
 }
 
-function CampoDeListaDoModelo({ rotulo, valor, onChange, desabilitado }: { rotulo: string; valor: string; onChange: (texto: string) => void; desabilitado?: boolean }) {
+// Lista de itens em texto: um item por linha; “- ” no começo da linha vira subitem. Guarda o texto digitado (as linhas em branco só somem ao salvar).
+function CampoDeItens({ rotulo, itens, onChange, desabilitado, dica = "Para subitem, comece a linha com -" }: { rotulo: string; itens: ItemDeModeloPop[] | undefined; onChange: (itens: ItemDeModeloPop[]) => void; desabilitado?: boolean; dica?: string }) {
+  const [texto, setTexto] = useState(() => itensParaTexto(itens));
+  useEffect(() => {
+    if (itensParaTexto(textoParaItens(texto, itens)) !== itensParaTexto(itens)) setTexto(itensParaTexto(itens));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itens]);
   return (
     <label className="pc-field">
       <span className="ui-eyebrow">{rotulo}</span>
-      <textarea className="ui-input pop-area" rows={3} value={valor} disabled={desabilitado} onChange={(evento) => onChange(evento.target.value)} />
+      <CaixaQueCresce
+        className="ui-input pop-area"
+        linhasMinimas={2}
+        value={texto}
+        disabled={desabilitado}
+        onChange={(evento) => {
+          setTexto(evento.target.value);
+          onChange(textoParaItens(evento.target.value, itens));
+        }}
+      />
+      {dica && <span className="ui-row-sub pdoc-ajuda">{dica}</span>}
     </label>
+  );
+}
+
+// Definições: uma linha por definição, com dois campos (Termo e Texto).
+function EditorDeDefinicoes({ definicoes, onChange, desabilitado }: { definicoes: NonNullable<ConteudoPop["definicoes"]>; onChange: (definicoes: NonNullable<ConteudoPop["definicoes"]>) => void; desabilitado?: boolean }) {
+  return (
+    <div className="pdoc-guiado">
+      {definicoes.map((definicao, indice) => (
+        <div key={indice} className="pdoc-def-linha">
+          <label className="pc-field">
+            <span className="ui-eyebrow">Termo</span>
+            <input className="ui-input" value={definicao.termo} disabled={desabilitado} onChange={(evento) => onChange(definicoes.map((item, posicao) => (posicao === indice ? { ...item, termo: evento.target.value } : item)))} />
+          </label>
+          <label className="pc-field">
+            <span className="ui-eyebrow">Texto</span>
+            <CaixaQueCresce className="ui-input pop-area" linhasMinimas={1} value={definicao.texto} disabled={desabilitado} onChange={(evento) => onChange(definicoes.map((item, posicao) => (posicao === indice ? { ...item, texto: evento.target.value } : item)))} />
+          </label>
+          {!desabilitado && (
+            <button type="button" className="ui-btn ui-btn--soft ui-btn--small" aria-label={`Remover a definição ${indice + 1}`} title="Remover a definição" onClick={() => onChange(definicoes.filter((_, posicao) => posicao !== indice))}>
+              ✕
+            </button>
+          )}
+        </div>
+      ))}
+      {!desabilitado && (
+        <button type="button" className="ui-btn ui-btn--secondary ui-btn--small pdoc-add-linha" onClick={() => onChange([...definicoes, { termo: "", texto: "" }])}>
+          + Adicionar definição
+        </button>
+      )}
+    </div>
+  );
+}
+
+// Responsabilidades: grupos com Título e uma caixa de itens (um por linha).
+function EditorDeResponsabilidades({ grupos, onChange, desabilitado }: { grupos: GrupoDeModeloPop[]; onChange: (grupos: GrupoDeModeloPop[]) => void; desabilitado?: boolean }) {
+  return (
+    <div className="pdoc-guiado">
+      {grupos.map((grupo, indice) => (
+        <div key={indice} className="pdoc-grupo">
+          <label className="pc-field">
+            <span className="ui-eyebrow">Título</span>
+            <input className="ui-input" value={grupo.titulo || ""} disabled={desabilitado} onChange={(evento) => onChange(grupos.map((item, posicao) => (posicao === indice ? { ...item, titulo: evento.target.value } : item)))} />
+          </label>
+          <CampoDeItens rotulo="Itens" itens={grupo.itens} desabilitado={desabilitado} onChange={(itens) => onChange(grupos.map((item, posicao) => (posicao === indice ? { ...item, itens } : item)))} />
+          {!desabilitado && (
+            <button type="button" className="ui-btn ui-btn--soft ui-btn--small pdoc-grupo-remover" aria-label={`Remover o grupo ${indice + 1}`} title="Remover o grupo" onClick={() => onChange(grupos.filter((_, posicao) => posicao !== indice))}>
+              ✕
+            </button>
+          )}
+        </div>
+      ))}
+      {!desabilitado && (
+        <button type="button" className="ui-btn ui-btn--secondary ui-btn--small pdoc-add-linha" onClick={() => onChange([...grupos, { titulo: "", itens: [] }])}>
+          + Adicionar grupo
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -128,8 +205,10 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
   const [escolhendoImpressao, setEscolhendoImpressao] = useState(false);
   const [comCapa, setComCapa] = useState(false);
   const [capaEscolhida, setCapaEscolhida] = useState(false);
-  // Texto em edição de cada campo de lista do modelo (um item por linha); o conteúdo guarda os itens já separados.
-  const [textosDoModelo, setTextosDoModelo] = useState<Record<string, string>>({});
+  // Seções do modelo visíveis: as que já têm conteúdo e as que a pessoa adicionou por "+ Adicionar seção".
+  const [secoesDoModeloAbertas, setSecoesDoModeloAbertas] = useState<IdDaSecaoDoModelo[]>(() => secoesDoModeloComConteudo(pop.conteudo || {}));
+  // Depois de tocar em "Enviar para aprovação" sem estar pronto: mostra "Falta: …" ao lado do botão e marca a seção na lista.
+  const [tentouEnviar, setTentouEnviar] = useState(false);
 
   const definicao = CONJUNTO_DA_NORMA.find((item) => item.catalogoId === rascunho.catalogoId);
   const conteudo: ConteudoPop = rascunho.conteudo || conteudoEmBranco(definicao || CONJUNTO_DA_NORMA[0], []);
@@ -154,6 +233,10 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
   const modeloDeOrigem = modeloPorId(pop.origemModelo?.id);
   const notasDoModelo = podeEditar ? modeloDeOrigem?.notasParaOConsultor || [] : [];
   const sugestaoDaFrequencia = sugestaoDeFrequencia(conteudo.frequenciaDetalhe);
+  const secoesQueFaltam = secoesQueFaltamParaEnviar(rascunho);
+  const textoFalta = textoDaFalta(secoesQueFaltam);
+  const avisoDeConferencia = avisoDeConferenciaObrigatoria(pop);
+  const numerosDosPassosNaTela = numerosDosPassos(passos);
 
   function mudar(alteracao: Partial<ConteudoPop>) {
     setSalvoEm("");
@@ -162,6 +245,16 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
   function mudarPasso(id: string, texto: string) {
     mudar({ passos: (conteudo.passos || []).map((passo) => (passo.id === id ? { ...passo, texto } : passo)) });
   }
+  function mudarSubtitulo(id: string, subtitulo: string | undefined) {
+    mudar({
+      passos: (conteudo.passos || []).map((passo) => {
+        if (passo.id !== id) return passo;
+        const { subtitulo: _antigo, ...resto } = passo;
+        void _antigo;
+        return subtitulo === undefined ? resto : { ...resto, subtitulo };
+      }),
+    });
+  }
   function moverPasso(indice: number, delta: -1 | 1) {
     const lista = [...(conteudo.passos || [])];
     const alvo = indice + delta;
@@ -169,7 +262,25 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
     [lista[indice], lista[alvo]] = [lista[alvo], lista[indice]];
     mudar({ passos: lista });
   }
+  // O que sobra em branco na edição (passos, subtítulos, definições, grupos) não é gravado.
+  const limpoParaGravar = (atual: ProcedimentoOperacionalPadronizado): ProcedimentoOperacionalPadronizado => {
+    const base = atual.conteudo || conteudo;
+    const limpoDoModelo = limparConteudoDoModelo({ ...base, passos: semSubtitulosVazios(base.passos || []) });
+    return { ...atual, conteudo: { ...limpoDoModelo, passos: limparPassosEmBranco(limpoDoModelo.passos) } };
+  };
   const alternar = (id: Secao) => setSecao(id);
+  // Nunca fica sem resposta: se falta algo, o botão mostra “Falta: …” (âmbar), marca a seção na lista e abre a primeira incompleta.
+  function enviarParaAprovar() {
+    setTocado(true);
+    if (secoesQueFaltam.length > 0 || faltas.length > 0 || erroTitulo) {
+      setTentouEnviar(true);
+      const primeira = secoesQueFaltam[0];
+      if (primeira) setSecao(primeira.id);
+      return;
+    }
+    setTentouEnviar(false);
+    onEnviar(comConferenciaAtual(limpoParaGravar(rascunho)));
+  }
   const modoLeitura = parte === "documento" && !editavel;
   const secoesDaLista = secoesDoEditor(rascunho, definicao);
   // O documento (folha, PDF) leva a razão social em formato de título; o nome de exibição vale só para as telas.
@@ -263,10 +374,11 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
             <ul className="pdoc-lista">
               {secoesDaLista.map((item) => (
                 <li key={`${item.id}-${item.titulo}`}>
-                  <button type="button" className={`pdoc-item${secao === item.id ? " is-ativa" : ""}`} aria-current={secao === item.id ? "true" : undefined} onClick={() => alternar(item.id)}>
+                  <button type="button" className={`pdoc-item${secao === item.id ? " is-ativa" : ""}${tentouEnviar && secoesQueFaltam.some((falta) => falta.id === item.id) ? " is-falta" : ""}`} aria-current={secao === item.id ? "true" : undefined} onClick={() => alternar(item.id)}>
                     <span className={`pdoc-marca${item.preenchida ? " is-ok" : ""}`} aria-hidden="true">{item.preenchida ? "✓" : ""}</span>
                     <span>{item.titulo}</span>
                     <span className="sr-only">{item.preenchida ? " (preenchida)" : " (falta preencher)"}</span>
+                    {tentouEnviar && secoesQueFaltam.some((falta) => falta.id === item.id) && <span className="pdoc-item-falta">falta</span>}
                   </button>
                 </li>
               ))}
@@ -354,11 +466,28 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
                 const avisar = vazio && (tocado || passosTocados[passo.id]);
                 return (
                   <li key={passo.id} className={`pop-passo${passo.id === passoEmFoco ? " is-foco" : ""}`}>
-                    <span className="pop-passo-n">{indice + 1}</span>
+                    <span className="pop-passo-n">{numerosDosPassosNaTela[indice]}</span>
                     <span className="pop-passo-campo">
-                      <input
-                        type="text"
-                        className={`ui-input${avisar ? " is-invalid" : ""}`}
+                      {passo.subtitulo !== undefined && (
+                        <span className="pop-subtitulo-linha">
+                          <input
+                            type="text"
+                            className="ui-input pop-subtitulo"
+                            value={passo.subtitulo}
+                            placeholder="Subtítulo do grupo (a numeração recomeça aqui)"
+                            disabled={!editavel}
+                            aria-label={`Subtítulo do passo ${indice + 1}`}
+                            onChange={(evento) => mudarSubtitulo(passo.id, evento.target.value)}
+                          />
+                          {editavel && (
+                            <button type="button" className="ui-btn ui-btn--soft ui-btn--small" aria-label={`Remover o subtítulo do passo ${indice + 1}`} title="Remover o subtítulo" onClick={() => mudarSubtitulo(passo.id, undefined)}>
+                              ✕
+                            </button>
+                          )}
+                        </span>
+                      )}
+                      <CaixaQueCresce
+                        className={`ui-input pop-passo-texto${avisar ? " is-invalid" : ""}`}
                         value={passo.texto}
                         placeholder={vazio ? "Descreva o passo" : undefined}
                         disabled={!editavel}
@@ -366,12 +495,20 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
                         aria-invalid={Boolean(avisar)}
                         onFocus={() => setPassoEmFoco(passo.id)}
                         onBlur={() => setPassosTocados((atual) => ({ ...atual, [passo.id]: true }))}
-                        onChange={(evento) => mudarPasso(passo.id, evento.target.value)}
+                        onKeyDown={(evento) => {
+                          if (evento.key === "Enter") evento.preventDefault();
+                        }}
+                        onChange={(evento) => mudarPasso(passo.id, evento.target.value.replace(/\s*\n+\s*/g, " "))}
                       />
                       {avisar && <span className="ui-field-error ui-field-error--forte">Escreva este passo ou remova.</span>}
                     </span>
                     {editavel && (
                       <span className="pop-passo-acoes">
+                        {passo.subtitulo === undefined && (
+                          <button type="button" className="ui-btn ui-btn--soft ui-btn--small" aria-label={`Acrescentar subtítulo ao passo ${indice + 1}`} onClick={() => mudarSubtitulo(passo.id, "")}>
+                            + Subtítulo
+                          </button>
+                        )}
                         <button type="button" className="ui-btn ui-btn--soft ui-btn--small" aria-label={`Subir o passo ${indice + 1}`} disabled={indice === 0} onClick={() => moverPasso(indice, -1)}>↑</button>
                         <button type="button" className="ui-btn ui-btn--soft ui-btn--small" aria-label={`Descer o passo ${indice + 1}`} disabled={indice === passos.length - 1} onClick={() => moverPasso(indice, 1)}>↓</button>
                         <button type="button" className="ui-btn ui-btn--soft ui-btn--small" aria-label={`Remover o passo ${indice + 1}`} title="Remover o passo" onClick={() => mudar({ passos: passos.filter((item) => item.id !== passo.id) })}>✕</button>
@@ -476,53 +613,56 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
 
           {rascunho.origemModelo && (
             <SecaoRecolhivel id="modelo" titulo="Conteúdo do modelo" resumo="listas do modelo" aberta={secao === "modelo"} onAlternar={alternar}>
-              <p className="ui-row-sub">Um item por linha. Uma linha começando com “- ” vira subitem do item de cima. Só as seções preenchidas saem na folha.</p>
-              <label className="pc-field">
-                <span className="ui-eyebrow">Alcance</span>
-                <textarea className="ui-input pop-area" rows={2} value={conteudo.alcance || ""} disabled={!editavel} onChange={(evento) => mudar({ alcance: evento.target.value })} />
-              </label>
-              <CampoDeListaDoModelo
-                rotulo="Definições (Termo: texto)"
-                valor={textosDoModelo.definicoes ?? definicoesParaTexto(conteudo.definicoes)}
-                desabilitado={!editavel}
-                onChange={(texto) => {
-                  setTextosDoModelo((atual) => ({ ...atual, definicoes: texto }));
-                  const definicoes = textoParaDefinicoes(texto);
-                  mudar({ definicoes: definicoes.length ? definicoes : undefined });
-                }}
-              />
-              <CampoDeListaDoModelo
-                rotulo="Responsabilidades (“# Título” abre um grupo)"
-                valor={textosDoModelo.responsabilidades ?? gruposParaTexto(conteudo.responsabilidades)}
-                desabilitado={!editavel}
-                onChange={(texto) => {
-                  setTextosDoModelo((atual) => ({ ...atual, responsabilidades: texto }));
-                  const grupos = textoParaGrupos(texto);
-                  mudar({ responsabilidades: grupos.length ? grupos : undefined });
-                }}
-              />
-              {SECOES_DE_LISTA.map((item) => (
-                <CampoDeListaDoModelo
-                  key={item.chave}
-                  rotulo={item.titulo}
-                  valor={textosDoModelo[item.chave] ?? itensParaTexto(conteudo[item.chave])}
-                  desabilitado={!editavel}
-                  onChange={(texto) => {
-                    setTextosDoModelo((atual) => ({ ...atual, [item.chave]: texto }));
-                    const itens = textoParaItens(texto, conteudo[item.chave]);
-                    mudar({ [item.chave]: itens.length ? itens : undefined });
-                  }}
-                />
+              <p className="ui-row-sub pdoc-ajuda">Só as seções com conteúdo aparecem aqui; para escrever em outra, use “+ Adicionar seção”. Seção em branco não sai na folha.</p>
+              {SECOES_DO_MODELO.filter((item) => secoesDoModeloAbertas.includes(item.id)).map((item) => (
+                <div key={item.id} className="pdoc-bloco-modelo">
+                  <h3 className="pdoc-bloco-titulo">{item.titulo}</h3>
+                  {item.id === "alcance" ? (
+                    <label className="pc-field">
+                      <span className="ui-eyebrow">Alcance</span>
+                      <CaixaQueCresce className="ui-input pop-area" linhasMinimas={2} value={conteudo.alcance || ""} disabled={!editavel} onChange={(evento) => mudar({ alcance: evento.target.value })} />
+                    </label>
+                  ) : item.id === "definicoes" ? (
+                    <EditorDeDefinicoes definicoes={conteudo.definicoes || []} desabilitado={!editavel} onChange={(definicoes) => mudar({ definicoes })} />
+                  ) : item.id === "responsabilidades" ? (
+                    <EditorDeResponsabilidades grupos={conteudo.responsabilidades || []} desabilitado={!editavel} onChange={(responsabilidades) => mudar({ responsabilidades })} />
+                  ) : (
+                    <CampoDeItens rotulo={item.titulo} itens={conteudo[item.id]} desabilitado={!editavel} onChange={(itens) => mudar({ [item.id]: itens })} />
+                  )}
+                </div>
               ))}
-              {(conteudo.tabelas || []).length > 0 && <p className="ui-row-sub">As tabelas do modelo ({(conteudo.tabelas || []).map((tabela) => tabela.titulo).join("; ")}) saem na folha logo depois do passo que as cita. Valores a conferir com a norma aplicada.</p>}
+              {editavel && SECOES_DO_MODELO.some((item) => !secoesDoModeloAbertas.includes(item.id)) && (
+                <div className="pdoc-add-secao" role="group" aria-label="Adicionar seção">
+                  <span className="pdoc-add-secao-rotulo">+ Adicionar seção</span>
+                  {SECOES_DO_MODELO.filter((item) => !secoesDoModeloAbertas.includes(item.id)).map((item) => (
+                    <button key={item.id} type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => setSecoesDoModeloAbertas((atuais) => [...atuais, item.id])}>
+                      {item.titulo}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {(conteudo.tabelas || []).length > 0 && <p className="ui-row-sub pdoc-ajuda">As tabelas do modelo ({(conteudo.tabelas || []).map((tabela) => tabela.titulo).join("; ")}) saem na folha logo depois do passo que as cita. Valores a conferir com a norma aplicada.</p>}
             </SecaoRecolhivel>
           )}
           </div>
           <aside className="pdoc-previa" aria-label="Pré-visualização da folha">
-            <h2 className="pdoc-lista-titulo">Pré-visualização da folha</h2>
+            <div className="pdoc-previa-cabeca">
+              <h2 className="pdoc-lista-titulo">Pré-visualização da folha</h2>
+              {onImprimir && (
+                <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => { setCapaEscolhida(false); setEscolhendoImpressao(true); }}>
+                  Imprimir / PDF
+                </button>
+              )}
+            </div>
             <PopFolha folha={folhaDaPrevia} modo="previa" />
-            <p className="ui-row-sub">Atualiza enquanto você escreve.</p>
+            <p className="ui-row-sub pdoc-ajuda">Atualiza enquanto você escreve.</p>
           </aside>
+          {onImprimir && (
+            // Cópia da folha só para o papel (o rascunho sai marcado “Rascunho” na linha de situação).
+            <div className="pdoc-so-papel" aria-hidden="true">
+              <PopFolha folha={folhaDeLeitura} modo="leitura" id="pop-folha" comCapa={comCapa} />
+            </div>
+          )}
         </div>
       )}
 
@@ -618,11 +758,11 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
               onClick={() => {
                 // Salvar rascunho não guarda passo em branco: sobra só o que foi escrito.
                 const exec = (rascunho.conteudo || conteudo).responsavelExecucao;
+                const gravavel = limpoParaGravar(rascunho);
                 const limpo = comConferenciaAtual({
-                  ...rascunho,
+                  ...gravavel,
                   conteudo: {
-                    ...(rascunho.conteudo || conteudo),
-                    passos: limparPassosEmBranco(passos),
+                    ...(gravavel.conteudo || conteudo),
                     ...(exec ? { responsavelExecucao: { nome: limparTextoDePessoa(exec.nome), cargo: limparTextoDePessoa(exec.cargo) } } : {}),
                   },
                 });
@@ -633,7 +773,13 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
             >
               Salvar rascunho
             </button>
-            <button type="button" className="ui-btn ui-btn--criar" onClick={() => { setTocado(true); if (faltas.length === 0 && !erroTitulo) onEnviar(comConferenciaAtual(rascunho)); }}>
+            {(tentouEnviar ? textoFalta : erroTitulo ? "Falta: Identificação" : "") && (
+              <span className="pdoc-falta" role="alert">
+                {tentouEnviar ? textoFalta : "Falta: Identificação"}
+              </span>
+            )}
+            {avisoDeConferencia && <span className="pdoc-chip-conferir" role="note">{avisoDeConferencia}</span>}
+            <button type="button" className="ui-btn ui-btn--criar" onClick={enviarParaAprovar}>
               Enviar para aprovação
             </button>
           </div>
@@ -648,7 +794,12 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
               <input type="checkbox" checked={capaEscolhida} onChange={(evento) => setCapaEscolhida(evento.target.checked)} />
               <span>Incluir capa</span>
             </label>
-            <p className="ui-row-sub">A capa é uma página com o código, o título, a empresa e a versão.</p>
+            <p className="ui-row-sub pdoc-ajuda">A capa é uma página com o código, o título, a empresa e a versão, sem cabeçalho nem número de página.</p>
+            {popNaoConferido(comConferenciaAtual(rascunho)) && (
+              <p className="pdoc-nao-conferido" role="status">
+                Conteúdo de modelo ainda não conferido
+              </p>
+            )}
             <div className="pc-modal-foot">
               <span />
               <div className="ui-footer-actions">

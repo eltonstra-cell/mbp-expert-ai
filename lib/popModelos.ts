@@ -134,17 +134,16 @@ export function avisoDeModeloJaCriado(pops: ProcedimentoOperacionalPadronizado[]
 const linhaDoItem = (item: ItemDeModeloPop) => [textoDoItem(item), ...subitensDoItem(item)].join(" ").trim();
 
 /**
- * Passos do modelo → passos do POP. O passo guarda só texto: o título de um grupo (subtítulo no modelo) vira prefixo de cada item do grupo,
- * e a citação de tabela de um item fica no passo para a folha imprimir a tabela logo depois dele.
+ * Passos do modelo → passos do POP. O título de um grupo (subtítulo no modelo) fica no primeiro passo do grupo (`subtitulo`);
+ * a folha mostra a linha de subtítulo e reinicia a numeração. A citação de tabela de um item fica no passo para a folha imprimir a tabela logo depois dele.
  */
 export function passosDoModelo(modelo: ModeloDePop, variaveis: VariaveisDoModelo, gerarId: () => string): PassoPop[] {
   const passos: PassoPop[] = [];
   for (const grupo of resolverGrupos(modelo.secoes.passos, variaveis) || []) {
-    for (const item of grupo.itens) {
-      const texto = linhaDoItem(item);
+    grupo.itens.forEach((item, posicao) => {
       const tabela = tabelaDoItem(item);
-      passos.push({ id: gerarId(), texto: grupo.titulo ? `${grupo.titulo}: ${texto}` : texto, ...(tabela ? { tabela } : {}) });
-    }
+      passos.push({ id: gerarId(), texto: linhaDoItem(item), ...(posicao === 0 && grupo.titulo ? { subtitulo: grupo.titulo } : {}), ...(tabela ? { tabela } : {}) });
+    });
   }
   return passos;
 }

@@ -180,7 +180,8 @@ export type AprovacaoPop = {
 };
 
 /** `tabela`: id de uma tabela do POP (ConteudoPop.tabelas) que a folha imprime logo depois deste passo. */
-export type PassoPop = { id: string; texto: string; tabela?: string };
+/** `subtitulo` abre um grupo de passos (linha sem número na folha; a numeração reinicia no grupo). */
+export type PassoPop = { id: string; texto: string; tabela?: string; subtitulo?: string };
 
 /** Item de uma lista de modelo: texto, texto com subitens ou texto que cita uma tabela. */
 export type ItemDeModeloPop = string | { texto: string; subitens?: string[]; tabela?: string };

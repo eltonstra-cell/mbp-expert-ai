@@ -8,7 +8,10 @@ export const MODELOS_COM_BLOQUEIO: readonly string[] = ["comp-13"];
 
 export const MENSAGEM_BLOQUEIO_DE_APROVACAO = "Revise os itens de segurança antes de aprovar";
 export const MENSAGEM_APROVAR_NAO_CONFERIDO = "Este POP veio de modelo e ainda não foi conferido. Aprovar mesmo assim?";
+/** Texto completo (vai no atributo title do chip). */
 export const ROTULO_NAO_CONFERIDO = "Conteúdo de modelo não conferido";
+/** Chip curto, de uma linha só. */
+export const ROTULO_CURTO_NAO_CONFERIDO = "Modelo não conferido";
 export const AVISO_VALORES_DO_MODELO = "Valores do modelo, a conferir com a norma aplicada.";
 
 type PopComConferencia = Pick<ProcedimentoOperacionalPadronizado, "origemModelo" | "conferencia" | "itensAConferir">;

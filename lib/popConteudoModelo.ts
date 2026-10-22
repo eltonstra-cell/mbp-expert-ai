@@ -1,5 +1,6 @@
 // Campos de lista vindos de um modelo de POP: como aparecem na folha e como viram texto para editar (um item por linha).
 import type { ConteudoPop, GrupoDeModeloPop, ItemDeModeloPop } from "../types/index.ts";
+import { semSubtitulosVazios } from "./popPassos.ts";
 
 export type ChaveDeLista = "materiais" | "epis" | "cuidadosEspeciais" | "verificacao" | "quemRealiza" | "acoesPreventivas" | "acoesNaoConformidade";
 
@@ -97,4 +98,45 @@ export function sugestaoDeFrequencia(grupos: GrupoDeModeloPop[] | undefined): st
     })
     .filter(Boolean)
     .join(" · ");
+}
+
+// ===== Seções do modelo no editor: só as que têm conteúdo aparecem; as vazias entram por "+ Adicionar seção" =====
+
+export type IdDaSecaoDoModelo = "alcance" | "definicoes" | "responsabilidades" | ChaveDeLista;
+
+export const SECOES_DO_MODELO: { id: IdDaSecaoDoModelo; titulo: string }[] = [
+  { id: "alcance", titulo: "Alcance" },
+  { id: "definicoes", titulo: "Definições" },
+  { id: "responsabilidades", titulo: "Responsabilidades" },
+  ...SECOES_DE_LISTA.map((secao) => ({ id: secao.chave, titulo: secao.titulo })),
+];
+
+export function secaoDoModeloTemConteudo(conteudo: ConteudoPop, id: IdDaSecaoDoModelo): boolean {
+  if (id === "alcance") return escrito(conteudo.alcance);
+  if (id === "definicoes") return (conteudo.definicoes || []).some((item) => escrito(item.termo) || escrito(item.texto));
+  if (id === "responsabilidades") return (conteudo.responsabilidades || []).some((grupo) => escrito(grupo.titulo) || itensEscritos(grupo.itens).length > 0);
+  return itensEscritos(conteudo[id]).length > 0;
+}
+
+export const secoesDoModeloComConteudo = (conteudo: ConteudoPop): IdDaSecaoDoModelo[] => SECOES_DO_MODELO.filter((secao) => secaoDoModeloTemConteudo(conteudo, secao.id)).map((secao) => secao.id);
+
+/** Tira do conteúdo o que ficou em branco na edição (definição sem termo e sem texto, grupo vazio, lista vazia, subtítulo em branco). */
+export function limparConteudoDoModelo(conteudo: ConteudoPop): ConteudoPop {
+  const limpo: ConteudoPop = { ...conteudo };
+  const definicoes = (conteudo.definicoes || []).filter((item) => escrito(item.termo) || escrito(item.texto)).map((item) => ({ termo: item.termo.trim(), texto: item.texto.trim() }));
+  if (definicoes.length) limpo.definicoes = definicoes;
+  else delete limpo.definicoes;
+  const grupos = (conteudo.responsabilidades || [])
+    .map((grupo) => ({ titulo: escrito(grupo.titulo) ? (grupo.titulo || "").trim() : null, itens: itensEscritos(grupo.itens) }))
+    .filter((grupo) => grupo.itens.length > 0 || grupo.titulo);
+  if (grupos.length) limpo.responsabilidades = grupos;
+  else delete limpo.responsabilidades;
+  if (!escrito(conteudo.alcance)) delete limpo.alcance;
+  for (const secao of SECOES_DE_LISTA) {
+    const itens = itensEscritos(conteudo[secao.chave]);
+    if (itens.length) limpo[secao.chave] = itens;
+    else delete limpo[secao.chave];
+  }
+  if (conteudo.passos) limpo.passos = semSubtitulosVazios(conteudo.passos);
+  return limpo;
 }

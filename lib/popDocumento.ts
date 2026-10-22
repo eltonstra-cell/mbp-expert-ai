@@ -6,6 +6,7 @@ import { formatarData } from "./dataLocal.ts";
 import { nomeECargo, razaoSocialTitulo } from "./nomeCargo.ts";
 import { nomeSemNumerosNoInicio } from "./navigation.ts";
 import { linhasDoConteudo, type DefinicaoPopDoConjunto } from "./popsNorma.ts";
+import { subtitulosEmVigor } from "./popPassos.ts";
 
 export type IdDaSecao = "identificacao" | "objetivo" | "referencias" | "responsavel" | "passos" | "acao" | "extra" | "extra2" | "modelo";
 
@@ -145,6 +146,8 @@ export type BlocoDaFolha = {
   linhas: string[];
   /** Tabela impressa logo depois da linha de mesmo índice (a que a cita). */
   tabelas?: (TabelaDaFolha | undefined)[];
+  /** Passos: linha de subtítulo (sem número) antes do passo de mesmo índice; a numeração reinicia depois dela. */
+  subtitulos?: (string | undefined)[];
   /** Seção sem nada escrito: a folha mostra "Não preenchida". */
   vazia?: boolean;
   /** Aviso amarelo ao lado do título (só Ação corretiva vazia, quando a norma da empresa a exige). */
@@ -227,10 +230,16 @@ export function folhaDoPop(
   bloco("Responsável e frequência", "texto", [executor, (c.frequencia || "").trim()].filter(Boolean).join(" · ") ? [[executor, (c.frequencia || "").trim()].filter(Boolean).join(" · ")] : []);
   const doModelo = (chave: (typeof SECOES_DE_LISTA)[number]["chave"]) => blocoDeItens(SECOES_DE_LISTA.find((secao) => secao.chave === chave)!.titulo, c[chave]);
   SECOES_ANTES_DOS_PASSOS.forEach(doModelo);
+  const subtitulosDosPassos = subtitulosEmVigor(c.passos || []);
   const passosComTabela = (c.passos || [])
-    .map((passo) => ({ texto: passo.texto.trim() || (opcoes.marcarBranco ? "(em branco)" : ""), tabela: tabelaPorId(passo.tabela) }))
+    .map((passo, indice) => ({ texto: passo.texto.trim() || (opcoes.marcarBranco ? "(em branco)" : ""), tabela: tabelaPorId(passo.tabela), emVigor: subtitulosDosPassos[indice] }))
     .filter((passo) => opcoes.marcarBranco || passo.texto);
-  bloco("Passos", "passos", passosComTabela.map((passo) => passo.texto), passosComTabela.some((passo) => passo.tabela) ? { tabelas: passosComTabela.map((passo) => passo.tabela) } : {});
+  // O subtítulo só aparece quando muda de um passo (escrito) para o seguinte.
+  const subtitulosVisiveis = passosComTabela.map((passo, indice) => (passo.emVigor && passo.emVigor !== (indice === 0 ? "" : passosComTabela[indice - 1].emVigor) ? passo.emVigor : undefined));
+  bloco("Passos", "passos", passosComTabela.map((passo) => passo.texto), {
+    ...(passosComTabela.some((passo) => passo.tabela) ? { tabelas: passosComTabela.map((passo) => passo.tabela) } : {}),
+    ...(subtitulosVisiveis.some(Boolean) ? { subtitulos: subtitulosVisiveis } : {}),
+  });
   SECOES_DE_LISTA.filter((secao) => !SECOES_ANTES_DOS_PASSOS.includes(secao.chave)).forEach((secao) => doModelo(secao.chave));
   const acao = escrito(c.acaoCorretiva) ? [(c.acaoCorretiva || "").trim()] : [];
   bloco("Ação corretiva", "texto", acao, opcoes.exigeAcaoCorretiva && acao.length === 0 ? { aviso: AVISO_SECAO_VAZIA } : {});

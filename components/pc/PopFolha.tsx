@@ -1,6 +1,6 @@
 "use client";
 
-import type { FolhaDoPop, TabelaDaFolha } from "@/lib/popDocumento";
+import type { BlocoDaFolha, FolhaDoPop, TabelaDaFolha } from "@/lib/popDocumento";
 
 type Props = {
   folha: FolhaDoPop;
@@ -29,7 +29,7 @@ function Tabela({ tabela }: { tabela: TabelaDaFolha }) {
           {tabela.linhas.map((linha, indice) => (
             <tr key={`${indice}-${linha.join("|")}`}>
               {linha.map((celula, posicao) => (
-                <td key={`${posicao}-${celula}`}>{celula}</td>
+                <td key={`${posicao}-${celula}`}>{celula && celula !== "null" ? celula : "—"}</td>
               ))}
             </tr>
           ))}
@@ -38,6 +38,12 @@ function Tabela({ tabela }: { tabela: TabelaDaFolha }) {
       {tabela.aviso && <p className="pfolha-tabela-aviso">{tabela.aviso}</p>}
     </div>
   );
+}
+
+// Passos em grupos: cada subtítulo abre um grupo (a lista numerada recomeça em 1).
+function gruposDePassos(bloco: BlocoDaFolha): { inicio: number; fim: number; subtitulo?: string }[] {
+  const inicios = bloco.linhas.map((_, indice) => indice).filter((indice) => indice === 0 || Boolean(bloco.subtitulos?.[indice]));
+  return inicios.map((inicio, posicao) => ({ inicio, fim: inicios[posicao + 1] ?? bloco.linhas.length, subtitulo: bloco.subtitulos?.[inicio] }));
 }
 
 // A folha do POP como a pessoa vai ler. Só apresenta; nada aqui grava.
@@ -67,14 +73,19 @@ export default function PopFolha({ folha, modo, id, comCapa = false }: Props) {
           {bloco.vazia ? (
             <p className="pfolha-linha is-branco">{bloco.linhas[0]}</p>
           ) : bloco.tipo === "passos" ? (
-            <ol className="pfolha-passos">
-              {bloco.linhas.map((linha, indice) => (
-                <li key={`${indice}-${linha}`} className={linha === "(em branco)" ? "is-branco" : undefined}>
-                  {linha}
-                  {bloco.tabelas?.[indice] && <Tabela tabela={bloco.tabelas[indice]!} />}
-                </li>
-              ))}
-            </ol>
+            gruposDePassos(bloco).map((grupo) => (
+              <div key={grupo.inicio} className="pfolha-grupo">
+                {grupo.subtitulo && <p className="pfolha-subtitulo">{grupo.subtitulo}</p>}
+                <ol className="pfolha-passos">
+                  {bloco.linhas.slice(grupo.inicio, grupo.fim).map((linha, posicao) => (
+                    <li key={`${grupo.inicio + posicao}-${linha}`} className={linha === "(em branco)" ? "is-branco" : undefined}>
+                      {linha}
+                      {bloco.tabelas?.[grupo.inicio + posicao] && <Tabela tabela={bloco.tabelas[grupo.inicio + posicao]!} />}
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            ))
           ) : (
             bloco.linhas.map((linha, indice) => (
               <div key={`${indice}-${linha}`} className="pfolha-item">
