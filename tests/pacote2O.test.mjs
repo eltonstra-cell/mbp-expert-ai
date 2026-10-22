@@ -370,16 +370,16 @@ test("tabela impressa logo depois do passo que a cita, com a linha de conferir e
 test("capa opcional: desligada por padrão, com código, título, empresa e versão, sem logotipo", () => {
   const pop = criar("comp-04");
   const folha = folhaDoPop(pop, { nome: "Mello Servicos Ltda", cnpj: "00.000.000/0001-00" });
-  assert.deepEqual(folha.capa, { codigo: pop.codigo, titulo: pop.titulo, empresa: "Mello Servicos Ltda", versao: "versão 1.0" });
+  assert.deepEqual(folha.capa, { codigo: pop.codigo, titulo: pop.titulo, empresa: "Mello Servicos Ltda", versao: "versão 1.0", cnpj: "00.000.000/0001-00" });
   const editor = ler("../components/pc/PcPopEditor.tsx");
-  assert.match(editor, /useState\(false\);\s*\n\s*const \[capaEscolhida, setCapaEscolhida\] = useState\(false\)/);
-  assert.match(editor, /Incluir capa/);
-  assert.match(editor, /setCapaEscolhida\(false\);\s*setEscolhendoImpressao\(true\)/);
+  assert.match(editor, /useState<ModeloDaCapa \| null>\(null\)/, "desligada por padrão: sem capa no papel");
+  assert.match(ler("../components/pc/ConfigCapaDoPop.tsx"), /Incluir capa/);
+  assert.match(editor, /onClick=\{\(\) => setEscolhendoImpressao\(true\)\}/);
   const componente = ler("../components/pc/PopFolha.tsx");
-  assert.match(componente, /comCapa = false/);
+  assert.match(componente, /capa = null/);
   assert.doesNotMatch(componente, /<img|<svg|logo/i);
   assert.match(ler("../app/globals.css"), /\.pfolha-capa\{display:none\}/);
-  assert.match(ler("../app/globals.css"), /@media print\{\s*\n\s*\.pfolha-capa\{display:flex/);
+  assert.match(ler("../app/globals.css"), /@media print\{\s*\n\s*\.pfolha-capa\{display:block/);
 });
 
 test("mantém o que foi corrigido antes: cabeçalho corrido enxuto, sem chip de tela no papel", () => {

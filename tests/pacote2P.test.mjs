@@ -294,8 +294,8 @@ test("'Imprimir / PDF' também no editor do rascunho, com a linha 'Conteúdo de 
   const previa = editor.slice(editor.indexOf('aria-label="Pré-visualização da folha"'), editor.indexOf("{onImprimir && (\n            // Cópia"));
   assert.ok(previa.includes("Imprimir / PDF") && previa.includes("setEscolhendoImpressao(true)") && previa.includes("ui-btn--secondary"));
   assert.ok(editor.includes('className="pdoc-so-papel"') && editor.includes('id="pop-folha"'));
-  const dialogo = editor.slice(editor.indexOf('aria-label="Imprimir ou salvar o POP em PDF"'));
-  assert.ok(dialogo.includes("Conteúdo de modelo ainda não conferido") && dialogo.includes("popNaoConferido(comConferenciaAtual(rascunho))"));
+  assert.ok(editor.includes("avisoNaoConferido={popNaoConferido(comConferenciaAtual(rascunho))}"));
+  assert.ok(ler("../components/pc/ConfigCapaDoPop.tsx").includes("Conteúdo de modelo ainda não conferido"));
   // o papel sai marcado como rascunho
   const pop = criar("comp-02");
   assert.match(folhaDoPop(pop, { nome: "Beyond Nutri" }).situacao, /^Rascunho/);
@@ -436,8 +436,8 @@ test("capa: sem cabeçalho corrido nem rodapé (página nomeada) e a folha come�
   assert.match(css, /@page\{size:A4/);
   const global = ler("../app/globals.css");
   assert.match(global, /@media print\{\.pfolha-capa\{page:capa\}\}/);
-  assert.match(global, /\.pfolha-capa\{display:flex;[^}]*break-after:page/);
-  assert.ok(ler("../components/pc/PcPopEditor.tsx").includes("sem cabeçalho nem número de página"));
+  assert.match(global, /\.pfolha-capa\{display:block;[^}]*break-after:page/);
+  assert.ok(ler("../components/pc/ConfigCapaDoPop.tsx").includes("sem cabeçalho nem número de página"));
 });
 
 // ===== 5.1: nomes sem acento =====

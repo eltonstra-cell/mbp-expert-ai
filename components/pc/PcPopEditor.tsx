@@ -4,7 +4,7 @@ import { formatarCnpj } from "@/lib/cnpj";
 import { formatarData, formatarHora, hojeLocalISO } from "@/lib/dataLocal";
 import { limparTextoDePessoa, nomeECargo } from "@/lib/nomeCargo";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import type { ConteudoPop, Empresa, GrupoDeModeloPop, ItemDeModeloPop, PassoPop, ProcedimentoOperacionalPadronizado, UsuarioSistema } from "@/types";
+import type { CapaDosPops, ConteudoPop, Empresa, GrupoDeModeloPop, ItemDeModeloPop, PassoPop, ProcedimentoOperacionalPadronizado, UsuarioSistema } from "@/types";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
 import {
   CONJUNTO_DA_NORMA,
@@ -35,6 +35,8 @@ import { popNaoConferido } from "@/lib/popConferencia";
 import { conteudoComResponsavelEfetivo, diferencaComDados, marcaManualApos, responsavelDaExecucao } from "@/lib/responsavelDoPop";
 import CaixaQueCresce from "@/components/CaixaQueCresce";
 import { modeloPorId } from "@/lib/popModelos";
+import ConfigCapaDoPop from "@/components/pc/ConfigCapaDoPop";
+import { capaInicialDoDialogo, comIconeDeCapa, eIconeConhecido, iconeDoPop, modeloDaCapa, type CapaCompleta, type ModeloDaCapa } from "@/lib/capaPop";
 import { itensDasNotas, totalDePendencias, type AlvoDaPendencia, type ItemDasNotas } from "@/lib/popPendencias";
 
 type Secao = "identificacao" | "objetivo" | "referencias" | "responsavel" | "passos" | "acao" | "registro" | "extra" | "extra2" | "modelo";
@@ -55,6 +57,11 @@ type Props = {
   /** Descarta o rascunho de uma nova versão; a última versão aprovada continua vigente. */
   onDescartar?: (pop: ProcedimentoOperacionalPadronizado) => void;
   mensagem?: string;
+  /** Capa dos POPs guardada na empresa (desligada por padrão) e como salvá-la; sem salvar, a capa vale só para esta impressão. */
+  capaDaEmpresa?: CapaDosPops;
+  onSalvarCapa?: (capa: CapaDosPops) => void;
+  /** Grava o POP com a escolha de ícone da capa (sem criar versão: é só apresentação). */
+  onTrocarIconeDeCapa?: (pop: ProcedimentoOperacionalPadronizado) => void;
   /** Frase da próxima ação: fica na mesma linha dos botões, à esquerda. */
   proximaAcao?: string;
   /** Leva ao bloco "Para conferir antes de aprovar" (Resumo da ficha), em destaque. */
@@ -231,7 +238,7 @@ function horaCerta(): string {
 }
 
 // Documento (editor em painéis) e Histórico (versões, aprovações e motivo) do POP. O cabeçalho e as abas ficam na ficha (PcFichaPop).
-export default function PcPopEditor({ pop, empresa, usuario, podeEditar, responsavelDoEstabelecimento, onImprimir, onSalvarRascunho, onEnviar, onAprovar, onNovaVersao, onDescartar, mensagem, proximaAcao, onIrParaConferencia, parte = "documento" }: Props) {
+export default function PcPopEditor({ pop, empresa, usuario, podeEditar, responsavelDoEstabelecimento, onImprimir, onSalvarRascunho, onEnviar, onAprovar, onNovaVersao, onDescartar, mensagem, proximaAcao, onIrParaConferencia, capaDaEmpresa, onSalvarCapa, onTrocarIconeDeCapa, parte = "documento" }: Props) {
   // Mais de um passo em branco vira um só logo ao abrir.
   const [rascunho, setRascunho] = useState<ProcedimentoOperacionalPadronizado>(() => (pop.conteudo?.passos ? { ...pop, conteudo: { ...pop.conteudo, passos: juntarPassosEmBrancoRepetidos(pop.conteudo.passos) } } : pop));
   const [motivoDaNovaVersao, setMotivoDaNovaVersao] = useState("");
@@ -245,8 +252,8 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
   const [versaoA, setVersaoA] = useState("");
   const [versaoB, setVersaoB] = useState("");
   const [escolhendoImpressao, setEscolhendoImpressao] = useState(false);
-  const [comCapa, setComCapa] = useState(false);
-  const [capaEscolhida, setCapaEscolhida] = useState(false);
+  // Capa que sai no papel desta impressão (a página 1 do PDF); sem ela o PDF é o de sempre.
+  const [capaNoPapel, setCapaNoPapel] = useState<ModeloDaCapa | null>(null);
   // Seções do modelo visíveis: as que já têm conteúdo e as que a pessoa adicionou por "+ Adicionar seção".
   const [secoesDoModeloAbertas, setSecoesDoModeloAbertas] = useState<IdDaSecaoDoModelo[]>(() => secoesDoModeloComConteudo(pop.conteudo || {}));
   // Depois de tocar em "Enviar para aprovação" sem estar pronto: mostra "Falta: …" ao lado do botão e marca a seção na lista.
@@ -367,11 +374,13 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
   const folhaDeLeitura = folhaDoPop(comConferenciaAtual(rascunho), dadosDaEmpresa, opcoesDaFolha);
   const folhaDaPrevia = folhaDoPop(comConferenciaAtual(rascunho), dadosDaEmpresa, { ...opcoesDaFolha, marcarBranco: true });
   const dicaDaNorma = (conteudo.referencias || [])[0];
-  function imprimirFolha(comCapaNoPapel: boolean) {
+  const iconeAutomaticoDaCapa = iconeDoPop({ origemModelo: pop.origemModelo, catalogoId: pop.catalogoId });
+  const iconeEscolhidoDaCapa = eIconeConhecido(pop.iconeCapa) ? pop.iconeCapa : "";
+  function imprimirFolha(capa: CapaCompleta | null, icone: string) {
     setEscolhendoImpressao(false);
-    setComCapa(comCapaNoPapel);
+    setCapaNoPapel(capa?.ativa ? modeloDaCapa(capa, { ...folhaDeLeitura.capa, iconeId: icone || iconeAutomaticoDaCapa }) : null);
     // A capa só existe no papel: some de novo quando a impressão termina.
-    if (comCapaNoPapel) window.addEventListener("afterprint", () => setComCapa(false), { once: true });
+    if (capa?.ativa) window.addEventListener("afterprint", () => setCapaNoPapel(null), { once: true });
     onImprimir?.(`${rascunho.codigo || "POP"} - ${rascunho.titulo}`, {
       esquerda: [dadosDaEmpresa.nome, dadosDaEmpresa.cnpj ? `CNPJ ${formatarCnpj(dadosDaEmpresa.cnpj)}` : ""],
       // O cabeçalho corrido tem só empresa, CNPJ e "POP-01 · versão 1.1"; "Aprovada por …" fica uma vez só, abaixo do título.
@@ -417,7 +426,7 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
             {proximaAcaoNaBarra}
             {notasNaBarra}
             {onImprimir && (
-              <button type="button" className="ui-btn ui-btn--secondary" onClick={() => { setCapaEscolhida(false); setEscolhendoImpressao(true); }}>
+              <button type="button" className="ui-btn ui-btn--secondary" onClick={() => setEscolhendoImpressao(true)}>
                 Imprimir / PDF
               </button>
             )}
@@ -445,7 +454,7 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
             )}
           </div>
           {notasAbertas && itensDasNotasNaTela.length > 0 && <PainelDasNotas itens={itensDasNotasNaTela} onAcao={resolverPendencia} />}
-          <PopFolha folha={folhaDeLeitura} modo="leitura" id="pop-folha" comCapa={comCapa} />
+          <PopFolha folha={folhaDeLeitura} modo="leitura" id="pop-folha" capa={capaNoPapel} />
         </div>
       )}
 
@@ -760,7 +769,7 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
             <div className="pdoc-previa-cabeca">
               <h2 className="pdoc-lista-titulo">Pré-visualização da folha</h2>
               {onImprimir && (
-                <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => { setCapaEscolhida(false); setEscolhendoImpressao(true); }}>
+                <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => setEscolhendoImpressao(true)}>
                   Imprimir / PDF
                 </button>
               )}
@@ -771,7 +780,7 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
           {onImprimir && (
             // Cópia da folha só para o papel (o rascunho sai marcado “Rascunho” na linha de situação).
             <div className="pdoc-so-papel" aria-hidden="true">
-              <PopFolha folha={folhaDeLeitura} modo="leitura" id="pop-folha" comCapa={comCapa} />
+              <PopFolha folha={folhaDeLeitura} modo="leitura" id="pop-folha" capa={capaNoPapel} />
             </div>
           )}
         </div>
@@ -901,33 +910,21 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
         </div>
       )}
       {escolhendoImpressao && (
-        <div className="pc-modal-layer" role="presentation">
-          <div className="pc-modal-backdrop" onClick={() => setEscolhendoImpressao(false)} />
-          <section className="pc-modal" role="dialog" aria-modal="true" aria-label="Imprimir ou salvar o POP em PDF">
-            <h2 className="pc-modal-title">Imprimir ou salvar em PDF</h2>
-            <label className="pdoc-capa-opcao">
-              <input type="checkbox" checked={capaEscolhida} onChange={(evento) => setCapaEscolhida(evento.target.checked)} />
-              <span>Incluir capa</span>
-            </label>
-            <p className="ui-row-sub pdoc-ajuda">A capa é uma página com o código, o título, a empresa e a versão, sem cabeçalho nem número de página.</p>
-            {popNaoConferido(comConferenciaAtual(rascunho)) && (
-              <p className="pdoc-nao-conferido" role="status">
-                Conteúdo de modelo ainda não conferido
-              </p>
-            )}
-            <div className="pc-modal-foot">
-              <span />
-              <div className="ui-footer-actions">
-                <button type="button" className="ui-btn ui-btn--secondary" onClick={() => setEscolhendoImpressao(false)}>
-                  Cancelar
-                </button>
-                <button type="button" className="ui-btn ui-btn--criar" onClick={() => imprimirFolha(capaEscolhida)}>
-                  Imprimir ou salvar PDF
-                </button>
-              </div>
-            </div>
-          </section>
-        </div>
+        <ConfigCapaDoPop
+          dados={folhaDeLeitura.capa}
+          iconeAutomatico={iconeAutomaticoDaCapa}
+          iconeEscolhido={iconeEscolhidoDaCapa}
+          inicial={capaInicialDoDialogo(pop, (pop.versoes || []).find((versao) => versao.versao === pop.versao)?.capa, capaDaEmpresa)}
+          guardada={capaDaEmpresa}
+          podeSalvar={Boolean(onSalvarCapa && podeEditar)}
+          avisoNaoConferido={popNaoConferido(comConferenciaAtual(rascunho))}
+          onCancelar={() => setEscolhendoImpressao(false)}
+          onSalvar={(capa, icone) => {
+            onSalvarCapa?.({ ativa: capa.ativa, estilo: capa.estilo, cor: capa.cor, icone: capa.icone, ...(capa.logotipo ? { logotipo: capa.logotipo } : {}) });
+            if (icone !== iconeEscolhidoDaCapa) onTrocarIconeDeCapa?.(comIconeDeCapa(pop, icone));
+          }}
+          onImprimir={imprimirFolha}
+        />
       )}
       {confirmandoAprovacao && (
         <div className="pc-modal-layer" role="presentation">

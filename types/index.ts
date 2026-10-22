@@ -38,6 +38,8 @@ export type Empresa = {
   modelosQuestionarioAmbientes?: Record<string, string>;
   /** Opcional: ambiente com nome próprio -> setor oficial marcado ao qual ele corresponde (a visita mostra um item só). */
   setorOficialDoAmbiente?: Record<string, string>;
+  /** Capa opcional dos POPs (desligada por padrão). */
+  capaDosPops?: CapaDosPops;
   equipamentosSetores?: EquipamentoSetor[];
   fluxosOperacionais?: FluxoOperacional[];
   programasControleQualidade?: ProgramaControleQualidade[];
@@ -254,6 +256,16 @@ export type ConteudoPop = {
 };
 
 /** Versão guardada de um POP (as aprovadas nunca são apagadas). */
+/** Capa opcional dos POPs (guardada na empresa; todos os campos opcionais, sem migração). Ver lib/capaPop.ts. */
+export type CapaDosPops = {
+  ativa?: boolean;
+  estilo?: "A" | "B" | "C" | "D" | "E" | "F";
+  cor?: "laranja" | "verde" | "terra" | "ambar" | "grafite" | "pb";
+  icone?: "colorido" | "traco";
+  /** Logotipo da empresa (PNG ou JPG já reduzido, em data URL). */
+  logotipo?: string;
+};
+
 export type VersaoPop = {
   versao: string;
   status: StatusPOP;
@@ -264,6 +276,8 @@ export type VersaoPop = {
   versaoCatalogo?: Record<string, string>;
   /** Por que esta versão foi criada (opcional, escrito por quem iniciou a nova versão). */
   motivo?: string;
+  /** Capa que valia quando a versão foi aprovada: aprovada não muda retroativamente. */
+  capa?: CapaDosPops;
 };
 
 export type ProcedimentoOperacionalPadronizado = {
@@ -293,6 +307,8 @@ export type ProcedimentoOperacionalPadronizado = {
   motivoDaVersao?: string;
   /** POP criado de um modelo do catálogo de modelos (lib/popModelos.ts). */
   origemModelo?: { id: string; versaoCatalogo: number };
+  /** Ícone da capa escolhido para este POP (um dos 16 de public/capas); vazio = o do mapa de modelos. */
+  iconeCapa?: string;
   /** Conferência do conteúdo de modelo: quem e quando. Sem `conferido`, a folha avisa que os valores são do modelo. */
   conferencia?: { conferido: boolean; por?: { nome: string; cargo: string }; em?: string };
   /** Pendências do modelo para o RT marcar uma a uma antes de aprovar. */

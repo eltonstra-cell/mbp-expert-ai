@@ -1,5 +1,7 @@
 "use client";
 
+import CapaDoPop from "@/components/CapaDoPop";
+import type { ModeloDaCapa } from "@/lib/capaPop";
 import type { BlocoDaFolha, FolhaDoPop, TabelaDaFolha } from "@/lib/popDocumento";
 
 type Props = {
@@ -7,8 +9,8 @@ type Props = {
   /** Leitura em página cheia (imprimível) ou pré-visualização menor ao lado do editor. */
   modo: "leitura" | "previa";
   id?: string;
-  /** Capa opcional: uma página só com código, título, empresa e versão. Aparece apenas no papel. */
-  comCapa?: boolean;
+  /** Capa opcional (página A4 inteira, sem cabeçalho nem numeração). Aparece apenas no papel e vira a página 1; sem ela nada muda. */
+  capa?: ModeloDaCapa | null;
 };
 
 function Tabela({ tabela }: { tabela: TabelaDaFolha }) {
@@ -47,17 +49,15 @@ function gruposDePassos(bloco: BlocoDaFolha): { inicio: number; fim: number; sub
 }
 
 // A folha do POP como a pessoa vai ler. Só apresenta; nada aqui grava.
-export default function PopFolha({ folha, modo, id, comCapa = false }: Props) {
+export default function PopFolha({ folha, modo, id, capa = null }: Props) {
   return (
-    <article id={id} className={`pfolha pfolha--${modo}${modo === "leitura" ? " doc-impresso" : ""}`} data-empresa={folha.esquerda}>
-      {comCapa && modo === "leitura" && (
+    <>
+      {capa && modo === "leitura" && (
         <section className="pfolha-capa" aria-label="Capa do POP">
-          {folha.capa.codigo && <span className="pfolha-capa-codigo">{folha.capa.codigo}</span>}
-          <h2 className="pfolha-capa-titulo">{folha.capa.titulo}</h2>
-          <span className="pfolha-capa-empresa">{folha.capa.empresa}</span>
-          <span className="pfolha-capa-versao">{folha.capa.versao}</span>
+          <CapaDoPop modelo={capa} />
         </section>
       )}
+    <article id={id} className={`pfolha pfolha--${modo}${modo === "leitura" ? " doc-impresso" : ""}`} data-empresa={folha.esquerda}>
       <header className="pfolha-topo">
         <span className="pfolha-origem">{folha.esquerda}</span>
         <span className="pfolha-versao">{folha.direita}</span>
@@ -98,5 +98,6 @@ export default function PopFolha({ folha, modo, id, comCapa = false }: Props) {
       ))}
       {folha.blocos.length === 0 && <p className="pfolha-linha is-branco">Nada preenchido ainda.</p>}
     </article>
+    </>
   );
 }

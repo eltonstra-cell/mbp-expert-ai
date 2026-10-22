@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { ComprovanteTerceiro, Empresa, ProcedimentoOperacionalPadronizado, UsuarioSistema } from "@/types";
+import type { CapaDosPops, ComprovanteTerceiro, Empresa, ProcedimentoOperacionalPadronizado, UsuarioSistema } from "@/types";
 import PcPopEditor from "@/components/pc/PcPopEditor";
 import type { CabecalhoDeImpressao } from "@/lib/printFooter";
 import PcRegistrosDoPop from "@/components/pc/PcRegistrosDoPop";
@@ -43,6 +43,9 @@ type Props = {
   onDescartar?: (pop: ProcedimentoOperacionalPadronizado) => void;
   /** Grava na hora a conferência do conteúdo de modelo (itens marcados e "Marcar como conferido"). */
   onAtualizarConferencia?: (pop: ProcedimentoOperacionalPadronizado) => void;
+  /** Capa dos POPs da empresa (opcional, desligada por padrão) e como salvá-la. */
+  capaDaEmpresa?: CapaDosPops;
+  onSalvarCapa?: (capa: CapaDosPops) => void;
 };
 
 const ROTULO: Record<AbaFicha, string> = { resumo: "Resumo", documento: "Documento", registros: "Registros", comprovantes: "Comprovantes", quemleu: "Quem leu", historico: "Histórico" };
@@ -61,7 +64,7 @@ const DESTINO_DA_ABA: Record<NonNullable<ReturnType<typeof montarLinhaDoPop>["ac
 };
 
 // Ficha do POP: o POP é o centro. Resumo, Documento, Registros, Comprovantes, Quem leu e Histórico no mesmo lugar.
-export default function PcFichaPop({ pop, empresa, usuario, podeEditar, onImprimir, responsavelDoEstabelecimento, popsDaEmpresa, podeAprovar, contexto, mensagem, abaInicial = "resumo", alvoInicial, onVoltar, onSalvarRascunho, onEnviar, onAprovar, onNovaVersao, onDescartar, onAtualizarConferencia }: Props) {
+export default function PcFichaPop({ pop, empresa, usuario, podeEditar, onImprimir, responsavelDoEstabelecimento, popsDaEmpresa, podeAprovar, contexto, mensagem, abaInicial = "resumo", alvoInicial, onVoltar, onSalvarRascunho, onEnviar, onAprovar, onNovaVersao, onDescartar, onAtualizarConferencia, capaDaEmpresa, onSalvarCapa }: Props) {
   const [aba, setAba] = useState<AbaFicha>(abaInicial);
   const hoje = hojeISO();
   useEffect(() => setAba(abaInicial), [abaInicial]);
@@ -335,6 +338,9 @@ export default function PcFichaPop({ pop, empresa, usuario, podeEditar, onImprim
             onDescartar={onDescartar}
             proximaAcao={linha.acao.texto}
             onIrParaConferencia={pop.origemModelo ? irParaAConferencia : undefined}
+            capaDaEmpresa={capaDaEmpresa}
+            onSalvarCapa={onSalvarCapa}
+            onTrocarIconeDeCapa={onAtualizarConferencia}
           />
         </div>
 

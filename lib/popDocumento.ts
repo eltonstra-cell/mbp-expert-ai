@@ -165,7 +165,7 @@ export type FolhaDoPop = {
   situacao: string;
   blocos: BlocoDaFolha[];
   /** Página de capa opcional (código, título, empresa e versão). */
-  capa: { codigo: string; titulo: string; empresa: string; versao: string };
+  capa: { codigo: string; titulo: string; empresa: string; versao: string; cnpj: string };
 };
 
 const CAMPOS_BASE = new Set(["Objetivo", "Campo de aplicação", "Responsável pela execução", "Frequência", "Ação corretiva", "Registro que prova a execução", "Alcance", "Definições", "Responsabilidades", ...SECOES_DE_LISTA.map((secao) => secao.titulo)]);
@@ -264,7 +264,7 @@ export function folhaDoPop(
     esquerda: [nomeDaEmpresa, empresa.cnpj ? `CNPJ ${formatarCnpj(empresa.cnpj)}` : ""].filter(Boolean).join(" · "),
     direita: `${pop.codigo ? `${pop.codigo} · ` : ""}versão ${pop.versao}`,
     titulo: pop.titulo || "POP",
-    capa: { codigo: pop.codigo || "", titulo: pop.titulo || "POP", empresa: nomeDaEmpresa, versao: `versão ${pop.versao}` },
+    capa: { codigo: pop.codigo || "", titulo: pop.titulo || "POP", empresa: nomeDaEmpresa, versao: `versão ${pop.versao}`, cnpj: formatarCnpj(empresa.cnpj) },
     situacao: pop.status === "Aprovado" && aprovacao ? `Aprovada por ${aprovador}, em ${formatarData(aprovacao.em)}` : `${pop.status} · v${pop.versao}`,
     blocos,
   };

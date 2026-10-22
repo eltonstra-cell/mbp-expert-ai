@@ -3503,6 +3503,7 @@ export default function Home() {
             responsavelEstabelecimento: anterior.responsavelEstabelecimento,
             guardaRegistrosDias: anterior.guardaRegistrosDias,
             questionarios: anterior.questionarios,
+            capaDosPops: anterior.capaDosPops,
             registroProvaPorPop: anterior.registroProvaPorPop,
             // Empresa cadastrada antes do "Colocar em dia" não ganha o cartão: o campo só existe em empresa nova.
             ...(anterior.implantacao ? { implantacao: anterior.implantacao } : {}),
@@ -6325,6 +6326,7 @@ export default function Home() {
           podeEditar={podeEditarDoc}
           onPersistir={(novos) => persistirPopsDaEmpresa(empresaDoc.id, novos)}
           topo={topo}
+          onSalvarCapaDosPops={podeEditarDoc ? (capa) => atualizarEmpresaDosRegistros(empresaDoc.id, (empresa) => ({ ...empresa, capaDosPops: capa })) : undefined}
           abas={
             <CentralEmpresaNav
               grupos={gruposVisiveis(podeEditarDoc ? quemVeNaCentral : quemVeNosDocumentos)}

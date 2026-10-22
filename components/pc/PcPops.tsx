@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Empresa, ProcedimentoOperacionalPadronizado, UsuarioSistema } from "@/types";
 import PcFichaPop, { type AbaFicha } from "@/components/pc/PcFichaPop";
 import { destinoDoAprovar, type AlvoDaPendencia } from "@/lib/popPendencias";
+import { comCapaNaVersaoAprovada } from "@/lib/capaPop";
+import type { CapaDosPops } from "@/types";
 import PcPopsLista from "@/components/pc/PcPopsLista";
 import type { CabecalhoDeImpressao } from "@/lib/printFooter";
 import { useRegistrosDaEmpresa } from "@/components/RegistrosEmpresaContext";
@@ -39,12 +41,14 @@ type Props = {
   aoMudarFicha?: (rotulo: string | null, info?: { id: string; rotuloCompleto: string } | null) => void;
   onImprimir?: (titulo: string, cabecalho: CabecalhoDeImpressao) => void;
   responsavelDoEstabelecimento?: { nome: string; cargo: string; usuarioId?: string };
+  /** Guarda a capa dos POPs na empresa (opcional). */
+  onSalvarCapaDosPops?: (capa: CapaDosPops) => void;
   /** Muda a cada clique em "POPs" do caminho: fecha a ficha e volta à lista. */
   pedidoDeLista?: number;
 };
 
 // Documentos › POPs: a lista com situação e próxima ação e, ao abrir um POP, a ficha com as seis abas.
-export default function PcPops({ pops, empresa, usuario = null, podeEditar = false, onPersistir, mensagem, topo, abas, onAlterarEmDados, avisoSemVinculo, onIrParaNorma, abrirFicha, aoConsumirPedido, aoMudarFicha, onImprimir, responsavelDoEstabelecimento, pedidoDeLista = 0 }: Props) {
+export default function PcPops({ pops, empresa, usuario = null, podeEditar = false, onPersistir, mensagem, topo, abas, onAlterarEmDados, avisoSemVinculo, onIrParaNorma, abrirFicha, aoConsumirPedido, aoMudarFicha, onImprimir, responsavelDoEstabelecimento, onSalvarCapaDosPops, pedidoDeLista = 0 }: Props) {
   const contexto = useRegistrosDaEmpresa();
   const [fichaId, setFichaId] = useState<string | null>(null);
   const [abaInicial, setAbaInicial] = useState<AbaFicha>("resumo");
@@ -188,7 +192,9 @@ export default function PcPops({ pops, empresa, usuario = null, podeEditar = fal
         }}
         onSalvarRascunho={(novo) => executar(popEmFicha, () => novo, "Rascunho salvo.")}
         onEnviar={(novo) => executar(popEmFicha, () => enviarParaAprovacao(novo), "Enviado para aprovação do responsável do estabelecimento.")}
-        onAprovar={(novo) => executar(popEmFicha, () => aprovarPop(novo, usuario!, empresa, new Date().toISOString()), "POP aprovado e assinado.")}
+        onAprovar={(novo) => executar(popEmFicha, () => comCapaNaVersaoAprovada(aprovarPop(novo, usuario!, empresa, new Date().toISOString()), empresa.capaDosPops), "POP aprovado e assinado.")}
+        capaDaEmpresa={empresa.capaDosPops}
+        onSalvarCapa={onSalvarCapaDosPops}
         onAtualizarConferencia={(novo) => onPersistir(pops.map((pop) => (pop.id === novo.id ? novo : pop)))}
         onDescartar={(atual) => executar(popEmFicha, () => descartarRascunho(atual), "Rascunho descartado. A versão aprovada continua vigente.")}
         onNovaVersao={(novo) => executar(popEmFicha, () => iniciarNovaVersao(novo), "Nova versão criada em rascunho. A versão aprovada continua guardada.")}
