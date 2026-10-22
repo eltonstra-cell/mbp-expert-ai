@@ -29,6 +29,8 @@ type Props = {
   onEstado?: (estado: EstadoVoz) => void;
   /** Variante linha: avisos de erro dados no próprio campo, em vez de uma janela. */
   onAviso?: (texto: string) => void;
+  /** Quem interpreta a fala (ex.: equipamentos): recebe o texto ditado no lugar de juntá-lo ao campo. */
+  onTextoDitado?: (texto: string) => void;
 };
 
 function juntarTexto(atual: string, novo: string) {
@@ -63,6 +65,7 @@ export default function FieldVoiceTools({
   linhaInicio,
   onEstado,
   onAviso,
+  onTextoDitado,
 }: Props) {
   const iaPermitida = useIaPermitida();
   const online = useOnline();
@@ -258,7 +261,8 @@ export default function FieldVoiceTools({
             void iniciarOuParar();
           }}
           onUsar={(texto) => {
-            onChange(juntarTexto(value, texto));
+            if (onTextoDitado) onTextoDitado(texto);
+          else onChange(juntarTexto(value, texto));
             setProposta(null);
           }}
         />
@@ -355,7 +359,8 @@ export default function FieldVoiceTools({
           void iniciarOuParar();
         }}
         onUsar={(texto) => {
-          onChange(juntarTexto(value, texto));
+          if (onTextoDitado) onTextoDitado(texto);
+          else onChange(juntarTexto(value, texto));
           setProposta(null);
         }}
       />

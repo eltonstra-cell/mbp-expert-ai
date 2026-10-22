@@ -4685,3 +4685,19 @@ button.esc-chip--mais:focus-visible{outline:3px solid #E8B04B;outline-offset:1px
 .resp-pronto{align-self:flex-end}
 .resp-rodape{flex:none;display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding-top:8px;border-top:1px solid #EEF1F5}
 .resp-papel{width:auto;min-width:160px}
+
+/* ===== Etapa 4: voz com interpretação em Equipamentos (linha de conferência) ===== */
+.vz{display:flex;flex-direction:column;gap:8px;padding:12px 16px;border:1.5px solid #E8B04B;border-radius:14px;background:#FEF6E6}
+.vz-topo{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.vz-titulo{font-family:var(--font-display),"Outfit",sans-serif;font-size:1rem;font-weight:500;color:#12202B}
+.vz-lista{display:flex;flex-direction:column;gap:8px;margin:0;padding:0;list-style:none}
+.vz-linha{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:8px 12px;border:1.5px solid #B4C2CE;border-radius:12px;background:#fff}
+.vz-linha.is-pendente{border-color:#E8B04B}
+.vz-texto{flex:1 1 220px;min-width:0;overflow-wrap:anywhere;font-size:.98rem;color:#12202B}
+.vz-pergunta{display:inline-flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:.92rem;color:#12202B}
+.vz-escolha{flex:0 1 260px;min-width:160px}
+.vz-acoes{display:inline-flex;gap:8px;margin-left:auto}
+.vz-ok,.vz-corrigir{display:grid;place-items:center;width:36px;height:36px;border-radius:10px;font-size:1.05rem;line-height:1;cursor:pointer}
+.vz-ok{border:0;background:#15803D;color:#fff}
+.vz-ok:disabled{border:1.5px solid #B4C2CE;background:#EEF1F5;color:#51606c;cursor:not-allowed}
+.vz-corrigir{border:1.5px solid #B4C2CE;background:#fff;color:#12202B}

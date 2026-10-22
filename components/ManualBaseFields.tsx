@@ -12,6 +12,9 @@ import { ambientesParaMover, moverEquipamento } from "@/lib/equipamentosCadastro
 import { textoCurtoDaResponsabilidade, textoDosAtivos } from "@/lib/manualIdentificacao";
 import EscolhaEmJanela from "@/components/EscolhaEmJanela";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
+import VozEquipamentosConferencia, { type ItemParaConferir } from "@/components/VozEquipamentosConferencia";
+import { nomeJaExistente } from "@/lib/ambientesVisita";
+import { interpretarEquipamentos, podeConfirmar } from "@/lib/vozEquipamentos";
 
 type Props = {
   responsabilidades: ResponsabilidadeManual[];
@@ -55,6 +58,8 @@ export default function ManualBaseFields({
   const [papelAdicional, setPapelAdicional] = useState<PapelResponsabilidadeManual>("Proprietário");
   const [novoAmbiente, setNovoAmbiente] = useState("");
   const [detalhesAbertos, setDetalhesAbertos] = useState<string[]>([]);
+  // Itens falados esperando conferência (nada entra no quadro sem confirmar).
+  const [falados, setFalados] = useState<ItemParaConferir[]>([]);
   const [respEmEdicao, setRespEmEdicao] = useState<string | null>(null);
   const [gruposRecolhidos, setGruposRecolhidos] = useState<PapelResponsabilidadeManual[]>([]);
 
@@ -92,6 +97,49 @@ export default function ManualBaseFields({
     ]);
     setNomeEquipamento("");
     setQuantidadeEquipamento("1");
+  }
+
+  function tratarFalaDeEquipamento(texto: string) {
+    const resultado = interpretarEquipamentos(texto, setoresParaEquipamentos);
+    if (!resultado.entendeu) {
+      // Não entendeu: o texto fica no campo e o resto não é preenchido.
+      setNomeEquipamento((atual) => [atual.trim(), texto.trim()].filter(Boolean).join(" "));
+      return;
+    }
+    setFalados((atuais) => [...atuais, ...resultado.itens.map((item) => ({ ...item, id: crypto.randomUUID() }))]);
+  }
+
+  function atualizarFalado(id: string, mudanca: Partial<ItemParaConferir>) {
+    setFalados((atuais) => atuais.map((item) => (item.id === id ? { ...item, ...mudanca } : item)));
+  }
+
+  function criarAmbienteFalado(id: string) {
+    const item = falados.find((atual) => atual.id === id);
+    const falado = (item?.falado || "").trim();
+    if (!item || !falado) return;
+    const nome = falado.charAt(0).toLocaleUpperCase("pt-BR") + falado.slice(1);
+    const existente = nomeJaExistente(nome, setoresParaEquipamentos);
+    if (!existente && !setores.includes(nome)) onSetoresChange([...setores, nome]);
+    atualizarFalado(id, { ambiente: existente || nome, situacao: "ok" });
+  }
+
+  function confirmarFalados(ids: string[]) {
+    const prontos = falados.filter((item) => ids.includes(item.id) && podeConfirmar(item));
+    if (prontos.length === 0) return;
+    onEquipamentosChange([
+      ...equipamentos,
+      ...prontos.map((item) => ({ id: crypto.randomUUID(), setor: item.ambiente, nome: item.nome, quantidade: item.quantidade, estado: "Não avaliado" as const, observacao: "" })),
+    ]);
+    setFalados((atuais) => atuais.filter((item) => !prontos.some((pronto) => pronto.id === item.id)));
+  }
+
+  function corrigirFalado(id: string) {
+    const item = falados.find((atual) => atual.id === id);
+    if (!item) return;
+    setNomeEquipamento(item.nome);
+    setQuantidadeEquipamento(String(item.quantidade));
+    if (item.ambiente && setoresParaEquipamentos.includes(item.ambiente)) setSetorEquipamento(item.ambiente);
+    setFalados((atuais) => atuais.filter((atual) => atual.id !== id));
   }
 
   function mudarEquipamento(id: string, mudanca: Partial<EquipamentoSetor>) {
@@ -290,7 +338,7 @@ export default function ManualBaseFields({
                   className="ui-input cad-input cad-input--voz"
                 />
                 <span className="ui-field-tools cad-mic">
-                  <FieldVoiceTools fieldKey="novo-equipamento" value={nomeEquipamento} onChange={setNomeEquipamento} contexto="Nome curto de um equipamento ou móvel de estabelecimento de alimentos." somenteVoz soIcone />
+                  <FieldVoiceTools fieldKey="novo-equipamento" value={nomeEquipamento} onChange={setNomeEquipamento} onTextoDitado={tratarFalaDeEquipamento} contexto="Nome curto de um equipamento ou móvel de estabelecimento de alimentos." somenteVoz soIcone />
                 </span>
               </span>
             </label>
@@ -300,6 +348,16 @@ export default function ManualBaseFields({
             </label>
             <button type="button" onClick={adicionarEquipamento} className="ui-btn ui-btn--criar cad-adicionar">Adicionar</button>
           </div>
+
+          <VozEquipamentosConferencia
+            itens={falados}
+            ambientes={setoresParaEquipamentos}
+            onEscolherAmbiente={(id, ambiente) => atualizarFalado(id, { ambiente, situacao: ambiente ? "ok" : "faltando" })}
+            onCriarAmbiente={criarAmbienteFalado}
+            onConfirmar={(id) => confirmarFalados([id])}
+            onConfirmarTodos={() => confirmarFalados(falados.map((item) => item.id))}
+            onCorrigir={corrigirFalado}
+          />
 
           <div className="cad-grupos">
             {gruposDeEquipamentos.map((grupo) => (
