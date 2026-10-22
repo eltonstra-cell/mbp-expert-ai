@@ -1,6 +1,7 @@
 "use client";
 
 import { nomeDeExibicaoDoAmbiente } from "@/lib/checklistEnvs";
+import { nomeJaExistente } from "@/lib/ambientesVisita";
 import { resumoCurtoDosSetores } from "@/lib/manualBase";
 
 import { useState } from "react";
@@ -20,7 +21,10 @@ type Props = {
   onMostrar: (nome: string) => void;
   onExcluirOculto: (nome: string) => void;
   onDetalhado: () => void;
-  onAdicionar: () => void;
+  /** Recebe se o nome também vai para o cadastro da empresa (marcado por padrão). */
+  onAdicionar: (salvarNoCadastro: boolean) => void;
+  /** Ambientes já cadastrados na empresa (para avisar nome repetido na hora). */
+  cadastro?: string[];
   onModelo: (nome: string, modelo: string) => void;
   /** Editar as perguntas do ambiente (só no PC e só para Administrador e RT). */
   onQuestionario?: (nome: string) => void;
@@ -51,6 +55,7 @@ export default function PcAmbientes({
   onExcluirOculto,
   onDetalhado,
   onAdicionar,
+  cadastro = [],
   onModelo,
   onQuestionario,
   cadastroVazio = false,
@@ -62,6 +67,8 @@ export default function PcAmbientes({
   const [verTodosRoteiro, setVerTodosRoteiro] = useState(false);
   const [tocado, setTocado] = useState(false);
   const [verOcultos, setVerOcultos] = useState(false);
+  const [outroAberto, setOutroAberto] = useState(false);
+  const [salvarNoCadastro, setSalvarNoCadastro] = useState(true);
   // No celular só um painel aparece por vez: escolher os ambientes ou ver o roteiro.
   const [painelCampo, setPainelCampo] = useState<"escolher" | "roteiro">("escolher");
 
@@ -69,7 +76,8 @@ export default function PcAmbientes({
   const mostrarRoteiro = verTodosRoteiro ? selecionados : selecionados.slice(0, LIMITE_ROTEIRO);
   const semAmbientes = selecionados.length === 0;
   const novoNome = personalizado.trim();
-  const duplicado = novoNome !== "" && [...sugeridos, ...selecionados].some((nome) => nome.toLocaleLowerCase("pt-BR") === novoNome.toLocaleLowerCase("pt-BR"));
+  const jaExiste = novoNome === "" ? undefined : nomeJaExistente(novoNome, [...cadastro, ...sugeridos, ...selecionados]);
+  const duplicado = Boolean(jaExiste);
 
   return (
     <section className="ui-screen" aria-label="Ambientes da visita">
@@ -145,26 +153,42 @@ export default function PcAmbientes({
                 </button>
               )
             )}
-          </div>
-          <div className="pc-amb-extra">
-            <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={onDetalhado}>
-              Usar a lista detalhada do restaurante
-            </button>
-            <div className="pc-amb-add">
-              <label className="pc-amb-add-field">
-                <span className="ui-eyebrow">Outro ambiente</span>
-                <input
-                  className={`ui-input${duplicado ? " is-invalid" : ""}`}
-                  value={personalizado}
-                  onChange={(evento) => onPersonalizado(evento.target.value)}
-                  placeholder="Ex.: Padaria, Açougue, Sushi bar..."
-                  aria-invalid={duplicado}
-                />
-                {duplicado && <span className="ui-field-error">Esse ambiente já está na lista.</span>}
-              </label>
-              <button type="button" className="ui-btn ui-btn--criar" disabled={!novoNome || duplicado} onClick={onAdicionar}>
-                + Adicionar
+            <div className="pc-amb-extra">
+              <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={onDetalhado}>
+                Usar a lista detalhada do restaurante
               </button>
+              {outroAberto ? (
+                <div className="pc-amb-add">
+                  <label className="pc-amb-add-field">
+                    <span className="ui-eyebrow">Outro ambiente</span>
+                    <input
+                      className={`ui-input${duplicado ? " is-invalid" : ""}`}
+                      value={personalizado}
+                      onChange={(evento) => onPersonalizado(evento.target.value)}
+                      placeholder="Ex.: Padaria, Açougue, Sushi bar..."
+                      aria-invalid={duplicado}
+                      autoFocus
+                    />
+                    {duplicado && <span className="ui-field-error" role="alert">Já existe: {jaExiste}</span>}
+                  </label>
+                  <label className="pc-amb-add-cadastro">
+                    <input type="checkbox" checked={salvarNoCadastro} onChange={(evento) => setSalvarNoCadastro(evento.target.checked)} />
+                    <span>Salvar também no cadastro da empresa</span>
+                  </label>
+                  <div className="pc-amb-add-botoes">
+                    <button type="button" className="ui-btn ui-btn--criar" disabled={!novoNome || duplicado} onClick={() => { onAdicionar(salvarNoCadastro); setOutroAberto(false); }}>
+                      + Adicionar
+                    </button>
+                    <button type="button" className="ui-btn ui-btn--secondary" onClick={() => { onPersonalizado(""); setOutroAberto(false); }}>
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button type="button" className="pc-link-btn pc-amb-outro" onClick={() => setOutroAberto(true)}>
+                  + Outro ambiente
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -265,7 +289,7 @@ function mostrarRoteiroLista(
           Editar perguntas
         </button>
       )}
-      <button type="button" className="pc-route-remove" aria-label={`Remover ${nome}`} onClick={() => onToggle(nome)}>
+      <button type="button" className="pc-route-remove" aria-label={`Remover ambiente ${nome}`} title="Remover ambiente" onClick={() => onToggle(nome)}>
         ×
       </button>
     </li>

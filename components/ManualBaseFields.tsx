@@ -8,6 +8,7 @@ import type {
 } from "@/types";
 import { SETORES_OFICIAIS_MANUAL, agruparEquipamentosPorAmbiente, resumoDosSetoresMarcados } from "@/lib/manualBase";
 import { aplicarEscolhaDeSetores } from "@/lib/escolhaEmJanela";
+import { ambientesParaMover, moverEquipamento } from "@/lib/equipamentosCadastro";
 import EscolhaEmJanela from "@/components/EscolhaEmJanela";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
 
@@ -20,6 +21,9 @@ type Props = {
   onEquipamentosChange: (equipamentos: EquipamentoSetor[]) => void;
   /** Setores que estavam marcados no último salvo (para o chip "Falta salvar"). */
   setoresSalvos?: string[];
+  /** Opcional: ambiente com nome próprio -> setor oficial marcado. */
+  vinculos?: Record<string, string>;
+  onVinculosChange?: (vinculos: Record<string, string>) => void;
   modo?: "completo" | "responsabilidades" | "ambientes" | "equipamentos";
 };
 
@@ -40,6 +44,8 @@ export default function ManualBaseFields({
   equipamentos,
   onEquipamentosChange,
   setoresSalvos,
+  vinculos = {},
+  onVinculosChange,
   modo = "completo",
 }: Props) {
   const [setorEquipamento, setSetorEquipamento] = useState(setores[0] || SETORES_OFICIAIS_MANUAL[0]);
@@ -47,12 +53,14 @@ export default function ManualBaseFields({
   const [quantidadeEquipamento, setQuantidadeEquipamento] = useState("1");
   const [papelAdicional, setPapelAdicional] = useState<PapelResponsabilidadeManual>("Proprietário");
   const [novoAmbiente, setNovoAmbiente] = useState("");
+  const [detalhesAbertos, setDetalhesAbertos] = useState<string[]>([]);
 
   const setoresParaEquipamentos = setores.length ? setores : [...SETORES_OFICIAIS_MANUAL];
   const mostrarAmbientes = modo === "completo" || modo === "ambientes";
   const mostrarEquipamentos = modo === "completo" || modo === "equipamentos";
   const mostrarResponsabilidades = modo === "completo" || modo === "responsabilidades";
   const proprios = setores.filter((setor) => !SETORES_OFICIAIS_MANUAL.includes(setor as (typeof SETORES_OFICIAIS_MANUAL)[number]));
+  const oficiaisMarcados = setores.filter((setor) => SETORES_OFICIAIS_MANUAL.includes(setor as (typeof SETORES_OFICIAIS_MANUAL)[number]));
   const gruposDeEquipamentos = agruparEquipamentosPorAmbiente(equipamentos, setoresParaEquipamentos);
 
   // "Concluir" na janela de setores: aplica no estado da tela (quem grava é o Salvar da barra de baixo).
@@ -136,6 +144,22 @@ export default function ManualBaseFields({
               {proprios.map((setor) => (
                 <li key={setor} className="cad-item">
                   <span className="cad-item-nome">{setor}</span>
+                  {onVinculosChange && oficiaisMarcados.length > 0 && (
+                    <label className="cad-vinculo">
+                      <span>Setor oficial</span>
+                      <select
+                        value={vinculos[setor] && oficiaisMarcados.includes(vinculos[setor]) ? vinculos[setor] : ""}
+                        onChange={(event) => {
+                          const { [setor]: _removido, ...resto } = vinculos;
+                          onVinculosChange(event.target.value ? { ...resto, [setor]: event.target.value } : resto);
+                        }}
+                        aria-label={`Setor oficial de ${setor}`}
+                      >
+                        <option value="">Nenhum (opcional)</option>
+                        {oficiaisMarcados.map((oficial) => <option key={oficial} value={oficial}>{oficial}</option>)}
+                      </select>
+                    </label>
+                  )}
                   <button type="button" onClick={() => onSetoresChange(setores.filter((item) => item !== setor))} className="cad-remover">Remover</button>
                 </li>
               ))}
@@ -253,43 +277,53 @@ export default function ManualBaseFields({
           <div className="cad-grupos">
             {gruposDeEquipamentos.map((grupo) => (
               <div key={grupo.setor} className="cad-grupo">
-                <div className="cad-grupo-titulo">{grupo.setor} · {grupo.itens.length}</div>
+                <div className="cad-grupo-titulo">
+                  <span>{grupo.setor}</span>
+                  <span className="cad-conta" aria-label={`${grupo.itens.length} itens`}>{grupo.itens.length}</span>
+                </div>
                 <ul className="cad-lista">
-                  {grupo.itens.map((equipamento) => (
-                    <li key={equipamento.id} className="cad-equip">
-                      <div className="cad-equip-linha">
-                        <input value={equipamento.nome} onChange={(event) => mudarEquipamento(equipamento.id, { nome: event.target.value })} className="ui-input cad-input cad-equip-nome" aria-label="Nome do equipamento" />
-                        <input type="number" min="1" value={equipamento.quantidade} onChange={(event) => mudarEquipamento(equipamento.id, { quantidade: Math.max(1, Number(event.target.value) || 1) })} className="ui-input cad-input cad-equip-qtd" aria-label="Quantidade" />
-                        <button type="button" onClick={() => onEquipamentosChange(equipamentos.filter((item) => item.id !== equipamento.id))} className="cad-remover">Remover</button>
-                      </div>
-                      <details className="cad-mais" open={Boolean((equipamento.observacao || "").trim())}>
-                        <summary>Observação e ambiente</summary>
-                        <label className="cad-rotulado">
-                          <span>Ambiente</span>
-                          <select value={equipamento.setor} onChange={(event) => mudarEquipamento(equipamento.id, { setor: event.target.value })} className="cad-input">
-                            {setoresParaEquipamentos.includes(equipamento.setor) ? null : <option>{equipamento.setor}</option>}
-                            {setoresParaEquipamentos.map((setor) => <option key={setor}>{setor}</option>)}
-                          </select>
-                        </label>
-                        <label className="cad-rotulado">
-                          <span>Observações do equipamento</span>
-                          <textarea
-                            rows={2}
-                            value={equipamento.observacao || ""}
-                            onChange={(event) => mudarEquipamento(equipamento.id, { observacao: event.target.value })}
-                            placeholder="Ex.: borracha danificada, excesso de gelo, manutenção necessária..."
-                            className="ui-input cad-obs-texto"
-                          />
-                        </label>
-                        <FieldVoiceTools
-                          fieldKey={`equipamento-${equipamento.id}`}
-                          value={equipamento.observacao || ""}
-                          onChange={(texto) => mudarEquipamento(equipamento.id, { observacao: texto })}
-                          contexto={`Observação técnica sobre o equipamento "${equipamento.nome}" no setor "${equipamento.setor}". Seja claro, objetivo e não invente fatos.`}
-                        />
-                      </details>
-                    </li>
-                  ))}
+                  {grupo.itens.map((equipamento) => {
+                    const aberto = detalhesAbertos.includes(equipamento.id);
+                    return (
+                      <li key={equipamento.id} className="cad-equip">
+                        <div className="cad-equip-linha">
+                          <input value={equipamento.nome} onChange={(event) => mudarEquipamento(equipamento.id, { nome: event.target.value })} className="ui-input cad-input cad-equip-nome" aria-label="Nome do equipamento" />
+                          <input type="number" min="1" value={equipamento.quantidade} onChange={(event) => mudarEquipamento(equipamento.id, { quantidade: Math.max(1, Number(event.target.value) || 1) })} className="ui-input cad-input cad-equip-qtd" aria-label="Quantidade" />
+                          <button type="button" className="cad-detalhes" aria-expanded={aberto} onClick={() => setDetalhesAbertos((atuais) => (aberto ? atuais.filter((id) => id !== equipamento.id) : [...atuais, equipamento.id]))}>
+                            Detalhes {aberto ? "▾" : "▸"}{!aberto && (equipamento.observacao || "").trim() ? <span className="cad-detalhes-marca" title="Tem observação"> ●</span> : null}
+                          </button>
+                          <button type="button" onClick={() => onEquipamentosChange(equipamentos.filter((item) => item.id !== equipamento.id))} className="cad-remover">Remover</button>
+                        </div>
+                        {aberto && (
+                          <div className="cad-equip-detalhes">
+                            <label className="cad-rotulado cad-rotulado--mover">
+                              <span>Mover para outro ambiente</span>
+                              <select value="" onChange={(event) => onEquipamentosChange(moverEquipamento(equipamentos, equipamento.id, event.target.value))} className="cad-input">
+                                <option value="">Escolher o ambiente…</option>
+                                {ambientesParaMover(setoresParaEquipamentos, equipamento.setor).map((setor) => <option key={setor} value={setor}>{setor}</option>)}
+                              </select>
+                            </label>
+                            <label className="cad-rotulado">
+                              <span>Observações do equipamento</span>
+                              <textarea
+                                rows={2}
+                                value={equipamento.observacao || ""}
+                                onChange={(event) => mudarEquipamento(equipamento.id, { observacao: event.target.value })}
+                                placeholder="Ex.: borracha danificada, excesso de gelo, manutenção necessária..."
+                                className="ui-input cad-obs-texto"
+                              />
+                            </label>
+                            <FieldVoiceTools
+                              fieldKey={`equipamento-${equipamento.id}`}
+                              value={equipamento.observacao || ""}
+                              onChange={(texto) => mudarEquipamento(equipamento.id, { observacao: texto })}
+                              contexto={`Observação técnica sobre o equipamento "${equipamento.nome}" no setor "${equipamento.setor}". Seja claro, objetivo e não invente fatos.`}
+                            />
+                          </div>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             ))}

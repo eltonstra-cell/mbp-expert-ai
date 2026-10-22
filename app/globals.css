@@ -4491,7 +4491,7 @@ html[data-modo] .pc-topbar-end > .emp-ativa{flex-shrink:1}
 .cad-remover:hover{background:#FBD2D2}
 .cad-resumo{font-size:14px;color:#51606c}
 .cad-linha{display:flex;align-items:flex-end;gap:12px}
-.cad-input,.cad-linha select.cad-input{box-sizing:border-box;height:40px;min-width:0;width:100%;padding:0 12px;border:2px solid #B4C2CE;border-radius:10px;background:#fff;font-size:.98rem;color:#12202B}
+.cad-input,.cad-linha select.cad-input{box-sizing:border-box;height:40px;min-width:0;width:100%;padding:0 12px;border:2px solid #B4C2CE;border-radius:10px;background-color:#fff;font-size:.98rem;color:#12202B}
 .cad-input:focus,.cad-input:focus-visible{outline:0;border-color:#E8B04B;box-shadow:inset 0 0 0 1px #E8B04B}
 .cad-campo-voz{flex:1 1 auto;min-width:0}
 .cad-input--voz{padding-right:46px}
@@ -4575,3 +4575,48 @@ html[data-modo] .pc-topbar-end > .emp-ativa{flex-shrink:1}
 .voz-ia{height:32px}
 @media (max-width:767px){.field-assist-tools button{min-height:32px;font-size:13px}.field-assist-tools .field-assist-voice--icone{min-height:34px}}
 .campo-voz-tools .field-assist-tools button{font-size:13px}
+
+/* ===== Etapa 2: Cadastros e Visita ===== */
+/* 2.1 Equipamentos: linha recolhida + "Detalhes ▸"; título do grupo com selo de contagem; seta ▾ nos selects */
+.cad-linha select.cad-input,select.cad-input{background-color:#fff;padding-right:32px}
+.cad-rotulado>span:first-child{min-height:18px;line-height:18px}
+.cad-campo-voz{height:40px}
+.cad-grupo-titulo{display:flex;align-items:center;gap:8px;font-family:var(--font-display),"Outfit",sans-serif;font-size:16px;font-weight:500;color:#12202B}
+.cad-conta{display:inline-grid;place-items:center;min-width:24px;height:22px;padding:0 8px;border-radius:999px;background:#EEF1F5;font-family:inherit;font-size:13px;font-weight:400;color:#12202B}
+.cad-detalhes{flex:none;min-height:32px;padding:0 12px;border:1.5px solid #B4C2CE;border-radius:8px;background:#fff;font-size:.88rem;color:#12202B;cursor:pointer}
+.cad-detalhes-marca{color:#D9951A}
+.cad-equip-detalhes{display:flex;flex-direction:column;gap:8px;padding-top:8px;border-top:1px solid #EEF1F5}
+.cad-rotulado--mover{max-width:360px}
+.cad-vinculo{display:flex;flex:0 1 320px;align-items:center;gap:8px;min-width:0;font-size:13.5px;color:#12202B}
+.cad-vinculo select{flex:1 1 auto;min-width:0;max-width:100%;height:36px;min-height:36px;font-size:.92rem}
+/* 2.2 Chips recolhíveis (setores e fluxos): fechado = uma linha + "+N ▾"; aberto = todos, rolando por dentro depois de 4 linhas */
+.esc-chips-area{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:8px;min-width:0}
+.esc-chips-area .esc-chips{width:100%}
+.esc-chip{white-space:nowrap}
+.esc-chips--fechado{flex-wrap:nowrap;overflow:hidden}
+.esc-chips--aberto{max-height:168px;overflow-y:auto;overscroll-behavior:contain;align-content:flex-start}
+.esc-medidor{position:absolute;left:0;top:0;height:0;overflow:hidden;visibility:hidden;pointer-events:none;flex-wrap:nowrap}
+.esc-medidor .esc-chip{flex:none}
+button.esc-chip{font-family:inherit;color:#12202B;cursor:pointer}
+button.esc-chip--mais:focus-visible{outline:3px solid #E8B04B;outline-offset:1px}
+/* 2.4 Nova visita compacta: Data, Responsável e Identificação numa linha; campos de 40 px; tudo numa tela em 1366 px */
+.nv-form{display:flex;flex-direction:column;gap:16px;padding:16px 20px;border-radius:16px;background:#fff;box-shadow:0 1px 2px rgba(18,32,43,.08)}
+.nv-topo{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.nv-etiqueta{font-size:13px;color:#51606c}
+.nv-titulo{margin:0;font-family:var(--font-display),"Outfit",sans-serif;font-size:1.4rem;font-weight:500;color:#12202B}
+.nv-apoio{margin:0;font-size:14px;color:#51606c}
+.nv-linha{display:grid;grid-template-columns:minmax(150px,200px) minmax(0,1fr) minmax(0,1fr);gap:16px}
+.nv-campo{display:flex;flex-direction:column;gap:4px;min-width:0;font-size:13.5px;color:#12202B}
+.nv-input{box-sizing:border-box;width:100%;height:40px;padding:0 12px;border:2px solid #B4C2CE;border-radius:10px;background-color:#fff;font-size:.98rem;color:#12202B}
+.nv-area{box-sizing:border-box;width:100%;min-height:76px;padding:8px 12px;border:2px solid #B4C2CE;border-radius:10px;background-color:#fff;font-size:.98rem;line-height:1.35;color:#12202B;resize:vertical}
+.nv-input:focus,.nv-area:focus{outline:0;border-color:#E8B04B;box-shadow:inset 0 0 0 1px #E8B04B}
+.nv-rodape{display:flex;justify-content:flex-end}
+.nv-criar{height:40px;min-height:40px;padding:0 24px}
+@media (max-width:860px){.nv-linha{grid-template-columns:minmax(0,1fr)}}
+/* 2.5 Quais ambientes serão avaliados?: "+ Outro ambiente" discreto, sem vazio entre os blocos; × do Roteiro com 32 px */
+.pc-amb-extra{flex:none;padding-top:8px;gap:8px}
+.pc-amb-add{flex-direction:column;align-items:stretch;gap:8px}
+.pc-amb-add-botoes{display:flex;gap:8px}
+.pc-amb-add-cadastro{display:flex;align-items:center;gap:8px;font-size:.92rem;color:#12202B}
+.pc-amb-outro{align-self:flex-start}
+.pc-route-remove{width:32px;height:32px}

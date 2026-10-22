@@ -2,11 +2,20 @@
 import type { FluxoOperacional } from "../types/index.ts";
 import { obterSetorSugeridoParaFluxo } from "./operationalFlows.ts";
 
-export const LIMITE_DE_CHIPS = 6;
+/** Aberto, a lista de chips passa a rolar por dentro depois desta quantidade de linhas. */
+export const LINHAS_MAXIMAS_DE_CHIPS = 4;
 
-/** Os primeiros 6 marcados aparecem como chips; o resto vira um chip "+N". */
-export function chipsDoResumo(marcados: string[], limite: number = LIMITE_DE_CHIPS): { visiveis: string[]; extras: number } {
-  return { visiveis: marcados.slice(0, limite), extras: Math.max(0, marcados.length - limite) };
+/**
+ * Fechado: quantos chips (do começo) cabem em UMA linha. Quando nem todos cabem, sobra espaço para o chip "+N ▾"
+ * (largura `larguraDoMais`). `larguras` são as larguras de cada chip; `espaco` é o vão entre chips. Todos cabendo, devolve o total.
+ */
+export function quantosChipsCabem(larguras: number[], larguraTotal: number, espaco: number, larguraDoMais: number): number {
+  const somaAte = (n: number) => larguras.slice(0, n).reduce((soma, largura, indice) => soma + largura + (indice > 0 ? espaco : 0), 0);
+  if (somaAte(larguras.length) <= larguraTotal) return larguras.length;
+  for (let n = larguras.length - 1; n >= 0; n--) {
+    if (somaAte(n) + (n > 0 ? espaco : 0) + larguraDoMais <= larguraTotal) return n;
+  }
+  return 0;
 }
 
 /** "3 de 13 setores marcados" (o "de T" pede o plural, também para 1). */

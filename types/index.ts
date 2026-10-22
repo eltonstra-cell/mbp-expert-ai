@@ -36,6 +36,8 @@ export type Empresa = {
   responsabilidadesManual?: ResponsabilidadeManual[];
   setoresManual?: string[];
   modelosQuestionarioAmbientes?: Record<string, string>;
+  /** Opcional: ambiente com nome próprio -> setor oficial marcado ao qual ele corresponde (a visita mostra um item só). */
+  setorOficialDoAmbiente?: Record<string, string>;
   equipamentosSetores?: EquipamentoSetor[];
   fluxosOperacionais?: FluxoOperacional[];
   programasControleQualidade?: ProgramaControleQualidade[];

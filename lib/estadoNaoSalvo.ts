@@ -9,13 +9,16 @@ export type EdicaoDaEmpresa = {
   equipamentos: unknown;
   fluxos: unknown;
   programas: unknown;
+  /** Opcional: ambiente próprio -> setor oficial (só entra na assinatura quando existe). */
+  vinculos?: unknown;
   /** Aceito só para não quebrar quem ainda passa a lista; não entra na assinatura. */
   pops?: unknown;
 };
 
 export function assinaturaEdicaoEmpresa(valor: EdicaoDaEmpresa): string {
-  const { form, responsabilidades, setores, equipamentos, fluxos, programas } = valor;
-  return JSON.stringify({ form, responsabilidades, setores, equipamentos, fluxos, programas });
+  const { form, responsabilidades, setores, equipamentos, fluxos, programas, vinculos } = valor;
+  const vazio = !vinculos || Object.keys(vinculos as object).length === 0;
+  return JSON.stringify({ form, responsabilidades, setores, equipamentos, fluxos, programas, ...(vazio ? {} : { vinculos }) });
 }
 
 /** Só é "não salvo" quando há uma linha de base e o conteúdo atual realmente difere dela. */

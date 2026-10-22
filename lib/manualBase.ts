@@ -142,13 +142,18 @@ export function obterModeloQuestionarioParaAmbiente(nome: string): string {
 
 export function criarModelosQuestionarioAmbientes(
   ambientes?: string[],
-  existentes?: Record<string, string>
+  existentes?: Record<string, string>,
+  vinculos?: Record<string, string>
 ): Record<string, string> {
   return Object.fromEntries(
-    normalizarListaAmbientesReais(ambientes).map((ambiente) => [
-      ambiente,
-      existentes?.[ambiente] || obterModeloQuestionarioParaAmbiente(ambiente),
-    ])
+    normalizarListaAmbientesReais(ambientes).map((ambiente) => {
+      const padrao = obterModeloQuestionarioParaAmbiente(ambiente);
+      const existente = existentes?.[ambiente];
+      const vinculado = vinculos?.[ambiente];
+      // O setor oficial vinculado pré-preenche o questionário; uma escolha diferente do padrão continua valendo.
+      const modelo = existente && existente !== padrao ? existente : vinculado && OPCOES_MODELO_QUESTIONARIO.includes(vinculado as never) ? vinculado : existente || padrao;
+      return [ambiente, modelo];
+    })
   );
 }
 

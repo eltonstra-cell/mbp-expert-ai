@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { LIMITE_DE_CHIPS, ROTULO_DO_SELO, chipPendente, chipsDoResumo, contadorDaJanela, escolhaMudou, linhaDeContagem, marcadosNaOrdem } from "@/lib/escolhaEmJanela";
+import { ROTULO_DO_SELO, chipPendente, quantosChipsCabem, contadorDaJanela, escolhaMudou, linhaDeContagem, marcadosNaOrdem } from "@/lib/escolhaEmJanela";
 
 export type OpcaoDeEscolha = { id: string; titulo: string; descricao?: string };
 
@@ -28,7 +28,6 @@ export default function EscolhaEmJanela({ titulo, apoio, opcoes, marcadas, palav
   const [aberta, setAberta] = useState(false);
   const ids = opcoes.map((opcao) => opcao.id);
   const marcadosAgora = marcadosNaOrdem(ids, marcadas);
-  const { visiveis, extras } = chipsDoResumo(marcadosAgora);
   const tituloDe = (id: string) => opcoes.find((opcao) => opcao.id === id)?.titulo || id;
 
   return (
@@ -45,19 +44,7 @@ export default function EscolhaEmJanela({ titulo, apoio, opcoes, marcadas, palav
       {marcadosAgora.length === 0 ? (
         <p className="esc-vazio">{vazio}</p>
       ) : (
-        <ul className="esc-chips" aria-label={`${titulo}: marcados`}>
-          {visiveis.map((id) => (
-            <li key={id} className={`esc-chip ${chipPendente(id, salvas) ? "is-falta" : "is-salvo"}`}>
-              <span aria-hidden="true">✓</span> {tituloDe(id)}
-              {chipPendente(id, salvas) && <span className="esc-selo">{ROTULO_DO_SELO}</span>}
-            </li>
-          ))}
-          {extras > 0 && (
-            <li className="esc-chip esc-chip--mais" title={marcadosAgora.slice(LIMITE_DE_CHIPS).map(tituloDe).join("; ")}>
-              +{extras}
-            </li>
-          )}
-        </ul>
+        <ChipsRecolhiveis titulo={titulo} ids={marcadosAgora} tituloDe={tituloDe} salvas={salvas} />
       )}
       {aberta && (
         <JanelaDeEscolha
@@ -73,6 +60,70 @@ export default function EscolhaEmJanela({ titulo, apoio, opcoes, marcadas, palav
         />
       )}
     </section>
+  );
+}
+
+// Fechado (padrão): uma linha com os primeiros chips que cabem e o chip "+N ▾". Aberto: todos, com "Recolher ▴"; passando de 4 linhas, rola por dentro.
+function ChipsRecolhiveis({ titulo, ids, tituloDe, salvas }: { titulo: string; ids: string[]; tituloDe: (id: string) => string; salvas?: string[] }) {
+  const [aberto, setAberto] = useState(false);
+  const [cabem, setCabem] = useState(ids.length);
+  const caixaRef = useRef<HTMLDivElement | null>(null);
+  const medidorRef = useRef<HTMLUListElement | null>(null);
+  const chave = ids.map((id) => `${id}:${chipPendente(id, salvas) ? 1 : 0}`).join("|");
+
+  useLayoutEffect(() => {
+    function medir() {
+      const caixa = caixaRef.current;
+      const medidor = medidorRef.current;
+      if (!caixa || !medidor) return;
+      const itens = Array.from(medidor.querySelectorAll<HTMLElement>("li[data-chip]"));
+      const mais = medidor.querySelector<HTMLElement>("li[data-mais]");
+      const espaco = parseFloat(getComputedStyle(medidor).columnGap) || 8;
+      setCabem(quantosChipsCabem(itens.map((item) => item.offsetWidth), caixa.clientWidth, espaco, mais?.offsetWidth || 0));
+    }
+    medir();
+    const observador = typeof ResizeObserver !== "undefined" && caixaRef.current ? new ResizeObserver(medir) : null;
+    if (observador && caixaRef.current) observador.observe(caixaRef.current);
+    return () => observador?.disconnect();
+  }, [chave]);
+
+  const chip = (id: string) => (
+    <li key={id} className={`esc-chip ${chipPendente(id, salvas) ? "is-falta" : "is-salvo"}`}>
+      <span aria-hidden="true">✓</span> {tituloDe(id)}
+      {chipPendente(id, salvas) && <span className="esc-selo">{ROTULO_DO_SELO}</span>}
+    </li>
+  );
+  const escondidos = ids.length - cabem;
+
+  return (
+    <div className="esc-chips-area" ref={caixaRef}>
+      <ul className="esc-medidor esc-chips" aria-hidden="true" ref={medidorRef}>
+        {ids.map((id) => (
+          <li key={id} data-chip className="esc-chip">
+            <span>✓</span> {tituloDe(id)}
+            {chipPendente(id, salvas) && <span className="esc-selo">{ROTULO_DO_SELO}</span>}
+          </li>
+        ))}
+        <li data-mais className="esc-chip esc-chip--mais">+{ids.length} ▾</li>
+      </ul>
+      {aberto ? (
+        <>
+          <ul className="esc-chips esc-chips--aberto" aria-label={`${titulo}: marcados`}>{ids.map(chip)}</ul>
+          <button type="button" className="esc-chip esc-chip--mais esc-recolher" aria-expanded="true" onClick={() => setAberto(false)}>Recolher ▴</button>
+        </>
+      ) : (
+        <ul className="esc-chips esc-chips--fechado" aria-label={`${titulo}: marcados`}>
+          {ids.slice(0, cabem).map(chip)}
+          {escondidos > 0 && (
+            <li>
+              <button type="button" className="esc-chip esc-chip--mais" aria-expanded="false" title={ids.slice(cabem).map(tituloDe).join("; ")} onClick={() => setAberto(true)}>
+                +{escondidos} ▾
+              </button>
+            </li>
+          )}
+        </ul>
+      )}
+    </div>
   );
 }
 

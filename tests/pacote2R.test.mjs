@@ -90,7 +90,7 @@ test("equipamentos agrupados por ambiente, na ordem dos setores, com a contagem 
   assert.equal(grupos.reduce((total, grupo) => total + grupo.itens.length, 0), itens.length);
   assert.deepEqual(agruparEquipamentosPorAmbiente([], ["Cozinha"]), []);
   const campos = ler("../components/ManualBaseFields.tsx");
-  assert.ok(campos.includes("{grupo.setor} · {grupo.itens.length}") && campos.includes("Nenhum equipamento ou móvel cadastrado."));
+  assert.ok(campos.includes("{grupo.itens.length}") && campos.includes("cad-conta") && campos.includes("Nenhum equipamento ou móvel cadastrado."));
   assert.ok(campos.includes("Cadastre os itens vinculados a cada setor do estabelecimento."));
   assert.ok(campos.includes('<label className="cad-rotulado cad-rotulado--qtd">') && campos.includes("<span>Qtd</span>"));
 });

@@ -116,6 +116,7 @@ import CentralEmpresaNav from "@/components/pc/CentralEmpresaNav";
 import RelatoriosAbas, { type AbaDeRelatorios } from "@/components/pc/RelatoriosAbas";
 import { niveisDoCaminho } from "@/lib/caminhoDaFicha";
 import { assinaturaEdicaoEmpresa, temAlteracoesNaoSalvas } from "@/lib/estadoNaoSalvo";
+import { ambientesParaVisita, limparVinculos, nomeJaExistente } from "@/lib/ambientesVisita";
 import { estadoDaBarraDeSalvar, marcadosDoUltimoSalvo } from "@/lib/escolhaEmJanela";
 import { TENTATIVAS_DA_NUVEM, conexaoAtual, esperaAposFalhaDaNuvem, rotuloDoSeloComProblema, umaTentativa } from "@/lib/conexao";
 import { mostrarVoltar, nivelAcima, registrarLocal, voltarUma, type LocalDeTela } from "@/lib/historicoDeTelas";
@@ -1178,6 +1179,7 @@ export default function Home() {
     ResponsabilidadeManual[]
   >(criarResponsabilidadesPadrao());
   const [setoresEmpresa, setSetoresEmpresa] = useState<string[]>([]);
+  const [vinculosEmpresa, setVinculosEmpresa] = useState<Record<string, string>>({});
   const [equipamentosEmpresa, setEquipamentosEmpresa] = useState<EquipamentoSetor[]>([]);
   const [fluxosEmpresa, setFluxosEmpresa] = useState<FluxoOperacional[]>(
     criarFluxosOperacionaisPadrao()
@@ -1194,6 +1196,7 @@ export default function Home() {
     equipamentos: equipamentosEmpresa,
     fluxos: fluxosEmpresa,
     programas: programasEmpresa,
+    vinculos: limparVinculos(vinculosEmpresa, setoresEmpresa),
     pops: popsEmpresa,
   });
   const empresaTemAlteracoes = temAlteracoesNaoSalvas(showEmpresaForm, assinaturaEmpresaSalva, assinaturaEmpresaAtual);
@@ -2683,7 +2686,7 @@ export default function Home() {
 
   const ambientesSugeridosVisita =
     empresaVisita?.setoresManual?.length
-      ? empresaVisita.setoresManual
+      ? ambientesParaVisita(empresaVisita.setoresManual, empresaVisita.setorOficialDoAmbiente)
       : ambientesPadrao;
   const visitas = useMemo(
     () =>
@@ -3485,6 +3488,7 @@ export default function Home() {
         setoresEmpresa,
         anterior?.modelosQuestionarioAmbientes
       ),
+      ...(Object.keys(limparVinculos(vinculosEmpresa, setoresEmpresa)).length ? { setorOficialDoAmbiente: limparVinculos(vinculosEmpresa, setoresEmpresa) } : {}),
       equipamentosSetores: normalizarEquipamentos(equipamentosEmpresa),
       fluxosOperacionais: adequarFluxosAosSetores(fluxosEmpresa, setoresEmpresa),
       programasControleQualidade: normalizarProgramasControle(programasEmpresa),
@@ -3593,6 +3597,7 @@ export default function Home() {
     setCapacidadeForm(capacidadeParaFormulario(empresa.capacidade));
     setResponsabilidadesEmpresa(responsabilidadesCarregadas);
     setSetoresEmpresa(setoresCarregados);
+    setVinculosEmpresa(limparVinculos(empresa.setorOficialDoAmbiente, setoresCarregados));
     setEquipamentosEmpresa(equipamentosCarregados);
     setFluxosEmpresa(fluxosCarregados);
     setProgramasEmpresa(programasCarregados);
@@ -3604,6 +3609,7 @@ export default function Home() {
       equipamentos: equipamentosCarregados,
       fluxos: fluxosCarregados,
       programas: programasCarregados,
+      vinculos: limparVinculos(empresa.setorOficialDoAmbiente, setoresCarregados),
       pops: popsCarregados,
     }));
     setUsuarioResponsavelForm(empresa.responsavelEstabelecimento?.usuarioId || "");
@@ -3692,9 +3698,9 @@ export default function Home() {
     setShowVisitaForm(false);
     setVisitaAtualId(v.id);
     if (ehPC) {
-      const iniciais = atual.setoresManual || [];
+      const iniciais = ambientesParaVisita(atual.setoresManual || [], atual.setorOficialDoAmbiente);
       setAmbientesSelecionados(iniciais);
-      setModelosAmbientesSelecionados(criarModelosQuestionarioAmbientes(iniciais, atual.modelosQuestionarioAmbientes));
+      setModelosAmbientesSelecionados(criarModelosQuestionarioAmbientes(iniciais, atual.modelosQuestionarioAmbientes, atual.setorOficialDoAmbiente));
       setAmbientePersonalizado("");
       setStatusAmbientes("");
       setView("ambientes");
@@ -3726,7 +3732,7 @@ export default function Home() {
     }
 
     if (retomarChecklist && !(v.ambientes || []).length) {
-      const ambientesIniciais = empresaDaVisita?.setoresManual || [];
+      const ambientesIniciais = ambientesParaVisita(empresaDaVisita?.setoresManual || [], empresaDaVisita?.setorOficialDoAmbiente);
       setDb((o) => ({
         ...o,
         empresaAtualId: v.empresaId,
@@ -3734,7 +3740,7 @@ export default function Home() {
       }));
       setVisitaAtualId(id);
       setAmbientesSelecionados(ambientesIniciais);
-      setModelosAmbientesSelecionados(criarModelosQuestionarioAmbientes(ambientesIniciais, empresaDaVisita?.modelosQuestionarioAmbientes));
+      setModelosAmbientesSelecionados(criarModelosQuestionarioAmbientes(ambientesIniciais, empresaDaVisita?.modelosQuestionarioAmbientes, empresaDaVisita?.setorOficialDoAmbiente));
       setView("ambientes");
       return;
     }
@@ -3778,15 +3784,16 @@ export default function Home() {
     setAmbientesSelecionados(
       visitaAtual.ambientes?.length
         ? visitaAtual.ambientes
-        : empresaVisita?.setoresManual || []
+        : ambientesParaVisita(empresaVisita?.setoresManual || [], empresaVisita?.setorOficialDoAmbiente)
     );
     const ambientesIniciais = visitaAtual.ambientes?.length
       ? visitaAtual.ambientes
-      : empresaVisita?.setoresManual || [];
+      : ambientesParaVisita(empresaVisita?.setoresManual || [], empresaVisita?.setorOficialDoAmbiente);
     setModelosAmbientesSelecionados(
       criarModelosQuestionarioAmbientes(
         ambientesIniciais,
-        visitaAtual.modelosQuestionarioAmbientes || empresaVisita?.modelosQuestionarioAmbientes
+        visitaAtual.modelosQuestionarioAmbientes || empresaVisita?.modelosQuestionarioAmbientes,
+        empresaVisita?.setorOficialDoAmbiente
       )
     );
     setAmbientePersonalizado("");
@@ -3799,7 +3806,7 @@ export default function Home() {
     modelos = modelosAmbientesSelecionados
   ) {
     if (!visitaAtual) return;
-    const proximosModelos = criarModelosQuestionarioAmbientes(proximos, modelos);
+    const proximosModelos = criarModelosQuestionarioAmbientes(proximos, modelos, empresaVisita?.setorOficialDoAmbiente);
     setAmbientesSelecionados(proximos);
     setModelosAmbientesSelecionados(proximosModelos);
     setDb((o) => ({
@@ -3867,12 +3874,31 @@ export default function Home() {
     );
   }
 
-  function adicionarPersonalizado() {
+  function adicionarPersonalizado(salvarNoCadastro = false) {
     const nome = ambientePersonalizado.trim();
     if (!nome) return;
-    if (!ambientesSelecionados.includes(nome)) {
-      atualizarAmbientesDaVisita([...ambientesSelecionados, nome]);
+    // Nome que já existe no Cadastro ou entre os setores oficiais não entra duplicado (a tela avisa na hora, no campo).
+    if (nomeJaExistente(nome, [...(empresaVisita?.setoresManual || []), ...ambientesSelecionados])) return;
+    if (salvarNoCadastro && empresaVisita) {
+      const empresaId = empresaVisita.id;
+      setDb((o) => {
+        const empresa = o.empresas[empresaId];
+        if (!empresa) return o;
+        const setoresNovos = normalizarListaAmbientesReais([...(empresa.setoresManual || []), nome]);
+        return {
+          ...o,
+          empresas: {
+            ...o.empresas,
+            [empresaId]: {
+              ...empresa,
+              setoresManual: setoresNovos,
+              modelosQuestionarioAmbientes: criarModelosQuestionarioAmbientes(setoresNovos, empresa.modelosQuestionarioAmbientes, empresa.setorOficialDoAmbiente),
+            },
+          },
+        };
+      });
     }
+    atualizarAmbientesDaVisita([...ambientesSelecionados, nome]);
     setAmbientePersonalizado("");
   }
 
@@ -4451,6 +4477,7 @@ export default function Home() {
     setCapacidadeForm(CAPACIDADE_VAZIA);
     setResponsabilidadesEmpresa(responsabilidadesIniciais);
     setSetoresEmpresa([]);
+    setVinculosEmpresa({});
     setEquipamentosEmpresa([]);
     setFluxosEmpresa(fluxosIniciais);
     setProgramasEmpresa(programasIniciais);
@@ -7696,7 +7723,7 @@ export default function Home() {
                 {editingEmpresaId && (secaoEmpresa === "ambientes" || secaoEmpresa === "equipamentos") && (
                   <div className="cen-cadastro">
                     <p className="cen-apoio">Cadastro dos setores, ambientes e equipamentos da empresa.</p>
-                    <ManualBaseFields responsabilidades={responsabilidadesEmpresa} onResponsabilidadesChange={setResponsabilidadesEmpresa} setores={setoresEmpresa} onSetoresChange={setSetoresEmpresa} equipamentos={equipamentosEmpresa} onEquipamentosChange={setEquipamentosEmpresa} setoresSalvos={marcadosSalvos.setores} modo={secaoEmpresa} />
+                    <ManualBaseFields responsabilidades={responsabilidadesEmpresa} onResponsabilidadesChange={setResponsabilidadesEmpresa} setores={setoresEmpresa} onSetoresChange={setSetoresEmpresa} vinculos={vinculosEmpresa} onVinculosChange={setVinculosEmpresa} equipamentos={equipamentosEmpresa} onEquipamentosChange={setEquipamentosEmpresa} setoresSalvos={marcadosSalvos.setores} modo={secaoEmpresa} />
                   </div>
                 )}
 
@@ -7774,100 +7801,67 @@ export default function Home() {
             )}
           </section>
         ) : view === "visitas" && showVisitaForm ? (
-          <section className="rounded-2xl bg-white p-5 shadow-sm">
-            <div className="flex justify-between gap-4">
+                    <section className="nv-form">
+            <div className="nv-topo">
               <div>
-                <div className="text-xs font-extrabold uppercase text-[color:var(--brand)]">
-                  Nova visita
-                </div>
-                <h2 className="mt-1 text-2xl font-extrabold">
-                  {nomeDeExibicaoDaEmpresa(atual)}
-                </h2>
-                <p className="text-sm text-slate-500">
-                  Esta visita ficará vinculada automaticamente à empresa ativa.
-                </p>
+                <div className="nv-etiqueta">Nova visita</div>
+                <h2 className="nv-titulo">{nomeDeExibicaoDaEmpresa(atual)}</h2>
+                <p className="nv-apoio">Esta visita ficará vinculada automaticamente à empresa ativa.</p>
               </div>
-              <button
-                onClick={() => setShowVisitaForm(false)}
-                className="rounded-xl bg-slate-100 px-3 py-2 font-bold"
-              >
+              <button type="button" onClick={() => setShowVisitaForm(false)} className="ui-btn ui-btn--secondary">
                 Fechar
               </button>
             </div>
 
-            <div className="mt-5 grid gap-4 md:grid-cols-2">
-              <label>
-                <span className="mb-1 block text-xs font-bold text-slate-500">
-                  Data da visita
-                </span>
-                <input
-                  type="date"
-                  className="w-full rounded-xl border p-3"
-                  value={vf.data}
-                  onChange={(e) => setVf({ ...vf, data: e.target.value })}
-                />
+            <div className="nv-linha">
+              <label className="nv-campo nv-campo--data">
+                <span>Data da visita</span>
+                <input type="date" className="nv-input" value={vf.data} onChange={(e) => setVf({ ...vf, data: e.target.value })} />
               </label>
-
-              <label>
-                <span className="mb-1 block text-xs font-bold text-slate-500">
-                  Responsável pela visita *
-                </span>
+              <label className="nv-campo">
+                <span>Responsável pela visita *</span>
                 <input
-                  className="w-full rounded-xl border p-3"
+                  className="nv-input"
                   required
                   placeholder="Nome do consultor / responsável técnico"
                   value={vf.responsavel}
-                  onChange={(e) =>
-                    setVf({ ...vf, responsavel: e.target.value })
-                  }
+                  onChange={(e) => setVf({ ...vf, responsavel: e.target.value })}
                 />
               </label>
-
-
-              <label>
-                <span className="mb-1 block text-xs font-bold text-slate-500">
-                  Identificação profissional (opcional)
-                </span>
+              <label className="nv-campo">
+                <span>Identificação profissional (opcional)</span>
                 <input
-                  className="w-full rounded-xl border p-3"
+                  className="nv-input"
                   placeholder="Ex.: Nutricionista • CRN 2-00000"
                   value={vf.responsavelIdentificacao}
-                  onChange={(e) =>
-                    setVf({ ...vf, responsavelIdentificacao: e.target.value })
-                  }
+                  onChange={(e) => setVf({ ...vf, responsavelIdentificacao: e.target.value })}
                 />
-              </label>
-
-              <label className="md:col-span-2">
-                <span className="mb-1 block text-xs font-bold text-slate-500">
-                  Observações iniciais
-                </span>
-                <div className="mbp-voice-wrap">
-                  <textarea
-                    rows={4}
-                    className="w-full rounded-xl border p-3"
-                    value={vf.observacoes}
-                    onChange={(e) =>
-                      setVf({ ...vf, observacoes: e.target.value })
-                    }
-                  />
-                  <VoiceDictationButton
-                    ativo={campoVozAtivo === "visita-observacoes"}
-                    melhorando={campoIaAtivo === "visita-observacoes"}
-                    onIniciar={() => iniciarDitado("visita-observacoes", (texto) => setVf((atual) => ({ ...atual, observacoes: juntarTextoDitado(atual.observacoes, texto) })))}
-                    onMelhorar={() => melhorarTextoComIa("visita-observacoes", vf.observacoes, (texto) => setVf((atual) => ({ ...atual, observacoes: texto })), "Observações iniciais de uma visita técnica de Boas Práticas em serviços de alimentação.")}
-                  />
-                </div>
               </label>
             </div>
 
-            <button
-              onClick={salvarVisita}
-              disabled={criandoVisita}
-              className="ui-btn ui-btn--criar mt-5 w-full"
-            >
-              {criandoVisita ? "Criando..." : "Criar visita"}
-            </button>
+            <label className="nv-campo">
+              <span>Observações iniciais</span>
+              <div className="mbp-voice-wrap">
+                <textarea
+                  rows={3}
+                  className="nv-area"
+                  value={vf.observacoes}
+                  onChange={(e) => setVf({ ...vf, observacoes: e.target.value })}
+                />
+                <VoiceDictationButton
+                  ativo={campoVozAtivo === "visita-observacoes"}
+                  melhorando={campoIaAtivo === "visita-observacoes"}
+                  onIniciar={() => iniciarDitado("visita-observacoes", (texto) => setVf((atual) => ({ ...atual, observacoes: juntarTextoDitado(atual.observacoes, texto) })))}
+                    onMelhorar={() => melhorarTextoComIa("visita-observacoes", vf.observacoes, (texto) => setVf((atual) => ({ ...atual, observacoes: texto })), "Observações iniciais de uma visita técnica de Boas Práticas em serviços de alimentação.")}
+                />
+              </div>
+            </label>
+
+            <div className="nv-rodape">
+              <button type="button" onClick={salvarVisita} disabled={criandoVisita} className="ui-btn ui-btn--criar nv-criar">
+                {criandoVisita ? "Criando..." : "Criar visita"}
+              </button>
+            </div>
           </section>
         ) : view === "ambientes" && visitaAtual ? (
           <PcAmbientes
@@ -7886,6 +7880,7 @@ export default function Home() {
             onExcluirOculto={excluirAmbienteOcultoDaVisita}
             onDetalhado={aplicarModeloDetalhadoRestaurante}
             onAdicionar={adicionarPersonalizado}
+            cadastro={empresaVisita?.setoresManual || []}
             onModelo={atualizarModeloQuestionarioAmbiente}
             onQuestionario={ehPC && (!usuarioDaSessao || podeEditarQuestionario(usuarioDaSessao)) ? abrirQuestionario : undefined}
             cadastroVazio={!(empresaVisita?.setoresManual || []).length}

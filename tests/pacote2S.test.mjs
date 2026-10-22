@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-import { LIMITE_DE_CHIPS, aplicarEscolhaDeFluxos, aplicarEscolhaDeSetores, chipsDoResumo, contadorDaJanela, escolhaMudou, linhaDeContagem, marcadosNaOrdem } from "../lib/escolhaEmJanela.ts";
+import { aplicarEscolhaDeFluxos, aplicarEscolhaDeSetores, contadorDaJanela, escolhaMudou, linhaDeContagem, marcadosNaOrdem } from "../lib/escolhaEmJanela.ts";
 import { assinaturaEdicaoEmpresa, temAlteracoesNaoSalvas } from "../lib/estadoNaoSalvo.ts";
 import { SETORES_OFICIAIS_MANUAL, resumoDosSetoresMarcados } from "../lib/manualBase.ts";
 import { DEFINICOES_FLUXOS_OPERACIONAIS, adequarFluxosAosSetores, criarFluxosOperacionaisPadrao, normalizarFluxosOperacionais } from "../lib/operationalFlows.ts";
@@ -12,12 +12,7 @@ const oficiais = SETORES_OFICIAIS_MANUAL;
 
 // ===== 1.1 Cartão-resumo de setores =====
 test("cartão-resumo: chips dos marcados (0, 2 e mais de 6 com '+N') e a linha 'N de T setores marcados'", () => {
-  assert.deepEqual(chipsDoResumo([]), { visiveis: [], extras: 0 });
-  assert.deepEqual(chipsDoResumo(["a", "b"]), { visiveis: ["a", "b"], extras: 0 });
-  const nove = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
-  assert.deepEqual(chipsDoResumo(nove), { visiveis: ["1", "2", "3", "4", "5", "6"], extras: 3 });
-  assert.equal(LIMITE_DE_CHIPS, 6);
-  assert.deepEqual(chipsDoResumo(nove.slice(0, 6)), { visiveis: nove.slice(0, 6), extras: 0 }, "exatamente 6: sem '+N'");
+  // (a regra dos "6 primeiros + +N" foi substituída pelos chips recolhíveis: ver tests/ajustesE2.test.mjs)
   assert.equal(linhaDeContagem(2, oficiais.length, "setores marcados"), `2 de ${oficiais.length} setores marcados`);
   assert.equal(linhaDeContagem(1, 13, "setores marcados"), "1 de 13 setores marcados");
   assert.equal(contadorDaJanela(3, 13), "3 de 13 marcados");
@@ -28,7 +23,7 @@ test("cartão-resumo: chips dos marcados (0, 2 e mais de 6 com '+N') e a linha '
   assert.ok(campos.includes('rotuloDoBotao="Escolher setores"') && campos.includes('vazio="Nenhum setor marcado"') && campos.includes('palavra="setores marcados"'));
   assert.equal(campos.includes("cad-setor"), false, "as caixas de marcar não ficam mais na tela");
   const janela = ler("../components/EscolhaEmJanela.tsx");
-  assert.ok(janela.includes("chipsDoResumo(marcadosAgora)") && janela.includes("+{extras}") && janela.includes('<span aria-hidden="true">✓</span>'));
+  assert.ok(janela.includes("quantosChipsCabem") && janela.includes("+{escondidos} ▾") && janela.includes('<span aria-hidden="true">✓</span>'));
   assert.ok(janela.includes('<p className="esc-vazio">{vazio}</p>'));
   const css = ler("../app/globals.css");
   assert.match(css, /\.esc-chip\{[^}]*min-height:36px[^}]*border:1\.5px solid #E8B04B[^}]*background:#FEF6E6/);
@@ -77,7 +72,8 @@ test("janela: estrutura (modal por cima, fundo rgba(18,32,43,.28), página trava
   }
   assert.ok(janela.includes("anterior?.focus?.()"), "devolve o foco ao botão que abriu");
   const css = ler("../app/globals.css");
-  const bloco = css.slice(css.indexOf("/* ===== Cadastros: cartão-resumo + janela de escolha"));
+  const inicioDoBloco = css.indexOf("/* ===== Cadastros: cartão-resumo + janela de escolha");
+  const bloco = css.slice(inicioDoBloco, css.indexOf("/* ===== Pacote de ajustes", inicioDoBloco));
   assert.match(bloco, /\.esc-fundo\{position:absolute;inset:0;background:rgba\(18,32,43,\.28\)\}/);
   assert.equal(/rgba\(0,\s*0,\s*0|#000\b/.test(bloco), false, "nunca preto");
   assert.match(bloco, /\.esc-janela\{[^}]*width:min\(1040px,94%\)[^}]*overflow:hidden[^}]*border-radius:16px/);
