@@ -1,5 +1,6 @@
 "use client";
 
+import { formatarCnpj } from "@/lib/cnpj";
 import { Pill } from "@/components/ui/Pill";
 import { textoDoResumo, type OrigemDoItem, type ResumoDeUmaPagina } from "@/lib/painelHoje";
 import { quantidade } from "@/lib/plural";
@@ -36,7 +37,7 @@ export default function PcResumo({ resumo, onImprimir, onCompartilhar, onVoltar 
             className="ui-btn ui-btn--criar"
             onClick={() =>
               onImprimir(`Resumo - ${resumo.empresaNome}`, {
-                esquerda: [resumo.empresaNome, resumo.empresaCnpj ? `CNPJ ${resumo.empresaCnpj}` : ""],
+                esquerda: [resumo.empresaNome, resumo.empresaCnpj ? `CNPJ ${formatarCnpj(resumo.empresaCnpj)}` : ""],
                 direita: ["Resumo de uma página", `Gerado em ${dataBr(resumo.geradoEm)}`],
                 rodape: "Não substitui o relatório completo",
               })
@@ -53,7 +54,7 @@ export default function PcResumo({ resumo, onImprimir, onCompartilhar, onVoltar 
       <article id="resumo-pagina" className="resumo-pagina doc-impresso" data-empresa={resumo.empresaNome} data-geradoem={dataBr(resumo.geradoEm)}>
         <header className="resumo-topo">
           <h2 className="resumo-titulo">{resumo.empresaNome}</h2>
-          <span className="doc-linha">{resumo.empresaCnpj ? `CNPJ ${resumo.empresaCnpj} · ` : ""}Resumo em {dataBr(resumo.geradoEm)}</span>
+          <span className="doc-linha">{resumo.empresaCnpj ? `CNPJ ${formatarCnpj(resumo.empresaCnpj)} · ` : ""}Resumo em {dataBr(resumo.geradoEm)}</span>
         </header>
 
         <h3 className="resumo-sub">{c ? `Da visita de ${dataBr(c.dataDaVisita)}` : "Da visita"}</h3>

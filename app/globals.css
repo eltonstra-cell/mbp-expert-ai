@@ -4550,3 +4550,28 @@ html[data-modo] .pc-topbar-end > .emp-ativa{flex-shrink:1}
 .esc-rodape{flex:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 20px;border-top:1px solid #EEF1F5;background:#fff}
 .esc-contador{font-size:.95rem;color:#12202B}
 .esc-rodape-botoes{display:flex;gap:8px}
+
+/* ===== Pacote de ajustes · Etapa 1: estados e componentes comuns ===== */
+/* 1.1 Chips de setores e fluxos: cinza + "Falta salvar" antes de salvar; azul-céu depois. O creme fica só na seleção dentro da janela. */
+.esc-chip.is-falta{border-color:#B4C2CE;background:#EEF1F5;color:#12202B}
+.esc-chip.is-salvo{border-color:#7FB2E5;background:#DCEBFA;color:#12202B}
+.esc-chip--mais{border-color:#B4C2CE;background:#fff;color:#12202B}
+.esc-selo{margin-left:2px;padding:1px 8px;border-radius:999px;background:#fff;font-size:12px;line-height:1.3;color:#12202B}
+/* 1.2 Barra de baixo da Central */
+.cen-salvar.is-pendente{border:1.5px solid #E8B04B;background:#FEF6E6}
+.cen-salvar.is-salvo{border:1.5px solid #B7DDC2;background:#E6F4EA}
+.cen-salvar-aviso{display:inline-flex;align-items:center;gap:8px;font-size:.92rem;color:#12202B}
+.cen-salvar-marca{font-size:1rem;line-height:1}
+.cen-salvar.is-pendente .cen-salvar-marca{color:#D9951A}
+.cen-salvar.is-salvo .cen-salvar-marca{color:#15803D}
+.ui-btn--save.is-apagado{background:#CDEBD6;color:#12202B}
+/* 1.4 Botão desabilitado em geral: cinza com texto legível (antes: laranja claro com texto branco) */
+.ui-btn:disabled,.ui-btn.is-disabled,.ui-btn--criar:disabled,.ui-btn--primary:disabled,.ui-btn--save:disabled,.ui-btn--orange:disabled,.pc-btn-amber:disabled,.campo-btn:disabled,.pgl-criar .ui-btn--criar.is-desligado,.pgl-criar .ui-btn--criar.is-desligado:disabled{background:#EEF1F5;background-image:none;border:1.5px solid #B4C2CE;color:#51606c;box-shadow:none;opacity:1;cursor:not-allowed}
+/* 1.5 Campos de voz: microfone circular de 34 px (ícone de 18 px); "IA" e "Falar" com 32 px de altura e texto de 13 px */
+.field-assist-tools button{min-height:32px;font-size:13px}
+.field-assist-voice--icone,.field-assist-tools .field-assist-voice--icone{display:grid;place-items:center;width:34px;height:34px;min-height:34px;padding:0;border:1.5px solid #B4C2CE;border-radius:50%}
+.field-assist-voice svg,.field-assist-voice--icone svg{width:18px;height:18px}
+.voz-btn,.voz-ia{min-height:32px;font-size:13px}
+.voz-ia{height:32px}
+@media (max-width:767px){.field-assist-tools button{min-height:32px;font-size:13px}.field-assist-tools .field-assist-voice--icone{min-height:34px}}
+.campo-voz-tools .field-assist-tools button{font-size:13px}

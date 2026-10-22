@@ -24,7 +24,7 @@ test("C1: folha do POP em leitura e na pré-visualização (passo em branco só 
   const aprovacao = { nome: "Elton", cargo: "Nutricionista RT", em: "2026-10-21T15:00:00.000Z" };
   const leitura = folhaDoPop(popBase(conteudo, { status: "Aprovado", versao: "1.1", aprovacao }), { nome: "Padaria", cnpj: "44150273000198" });
   assert.equal(leitura.direita, "POP-01 · versão 1.1");
-  assert.equal(leitura.esquerda, "Padaria · CNPJ 44150273000198");
+  assert.equal(leitura.esquerda, "Padaria · CNPJ 44.150.273/0001-98");
   assert.equal(leitura.situacao, "Aprovada por Elton, Nutricionista RT, em 21/10/2026");
   assert.deepEqual(leitura.blocos.find((bloco) => bloco.titulo === "Passos").linhas, ["Limpar"]);
   assert.deepEqual(leitura.blocos.find((bloco) => bloco.titulo === "Responsável e frequência").linhas, ["Elton, Nutricionista RT · diária"]);

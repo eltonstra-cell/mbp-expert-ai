@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { LIMITE_DE_CHIPS, chipsDoResumo, contadorDaJanela, escolhaMudou, linhaDeContagem, marcadosNaOrdem } from "@/lib/escolhaEmJanela";
+import { LIMITE_DE_CHIPS, ROTULO_DO_SELO, chipPendente, chipsDoResumo, contadorDaJanela, escolhaMudou, linhaDeContagem, marcadosNaOrdem } from "@/lib/escolhaEmJanela";
 
 export type OpcaoDeEscolha = { id: string; titulo: string; descricao?: string };
 
@@ -16,13 +16,15 @@ type Props = {
   palavra: string;
   rotuloDoBotao: string;
   vazio: string;
+  /** Ids que estavam marcados no último salvo: o chip fora dessa lista mostra o selo de pendente. */
+  salvas?: string[];
   /** "Concluir": recebe os ids marcados. Só é chamado quando a escolha mudou de verdade (senão a área não vira "não salva"). */
   onAplicar: (ids: string[]) => void;
 };
 
 // Cartão-resumo (título, "N de T … marcados", chips dos marcados) + botão que abre a janela de escolha.
 // A janela trabalha numa cópia: "Concluir" aplica no estado da tela (quem grava é a barra fixa de baixo); "Cancelar" e Esc descartam.
-export default function EscolhaEmJanela({ titulo, apoio, opcoes, marcadas, palavra, rotuloDoBotao, vazio, onAplicar }: Props) {
+export default function EscolhaEmJanela({ titulo, apoio, opcoes, marcadas, palavra, rotuloDoBotao, vazio, salvas, onAplicar }: Props) {
   const [aberta, setAberta] = useState(false);
   const ids = opcoes.map((opcao) => opcao.id);
   const marcadosAgora = marcadosNaOrdem(ids, marcadas);
@@ -45,8 +47,9 @@ export default function EscolhaEmJanela({ titulo, apoio, opcoes, marcadas, palav
       ) : (
         <ul className="esc-chips" aria-label={`${titulo}: marcados`}>
           {visiveis.map((id) => (
-            <li key={id} className="esc-chip">
+            <li key={id} className={`esc-chip ${chipPendente(id, salvas) ? "is-falta" : "is-salvo"}`}>
               <span aria-hidden="true">✓</span> {tituloDe(id)}
+              {chipPendente(id, salvas) && <span className="esc-selo">{ROTULO_DO_SELO}</span>}
             </li>
           ))}
           {extras > 0 && (

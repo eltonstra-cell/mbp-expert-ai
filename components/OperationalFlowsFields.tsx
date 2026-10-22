@@ -15,9 +15,11 @@ type Props = {
   setores: string[];
   onChange: (fluxos: FluxoOperacional[]) => void;
   aberto?: boolean;
+  /** Ids dos fluxos marcados no último salvo (para o chip "Falta salvar"). */
+  fluxosSalvos?: string[];
 };
 
-export default function OperationalFlowsFields({ fluxos, setores, onChange }: Props) {
+export default function OperationalFlowsFields({ fluxos, setores, onChange, fluxosSalvos }: Props) {
   useEffect(() => {
     let alterou = false;
     const corrigidos = fluxos.map((fluxo) => {
@@ -44,6 +46,7 @@ export default function OperationalFlowsFields({ fluxos, setores, onChange }: Pr
         palavra="fluxos marcados"
         rotuloDoBotao="Escolher fluxos"
         vazio="Nenhum fluxo marcado"
+        salvas={fluxosSalvos}
         onAplicar={(ids) => {
           const proximos = aplicarEscolhaDeFluxos(fluxos, setores, ids);
           if (proximos !== fluxos) onChange(proximos);

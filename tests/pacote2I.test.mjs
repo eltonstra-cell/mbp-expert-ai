@@ -57,7 +57,7 @@ test("folha: responsável vem do usuário vinculado e a razão social sai em for
   const folha = folhaDoPop(aprovado, { nome: nomeDeExibicaoDaEmpresa({ nomeFantasia: "44.150.273 ELTON VOLMIR STRAPAZON" }), cnpj: "44150273000198" }, { responsavel });
   assert.equal(folha.situacao, "Aprovada por Elton, Nutricionista RT, em 21/10/2026");
   assert.equal(folha.blocos.find((bloco) => bloco.titulo === "Responsável e frequência").linhas[0], "Elton, Nutricionista RT · diária");
-  assert.equal(folha.esquerda, "Elton Volmir Strapazon · CNPJ 44150273000198");
+  assert.equal(folha.esquerda, "Elton Volmir Strapazon · CNPJ 44.150.273/0001-98");
   // aprovação por outra pessoa mantém o que foi gravado
   const outra = folhaDoPop({ ...aprovado, aprovacao: { ...aprovacao, usuarioId: "u2" } }, {}, { responsavel });
   assert.equal(outra.situacao, "Aprovada por Élton Volmir Strapazon, em 21/10/2026");

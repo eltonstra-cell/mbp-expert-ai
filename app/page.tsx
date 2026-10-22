@@ -1,5 +1,6 @@
 "use client";
 
+import { formatarCnpj } from "@/lib/cnpj";
 import { useEffect, useMemo, useRef, useState } from "react";
 import MetricCard from "@/components/MetricCard";
 import FaixaVisitaOutraEmpresa from "@/components/FaixaVisitaOutraEmpresa";
@@ -115,6 +116,7 @@ import CentralEmpresaNav from "@/components/pc/CentralEmpresaNav";
 import RelatoriosAbas, { type AbaDeRelatorios } from "@/components/pc/RelatoriosAbas";
 import { niveisDoCaminho } from "@/lib/caminhoDaFicha";
 import { assinaturaEdicaoEmpresa, temAlteracoesNaoSalvas } from "@/lib/estadoNaoSalvo";
+import { estadoDaBarraDeSalvar, marcadosDoUltimoSalvo } from "@/lib/escolhaEmJanela";
 import { TENTATIVAS_DA_NUVEM, conexaoAtual, esperaAposFalhaDaNuvem, rotuloDoSeloComProblema, umaTentativa } from "@/lib/conexao";
 import { mostrarVoltar, nivelAcima, registrarLocal, voltarUma, type LocalDeTela } from "@/lib/historicoDeTelas";
 import { esquecerTela, lerContinuar, limparContinuar, registrarTela, type TelaRecente } from "@/lib/continuarDeOndeParei";
@@ -1195,6 +1197,7 @@ export default function Home() {
     pops: popsEmpresa,
   });
   const empresaTemAlteracoes = temAlteracoesNaoSalvas(showEmpresaForm, assinaturaEmpresaSalva, assinaturaEmpresaAtual);
+  const marcadosSalvos = marcadosDoUltimoSalvo(assinaturaEmpresaSalva);
   const popsComRevisaoVencida = popsEmpresa.filter(
     (pop) => situacaoRevisaoPOP(pop).label === "Revisão vencida"
   ).length;
@@ -3524,7 +3527,7 @@ export default function Home() {
     setEditingEmpresaId(id);
     setEmpresaSecao(null);
     setShowEmpresaForm(true);
-    setMsg("Alterações salvas com sucesso.");
+    setMsg("");
     setView("empresas");
   }
 
@@ -7693,12 +7696,12 @@ export default function Home() {
                 {editingEmpresaId && (secaoEmpresa === "ambientes" || secaoEmpresa === "equipamentos") && (
                   <div className="cen-cadastro">
                     <p className="cen-apoio">Cadastro dos setores, ambientes e equipamentos da empresa.</p>
-                    <ManualBaseFields responsabilidades={responsabilidadesEmpresa} onResponsabilidadesChange={setResponsabilidadesEmpresa} setores={setoresEmpresa} onSetoresChange={setSetoresEmpresa} equipamentos={equipamentosEmpresa} onEquipamentosChange={setEquipamentosEmpresa} modo={secaoEmpresa} />
+                    <ManualBaseFields responsabilidades={responsabilidadesEmpresa} onResponsabilidadesChange={setResponsabilidadesEmpresa} setores={setoresEmpresa} onSetoresChange={setSetoresEmpresa} equipamentos={equipamentosEmpresa} onEquipamentosChange={setEquipamentosEmpresa} setoresSalvos={marcadosSalvos.setores} modo={secaoEmpresa} />
                   </div>
                 )}
 
                 {editingEmpresaId && secaoEmpresa === "fluxos" && (
-                  <OperationalFlowsFields fluxos={fluxosEmpresa} setores={setoresEmpresa} onChange={setFluxosEmpresa} aberto />
+                  <OperationalFlowsFields fluxos={fluxosEmpresa} setores={setoresEmpresa} onChange={setFluxosEmpresa} fluxosSalvos={marcadosSalvos.fluxos} aberto />
                 )}
 
                 {editingEmpresaId && secaoEmpresa === "programas" && (
@@ -7756,14 +7759,15 @@ export default function Home() {
             </div>
 
             {(!editingEmpresaId || ["dados", "manual", "ambientes", "equipamentos", "fluxos", "programas"].includes(secaoEmpresa || "")) && (
-              <div className="cen-salvar">
+              <div className={`cen-salvar${editingEmpresaId ? ` ${estadoDaBarraDeSalvar(empresaTemAlteracoes).classe}` : ""}`}>
                 {!editingEmpresaId && msg && <span className="cen-salvar-aviso">{msg}</span>}
                 {editingEmpresaId && (
-                  <span className={`cen-salvar-aviso${empresaTemAlteracoes ? " is-pendente" : ""}`}>
-                    {empresaTemAlteracoes ? "● Alterações ainda não salvas" : "✓ Todas as alterações desta área estão salvas"}
+                  <span className="cen-salvar-aviso" role="status">
+                    <span className="cen-salvar-marca" aria-hidden="true">{estadoDaBarraDeSalvar(empresaTemAlteracoes).marca}</span>
+                    {estadoDaBarraDeSalvar(empresaTemAlteracoes).texto}
                   </span>
                 )}
-                <button type="button" onClick={salvarEmpresa} className="ui-btn ui-btn--save">
+                <button type="button" onClick={salvarEmpresa} className={`ui-btn ui-btn--save${editingEmpresaId && !empresaTemAlteracoes ? " is-apagado" : ""}`}>
                   {editingEmpresaId ? "Salvar" : "Salvar e abrir a Central"}
                 </button>
               </div>
@@ -8983,7 +8987,7 @@ export default function Home() {
                 <div className="mt-4 grid gap-3 text-sm md:grid-cols-2">
                   <div>
                     <span className="font-extrabold text-slate-500">CNPJ</span>
-                    <div>{empresaVisita?.cnpj || "Não informado"}</div>
+                    <div>{formatarCnpj(empresaVisita?.cnpj) || "Não informado"}</div>
                   </div>
                   <div>
                     <span className="font-extrabold text-slate-500">Data da visita</span>
@@ -9576,7 +9580,7 @@ export default function Home() {
               <div className="mt-5 rounded-xl border border-slate-200 bg-white p-4 text-xs text-slate-600">
                 <div className="font-extrabold uppercase text-slate-700">Rastreabilidade do relatório</div>
                 <div className="mt-2 grid gap-2 md:grid-cols-2">
-                  <div><strong>Empresa:</strong> {empresaVisita?.cnpj || "CNPJ não informado"} — {nomeSemNumerosNoInicio(empresaVisita?.nomeFantasia || empresaVisita?.razaoSocial || "Empresa")}</div>
+                  <div><strong>Empresa:</strong> {formatarCnpj(empresaVisita?.cnpj) || "CNPJ não informado"} — {nomeSemNumerosNoInicio(empresaVisita?.nomeFantasia || empresaVisita?.razaoSocial || "Empresa")}</div>
                   <div><strong>Visita:</strong> {fdata(visitaAtual.data)} — {numeroVisitaPorId.get(visitaAtual.id) ? `visita ${numeroVisitaPorId.get(visitaAtual.id)}` : "visita"}{visitaAtual.responsavel ? ` · responsável ${visitaAtual.responsavel}` : ""}</div>
                   <div><strong>Status:</strong> {visitaAtual.status}</div>
                   <div><strong>Último encerramento:</strong> {visitaAtual.encerradaEm ? formatarDataHora(visitaAtual.encerradaEm) : "Não registrado"}</div>

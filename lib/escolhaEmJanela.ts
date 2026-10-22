@@ -60,3 +60,32 @@ export function aplicarEscolhaDeFluxos(fluxos: FluxoOperacional[], setores: stri
     };
   });
 }
+
+export const ROTULO_DO_SELO = "Falta salvar";
+
+/** Chip "salvo" (azul-céu) só se o mesmo item estava marcado no último salvo; senão "Falta salvar" (cinza). Sem base salva, tudo falta salvar. */
+export function chipPendente(id: string, salvos: readonly string[] | undefined): boolean {
+  return !(salvos || []).includes(id);
+}
+
+/** Lê do texto da assinatura do último salvo (`assinaturaEdicaoEmpresa`) o que estava marcado de setores e de fluxos. */
+export function marcadosDoUltimoSalvo(assinaturaSalva: string): { setores: string[]; fluxos: string[] } {
+  if (!assinaturaSalva) return { setores: [], fluxos: [] };
+  try {
+    const dados = JSON.parse(assinaturaSalva) as { setores?: unknown; fluxos?: unknown };
+    const setores = Array.isArray(dados.setores) ? dados.setores.filter((item): item is string => typeof item === "string") : [];
+    const fluxos = Array.isArray(dados.fluxos)
+      ? dados.fluxos.filter((fluxo): fluxo is { id: string; aplicavel?: boolean } => Boolean(fluxo) && typeof (fluxo as { id?: unknown }).id === "string" && Boolean((fluxo as { aplicavel?: unknown }).aplicavel)).map((fluxo) => fluxo.id)
+      : [];
+    return { setores, fluxos };
+  } catch {
+    return { setores: [], fluxos: [] };
+  }
+}
+
+/** Barra de baixo da Central: "pendente" (creme com ponto âmbar) ou "salvo" (verde bem claro com ✓). */
+export function estadoDaBarraDeSalvar(temAlteracoes: boolean): { classe: "is-pendente" | "is-salvo"; marca: string; texto: string } {
+  return temAlteracoes
+    ? { classe: "is-pendente", marca: "●", texto: "Alterações ainda não salvas" }
+    : { classe: "is-salvo", marca: "✓", texto: "Todas as alterações desta área estão salvas" };
+}

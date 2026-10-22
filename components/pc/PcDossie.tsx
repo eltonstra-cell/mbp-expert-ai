@@ -1,5 +1,6 @@
 "use client";
 
+import { formatarCnpj } from "@/lib/cnpj";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { montarDossie, opcoesPadraoDoDossie, type DadosDoDossie, type OpcoesDoDossie } from "@/lib/dossie";
 import { paginasDasSecoes } from "@/lib/indicePaginas";
@@ -62,7 +63,7 @@ export default function PcDossie({ dados, urlDaFoto, onImprimir, onVoltar }: Pro
 
   function imprimir() {
     onImprimir(`Dossie - ${dossie.empresaNome}`, {
-      esquerda: [dossie.empresaNome, `CNPJ ${dados.empresa.cnpj}`],
+      esquerda: [dossie.empresaNome, `CNPJ ${formatarCnpj(dados.empresa.cnpj)}`],
       direita: ["Dossiê para fiscalização", `Gerado em ${dataBr(dossie.geradoEm)}`],
     });
   }
@@ -123,7 +124,7 @@ export default function PcDossie({ dados, urlDaFoto, onImprimir, onVoltar }: Pro
           <div data-dossie-capa>
             <header className="dossie-capa">
               <h2 className="resumo-titulo">Dossiê · {dossie.empresaNome}</h2>
-              <span className="doc-linha">CNPJ {dados.empresa.cnpj} · gerado em {dataBr(dossie.geradoEm)}</span>
+              <span className="doc-linha">CNPJ {formatarCnpj(dados.empresa.cnpj)} · gerado em {dataBr(dossie.geradoEm)}</span>
             </header>
             <nav aria-label="Índice" className="dossie-indice">
               <h3 className="resumo-sub">Índice</h3>

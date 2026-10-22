@@ -2,6 +2,7 @@
 import type { ConteudoPop, ItemDeModeloPop, ProcedimentoOperacionalPadronizado } from "../types/index.ts";
 import { AVISO_VALORES_DO_MODELO, popNaoConferido } from "./popConferencia.ts";
 import { SECOES_ANTES_DOS_PASSOS, SECOES_DE_LISTA, itensEscritos, linhasDoItem, tabelaDoItem, textoDoItem } from "./popConteudoModelo.ts";
+import { formatarCnpj } from "./cnpj.ts";
 import { formatarData } from "./dataLocal.ts";
 import { nomeECargo, razaoSocialTitulo } from "./nomeCargo.ts";
 import { nomeSemNumerosNoInicio } from "./navigation.ts";
@@ -260,7 +261,7 @@ export function folhaDoPop(
   // O nome já chega no formato de exibição da empresa (lib/nomeEmpresa.ts); aqui só limpa espaços.
   const nomeDaEmpresa = (empresa.nome || "").replace(/\s+/g, " ").trim();
   return {
-    esquerda: [nomeDaEmpresa, empresa.cnpj ? `CNPJ ${empresa.cnpj}` : ""].filter(Boolean).join(" · "),
+    esquerda: [nomeDaEmpresa, empresa.cnpj ? `CNPJ ${formatarCnpj(empresa.cnpj)}` : ""].filter(Boolean).join(" · "),
     direita: `${pop.codigo ? `${pop.codigo} · ` : ""}versão ${pop.versao}`,
     titulo: pop.titulo || "POP",
     capa: { codigo: pop.codigo || "", titulo: pop.titulo || "POP", empresa: nomeDaEmpresa, versao: `versão ${pop.versao}` },

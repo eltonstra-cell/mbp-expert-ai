@@ -1,5 +1,6 @@
 "use client";
 
+import { formatarCnpj } from "@/lib/cnpj";
 import { useState } from "react";
 import { Pill } from "@/components/ui/Pill";
 import type { RelatorioEmitido } from "@/types";
@@ -24,7 +25,7 @@ type ListaProps = {
 export function cabecalhoDoRelatorio(relatorio: RelatorioEmitido): CabecalhoDeImpressao {
   const inst = relatorio.instantaneo;
   return {
-    esquerda: [inst.empresa.nome, `CNPJ ${inst.empresa.cnpj}`],
+    esquerda: [inst.empresa.nome, `CNPJ ${formatarCnpj(inst.empresa.cnpj)}`],
     direita: [
       `${relatorio.numero} · versão ${relatorio.versao}`,
       `Emitido em ${dataHoraBr(relatorio.emitidoEm)}`,
@@ -74,7 +75,7 @@ export default function PcRelatoriosEmitidos({ empresa, relatorios, urlDaFoto, o
               Relatório {aberto.numero} · versão {aberto.versao}
             </h2>
             <span className="doc-linha">
-              {inst.empresa.nome} · CNPJ {inst.empresa.cnpj} · visita de {dataBr(inst.visita.data)} · responsável {inst.visita.responsavel}
+              {inst.empresa.nome} · CNPJ {formatarCnpj(inst.empresa.cnpj)} · visita de {dataBr(inst.visita.data)} · responsável {inst.visita.responsavel}
             </span>
             <span className="doc-linha">Emitido em {dataHoraBr(aberto.emitidoEm)}</span>
             {aberto.motivoDaNovaVersao && <span className="doc-linha">Motivo da versão {aberto.versao}: {aberto.motivoDaNovaVersao}</span>}

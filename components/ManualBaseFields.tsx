@@ -18,6 +18,8 @@ type Props = {
   onSetoresChange: (setores: string[]) => void;
   equipamentos: EquipamentoSetor[];
   onEquipamentosChange: (equipamentos: EquipamentoSetor[]) => void;
+  /** Setores que estavam marcados no último salvo (para o chip "Falta salvar"). */
+  setoresSalvos?: string[];
   modo?: "completo" | "responsabilidades" | "ambientes" | "equipamentos";
 };
 
@@ -37,6 +39,7 @@ export default function ManualBaseFields({
   onSetoresChange,
   equipamentos,
   onEquipamentosChange,
+  setoresSalvos,
   modo = "completo",
 }: Props) {
   const [setorEquipamento, setSetorEquipamento] = useState(setores[0] || SETORES_OFICIAIS_MANUAL[0]);
@@ -120,6 +123,7 @@ export default function ManualBaseFields({
           palavra="setores marcados"
           rotuloDoBotao="Escolher setores"
           vazio="Nenhum setor marcado"
+          salvas={setoresSalvos}
           onAplicar={aplicarSetores}
         />
       )}

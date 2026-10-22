@@ -1,5 +1,6 @@
 "use client";
 
+import { formatarCnpj } from "@/lib/cnpj";
 import { formatarData, formatarHora, hojeLocalISO } from "@/lib/dataLocal";
 import { limparTextoDePessoa, nomeECargo } from "@/lib/nomeCargo";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
@@ -307,7 +308,7 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
     // A capa só existe no papel: some de novo quando a impressão termina.
     if (comCapaNoPapel) window.addEventListener("afterprint", () => setComCapa(false), { once: true });
     onImprimir?.(`${rascunho.codigo || "POP"} - ${rascunho.titulo}`, {
-      esquerda: [dadosDaEmpresa.nome, dadosDaEmpresa.cnpj ? `CNPJ ${dadosDaEmpresa.cnpj}` : ""],
+      esquerda: [dadosDaEmpresa.nome, dadosDaEmpresa.cnpj ? `CNPJ ${formatarCnpj(dadosDaEmpresa.cnpj)}` : ""],
       // O cabeçalho corrido tem só empresa, CNPJ e "POP-01 · versão 1.1"; "Aprovada por …" fica uma vez só, abaixo do título.
       direita: [`${rascunho.codigo ? `${rascunho.codigo} · ` : ""}versão ${rascunho.versao}`],
       rodape: rascunho.titulo,
