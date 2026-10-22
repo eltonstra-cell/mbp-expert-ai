@@ -9,7 +9,7 @@ import { CORES_DA_SITUACAO, contadoresDaLista, type LinhaComDetalhe } from "@/li
 import { acoesDoPop } from "@/lib/menuActions";
 import { adicionarPop, arquivarPop, duplicarPop } from "@/lib/pops";
 import PcModelosPop from "@/components/pc/PcModelosPop";
-import { ROTULO_NAO_CONFERIDO, popNaoConferido } from "@/lib/popConferencia";
+import { ROTULO_CURTO_NAO_CONFERIDO, ROTULO_NAO_CONFERIDO, popNaoConferido } from "@/lib/popConferencia";
 import type { ResultadoDaCriacao } from "@/lib/popModelos";
 
 type Props = {
@@ -66,9 +66,9 @@ function Linha({ linha, podeEditar, onAbrirFicha, onCriarDoModelo, menu }: { lin
             revisar
           </span>
         )}
-        {linha.pop && popNaoConferido(linha.pop) && <span className="pop-revisar">{ROTULO_NAO_CONFERIDO}</span>}
+        {linha.pop && popNaoConferido(linha.pop) && <span className="pop-revisar pop-nao-conferido" title={ROTULO_NAO_CONFERIDO}>{ROTULO_CURTO_NAO_CONFERIDO}</span>}
       </div>
-      {linha.situacao !== "Falta criar" && <div className="pgl-acao">{linha.acao.texto}</div>}
+      <div className="pgl-acao">{linha.situacao !== "Falta criar" ? linha.acao.texto : ""}</div>
       <div className="pgl-botoes">
         {linha.pop ? (
           <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => onAbrirFicha(linha.pop!.id)}>
@@ -111,7 +111,6 @@ export default function PcPopsLista({
   mensagem,
 }: Props) {
   const [adicionando, setAdicionando] = useState(false);
-  const [menuAdicionar, setMenuAdicionar] = useState(false);
   const [deModelo, setDeModelo] = useState(false);
   const [codigo, setCodigo] = useState("");
   const [titulo, setTitulo] = useState("");
@@ -188,11 +187,22 @@ export default function PcPopsLista({
         </div>
         <div className="pgl-fim">
           <div className="pgl-resp">{responsavel}</div>
-          {podeEditar && conjunto.length > 0 && (
+          {podeEditar && (
             <div className="pgl-criar">
-              {faltamCriar === 0 && motivoSemCriar && <span className="pgl-motivo">{motivoSemCriar}</span>}
-              <button type="button" className="ui-btn ui-btn--criar ui-btn--small" disabled={faltamCriar === 0} onClick={onCriarFaltantes}>
-                {faltamCriar === 0 ? "Criar POPs de uma vez" : faltamCriar === 1 ? "Criar 1 POP de uma vez" : `Criar os ${faltamCriar} POPs de uma vez`}
+              {conjunto.length > 0 && faltamCriar === 0 && motivoSemCriar && <span className="pgl-motivo">{motivoSemCriar}</span>}
+              {conjunto.length > 0 && (
+                <button type="button" className="ui-btn ui-btn--criar ui-btn--small" disabled={faltamCriar === 0} onClick={onCriarFaltantes}>
+                  {faltamCriar === 0 ? "Criar POPs de uma vez" : faltamCriar === 1 ? "Criar 1 POP de uma vez" : `Criar os ${faltamCriar} POPs de uma vez`}
+                </button>
+              )}
+              {/* Logo abaixo de "Criar POPs de uma vez", alinhado e com a mesma largura; só fica laranja quando o outro está desabilitado (ou não existe). */}
+              <button
+                type="button"
+                className={`ui-btn ui-btn--small ${conjunto.length > 0 && faltamCriar > 0 ? "ui-btn--secondary" : "ui-btn--criar"}`}
+                aria-haspopup="dialog"
+                onClick={() => (onCriarDeModelo ? setDeModelo(true) : setAdicionando(true))}
+              >
+                + Adicionar POP
               </button>
             </div>
           )}
@@ -211,46 +221,15 @@ export default function PcPopsLista({
 
         <div className="pgl-secao-linha">
           <div className="pgl-secao">Outros POPs e documentos da empresa</div>
-          {podeEditar && !adicionando && !deModelo && (
-            <div className="pgl-add-menu" onKeyDown={(evento) => evento.key === "Escape" && setMenuAdicionar(false)}>
-              <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" aria-haspopup="menu" aria-expanded={menuAdicionar} onClick={() => setMenuAdicionar((aberto) => !aberto)}>
-                + Adicionar POP
-              </button>
-              {menuAdicionar && (
-                <div className="pgl-add-opcoes" role="menu">
-                  <button
-                    type="button"
-                    role="menuitem"
-                    className="pgl-add-opcao"
-                    onClick={() => {
-                      setMenuAdicionar(false);
-                      setAdicionando(true);
-                    }}
-                  >
-                    POP em branco
-                  </button>
-                  {onCriarDeModelo && (
-                    <button
-                      type="button"
-                      role="menuitem"
-                      className="pgl-add-opcao"
-                      onClick={() => {
-                        setMenuAdicionar(false);
-                        setDeModelo(true);
-                      }}
-                    >
-                      A partir de modelo
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
         </div>
         {podeEditar && deModelo && onCriarDeModelo && (
           <PcModelosPop
             pops={pops}
             onCancelar={() => setDeModelo(false)}
+            onEmBranco={() => {
+              setDeModelo(false);
+              setAdicionando(true);
+            }}
             onCriar={(modeloId, codigo, titulo) => {
               const resultado = onCriarDeModelo(modeloId, codigo, titulo);
               if (resultado.ok) setDeModelo(false);

@@ -324,6 +324,18 @@ export function montarLinhaDoPop(
   };
 }
 
+/** "Outros POPs": por código (POP-05, POP-06…, números como números); sem código, no fim, por título. */
+export function ordenarPorCodigo<T extends { codigo?: string; titulo: string }>(linhas: T[]): T[] {
+  const comparar = (a: string, b: string) => a.localeCompare(b, "pt-BR", { numeric: true, sensitivity: "base" });
+  return [...linhas].sort((a, b) => {
+    const ca = (a.codigo || "").trim();
+    const cb = (b.codigo || "").trim();
+    if (ca && cb) return comparar(ca, cb) || comparar(a.titulo, b.titulo);
+    if (ca !== cb) return ca ? -1 : 1;
+    return comparar(a.titulo, b.titulo);
+  });
+}
+
 /** Conjunto da norma (um por definição) e "Outros POPs e documentos", cada grupo na ordem da regra. */
 export function montarListaDePops(entrada: EntradaDaLista): { conjunto: LinhaComDetalhe[]; outros: LinhaComDetalhe[] } {
   const pops = entrada.empresa.pops || [];
@@ -337,5 +349,5 @@ export function montarListaDePops(entrada: EntradaDaLista): { conjunto: LinhaCom
   const outros = pops
     .filter((pop) => !idsDoConjunto.has(pop.id) && (entrada.comArquivados || !pop.arquivado))
     .map((pop) => montarLinhaDoPop(pop, undefined, entrada));
-  return { conjunto: ordenarLinhas(conjunto), outros: ordenarLinhas(outros) };
+  return { conjunto: ordenarLinhas(conjunto), outros: ordenarPorCodigo(outros) };
 }

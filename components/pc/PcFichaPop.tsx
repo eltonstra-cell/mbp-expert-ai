@@ -13,7 +13,7 @@ import { CORES_DA_SITUACAO, comprovantesVigentesDoPop, montarLinhaDoPop, ultimoR
 import { CONJUNTO_DA_NORMA, MENSAGEM_NORMA_ALTERADA, hojeISO, popPrecisaRevisarPorNorma, popVigente } from "@/lib/popsNorma";
 import { formatarData, formatarDataCurta, formatarHora } from "@/lib/dataLocal";
 import { mensagemDeComprovanteVazio } from "@/lib/comprovantePop";
-import { ROTULO_NAO_CONFERIDO, itensFeitos, marcarComoConferido, marcarItemAConferir, podeMarcarComoConferido, popNaoConferido } from "@/lib/popConferencia";
+import { ROTULO_CURTO_NAO_CONFERIDO, ROTULO_NAO_CONFERIDO, itensFeitos, marcarComoConferido, marcarItemAConferir, podeMarcarComoConferido, popNaoConferido } from "@/lib/popConferencia";
 import { nomeECargo } from "@/lib/nomeCargo";
 import { ROTULO_DA_VALIDADE, diasEntre, leituraDaVersao, rotuloDoTipo, situacaoDaValidade } from "@/lib/registrosEmpresa";
 
@@ -123,7 +123,7 @@ export default function PcFichaPop({ pop, empresa, usuario, podeEditar, onImprim
           </span>
           <span className="ficha-chip">v{pop.versao}</span>
           {pop.catalogoId && <span className="ficha-chip ficha-chip--modelo">Modelo do app</span>}
-          {popNaoConferido(pop) && <span className="pop-revisar">{ROTULO_NAO_CONFERIDO}</span>}
+          {popNaoConferido(pop) && <span className="pop-revisar pop-nao-conferido" title={ROTULO_NAO_CONFERIDO}>{ROTULO_CURTO_NAO_CONFERIDO}</span>}
           {popPrecisaRevisarPorNorma(pop) && (
             <span className="pop-revisar" title={MENSAGEM_NORMA_ALTERADA}>
               revisar
@@ -161,18 +161,38 @@ export default function PcFichaPop({ pop, empresa, usuario, podeEditar, onImprim
               </div>
             </div>
 
-            {pop.origemModelo && (
+            {pop.origemModelo && pop.conferencia?.conferido && (
+              // Depois de conferido: bloco neutro (cinza), recolhido; os itens ficam à mão ao expandir.
+              <details className="ficha-conferir ficha-conferir--feito" aria-label="Para conferir antes de aprovar">
+                <summary className="ficha-conferir-resumo">
+                  <span className="ficha-conferir-marca" aria-hidden="true">✓</span>
+                  <span className="ficha-conferir-ok">
+                    Conferido por {nomeECargo(pop.conferencia.por?.nome, pop.conferencia.por?.cargo) || "responsável"}
+                    {pop.conferencia.em ? `, em ${dataBr(pop.conferencia.em)}` : ""}
+                  </span>
+                </summary>
+                {(pop.itensAConferir || []).length === 0 ? (
+                  <p className="ficha-vazio">Nenhum item pendente neste modelo.</p>
+                ) : (
+                  <ul className="ficha-conferir-lista">
+                    {(pop.itensAConferir || []).map((item, indice) => (
+                      <li key={`${indice}-${item.texto}`}>
+                        <label className="ficha-conferir-item">
+                          <input type="checkbox" checked={item.feito} disabled={!podeEditar || !onAtualizarConferencia} onChange={(evento) => onAtualizarConferencia?.(marcarItemAConferir(pop, indice, evento.target.checked))} />
+                          <span>{item.texto}</span>
+                        </label>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </details>
+            )}
+
+            {pop.origemModelo && !pop.conferencia?.conferido && (
               <div className="ficha-conferir" role="group" aria-label="Para conferir antes de aprovar">
                 <div className="ficha-sub-linha">
                   <h3 className="ficha-sub">Para conferir antes de aprovar</h3>
-                  {pop.conferencia?.conferido ? (
-                    <span className="ficha-conferir-ok">
-                      Conferido por {nomeECargo(pop.conferencia.por?.nome, pop.conferencia.por?.cargo) || "responsável"}
-                      {pop.conferencia.em ? `, em ${dataBr(pop.conferencia.em)}` : ""}
-                    </span>
-                  ) : (
-                    <span className="ficha-conferir-conta">{itensFeitos(pop).feitos} de {itensFeitos(pop).total} marcados</span>
-                  )}
+                  <span className="ficha-conferir-conta">{itensFeitos(pop).feitos} de {itensFeitos(pop).total} marcados</span>
                 </div>
                 {(pop.itensAConferir || []).length === 0 ? (
                   <p className="ficha-vazio">Nenhum item pendente neste modelo.</p>
@@ -188,7 +208,7 @@ export default function PcFichaPop({ pop, empresa, usuario, podeEditar, onImprim
                     ))}
                   </ul>
                 )}
-                {podeEditar && !pop.conferencia?.conferido && onAtualizarConferencia && (
+                {podeEditar && onAtualizarConferencia && (
                   <div className="ficha-conferir-acao">
                     <button
                       type="button"
@@ -199,6 +219,7 @@ export default function PcFichaPop({ pop, empresa, usuario, podeEditar, onImprim
                     >
                       Marcar como conferido
                     </button>
+                    {!podeMarcarComoConferido(pop) && <span className="pdoc-falta" role="status">Marque todos os itens para liberar</span>}
                   </div>
                 )}
               </div>
