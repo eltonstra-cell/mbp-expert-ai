@@ -5,6 +5,24 @@
 export const FALHAS_SEGUIDAS_PARA_OFFLINE = 2;
 export const ESPERA_ENTRE_TENTATIVAS_MS = 1500;
 
+/** Espera crescente entre as leituras da nuvem (tolera o "acordar" do banco): depois da 1ª, 2ª e 3ª falha. O aviso só vem depois da última. */
+export const ESPERAS_DA_NUVEM_MS = [1500, 4000, 8000] as const;
+export const TENTATIVAS_DA_NUVEM = ESPERAS_DA_NUVEM_MS.length + 1;
+
+/** Quanto esperar antes de ler de novo, dado quantas falhas seguidas já houve; null quando era a última tentativa (aí vale o aviso). */
+export function esperaAposFalhaDaNuvem(falhasSeguidas: number): number | null {
+  if (falhasSeguidas < 1 || falhasSeguidas >= TENTATIVAS_DA_NUVEM) return null;
+  return ESPERAS_DA_NUVEM_MS[falhasSeguidas - 1];
+}
+
+/**
+ * Rótulo do selo do topo quando há problema: "Sem conexão" só quando realmente offline; com internet e a nuvem sem responder é
+ * "Não sincronizou" (os dados continuam guardados neste aparelho).
+ */
+export function rotuloDoSeloComProblema(online: boolean): "Sem conexão" | "Não sincronizou" {
+  return online ? "Não sincronizou" : "Sem conexão";
+}
+
 type Resposta = { ok: boolean };
 type Buscar = (url: string, init: { method: string; cache: "no-store"; signal?: AbortSignal }) => Promise<Resposta>;
 
