@@ -9,6 +9,7 @@ import type {
 import { SETORES_OFICIAIS_MANUAL, agruparEquipamentosPorAmbiente, resumoDosSetoresMarcados } from "@/lib/manualBase";
 import { aplicarEscolhaDeSetores } from "@/lib/escolhaEmJanela";
 import { ambientesParaMover, moverEquipamento } from "@/lib/equipamentosCadastro";
+import { textoCurtoDaResponsabilidade, textoDosAtivos } from "@/lib/manualIdentificacao";
 import EscolhaEmJanela from "@/components/EscolhaEmJanela";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
 
@@ -54,6 +55,8 @@ export default function ManualBaseFields({
   const [papelAdicional, setPapelAdicional] = useState<PapelResponsabilidadeManual>("Proprietário");
   const [novoAmbiente, setNovoAmbiente] = useState("");
   const [detalhesAbertos, setDetalhesAbertos] = useState<string[]>([]);
+  const [respEmEdicao, setRespEmEdicao] = useState<string | null>(null);
+  const [gruposRecolhidos, setGruposRecolhidos] = useState<PapelResponsabilidadeManual[]>([]);
 
   const setoresParaEquipamentos = setores.length ? setores : [...SETORES_OFICIAIS_MANUAL];
   const mostrarAmbientes = modo === "completo" || modo === "ambientes";
@@ -198,42 +201,66 @@ export default function ManualBaseFields({
         </section>
       )}
 
-      {mostrarResponsabilidades && <details open={modo === "responsabilidades"} className="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-4">
-        <summary className="cursor-pointer list-none">
-          <SectionTitle title="Responsabilidades" description="Textos base do Manual. Desative ou ajuste conforme o contrato e a realidade do cliente." />
-        </summary>
-        <div className="mt-4 space-y-5">
-          {(["Proprietário", "Consultor/RT"] as PapelResponsabilidadeManual[]).map((papel) => (
-            <div key={papel}>
-              <div className="mb-2 text-sm font-extrabold text-[color:var(--ink)]">{papel}</div>
-              <div className="space-y-2">
-                {responsabilidades.map((responsabilidade, indice) => responsabilidade.papel === papel && (
-                  <div key={responsabilidade.id} className="flex gap-2 rounded-xl bg-white p-3">
-                    <input aria-label="Incluir responsabilidade" type="checkbox" checked={responsabilidade.ativa} onChange={(event) => onResponsabilidadesChange(responsabilidades.map((item, atual) => atual === indice ? { ...item, ativa: event.target.checked } : item))} />
-                    <div className="min-w-0 flex-1">
-                      <textarea rows={2} value={responsabilidade.descricao} onChange={(event) => onResponsabilidadesChange(responsabilidades.map((item, atual) => atual === indice ? { ...item, descricao: event.target.value } : item))} className="min-h-16 w-full rounded-lg border p-2 text-sm" />
-                      <FieldVoiceTools
-                        fieldKey={`responsabilidade-${responsabilidade.id}`}
-                        value={responsabilidade.descricao}
-                        onChange={(texto) => onResponsabilidadesChange(responsabilidades.map((item, atual) => atual === indice ? { ...item, descricao: texto } : item))}
-                        contexto={`Responsabilidade do papel ${papel} em um Manual de Boas Práticas. Preserve obrigações e fatos informados.`}
-                      />
-                    </div>
-                    <button type="button" aria-label="Excluir responsabilidade" onClick={() => onResponsabilidadesChange(responsabilidades.filter((_, atual) => atual !== indice))} className="self-start rounded-lg bg-[var(--nc-bg)] px-2 py-1 text-xs font-bold text-[color:var(--ink)]">Excluir</button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <select value={papelAdicional} onChange={(event) => setPapelAdicional(event.target.value as PapelResponsabilidadeManual)} className="rounded-xl border bg-white p-2 text-sm">
-            <option>Proprietário</option>
-            <option>Consultor/RT</option>
-          </select>
-          <button type="button" onClick={adicionarResponsabilidade} className="rounded-xl bg-[var(--brand-soft)] px-4 py-2 text-sm font-extrabold text-[color:var(--brand)]">+ Adicionar responsabilidade</button>
-        </div>
-      </details>}
+      {mostrarResponsabilidades && (
+        <section className="resp" aria-label="Responsabilidades">
+          <header className="resp-topo">
+            <SectionTitle title="Responsabilidades" description="Textos base do Manual. Desative ou ajuste conforme o contrato e a realidade do cliente." />
+          </header>
+          <div className="resp-lista">
+            {(["Proprietário", "Consultor/RT"] as PapelResponsabilidadeManual[]).map((papel) => {
+              const recolhido = gruposRecolhidos.includes(papel);
+              return (
+                <div key={papel} className="resp-grupo">
+                  <button type="button" className="resp-grupo-topo" aria-expanded={!recolhido} onClick={() => setGruposRecolhidos((atuais) => (recolhido ? atuais.filter((item) => item !== papel) : [...atuais, papel]))}>
+                    <span className="resp-grupo-titulo">{papel}</span>
+                    <span className="cad-conta">{textoDosAtivos(responsabilidades, papel)}</span>
+                    <span aria-hidden="true">{recolhido ? "▸" : "▾"}</span>
+                  </button>
+                  {!recolhido && (
+                    <ul className="resp-itens">
+                      {responsabilidades.map((responsabilidade, indice) => {
+                        if (responsabilidade.papel !== papel) return null;
+                        const editando = respEmEdicao === responsabilidade.id;
+                        const mudar = (alteracao: Partial<ResponsabilidadeManual>) => onResponsabilidadesChange(responsabilidades.map((item, atual) => (atual === indice ? { ...item, ...alteracao } : item)));
+                        return (
+                          <li key={responsabilidade.id} className={`resp-item${editando ? " is-editando" : ""}${responsabilidade.ativa ? "" : " is-inativa"}`}>
+                            <div className="resp-linha">
+                              <input aria-label="Incluir responsabilidade" type="checkbox" checked={responsabilidade.ativa} onChange={(event) => mudar({ ativa: event.target.checked })} />
+                              <button type="button" className="resp-texto" aria-expanded={editando} onClick={() => setRespEmEdicao(editando ? null : responsabilidade.id)}>
+                                {textoCurtoDaResponsabilidade(responsabilidade.descricao)}
+                              </button>
+                              <button type="button" aria-label="Excluir responsabilidade" onClick={() => onResponsabilidadesChange(responsabilidades.filter((_, atual) => atual !== indice))} className="cad-remover">Excluir</button>
+                            </div>
+                            {editando && (
+                              <div className="resp-edicao">
+                                <textarea rows={3} value={responsabilidade.descricao} onChange={(event) => mudar({ descricao: event.target.value })} className="ui-input cad-obs-texto" aria-label="Texto da responsabilidade" autoFocus />
+                                <FieldVoiceTools
+                                  fieldKey={`responsabilidade-${responsabilidade.id}`}
+                                  value={responsabilidade.descricao}
+                                  onChange={(texto) => mudar({ descricao: texto })}
+                                  contexto={`Responsabilidade do papel ${papel} em um Manual de Boas Práticas. Preserve obrigações e fatos informados.`}
+                                />
+                                <button type="button" className="ui-btn ui-btn--secondary ui-btn--small resp-pronto" onClick={() => setRespEmEdicao(null)}>Pronto</button>
+                              </div>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <div className="resp-rodape">
+            <select value={papelAdicional} onChange={(event) => setPapelAdicional(event.target.value as PapelResponsabilidadeManual)} className="cad-input resp-papel" aria-label="Papel da nova responsabilidade">
+              <option>Proprietário</option>
+              <option>Consultor/RT</option>
+            </select>
+            <button type="button" onClick={adicionarResponsabilidade} className="ui-btn ui-btn--secondary">+ Adicionar responsabilidade</button>
+          </div>
+        </section>
+      )}
 
       {mostrarEquipamentos && (
         <section className="cad-cartao" aria-label="Quadro de equipamentos e móveis">

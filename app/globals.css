@@ -4620,3 +4620,68 @@ button.esc-chip--mais:focus-visible{outline:3px solid #E8B04B;outline-offset:1px
 .pc-amb-add-cadastro{display:flex;align-items:center;gap:8px;font-size:.92rem;color:#12202B}
 .pc-amb-outro{align-self:flex-start}
 .pc-route-remove{width:32px;height:32px}
+
+/* ===== Etapa 3: POP e Manual ===== */
+/* 3.1 Topo do POP: "Próxima ação" na linha dos botões (à esquerda), abas de 36 px, "Notas do modelo ▾" como selo com painel neutro */
+.ficha-aba{min-height:36px}
+.pdoc-barra{align-items:center;justify-content:flex-end}
+.pdoc-proxima{flex:1 1 280px;min-width:0;margin-right:auto;font-size:.95rem;line-height:1.3;color:#12202B}
+.pdoc-proxima-rotulo{font-weight:500}
+.pdoc-barra--edicao{margin-bottom:8px}
+.pop-notas-selo{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 14px;border:1.5px solid #B4C2CE;border-radius:999px;background:#EEF1F5;font-size:.92rem;color:#12202B;cursor:pointer}
+.pop-notas-selo.is-aberto{background:#fff}
+.pop-notas-conta{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;border:1.5px solid #E8B04B;border-radius:999px;background:#FEF6E6;font-size:12px;line-height:1;color:#12202B}
+.pop-notas-painel{display:flex;flex-direction:column;gap:12px;padding:12px 16px;border:1px solid #B4C2CE;border-radius:12px;background:#EEF1F5;font-size:.94rem;color:#12202B}
+.pop-notas-grupo{display:flex;flex-direction:column;gap:8px}
+.pop-notas-titulo{margin:0;font-family:var(--font-display),"Outfit",sans-serif;font-size:1rem;font-weight:500;color:#12202B}
+.pop-notas-lista{display:flex;flex-direction:column;gap:8px;margin:0;padding:0;list-style:none}
+.pop-nota{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 12px;border-radius:10px;line-height:1.35}
+.pop-nota--pendencia{border:1.5px solid #E8B04B;background:#FEF6E6}
+.pop-nota--informacao{border:1px solid #B4C2CE;background:#fff;justify-content:flex-start}
+/* 3.2 Aviso de segurança clicável e destino em destaque */
+.pdoc-bloqueio--link,.pdoc-chip-conferir--link{font-family:inherit;text-decoration:underline;cursor:pointer}
+.pdoc-bloqueio--link:focus-visible,.pdoc-chip-conferir--link:focus-visible{outline:3px solid #E8B04B;outline-offset:2px}
+.ficha-conferir.is-destaque{box-shadow:0 0 0 4px rgba(232,176,75,.45)}
+.pdoc-bloco-modelo.is-destaque{padding:8px;border:2px solid #E8B04B;border-radius:12px;background:#FEF6E6}
+@media print{.pop-notas-painel,.pop-notas-selo,.pdoc-proxima{display:none!important}}
+/* 3.4 Lista de POPs: sem o vazio de ~150 px entre os filtros e "Conjunto da norma" (a lista sobe, 16 px de distância); os botões da direita ficam no topo */
+.pgl-cabeca{margin-bottom:4px}
+.pgl-apoio{min-height:0}
+@media (min-width:900px){
+  .pgl-cabeca--com-lateral .pgl-lateral{margin-bottom:-40px}
+  .pgl-cabeca--com-lateral + .pgl-lista > .pgl-secao-linha:first-child{margin-top:0;padding-right:232px}
+}
+@media (max-width:899px){.pgl-cabeca--com-lateral + .pgl-lista > .pgl-secao-linha:first-child{margin-top:0}}
+/* 3.3 Manual compacto: Identificação complementar (cartão recolhível, 3 colunas, campos de 40 px) e Responsabilidades em linhas */
+.idc{display:flex;flex-direction:column;gap:12px;padding:12px 16px;border:1px solid #B4C2CE;border-radius:14px;background:#fff}
+.idc-topo{display:flex;align-items:center;gap:12px;width:100%;padding:0;border:0;background:transparent;text-align:left;cursor:pointer}
+.idc-textos{display:flex;flex:1 1 auto;flex-direction:column;gap:2px;min-width:0}
+.idc-titulo{font-family:var(--font-display),"Outfit",sans-serif;font-size:1.05rem;font-weight:500;color:#12202B}
+.idc-apoio{font-size:13.5px;color:#51606c}
+.idc-resumo{flex:none;font-size:.92rem;color:#12202B}
+.idc-pendente{flex:none;padding:2px 10px;border:1.5px solid #E8B04B;border-radius:999px;background:#FEF6E6;font-size:13px;color:#12202B}
+.idc-seta{flex:none;color:#12202B}
+.idc-grade{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 16px}
+.idc-campo{display:flex;flex-direction:column;gap:4px;min-width:0}
+.idc-rotulo{display:flex;flex-wrap:wrap;align-items:center;gap:6px;min-height:18px;font-size:13.5px;line-height:18px;color:#12202B}
+.idc-selo{padding:0 8px;border-radius:999px;background:#DCEBFA;font-size:12px;line-height:18px;color:#12202B}
+.idc-input{box-sizing:border-box;width:100%;height:40px;padding:0 12px;border:2px solid #B4C2CE;border-radius:10px;background-color:#fff;font-size:.98rem;color:#12202B}
+.idc-input:focus{outline:0;border-color:#E8B04B;box-shadow:inset 0 0 0 1px #E8B04B}
+@media (max-width:1099px){.idc-grade{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:719px){.idc-grade{grid-template-columns:minmax(0,1fr)}}
+.resp{display:flex;flex-direction:column;gap:8px;padding:12px 16px;border:1px solid #B4C2CE;border-radius:14px;background:#fff}
+.resp-topo{flex:none}
+.resp-lista{display:flex;flex-direction:column;gap:12px;max-height:calc(100vh - 430px);min-height:160px;overflow-y:auto;padding-right:4px;overscroll-behavior:contain}
+.resp-grupo{display:flex;flex-direction:column;gap:8px}
+.resp-grupo-topo{display:flex;align-items:center;gap:10px;width:100%;min-height:36px;padding:0 4px;border:0;background:transparent;text-align:left;cursor:pointer;color:#12202B}
+.resp-grupo-titulo{font-family:var(--font-display),"Outfit",sans-serif;font-size:16px;font-weight:500}
+.resp-itens{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
+.resp-item{display:flex;flex-direction:column;gap:8px;padding:6px 10px;border:1.5px solid #B4C2CE;border-radius:12px;background:#fff}
+.resp-item.is-editando{border-color:#E8B04B;background:#FEF6E6}
+.resp-item.is-inativa .resp-texto{color:#51606c}
+.resp-linha{display:flex;align-items:center;gap:12px}
+.resp-texto{flex:1 1 auto;min-width:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;padding:0;border:0;background:transparent;font-size:.95rem;line-height:1.35;text-align:left;color:#12202B;cursor:pointer}
+.resp-edicao{display:flex;flex-direction:column;gap:8px}
+.resp-pronto{align-self:flex-end}
+.resp-rodape{flex:none;display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding-top:8px;border-top:1px solid #EEF1F5}
+.resp-papel{width:auto;min-width:160px}

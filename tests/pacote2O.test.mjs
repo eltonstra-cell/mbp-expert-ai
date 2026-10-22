@@ -338,7 +338,8 @@ test("notas para o consultor nunca vão para a folha nem para o PDF", () => {
   assert.ok(comNotas > 10);
   const editor = ler("../components/pc/PcPopEditor.tsx");
   assert.match(editor, /Notas do modelo \(só para o RT\)/);
-  assert.match(editor, /<details className="pop-notas no-print">/);
+  assert.match(editor, /className=\{`pop-notas-selo no-print/, "o selo Notas do modelo abre o painel inline (etapa 3)");
+  assert.match(ler("../app/globals.css"), /\.pop-notas-painel,\.pop-notas-selo,\.pdoc-proxima\{display:none!important\}/, "nunca no papel");
   assert.match(ler("../app/globals.css"), /\.pop-notas\{display:none!important\}/);
 });
 

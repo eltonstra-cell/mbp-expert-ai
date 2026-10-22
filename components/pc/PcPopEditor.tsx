@@ -35,6 +35,7 @@ import { popNaoConferido } from "@/lib/popConferencia";
 import { conteudoComResponsavelEfetivo, diferencaComDados, marcaManualApos, responsavelDaExecucao } from "@/lib/responsavelDoPop";
 import CaixaQueCresce from "@/components/CaixaQueCresce";
 import { modeloPorId } from "@/lib/popModelos";
+import { itensDasNotas, totalDePendencias, type AlvoDaPendencia, type ItemDasNotas } from "@/lib/popPendencias";
 
 type Secao = "identificacao" | "objetivo" | "referencias" | "responsavel" | "passos" | "acao" | "registro" | "extra" | "extra2" | "modelo";
 
@@ -54,6 +55,10 @@ type Props = {
   /** Descarta o rascunho de uma nova versão; a última versão aprovada continua vigente. */
   onDescartar?: (pop: ProcedimentoOperacionalPadronizado) => void;
   mensagem?: string;
+  /** Frase da próxima ação: fica na mesma linha dos botões, à esquerda. */
+  proximaAcao?: string;
+  /** Leva ao bloco "Para conferir antes de aprovar" (Resumo da ficha), em destaque. */
+  onIrParaConferencia?: () => void;
   /** Documento (editor) ou Histórico (versões, aprovações e motivo). O cabeçalho e as abas ficam na ficha do POP. */
   parte?: "documento" | "historico";
 };
@@ -169,17 +174,52 @@ function umAnoDepois(): string {
   return `${Number(ano) + 1}-${mes}-${dia}`;
 }
 
-// Instruções do modelo ao consultor: recolhidas, só para quem edita, e nunca vão para a folha nem para o PDF.
-function NotasDoModelo({ notas }: { notas: string[] }) {
+// Instruções do modelo ao consultor: só para quem edita, nunca vão para a folha nem para o PDF. O selo abre um painel neutro
+// que separa PENDÊNCIA (âmbar, com ação) de INFORMAÇÃO (cinza, sem ação).
+function SeloDasNotas({ itens, aberto, onAlternar }: { itens: ItemDasNotas[]; aberto: boolean; onAlternar: () => void }) {
+  const pendentes = totalDePendencias(itens);
   return (
-    <details className="pop-notas no-print">
-      <summary>Notas do modelo (só para o RT)</summary>
-      <ul>
-        {notas.map((nota) => (
-          <li key={nota}>{nota}</li>
-        ))}
-      </ul>
-    </details>
+    <button type="button" className={`pop-notas-selo no-print${aberto ? " is-aberto" : ""}`} aria-expanded={aberto} aria-controls="pop-notas-painel" onClick={onAlternar}>
+      Notas do modelo
+      {pendentes > 0 && <span className="pop-notas-conta" title={`${pendentes} pendente(s)`}>{pendentes}</span>}
+      <span aria-hidden="true">{aberto ? " ▴" : " ▾"}</span>
+    </button>
+  );
+}
+
+function PainelDasNotas({ itens, onAcao }: { itens: ItemDasNotas[]; onAcao: (alvo: AlvoDaPendencia) => void }) {
+  const pendencias = itens.filter((item) => item.tipo === "pendencia");
+  const informacoes = itens.filter((item) => item.tipo === "informacao");
+  return (
+    <div id="pop-notas-painel" className="pop-notas-painel no-print" role="region" aria-label="Notas do modelo (só para o RT)">
+      {pendencias.length > 0 && (
+        <div className="pop-notas-grupo">
+          <h3 className="pop-notas-titulo">Pendências</h3>
+          <ul className="pop-notas-lista">
+            {pendencias.map((item) => (
+              <li key={item.texto} className="pop-nota pop-nota--pendencia">
+                <span>{item.texto}</span>
+                {item.acao && (
+                  <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => onAcao(item.acao!.alvo)}>
+                    {item.acao.rotulo}
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {informacoes.length > 0 && (
+        <div className="pop-notas-grupo">
+          <h3 className="pop-notas-titulo">Informações (só para o RT, não saem no PDF)</h3>
+          <ul className="pop-notas-lista">
+            {informacoes.map((item) => (
+              <li key={item.texto} className="pop-nota pop-nota--informacao">{item.texto}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -191,7 +231,7 @@ function horaCerta(): string {
 }
 
 // Documento (editor em painéis) e Histórico (versões, aprovações e motivo) do POP. O cabeçalho e as abas ficam na ficha (PcFichaPop).
-export default function PcPopEditor({ pop, empresa, usuario, podeEditar, responsavelDoEstabelecimento, onImprimir, onSalvarRascunho, onEnviar, onAprovar, onNovaVersao, onDescartar, mensagem, parte = "documento" }: Props) {
+export default function PcPopEditor({ pop, empresa, usuario, podeEditar, responsavelDoEstabelecimento, onImprimir, onSalvarRascunho, onEnviar, onAprovar, onNovaVersao, onDescartar, mensagem, proximaAcao, onIrParaConferencia, parte = "documento" }: Props) {
   // Mais de um passo em branco vira um só logo ao abrir.
   const [rascunho, setRascunho] = useState<ProcedimentoOperacionalPadronizado>(() => (pop.conteudo?.passos ? { ...pop, conteudo: { ...pop.conteudo, passos: juntarPassosEmBrancoRepetidos(pop.conteudo.passos) } } : pop));
   const [motivoDaNovaVersao, setMotivoDaNovaVersao] = useState("");
@@ -237,6 +277,31 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
   const exigencia = exigenciaDeAprovacao(pop);
   const modeloDeOrigem = modeloPorId(pop.origemModelo?.id);
   const notasDoModelo = podeEditar ? modeloDeOrigem?.notasParaOConsultor || [] : [];
+  const editavelAqui = podeEditar && rascunho.status === "Rascunho";
+  const itensDasNotasNaTela = podeEditar ? itensDasNotas(notasDoModelo, comConferenciaAtual(rascunho), editavelAqui, Boolean(onIrParaConferencia)) : [];
+  const [notasAbertas, setNotasAbertas] = useState(false);
+  const [destaqueDoModelo, setDestaqueDoModelo] = useState<IdDaSecaoDoModelo | null>(null);
+  function resolverPendencia(alvo: AlvoDaPendencia) {
+    if (alvo === "conferencia") {
+      onIrParaConferencia?.();
+      return;
+    }
+    setSecao("modelo");
+    setLado("editar");
+    setSecoesDoModeloAbertas((atuais) => (atuais.includes("quemRealiza") ? atuais : [...atuais, "quemRealiza"]));
+    setDestaqueDoModelo("quemRealiza");
+    setTimeout(() => {
+      const bloco = document.getElementById("pdoc-bloco-quemRealiza");
+      bloco?.scrollIntoView({ behavior: "smooth", block: "center" });
+      bloco?.querySelector<HTMLElement>("textarea, input")?.focus({ preventScroll: true });
+    }, 60);
+  }
+  const notasNaBarra = itensDasNotasNaTela.length > 0 ? (
+    <SeloDasNotas itens={itensDasNotasNaTela} aberto={notasAbertas} onAlternar={() => setNotasAbertas((aberto) => !aberto)} />
+  ) : null;
+  const proximaAcaoNaBarra = proximaAcao ? (
+    <span className="pdoc-proxima"><span className="pdoc-proxima-rotulo">Próxima ação:</span> {proximaAcao}</span>
+  ) : null;
   const sugestaoDaFrequencia = sugestaoDeFrequencia(conteudo.frequenciaDetalhe);
   const secoesQueFaltam = secoesQueFaltamParaEnviar(rascunho, dadosDoResponsavel);
   const textoFalta = textoDaFalta(secoesQueFaltam);
@@ -349,6 +414,8 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
             </p>
           )}
           <div className="pdoc-barra">
+            {proximaAcaoNaBarra}
+            {notasNaBarra}
             {onImprimir && (
               <button type="button" className="ui-btn ui-btn--secondary" onClick={() => { setCapaEscolhida(false); setEscolhendoImpressao(true); }}>
                 Imprimir / PDF
@@ -356,7 +423,11 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
             )}
             {aguardando && podeAprovar && exigencia === "bloqueada" && (
               <>
-                <span className="pdoc-bloqueio" role="status">{bloqueioDeAprovacao(pop)}</span>
+                {onIrParaConferencia ? (
+                  <button type="button" className="pdoc-bloqueio pdoc-bloqueio--link" title="Ir aos itens para conferir" onClick={onIrParaConferencia}>{bloqueioDeAprovacao(pop)}</button>
+                ) : (
+                  <span className="pdoc-bloqueio" role="status">{bloqueioDeAprovacao(pop)}</span>
+                )}
                 <button type="button" className="ui-btn ui-btn--criar" disabled title={bloqueioDeAprovacao(pop)}>
                   Aprovar e assinar
                 </button>
@@ -373,11 +444,17 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
               </button>
             )}
           </div>
-          {notasDoModelo.length > 0 && <NotasDoModelo notas={notasDoModelo} />}
+          {notasAbertas && itensDasNotasNaTela.length > 0 && <PainelDasNotas itens={itensDasNotasNaTela} onAcao={resolverPendencia} />}
           <PopFolha folha={folhaDeLeitura} modo="leitura" id="pop-folha" comCapa={comCapa} />
         </div>
       )}
 
+      {parte === "documento" && !modoLeitura && (proximaAcaoNaBarra || notasNaBarra) && (
+        <div className="pdoc-barra pdoc-barra--edicao">
+          {proximaAcaoNaBarra}
+          {notasNaBarra}
+        </div>
+      )}
       {parte === "documento" && !modoLeitura && (
         <div className={`pdoc pdoc--${lado}`}>
           <div className="pdoc-lados" role="tablist" aria-label="Editar ou ver a folha">
@@ -404,7 +481,7 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
             </ul>
           </aside>
           <div className="pdoc-meio">
-          {notasDoModelo.length > 0 && <NotasDoModelo notas={notasDoModelo} />}
+          {notasAbertas && itensDasNotasNaTela.length > 0 && <PainelDasNotas itens={itensDasNotasNaTela} onAcao={resolverPendencia} />}
           <SecaoRecolhivel id="identificacao" titulo="Identificação" resumo={rascunho.proximaRevisao ? `revisar até ${rascunho.proximaRevisao.split("-").reverse().join("/")}` : "revisar até: não definido"} aberta={secao === "identificacao"} onAlternar={alternar}>
             <div className="pop-grade">
               <Campo rotulo="Código" valor={rascunho.codigo} desabilitado={!editavel} onChange={(valor) => setRascunho({ ...rascunho, codigo: valor })} />
@@ -649,7 +726,7 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
             <SecaoRecolhivel id="modelo" titulo="Conteúdo do modelo" resumo="listas do modelo" aberta={secao === "modelo"} onAlternar={alternar}>
               <p className="ui-row-sub pdoc-ajuda">Só as seções com conteúdo aparecem aqui; para escrever em outra, use “+ Adicionar seção”. Seção em branco não sai na folha.</p>
               {SECOES_DO_MODELO.filter((item) => secoesDoModeloAbertas.includes(item.id)).map((item) => (
-                <div key={item.id} className="pdoc-bloco-modelo">
+                <div key={item.id} id={`pdoc-bloco-${item.id}`} className={`pdoc-bloco-modelo${destaqueDoModelo === item.id ? " is-destaque" : ""}`}>
                   <h3 className="pdoc-bloco-titulo">{item.titulo}</h3>
                   {item.id === "alcance" ? (
                     <label className="pc-field">
@@ -812,7 +889,11 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
                 {tentouEnviar ? textoFalta : "Falta: Identificação"}
               </span>
             )}
-            {avisoDeConferencia && <span className="pdoc-chip-conferir" role="note">{avisoDeConferencia}</span>}
+            {avisoDeConferencia && (onIrParaConferencia ? (
+              <button type="button" className="pdoc-chip-conferir pdoc-chip-conferir--link" title="Ir aos itens para conferir" onClick={onIrParaConferencia}>{avisoDeConferencia}</button>
+            ) : (
+              <span className="pdoc-chip-conferir" role="note">{avisoDeConferencia}</span>
+            ))}
             <button type="button" className="ui-btn ui-btn--criar" onClick={enviarParaAprovar}>
               Enviar para aprovação
             </button>

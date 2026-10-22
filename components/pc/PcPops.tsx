@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Empresa, ProcedimentoOperacionalPadronizado, UsuarioSistema } from "@/types";
 import PcFichaPop, { type AbaFicha } from "@/components/pc/PcFichaPop";
+import { destinoDoAprovar, type AlvoDaPendencia } from "@/lib/popPendencias";
 import PcPopsLista from "@/components/pc/PcPopsLista";
 import type { CabecalhoDeImpressao } from "@/lib/printFooter";
 import { useRegistrosDaEmpresa } from "@/components/RegistrosEmpresaContext";
@@ -47,14 +48,17 @@ export default function PcPops({ pops, empresa, usuario = null, podeEditar = fal
   const contexto = useRegistrosDaEmpresa();
   const [fichaId, setFichaId] = useState<string | null>(null);
   const [abaInicial, setAbaInicial] = useState<AbaFicha>("resumo");
+  const [alvoInicial, setAlvoInicial] = useState<AlvoDaPendencia | undefined>(undefined);
   const [mensagemFicha, setMensagemFicha] = useState("");
   const [verArquivados, setVerArquivados] = useState(false);
   const hoje = hojeISO();
 
   useEffect(() => {
     if (!abrirFicha) return;
+    const destino = destinoAoAbrir(abrirFicha.popId, abrirFicha.aba);
     setFichaId(abrirFicha.popId);
-    setAbaInicial(abrirFicha.aba || "resumo");
+    setAbaInicial(destino.aba);
+    setAlvoInicial(destino.alvo);
     setMensagemFicha("");
     aoConsumirPedido?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -97,9 +101,19 @@ export default function PcPops({ pops, empresa, usuario = null, podeEditar = fal
   }, [rotuloDaFicha, rotuloCompleto]);
   useEffect(() => () => aoMudarFicha?.(null, null), []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // "Aprovar" (aba Documento) de um POP de modelo ainda não conferido abre o POP já na pendência (a conferência, no Resumo).
+  function destinoAoAbrir(id: string, aba?: AbaFicha): { aba: AbaFicha; alvo?: AlvoDaPendencia } {
+    const alvoPop = pops.find((pop) => pop.id === id);
+    const aguardando = alvoPop?.status === "Aguardando aprovação" || alvoPop?.status === "Em revisão";
+    if (aba === "documento" && alvoPop && aguardando) return destinoDoAprovar(alvoPop);
+    return { aba: aba || "resumo" };
+  }
+
   function abrir(id: string, aba?: AbaFicha) {
+    const destino = destinoAoAbrir(id, aba);
     setMensagemFicha("");
-    setAbaInicial(aba || "resumo");
+    setAbaInicial(destino.aba);
+    setAlvoInicial(destino.alvo);
     setFichaId(id);
   }
 
@@ -110,6 +124,7 @@ export default function PcPops({ pops, empresa, usuario = null, podeEditar = fal
     onPersistir([...pops, novo]);
     setMensagemFicha("");
     setAbaInicial("documento");
+    setAlvoInicial(undefined);
     setFichaId(novo.id);
   }
 
@@ -166,6 +181,7 @@ export default function PcPops({ pops, empresa, usuario = null, podeEditar = fal
         contexto={contexto}
         mensagem={mensagemFicha}
         abaInicial={abaInicial}
+        alvoInicial={alvoInicial}
         onVoltar={() => {
           setFichaId(null);
           setMensagemFicha("");

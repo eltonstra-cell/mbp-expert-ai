@@ -240,7 +240,7 @@ test("sugestão de frequência: aparece nos 19 modelos que têm frequência (com
 // ===== 2.4 e 3: pendências reescritas =====
 test("bloco conferido: cinza neutro, recolhido, 'Conferido por [nome], [cargo], em [data]' e itens ao expandir", () => {
   const ficha = ler("../components/pc/PcFichaPop.tsx");
-  assert.ok(ficha.includes('<details className="ficha-conferir ficha-conferir--feito"'));
+  assert.ok(ficha.includes('className="ficha-conferir ficha-conferir--feito"'));
   assert.ok(ficha.includes("Conferido por {nomeECargo(") && ficha.includes('{pop.conferencia.em ? `, em ${dataBr(pop.conferencia.em)}` : ""}'));
   assert.equal(/<details[^>]*\bopen\b/.test(ficha), false, "recolhido por padrão");
   assert.ok(ficha.includes("ficha-conferir-marca"));

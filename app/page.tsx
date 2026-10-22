@@ -117,6 +117,8 @@ import RelatoriosAbas, { type AbaDeRelatorios } from "@/components/pc/Relatorios
 import { niveisDoCaminho } from "@/lib/caminhoDaFicha";
 import { assinaturaEdicaoEmpresa, temAlteracoesNaoSalvas } from "@/lib/estadoNaoSalvo";
 import { ambientesParaVisita, limparVinculos, nomeJaExistente } from "@/lib/ambientesVisita";
+import IdentificacaoComplementar from "@/components/IdentificacaoComplementar";
+import { prefillDoPerfilDoRt, semOCampo, type CampoDaIdentificacao } from "@/lib/manualIdentificacao";
 import { estadoDaBarraDeSalvar, marcadosDoUltimoSalvo } from "@/lib/escolhaEmJanela";
 import { TENTATIVAS_DA_NUVEM, conexaoAtual, esperaAposFalhaDaNuvem, rotuloDoSeloComProblema, umaTentativa } from "@/lib/conexao";
 import { mostrarVoltar, nivelAcima, registrarLocal, voltarUma, type LocalDeTela } from "@/lib/historicoDeTelas";
@@ -325,12 +327,6 @@ const camposEmpresaPrincipais = [
   "nomeFantasia", "razaoSocial", "situacao", "cnae", "cnaeDescricao", "tipo",
   "logradouro", "numero", "complemento", "bairro", "cep", "municipio", "uf",
   "telefone", "email", "responsavel", "cargoResponsavel", "horarioFuncionamento",
-] as const;
-
-const camposIdentificacaoManual = [
-  "atividadeDescricao", "consultorNome", "consultorCpfCnpj", "consultorEndereco",
-  "consultorTelefone", "consultorRegistro", "dataElaboracaoManual", "elaboradoPor",
-  "revisadoPor", "aprovadoPor",
 ] as const;
 
 const gruposAmbientesCentral = [
@@ -1180,6 +1176,8 @@ export default function Home() {
   >(criarResponsabilidadesPadrao());
   const [setoresEmpresa, setSetoresEmpresa] = useState<string[]>([]);
   const [vinculosEmpresa, setVinculosEmpresa] = useState<Record<string, string>>({});
+  // Campos do Manual que vieram do perfil do RT e ainda não foram editados (selo "do perfil do RT").
+  const [camposDoPerfilRt, setCamposDoPerfilRt] = useState<CampoDaIdentificacao[]>([]);
   const [equipamentosEmpresa, setEquipamentosEmpresa] = useState<EquipamentoSetor[]>([]);
   const [fluxosEmpresa, setFluxosEmpresa] = useState<FluxoOperacional[]>(
     criarFluxosOperacionaisPadrao()
@@ -3543,6 +3541,12 @@ export default function Home() {
 
   function editarEmpresa(empresa: Empresa) {
     if (!exigirPermissao("empresas.editar", empresa.id)) return;
+    const rtDaEmpresa = usuarioRtDaEmpresa(empresa);
+    const prefillRt = prefillDoPerfilDoRt(
+      { consultorNome: empresa.consultorNome, consultorTelefone: empresa.consultorTelefone, consultorRegistro: empresa.consultorRegistro },
+      rtDaEmpresa,
+      (cargo, crn) => nomeECargo(cargo, crn, " ")
+    );
     const formCarregado = {
       cor: corDaEmpresa(empresa),
       cnpj: empresa.cnpj || "",
@@ -3569,12 +3573,12 @@ export default function Home() {
           : ""),
       atividadeDescricao: empresa.atividadeDescricao || "",
       cargoResponsavel: responsavelEfetivo(empresa, db.usuarios).cargo,
-      // Identificação do Consultor/RT: se estiver em branco, vem do usuário RT (nome, cargo e CRN de Acessos); continua editável.
-      consultorNome: empresa.consultorNome || usuarioRtDaEmpresa(empresa)?.nome || "",
+      // Identificação do Consultor/RT: só o que estiver em branco vem do perfil do RT (nome, telefone, cargo e CRN); o digitado nunca é trocado.
+      consultorNome: empresa.consultorNome || prefillRt.valores.consultorNome || "",
       consultorCpfCnpj: empresa.consultorCpfCnpj || "",
       consultorEndereco: empresa.consultorEndereco || "",
-      consultorTelefone: empresa.consultorTelefone || "",
-      consultorRegistro: empresa.consultorRegistro || nomeECargo(usuarioRtDaEmpresa(empresa)?.cargo, usuarioRtDaEmpresa(empresa)?.crn, " ") || "",
+      consultorTelefone: empresa.consultorTelefone || prefillRt.valores.consultorTelefone || "",
+      consultorRegistro: empresa.consultorRegistro || prefillRt.valores.consultorRegistro || "",
       dataElaboracaoManual: empresa.dataElaboracaoManual || "",
       elaboradoPor: empresa.elaboradoPor || "",
       revisadoPor: empresa.revisadoPor || "",
@@ -3594,6 +3598,7 @@ export default function Home() {
     );
     const popsCarregados = normalizarPops(empresa.pops);
     setForm(formCarregado);
+    setCamposDoPerfilRt(prefillRt.doPerfil);
     setCapacidadeForm(capacidadeParaFormulario(empresa.capacidade));
     setResponsabilidadesEmpresa(responsabilidadesCarregadas);
     setSetoresEmpresa(setoresCarregados);
@@ -4478,6 +4483,7 @@ export default function Home() {
     setResponsabilidadesEmpresa(responsabilidadesIniciais);
     setSetoresEmpresa([]);
     setVinculosEmpresa({});
+    setCamposDoPerfilRt([]);
     setEquipamentosEmpresa([]);
     setFluxosEmpresa(fluxosIniciais);
     setProgramasEmpresa(programasIniciais);
@@ -7702,20 +7708,15 @@ export default function Home() {
 
                 {editingEmpresaId && secaoEmpresa === "manual" && (
                   <div className="mt-4 space-y-4">
-                    <details open className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                      <summary className="cursor-pointer list-none">
-                        <div className="font-extrabold text-slate-950">Identificação complementar do Manual</div>
-                        <div className="mt-0.5 text-xs text-slate-500">Dados técnicos, elaboração, revisão e aprovação.</div>
-                      </summary>
-                      <div className="mt-4 grid gap-3 md:grid-cols-2">
-                        {camposIdentificacaoManual.map((k) => (
-                          <label key={k}>
-                            <span className="mb-1 block text-xs font-bold text-slate-500">{labels[k]}</span>
-                            <input type={k === "dataElaboracaoManual" ? "date" : "text"} className="w-full rounded-xl border bg-white p-3" value={form[k]} onChange={(e) => setForm({ ...form, [k]: e.target.value })} />
-                          </label>
-                        ))}
-                      </div>
-                    </details>
+                    <IdentificacaoComplementar
+                      valores={form as unknown as Record<CampoDaIdentificacao, string>}
+                      rotulos={labels}
+                      doPerfil={camposDoPerfilRt}
+                      onChange={(campo, valor) => {
+                        setForm({ ...form, [campo]: valor });
+                        setCamposDoPerfilRt((atuais) => semOCampo(atuais, campo));
+                      }}
+                    />
                     <ManualBaseFields responsabilidades={responsabilidadesEmpresa} onResponsabilidadesChange={setResponsabilidadesEmpresa} setores={setoresEmpresa} onSetoresChange={setSetoresEmpresa} equipamentos={equipamentosEmpresa} onEquipamentosChange={setEquipamentosEmpresa} modo="responsabilidades" />
                   </div>
                 )}

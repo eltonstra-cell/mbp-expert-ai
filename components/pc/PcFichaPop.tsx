@@ -15,6 +15,7 @@ import { formatarData, formatarDataCurta, formatarHora } from "@/lib/dataLocal";
 import { mensagemDeComprovanteVazio } from "@/lib/comprovantePop";
 import { ROTULO_CURTO_NAO_CONFERIDO, ROTULO_NAO_CONFERIDO, itensFeitos, marcarComoConferido, marcarItemAConferir, podeMarcarComoConferido, popNaoConferido } from "@/lib/popConferencia";
 import { nomeECargo } from "@/lib/nomeCargo";
+import type { AlvoDaPendencia } from "@/lib/popPendencias";
 import { ROTULO_DA_VALIDADE, diasEntre, leituraDaVersao, rotuloDoTipo, situacaoDaValidade } from "@/lib/registrosEmpresa";
 
 export type AbaFicha = "resumo" | "documento" | "registros" | "comprovantes" | "quemleu" | "historico";
@@ -32,6 +33,8 @@ type Props = {
   contexto: RegistrosEmpresaValor | null;
   mensagem?: string;
   abaInicial?: AbaFicha;
+  /** Pendência a mostrar em destaque ao abrir (ex.: o bloco de conferência no Resumo). */
+  alvoInicial?: AlvoDaPendencia;
   onVoltar: () => void;
   onSalvarRascunho: (pop: ProcedimentoOperacionalPadronizado) => void;
   onEnviar: (pop: ProcedimentoOperacionalPadronizado) => void;
@@ -58,10 +61,25 @@ const DESTINO_DA_ABA: Record<NonNullable<ReturnType<typeof montarLinhaDoPop>["ac
 };
 
 // Ficha do POP: o POP é o centro. Resumo, Documento, Registros, Comprovantes, Quem leu e Histórico no mesmo lugar.
-export default function PcFichaPop({ pop, empresa, usuario, podeEditar, onImprimir, responsavelDoEstabelecimento, popsDaEmpresa, podeAprovar, contexto, mensagem, abaInicial = "resumo", onVoltar, onSalvarRascunho, onEnviar, onAprovar, onNovaVersao, onDescartar, onAtualizarConferencia }: Props) {
+export default function PcFichaPop({ pop, empresa, usuario, podeEditar, onImprimir, responsavelDoEstabelecimento, popsDaEmpresa, podeAprovar, contexto, mensagem, abaInicial = "resumo", alvoInicial, onVoltar, onSalvarRascunho, onEnviar, onAprovar, onNovaVersao, onDescartar, onAtualizarConferencia }: Props) {
   const [aba, setAba] = useState<AbaFicha>(abaInicial);
   const hoje = hojeISO();
   useEffect(() => setAba(abaInicial), [abaInicial]);
+  // A conferência do modelo fica no Resumo: o aviso e o botão "Aprovar" levam até ela, com o bloco em destaque.
+  const [destacarConferencia, setDestacarConferencia] = useState(alvoInicial === "conferencia");
+  function irParaAConferencia() {
+    setAba("resumo");
+    setDestacarConferencia(true);
+  }
+  useEffect(() => {
+    if (!destacarConferencia || aba !== "resumo") return;
+    const temporizador = setTimeout(() => {
+      const bloco = document.getElementById("ficha-conferir");
+      bloco?.scrollIntoView({ behavior: "smooth", block: "center" });
+      bloco?.focus({ preventScroll: true });
+    }, 60);
+    return () => clearTimeout(temporizador);
+  }, [destacarConferencia, aba]);
 
   const definicao = CONJUNTO_DA_NORMA.find((item) => item.catalogoId === pop.catalogoId);
   const linha = useMemo(
@@ -131,7 +149,7 @@ export default function PcFichaPop({ pop, empresa, usuario, podeEditar, onImprim
           )}
         </div>
         {/* A frase completa da próxima ação (que saiu da lista) fica no topo da ficha; no Resumo o cartão "Próxima ação" já a mostra. */}
-        {aba !== "resumo" && (
+        {aba !== "resumo" && aba !== "documento" && (
           <p className="ficha-proxima-linha">
             <span className="ficha-proxima-linha-rotulo">Próxima ação:</span> {linha.acao.texto}
           </p>
@@ -169,7 +187,7 @@ export default function PcFichaPop({ pop, empresa, usuario, podeEditar, onImprim
 
             {pop.origemModelo && pop.conferencia?.conferido && (
               // Depois de conferido: bloco neutro (cinza), recolhido; os itens ficam à mão ao expandir.
-              <details className="ficha-conferir ficha-conferir--feito" aria-label="Para conferir antes de aprovar">
+              <details id="ficha-conferir" tabIndex={-1} className="ficha-conferir ficha-conferir--feito" aria-label="Para conferir antes de aprovar">
                 <summary className="ficha-conferir-resumo">
                   <span className="ficha-conferir-marca" aria-hidden="true">✓</span>
                   <span className="ficha-conferir-ok">
@@ -195,7 +213,7 @@ export default function PcFichaPop({ pop, empresa, usuario, podeEditar, onImprim
             )}
 
             {pop.origemModelo && !pop.conferencia?.conferido && (
-              <div className="ficha-conferir" role="group" aria-label="Para conferir antes de aprovar">
+              <div id="ficha-conferir" tabIndex={-1} className={`ficha-conferir${destacarConferencia ? " is-destaque" : ""}`} role="group" aria-label="Para conferir antes de aprovar">
                 <div className="ficha-sub-linha">
                   <h3 className="ficha-sub">Para conferir antes de aprovar</h3>
                   <span className="ficha-conferir-conta">{itensFeitos(pop).feitos} de {itensFeitos(pop).total} marcados</span>
@@ -315,6 +333,8 @@ export default function PcFichaPop({ pop, empresa, usuario, podeEditar, onImprim
             onAprovar={onAprovar}
             onNovaVersao={onNovaVersao}
             onDescartar={onDescartar}
+            proximaAcao={linha.acao.texto}
+            onIrParaConferencia={pop.origemModelo ? irParaAConferencia : undefined}
           />
         </div>
 

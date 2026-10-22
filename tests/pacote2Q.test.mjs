@@ -118,7 +118,7 @@ test("'Aprovar' (laranja) só para POP aguardando aprovação E usuário que pod
   const lista = ler("../components/pc/PcPopsLista.tsx");
   assert.ok(lista.includes('onAbrirFicha(linha.pop!.id, botao.principal ? "documento" : undefined)'));
   assert.equal(/aprovarPop|onAprovar/.test(lista), false);
-  assert.ok(ler("../components/pc/PcPops.tsx").includes("setAbaInicial(aba || \"resumo\")"));
+  assert.ok(ler("../components/pc/PcPops.tsx").includes("setAbaInicial(destino.aba)"));
 });
 
 test("etiquetas e cores da linha: Rascunho #FDEBC2, Aguardando #F6C65B, Vigente verde com texto branco, 'Registro atrasado' #FDE3E3", () => {
@@ -157,7 +157,8 @@ test("linha de POP: uma linha só, altura mínima de 48 px que cresce (sem altur
 
 test("próxima ação: a frase completa vai ao topo da ficha (sem duplicar no Resumo, que já tem o cartão)", () => {
   const ficha = ler("../components/pc/PcFichaPop.tsx");
-  assert.ok(ficha.includes('aba !== "resumo" && (') && ficha.includes("Próxima ação:"));
+  assert.ok(ficha.includes('aba !== "resumo" && aba !== "documento" && (') && ficha.includes("Próxima ação:"));
+  assert.ok(ficha.includes("proximaAcao={linha.acao.texto}"), "na aba Documento a frase vai para a linha dos botões (etapa 3)");
   assert.ok(ficha.indexOf("Próxima ação:") < ficha.indexOf('className="ficha-abas"'));
 });
 
