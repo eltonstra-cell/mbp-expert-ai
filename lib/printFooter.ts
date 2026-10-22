@@ -66,6 +66,8 @@ export function cssDoDocumentoImpresso(opcoes: { cabecalho: CabecalhoDeImpressao
     `@bottom-left{content:"${rodape}";${base}text-align:left;}` +
     `@bottom-right{content:"Página " counter(page) " de " counter(pages);${base}text-align:right;}}}` +
     // O que o cabeçalho corrido já diz não se repete no corpo (só quando as caixas de margem existem, que é este ramo).
-    (cabecalho.ocultarNoCorpo || []).map((seletor) => `@media print{${seletor}{display:none!important}}`).join("")
+    (cabecalho.ocultarNoCorpo || []).map((seletor) => `@media print{${seletor}{display:none!important}}`).join("") +
+    // Capa opcional (página nomeada "capa"): sem cabeçalho corrido e sem rodapé. O número da página continua contando a capa, mas ela não mostra número.
+    `@media print{@page capa{@top-left{content:none;border:0}@top-right{content:none;border:0}@bottom-left{content:none}@bottom-right{content:none}}}`
   );
 }

@@ -14,7 +14,10 @@ export type ResponsavelEfetivo = {
 };
 
 const limpo = (texto?: string) => limparTextoDePessoa(texto);
-const mesmo = (a: string, b: string) => a.trim().toLocaleLowerCase("pt-BR") === b.trim().toLocaleLowerCase("pt-BR");
+/** Compara nomes sem acento, sem diferença de maiúsculas e com espaços normalizados ("Élton  Strapazon" = "elton strapazon"). */
+const comparavel = (texto: string) => texto.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ").trim().toLocaleLowerCase("pt-BR");
+export const mesmoNome = (a: string, b: string) => comparavel(a) === comparavel(b);
+const mesmo = mesmoNome;
 
 /** Nomes que o campo antigo "Responsável" dos POPs guarda e que diferem do de Dados. */
 export function nomesAntigosDosPops(pops: ProcedimentoOperacionalPadronizado[] | undefined): string[] {

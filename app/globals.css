@@ -4245,3 +4245,127 @@ html[data-modo="equilibrado"] .pc-busca,html[data-modo="completo"] .pc-busca{dis
   .pfolha-capa-versao{font-size:12pt;color:#3D5160}
   .pop-notas{display:none!important}
 }
+
+/* ===== Retoque dos modelos de POP: janela de modelos, voltar, continuar de onde parei, campos que crescem, subtítulo nos passos ===== */
+
+/* Botão "←" (Voltar): cinza, 36 px, no canto superior esquerdo das telas internas */
+.pc-voltar{display:inline-grid;flex:none;place-items:center;width:36px;height:36px;padding:0;border:0;border-radius:10px;background:#EEF1F5;font-size:1.2rem;line-height:1;color:#12202B;cursor:pointer}
+.pc-voltar:hover{background:#E3E8EE}
+.pc-voltar:focus-visible{outline:3px solid #E8B04B;outline-offset:2px}
+
+/* Início: "Continuar de onde parei" (botões cinza, sem laranja) */
+.pc-retomar{display:flex;flex-direction:column;gap:8px}
+.pc-retomar-lista{display:flex;flex-wrap:wrap;gap:8px}
+.pc-retomar-item{max-width:100%;justify-content:flex-start;text-align:left;white-space:normal}
+
+/* Aba POPs: "Criar POPs de uma vez" e "+ Adicionar POP" na mesma coluna, alinhados e com a mesma largura */
+.pgl-criar{display:flex;flex-direction:column;align-items:stretch;gap:8px}
+.pgl-criar .ui-btn{width:100%;justify-content:center;white-space:nowrap}
+.pgl-criar .pgl-motivo{width:0;min-width:100%}
+
+/* Lista de POPs: colunas de largura fixa, para as linhas ficarem alinhadas */
+@media (min-width:1100px){
+  .pgl-linha{display:grid;grid-template-columns:8px minmax(0,1fr) 300px 230px 132px;align-items:center;gap:6px 14px}
+  .pgl-situacao{flex:none;flex-wrap:nowrap;min-width:0}
+  .pgl-acao{min-width:0}
+  .pgl-botoes{justify-content:flex-end}
+}
+.pop-nao-conferido{white-space:nowrap;flex:none}
+
+/* Janela "Adicionar POP" */
+.mdl-camada{z-index:120}
+.mdl-janela{position:relative;display:flex;flex-direction:column;width:min(1000px,94vw);height:min(660px,90vh);overflow:hidden;border-radius:16px;background:#fff;box-shadow:0 16px 40px rgba(18,32,43,.28);overscroll-behavior:contain}
+.mdl-cabeca{display:flex;flex:none;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid #EEF1F5;background:#fff}
+.mdl-titulo{margin:0;flex:none;font-family:var(--font-display),"Outfit",sans-serif;font-size:1.3rem;font-weight:500;color:#12202B}
+.mdl-busca{flex:1;min-width:0}
+.mdl-corpo{display:grid;flex:1;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;min-height:0;padding:12px 16px}
+.mdl-lista-area{display:flex;flex-direction:column;min-height:0;min-width:0}
+.mdl-lista{display:flex;flex:1;flex-direction:column;gap:6px;min-height:0;max-height:none;margin:0;padding:0 4px 0 0;overflow-y:auto;overscroll-behavior:contain;list-style:none}
+.mdl-detalhe{display:flex;flex-direction:column;gap:12px;min-width:0;min-height:0;max-height:none;overflow-y:auto;padding-right:0}
+.mdl-voltar-lista{display:none;align-self:flex-start}
+.mdl-selecionado{display:flex;align-items:center;gap:8px;padding:8px 12px;border:2px solid #E8B04B;border-radius:12px;background:#FEF6E6;font-size:.98rem;color:#12202B}
+.mdl-selecionado-marca{display:grid;flex:none;place-items:center;width:22px;height:22px;border-radius:50%;background:#E8B04B;font-size:.8rem;color:#12202B}
+.mdl-previa-bloco{display:flex;flex-direction:column;gap:8px}
+.mdl-rodape{display:flex;flex:none;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border-top:1px solid #EEF1F5;background:#fff}
+.mdl-rodape-acao{display:flex;align-items:center;gap:12px}
+.mdl-em-branco{font-size:.92rem}
+@media (max-width:899px){
+  .mdl-janela{width:100vw;height:100dvh;max-height:100dvh;border-radius:0}
+  .mdl-corpo{grid-template-columns:minmax(0,1fr)}
+  .mdl-janela[data-etapa="lista"] .mdl-detalhe{display:none}
+  .mdl-janela[data-etapa="previa"] .mdl-lista-area{display:none}
+  .mdl-janela[data-etapa="previa"] .mdl-voltar-lista{display:inline-flex}
+  .mdl-cabeca{flex-wrap:wrap}
+  .mdl-janela[data-etapa="previa"] .mdl-cabeca .mdl-busca{display:none}
+}
+
+/* Ficha: bloco conferido, neutro e recolhido */
+.ficha-conferir--feito{padding:8px 14px;border:0;background:#EEF1F5}
+.ficha-conferir-resumo{display:flex;align-items:center;gap:8px;cursor:pointer;list-style:none}
+.ficha-conferir-resumo::-webkit-details-marker{display:none}
+.ficha-conferir-marca{display:grid;flex:none;place-items:center;width:22px;height:22px;border-radius:50%;background:#fff;border:1.5px solid #B4C2CE;font-size:.8rem;color:#12202B}
+.ficha-conferir--feito[open] .ficha-conferir-lista{margin-top:8px}
+
+/* Caixas de texto que crescem com o conteúdo: sem rolagem interna e sem corte */
+.caixa-cresce{overflow:hidden!important;resize:none!important;min-height:0;height:auto}
+.pop-passo-texto{min-height:38px;padding:8px 12px;line-height:1.35}
+.pdoc-passos .pop-passo{align-items:flex-start}
+.pdoc-passos .pop-passo-n{margin-top:5px}
+.pdoc-passos.pop-passos--rolagem{max-height:none;overflow:visible}
+
+/* Subtítulo nos passos */
+.pop-subtitulo-linha{display:flex;align-items:center;gap:6px}
+.pop-subtitulo{flex:1;min-width:0;min-height:34px;font-family:var(--font-display),"Outfit",sans-serif}
+.pfolha-subtitulo{margin:8px 0 2px;font-family:var(--font-display),"Outfit",sans-serif;font-size:1em;font-weight:500;color:#12202B;break-after:avoid}
+.pfolha-grupo{display:flex;flex-direction:column}
+
+/* Editor: o que falta para enviar, em âmbar */
+.pdoc-falta{display:inline-flex;align-items:center;min-height:28px;padding:0 12px;border:1px solid #E8B04B;border-radius:999px;background:#FFF3D6;font-size:.9rem;color:#12202B}
+.pdoc-chip-conferir{display:inline-flex;align-items:center;min-height:28px;padding:0 12px;border:1px solid #E8B04B;border-radius:999px;background:#FEF6E6;font-size:.9rem;color:#12202B}
+.pdoc-item.is-falta{border-color:#E8B04B;background:#FFF3D6}
+.pdoc-item-falta{margin-left:auto;padding:0 8px;border-radius:999px;background:#FEF6E6;border:1px solid #E8B04B;font-size:.8rem;color:#12202B}
+.pdoc-ajuda{white-space:normal!important;overflow:visible!important;text-overflow:clip!important}
+
+/* Conteúdo do modelo: editores guiados */
+.pdoc-bloco-modelo{display:flex;flex-direction:column;gap:8px;padding-top:8px;border-top:1px solid #EEF1F5}
+.pdoc-bloco-titulo{margin:0;font-family:var(--font-display),"Outfit",sans-serif;font-size:1.05rem;font-weight:500;color:#12202B}
+.pdoc-guiado{display:flex;flex-direction:column;gap:8px}
+.pdoc-def-linha{display:grid;grid-template-columns:minmax(120px,1fr) minmax(0,3fr) auto;align-items:start;gap:8px}
+.pdoc-grupo{display:flex;flex-direction:column;gap:8px;padding:10px 12px;border:1px solid #B4C2CE;border-radius:12px}
+.pdoc-grupo-remover{align-self:flex-end}
+.pdoc-add-linha{align-self:flex-start}
+.pdoc-add-secao{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.pdoc-add-secao-rotulo{font-size:.9rem;color:#12202B}
+.pdoc-previa-cabeca{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.pdoc-previa-cabeca .pdoc-lista-titulo{margin:0}
+
+/* Cópia da folha só para o papel (editor do rascunho) */
+.pdoc-so-papel{position:absolute;left:-10000px;top:0;width:190mm;pointer-events:none}
+@media print{.pdoc-so-papel{position:static;left:auto;width:auto}}
+
+/* Capa: sem cabeçalho corrido nem rodapé (página nomeada "capa"); a folha começa na página seguinte */
+@media print{.pfolha-capa{page:capa}}
+
+/* Respiro entre o cabeçalho, o caminho e o título da ficha */
+.ficha-caminho{margin:10px 0}
+.ficha-topo{padding-top:4px}
+
+/* Topo: sem sobreposição em larguras intermediárias nem com zoom. Colapsa pela largura REAL da linha do topo (container),
+   na ordem: rótulos de status viram ícone, o chip do modo some (continua no menu ⋯), o ponto de sincronização encolhe, a busca estreita. */
+.pc-topbar{container:topo/inline-size}
+@container topo (max-width:1180px){
+  .pc-topbar .pc-busca:not(.pc-busca--compacta){flex:0 1 320px;min-width:200px;margin-left:8px}
+  .pc-topbar .pc-kbd{display:none}
+  .pc-sync-texto,.pc-mode-texto{display:none}
+  .pc-sync-chip{padding:0;width:26px;height:26px;justify-content:center}
+  .pc-mode-chip{padding:0;width:26px;height:26px;display:inline-grid;place-items:center}
+  .pc-mode-icone{display:inline}
+}
+@container topo (max-width:920px){
+  .pc-mode-chip{display:none}
+  .pc-crumb-apoio{display:none}
+}
+@container topo (max-width:800px){
+  .pc-avatar{display:none}
+}
+.pc-topbar-end{gap:12px}
