@@ -112,10 +112,10 @@ test("Alterar POP vinculado: troca sem apagar o comprovante e registra no histó
   assert.ok(ler("../app/page.tsx").includes('acao: "comprovante.pop_alterado"'));
 });
 
-test("lista de POPs: chips em uma linha, botão de criar na linha das abas e sem 'Criar do modelo e revisar'", () => {
+test("lista de POPs: filtros em uma linha, a próxima ação só no title da linha (nunca 'Criar do modelo e revisar' no texto) e linha com altura mínima", () => {
   const lista = ler("../components/pc/PcPopsLista.tsx");
-  assert.ok(lista.includes("pgl-chips") && !lista.includes("pgl-contadores"));
-  assert.ok(lista.includes('<div className="pgl-acao">{linha.situacao !== "Falta criar" ? linha.acao.texto : ""}</div>'));
-  assert.ok(!ler("../components/pc/CentralEmpresaNav.tsx").includes("cen-acoes-slot"), "o botão de criar fica na linha dos chips, não na das abas");
-  assert.match(ler("../app/globals.css"), /\.pgl-linha\{min-height:56px/);
+  assert.ok(lista.includes("pgl-filtros") && !lista.includes("pgl-contadores"));
+  assert.ok(lista.includes('title={linha.situacao !== "Falta criar" ? linha.acao.texto : undefined}') && !lista.includes('<div className="pgl-acao">'));
+  assert.ok(!ler("../components/pc/CentralEmpresaNav.tsx").includes("cen-acoes-slot"));
+  assert.match(ler("../app/globals.css"), /\.pgl-linha\{display:flex;flex-wrap:wrap;[^}]*min-height:48px/);
 });

@@ -40,7 +40,7 @@ test("topo: busca compacta abaixo de 1400 px, status em ícone abaixo de 1500 px
   assert.ok(css.includes(".emp-ativa{flex:1 1 180px;min-width:180px") && css.includes(".emp-ativa-caixa{min-width:180px}"));
   assert.ok(css.includes(".pc-sync-chip,.pc-mode-chip{flex:none;white-space:nowrap}"), "nunca quebra em duas linhas");
   const topo = ler("../components/AppTopbar.tsx");
-  assert.ok(topo.includes('aria-label={`${ROTULO_SYNC[sincronizacao.estado]}. Toque para atualizar agora`}') && topo.includes("Configurar o modo de tela`}"));
+  assert.ok(topo.includes('aria-label={`${sincronizacao.rotulo || ROTULO_SYNC[sincronizacao.estado]}. Toque para atualizar agora`}') && topo.includes("Configurar o modo de tela`}"));
   const busca = ler("../components/BuscaNaBarra.tsx");
   assert.ok(busca.includes("modoDaBusca(window.innerWidth)") && busca.includes("pc-busca-gatilho") && busca.includes("pc-smartbar--no-painel"));
 });

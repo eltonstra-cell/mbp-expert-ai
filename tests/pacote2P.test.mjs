@@ -50,16 +50,16 @@ const textosDoCatalogo = () => {
 };
 
 // ===== 1.1 e 1.2: botão "+ Adicionar POP" e janela de modelos =====
-test("'+ Adicionar POP' fica logo abaixo de 'Criar POPs de uma vez', na mesma coluna; o botão antigo saiu de 'Outros POPs'", () => {
+test("'+ Adicionar POP' fica logo abaixo de 'Criar POPs da norma', na mesma coluna; o botão antigo saiu de 'Outros POPs'", () => {
   const lista = ler("../components/pc/PcPopsLista.tsx");
-  const criar = lista.indexOf("Criar POPs de uma vez");
+  const criar = lista.indexOf("Criar POPs da norma");
   const adicionar = lista.indexOf("+ Adicionar POP");
   assert.ok(criar > 0 && adicionar > criar, "o botão vem depois do 'Criar POPs de uma vez'");
   assert.equal(lista.split("+ Adicionar POP").length - 1, 1, "só um botão '+ Adicionar POP'");
   assert.equal(lista.includes("pgl-add-menu"), false, "sem menu de duas opções");
   assert.equal(lista.includes("POP em branco"), false);
   // mesma coluna: ambos dentro de .pgl-criar, e a coluna estica os dois à mesma largura
-  assert.match(lista, /<div className="pgl-criar">[\s\S]*Criar POPs de uma vez[\s\S]*\+ Adicionar POP[\s\S]*<\/div>/);
+  assert.match(lista, /<div className="pgl-criar">[\s\S]*Criar POPs da norma[\s\S]*\+ Adicionar POP[\s\S]*<\/div>/);
   const css = ler("../app/globals.css");
   assert.match(css, /\.pgl-criar\{display:flex;flex-direction:column;align-items:stretch/);
   assert.match(css, /\.pgl-criar \.ui-btn\{width:100%/);
@@ -113,7 +113,7 @@ test("voltar: volta uma tela pelo histórico; sem histórico vai ao nível acima
 test("botão '←': cinza #EEF1F5, 36 px, aria-label 'Voltar', antes do caminho, ligado na página", () => {
   const topo = ler("../components/AppTopbar.tsx");
   assert.match(topo, /aria-label="Voltar"/);
-  assert.ok(topo.indexOf("pc-voltar") < topo.indexOf('className="pc-crumbs"'));
+  assert.ok(topo.indexOf("pc-voltar") < topo.indexOf('aria-label="Caminho"'));
   const css = ler("../app/globals.css");
   assert.match(css, /\.pc-voltar\{[^}]*width:36px;height:36px[^}]*background:#EEF1F5/);
   const pagina = ler("../app/page.tsx");
