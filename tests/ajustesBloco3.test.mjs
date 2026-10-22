@@ -85,6 +85,6 @@ test("botões azuis grandes trocados: Salvar verde, Adicionar e Criar visita em 
   assert.ok(pagina.includes('className="ui-btn ui-btn--criar mt-5 w-full"') && pagina.includes("Criar visita"));
   assert.ok(!pagina.includes("Salvar e voltar à Central"));
   const base = ler("../components/ManualBaseFields.tsx");
-  assert.ok(base.includes('className="ui-btn ui-btn--criar">Adicionar ambiente') && !base.includes("bg-[var(--brand)] px-4 py-3"));
+  assert.ok(base.includes('className="ui-btn ui-btn--criar cad-adicionar">Adicionar') && !base.includes("bg-[var(--brand)] px-4 py-3"));
   assert.ok(ler("../components/pc/PcAmbientes.tsx").includes('className="ui-btn ui-btn--criar" disabled={!novoNome'));
 });

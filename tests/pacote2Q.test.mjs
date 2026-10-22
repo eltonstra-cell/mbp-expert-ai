@@ -14,10 +14,10 @@ const ler = (c) => readFileSync(new URL(c, import.meta.url), "utf8");
 const HOJE = "2026-10-22";
 
 // ===== 1.1 Menu de seção da barra do topo =====
-test("menu de seção: lista Empresa, Estrutura e Documentos, marca a atual e troca para a primeira aba da escolhida", () => {
+test("menu de seção: lista Empresa, Cadastros e Documentos, marca a atual e troca para a primeira aba da escolhida", () => {
   const grupos = gruposVisiveis({ editar: true, verComprovantes: true, gerenciarPessoas: true });
   const opcoes = opcoesDoSeletorDeSecao(grupos, "pops");
-  assert.deepEqual(opcoes.map((opcao) => opcao.rotulo), ["Empresa", "Estrutura", "Documentos"]);
+  assert.deepEqual(opcoes.map((opcao) => opcao.rotulo), ["Empresa", "Cadastros", "Documentos"]);
   assert.deepEqual(opcoes.filter((opcao) => opcao.atual).map((opcao) => opcao.id), ["documentos"]);
   assert.equal(subabaAoEscolherSecao(grupos, "empresa", "pops"), "dados");
   assert.equal(subabaAoEscolherSecao(grupos, "estrutura", "pops"), "ambientes");
@@ -40,7 +40,7 @@ test("menu de seção: teclado (Enter/Esc/setas), fecha ao clicar fora, creme co
   const pagina = ler("../app/page.tsx");
   assert.ok(pagina.includes('? ["Central da Empresa"]') && pagina.includes("secao={secaoDoTopo}"));
   const nav = ler("../components/pc/CentralEmpresaNav.tsx");
-  assert.equal(nav.includes("cen-grupo"), false, "os três botões Empresa/Estrutura/Documentos saíram da linha própria");
+  assert.equal(nav.includes("cen-grupo"), false, "os três botões Empresa/Cadastros/Documentos saíram da linha própria");
   const css = ler("../app/globals.css");
   assert.match(css, /\.sec-menu-botao\{[^}]*border:1\.5px solid #E8B04B[^}]*background:#FEF6E6/);
   assert.match(css, /\.sec-menu-item\.is-atual\{background:#FEF6E6\}/);
@@ -218,7 +218,7 @@ test("flag responsavelManual: digitar outro nome trava; voltar a ser igual a Dad
   assert.equal(diferencaComDados({ responsavelExecucao: { nome: "Outra", cargo: "" }, responsavelManual: false }, dados), null, "acompanha Dados: nada a avisar");
   const editor = ler("../components/pc/PcPopEditor.tsx");
   assert.ok(editor.includes("Os Dados trazem “{diferencaDeDados}”") && editor.includes("Usar o de Dados") && editor.includes("responsavelManual: false"));
-  assert.ok(editor.indexOf("Os Dados trazem") > editor.indexOf("Responsável pela execução (nome)") && editor.indexOf("Os Dados trazem") < editor.indexOf('rotulo="Cargo ou função"'), "o aviso fica embaixo do campo Responsável");
+  assert.ok(editor.lastIndexOf("Os Dados trazem") > editor.indexOf("Responsável pela execução (nome)") && editor.lastIndexOf("Os Dados trazem") < editor.indexOf('rotulo="Cargo ou função"'), "o aviso fica embaixo do campo Responsável");
   // POP novo de modelo acompanha Dados (flag false); nada é regravado nos POPs salvos
   const criado = criarPopDeModelo({ modelo: modeloPorId(listarModelos()[0].id), pops: [], empresa: "Beyond Nutri", responsavel: dados, id: "novo", gerarId: () => "g" });
   assert.equal(criado.ok, true);

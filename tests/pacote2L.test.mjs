@@ -157,7 +157,7 @@ test("pendências da empresa: cada item abre onde se resolve", () => {
   assert.equal(destinoDaPendencia("responsável do estabelecimento (em Dados)"), "dados");
   assert.equal(destinoDaPendencia("nome"), "dados");
   assert.equal(destinoDaPendencia("CNPJ"), "dados");
-  assert.equal(destinoDaPendencia("equipamentos"), "ambientes");
+  assert.equal(destinoDaPendencia("equipamentos"), "equipamentos");
   assert.equal(destinoDaPendencia("setores"), "ambientes");
   assert.equal(destinoDaPendencia("programas"), "programas");
   assert.equal(destinoDaPendencia("POPs"), "pops");
