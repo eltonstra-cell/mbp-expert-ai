@@ -32,7 +32,7 @@ type Props = {
   /** Avisa que o pedido de abrir a ficha já foi atendido (para não reabrir ao voltar à lista). */
   aoConsumirPedido?: () => void;
   /** Avisa quando a ficha abre ou fecha (rótulo do POP para o caminho do topo) para a tela esconder grupos e sub-abas. */
-  aoMudarFicha?: (rotulo: string | null) => void;
+  aoMudarFicha?: (rotulo: string | null, info?: { id: string; rotuloCompleto: string } | null) => void;
   onImprimir?: (titulo: string, cabecalho: CabecalhoDeImpressao) => void;
   responsavelDoEstabelecimento?: { nome: string; cargo: string; usuarioId?: string };
   /** Muda a cada clique em "POPs" do caminho: fecha a ficha e volta à lista. */
@@ -86,11 +86,13 @@ export default function PcPops({ pops, empresa, usuario = null, podeEditar = fal
   const popEmFicha = fichaId ? pops.find((pop) => pop.id === fichaId) : undefined;
 
   const rotuloDaFicha = popEmFicha ? popEmFicha.codigo || popEmFicha.titulo || "POP" : null;
+  // Rótulo da tela para "Continuar de onde parei": "POP-05 · Lavagem e higienização de mãos" (só código e título, nada de pessoa).
+  const rotuloCompleto = popEmFicha ? [popEmFicha.codigo, popEmFicha.titulo].map((parte) => (parte || "").trim()).filter(Boolean).join(" · ") || "POP" : null;
   useEffect(() => {
-    aoMudarFicha?.(rotuloDaFicha);
+    aoMudarFicha?.(rotuloDaFicha, popEmFicha ? { id: popEmFicha.id, rotuloCompleto: rotuloCompleto || "POP" } : null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rotuloDaFicha]);
-  useEffect(() => () => aoMudarFicha?.(null), []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [rotuloDaFicha, rotuloCompleto]);
+  useEffect(() => () => aoMudarFicha?.(null, null), []); // eslint-disable-line react-hooks/exhaustive-deps
 
   function abrir(id: string) {
     setMensagemFicha("");

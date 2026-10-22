@@ -114,6 +114,9 @@ import QualityProgramsFields from "@/components/QualityProgramsFields";
 import CentralEmpresaNav from "@/components/pc/CentralEmpresaNav";
 import RelatoriosAbas, { type AbaDeRelatorios } from "@/components/pc/RelatoriosAbas";
 import { niveisDoCaminho } from "@/lib/caminhoDaFicha";
+import { conexaoAtual, umaTentativa } from "@/lib/conexao";
+import { mostrarVoltar, nivelAcima, registrarLocal, voltarUma, type LocalDeTela } from "@/lib/historicoDeTelas";
+import { esquecerTela, lerContinuar, limparContinuar, registrarTela, type TelaRecente } from "@/lib/continuarDeOndeParei";
 import { nomeDeExibicaoDaEmpresa, nomeEmFormatoNatural } from "@/lib/nomeEmpresa";
 import PcImplantacao from "@/components/pc/PcImplantacao";
 import { mostrarToast } from "@/lib/toast";
@@ -1139,14 +1142,31 @@ export default function Home() {
     useState(false);
   const [estaOnline, setEstaOnline] = useState(true);
 
+  // O selo "Sem conexão" nunca depende só de navigator.onLine: reavalia ao voltar o foco e depois de atualizar o service worker,
+  // e só marca offline depois de duas falhas seguidas (lib/conexao.ts).
   useEffect(() => {
-    const atualizarConexao = () => setEstaOnline(window.navigator.onLine);
-    atualizarConexao();
-    window.addEventListener("online", atualizarConexao);
-    window.addEventListener("offline", atualizarConexao);
+    let ativo = true;
+    const reavaliar = () => {
+      void conexaoAtual(window.navigator.onLine, () => umaTentativa((url, init) => fetch(url, init))).then((online) => {
+        if (ativo) setEstaOnline(online);
+      });
+    };
+    const aoVoltarAVisibilidade = () => {
+      if (document.visibilityState === "visible") reavaliar();
+    };
+    reavaliar();
+    window.addEventListener("online", reavaliar);
+    window.addEventListener("offline", reavaliar);
+    window.addEventListener("focus", reavaliar);
+    document.addEventListener("visibilitychange", aoVoltarAVisibilidade);
+    navigator.serviceWorker?.addEventListener("controllerchange", reavaliar);
     return () => {
-      window.removeEventListener("online", atualizarConexao);
-      window.removeEventListener("offline", atualizarConexao);
+      ativo = false;
+      window.removeEventListener("online", reavaliar);
+      window.removeEventListener("offline", reavaliar);
+      window.removeEventListener("focus", reavaliar);
+      document.removeEventListener("visibilitychange", aoVoltarAVisibilidade);
+      navigator.serviceWorker?.removeEventListener("controllerchange", reavaliar);
     };
   }, []);
 
@@ -2091,6 +2111,7 @@ export default function Home() {
     if (!(await confirmarComFila("sair"))) return;
     setSaindo(true);
     try {
+      limparContinuar();
       await authClient.signOut();
       clearOfflineSession();
       window.location.replace("/auth/sign-in");
@@ -2737,6 +2758,74 @@ export default function Home() {
     });
     return numeros;
   }, [visitas]);
+
+  // ===== Botão "←" (Voltar) e "Continuar de onde parei" =====
+  const [fichaAbertaId, setFichaAbertaId] = useState<string | null>(null);
+  const [fichaAbertaRotuloCompleto, setFichaAbertaRotuloCompleto] = useState<string | null>(null);
+  const [telasRecentes, setTelasRecentes] = useState<TelaRecente[]>([]);
+  const pilhaDeTelasRef = useRef<LocalDeTela[]>([]);
+  const subDoLocal = view === "empresas" && showEmpresaForm && editingEmpresaId ? String(secaoEmpresa ?? "") : view === "pops" ? subabaDosDocumentos : "";
+  const localDaTela: LocalDeTela = { view, ...(fichaAbertaId ? { popId: fichaAbertaId } : {}), ...(subDoLocal ? { sub: subDoLocal } : {}) };
+  const chaveDoLocal = `${localDaTela.view}|${localDaTela.popId || ""}|${localDaTela.sub || ""}`;
+  useEffect(() => {
+    pilhaDeTelasRef.current = registrarLocal(pilhaDeTelasRef.current, localDaTela);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chaveDoLocal]);
+  const usuarioIdDasTelas = usuarioDaSessao?.id;
+  const empresaIdDasTelas = db.empresaAtualId;
+  useEffect(() => {
+    setTelasRecentes(lerContinuar(usuarioIdDasTelas, empresaIdDasTelas));
+  }, [usuarioIdDasTelas, empresaIdDasTelas]);
+  const rotuloDaVisitaRecente = visitaAtual ? `Visita ${numeroVisitaPorId.get(visitaAtual.id) || "—"} · ${fdata(visitaAtual.data)}` : "";
+  useEffect(() => {
+    if (!usuarioIdDasTelas || !empresaIdDasTelas) return;
+    const subDeDocumentos = view === "pops" || (view === "empresas" && showEmpresaForm);
+    let tela: TelaRecente | null = null;
+    if (fichaAbertaId && fichaAbertaRotuloCompleto) tela = { tipo: "pop", id: fichaAbertaId, rotulo: fichaAbertaRotuloCompleto };
+    else if (subDoLocal === "comprovantes" && subDeDocumentos) tela = { tipo: "comprovantes", id: "", rotulo: "Comprovantes" };
+    else if (visitaAtual && visitaAtual.status === "Em andamento" && VISIT_VIEWS.includes(view)) tela = { tipo: "visita", id: visitaAtual.id, rotulo: rotuloDaVisitaRecente };
+    if (tela) setTelasRecentes(registrarTela(tela, usuarioIdDasTelas, empresaIdDasTelas));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chaveDoLocal, fichaAbertaRotuloCompleto, visitaAtual?.id]);
+
+  async function irParaLocal(alvo: LocalDeTela) {
+    if (alvo.popId) {
+      abrirFichaDoPop(alvo.popId);
+      return;
+    }
+    if ((alvo.view === "empresas" || alvo.view === "pops") && alvo.sub) {
+      if (alvo.sub === "pops") setPedidoDeListaDePops((n) => n + 1);
+      abrirDocumentos(alvo.sub as SubAbaCentral);
+      return;
+    }
+    await navegarPrincipal(alvo.view as View);
+  }
+
+  // Volta uma tela pelo histórico do app; sem histórico, vai ao nível acima.
+  async function voltarUmaTela() {
+    const { destino, pilha } = voltarUma(pilhaDeTelasRef.current);
+    if (destino) pilhaDeTelasRef.current = pilha;
+    await irParaLocal(destino ?? nivelAcima(localDaTela));
+  }
+
+  function abrirTelaRecente(tela: TelaRecente) {
+    if (tela.tipo === "pop") {
+      if (!(atual?.pops || []).some((pop) => pop.id === tela.id)) {
+        setTelasRecentes(esquecerTela("pop", tela.id, usuarioIdDasTelas, empresaIdDasTelas));
+        mostrarToast("Este POP não existe mais");
+        return;
+      }
+      abrirFichaDoPop(tela.id);
+    } else if (tela.tipo === "comprovantes") {
+      abrirComprovantes();
+    } else if (db.visitas.some((visita) => visita.id === tela.id && visita.status === "Em andamento")) {
+      setVisitaAtualId(tela.id);
+      setView("visita");
+    } else {
+      setTelasRecentes(esquecerTela("visita", tela.id, usuarioIdDasTelas, empresaIdDasTelas));
+      mostrarToast("Esta visita não está mais em andamento");
+    }
+  }
 
   const idsVisitasEmpresaAtual = useMemo(
     () => new Set(visitasEmpresaAtual.map((v) => v.id)),
@@ -6261,7 +6350,11 @@ export default function Home() {
           onIrParaNorma={podeEditarDoc ? () => irParaSubaba("norma") : undefined}
           abrirFicha={fichaPedida}
           aoConsumirPedido={() => setFichaPedida(null)}
-          aoMudarFicha={setFichaAbertaRotulo}
+          aoMudarFicha={(rotulo, info) => {
+            setFichaAbertaRotulo(rotulo);
+            setFichaAbertaId(info?.id ?? null);
+            setFichaAbertaRotuloCompleto(info?.rotuloCompleto ?? null);
+          }}
           responsavelDoEstabelecimento={{ nome: efetivo.nome, cargo: efetivo.cargo, usuarioId: efetivo.usuarioId }}
           pedidoDeLista={pedidoDeListaDePops}
           onImprimir={imprimirDocumento}
@@ -7088,6 +7181,7 @@ export default function Home() {
           onAbrirConfigModo={() => setView("modotela")}
           onTrocarEmpresa={() => setTrocarEmpresaAberto(true)}
           atalhos={atalhosDaBarra}
+          onVoltar={mostrarVoltar(localDaTela) ? () => void voltarUmaTela() : undefined}
         />
         <nav className="hidden">
           <button
@@ -9592,6 +9686,7 @@ export default function Home() {
             <PcInicio
               somenteCampo={ehExecutor}
               avisoPops={avisoPopsDoInicio}
+              retomar={telasRecentes.map((tela) => ({ chave: `${tela.tipo}:${tela.id}`, rotulo: tela.rotulo, onAbrir: () => abrirTelaRecente(tela) }))}
               painel={painelNode}
               simples={nivelDe("inicio") === "simples"}
               nome={usuarioDaSessao?.nome.split(" ").filter(Boolean)[0] || "bem-vindo"}

@@ -53,6 +53,8 @@ type Props = {
   /** Painel "Hoje precisa de você" (só gestor: Administrador, RT, Gestor, Gerente). */
   painel?: ReactNode;
   onVerTodas: () => void;
+  /** "Continuar de onde parei": as últimas telas abertas (só rótulo e destino; sem nome de pessoa). */
+  retomar?: { chave: string; rotulo: string; onAbrir: () => void }[];
 };
 
 export default function PcInicio({
@@ -73,6 +75,7 @@ export default function PcInicio({
   somenteCampo = false,
   avisoPops = null,
   painel = null,
+  retomar = [],
 }: Props) {
   return (
     <section className="ui-screen" aria-label="Início">
@@ -116,6 +119,19 @@ export default function PcInicio({
           </>
         )}
       </div>
+
+      {retomar.length > 0 && (
+        <section className="ui-card pc-retomar" aria-label="Continuar de onde parei">
+          <div className="ui-eyebrow">Continuar de onde parei</div>
+          <div className="pc-retomar-lista">
+            {retomar.map((tela) => (
+              <button key={tela.chave} type="button" className="ui-btn ui-btn--secondary pc-retomar-item" onClick={tela.onAbrir}>
+                {tela.rotulo}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       {painel}
 

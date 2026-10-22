@@ -45,6 +45,8 @@ type Props = {
   onTrocarEmpresa?: () => void;
   /** Chips logo abaixo da barra; cada um chama a mesma ação do menu. */
   atalhos?: { id: string; rotulo: string; onClick: () => void }[];
+  /** Botão "←" no canto esquerdo das telas internas: volta uma tela (ou ao nível acima). Ausente no Início. */
+  onVoltar?: () => void;
 };
 
 export default function AppTopbar({
@@ -72,6 +74,7 @@ export default function AppTopbar({
   onAbrirConfigModo,
   onTrocarEmpresa,
   atalhos = [],
+  onVoltar,
 }: Props) {
   const itensModo: ItemMenu[] =
     modo && onEscolherModo
@@ -87,6 +90,11 @@ export default function AppTopbar({
   return (
     <>
     <div className="pc-topbar">
+      {onVoltar && (
+        <button type="button" className="pc-voltar" aria-label="Voltar" title="Voltar" onClick={onVoltar}>
+          <span aria-hidden="true">←</span>
+        </button>
+      )}
       <nav className="pc-crumbs" aria-label="Caminho">
         {caminho.map((parte, indice) => {
           const ultimo = indice === caminho.length - 1;
