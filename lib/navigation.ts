@@ -10,6 +10,7 @@ export type NavKey =
   | "inicio"
   | "visitas"
   | "central"
+  | "cadastros"
   | "ambientes"
   | "checklist"
   | "evidencias"
@@ -63,6 +64,8 @@ const TELAS_DO_ITEM: Partial<Record<NavKey, TelaKey[]>> = {
   inicio: ["inicio"],
   visitas: ["visitas"],
   central: ["central"],
+  // Abre a Central da Empresa › Cadastros (quem edita a empresa); o filtro de permissão está em itensVisiveis.
+  cadastros: ["empresas"],
   ambientes: ["ambientes"],
   checklist: ["checklist"],
   evidencias: ["evidencias"],
@@ -87,6 +90,7 @@ const CATALOGO: NavItem[] = [
   },
   { key: "inicio", rotulo: "Início", curto: "Início", tom: "indigo", grupo: "agora" },
   { key: "visitas", rotulo: "Visitas", curto: "Visitas", tom: "indigo", grupo: "agora" },
+  { key: "cadastros", rotulo: "Cadastros", curto: "Cadastros", tom: "turquesa", grupo: "agora", requer: (pode) => pode("empresas.editar") },
   { key: "central", rotulo: "Central da visita", curto: "Central", tom: "azul", grupo: "agora", somenteNaVisita: true },
   {
     key: "ambientes",
@@ -179,6 +183,7 @@ const POR_CHAVE = new Map(CATALOGO.map((item) => [item.key, item]));
 export function itensVisiveis(ctx: NavContexto): NavItem[] {
   return CATALOGO.filter((item) => {
     if (item.somenteNaVisita && !ctx.dentroDeVisita) return false;
+    if (item.key === "cadastros" && !ctx.pode("empresas.editar")) return false;
     if (ctx.nivelTela) {
       // Registrar agora aparece quando Evidências está em Editar.
       if (item.key === "registrar") return ctx.nivelTela("evidencias") === "editar";
@@ -237,7 +242,7 @@ export function menuLateralPC(ctx: NavContexto): {
       .map((key) => visiveis.find((item) => item.key === key))
       .filter((item): item is NavItem => Boolean(item));
   return {
-    topo: pegar(["inicio", "visitas", "empresas", "pops", "relatorios"]),
+    topo: pegar(["inicio", "visitas", "cadastros", "empresas", "pops", "relatorios"]),
     etapas: ctx.dentroDeVisita ? pegar(ETAPAS_PC) : [],
     apoio: pegar(["ajuda"]),
     admin: pegar(["acessos"]),

@@ -1,13 +1,14 @@
 // Central da Empresa: 3 grupos com sub-abas. Só o modelo (quem aparece, para onde vão as rotas antigas, o que lembrar).
 
-export type SubAbaCentral = "dados" | "norma" | "privacidade" | "ambientes" | "fluxos" | "manual" | "pops" | "programas" | "comprovantes" | "pessoas";
+export type SubAbaCentral = "dados" | "norma" | "privacidade" | "ambientes" | "equipamentos" | "fluxos" | "manual" | "pops" | "programas" | "comprovantes" | "pessoas";
 export type GrupoCentral = "empresa" | "estrutura" | "documentos";
 
 export const ROTULO_DA_SUBABA: Record<SubAbaCentral, string> = {
   dados: "Dados",
   norma: "Norma aplicável",
   privacidade: "Privacidade",
-  ambientes: "Ambientes e equipamentos",
+  ambientes: "Ambientes",
+  equipamentos: "Equipamentos",
   fluxos: "Fluxos",
   manual: "Manual",
   pops: "POPs",
@@ -18,7 +19,8 @@ export const ROTULO_DA_SUBABA: Record<SubAbaCentral, string> = {
 
 export const GRUPOS_DA_CENTRAL: { id: GrupoCentral; rotulo: string; subabas: SubAbaCentral[] }[] = [
   { id: "empresa", rotulo: "Empresa", subabas: ["dados", "norma", "privacidade"] },
-  { id: "estrutura", rotulo: "Estrutura", subabas: ["ambientes", "fluxos"] },
+  // O id interno continua "estrutura"; só o rótulo visível é "Cadastros".
+  { id: "estrutura", rotulo: "Cadastros", subabas: ["ambientes", "equipamentos", "fluxos"] },
   { id: "documentos", rotulo: "Documentos", subabas: ["manual", "pops", "programas", "comprovantes", "pessoas"] },
 ];
 
@@ -72,6 +74,7 @@ export function destinoDaRotaAntiga(chave: string | null | undefined): SubAbaCen
     case "norma":
     case "privacidade":
     case "ambientes":
+    case "equipamentos":
     case "fluxos":
     case "manual":
     case "pops":

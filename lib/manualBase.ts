@@ -363,3 +363,20 @@ export function resumoCurtoDosSetores(setores: string[]): string {
   const { doModelo, daEmpresa } = separarSetores(setores);
   return `${doModelo.length} do modelo · ${daEmpresa.length} da empresa`;
 }
+
+export type GrupoDeEquipamentos<T extends { setor: string }> = { setor: string; itens: T[] };
+
+/**
+ * Equipamentos agrupados por ambiente/setor, na ordem dos setores da empresa; um equipamento cujo setor não está mais na lista
+ * (setor desmarcado depois) vai para um grupo próprio no fim, para nunca sumir da tela. Só organiza para exibir: o formato do dado não muda.
+ */
+export function agruparEquipamentosPorAmbiente<T extends { setor: string }>(equipamentos: T[], setores: string[]): GrupoDeEquipamentos<T>[] {
+  const grupos: GrupoDeEquipamentos<T>[] = [];
+  const ordem = [...setores, ...equipamentos.map((item) => item.setor).filter((setor) => !setores.includes(setor))];
+  for (const setor of ordem) {
+    if (grupos.some((grupo) => grupo.setor === setor)) continue;
+    const itens = equipamentos.filter((item) => item.setor === setor);
+    if (itens.length) grupos.push({ setor, itens });
+  }
+  return grupos;
+}

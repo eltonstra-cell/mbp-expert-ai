@@ -24,6 +24,10 @@ type Props = {
   onModelo: (nome: string, modelo: string) => void;
   /** Editar as perguntas do ambiente (só no PC e só para Administrador e RT). */
   onQuestionario?: (nome: string) => void;
+  /** A empresa ainda não cadastrou ambientes em Central › Cadastros › Ambientes (a lista abaixo é a sugestão padrão do app). */
+  cadastroVazio?: boolean;
+  /** Leva a Central › Cadastros › Ambientes (só quem edita a empresa). */
+  onGerenciarAmbientes?: () => void;
   onVoltar: () => void;
   onIniciar: () => void;
 };
@@ -49,6 +53,8 @@ export default function PcAmbientes({
   onAdicionar,
   onModelo,
   onQuestionario,
+  cadastroVazio = false,
+  onGerenciarAmbientes,
   onVoltar,
   onIniciar,
 }: Props) {
@@ -122,6 +128,22 @@ export default function PcAmbientes({
               <button type="button" className="pc-link-btn" onClick={() => setVerTodosSugeridos((aberto) => !aberto)}>
                 {verTodosSugeridos ? "Mostrar menos ←" : `Ver todos os ${sugeridos.length} ambientes →`}
               </button>
+            )}
+            {cadastroVazio ? (
+              <p className="pc-amb-cadastro-aviso" role="status">
+                Nenhum ambiente cadastrado.{" "}
+                {onGerenciarAmbientes && (
+                  <button type="button" className="pc-link-btn" onClick={onGerenciarAmbientes}>
+                    Cadastrar ambientes
+                  </button>
+                )}
+              </p>
+            ) : (
+              onGerenciarAmbientes && (
+                <button type="button" className="pc-link-btn pc-amb-gerenciar" onClick={onGerenciarAmbientes}>
+                  Gerenciar ambientes
+                </button>
+              )
             )}
           </div>
           <div className="pc-amb-extra">

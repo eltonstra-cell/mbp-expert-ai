@@ -5,6 +5,7 @@ export type NavIconName =
   | "inicio"
   | "visitas"
   | "central"
+  | "cadastros"
   | "ambientes"
   | "checklist"
   | "evidencias"
@@ -57,6 +58,14 @@ const TRACADOS: Record<NavIconName, ReactNode> = {
       <path d="M13 4h7v4h-7z" />
       <path d="M13 11h7v9h-7z" />
       <path d="M4 14h7v6H4z" />
+    </>
+  ),
+  cadastros: (
+    <>
+      <path d="M4 5h16v4H4z" />
+      <path d="M4 12h16v3H4z" />
+      <path d="M4 18h16" />
+      <path d="M7 7h.01M7 13.5h.01" />
     </>
   ),
   ambientes: (

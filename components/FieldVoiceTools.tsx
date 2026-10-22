@@ -15,6 +15,8 @@ type Props = {
   onChange: (value: string) => void;
   contexto?: string;
   somenteVoz?: boolean;
+  /** Só o ícone do microfone (sem o texto "Falar"), para ficar DENTRO do campo, na ponta direita. */
+  soIcone?: boolean;
   /** Texto do botão de IA (padrão "IA"). */
   rotuloIa?: string;
   /** Texto do botão de voz (padrão "Falar"). */
@@ -54,6 +56,7 @@ export default function FieldVoiceTools({
   onChange,
   contexto = "",
   somenteVoz = false,
+  soIcone = false,
   rotuloIa = "IA",
   rotuloVoz = "Falar",
   variante = "padrao",
@@ -326,15 +329,16 @@ export default function FieldVoiceTools({
         type="button"
         onClick={iniciarOuParar}
         disabled={melhorando || transcrevendo}
-        className={`field-assist-voice ${gravando ? "is-recording" : ""}`}
+        className={`field-assist-voice ${gravando ? "is-recording" : ""}${soIcone ? " field-assist-voice--icone" : ""}`}
         title={gravando ? "Parar e transcrever" : "Falar"}
+        aria-label={gravando ? "Parar e transcrever" : transcrevendo ? "Transcrevendo" : !online ? SEM_INTERNET : rotuloVoz}
       >
         <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
           <rect x="9" y="3" width="6" height="11" rx="3" />
           <path d="M6 10a6 6 0 0 0 12 0" />
           <path d="M12 16v5M9 21h6" />
         </svg>
-        <span>{transcrevendo ? "Transcrevendo" : gravando ? "Parar" : !online ? SEM_INTERNET : rotuloVoz}</span>
+        {!soIcone && <span>{transcrevendo ? "Transcrevendo" : gravando ? "Parar" : !online ? SEM_INTERNET : rotuloVoz}</span>}
       </button>
     </div>
     {aviso && (

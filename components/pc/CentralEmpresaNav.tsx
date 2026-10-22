@@ -11,7 +11,7 @@ type Props = {
 };
 
 // Abas da seção aberta da Central da Empresa: texto com sublinhado laranja na ativa e uma linha cinza fina embaixo.
-// A troca entre Empresa, Estrutura e Documentos fica no menu da barra do topo (AppTopbar), não aqui.
+// A troca entre Empresa, Cadastros e Documentos fica no menu da barra do topo (AppTopbar), não aqui.
 export default function CentralEmpresaNav({ grupos, subaba, onSubaba, contagens }: Props) {
   const grupoAtual = grupoDaSubaba(subaba);
   const doGrupo = grupos.find((grupo) => grupo.id === grupoAtual);
@@ -22,7 +22,7 @@ export default function CentralEmpresaNav({ grupos, subaba, onSubaba, contagens 
         {doGrupo.subabas.map((id) => (
           <button key={id} type="button" role="tab" aria-selected={id === subaba} className={`cen-sub${id === subaba ? " is-ativa" : ""}`} onClick={() => onSubaba(id)}>
             {ROTULO_DA_SUBABA[id]}
-            {contagens?.[id] ? <span className="cen-sub-conta">{contagens[id]}</span> : null}
+            {contagens?.[id] ? ` · ${contagens[id]}` : ""}
           </button>
         ))}
       </div>

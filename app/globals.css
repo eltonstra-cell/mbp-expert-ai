@@ -4442,3 +4442,81 @@ html[data-modo="equilibrado"] .pc-busca,html[data-modo="completo"] .pc-busca{dis
 
 /* Modo Campo: o "←" com área de toque de 44 px */
 .campo-head .campo-voltar-pilha{width:44px;height:44px;border-radius:12px;font-size:1.4rem}
+
+/* ===== Central da Empresa: correções do topo e seção Cadastros (pacote 2R) ===== */
+
+/* Placeholders legíveis (mínimo #6B7A86) */
+input::placeholder,textarea::placeholder{color:#6B7A86;opacity:1}
+
+/* Linha 1: título e menu de seção SEMPRE na mesma linha; só quebram abaixo de ~1100 px (o "›" anda junto com o menu) */
+.pc-crumb-menu{display:inline-flex;align-items:center;flex:none;white-space:nowrap}
+.pc-crumbs--secao{flex-wrap:wrap}
+@media (min-width:1100px){
+  .pc-crumbs--secao{flex-wrap:nowrap;flex:0 0 auto}
+  .pc-crumbs--secao .pc-crumb-current{white-space:nowrap}
+}
+.pc-topbar .pc-voltar{align-self:center}
+/* A busca encolhe primeiro (até ~220 px; o placeholder ganha reticências); depois o nome da empresa ativa (reticências). */
+html .pc-topbar .pc-busca:not(.pc-busca--compacta){flex:1 1 520px;flex-shrink:8;max-width:520px;min-width:220px}
+html .pc-topbar .pc-busca:not(.pc-busca--compacta) .pc-busca-input{text-overflow:ellipsis}
+html .pc-topbar .emp-ativa{flex:1 1 180px;flex-shrink:1;min-width:140px}
+html .pc-topbar .emp-ativa-caixa{min-width:140px}
+/* 12 px entre os elementos do grupo da direita: o chip de modo não encosta mais no seletor da empresa */
+html[data-modo] .pc-topbar-end{gap:12px}
+html[data-modo] .pc-topbar-end > *{flex-shrink:0}
+html[data-modo] .pc-topbar-end > .emp-ativa{flex-shrink:1}
+/* Quando falta largura (medida na própria barra), nesta ordem: o rótulo de status vira ícone, o chip de modo vira ícone e depois some, o avatar some. */
+@container topo (max-width:1300px){
+  .pc-sync-texto{display:none}
+  .pc-sync-chip{padding:0;width:26px;height:26px;justify-content:center}
+}
+@container topo (max-width:880px){
+  .pc-avatar{display:none}
+}
+
+/* Seção Cadastros */
+.cen-cadastro{display:flex;flex-direction:column;gap:8px}
+.cen-apoio{margin:0;font-size:14px;color:#51606c}
+.cad-cartao{display:flex;flex-direction:column;gap:8px;padding:14px 16px;border:1px solid #B4C2CE;border-radius:14px;background:#fff}
+.cad-titulo{font-family:var(--font-display),"Outfit",sans-serif;font-size:1.05rem;font-weight:500;color:#12202B}
+.cad-descricao{margin:0;font-size:14px;color:#51606c}
+.cad-setores{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+@media (max-width:899px){.cad-setores{grid-template-columns:minmax(0,1fr)}}
+.cad-setor{display:flex;align-items:flex-start;gap:10px;min-height:44px;padding:8px 12px;border:1.5px solid #B4C2CE;border-radius:12px;background:#fff;font-size:.95rem;color:#12202B;cursor:pointer}
+.cad-setor.is-on{border-color:#E8B04B;background:#FEF6E6}
+.cad-lista{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
+.cad-item{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px;padding:4px 12px;border:1.5px solid #B4C2CE;border-radius:12px;background:#fff}
+.cad-item-nome{min-width:0;overflow-wrap:anywhere;font-size:.98rem;color:#12202B}
+.cad-remover{flex:none;min-height:32px;padding:0 12px;border:0;border-radius:8px;background:#FDE3E3;font-size:.88rem;color:#12202B;cursor:pointer}
+.cad-remover:hover{background:#FBD2D2}
+.cad-resumo{font-size:14px;color:#51606c}
+.cad-linha{display:flex;align-items:flex-end;gap:12px}
+.cad-input,.cad-linha select.cad-input{box-sizing:border-box;height:40px;min-width:0;width:100%;padding:0 12px;border:2px solid #B4C2CE;border-radius:10px;background:#fff;font-size:.98rem;color:#12202B}
+.cad-input:focus,.cad-input:focus-visible{outline:0;border-color:#E8B04B;box-shadow:inset 0 0 0 1px #E8B04B}
+.cad-campo-voz{flex:1 1 auto;min-width:0}
+.cad-input--voz{padding-right:46px}
+.cad-mic{right:6px}
+.cad-mic .field-assist-tools{margin:0}
+.field-assist-voice--icone{display:grid;place-items:center;width:30px;height:30px;padding:0;border-radius:8px}
+.cad-adicionar{flex:none;height:40px;min-height:40px;padding:0 20px}
+.cad-rotulado{display:flex;flex-direction:column;gap:4px;min-width:0;font-size:13.5px;color:#12202B}
+.cad-linha--ambiente .cad-campo-voz{flex:1 1 auto}
+.cad-linha--equipamento .cad-rotulado--ambiente{flex:0 0 220px;width:220px}
+.cad-linha--equipamento .cad-rotulado--nome{flex:1 1 auto}
+.cad-linha--equipamento .cad-rotulado--qtd{flex:0 0 80px;width:80px}
+@media (max-width:899px){
+  .cad-linha--equipamento{flex-wrap:wrap}
+  .cad-linha--equipamento .cad-rotulado--ambiente{flex:1 1 100%;width:auto}
+  .cad-linha--equipamento .cad-rotulado--nome{flex:1 1 200px}
+}
+.cad-grupos{display:flex;flex-direction:column;gap:16px}
+.cad-grupo{display:flex;flex-direction:column;gap:8px}
+.cad-grupo-titulo{font-size:14.5px;font-weight:500;color:#51606c}
+.cad-equip{display:flex;flex-direction:column;gap:6px;padding:8px 12px;border:1.5px solid #B4C2CE;border-radius:12px;background:#fff}
+.cad-equip-linha{display:flex;align-items:center;gap:12px}
+.cad-equip-nome{flex:1 1 auto}
+.cad-equip-qtd{flex:0 0 80px;width:80px}
+.cad-mais summary{cursor:pointer;font-size:13.5px;color:#51606c}
+.cad-mais[open]{display:flex;flex-direction:column;gap:8px}
+.cad-obs-texto{box-sizing:border-box;width:100%;min-height:64px;padding:8px 12px;border:2px solid #B4C2CE;border-radius:10px;font-size:.95rem;color:#12202B}
+.cad-vazio{padding:16px;border:1.5px dashed #B4C2CE;border-radius:12px;text-align:center;font-size:.95rem;color:#51606c}

@@ -143,7 +143,7 @@ export default function PcRegistrosDoPop({ pop }: { pop: ProcedimentoOperacional
                     </option>
                   ))}
                 </select>
-                {contexto.ambientes.length === 0 && <span className="ui-row-sub">Cadastre os ambientes em Estrutura › Ambientes e equipamentos.</span>}
+                {contexto.ambientes.length === 0 && <span className="ui-row-sub">Cadastre os ambientes em Cadastros › Ambientes.</span>}
               </label>
             </div>
             <label className="pc-field">

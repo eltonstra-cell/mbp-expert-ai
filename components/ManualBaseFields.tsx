@@ -6,7 +6,7 @@ import type {
   PapelResponsabilidadeManual,
   ResponsabilidadeManual,
 } from "@/types";
-import { SETORES_OFICIAIS_MANUAL, resumoDosSetores } from "@/lib/manualBase";
+import { SETORES_OFICIAIS_MANUAL, agruparEquipamentosPorAmbiente, resumoDosSetores } from "@/lib/manualBase";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
 
 type Props = {
@@ -16,7 +16,7 @@ type Props = {
   onSetoresChange: (setores: string[]) => void;
   equipamentos: EquipamentoSetor[];
   onEquipamentosChange: (equipamentos: EquipamentoSetor[]) => void;
-  modo?: "completo" | "responsabilidades" | "ambientes";
+  modo?: "completo" | "responsabilidades" | "ambientes" | "equipamentos";
 };
 
 function SectionTitle({ title, description }: { title: string; description: string }) {
@@ -45,7 +45,10 @@ export default function ManualBaseFields({
 
   const setoresParaEquipamentos = setores.length ? setores : [...SETORES_OFICIAIS_MANUAL];
   const mostrarAmbientes = modo === "completo" || modo === "ambientes";
+  const mostrarEquipamentos = modo === "completo" || modo === "equipamentos";
   const mostrarResponsabilidades = modo === "completo" || modo === "responsabilidades";
+  const proprios = setores.filter((setor) => !SETORES_OFICIAIS_MANUAL.includes(setor as (typeof SETORES_OFICIAIS_MANUAL)[number]));
+  const gruposDeEquipamentos = agruparEquipamentosPorAmbiente(equipamentos, setoresParaEquipamentos);
 
   function toggleSetor(setor: string) {
     const proximos = setores.includes(setor)
@@ -75,6 +78,10 @@ export default function ManualBaseFields({
     setQuantidadeEquipamento("1");
   }
 
+  function mudarEquipamento(id: string, mudanca: Partial<EquipamentoSetor>) {
+    onEquipamentosChange(equipamentos.map((item) => (item.id === id ? { ...item, ...mudanca } : item)));
+  }
+
   function adicionarAmbienteReal() {
     const nome = novoAmbiente.trim();
     if (!nome || setores.includes(nome)) return;
@@ -102,48 +109,66 @@ export default function ManualBaseFields({
         <p className="mt-1 text-sm text-slate-500">Esses dados serão reutilizados no Manual, nas visitas e nos relatórios.</p>
       </div>}
 
-      {mostrarAmbientes && <details open className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-        <summary className="cursor-pointer list-none">
-          <SectionTitle title="Setores do estabelecimento" description="Selecione somente os setores que realmente existem nesta empresa." />
-        </summary>
-        <div className="mt-4 grid gap-2 md:grid-cols-2">
-          {SETORES_OFICIAIS_MANUAL.map((setor) => (
-            <label key={setor} className={`flex cursor-pointer gap-3 rounded-xl border p-3 text-sm ${setores.includes(setor) ? "border-blue-300 bg-[var(--brand-soft)]" : "border-slate-200 bg-white"}`}>
-              <input type="checkbox" checked={setores.includes(setor)} onChange={() => toggleSetor(setor)} />
-              <span className="font-bold">{setor}</span>
-            </label>
-          ))}
-        </div>
+      {mostrarAmbientes && (
+        <section className="cad-cartao" aria-label="Setores do estabelecimento">
+          <div className="cad-titulo">Setores do estabelecimento</div>
+          <p className="cad-descricao">Selecione somente os setores que realmente existem nesta empresa.</p>
+          <div className="cad-setores">
+            {SETORES_OFICIAIS_MANUAL.map((setor) => (
+              <label key={setor} className={`cad-setor${setores.includes(setor) ? " is-on" : ""}`}>
+                <input type="checkbox" checked={setores.includes(setor)} onChange={() => toggleSetor(setor)} />
+                <span>{setor}</span>
+              </label>
+            ))}
+          </div>
+        </section>
+      )}
 
-        {setores.filter((setor) => !SETORES_OFICIAIS_MANUAL.includes(setor as (typeof SETORES_OFICIAIS_MANUAL)[number])).length > 0 && (
-          <div className="mt-4 space-y-2">
-            <div className="text-xs font-extrabold uppercase tracking-wide text-[color:var(--brand)]">Ambientes com nomes próprios da empresa</div>
-            {setores
-              .filter((setor) => !SETORES_OFICIAIS_MANUAL.includes(setor as (typeof SETORES_OFICIAIS_MANUAL)[number]))
-              .map((setor) => (
-                <div key={setor} className="flex items-center justify-between gap-3 rounded-xl border border-blue-100 bg-white p-3 text-sm">
-                  <span className="font-bold">{setor}</span>
-                  <button type="button" onClick={() => onSetoresChange(setores.filter((item) => item !== setor))} className="rounded-lg bg-[var(--nc-bg)] px-3 py-2 text-xs font-bold text-[color:var(--ink)]">Remover</button>
-                </div>
+      {mostrarAmbientes && (
+        <section className="cad-cartao" aria-label="Ambientes com nomes próprios da empresa">
+          <div className="cad-titulo">Ambientes com nomes próprios da empresa</div>
+          {proprios.length > 0 && (
+            <ul className="cad-lista">
+              {proprios.map((setor) => (
+                <li key={setor} className="cad-item">
+                  <span className="cad-item-nome">{setor}</span>
+                  <button type="button" onClick={() => onSetoresChange(setores.filter((item) => item !== setor))} className="cad-remover">Remover</button>
+                </li>
               ))}
+            </ul>
+          )}
+          {/* Uma linha só: o campo (com o microfone dentro, na ponta direita) e o botão de 40 px alinhado a ele. */}
+          <div className="cad-linha cad-linha--ambiente">
+            <span className="ui-field-wrap cad-campo-voz">
+              <input
+                value={novoAmbiente}
+                onChange={(event) => setNovoAmbiente(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    adicionarAmbienteReal();
+                  }
+                }}
+                placeholder="Nome real do ambiente, ex.: Churrasqueira"
+                aria-label="Nome real do ambiente"
+                className="ui-input cad-input cad-input--voz"
+              />
+              <span className="ui-field-tools cad-mic">
+                <FieldVoiceTools
+                  fieldKey="novo-ambiente"
+                  value={novoAmbiente}
+                  onChange={setNovoAmbiente}
+                  contexto="Nome curto e objetivo de um ambiente ou setor de um estabelecimento de alimentos."
+                  somenteVoz
+                  soIcone
+                />
+              </span>
+            </span>
+            <button type="button" onClick={adicionarAmbienteReal} className="ui-btn ui-btn--criar cad-adicionar">Adicionar</button>
           </div>
-        )}
-
-        <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-          <div className="min-w-0 flex-1">
-            <input value={novoAmbiente} onChange={(event) => setNovoAmbiente(event.target.value)} placeholder="Nome real do ambiente, ex.: Churrasqueira" className="min-w-0 w-full rounded-xl border bg-white p-3 text-sm" />
-            <FieldVoiceTools
-              fieldKey="novo-ambiente"
-              value={novoAmbiente}
-              onChange={setNovoAmbiente}
-              contexto="Nome curto e objetivo de um ambiente ou setor de um estabelecimento de alimentos."
-              somenteVoz
-            />
-          </div>
-          <button type="button" onClick={adicionarAmbienteReal} className="ui-btn ui-btn--criar">Adicionar ambiente</button>
-        </div>
-        <div className="mt-3 text-sm text-slate-600">{resumoDosSetores(setores)}</div>
-      </details>}
+          <div className="cad-resumo">{resumoDosSetores(setores)}</div>
+        </section>
+      )}
 
       {mostrarResponsabilidades && <details open={modo === "responsabilidades"} className="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-4">
         <summary className="cursor-pointer list-none">
@@ -182,55 +207,92 @@ export default function ManualBaseFields({
         </div>
       </details>}
 
-      {mostrarAmbientes && <details open className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-        <summary className="cursor-pointer list-none">
-          <SectionTitle title="Quadro de equipamentos e móveis" description="Cadastre os itens vinculados a cada setor do estabelecimento." />
-        </summary>
-        <div className="mt-4 grid min-w-0 gap-2 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_100px_auto]">
-          <select value={setorEquipamento} onChange={(event) => setSetorEquipamento(event.target.value)} className="min-w-0 w-full rounded-xl border bg-white p-3 text-sm">
-            {setoresParaEquipamentos.map((setor) => <option key={setor}>{setor}</option>)}
-          </select>
-          <div className="min-w-0">
-            <input value={nomeEquipamento} onChange={(event) => setNomeEquipamento(event.target.value)} placeholder="Ex.: Refrigerador" className="min-w-0 w-full rounded-xl border p-3 text-sm" />
-            <FieldVoiceTools fieldKey="novo-equipamento" value={nomeEquipamento} onChange={setNomeEquipamento} contexto="Nome curto de um equipamento ou móvel de estabelecimento de alimentos." somenteVoz />
+      {mostrarEquipamentos && (
+        <section className="cad-cartao" aria-label="Quadro de equipamentos e móveis">
+          <div className="cad-titulo">Quadro de equipamentos e móveis</div>
+          <p className="cad-descricao">Cadastre os itens vinculados a cada setor do estabelecimento.</p>
+          {/* Numa linha só: ambiente · equipamento (microfone dentro) · Qtd · Adicionar. */}
+          <div className="cad-linha cad-linha--equipamento">
+            <label className="cad-rotulado cad-rotulado--ambiente">
+              <span>Ambiente</span>
+              <select value={setorEquipamento} onChange={(event) => setSetorEquipamento(event.target.value)} className="cad-input" aria-label="Ambiente ou setor do equipamento">
+                {setoresParaEquipamentos.map((setor) => <option key={setor}>{setor}</option>)}
+              </select>
+            </label>
+            <label className="cad-rotulado cad-rotulado--nome">
+              <span>Equipamento ou móvel</span>
+              <span className="ui-field-wrap cad-campo-voz">
+                <input
+                  value={nomeEquipamento}
+                  onChange={(event) => setNomeEquipamento(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      adicionarEquipamento();
+                    }
+                  }}
+                  placeholder="Ex.: Refrigerador"
+                  className="ui-input cad-input cad-input--voz"
+                />
+                <span className="ui-field-tools cad-mic">
+                  <FieldVoiceTools fieldKey="novo-equipamento" value={nomeEquipamento} onChange={setNomeEquipamento} contexto="Nome curto de um equipamento ou móvel de estabelecimento de alimentos." somenteVoz soIcone />
+                </span>
+              </span>
+            </label>
+            <label className="cad-rotulado cad-rotulado--qtd">
+              <span>Qtd</span>
+              <input type="number" min="1" value={quantidadeEquipamento} onChange={(event) => setQuantidadeEquipamento(event.target.value)} className="ui-input cad-input" />
+            </label>
+            <button type="button" onClick={adicionarEquipamento} className="ui-btn ui-btn--criar cad-adicionar">Adicionar</button>
           </div>
-          <input type="number" min="1" value={quantidadeEquipamento} onChange={(event) => setQuantidadeEquipamento(event.target.value)} className="min-w-0 w-full rounded-xl border p-3 text-sm" aria-label="Quantidade" />
-          <button type="button" onClick={adicionarEquipamento} className="ui-btn ui-btn--criar w-full">Adicionar</button>
-        </div>
 
-        <div className="mt-4 space-y-2">
-          {equipamentos.map((equipamento, indice) => (
-            <div key={equipamento.id} className="min-w-0 rounded-xl border-2 border-blue-200 bg-[var(--brand-soft)]/70 p-3">
-              <div className="grid min-w-0 gap-2 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_90px_auto]">
-                <select value={equipamento.setor} onChange={(event) => onEquipamentosChange(equipamentos.map((item, atual) => atual === indice ? { ...item, setor: event.target.value } : item))} className="min-w-0 w-full rounded-lg border p-2 text-xs">
-                  {setoresParaEquipamentos.map((setor) => <option key={setor}>{setor}</option>)}
-                </select>
-                <input value={equipamento.nome} onChange={(event) => onEquipamentosChange(equipamentos.map((item, atual) => atual === indice ? { ...item, nome: event.target.value } : item))} className="min-w-0 w-full rounded-lg border p-2 text-sm" />
-                <input type="number" min="1" value={equipamento.quantidade} onChange={(event) => onEquipamentosChange(equipamentos.map((item, atual) => atual === indice ? { ...item, quantidade: Math.max(1, Number(event.target.value) || 1) } : item))} className="min-w-0 w-full rounded-lg border p-2 text-sm" />
-                <button type="button" onClick={() => onEquipamentosChange(equipamentos.filter((_, atual) => atual !== indice))} className="rounded-lg bg-[var(--nc-bg)] px-2 py-1 text-xs font-bold text-[color:var(--ink)]">Excluir</button>
+          <div className="cad-grupos">
+            {gruposDeEquipamentos.map((grupo) => (
+              <div key={grupo.setor} className="cad-grupo">
+                <div className="cad-grupo-titulo">{grupo.setor} · {grupo.itens.length}</div>
+                <ul className="cad-lista">
+                  {grupo.itens.map((equipamento) => (
+                    <li key={equipamento.id} className="cad-equip">
+                      <div className="cad-equip-linha">
+                        <input value={equipamento.nome} onChange={(event) => mudarEquipamento(equipamento.id, { nome: event.target.value })} className="ui-input cad-input cad-equip-nome" aria-label="Nome do equipamento" />
+                        <input type="number" min="1" value={equipamento.quantidade} onChange={(event) => mudarEquipamento(equipamento.id, { quantidade: Math.max(1, Number(event.target.value) || 1) })} className="ui-input cad-input cad-equip-qtd" aria-label="Quantidade" />
+                        <button type="button" onClick={() => onEquipamentosChange(equipamentos.filter((item) => item.id !== equipamento.id))} className="cad-remover">Remover</button>
+                      </div>
+                      <details className="cad-mais" open={Boolean((equipamento.observacao || "").trim())}>
+                        <summary>Observação e ambiente</summary>
+                        <label className="cad-rotulado">
+                          <span>Ambiente</span>
+                          <select value={equipamento.setor} onChange={(event) => mudarEquipamento(equipamento.id, { setor: event.target.value })} className="cad-input">
+                            {setoresParaEquipamentos.includes(equipamento.setor) ? null : <option>{equipamento.setor}</option>}
+                            {setoresParaEquipamentos.map((setor) => <option key={setor}>{setor}</option>)}
+                          </select>
+                        </label>
+                        <label className="cad-rotulado">
+                          <span>Observações do equipamento</span>
+                          <textarea
+                            rows={2}
+                            value={equipamento.observacao || ""}
+                            onChange={(event) => mudarEquipamento(equipamento.id, { observacao: event.target.value })}
+                            placeholder="Ex.: borracha danificada, excesso de gelo, manutenção necessária..."
+                            className="ui-input cad-obs-texto"
+                          />
+                        </label>
+                        <FieldVoiceTools
+                          fieldKey={`equipamento-${equipamento.id}`}
+                          value={equipamento.observacao || ""}
+                          onChange={(texto) => mudarEquipamento(equipamento.id, { observacao: texto })}
+                          contexto={`Observação técnica sobre o equipamento "${equipamento.nome}" no setor "${equipamento.setor}". Seja claro, objetivo e não invente fatos.`}
+                        />
+                      </details>
+                    </li>
+                  ))}
+                </ul>
               </div>
-
-              <div className="mt-2 rounded-xl bg-white/75 p-2">
-                <label className="text-xs font-bold text-slate-600">Observações do equipamento</label>
-                <textarea
-                  rows={2}
-                  value={equipamento.observacao || ""}
-                  onChange={(event) => onEquipamentosChange(equipamentos.map((item, atual) => atual === indice ? { ...item, observacao: event.target.value } : item))}
-                  placeholder="Ex.: borracha danificada, excesso de gelo, manutenção necessária..."
-                  className="mt-1 min-w-0 w-full rounded-lg border bg-white p-2 text-sm font-normal"
-                />
-                <FieldVoiceTools
-                  fieldKey={`equipamento-${equipamento.id}`}
-                  value={equipamento.observacao || ""}
-                  onChange={(texto) => onEquipamentosChange(equipamentos.map((item, atual) => atual === indice ? { ...item, observacao: texto } : item))}
-                  contexto={`Observação técnica sobre o equipamento "${equipamento.nome}" no setor "${equipamento.setor}". Seja claro, objetivo e não invente fatos.`}
-                />
-              </div>
-            </div>
-          ))}
-          {equipamentos.length === 0 && <div className="rounded-xl border border-dashed border-slate-300 p-4 text-center text-sm text-slate-500">Nenhum equipamento ou móvel cadastrado.</div>}
-        </div>
-      </details>}
+            ))}
+            {equipamentos.length === 0 && <div className="cad-vazio">Nenhum equipamento ou móvel cadastrado.</div>}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

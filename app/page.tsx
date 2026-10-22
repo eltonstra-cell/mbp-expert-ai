@@ -725,7 +725,7 @@ function assinaturaEdicaoEmpresa(valor: {
   return JSON.stringify(valor);
 }
 
-const SUBABA_DO_ITEM_DE_PREPARACAO: Record<string, SubAbaCentral> = { responsavel: "dados", horario: "dados", setores: "ambientes", equipamentos: "ambientes", programas: "programas", pops: "pops" };
+const SUBABA_DO_ITEM_DE_PREPARACAO: Record<string, SubAbaCentral> = { responsavel: "dados", horario: "dados", setores: "ambientes", equipamentos: "equipamentos", programas: "programas", pops: "pops" };
 
 export default function Home() {
   useEffect(() => {
@@ -5119,6 +5119,10 @@ export default function Home() {
       case "central":
         setView("visita");
         return;
+      case "cadastros":
+        // Central da Empresa › Cadastros › Ambientes (só quem edita a empresa; o item nem aparece para os demais).
+        void abrirSecaoEmpresaPeloMenu("ambientes");
+        return;
       case "ambientes":
         abrirAmbientes();
         return;
@@ -6585,7 +6589,11 @@ export default function Home() {
     .map((chave) => `rep-off-${chave}`)
     .join(" ");
   const chaveDaTela: NavKey | null =
-    view === "empresas" && showEmpresaForm && ["pops", "comprovantes", "pessoas"].includes(secaoEmpresa || "") ? "pops" : chaveAtiva(view);
+    view === "empresas" && showEmpresaForm && ["pops", "comprovantes", "pessoas"].includes(secaoEmpresa || "")
+      ? "pops"
+      : view === "empresas" && showEmpresaForm && editingEmpresaId && secaoEmpresa && grupoDaSubaba(secaoEmpresa as SubAbaCentral) === "estrutura"
+        ? "cadastros"
+        : chaveAtiva(view);
   const itemDaTela = chaveDaTela ? itemDoMenu(chaveDaTela) : undefined;
   const rotuloDaTela =
     view === "relatoriosemitidos"
@@ -7522,7 +7530,7 @@ export default function Home() {
             {editingEmpresaId && (fichaAbertaRotulo && secaoEmpresa === "pops" ? (
               caminhoClicavel(fichaAbertaRotulo, true)
             ) : secaoEmpresa === "pops" ? null : (
-              <CentralEmpresaNav grupos={gruposVisiveis(quemVeNaCentral)} subaba={secaoEmpresa as SubAbaCentral} onSubaba={irParaSubaba} />
+              <CentralEmpresaNav grupos={gruposVisiveis(quemVeNaCentral)} subaba={secaoEmpresa as SubAbaCentral} onSubaba={irParaSubaba} contagens={{ ambientes: setoresEmpresa.length, equipamentos: equipamentosEmpresa.length }} />
             ))}
             {editingEmpresaId && msg && <div className="ui-note cen-msg">{msg}</div>}
             {editingEmpresaId && empresaGerenciada && secaoEmpresa === "dados" && pendenciasDaEmpresa(empresaGerenciada).length > 0 && (
@@ -7696,9 +7704,10 @@ export default function Home() {
                   </div>
                 )}
 
-                {editingEmpresaId && secaoEmpresa === "ambientes" && (
-                  <div className="mt-4">
-                    <ManualBaseFields responsabilidades={responsabilidadesEmpresa} onResponsabilidadesChange={setResponsabilidadesEmpresa} setores={setoresEmpresa} onSetoresChange={setSetoresEmpresa} equipamentos={equipamentosEmpresa} onEquipamentosChange={setEquipamentosEmpresa} modo="ambientes" />
+                {editingEmpresaId && (secaoEmpresa === "ambientes" || secaoEmpresa === "equipamentos") && (
+                  <div className="cen-cadastro">
+                    <p className="cen-apoio">Cadastro dos setores, ambientes e equipamentos da empresa.</p>
+                    <ManualBaseFields responsabilidades={responsabilidadesEmpresa} onResponsabilidadesChange={setResponsabilidadesEmpresa} setores={setoresEmpresa} onSetoresChange={setSetoresEmpresa} equipamentos={equipamentosEmpresa} onEquipamentosChange={setEquipamentosEmpresa} modo={secaoEmpresa} />
                   </div>
                 )}
 
@@ -7760,7 +7769,7 @@ export default function Home() {
               </>
             </div>
 
-            {(!editingEmpresaId || ["dados", "manual", "ambientes", "fluxos", "programas"].includes(secaoEmpresa || "")) && (
+            {(!editingEmpresaId || ["dados", "manual", "ambientes", "equipamentos", "fluxos", "programas"].includes(secaoEmpresa || "")) && (
               <div className="cen-salvar">
                 {!editingEmpresaId && msg && <span className="cen-salvar-aviso">{msg}</span>}
                 {editingEmpresaId && (
@@ -7889,6 +7898,8 @@ export default function Home() {
             onAdicionar={adicionarPersonalizado}
             onModelo={atualizarModeloQuestionarioAmbiente}
             onQuestionario={ehPC && (!usuarioDaSessao || podeEditarQuestionario(usuarioDaSessao)) ? abrirQuestionario : undefined}
+            cadastroVazio={!(empresaVisita?.setoresManual || []).length}
+            onGerenciarAmbientes={atual && atual.id === visitaAtual.empresaId && permitido("empresas.editar", atual.id) ? () => void abrirSecaoEmpresaPeloMenu("ambientes") : undefined}
             onVoltar={() => setView("visita")}
             onIniciar={() => {
               if (JSON.stringify(visitaAtual.ambientes || []) !== JSON.stringify(ambientesSelecionados)) {

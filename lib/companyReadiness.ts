@@ -186,10 +186,11 @@ export function rotuloDoChipDePendencias(faltas: string[]): string {
   return faltas.length === 1 ? `Falta: ${faltas[0]}` : `${faltas.length} pendências ▸`;
 }
 
-/** Para onde cada pendência leva (a sub-aba da Central onde ela se resolve): horário em Dados, equipamentos em Ambientes e equipamentos, programas em Programas. */
+/** Para onde cada pendência leva (a sub-aba da Central onde ela se resolve): horário em Dados, equipamentos em Cadastros › Equipamentos, setores em Cadastros › Ambientes, programas em Programas. */
 export function destinoDaPendencia(falta: string): SubAbaCentral {
   const texto = falta.toLocaleLowerCase("pt-BR");
-  if (texto.startsWith("equipamento") || texto.startsWith("setor")) return "ambientes";
+  if (texto.startsWith("equipamento")) return "equipamentos";
+  if (texto.startsWith("setor")) return "ambientes";
   if (texto.startsWith("programa")) return "programas";
   if (texto.startsWith("pop")) return "pops";
   return "dados";
