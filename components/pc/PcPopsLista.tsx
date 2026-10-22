@@ -5,7 +5,7 @@ import type { Empresa, ProcedimentoOperacionalPadronizado } from "@/types";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
 import { RowMenu, type ItemMenu } from "@/components/ui/RowMenu";
 import { MENSAGEM_NORMA_ALTERADA, MENSAGEM_SEM_NORMA_APLICADA, popPrecisaRevisarPorNorma } from "@/lib/popsNorma";
-import { CORES_DA_SITUACAO, botaoDaLinha, contadoresDaLista, filtrarLinhas, linhaPedeAtencao, textoDoCriarDaNorma, type FiltroDaLista, type LinhaComDetalhe } from "@/lib/popGestao";
+import { CORES_DA_SITUACAO, botaoDaLinha, contadoresDaLista, etiquetasDaLinha, filtrarLinhas, linhaPedeAtencao, textoDoCriarDaNorma, type FiltroDaLista, type LinhaComDetalhe } from "@/lib/popGestao";
 import { acoesDoPop } from "@/lib/menuActions";
 import { adicionarPop, arquivarPop, duplicarPop } from "@/lib/pops";
 import PcModelosPop from "@/components/pc/PcModelosPop";
@@ -71,14 +71,20 @@ function Linha({ linha, podeEditar, onAbrirFicha, onCriarDoModelo, menu }: { lin
     <div className={`pgl-linha${atencao ? " is-destaque" : ""}${linha.pop?.arquivado ? " is-arquivado" : ""}`} style={{ "--faixa": cor.faixa } as CSSProperties} title={linha.situacao !== "Falta criar" ? linha.acao.texto : undefined}>
       <span className="pgl-titulo">{linha.codigo ? `${linha.codigo} · ${linha.titulo}` : linha.titulo}</span>
       <div className="pgl-etiquetas">
-        <Etiqueta situacao={linha.situacao} />
-        {linha.registroAtrasado && <span className="pgl-etiqueta pgl-etiqueta--atraso">Registro atrasado</span>}
-        {linha.pop && popPrecisaRevisarPorNorma(linha.pop) && (
-          <span className="pop-revisar" title={MENSAGEM_NORMA_ALTERADA}>
-            revisar
-          </span>
+        {/* Alerta primeiro, situação por último (ordem em `etiquetasDaLinha`). */}
+        {etiquetasDaLinha(linha, { revisar: Boolean(linha.pop && popPrecisaRevisarPorNorma(linha.pop)), naoConferido: Boolean(linha.pop && popNaoConferido(linha.pop)) }).map((etiqueta) =>
+          etiqueta === "atraso" ? (
+            <span key={etiqueta} className="pgl-etiqueta pgl-etiqueta--atraso">Registro atrasado</span>
+          ) : etiqueta === "revisar" ? (
+            <span key={etiqueta} className="pop-revisar" title={MENSAGEM_NORMA_ALTERADA}>
+              revisar
+            </span>
+          ) : etiqueta === "nao-conferido" ? (
+            <span key={etiqueta} className="pop-revisar pop-nao-conferido" title={ROTULO_NAO_CONFERIDO}>{ROTULO_CURTO_NAO_CONFERIDO}</span>
+          ) : (
+            <Etiqueta key={etiqueta} situacao={linha.situacao} />
+          )
         )}
-        {linha.pop && popNaoConferido(linha.pop) && <span className="pop-revisar pop-nao-conferido" title={ROTULO_NAO_CONFERIDO}>{ROTULO_CURTO_NAO_CONFERIDO}</span>}
       </div>
       <div className="pgl-botoes">
         {linha.pop ? (

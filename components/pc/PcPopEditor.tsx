@@ -341,6 +341,12 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
 
       {modoLeitura && (
         <div className="pdoc-leitura">
+          {/* Na leitura não há o campo Responsável: o aviso fica aqui, sem o link (uma versão aprovada só muda numa nova versão). */}
+          {diferencaDeDados && (
+            <p className="ui-row-sub pdoc-sugestao">
+              Responsável neste POP: {executorNaTela.nome}. Os Dados trazem “{diferencaDeDados}”.
+            </p>
+          )}
           <div className="pdoc-barra">
             {onImprimir && (
               <button type="button" className="ui-btn ui-btn--secondary" onClick={() => { setCapaEscolhida(false); setEscolhendoImpressao(true); }}>

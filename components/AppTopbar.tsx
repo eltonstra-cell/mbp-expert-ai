@@ -48,7 +48,7 @@ type Props = {
   atalhos?: { id: string; rotulo: string; onClick: () => void }[];
   /** Botão "←" no canto esquerdo das telas internas: volta uma tela (ou ao nível acima). Ausente no Início. */
   onVoltar?: () => void;
-  /** Central da Empresa: "Central da Empresa › Documentos ▾". O menu troca de seção (Empresa, Estrutura, Documentos). */
+  /** Central da Empresa: "Central da Empresa › Documentos ▾". O menu troca de seção (Empresa, Cadastros, Documentos). */
   secao?: { rotulo: string; opcoes: OpcaoDeSecao[]; onEscolher: (id: string) => void };
 };
 
@@ -113,11 +113,17 @@ export default function AppTopbar({
                   {parte}
                 </span>
               )}
-              {(!ultimo || secao) && <span className="pc-crumb-sep" aria-hidden="true">›</span>}
+              {!ultimo && <span className="pc-crumb-sep" aria-hidden="true">›</span>}
             </span>
           );
         })}
-        {secao && (secao.opcoes.length > 1 ? <SeletorDeSecao rotulo={secao.rotulo} opcoes={secao.opcoes} onEscolher={secao.onEscolher} /> : <span className="sec-menu-botao sec-menu-botao--so" aria-current="page">{secao.rotulo}</span>)}
+        {/* O "›" anda junto com o menu: se a largura faltar, os dois caem para a linha de baixo juntos, nunca o "›" sozinho. */}
+        {secao && (
+          <span className="pc-crumb-menu">
+            <span className="pc-crumb-sep" aria-hidden="true">›</span>
+            {secao.opcoes.length > 1 ? <SeletorDeSecao rotulo={secao.rotulo} opcoes={secao.opcoes} onEscolher={secao.onEscolher} /> : <span className="sec-menu-botao sec-menu-botao--so" aria-current="page">{secao.rotulo}</span>}
+          </span>
+        )}
       </nav>
       <BuscaNaBarra destinos={destinos} atalhos={atalhos} usuarioId={usuarioId} onAtiva={onBuscaAtiva} onEscolher={onEscolherDestino} micDisponivel={micDisponivel} pedidoDeFoco={pedidoDeFocoNaBusca} voz={contextoDaVoz} />
       {subtituloDoCaminho && <span className="pc-crumb-apoio">{subtituloDoCaminho}</span>}

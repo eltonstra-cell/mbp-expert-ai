@@ -22,10 +22,13 @@ export function conteudoComResponsavelEfetivo<T extends Pick<ConteudoPop, "respo
   return { ...conteudo, responsavelExecucao: responsavelDaExecucao(conteudo, dados) };
 }
 
-/** O que o POP digitou à mão difere de Dados? Devolve o texto de Dados ("Maria · Nutricionista" sem o cargo se não houver) ou null. */
+/**
+ * O nome que o POP mostra difere do de Dados? Devolve o nome de Dados ou null. Vale com ou sem a marca `responsavelManual`: POP antigo
+ * (sem a marca) que traz outro nome também avisa; quem acompanha Dados mostra o próprio nome de Dados, então nunca difere.
+ * Comparação sem acento, caixa e espaços repetidos.
+ */
 export function diferencaComDados(conteudo: Pick<ConteudoPop, "responsavelExecucao" | "responsavelManual"> | undefined, dados: NomeECargo | undefined): string | null {
-  if (conteudo?.responsavelManual === false) return null;
-  const doPop = limparTextoDePessoa(conteudo?.responsavelExecucao?.nome);
+  const doPop = responsavelDaExecucao(conteudo, dados).nome;
   const deDados = limparTextoDePessoa(dados?.nome);
   if (!doPop || !deDados) return null;
   return mesmoNome(doPop, deDados) ? null : deDados;

@@ -256,6 +256,18 @@ export function botaoDaLinha(linha: Pick<LinhaDaLista, "situacao" | "podeAprovar
   return linha.situacao === "Aguardando aprovação" && linha.podeAprovar ? { rotulo: "Aprovar", principal: true } : { rotulo: "Abrir", principal: false };
 }
 
+export type EtiquetaDaLinha = "atraso" | "revisar" | "nao-conferido" | "situacao";
+
+/** Ordem das etiquetas na linha: o alerta primeiro, a situação por último ("Registro atrasado" antes de "Vigente"; "Modelo não conferido" antes de "Aguardando aprovação"). */
+export function etiquetasDaLinha(linha: Pick<LinhaDaLista, "registroAtrasado">, extras: { revisar?: boolean; naoConferido?: boolean }): EtiquetaDaLinha[] {
+  const etiquetas: EtiquetaDaLinha[] = [];
+  if (linha.registroAtrasado) etiquetas.push("atraso");
+  if (extras.revisar) etiquetas.push("revisar");
+  if (extras.naoConferido) etiquetas.push("nao-conferido");
+  etiquetas.push("situacao");
+  return etiquetas;
+}
+
 /** Texto de apoio do botão "Criar POPs da norma": o que ele faz agora (N real, sem "(s)"). */
 export function textoDoCriarDaNorma(faltam: number): string {
   if (faltam <= 0) return "Os POPs do modelo já foram criados.";
