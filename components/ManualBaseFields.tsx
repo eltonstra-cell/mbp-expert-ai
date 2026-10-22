@@ -6,7 +6,9 @@ import type {
   PapelResponsabilidadeManual,
   ResponsabilidadeManual,
 } from "@/types";
-import { SETORES_OFICIAIS_MANUAL, agruparEquipamentosPorAmbiente, resumoDosSetores } from "@/lib/manualBase";
+import { SETORES_OFICIAIS_MANUAL, agruparEquipamentosPorAmbiente, resumoDosSetoresMarcados } from "@/lib/manualBase";
+import { aplicarEscolhaDeSetores } from "@/lib/escolhaEmJanela";
+import EscolhaEmJanela from "@/components/EscolhaEmJanela";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
 
 type Props = {
@@ -50,10 +52,10 @@ export default function ManualBaseFields({
   const proprios = setores.filter((setor) => !SETORES_OFICIAIS_MANUAL.includes(setor as (typeof SETORES_OFICIAIS_MANUAL)[number]));
   const gruposDeEquipamentos = agruparEquipamentosPorAmbiente(equipamentos, setoresParaEquipamentos);
 
-  function toggleSetor(setor: string) {
-    const proximos = setores.includes(setor)
-      ? setores.filter((item) => item !== setor)
-      : [...setores, setor];
+  // "Concluir" na janela de setores: aplica no estado da tela (quem grava é o Salvar da barra de baixo).
+  function aplicarSetores(escolhidos: string[]) {
+    const proximos = aplicarEscolhaDeSetores(setores, SETORES_OFICIAIS_MANUAL, escolhidos);
+    if (proximos === setores) return;
     onSetoresChange(proximos);
     if (!proximos.includes(setorEquipamento)) {
       setSetorEquipamento(proximos[0] || SETORES_OFICIAIS_MANUAL[0]);
@@ -110,18 +112,16 @@ export default function ManualBaseFields({
       </div>}
 
       {mostrarAmbientes && (
-        <section className="cad-cartao" aria-label="Setores do estabelecimento">
-          <div className="cad-titulo">Setores do estabelecimento</div>
-          <p className="cad-descricao">Selecione somente os setores que realmente existem nesta empresa.</p>
-          <div className="cad-setores">
-            {SETORES_OFICIAIS_MANUAL.map((setor) => (
-              <label key={setor} className={`cad-setor${setores.includes(setor) ? " is-on" : ""}`}>
-                <input type="checkbox" checked={setores.includes(setor)} onChange={() => toggleSetor(setor)} />
-                <span>{setor}</span>
-              </label>
-            ))}
-          </div>
-        </section>
+        <EscolhaEmJanela
+          titulo="Setores do estabelecimento"
+          apoio="Marque somente os setores que realmente existem nesta empresa."
+          opcoes={SETORES_OFICIAIS_MANUAL.map((setor) => ({ id: setor, titulo: setor }))}
+          marcadas={setores.filter((setor) => SETORES_OFICIAIS_MANUAL.includes(setor as (typeof SETORES_OFICIAIS_MANUAL)[number]))}
+          palavra="setores marcados"
+          rotuloDoBotao="Escolher setores"
+          vazio="Nenhum setor marcado"
+          onAplicar={aplicarSetores}
+        />
       )}
 
       {mostrarAmbientes && (
@@ -166,7 +166,7 @@ export default function ManualBaseFields({
             </span>
             <button type="button" onClick={adicionarAmbienteReal} className="ui-btn ui-btn--criar cad-adicionar">Adicionar</button>
           </div>
-          <div className="cad-resumo">{resumoDosSetores(setores)}</div>
+          <div className="cad-resumo">{resumoDosSetoresMarcados(setores)}</div>
         </section>
       )}
 

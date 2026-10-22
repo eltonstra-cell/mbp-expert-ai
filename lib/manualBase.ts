@@ -380,3 +380,11 @@ export function agruparEquipamentosPorAmbiente<T extends { setor: string }>(equi
   }
   return grupos;
 }
+
+/** "3 setores marcados · 2 ambientes próprios da empresa": a linha de baixo do cartão de ambientes. */
+export function resumoDosSetoresMarcados(setores: string[]): string {
+  const { doModelo, daEmpresa } = separarSetores(setores);
+  const marcados = doModelo.length === 1 ? "1 setor marcado" : `${doModelo.length} setores marcados`;
+  const proprios = daEmpresa.length === 1 ? "1 ambiente próprio da empresa" : `${daEmpresa.length} ambientes próprios da empresa`;
+  return `${marcados} · ${proprios}`;
+}
