@@ -40,7 +40,7 @@ import ConfigCartazLavagem from "@/components/pc/ConfigCartazLavagem";
 import { aguardarImagensParaImprimir } from "@/lib/aguardarImagens";
 import CartazLavagem from "@/components/CartazLavagem";
 import { createPortal } from "react-dom";
-import { conteudoDoCartaz, eDeLavagemDeMaos, podeGerarOCartaz, popAprovadoParaOCartaz, rodapeDoCartaz, temaDoCartaz as coresDoTema, type DadosDoCartaz, type TemaDoCartaz } from "@/lib/cartazLavagem";
+import { conteudoDoCartaz, eDeLavagemDeMaos, podeGerarOCartaz, popAprovadoParaOCartaz, rodapeDoCartaz, estiloDoCartaz as estiloValido, type DadosDoCartaz, type EstiloDoCartaz } from "@/lib/cartazLavagem";
 import { capaInicialDoDialogo, comIconeDeCapa, eIconeConhecido, iconeDoPop, modeloDaCapa, type CapaCompleta, type ModeloDaCapa } from "@/lib/capaPop";
 import { itensDasNotas, totalDePendencias, type AlvoDaPendencia, type ItemDasNotas } from "@/lib/popPendencias";
 
@@ -66,8 +66,8 @@ type Props = {
   capaDaEmpresa?: CapaDosPops;
   onSalvarCapa?: (capa: CapaDosPops) => void;
   /** Cartaz de lavagem de mãos (só no POP do modelo de lavagem): tema guardado e como salvar tema e logotipo. */
-  temaDoCartaz?: TemaDoCartaz;
-  onSalvarCartaz?: (tema: TemaDoCartaz, logotipo: string | undefined) => void;
+  estiloDoCartaz?: EstiloDoCartaz;
+  onSalvarCartaz?: (estilo: EstiloDoCartaz, logotipo: string | undefined) => void;
   /** Grava o POP com a escolha de ícone da capa (sem criar versão: é só apresentação). */
   onTrocarIconeDeCapa?: (pop: ProcedimentoOperacionalPadronizado) => void;
   /** Frase da próxima ação: fica na mesma linha dos botões, à esquerda. */
@@ -246,7 +246,7 @@ function horaCerta(): string {
 }
 
 // Documento (editor em painéis) e Histórico (versões, aprovações e motivo) do POP. O cabeçalho e as abas ficam na ficha (PcFichaPop).
-export default function PcPopEditor({ pop, empresa, usuario, podeEditar, responsavelDoEstabelecimento, onImprimir, onSalvarRascunho, onEnviar, onAprovar, onNovaVersao, onDescartar, mensagem, proximaAcao, onIrParaConferencia, capaDaEmpresa, onSalvarCapa, onTrocarIconeDeCapa, temaDoCartaz, onSalvarCartaz, parte = "documento" }: Props) {
+export default function PcPopEditor({ pop, empresa, usuario, podeEditar, responsavelDoEstabelecimento, onImprimir, onSalvarRascunho, onEnviar, onAprovar, onNovaVersao, onDescartar, mensagem, proximaAcao, onIrParaConferencia, capaDaEmpresa, onSalvarCapa, onTrocarIconeDeCapa, estiloDoCartaz, onSalvarCartaz, parte = "documento" }: Props) {
   // Mais de um passo em branco vira um só logo ao abrir.
   const [rascunho, setRascunho] = useState<ProcedimentoOperacionalPadronizado>(() => (pop.conteudo?.passos ? { ...pop, conteudo: { ...pop.conteudo, passos: juntarPassosEmBrancoRepetidos(pop.conteudo.passos) } } : pop));
   const [motivoDaNovaVersao, setMotivoDaNovaVersao] = useState("");
@@ -390,17 +390,17 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
   const conteudoDoCartazAtual = conteudoDoCartaz(aprovadoDoCartaz?.pop || pop);
   const rodapeDoCartazAtual = rodapeDoCartaz({ empresa: dadosDaEmpresa.nome, codigo: (aprovadoDoCartaz?.pop || pop).codigo || "", versao: (aprovadoDoCartaz?.pop || pop).versao, aprovadoEm: aprovadoDoCartaz?.aprovadoEm || "" });
   const bloqueioDoCartaz = podeGerarOCartaz(pop);
-  function gerarCartaz(tema: TemaDoCartaz, logotipo: string | undefined) {
+  function gerarCartaz(estilo: EstiloDoCartaz, logotipo: string | undefined) {
     if (!aprovadoDoCartaz) return;
     setCartazAberto(false);
-    setCartazNoPapel({ tema: coresDoTema(tema).id, conteudo: conteudoDoCartaz(aprovadoDoCartaz.pop), rodape: rodapeDoCartazAtual, logotipo });
+    setCartazNoPapel({ estilo: estiloValido(estilo), conteudo: conteudoDoCartaz(aprovadoDoCartaz.pop), rodape: rodapeDoCartazAtual, logotipo });
     // Uma página A4 sem margens; o POP aberto não sai junto. Tudo some de novo quando a impressão termina.
-    const estilo = document.createElement("style");
-    estilo.id = "estilo-impressao-cartaz";
-    estilo.textContent = "@media print{@page{size:A4;margin:0}#pop-folha,#pop-folha *{display:none!important}}";
-    document.head.appendChild(estilo);
+    const regra = document.createElement("style");
+    regra.id = "estilo-impressao-cartaz";
+    regra.textContent = "@media print{@page{size:A4;margin:0}#pop-folha,#pop-folha *{display:none!important}}";
+    document.head.appendChild(regra);
     const limpar = () => {
-      estilo.remove();
+      regra.remove();
       setCartazNoPapel(null);
       window.removeEventListener("afterprint", limpar);
     };
@@ -808,8 +808,8 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
           )}
           </div>
           <aside className="pdoc-previa" aria-label="Pré-visualização da folha">
-            <div className="pdoc-previa-cabeca">
-              <h2 className="pdoc-lista-titulo">Pré-visualização da folha</h2>
+            <h2 className="pdoc-lista-titulo">Pré-visualização da folha</h2>
+            <div className="pdoc-previa-acoes">
               {comCartaz && (
                 <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => setCartazAberto(true)}>
                   Gerar cartaz
@@ -960,11 +960,11 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
         <ConfigCartazLavagem
           conteudo={conteudoDoCartazAtual}
           rodape={rodapeDoCartazAtual}
-          guardado={{ tema: coresDoTema(temaDoCartaz).id, logotipo: capaDaEmpresa?.logotipo }}
+          guardado={{ estilo: estiloValido(estiloDoCartaz), logotipo: capaDaEmpresa?.logotipo }}
           podeSalvar={Boolean(onSalvarCartaz && podeEditar)}
           bloqueio={bloqueioDoCartaz.pode ? null : { mensagem: bloqueioDoCartaz.mensagem, explicacao: bloqueioDoCartaz.explicacao }}
           onCancelar={() => setCartazAberto(false)}
-          onSalvar={(tema, logotipo) => onSalvarCartaz?.(tema, logotipo)}
+          onSalvar={(estilo, logotipo) => onSalvarCartaz?.(estilo, logotipo)}
           onGerar={gerarCartaz}
         />
       )}

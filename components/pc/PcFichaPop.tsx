@@ -16,7 +16,7 @@ import { mensagemDeComprovanteVazio } from "@/lib/comprovantePop";
 import { ROTULO_CURTO_NAO_CONFERIDO, ROTULO_NAO_CONFERIDO, itensFeitos, marcarComoConferido, marcarItemAConferir, podeMarcarComoConferido, popNaoConferido } from "@/lib/popConferencia";
 import { nomeECargo } from "@/lib/nomeCargo";
 import type { AlvoDaPendencia } from "@/lib/popPendencias";
-import type { TemaDoCartaz } from "@/lib/cartazLavagem";
+import type { EstiloDoCartaz } from "@/lib/cartazLavagem";
 import { ROTULO_DA_VALIDADE, diasEntre, leituraDaVersao, rotuloDoTipo, situacaoDaValidade } from "@/lib/registrosEmpresa";
 
 export type AbaFicha = "resumo" | "documento" | "registros" | "comprovantes" | "quemleu" | "historico";
@@ -48,8 +48,8 @@ type Props = {
   capaDaEmpresa?: CapaDosPops;
   onSalvarCapa?: (capa: CapaDosPops) => void;
   /** Cartaz de lavagem de mãos: tema guardado na empresa e como salvar tema e logotipo. */
-  temaDoCartaz?: TemaDoCartaz;
-  onSalvarCartaz?: (tema: TemaDoCartaz, logotipo: string | undefined) => void;
+  estiloDoCartaz?: EstiloDoCartaz;
+  onSalvarCartaz?: (estilo: EstiloDoCartaz, logotipo: string | undefined) => void;
 };
 
 const ROTULO: Record<AbaFicha, string> = { resumo: "Resumo", documento: "Documento", registros: "Registros", comprovantes: "Comprovantes", quemleu: "Quem leu", historico: "Histórico" };
@@ -68,7 +68,7 @@ const DESTINO_DA_ABA: Record<NonNullable<ReturnType<typeof montarLinhaDoPop>["ac
 };
 
 // Ficha do POP: o POP é o centro. Resumo, Documento, Registros, Comprovantes, Quem leu e Histórico no mesmo lugar.
-export default function PcFichaPop({ pop, empresa, usuario, podeEditar, onImprimir, responsavelDoEstabelecimento, popsDaEmpresa, podeAprovar, contexto, mensagem, abaInicial = "resumo", alvoInicial, onVoltar, onSalvarRascunho, onEnviar, onAprovar, onNovaVersao, onDescartar, onAtualizarConferencia, capaDaEmpresa, onSalvarCapa, temaDoCartaz, onSalvarCartaz }: Props) {
+export default function PcFichaPop({ pop, empresa, usuario, podeEditar, onImprimir, responsavelDoEstabelecimento, popsDaEmpresa, podeAprovar, contexto, mensagem, abaInicial = "resumo", alvoInicial, onVoltar, onSalvarRascunho, onEnviar, onAprovar, onNovaVersao, onDescartar, onAtualizarConferencia, capaDaEmpresa, onSalvarCapa, estiloDoCartaz, onSalvarCartaz }: Props) {
   const [aba, setAba] = useState<AbaFicha>(abaInicial);
   const hoje = hojeISO();
   useEffect(() => setAba(abaInicial), [abaInicial]);
@@ -344,7 +344,7 @@ export default function PcFichaPop({ pop, empresa, usuario, podeEditar, onImprim
             onIrParaConferencia={pop.origemModelo ? irParaAConferencia : undefined}
             capaDaEmpresa={capaDaEmpresa}
             onSalvarCapa={onSalvarCapa}
-            temaDoCartaz={temaDoCartaz}
+            estiloDoCartaz={estiloDoCartaz}
             onSalvarCartaz={onSalvarCartaz}
             onTrocarIconeDeCapa={onAtualizarConferencia}
           />

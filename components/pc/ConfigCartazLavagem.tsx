@@ -2,27 +2,27 @@
 
 import { useEffect, useRef, useState } from "react";
 import CartazLavagem from "@/components/CartazLavagem";
-import { TEMAS_DO_CARTAZ, type ConteudoDoCartaz, type TemaDoCartaz } from "@/lib/cartazLavagem";
+import { ESTILOS_DO_CARTAZ, type ConteudoDoCartaz, type EstiloDoCartaz } from "@/lib/cartazLavagem";
 import { prepararLogotipo } from "@/lib/logotipoCapa";
 
 type Props = {
   conteudo: Pick<ConteudoDoCartaz, "cartoes" | "sempreQue" | "passosSemFigura" | "fora">;
   rodape: string;
-  /** Tema e logotipo guardados na empresa. */
-  guardado: { tema: TemaDoCartaz; logotipo?: string };
+  /** Estilo e logotipo guardados na empresa. */
+  guardado: { estilo: EstiloDoCartaz; logotipo?: string };
   podeSalvar: boolean;
   /** POP sem aprovação: mostra o aviso e bloqueia a geração. */
   bloqueio?: { mensagem: string; explicacao: string } | null;
-  onSalvar: (tema: TemaDoCartaz, logotipo: string | undefined) => void;
-  onGerar: (tema: TemaDoCartaz, logotipo: string | undefined) => void;
+  onSalvar: (estilo: EstiloDoCartaz, logotipo: string | undefined) => void;
+  onGerar: (estilo: EstiloDoCartaz, logotipo: string | undefined) => void;
   onCancelar: () => void;
 };
 
-// Cartaz "Como lavar as mãos": escolha do tema e do logotipo (o mesmo da capa dos POPs) com a pré-visualização ao vivo.
+// Cartaz "Como lavar as mãos": escolha do estilo e do logotipo (o mesmo da capa dos POPs) com a pré-visualização ao vivo.
 export default function ConfigCartazLavagem({ conteudo, rodape, guardado, podeSalvar, bloqueio, onSalvar, onGerar, onCancelar }: Props) {
-  const [tema, setTema] = useState<TemaDoCartaz>(guardado.tema);
+  const [estilo, setEstilo] = useState<EstiloDoCartaz>(guardado.estilo);
   const [logotipo, setLogotipo] = useState<string | undefined>(guardado.logotipo);
-  const [salvo, setSalvo] = useState<{ tema: TemaDoCartaz; logotipo?: string }>(guardado);
+  const [salvo, setSalvo] = useState<{ estilo: EstiloDoCartaz; logotipo?: string }>(guardado);
   const [erroLogo, setErroLogo] = useState("");
   const [enviando, setEnviando] = useState(false);
   const entradaRef = useRef<HTMLInputElement | null>(null);
@@ -35,7 +35,7 @@ export default function ConfigCartazLavagem({ conteudo, rodape, guardado, podeSa
     return () => window.removeEventListener("keydown", aoTeclar);
   }, [onCancelar]);
 
-  const naoSalvo = podeSalvar && (tema !== salvo.tema || logotipo !== salvo.logotipo);
+  const naoSalvo = podeSalvar && (estilo !== salvo.estilo || logotipo !== salvo.logotipo);
 
   async function enviarLogotipo(arquivo: File | undefined) {
     if (!arquivo) return;
@@ -69,10 +69,9 @@ export default function ConfigCartazLavagem({ conteudo, rodape, guardado, podeSa
             </p>
 
             <fieldset className="ccp-grupo ccp-linha">
-              <legend>Tema</legend>
-              {TEMAS_DO_CARTAZ.map((opcao) => (
-                <button key={opcao.id} type="button" className={`ccp-chip${tema === opcao.id ? " is-ativo" : ""}`} aria-pressed={tema === opcao.id} onClick={() => setTema(opcao.id)}>
-                  <i style={{ background: opcao.titulo, borderColor: "rgba(18,32,43,.25)" }} aria-hidden="true" />
+              <legend>Estilo</legend>
+              {ESTILOS_DO_CARTAZ.map((opcao) => (
+                <button key={opcao.id} type="button" className={`ccp-chip${estilo === opcao.id ? " is-ativo" : ""}`} title={opcao.descricao} aria-pressed={estilo === opcao.id} onClick={() => setEstilo(opcao.id)}>
                   {opcao.rotulo}
                 </button>
               ))}
@@ -102,8 +101,8 @@ export default function ConfigCartazLavagem({ conteudo, rodape, guardado, podeSa
           </div>
 
           <div className="ccp-previa ccz-previa" aria-label="Pré-visualização do cartaz">
-            <div className={`ccp-folha${bloqueio ? " ccz-apagada" : ""}`}>
-              <CartazLavagem dados={{ tema, conteudo, rodape, logotipo }} previa />
+            <div className="ccp-folha">
+              <CartazLavagem dados={{ estilo, conteudo, rodape, logotipo }} previa />
             </div>
           </div>
         </div>
@@ -122,14 +121,14 @@ export default function ConfigCartazLavagem({ conteudo, rodape, guardado, podeSa
                 className="ui-btn ui-btn--secondary"
                 disabled={!naoSalvo}
                 onClick={() => {
-                  onSalvar(tema, logotipo);
-                  setSalvo({ tema, logotipo });
+                  onSalvar(estilo, logotipo);
+                  setSalvo({ estilo, logotipo });
                 }}
               >
                 Salvar escolhas
               </button>
             )}
-            <button type="button" className="ui-btn ui-btn--save" disabled={Boolean(bloqueio)} title={bloqueio ? bloqueio.mensagem : undefined} onClick={() => onGerar(tema, logotipo)}>
+            <button type="button" className="ui-btn ui-btn--save" disabled={Boolean(bloqueio)} title={bloqueio ? bloqueio.mensagem : undefined} onClick={() => onGerar(estilo, logotipo)}>
               Gerar cartaz (PDF)
             </button>
           </div>

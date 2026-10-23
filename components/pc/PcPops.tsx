@@ -5,7 +5,7 @@ import type { Empresa, ProcedimentoOperacionalPadronizado, UsuarioSistema } from
 import PcFichaPop, { type AbaFicha } from "@/components/pc/PcFichaPop";
 import { destinoDoAprovar, type AlvoDaPendencia } from "@/lib/popPendencias";
 import { comCapaNaVersaoAprovada } from "@/lib/capaPop";
-import { temaDoCartaz as temaDaEmpresa, type TemaDoCartaz } from "@/lib/cartazLavagem";
+import { estiloDoCartaz as estiloDaEmpresa, type EstiloDoCartaz } from "@/lib/cartazLavagem";
 import type { CapaDosPops } from "@/types";
 import PcPopsLista from "@/components/pc/PcPopsLista";
 import type { CabecalhoDeImpressao } from "@/lib/printFooter";
@@ -45,7 +45,7 @@ type Props = {
   /** Guarda a capa dos POPs na empresa (opcional). */
   onSalvarCapaDosPops?: (capa: CapaDosPops) => void;
   /** Guarda o tema do cartaz de lavagem de mãos e o logotipo (o da capa). */
-  onSalvarCartaz?: (tema: TemaDoCartaz, logotipo: string | undefined) => void;
+  onSalvarCartaz?: (estilo: EstiloDoCartaz, logotipo: string | undefined) => void;
   /** Muda a cada clique em "POPs" do caminho: fecha a ficha e volta à lista. */
   pedidoDeLista?: number;
 };
@@ -198,7 +198,7 @@ export default function PcPops({ pops, empresa, usuario = null, podeEditar = fal
         onAprovar={(novo) => executar(popEmFicha, () => comCapaNaVersaoAprovada(aprovarPop(novo, usuario!, empresa, new Date().toISOString()), empresa.capaDosPops), "POP aprovado e assinado.")}
         capaDaEmpresa={empresa.capaDosPops}
         onSalvarCapa={onSalvarCapaDosPops}
-        temaDoCartaz={temaDaEmpresa(empresa.cartazLavagem?.tema).id}
+        estiloDoCartaz={estiloDaEmpresa(empresa.cartazLavagem?.tema)}
         onSalvarCartaz={onSalvarCartaz}
         onAtualizarConferencia={(novo) => onPersistir(pops.map((pop) => (pop.id === novo.id ? novo : pop)))}
         onDescartar={(atual) => executar(popEmFicha, () => descartarRascunho(atual), "Rascunho descartado. A versão aprovada continua vigente.")}

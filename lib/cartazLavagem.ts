@@ -1,24 +1,25 @@
-// Cartaz "Como lavar as mãos": 14 ilustrações, 4 temas e o conteúdo tirado do POP de lavagem de mãos (nada de memória).
+// Cartaz "Como lavar as mãos": 14 ilustrações, 5 estilos visuais e o conteúdo tirado do POP de lavagem de mãos (nada de memória).
 // Regras puras, sem tela. Só o POP APROVADO gera o cartaz; os passos e a lista "Lave as mãos sempre que" vêm do texto do POP.
 import type { ProcedimentoOperacionalPadronizado } from "../types/index.ts";
 import { formatarData } from "./dataLocal.ts";
 import { subitensDoItem, textoDoItem } from "./popConteudoModelo.ts";
 import { popComoVigente } from "./popsNorma.ts";
 
-export type TemaDoCartaz = "verde" | "azul" | "terra" | "mostarda";
+/** Os 5 estilos visuais do cartaz. O valor fica em `Empresa.cartazLavagem.tema` (campo opcional já existente). */
+export type EstiloDoCartaz = "agua" | "azulejo" | "editorial" | "pastel" | "linha";
 
-export type CoresDoTema = { id: TemaDoCartaz; rotulo: string; titulo: string; acento: string; forma: string; quadro: string; fundo: string };
-
-export const TEMAS_DO_CARTAZ: CoresDoTema[] = [
-  { id: "verde", rotulo: "Verde", titulo: "#1E4D3A", acento: "#2F6B4F", forma: "#8DB07A", quadro: "#E4EDDD", fundo: "#F4F1E8" },
-  { id: "azul", rotulo: "Azul-marinho", titulo: "#1D3557", acento: "#2A4D7C", forma: "#1D3557", quadro: "#DCE6F2", fundo: "#F1F3F6" },
-  { id: "terra", rotulo: "Terra", titulo: "#7A3B22", acento: "#C0623A", forma: "#E9B79C", quadro: "#F6E3D8", fundo: "#F7F0E8" },
-  { id: "mostarda", rotulo: "Mostarda", titulo: "#6B4A12", acento: "#D9A21B", forma: "#E8C45A", quadro: "#F7EACB", fundo: "#F8F3E4" },
+export const ESTILOS_DO_CARTAZ: { id: EstiloDoCartaz; rotulo: string; descricao: string }[] = [
+  { id: "agua", rotulo: "Água e bolhas", descricao: "Degradê azul-claro, bolhas e cartões brancos com sombra." },
+  { id: "azulejo", rotulo: "Azulejo laranja", descricao: "Faixa laranja no topo, fundo de azulejo e cartões com borda laranja." },
+  { id: "editorial", rotulo: "Editorial limpo", descricao: "Fundo branco, sem cartões, números grandes em laranja." },
+  { id: "pastel", rotulo: "Pastel colorido", descricao: "Cartões pastel em quatro cores girando." },
+  { id: "linha", rotulo: "Linha do tempo", descricao: "Duas colunas com um trilho tracejado e círculos numerados." },
 ];
-export const TEMA_PADRAO: TemaDoCartaz = "verde";
+export const ESTILO_PADRAO: EstiloDoCartaz = "azulejo";
 
-export const eTemaDoCartaz = (valor: unknown): valor is TemaDoCartaz => TEMAS_DO_CARTAZ.some((tema) => tema.id === valor);
-export const temaDoCartaz = (id: unknown): CoresDoTema => TEMAS_DO_CARTAZ.find((tema) => tema.id === id) || TEMAS_DO_CARTAZ[0];
+export const eEstiloDoCartaz = (valor: unknown): valor is EstiloDoCartaz => ESTILOS_DO_CARTAZ.some((estilo) => estilo.id === valor);
+/** Estilo guardado na empresa; vazio ou valor antigo (verde, azul, terra, mostarda) cai no padrão, sem erro. */
+export const estiloDoCartaz = (valor: unknown): EstiloDoCartaz => (eEstiloDoCartaz(valor) ? valor : ESTILO_PADRAO);
 
 /** Modelo do catálogo cujo POP gera o cartaz (por enquanto só ele). */
 export const MODELO_DO_CARTAZ = "comp-01";
@@ -178,7 +179,7 @@ export function rodapeDoCartaz(dados: { empresa: string; codigo: string; versao:
 }
 
 export type DadosDoCartaz = {
-  tema: TemaDoCartaz;
+  estilo: EstiloDoCartaz;
   conteudo: Pick<ConteudoDoCartaz, "cartoes" | "sempreQue">;
   rodape: string;
   /** Logotipo da empresa (data URL); sem ele a posição fica vazia no PDF. */
@@ -190,8 +191,42 @@ export function subtituloDoCartaz(total: number): string {
   return `Siga ${total === 1 ? "o passo" : `os ${total} passos`}, na ordem.`;
 }
 
-/** Quadro "Lave as mãos sempre que": vai na posição seguinte ao último cartão; se sobrar espaço na linha, ocupa as duas colunas finais. */
-export function posicaoDoQuadro(totalDeCartoes: number): { indice: number; colunas: 1 | 2 } {
-  const resto = (totalDeCartoes + 1) % 3;
-  return { indice: totalDeCartoes, colunas: resto === 2 ? 2 : 1 };
+/** Subtítulo do estilo Editorial limpo ("13 passos, na ordem."). */
+export function subtituloEditorial(total: number): string {
+  return `${total === 1 ? "1 passo" : `${total} passos`}, na ordem.`;
+}
+
+export type DisposicaoDaGrade = {
+  /** "ao-lado": o quadro "sempre que" ocupa as colunas que sobram na última linha; "faixa": linha própria, de largura total, abaixo da grade. */
+  quadro: { tipo: "ao-lado"; colunas: number } | { tipo: "faixa" };
+  linhasDeCartoes: number;
+  linhasTotais: number;
+  /** Seis linhas não cabem na folha com o tamanho normal: cartões e figuras encolhem e tudo continua numa página. */
+  denso: boolean;
+};
+
+/** Grade de 3 colunas. Com 13 passos o quadro ocupa 2 colunas ao lado do último cartão; com 14 (ou sobrando uma coluna só) vira uma faixa de largura total. */
+export function disposicaoDaGrade(totalDeCartoes: number): DisposicaoDaGrade {
+  const resto = totalDeCartoes % 3;
+  const sobra = resto === 0 ? 0 : 3 - resto;
+  const linhasDeCartoes = Math.max(1, Math.ceil(totalDeCartoes / 3));
+  const ao_lado = sobra >= 2;
+  const linhasTotais = linhasDeCartoes + (ao_lado ? 0 : 1);
+  return { quadro: ao_lado ? { tipo: "ao-lado", colunas: sobra } : { tipo: "faixa" }, linhasDeCartoes, linhasTotais, denso: linhasTotais > 5 };
+}
+
+export type DisposicaoDaLinha = {
+  esquerda: number;
+  direita: number;
+  /** "coluna": o quadro fica embaixo da coluna da direita; "faixa": largura total abaixo das duas colunas. */
+  quadro: "coluna" | "faixa";
+  denso: boolean;
+};
+
+/** Linha do tempo: esquerda com os primeiros passos (metade, arredondada para cima), direita com os demais. */
+export function disposicaoDaLinhaDoTempo(totalDeCartoes: number): DisposicaoDaLinha {
+  const esquerda = Math.ceil(totalDeCartoes / 2);
+  const direita = totalDeCartoes - esquerda;
+  const quadro = direita < esquerda ? "coluna" : "faixa";
+  return { esquerda, direita, quadro, denso: quadro === "faixa" && esquerda >= 7 };
 }

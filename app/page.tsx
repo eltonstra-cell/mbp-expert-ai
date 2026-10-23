@@ -6327,10 +6327,10 @@ export default function Home() {
           podeEditar={podeEditarDoc}
           onPersistir={(novos) => persistirPopsDaEmpresa(empresaDoc.id, novos)}
           topo={topo}
-          onSalvarCartaz={podeEditarDoc ? (tema, logotipo) => atualizarEmpresaDosRegistros(empresaDoc.id, (empresa) => {
+          onSalvarCartaz={podeEditarDoc ? (estilo, logotipo) => atualizarEmpresaDosRegistros(empresaDoc.id, (empresa) => {
             const { logotipo: _antigo, ...restoDaCapa } = empresa.capaDosPops || {};
             void _antigo;
-            return { ...empresa, cartazLavagem: { ...(empresa.cartazLavagem || {}), tema }, capaDosPops: { ...restoDaCapa, ...(logotipo ? { logotipo } : {}) } };
+            return { ...empresa, cartazLavagem: { ...(empresa.cartazLavagem || {}), tema: estilo }, capaDosPops: { ...restoDaCapa, ...(logotipo ? { logotipo } : {}) } };
           }) : undefined}
           onSalvarCapaDosPops={podeEditarDoc ? (capa) => atualizarEmpresaDosRegistros(empresaDoc.id, (empresa) => ({ ...empresa, capaDosPops: capa })) : undefined}
           abas={
