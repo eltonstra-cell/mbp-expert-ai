@@ -143,14 +143,16 @@ test("capa desligada não altera o PDF atual; ligada vira a página 1 (A4, sem c
   assert.ok(popFolha.includes('className="pfolha-capa"'));
   const css = ler("../app/globals.css");
   assert.match(css, /\.pfolha-capa\{display:none\}/, "na tela a capa não aparece (só no papel)");
-  assert.match(css, /@media print\{[^}]*\n?\s*\.pfolha-capa\{display:block;width:210mm;height:297mm;[^}]*break-after:page/);
+  assert.match(css, /@media print\{[^}]*\n?\s*\.pfolha-capa\{display:block;position:relative;width:210mm;height:296\.5mm;[^}]*page:capa\}/, "a capa é uma página A4 inteira, na página nomeada (a mudança de página nomeada já quebra a página)");
   assert.match(css, /@page capa\{size:A4;margin:0\}/);
   assert.match(css, /@media print\{\.pfolha-capa\{page:capa\}\}/);
   assert.match(css, /\.capa-pop\{[^}]*-webkit-print-color-adjust:exact;print-color-adjust:exact\}/, "as cores da capa saem no papel");
   const rodape = ler("../lib/printFooter.ts");
-  assert.ok(rodape.includes("@page capa{@top-left{content:none;border:0}@top-right{content:none;border:0}@bottom-left{content:none}@bottom-right{content:none}}"));
+  assert.ok(rodape.includes("@page capa{size:A4;margin:0;@top-left{content:none;border:0}@top-right{content:none;border:0}@bottom-left{content:none}@bottom-right{content:none}}"));
   const editor = ler("../components/pc/PcPopEditor.tsx");
-  assert.ok(editor.includes("capa={capaNoPapel}") && editor.includes("setCapaNoPapel(capa?.ativa ?"));
+  assert.ok(editor.includes("capa={capaNoPapel}") && editor.includes("setCapaNoPapel(modeloDaCapaImpressa)"));
+  assert.ok(editor.includes('<div id="impressao-pop"') && editor.includes("aguardarImagensParaImprimir"), "a capa sai num bloco próprio de impressão, depois de as imagens carregarem");
+  assert.match(css, /body:has\(#impressao-pop\) > \*:not\(#impressao-pop\)\{display:none!important\}/, "o resto do app some do papel quando há capa");
   assert.ok(editor.includes("afterprint"), "a capa some de novo quando a impressão termina");
 });
 

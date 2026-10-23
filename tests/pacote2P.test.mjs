@@ -432,11 +432,11 @@ test("nenhum 'null' nem 'conforme o material' no catálogo e na folha/PDF; célu
 // ===== 4: capa =====
 test("capa: sem cabeçalho corrido nem rodapé (página nomeada) e a folha começa na página seguinte", () => {
   const css = cssDoDocumentoImpresso({ cabecalho: { esquerda: ["Empresa"], direita: ["POP-05 · versão 1.0"], rodape: "Título" }, comCaixasDeMargem: true });
-  assert.match(css, /@page capa\{@top-left\{content:none;border:0\}@top-right\{content:none;border:0\}@bottom-left\{content:none\}@bottom-right\{content:none\}\}/);
+  assert.match(css, /@page capa\{size:A4;margin:0;@top-left\{content:none;border:0\}@top-right\{content:none;border:0\}@bottom-left\{content:none\}@bottom-right\{content:none\}\}/);
   assert.match(css, /@page\{size:A4/);
   const global = ler("../app/globals.css");
   assert.match(global, /@media print\{\.pfolha-capa\{page:capa\}\}/);
-  assert.match(global, /\.pfolha-capa\{display:block;[^}]*break-after:page/);
+  assert.match(global, /\.pfolha-capa\{display:block;[^}]*page:capa\}/);
   assert.ok(ler("../components/pc/ConfigCapaDoPop.tsx").includes("sem cabeçalho nem número de página"));
 });
 
