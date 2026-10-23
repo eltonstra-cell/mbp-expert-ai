@@ -52,6 +52,8 @@ type Props = {
   secao?: { rotulo: string; opcoes: OpcaoDeSecao[]; onEscolher: (id: string) => void };
   /** Central da Empresa: o chip do modo de tela fica só no menu ⋯. */
   ocultarChipDeModo?: boolean;
+  /** "inicio": barra do Início (PC) no desenho aprovado: busca larga sem Ctrl K nem Ir, sincronização sem pílula, seletor de empresa sem borda. */
+  variante?: "inicio";
 };
 
 export default function AppTopbar({
@@ -82,6 +84,7 @@ export default function AppTopbar({
   onVoltar,
   secao,
   ocultarChipDeModo = false,
+  variante,
 }: Props) {
   const itensModo: ItemMenu[] =
     modo && onEscolherModo
@@ -96,7 +99,7 @@ export default function AppTopbar({
       : [];
   return (
     <>
-    <div className="pc-topbar">
+    <div className={`pc-topbar${variante === "inicio" ? " pc-topbar--inicio" : ""}`}>
       {onVoltar && (
         <button type="button" className="pc-voltar" aria-label="Voltar" title="Voltar" onClick={onVoltar}>
           <span aria-hidden="true">←</span>
@@ -128,7 +131,7 @@ export default function AppTopbar({
           </span>
         )}
       </nav>
-      <BuscaNaBarra destinos={destinos} atalhos={atalhos} usuarioId={usuarioId} onAtiva={onBuscaAtiva} onEscolher={onEscolherDestino} micDisponivel={micDisponivel} pedidoDeFoco={pedidoDeFocoNaBusca} voz={contextoDaVoz} />
+      <BuscaNaBarra variante={variante} destinos={destinos} atalhos={atalhos} usuarioId={usuarioId} onAtiva={onBuscaAtiva} onEscolher={onEscolherDestino} micDisponivel={micDisponivel} pedidoDeFoco={pedidoDeFocoNaBusca} voz={contextoDaVoz} />
       {subtituloDoCaminho && <span className="pc-crumb-apoio">{subtituloDoCaminho}</span>}
 
       {mostrarTodasVisitas && (

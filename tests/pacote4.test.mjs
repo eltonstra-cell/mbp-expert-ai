@@ -33,7 +33,7 @@ test("57/70. linha da visita e progresso (regras da lib; o Início voltou ao est
   assert.equal(textoDeProgresso(0, 0), "ainda sem itens respondidos");
   assert.equal(textoDeProgresso(5, 12), "5 de 12 itens respondidos");
   const inicio = ler("../components/pc/PcInicio.tsx");
-  assert.ok(inicio.includes("itens respondidos"), "Início antigo: texto de progresso do estado anterior");
+  assert.equal(inicio.includes("itens respondidos"), false, "o Início novo não mostra progresso de checklist (a lista vive em Visitas)");
 });
 
 test("68/73. visitas paradas há mais de 30 dias e o resumo do cabeçalho recolhido (regras da lib)", () => {
@@ -84,7 +84,7 @@ test("59. um só avatar do usuário (menu) e Visita N na lateral; o Início volt
   assert.equal(topo.includes('className="pc-avatar"'), false);
   const nav = ler("../components/AppNavigation.tsx");
   assert.ok(nav.includes("Visita {visitaMenu.numero") && !nav.includes("{visitaMenu.empresa}</span>"));
-  assert.ok(ler("../components/pc/PcInicio.tsx").includes("continuar.empresa"), "o cartão do Início volta a mostrar a empresa");
+  assert.equal(ler("../components/pc/PcInicio.tsx").includes("nomeFantasia"), false, "o Início não repete o nome da empresa (só o seletor)");
 });
 
 test("Lembrete ao responsável também em Correções; painel Hoje do Início voltou ao estado anterior", () => {
@@ -95,11 +95,12 @@ test("Lembrete ao responsável também em Correções; painel Hoje do Início vo
   assert.ok(css.includes(".hoje-item--vencido{border-left-color:#D64545}"), "estilos do painel anterior de volta");
 });
 
-test("Início antigo restaurado: contadores, preparação e visitas recentes do estado anterior", () => {
+test("Início no desenho aprovado: cartão, duas colunas e nada de contadores, preparação ou visitas recentes", () => {
   const inicio = ler("../components/pc/PcInicio.tsx");
-  assert.ok(inicio.includes("Visitas em andamento") && inicio.includes("Preparação da empresa") && inicio.includes("Visitas recentes") && inicio.includes("Ver todas as visitas →"));
+  assert.ok(inicio.includes("Continuar de onde parei") && inicio.includes("Hoje precisa de você") && inicio.includes("Vencendo em 30 dias"));
+  for (const velho of ["Visitas em andamento", "Preparação da empresa", "Visitas recentes", "Primeiros passos", "Pendências técnicas"]) assert.equal(inicio.includes(velho), false, velho);
   const pagina = ler("../app/page.tsx");
-  assert.ok(pagina.includes("primeirosPassosDispensado") && pagina.includes("mbp-primeiros-passos-dispensado"));
+  assert.equal(pagina.includes("mbp-primeiros-passos-dispensado"), false);
   assert.equal(pagina.includes("mbp-inicio-visitas-recentes"), false);
 });
 

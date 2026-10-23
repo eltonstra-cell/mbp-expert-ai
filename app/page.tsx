@@ -118,7 +118,7 @@ import RelatoriosAbas, { type AbaDeRelatorios } from "@/components/pc/Relatorios
 import { niveisDoCaminho } from "@/lib/caminhoDaFicha";
 import { assinaturaEdicaoEmpresa, temAlteracoesNaoSalvas } from "@/lib/estadoNaoSalvo";
 import { renomearAmbiente, resumoDaRenomeacao, textoDoResumo } from "@/lib/renomearAmbiente";
-import { passosDeConfiguracao } from "@/lib/inicio";
+import { caixasDoContinuar, colunasDoInicio, passosDeConfiguracao, resumoDaConfiguracao } from "@/lib/inicio";
 import { ePaginaDeCadastro, marcarComoRevisado } from "@/lib/revisaoDeCadastros";
 import RevisaoDaPagina from "@/components/pc/RevisaoDaPagina";
 import { avisoParaEmitir, avisoParaFinalizar, erroDoCnpj, erroDoNomeDaEmpresa, itensRespondidos, pendenciasParaSalvarEmpresa } from "@/lib/regrasDoPacote3";
@@ -2770,15 +2770,6 @@ export default function Home() {
   const [fichaAbertaId, setFichaAbertaId] = useState<string | null>(null);
   const [fichaAbertaRotuloCompleto, setFichaAbertaRotuloCompleto] = useState<string | null>(null);
   const [telasRecentes, setTelasRecentes] = useState<TelaRecente[]>([]);
-  // Cartão "Primeiros passos" do Início: some ao dispensar (só neste aparelho; try/catch porque o armazenamento pode estar bloqueado).
-  const [primeirosPassosDispensado, setPrimeirosPassosDispensado] = useState(true);
-  useEffect(() => {
-    try {
-      setPrimeirosPassosDispensado(window.localStorage.getItem("mbp-primeiros-passos-dispensado") === "1");
-    } catch {
-      setPrimeirosPassosDispensado(false);
-    }
-  }, []);
   const pilhaDeTelasRef = useRef<LocalDeTela[]>([]);
   const subDoLocal = view === "empresas" && showEmpresaForm && editingEmpresaId ? String(secaoEmpresa ?? "") : view === "pops" ? subabaDosDocumentos : "";
   const localDaTela: LocalDeTela = { view, ...(fichaAbertaId ? { popId: fichaAbertaId } : {}), ...(subDoLocal ? { sub: subDoLocal } : {}) };
@@ -6664,6 +6655,18 @@ export default function Home() {
   const nomeParaExibir = (empresa?: Empresa) => nomeDeExibicaoDaEmpresa(empresa);
   // Guia "Primeiros passos" (Ajuda e guias): o mesmo cálculo de `passosDeConfiguracao`.
   const passosDoGuia = passosDeConfiguracao({ usuario: usuarioDaSessao, empresa: atual, visitas: db.visitas, relatoriosEmitidos: db.relatoriosEmitidos });
+  // Início (PC): caixas do "Continuar de onde parei", linha de configuração (some em 7 de 7) e as duas colunas.
+  const caixasDoInicio = caixasDoContinuar({
+    telas: telasRecentes,
+    visitas: visitasSemArquivadas.filter((visita) => visita.empresaId === atual?.id),
+    pops: atual?.pops || [],
+    numeroDaVisita: (id) => numeroVisitaPorId.get(id),
+    formatarData: fdata,
+    proximaEtapa: (id) => {
+      const visita = db.visitas.find((item) => item.id === id);
+      return (visita?.checklist || []).find((item) => item.status === "Pendente")?.ambiente || ((visita?.ambientes || []).length ? "Revisar a inspeção" : "Definir os ambientes da visita");
+    },
+  }).map((caixa) => ({ chave: caixa.chave, titulo: caixa.titulo, subtitulo: caixa.subtitulo, tipo: caixa.tela.tipo, onAbrir: () => abrirTelaRecente(caixa.tela) }));
   const abrirPassoDoGuia = (chave: string) => {
     if (chave === "perfil") setPerfilAberto(true);
     else if (chave === "empresa") void abrirSecaoEmpresaPeloMenu("dados");
@@ -6671,6 +6674,27 @@ export default function Home() {
     else if (chave === "visita") (atual ? novaVisita : () => setView("empresas"))();
     else irParaMenu("relatorio");
   };
+  const resumoDoGuia = resumoDaConfiguracao(passosDoGuia);
+  const configuracaoDoInicio =
+    atual && !resumoDoGuia.completo
+      ? { feitos: resumoDoGuia.feitos, total: resumoDoGuia.total, faltam: resumoDoGuia.faltam.map((passo) => ({ id: passo.chave, titulo: passo.titulo, onAbrir: () => abrirPassoDoGuia(passo.chave) })), onGuia: () => setView("ajuda") }
+      : null;
+  const dadosDasColunas = painelHoje && atual && !ehExecutor ? colunasDoInicio(painelHoje.itens, atual.pops || [], hojeISO()) : null;
+  const colunasDoInicioPc = dadosDasColunas
+    ? {
+        ...dadosDasColunas,
+        onAbrirPendencia: acaoDoPainel,
+        onAbrirVencimento: (item: { id: string; origem: string }) => {
+          if (item.origem === "pop-revisao") abrirFichaDoPop(item.id.replace("revisao:", ""));
+          else {
+            const original = painelHoje?.itens.find((candidato) => candidato.id === item.id);
+            if (original) acaoDoPainel(original);
+          }
+        },
+        onLembrete: podeEnviarLembrete(usuarioDaSessao) ? () => setLembreteAberto(true) : undefined,
+        onTodosVencimentos: () => setView("resumo"),
+      }
+    : null;
   const conjuntoDaVisita = conjuntoDaEmpresa(empresaVisita);
   const resumoPopsVisita = popsDaVisita(
     ncsVisita.map((nc, indice) => ({ numero: indice + 1, categoria: nc.categoria, popCatalogoId: nc.popCatalogoId })),
@@ -7267,6 +7291,7 @@ export default function Home() {
           </>
         )}
         <AppTopbar
+          variante={view === "inicio" && ehPC && !ehFiscal ? "inicio" : undefined}
           caminho={caminhoTopo}
           subtituloDoCaminho={view === "relatorio" && visitaAtual ? `${fdata(visitaAtual.data)} · ${visitaAtual.status === "Concluída" ? "inspeção concluída" : "inspeção em andamento"}` : undefined}
           onPrimeiro={() => navegarPrincipal("visitas")}
@@ -9802,76 +9827,11 @@ export default function Home() {
         ) : view === "inicio" ? (
           ehPC ? (
             <PcInicio
-              somenteCampo={ehExecutor}
-              avisoPops={avisoPopsDoInicio}
-              primeirosPassos={
-                primeirosPassosDispensado
-                  ? null
-                  : {
-                      passos: [
-                        { chave: "perfil", titulo: "Perfil", onAbrir: () => setPerfilAberto(true) },
-                        { chave: "empresa", titulo: "Empresa", onAbrir: () => (atual ? void abrirSecaoEmpresaPeloMenu("dados") : setView("empresas")) },
-                        { chave: "ambientes", titulo: "Ambientes", onAbrir: () => void abrirSecaoEmpresaPeloMenu("ambientes") },
-                        { chave: "equipamentos", titulo: "Equipamentos", onAbrir: () => void abrirSecaoEmpresaPeloMenu("equipamentos") },
-                        { chave: "fluxos", titulo: "Fluxos", onAbrir: () => void abrirSecaoEmpresaPeloMenu("fluxos") },
-                        { chave: "visita", titulo: "Visita", onAbrir: atual ? novaVisita : () => setView("empresas") },
-                        { chave: "relatorio", titulo: "Relatório", onAbrir: () => irParaMenu("relatorio") },
-                      ],
-                      onDispensar: () => {
-                        setPrimeirosPassosDispensado(true);
-                        try {
-                          window.localStorage.setItem("mbp-primeiros-passos-dispensado", "1");
-                        } catch {
-                          /* sem armazenamento: o cartão volta na próxima abertura */
-                        }
-                      },
-                    }
-              }
-              retomar={telasRecentes.map((tela) => ({ chave: `${tela.tipo}:${tela.id}`, rotulo: tela.rotulo, onAbrir: () => abrirTelaRecente(tela) }))}
-              painel={painelNode}
-              simples={nivelDe("inicio") === "simples"}
               nome={usuarioDaSessao?.nome.split(" ").filter(Boolean)[0] || "bem-vindo"}
-              continuar={inicioPc.continuar}
-              novaVisita={{
-                texto: atual
-                  ? `A próxima visita será criada para ${nomeEmFormatoNatural(atual.nomeFantasia)}.`
-                  : "Selecione uma empresa para começar.",
-                botao: atual ? "Nova visita" : "Selecionar empresa →",
-                onClick: atual ? novaVisita : () => setView("empresas"),
-              }}
-              indicadores={{
-                emAndamento: visitas.filter((visita) => visita.status === "Em andamento").length,
-                ncAcompanhamento: inicioPc.ncAcompanhamento,
-                concluidasMes: visitasDoMes.filter((visita) => visita.status === "Concluída").length,
-                empresasAtivas: empresasVisiveis.length,
-              }}
-              preparacao={
-                atual && inicioPc.preparacaoAtual
-                  ? {
-                      percentual: inicioPc.preparacaoAtual.percentual,
-                      texto: inicioPc.preparacaoAtual.completo
-                        ? "Cadastro completo"
-                        : `${inicioPc.preparacaoAtual.preenchidos} de ${inicioPc.preparacaoAtual.total} itens preenchidos`,
-                      onAbrir: () => editarEmpresa(atual),
-                      faltam: permitido("empresas.editar", atual.id)
-                        ? inicioPc.preparacaoAtual.itens
-                            .filter((item) => !item.ok)
-                            .map((item) => ({ id: item.id, titulo: item.titulo, onAbrir: () => void abrirSecaoEmpresaPeloMenu(SUBABA_DO_ITEM_DE_PREPARACAO[item.id] || "dados") }))
-                        : [],
-                    }
-                  : null
-              }
-              pendencias={{
-                texto: ncsEmpresaAbertas ? `${qtd(ncsEmpresaAbertas, "não conformidade", "não conformidades")} em acompanhamento nesta empresa` : "Nenhuma não conformidade aberta nesta empresa",
-                onVer: permitido("ncs.acompanhar", atual?.id) ? () => irParaMenu("ncs") : null,
-              }}
-              filtro={filtroInicio}
-              onFiltro={setFiltroInicio}
-              contagemEmAndamento={visitas.filter((visita) => visita.status === "Em andamento").length}
-              contagemConcluidas={visitas.filter((visita) => visita.status === "Concluída").length}
-              recentes={inicioPc.recentes(filtroInicio)}
-              onAbrirVisita={(id) => { setVisitaAtualId(id); setView("visita"); }}
-              onVerTodas={() => setView("visitas")}
+              avisoPops={avisoPopsDoInicio}
+              caixas={caixasDoInicio}
+              configuracao={configuracaoDoInicio}
+              colunas={colunasDoInicioPc}
             />
           ) : (
           <div className="space-y-4">

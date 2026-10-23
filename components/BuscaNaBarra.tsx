@@ -39,6 +39,8 @@ type Props = {
   onEscolher: (destino: Destino) => void;
   /** Mostra o microfone (só quem pode usar IA). */
   micDisponivel: boolean;
+  /** "inicio": campo cinza claro com lupa à esquerda e microfone azul à direita; sem "Ctrl K" e sem "Ir" (Enter envia). */
+  variante?: "inicio";
   /** Muda a cada Ctrl K: leva o foco para a barra. */
   pedidoDeFoco: number;
   voz?: ContextoDaVoz;
@@ -47,7 +49,7 @@ type Props = {
 // A busca vive na linha do topo, à direita do nome da página. Janela larga (1400 px ou mais): campo na barra. Janela estreita: lupa + "Ctrl K"
 // e o campo de digitação passa para o topo do painel. Em ambos o painel abre colado (8 px), com 520 px (limitado à janela): com o campo vazio
 // mostra atalhos e recentes; ao digitar, os resultados. Por voz, destino único de navegação abre sozinho depois de 2 s, com Cancelar.
-export default function BuscaNaBarra({ destinos, atalhos, usuarioId, onAtiva, onEscolher, micDisponivel, pedidoDeFoco, voz: contextoDaVoz }: Props) {
+export default function BuscaNaBarra({ destinos, atalhos, usuarioId, onAtiva, onEscolher, micDisponivel, pedidoDeFoco, voz: contextoDaVoz, variante }: Props) {
   const [consulta, setConsulta] = useState("");
   const [aberto, setAberto] = useState(false);
   const [indice, setIndice] = useState(0);
@@ -84,11 +86,11 @@ export default function BuscaNaBarra({ destinos, atalhos, usuarioId, onAtiva, on
   }
 
   useEffect(() => {
-    const medir = () => setCompacta(modoDaBusca(window.innerWidth) === "compacta");
+    const medir = () => setCompacta(variante !== "inicio" && modoDaBusca(window.innerWidth) === "compacta");
     medir();
     window.addEventListener("resize", medir);
     return () => window.removeEventListener("resize", medir);
-  }, []);
+  }, [variante]);
 
   useEffect(() => {
     if (!pedidoDeFoco) return;
@@ -275,7 +277,15 @@ export default function BuscaNaBarra({ destinos, atalhos, usuarioId, onAtiva, on
       Ir →
     </button>
   );
-  const barra = (
+  const barra = variante === "inicio" ? (
+    <div className="pc-smartbar-campos pc-smartbar-campos--inicio">
+      <span className="pc-busca-lupa" aria-hidden="true">
+        <NavIcon name="lupa" size={20} />
+      </span>
+      {campo}
+      {microfone}
+    </div>
+  ) : (
     <div className="pc-smartbar-campos">
       <span className="pc-bolt" aria-hidden="true">
         <NavIcon name="raio" size={20} />
@@ -288,7 +298,7 @@ export default function BuscaNaBarra({ destinos, atalhos, usuarioId, onAtiva, on
   );
 
   return (
-    <div className={`pc-busca${compacta ? " pc-busca--compacta" : ""}`} ref={raizRef} onKeyDown={aoTeclar}>
+    <div className={`pc-busca${compacta ? " pc-busca--compacta" : ""}${variante === "inicio" ? " pc-busca--inicio" : ""}`} ref={raizRef} onKeyDown={aoTeclar}>
       {compacta ? (
         <button type="button" className={`pc-busca-gatilho${aberto ? " is-aberta" : ""}`} aria-label="Abrir a busca (Ctrl K)" aria-expanded={aberto} onClick={() => (aberto ? fechar() : abrir())}>
           <NavIcon name="lupa" size={18} />

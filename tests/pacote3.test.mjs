@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
@@ -213,13 +213,12 @@ test("27/40. botão Preencher completa só os campos vazios com dados já existe
 test("34/41. cartão Primeiros passos no Início, na ordem de uso, com o vídeo", () => {
   const cartao = ler("../components/pc/PrimeirosPassos.tsx");
   assert.ok(cartao.includes("Ver o vídeo") && cartao.includes("Feito") && cartao.includes("Pendente") && cartao.includes("O vídeo ainda não foi publicado"), "guia em Ajuda e guias");
-  const cartaoDoInicio = ler("../components/pc/PrimeirosPassosCartao.tsx");
-  assert.ok(cartaoDoInicio.includes("Ver o vídeo") && cartaoDoInicio.includes("Dispensar"), "o Início voltou a ter o cartão");
+  assert.equal(existsSync(new URL("../components/pc/PrimeirosPassosCartao.tsx", import.meta.url)), false, "o cartão saiu do Início (desenho novo)");
   const lib = ler("../lib/inicio.ts");
   const ordem = ["perfil", "empresa", "ambientes", "equipamentos", "fluxos", "visita", "relatorio"].map((chave) => lib.indexOf(`  ${chave}: "`));
   assert.ok(ordem.every((posicao) => posicao > 0) && ordem.every((posicao, i) => i === 0 || posicao > ordem[i - 1]), "Perfil, Empresa, Ambientes, Equipamentos, Fluxos, Visita, Relatório");
   assert.ok(ler("../components/pc/PcAjuda.tsx").includes("<PrimeirosPassos"), "o guia agora mora em Ajuda e guias");
-  assert.ok(ler("../components/pc/PcInicio.tsx").includes("<PrimeirosPassos"), "e o Início voltou ao cartão do estado anterior");
+  assert.equal(ler("../components/pc/PcInicio.tsx").includes("<PrimeirosPassos"), false, "e o Início só mostra a linha de configuração");
 });
 
 test("24/25/26/28. IA com cor viva, menu de escolha no lugar do select, 40 px e fundos claros", () => {

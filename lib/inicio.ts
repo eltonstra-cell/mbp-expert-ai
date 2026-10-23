@@ -82,3 +82,121 @@ export function resumoDaConfiguracao(passos: PassoDeConfiguracao[]): { feitos: n
   const faltam = passos.filter((passo) => !passo.feito);
   return { feitos: passos.length - faltam.length, total: passos.length, faltam, completo: faltam.length === 0 };
 }
+
+// ===== Início (PC) no desenho aprovado: caixas do "Continuar de onde parei" e as duas colunas (precisa de você / vencendo em 30 dias) =====
+import { diasEntre } from "./registrosEmpresa.ts";
+import type { TelaRecente } from "./continuarDeOndeParei.ts";
+import type { ItemDoPainel } from "./painelHoje.ts";
+import type { ProcedimentoOperacionalPadronizado } from "../types/index.ts";
+
+export const MAXIMO_DE_CAIXAS = 3;
+
+export type CaixaDoContinuar = { chave: string; tela: TelaRecente; titulo: string; subtitulo: string };
+
+type VisitaDaCaixa = Pick<Visita, "id" | "status" | "data"> & { arquivada?: boolean };
+
+/**
+ * Caixas do cartão "Continuar de onde parei": no máximo 3, da mais recente para a mais antiga, tiradas do que o usuário abriu por último
+ * (visitas em andamento, ficha de POP, Comprovantes). Nunca repete a mesma visita; visita que não está mais em andamento e POP que não existe mais
+ * ficam de fora. Sem nada aberto, as visitas em andamento da empresa (a mais recente primeiro) completam a lista. Vazio = o cartão não aparece.
+ * Só a primeira caixa tem 2 linhas ("próxima etapa: …" para visita; "último lugar de trabalho" para as outras telas).
+ */
+export function caixasDoContinuar(entrada: {
+  telas: TelaRecente[];
+  visitas: VisitaDaCaixa[];
+  pops: Pick<ProcedimentoOperacionalPadronizado, "id" | "arquivado">[];
+  numeroDaVisita: (id: string) => number | undefined;
+  formatarData: (iso: string) => string;
+  proximaEtapa: (visitaId: string) => string;
+  maximo?: number;
+}): CaixaDoContinuar[] {
+  const maximo = entrada.maximo ?? MAXIMO_DE_CAIXAS;
+  const caixas: CaixaDoContinuar[] = [];
+  const vistos = new Set<string>();
+  const emAndamento = (id: string) => entrada.visitas.find((visita) => visita.id === id && visita.status === "Em andamento" && !visita.arquivada);
+  const acrescentar = (tela: TelaRecente, titulo: string, subtitulo: string) => {
+    const chave = `${tela.tipo}:${tela.id}`;
+    if (vistos.has(chave) || caixas.length >= maximo) return;
+    vistos.add(chave);
+    caixas.push({ chave, tela, titulo, subtitulo });
+  };
+  const daVisita = (id: string) => {
+    const visita = emAndamento(id);
+    if (!visita) return null;
+    return { titulo: linhaDaVisita(entrada.numeroDaVisita(id), entrada.formatarData(visita.data)), subtitulo: `próxima etapa: ${entrada.proximaEtapa(id)}` };
+  };
+  for (const tela of entrada.telas) {
+    if (tela.tipo === "visita") {
+      const dados = daVisita(tela.id);
+      if (dados) acrescentar(tela, dados.titulo, dados.subtitulo);
+    } else if (tela.tipo === "pop") {
+      if (entrada.pops.some((pop) => pop.id === tela.id && !pop.arquivado)) acrescentar(tela, tela.rotulo, "último lugar de trabalho");
+    } else {
+      acrescentar(tela, tela.rotulo || "Comprovantes", "último lugar de trabalho");
+    }
+  }
+  const abertas = ordenarRecentes(entrada.visitas.filter((visita) => visita.status === "Em andamento" && !visita.arquivada));
+  for (const visita of abertas) {
+    const dados = daVisita(visita.id);
+    if (dados) acrescentar({ tipo: "visita", id: visita.id, rotulo: dados.titulo }, dados.titulo, dados.subtitulo);
+  }
+  // Só a primeira tem 2 linhas.
+  return caixas.map((caixa, indice) => (indice === 0 ? caixa : { ...caixa, subtitulo: "" }));
+}
+
+export type ItemDeVencimento = {
+  id: string;
+  /** "pop-revisao" é a data "Revisar até" de um POP aprovado; as outras vêm do painel Hoje. */
+  origem: ItemDoPainel["origem"] | "pop-revisao";
+  titulo: string;
+  quem: string;
+  /** AAAA-MM-DD */
+  validade: string;
+  dias: number;
+};
+
+export type ColunasDoInicio = {
+  /** Vencidos e POPs aguardando aprovação (o painel já vem por urgência). */
+  precisa: ItemDoPainel[];
+  /** Vence em até 30 dias, por data. */
+  vencendo: ItemDeVencimento[];
+  vencidos: number;
+  aguardando: number;
+};
+
+export const DIAS_DA_JANELA_DE_VENCIMENTO = 30;
+export const DIAS_DO_AMARELO = 14;
+
+/**
+ * Coluna esquerda: o que já venceu e o que espera aprovação. Coluna direita: só itens que o app JÁ guarda com data (correção com prazo,
+ * comprovante com validade, treinamento com vencimento e a data "Revisar até" do POP aprovado), de hoje a 30 dias, ordenados por data.
+ */
+export function colunasDoInicio(itens: ItemDoPainel[], pops: Pick<ProcedimentoOperacionalPadronizado, "id" | "codigo" | "titulo" | "status" | "proximaRevisao" | "arquivado" | "responsavel">[], hoje: string): ColunasDoInicio {
+  const precisa = itens.filter((item) => item.situacao === "vencido" || item.situacao === "aguardando");
+  const vencendo: ItemDeVencimento[] = [];
+  for (const item of itens) {
+    if (item.situacao !== "vence-em-breve" || item.dias === null || !item.validade) continue;
+    if (item.dias < 0 || item.dias > DIAS_DA_JANELA_DE_VENCIMENTO) continue;
+    vencendo.push({ id: item.id, origem: item.origem, titulo: item.titulo, quem: item.quem, validade: item.validade, dias: item.dias });
+  }
+  for (const pop of pops) {
+    if (pop.arquivado || pop.status !== "Aprovado" || !pop.proximaRevisao) continue;
+    const dias = diasEntre(hoje, pop.proximaRevisao);
+    if (dias < 0 || dias > DIAS_DA_JANELA_DE_VENCIMENTO) continue;
+    vencendo.push({ id: `revisao:${pop.id}`, origem: "pop-revisao", titulo: `${pop.codigo ? `${pop.codigo} · ` : ""}${pop.titulo} (revisão)`, quem: pop.responsavel?.trim() || "Responsável do estabelecimento", validade: pop.proximaRevisao, dias });
+  }
+  vencendo.sort((a, b) => a.validade.localeCompare(b.validade) || a.titulo.localeCompare(b.titulo, "pt-BR"));
+  return { precisa, vencendo, vencidos: precisa.filter((item) => item.situacao === "vencido").length, aguardando: precisa.filter((item) => item.situacao === "aguardando").length };
+}
+
+const MESES = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
+
+/** Quadradinho da coluna direita: dia e mês; âmbar até 14 dias, azul depois. */
+export function quadradoDoVencimento(validade: string, dias: number): { dia: string; mes: string; tom: "ambar" | "azul" } {
+  const [, mes, dia] = validade.slice(0, 10).split("-");
+  return { dia: String(Number(dia)), mes: MESES[Number(mes) - 1] || "", tom: dias <= DIAS_DO_AMARELO ? "ambar" : "azul" };
+}
+
+export const textoDoPrazoEm = (dias: number): string => (dias <= 0 ? "vence hoje" : dias === 1 ? "em 1 dia" : `em ${dias} dias`);
+
+export const LIMITE_DE_LINHAS_DO_PAINEL = 6;
