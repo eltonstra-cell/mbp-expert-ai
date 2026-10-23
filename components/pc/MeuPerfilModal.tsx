@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { camposDoPerfilProprio, type DadosDoPerfilProprio } from "@/lib/userManagement";
+import { cameraAutomaticaLigada, definirCameraAutomatica } from "@/lib/preferenciasDeCampo";
 
 type Props = {
   nome: string;
@@ -20,6 +21,8 @@ export default function MeuPerfilModal({ nome, email, perfil, empresas, versao, 
   const [crn, setCrn] = useState(editavel?.crn || "");
   const [cargo, setCargo] = useState(editavel?.cargo || "");
   const [telefone, setTelefone] = useState(editavel?.telefone || "");
+  const [cameraAutomatica, setCameraAutomatica] = useState(false);
+  useEffect(() => setCameraAutomatica(cameraAutomaticaLigada()), []);
   useEffect(() => {
     const aoTeclar = (evento: KeyboardEvent) => {
       if (evento.key === "Escape") onFechar();
@@ -55,6 +58,17 @@ export default function MeuPerfilModal({ nome, email, perfil, empresas, versao, 
             <dd>{versao}</dd>
           </div>
         </dl>
+        <label className="perfil-preferencia">
+          <input
+            type="checkbox"
+            checked={cameraAutomatica}
+            onChange={(evento) => {
+              setCameraAutomatica(evento.target.checked);
+              definirCameraAutomatica(evento.target.checked);
+            }}
+          />
+          <span>Abrir a câmera automaticamente ao marcar Não conforme (só neste aparelho)</span>
+        </label>
         {editavel && onSalvar && (
           <div className="perfil-edicao">
             <label className="pc-field">

@@ -4482,7 +4482,7 @@ export default function Home() {
 
   function atualizarChecklistItem(
     itemId: string,
-    patch: Partial<Pick<ChecklistItem, "status" | "observacao" | "criticidade" | "criticidadeSugerida">>
+    patch: Partial<Pick<ChecklistItem, "status" | "observacao" | "criticidade" | "criticidadeSugerida" | "temperatura">>
   ) {
     if (!visitaAtual) return;
     if (!exigirPermissao("visitas.executar", visitaAtual.empresaId)) return;
@@ -4716,6 +4716,17 @@ export default function Home() {
       lista.find((item) => item.status === "Pendente") ||
       lista[0]
     );
+  }
+
+  // Temperatura no item: classifica pelo limite da norma na hora; o RT pode corrigir a resposta.
+  function dadosDeTemperaturaDoItem(foco: ChecklistItem) {
+    return {
+      equipamentosDoAmbiente: (empresaVisita?.equipamentosSetores || []).filter((equipamento) => equipamento.setor === foco.ambiente).map((equipamento) => equipamento.nome),
+      onTemperatura: (medida: { valor: number; limiteId: string } | null, resultado: "Conforme" | "Não Conforme" | null) => {
+        setItemFocoId(foco.id);
+        atualizarChecklistItem(foco.id, { temperatura: medida || undefined, ...(resultado ? { status: resultado, ...(resultado !== "Não Conforme" ? { observacao: "" } : {}) } : {}) });
+      },
+    };
   }
 
   // Cabeçalho do ambiente no Checklist em foco: posição do item dentro do ambiente e progresso.
@@ -7661,6 +7672,7 @@ export default function Home() {
                       if (primeiro) setItemFocoId(primeiro.id);
                     }}
                     {...dadosDoAmbienteEmFoco(foco, lista)}
+                      {...dadosDeTemperaturaDoItem(foco)}
                     onGravidade={(gravidade) => { setItemFocoId(foco.id); atualizarChecklistItem(foco.id, trocaDeGravidade(foco, gravidade)); }}
                     posicao={posicao + 1}
                     total={lista.length}
@@ -8440,6 +8452,7 @@ export default function Home() {
                       mostrarApoio={false}
                       miniaturaNoItem={false}
                       {...dadosDoAmbienteEmFoco(foco, lista)}
+                      {...dadosDeTemperaturaDoItem(foco)}
                       onGravidade={(gravidade) => {
                         setItemFocoId(foco.id);
                         atualizarChecklistItem(foco.id, trocaDeGravidade(foco, gravidade));
@@ -8508,6 +8521,7 @@ export default function Home() {
                       destaque={destaqueItemId === foco.id}
                       semCabecalhoDeAmbiente
                       {...dadosDoAmbienteEmFoco(foco, lista)}
+                      {...dadosDeTemperaturaDoItem(foco)}
                       onGravidade={(gravidade) => {
                         setItemFocoId(foco.id);
                         atualizarChecklistItem(foco.id, trocaDeGravidade(foco, gravidade));

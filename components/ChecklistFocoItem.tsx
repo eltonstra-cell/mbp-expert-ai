@@ -6,6 +6,9 @@ import FieldVoiceTools from "@/components/FieldVoiceTools";
 import { useAvisoAntesDeFotografar } from "@/components/AvisoAntesDeFotografar";
 import FotoAmpliada from "@/components/FotoAmpliada";
 import AmbientesCortina from "@/components/AmbientesCortina";
+import { cameraAutomaticaLigada } from "@/lib/preferenciasDeCampo";
+import CampoDeTemperatura, { ehItemDeTemperatura } from "@/components/CampoDeTemperatura";
+import type { ResultadoDaTemperatura } from "@/lib/limitesDeTemperatura";
 import { NavIcon } from "@/components/NavIcons";
 import type { InfoAmbiente } from "@/lib/checklistEnvs";
 import { COR_DO_SEGMENTO, rotuloDoSegmento } from "@/lib/checklistSegmentos";
@@ -60,6 +63,10 @@ type Props = {
   /** Fotos já registradas neste item (até o máximo); no máximo, o botão Foto fica desligado. */
   fotosNoItem?: number;
   maxFotos?: number;
+  /** Equipamentos do ambiente (nomes), para sugerir o limite de temperatura. */
+  equipamentosDoAmbiente?: string[];
+  /** Grava a temperatura medida; o resultado indicado pelo limite vira a resposta do item (corrigível). */
+  onTemperatura?: (medida: { valor: number; limiteId: string } | null, resultado: ResultadoDaTemperatura | null) => void;
 };
 
 const NOME_GRAVIDADE: Record<string, string> = { Crítica: "Crítica", Importante: "Importante", Rotina: "Leve" };
@@ -111,6 +118,8 @@ export default function ChecklistFocoItem({
   verPop,
   fotosNoItem = 0,
   maxFotos = 5,
+  equipamentosDoAmbiente = [],
+  onTemperatura,
 }: Props) {
   const [texto, setTexto] = useState(item.observacao || "");
   const areaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -193,7 +202,7 @@ export default function ChecklistFocoItem({
   const botaoFoto = (gravando: boolean) => (
     <button
       type="button"
-      className={`chk-linha-foto${gravando ? " is-apagado" : ""}`}
+      className={`chk-linha-foto${naoConforme ? " chk-linha-foto--destaque" : ""}${gravando ? " is-apagado" : ""}`}
       disabled={!podeFotografar || salvandoFoto || camera.ativa || gravando || fotosNoItem >= maxFotos}
       title={fotosNoItem >= maxFotos ? `Este item já tem ${maxFotos} fotos` : undefined}
       onClick={() => {
@@ -298,6 +307,8 @@ export default function ChecklistFocoItem({
               onClick={() => {
                 if (estado === "marcado") return;
                 onStatus(resposta);
+                // Opção do aparelho (desligada por padrão): ao marcar Não conforme, abre a câmera no mesmo toque.
+                if (resposta === "Não Conforme" && podeFotografar && fotosNoItem < maxFotos && cameraAutomaticaLigada()) pedirAvisoDeFoto(() => void camera.abrir());
               }}
             >
               <span aria-hidden="true">{estado === "marcado" ? "✓" : simbolo}</span>
@@ -306,6 +317,10 @@ export default function ChecklistFocoItem({
           );
         })}
       </div>
+
+      {podeEditar && onTemperatura && ehItemDeTemperatura(item.titulo) && (
+        <CampoDeTemperatura itemId={item.id} titulo={item.titulo} equipamentos={equipamentosDoAmbiente} atual={item.temperatura} onTemperatura={onTemperatura} />
+      )}
 
       {naoConforme && (
         <div className="chk-grav-bloco" role="group" aria-label="Quão grave é?">
