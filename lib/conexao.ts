@@ -63,3 +63,19 @@ export async function conexaoAtual(navegadorOnline: boolean, tentar: () => Promi
   if (navegadorOnline) return true;
   return confirmarConexao(tentar, opcoes);
 }
+
+export type SeloDeSincronizacao = { estado: "ok" | "pendente" | "erro"; rotulo: string; dica: string };
+
+/**
+ * Chip do topo, sempre com texto: "Sincronizado", "Sincronizando…", "Sem sinal" (sem rede de verdade), "Não sincronizou" (rede, mas a nuvem não
+ * respondeu) e "N pendentes de envio" (fotos e áudios guardados neste aparelho esperando o envio).
+ */
+export function seloDeSincronizacao(entrada: { online: boolean; syncStatus: "sincronizado" | "conectando" | "erro" | string; pendentes: number }): SeloDeSincronizacao {
+  const { online, syncStatus, pendentes } = entrada;
+  const fila = pendentes === 1 ? "1 pendente de envio" : `${pendentes} pendentes de envio`;
+  if (!online) return { estado: "erro", rotulo: "Sem sinal", dica: `Sem sinal: o que você fizer fica guardado neste aparelho e é enviado quando a conexão voltar.${pendentes > 0 ? ` ${fila}.` : ""} Toque para tentar de novo.` };
+  if (syncStatus === "erro") return { estado: "erro", rotulo: "Não sincronizou", dica: "Há conexão, mas a nuvem não respondeu. Seus dados continuam guardados neste aparelho. Toque para tentar de novo." };
+  if (pendentes > 0) return { estado: "pendente", rotulo: fila, dica: `${fila}: guardados neste aparelho até o envio. Toque para enviar agora.` };
+  if (syncStatus === "conectando") return { estado: "pendente", rotulo: "Sincronizando…", dica: "Sincronizando com a nuvem." };
+  return { estado: "ok", rotulo: "Sincronizado", dica: "Tudo sincronizado com a nuvem. Toque para atualizar agora." };
+}

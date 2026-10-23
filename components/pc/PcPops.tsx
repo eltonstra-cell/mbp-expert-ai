@@ -27,7 +27,7 @@ type Props = {
   /** Cartão "Colocar a empresa em dia" e aviso de responsável, quando houver. */
   topo?: ReactNode;
   /** Abas da seção (Manual, POPs, Programas…), desenhadas na linha 2 da lista. */
-  abas?: ReactNode;
+  abas?: ReactNode | ((pendencias: number) => ReactNode);
   /** Leva a Empresa › Dados (só quem edita a empresa): link "Alterar em Dados" ao lado do responsável. */
   onAlterarEmDados?: () => void;
   /** Faixa própria quando o responsável do estabelecimento não tem pessoa de Acessos vinculada. */
@@ -226,6 +226,7 @@ export default function PcPops({ pops, empresa, usuario = null, podeEditar = fal
       pops={pops}
       onPersistir={onPersistir}
       abas={abas}
+      empresaId={empresa.id}
       responsavel={responsavelDoEstabelecimento ? { nome: responsavelDoEstabelecimento.nome, cargo: responsavelDoEstabelecimento.cargo } : undefined}
       onAlterarEmDados={onAlterarEmDados}
       topo={topo}

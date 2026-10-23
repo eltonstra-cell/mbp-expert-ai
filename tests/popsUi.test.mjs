@@ -23,7 +23,7 @@ test("Conjunto da norma em POPs e documentos: criar do modelo em laranja e Outro
   const tela = ler("../components/pc/PcPopsLista.tsx");
   assert.ok(tela.includes("Conjunto da norma") && tela.includes("Criar do modelo") && tela.includes("Outros POPs e documentos da empresa"));
   assert.ok(tela.includes("vigentes") && tela.includes("falta criar") && tela.includes("aguardando aprovação") && tela.includes("com pendência"));
-  assert.ok(tela.includes("ui-btn--criar"));
+  assert.ok(tela.includes("pgl-adicionar-botao") && tela.includes("ui-btn ui-btn--secondary"));
   assert.ok(!tela.includes("Sugeridos pelo Manual de Boas Práticas"));
   assert.ok(!tela.includes('STATUS: StatusPOP[] = ["Rascunho", "Em revisão", "Aprovado"'));
   assert.ok(ler("../app/globals.css").includes(".ui-btn--criar{background:#E8760A;color:#fff;font-weight:400}"));

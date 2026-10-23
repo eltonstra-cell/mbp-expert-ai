@@ -37,7 +37,7 @@ type Props = {
   /** Modo de tela em uso e ações da troca rápida (menu ⋯ do topo). */
   modo?: ModoTela;
   /** Situação da sincronização: chip discreto no topo. */
-  sincronizacao?: { estado: "ok" | "pendente" | "erro"; /** "Sem conexão" ou "Não sincronizou" quando o estado é erro. */ rotulo?: string; onClick: () => void };
+  sincronizacao?: { estado: "ok" | "pendente" | "erro"; /** Texto do chip (sempre visível). */ rotulo?: string; /** Frase do tooltip. */ dica?: string; onClick: () => void };
   automatico?: boolean;
   onEscolherModo?: (modo: ModoTela) => void;
   onVoltarAoAutomatico?: () => void;
@@ -50,6 +50,8 @@ type Props = {
   onVoltar?: () => void;
   /** Central da Empresa: "Central da Empresa › Documentos ▾". O menu troca de seção (Empresa, Cadastros, Documentos). */
   secao?: { rotulo: string; opcoes: OpcaoDeSecao[]; onEscolher: (id: string) => void };
+  /** Central da Empresa: o chip do modo de tela fica só no menu ⋯. */
+  ocultarChipDeModo?: boolean;
 };
 
 export default function AppTopbar({
@@ -79,6 +81,7 @@ export default function AppTopbar({
   atalhos = [],
   onVoltar,
   secao,
+  ocultarChipDeModo = false,
 }: Props) {
   const itensModo: ItemMenu[] =
     modo && onEscolherModo
@@ -140,8 +143,8 @@ export default function AppTopbar({
             type="button"
             className={`pc-sync-chip is-${sincronizacao.estado}`}
             onClick={sincronizacao.onClick}
-            title={`${sincronizacao.rotulo || ROTULO_SYNC[sincronizacao.estado]}. Toque para atualizar agora`}
-            aria-label={`${sincronizacao.rotulo || ROTULO_SYNC[sincronizacao.estado]}. Toque para atualizar agora`}
+            title={sincronizacao.dica || `${sincronizacao.rotulo || ROTULO_SYNC[sincronizacao.estado]}. Toque para atualizar agora`}
+            aria-label={sincronizacao.dica || `${sincronizacao.rotulo || ROTULO_SYNC[sincronizacao.estado]}. Toque para atualizar agora`}
           >
             <span className="pc-sync-dot" aria-hidden="true" />
             <span className="pc-sync-texto">{sincronizacao.rotulo || ROTULO_SYNC[sincronizacao.estado]}</span>
@@ -159,7 +162,7 @@ export default function AppTopbar({
             </button>
           </div>
         )}
-        {modo && onAbrirConfigModo && (
+        {modo && onAbrirConfigModo && !secao && !ocultarChipDeModo && (
           <button type="button" className="pc-mode-chip" onClick={onAbrirConfigModo} title={`${ROTULO_DE_USO[modo]}. Configurar o modo de tela`} aria-label={`${ROTULO_DE_USO[modo]}. Configurar o modo de tela`}>
             <span className="pc-mode-texto">{ROTULO_DE_USO[modo]}</span>
             <svg className="pc-mode-icone" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
@@ -169,11 +172,6 @@ export default function AppTopbar({
           </button>
         )}
         {itensModo.length > 0 && <RowMenu itens={itensModo} rotulo="Modo de tela" />}
-        {iniciais && (
-          <span className="pc-avatar" aria-hidden="true">
-            {iniciais}
-          </span>
-        )}
       </div>    </div>
     </>
   );

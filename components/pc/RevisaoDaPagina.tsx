@@ -23,10 +23,10 @@ export default function RevisaoDaPagina({ pagina, empresa, podeMarcar, naoSalvo,
   const motivoDoBloqueio = naoSalvo ? "Salve as alterações antes de marcar como revisado." : "";
   return (
     <div className={`rev-pagina rev-pagina--${situacao}`} role="status" aria-label={`Revisão de ${ROTULO_DA_PAGINA[pagina]}`}>
-      <span className="rev-texto">{situacao === "em-dia" ? "✓ " : ""}{texto}</span>
+      <span className="rev-texto"><b className="rev-pagina-nome">{ROTULO_DA_PAGINA[pagina]}:</b> {situacao === "em-dia" ? "✓ " : ""}{texto}</span>
       {podeMarcar && situacao !== "em-dia" && (
         <span className="rev-acao">
-          <button type="button" className="ui-btn ui-btn--secondary" aria-disabled={Boolean(motivoDoBloqueio)} onClick={motivoDoBloqueio ? undefined : onMarcar}>
+          <button type="button" className="pc-link-btn" aria-disabled={Boolean(motivoDoBloqueio)} onClick={motivoDoBloqueio ? undefined : onMarcar}>
             Marcar como revisado
           </button>
           {motivoDoBloqueio && <span className="ui-field-error">{motivoDoBloqueio}</span>}

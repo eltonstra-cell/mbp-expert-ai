@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import type { Empresa, ProcedimentoOperacionalPadronizado } from "@/types";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
 import { RowMenu, type ItemMenu } from "@/components/ui/RowMenu";
 import { MENSAGEM_NORMA_ALTERADA, MENSAGEM_SEM_NORMA_APLICADA, popPrecisaRevisarPorNorma } from "@/lib/popsNorma";
-import { CORES_DA_SITUACAO, botaoDaLinha, contadoresDaLista, etiquetasDaLinha, filtrarLinhas, linhaPedeAtencao, textoDoCriarDaNorma, type FiltroDaLista, type LinhaComDetalhe } from "@/lib/popGestao";
+import { COR_DO_ESTADO, botaoDaLinha, contadoresDaLista, estadoVisualDaLinha, filtrarLinhas, grupoComecaAberto, linhasDoGrupo, resumoDoGrupo, textoDoCriarDaNorma, POPS_EM_DESTAQUE, type FiltroDaLista, type LinhaComDetalhe } from "@/lib/popGestao";
 import { acoesDoPop } from "@/lib/menuActions";
 import { adicionarPop, arquivarPop, duplicarPop } from "@/lib/pops";
 import PcModelosPop from "@/components/pc/PcModelosPop";
@@ -34,7 +34,9 @@ type Props = {
   pops: ProcedimentoOperacionalPadronizado[];
   onPersistir: (pops: ProcedimentoOperacionalPadronizado[]) => void;
   /** Abas da seção (Manual, POPs, Programas…): ficam na linha 2, ao lado da coluna de botões. */
-  abas?: ReactNode;
+  abas?: ReactNode | ((pendencias: number) => ReactNode);
+  /** Chave do aparelho para lembrar quais grupos estão abertos (por empresa). */
+  empresaId?: string;
   /** Responsável do estabelecimento (fonte: Empresa › Dados), na ponta direita do cabeçalho "Conjunto da norma". */
   responsavel?: { nome: string; cargo: string };
   onAlterarEmDados?: () => void;
@@ -42,63 +44,63 @@ type Props = {
   mensagem?: string;
 };
 
-type ChipDeFiltro = { id: FiltroDaLista; classe: string; rotulo: string; conta: (c: ReturnType<typeof contadoresDaLista>) => number };
+type ContadorDeFiltro = { id: FiltroDaLista | null; rotulo: string; conta: (c: ReturnType<typeof contadoresDaLista>) => number };
 
-const CHIPS: ChipDeFiltro[] = [
-  { id: "em-dia", classe: "pgl-conta--ok", rotulo: "em dia", conta: (c) => c.vigentesEmDia },
-  { id: "com-pendencia", classe: "pgl-conta--pend", rotulo: "com pendência", conta: (c) => c.vigentesComPendencia },
-  { id: "aguardando", classe: "pgl-conta--aguarda", rotulo: "aguardando aprovação", conta: (c) => c.aguardando },
-  { id: "rascunho", classe: "pgl-conta--rascunho", rotulo: "rascunhos", conta: (c) => c.rascunho },
-  { id: "falta-criar", classe: "pgl-conta--falta", rotulo: "falta criar", conta: (c) => c.faltaCriar },
+// Contadores em texto (número em Outfit 22 + rótulo) que também filtram; o escolhido fica sublinhado em laranja e os zerados somem ("todos" sempre aparece).
+const CONTADORES: ContadorDeFiltro[] = [
+  { id: null, rotulo: "todos", conta: (c) => c.total },
+  { id: "com-pendencia", rotulo: "com pendência", conta: (c) => c.vigentesComPendencia },
+  { id: "aguardando", rotulo: "aguardando aprovação", conta: (c) => c.aguardando },
+  { id: "rascunho", rotulo: "rascunhos", conta: (c) => c.rascunho },
+  { id: "falta-criar", rotulo: "falta criar", conta: (c) => c.faltaCriar },
 ];
 
-function Etiqueta({ situacao }: { situacao: LinhaComDetalhe["situacao"] }) {
-  const cor = CORES_DA_SITUACAO[situacao];
-  return (
-    <span className="pgl-etiqueta" style={{ background: cor.fundo, color: cor.texto }}>
-      {situacao}
-    </span>
-  );
-}
+const ROTULO_DO_ESTADO_TEXTO: Record<string, string> = { Vigente: "Vigente", Rascunho: "Rascunho", "Aguardando aprovação": "Aguardando aprovação", "Revisão vencida": "Revisão vencida", "Falta criar": "Falta criar", Inativo: "Inativo" };
 
-// Uma linha por POP: barra de cor, "POP-NN · nome" (quebra, nunca é cortado), etiquetas de status e o botão. A altura nasce do conteúdo.
+// Uma linha por POP: fundo branco, moldura de 1,5 px na cor do estado, bolinha + código + título; embaixo o estado em texto colorido.
+// A linha inteira abre o POP (sem botão "Abrir"); ficam o "⋯" e, quando é a vez de quem olha, o "Aprovar".
 function Linha({ linha, podeEditar, onAbrirFicha, onCriarDoModelo, menu }: { linha: LinhaComDetalhe; podeEditar: boolean; onAbrirFicha: (id: string, aba?: AbaFicha) => void; onCriarDoModelo: (catalogoId: string) => void; menu?: ItemMenu[] }) {
-  const cor = CORES_DA_SITUACAO[linha.situacao];
-  const atencao = linhaPedeAtencao(linha);
+  const estado = estadoVisualDaLinha(linha);
+  const cor = COR_DO_ESTADO[estado];
   const botao = botaoDaLinha(linha);
+  const abre = Boolean(linha.pop);
+  const naoConferido = Boolean(linha.pop && popNaoConferido(linha.pop));
+  const revisar = Boolean(linha.pop && popPrecisaRevisarPorNorma(linha.pop));
   return (
-    // A barra de cor de 6 px à esquerda é um sombreado interno (acompanha o canto e a altura da linha, que cresce com o título).
-    <div className={`pgl-linha${atencao ? " is-destaque" : ""}${linha.pop?.arquivado ? " is-arquivado" : ""}`} style={{ "--faixa": cor.faixa } as CSSProperties} title={linha.situacao !== "Falta criar" ? linha.acao.texto : undefined}>
-      <span className="pgl-titulo">{linha.codigo ? `${linha.codigo} · ${linha.titulo}` : linha.titulo}</span>
-      <div className="pgl-etiquetas">
-        {/* Alerta primeiro, situação por último (ordem em `etiquetasDaLinha`). */}
-        {etiquetasDaLinha(linha, { revisar: Boolean(linha.pop && popPrecisaRevisarPorNorma(linha.pop)), naoConferido: Boolean(linha.pop && popNaoConferido(linha.pop)) }).map((etiqueta) =>
-          etiqueta === "atraso" ? (
-            <span key={etiqueta} className="pgl-etiqueta pgl-etiqueta--atraso">Registro atrasado</span>
-          ) : etiqueta === "revisar" ? (
-            <span key={etiqueta} className="pop-revisar" title={MENSAGEM_NORMA_ALTERADA}>
-              revisar
-            </span>
-          ) : etiqueta === "nao-conferido" ? (
-            <span key={etiqueta} className="pop-revisar pop-nao-conferido" title={ROTULO_NAO_CONFERIDO}>{ROTULO_CURTO_NAO_CONFERIDO}</span>
-          ) : (
-            <Etiqueta key={etiqueta} situacao={linha.situacao} />
-          )
-        )}
+    <div
+      className={`pgl-linha${abre ? " is-clicavel" : ""}${linha.pop?.arquivado ? " is-arquivado" : ""}`}
+      style={{ "--cor-do-estado": cor } as CSSProperties}
+      role={abre ? "link" : undefined}
+      tabIndex={abre ? 0 : undefined}
+      aria-label={abre ? `Abrir ${linha.codigo ? `${linha.codigo} · ` : ""}${linha.titulo}` : undefined}
+      title={linha.situacao !== "Falta criar" ? linha.acao.texto : undefined}
+      onClick={abre ? () => onAbrirFicha(linha.pop!.id) : undefined}
+      onKeyDown={abre ? (evento) => { if (evento.key === "Enter" && evento.target === evento.currentTarget) onAbrirFicha(linha.pop!.id); } : undefined}
+    >
+      <span className="pgl-bolinha" aria-hidden="true" />
+      <div className="pgl-textos">
+        <span className="pgl-titulo">{linha.codigo ? `${linha.codigo} · ${linha.titulo}` : linha.titulo}</span>
+        <span className="pgl-estado">
+          {linha.registroAtrasado && <span className="pgl-estado-atraso">Registro atrasado · </span>}
+          {revisar && <span className="pgl-estado-revisar" title={MENSAGEM_NORMA_ALTERADA}>Revisar · </span>}
+          <span className="pgl-estado-situacao" style={{ color: estado === "neutro" ? "#51606c" : cor }}>{ROTULO_DO_ESTADO_TEXTO[linha.situacao] || linha.situacao}</span>
+          {naoConferido && <span className="pgl-estado-cinza" title={ROTULO_NAO_CONFERIDO}> · {ROTULO_CURTO_NAO_CONFERIDO}</span>}
+          {linha.detalhe ? <span className="pgl-estado-cinza"> · {linha.detalhe}</span> : null}
+        </span>
       </div>
-      <div className="pgl-botoes">
-        {linha.pop ? (
+      <div className="pgl-botoes" onClick={(evento) => evento.stopPropagation()}>
+        {linha.pop && botao.principal ? (
           // "Aprovar" não aprova com um clique: abre a ficha, no ponto onde o fluxo de aprovação já existe.
-          <button type="button" className={`ui-btn ui-btn--small ${botao.principal ? "ui-btn--criar" : "ui-btn--secondary"}`} onClick={() => onAbrirFicha(linha.pop!.id, botao.principal ? "documento" : undefined)}>
+          <button type="button" className="pgl-aprovar" onClick={() => onAbrirFicha(linha.pop!.id, "documento")}>
             {botao.rotulo}
           </button>
-        ) : podeEditar && linha.definicao ? (
-          <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => onCriarDoModelo(linha.definicao!.catalogoId)}>
+        ) : !linha.pop && podeEditar && linha.definicao ? (
+          <button type="button" className="ui-btn ui-btn--secondary" onClick={() => onCriarDoModelo(linha.definicao!.catalogoId)}>
             Criar do modelo
           </button>
-        ) : (
+        ) : !linha.pop ? (
           <span className="pgl-sem-botao">sem versão</span>
-        )}
+        ) : null}
         {menu && menu.length > 0 && <RowMenu itens={menu} />}
       </div>
     </div>
@@ -124,6 +126,7 @@ export default function PcPopsLista({
   pops,
   onPersistir,
   abas,
+  empresaId,
   responsavel,
   onAlterarEmDados,
   topo,
@@ -137,6 +140,26 @@ export default function PcPopsLista({
   // Filtro só na tela (não é guardado): cada chip de contagem mostra só os POPs daquela situação; "Todos" limpa.
   const [filtro, setFiltro] = useState<FiltroDaLista | null>(null);
   const contadores = contadoresDaLista([...conjunto, ...outros]);
+  // Cada grupo é um painel que abre e fecha; o estado fica no aparelho, por empresa. Sem escolha guardada, abre sozinho quando há POP fora de "vigente".
+  const chaveDosGrupos = `mbp-pops-grupos:${empresaId || "empresa"}`;
+  const [grupos, setGrupos] = useState<Record<string, boolean>>({});
+  const [verTodosDoGrupo, setVerTodosDoGrupo] = useState<Record<string, boolean>>({});
+  useEffect(() => {
+    try {
+      setGrupos(JSON.parse(window.localStorage.getItem(chaveDosGrupos) || "{}") || {});
+    } catch {
+      setGrupos({});
+    }
+  }, [chaveDosGrupos]);
+  function alternarGrupo(id: string, abertoAgora: boolean) {
+    const proximo = { ...grupos, [id]: !abertoAgora };
+    setGrupos(proximo);
+    try {
+      window.localStorage.setItem(chaveDosGrupos, JSON.stringify(proximo));
+    } catch {
+      /* sem armazenamento: vale só nesta abertura */
+    }
+  }
   const conjuntoVisivel = filtrarLinhas(conjunto, filtro);
   const outrosVisiveis = filtrarLinhas(outros, filtro);
   const temConjunto = conjunto.length > 0;
@@ -180,23 +203,65 @@ export default function PcPopsLista({
   }
 
   const respostaDoResponsavel = (
-    <div className="pgl-resp-linha">
-      <span>
-        Responsável: <strong>{nomeDoResponsavel || "ainda não definido"}</strong>
-        {nomeDoResponsavel && responsavel?.cargo ? ` · ${responsavel.cargo}` : ""}
-      </span>
+    <span className="pgl-resp-linha">
+      Responsável: <strong>{nomeDoResponsavel || "ainda não definido"}</strong>
+      {nomeDoResponsavel && responsavel?.cargo ? ` · ${responsavel.cargo}` : ""}
       {onAlterarEmDados && (
-        <button type="button" className="pgl-resp-link" onClick={onAlterarEmDados}>
-          Alterar em Dados
-        </button>
+        <>
+          {" · "}
+          <button type="button" className="pgl-resp-link" onClick={onAlterarEmDados}>
+            alterar em Dados
+          </button>
+        </>
       )}
-    </div>
+    </span>
   );
+
+  const pendenciasDaLista = contadores.vigentesComPendencia;
+
+  // Painel de um grupo: faixa de cabeçalho clicável (chevron), resumo e, aberto, as linhas. Com mais de 8 POPs mostra os 5 mais urgentes.
+  function Grupo({ id, titulo, classe, linhas, todas, direita, aoFinalDasLinhas }: { id: string; titulo: string; classe: string; linhas: LinhaComDetalhe[]; todas: LinhaComDetalhe[]; direita?: ReactNode; aoFinalDasLinhas?: ReactNode }) {
+    const aberto = grupos[id] ?? grupoComecaAberto(todas);
+    const verTodos = Boolean(verTodosDoGrupo[id]);
+    const mostradas = linhasDoGrupo(linhas, verTodos);
+    return (
+      <section className="pgl-grupo" aria-label={titulo}>
+        <div className={`pgg-faixa ${classe}`}>
+          <button type="button" className="pgg-faixa-botao" aria-expanded={aberto} onClick={() => alternarGrupo(id, aberto)}>
+            <span className="pgg-faixa-seta" aria-hidden="true">{aberto ? "▾" : "▸"}</span>
+            <span className="pgg-faixa-titulo">{titulo}</span>
+            <span className="pgg-faixa-resumo">{resumoDoGrupo(todas)}</span>
+          </button>
+          {direita}
+        </div>
+        {aberto && (
+          <div className="pgl-grupo-corpo">
+            {aoFinalDasLinhas}
+            {linhas.length === 0 && <div className="ui-empty">Nenhum POP nesta situação.</div>}
+            {mostradas.map((linha) => (
+              <Linha key={linha.chave} linha={linha} podeEditar={podeEditar} onAbrirFicha={onAbrirFicha} onCriarDoModelo={onCriarDoModelo} menu={id === "outros" && linha.pop ? menuDoOutro(linha.pop) : undefined} />
+            ))}
+            {linhas.length > mostradas.length && (
+              <button type="button" className="pc-link-btn pc-self-start" onClick={() => setVerTodosDoGrupo((atual) => ({ ...atual, [id]: true }))}>
+                Ver todos ({linhas.length})
+              </button>
+            )}
+            {verTodos && linhas.length > POPS_EM_DESTAQUE && linhas.length > 8 && (
+              <button type="button" className="pc-link-btn pc-self-start" onClick={() => setVerTodosDoGrupo((atual) => ({ ...atual, [id]: false }))}>
+                Mostrar só os {POPS_EM_DESTAQUE} mais urgentes
+              </button>
+            )}
+          </div>
+        )}
+      </section>
+    );
+  }
 
   return (
     <div className="pgl">
       <h2 className="sr-only">POPs</h2>
 
+      {abas ? (typeof abas === "function" ? abas(pendenciasDaLista) : abas) : null}
       {topo}
 
       {(conjunto.length === 0 || avisoSemVinculo) && (
@@ -205,7 +270,7 @@ export default function PcPopsLista({
             <div className="priv-faixa" role="status">
               <span>{MENSAGEM_SEM_NORMA_APLICADA}</span>
               {onIrParaNorma && (
-                <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={onIrParaNorma}>
+                <button type="button" className="ui-btn ui-btn--secondary" onClick={onIrParaNorma}>
                   Ir para Norma aplicável
                 </button>
               )}
@@ -215,119 +280,107 @@ export default function PcPopsLista({
         </div>
       )}
 
-      <div className={`pgl-cabeca${podeEditar ? " pgl-cabeca--com-lateral" : ""}`}>
-        <div className="pgl-cabeca-esq">
-          {abas}
-          <div className="pgl-filtros" role="group" aria-label="Mostrar POPs por situação">
-            <span className="pgl-filtros-rotulo">Mostrar:</span>
-            <button type="button" className={`pgl-chip pgl-chip--todos${filtro === null ? " is-ativo" : ""}`} aria-pressed={filtro === null} onClick={() => setFiltro(null)}>
-              Todos
-            </button>
-            {CHIPS.map((chip) => (
-              <button key={chip.id} type="button" className={`pgl-chip ${chip.classe}${filtro === chip.id ? " is-ativo" : ""}`} aria-pressed={filtro === chip.id} onClick={() => setFiltro(filtro === chip.id ? null : chip.id)}>
-                <b>{chip.conta(contadores)}</b> {chip.rotulo}
+      <div className="pgg-contadores-linha">
+        <div className="pgg-contadores" role="group" aria-label="Mostrar POPs por situação">
+          {CONTADORES.filter((item) => item.id === null || item.conta(contadores) > 0).map((item) => {
+            const ativo = filtro === item.id;
+            return (
+              <button key={item.rotulo} type="button" className={`pgg-conta${ativo ? " is-ativo" : ""}`} aria-pressed={ativo} onClick={() => setFiltro(item.id === null ? null : filtro === item.id ? null : item.id)}>
+                <span className="pgg-conta-num">{item.conta(contadores)}</span> <span className="pgg-conta-rotulo">{item.rotulo}</span>
               </button>
-            ))}
-          </div>
+            );
+          })}
         </div>
         {podeEditar && (
-          <div className="pgl-lateral">
-            {temConjunto && <p className="pgl-apoio">{textoDoCriarDaNorma(faltamCriar)}</p>}
-            <div className="pgl-criar">
-              {temConjunto && (
-                <button type="button" className={`ui-btn ui-btn--criar ui-btn--small${faltamCriar === 0 ? " is-desligado" : ""}`} disabled={faltamCriar === 0} onClick={onCriarFaltantes}>
-                  Criar POPs da norma
-                </button>
-              )}
-              {/* Só um laranja vivo por bloco: este botão fica laranja quando o de cima está desligado (ou não existe). */}
-              <button type="button" className={`ui-btn ui-btn--small ${temConjunto && faltamCriar > 0 ? "ui-btn--secondary" : "ui-btn--criar"}`} aria-haspopup="dialog" onClick={() => (onCriarDeModelo ? setDeModelo(true) : setAdicionando(true))}>
-                + Adicionar POP
+          <div className="pgl-acoes">
+            {temConjunto && faltamCriar > 0 && (
+              <button type="button" className="ui-btn ui-btn--secondary" onClick={onCriarFaltantes} title={textoDoCriarDaNorma(faltamCriar)}>
+                Criar POPs da norma ({faltamCriar})
               </button>
-            </div>
+            )}
+            <button type="button" className="pgl-adicionar-botao" aria-haspopup="dialog" onClick={() => (onCriarDeModelo ? setDeModelo(true) : setAdicionando(true))}>
+              + Adicionar POP
+            </button>
           </div>
         )}
       </div>
 
       <div className="pgl-lista">
         {temConjunto && (
-          <>
-            <div className="pgl-secao-linha">
-              <h3 className="pgl-secao">Conjunto da norma</h3>
-              {respostaDoResponsavel}
-            </div>
-            {conjuntoVisivel.length === 0 && <div className="ui-empty">Nenhum POP nesta situação.</div>}
-            {conjuntoVisivel.map((linha) => (
-              <Linha key={linha.chave} linha={linha} podeEditar={podeEditar} onAbrirFicha={onAbrirFicha} onCriarDoModelo={onCriarDoModelo} />
-            ))}
-          </>
+          <Grupo id="conjunto" titulo="Conjunto da norma" classe="pgg-faixa--norma" linhas={conjuntoVisivel} todas={conjunto} direita={<span className="pgg-faixa-direita">{respostaDoResponsavel}</span>} />
         )}
 
-        <div className="pgl-secao-linha">
-          <h3 className="pgl-secao">Outros POPs e documentos da empresa</h3>
-          {!temConjunto && respostaDoResponsavel}
-        </div>
-        {podeEditar && deModelo && onCriarDeModelo && (
-          <PcModelosPop
-            pops={pops}
-            onCancelar={() => setDeModelo(false)}
-            onEmBranco={() => {
-              setDeModelo(false);
-              setAdicionando(true);
-            }}
-            onCriar={(modeloId, codigo, titulo) => {
-              const resultado = onCriarDeModelo(modeloId, codigo, titulo);
-              if (resultado.ok) setDeModelo(false);
-              return resultado;
-            }}
-          />
-        )}
-        {podeEditar && adicionando && (
-          <div className="pgl-adicionar">
-            <label className="pc-add-code">
-              <input
-                className={`ui-input${erro?.campo === "codigo" ? " is-invalid" : ""}`}
-                value={codigo}
-                onChange={(evento) => {
-                  setCodigo(evento.target.value);
-                  if (erro?.campo === "codigo") setErro(null);
-                }}
-                placeholder="Código (opcional)"
-                aria-label="Código do POP (opcional)"
-                aria-invalid={erro?.campo === "codigo"}
-              />
-              {erro?.campo === "codigo" && <span className="ui-field-error">{erro.aviso}</span>}
-            </label>
-            <label className="pc-add-title">
-              <span className="ui-field-wrap">
-                <input
-                  className={`ui-input pc-input-tools${erro?.campo === "titulo" ? " is-invalid" : ""}`}
-                  value={titulo}
-                  onChange={(evento) => {
-                    setTitulo(evento.target.value);
-                    if (erro?.campo === "titulo") setErro(null);
+        <Grupo
+          id="outros"
+          titulo="Outros POPs e documentos da empresa"
+          classe="pgg-faixa--outros"
+          linhas={outrosVisiveis}
+          todas={outros}
+          direita={!temConjunto ? <span className="pgg-faixa-direita">{respostaDoResponsavel}</span> : undefined}
+          aoFinalDasLinhas={
+            <>
+              {podeEditar && deModelo && onCriarDeModelo && (
+                <PcModelosPop
+                  pops={pops}
+                  onCancelar={() => setDeModelo(false)}
+                  onEmBranco={() => {
+                    setDeModelo(false);
+                    setAdicionando(true);
                   }}
-                  placeholder="Título do POP"
-                  aria-label="Título do POP"
-                  aria-invalid={erro?.campo === "titulo"}
+                  onCriar={(modeloId, codigo, titulo) => {
+                    const resultado = onCriarDeModelo(modeloId, codigo, titulo);
+                    if (resultado.ok) setDeModelo(false);
+                    return resultado;
+                  }}
                 />
-                <span className="ui-field-tools">
-                  <FieldVoiceTools fieldKey="novo-pop-titulo" value={titulo} onChange={setTitulo} contexto="Título curto e objetivo de um Procedimento Operacional Padronizado." />
-                </span>
-              </span>
-              {erro?.campo === "titulo" && <span className="ui-field-error">{erro.aviso}</span>}
-            </label>
-            <button type="button" className="ui-btn ui-btn--secondary" onClick={cancelarAdicao}>
-              Cancelar
-            </button>
-            <button type="button" className="ui-btn ui-btn--save" onClick={adicionar}>
-              Salvar
-            </button>
-          </div>
-        )}
-        {outros.length === 0 ? <div className="ui-empty">Nenhum outro POP ou documento cadastrado.</div> : outrosVisiveis.length === 0 ? <div className="ui-empty">Nenhum POP nesta situação.</div> : null}
-        {outrosVisiveis.map((linha) => (
-          <Linha key={linha.chave} linha={linha} podeEditar={podeEditar} onAbrirFicha={onAbrirFicha} onCriarDoModelo={onCriarDoModelo} menu={linha.pop ? menuDoOutro(linha.pop) : undefined} />
-        ))}
+              )}
+              {podeEditar && adicionando && (
+                <div className="pgl-adicionar">
+                  <label className="pc-add-code">
+                    <input
+                      className={`ui-input${erro?.campo === "codigo" ? " is-invalid" : ""}`}
+                      value={codigo}
+                      onChange={(evento) => {
+                        setCodigo(evento.target.value);
+                        if (erro?.campo === "codigo") setErro(null);
+                      }}
+                      placeholder="Código (opcional)"
+                      aria-label="Código do POP (opcional)"
+                      aria-invalid={erro?.campo === "codigo"}
+                    />
+                    {erro?.campo === "codigo" && <span className="ui-field-error">{erro.aviso}</span>}
+                  </label>
+                  <label className="pc-add-title">
+                    <span className="ui-field-wrap">
+                      <input
+                        className={`ui-input pc-input-tools${erro?.campo === "titulo" ? " is-invalid" : ""}`}
+                        value={titulo}
+                        onChange={(evento) => {
+                          setTitulo(evento.target.value);
+                          if (erro?.campo === "titulo") setErro(null);
+                        }}
+                        placeholder="Título do POP"
+                        aria-label="Título do POP"
+                        aria-invalid={erro?.campo === "titulo"}
+                      />
+                      <span className="ui-field-tools">
+                        <FieldVoiceTools fieldKey="novo-pop-titulo" value={titulo} onChange={setTitulo} contexto="Título curto e objetivo de um Procedimento Operacional Padronizado." />
+                      </span>
+                    </span>
+                    {erro?.campo === "titulo" && <span className="ui-field-error">{erro.aviso}</span>}
+                  </label>
+                  <button type="button" className="ui-btn ui-btn--secondary" onClick={cancelarAdicao}>
+                    Cancelar
+                  </button>
+                  <button type="button" className="ui-btn ui-btn--save" onClick={adicionar}>
+                    Salvar
+                  </button>
+                </div>
+              )}
+              {outros.length === 0 && <div className="ui-empty">Nenhum outro POP ou documento cadastrado.</div>}
+            </>
+          }
+        />
         {arquivados > 0 && (
           <button type="button" className="pc-link-btn pc-self-start" onClick={onVerArquivados}>
             {verArquivados ? "Ocultar arquivados" : `Ver arquivados (${arquivados})`}

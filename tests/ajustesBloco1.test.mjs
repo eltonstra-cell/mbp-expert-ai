@@ -192,7 +192,7 @@ test("ordem da lista: quem precisa de alguém primeiro, depois Em dia, depois Fa
 test("Central: 3 grupos com as sub-abas pedidas e rotas antigas que continuam valendo", () => {
   const todos = { editar: true, verComprovantes: true, gerenciarPessoas: true };
   const grupos = gruposVisiveis(todos);
-  assert.deepEqual(grupos.map((grupo) => grupo.rotulo), ["Empresa", "Cadastros", "Documentos"]);
+  assert.deepEqual(grupos.map((grupo) => grupo.rotulo), ["Empresa", "Estrutura", "Documentos"]);
   assert.deepEqual(grupos[0].subabas, ["dados", "norma", "privacidade"]);
   assert.deepEqual(grupos[1].subabas, ["ambientes", "equipamentos", "fluxos"]);
   assert.deepEqual(grupos[2].subabas, ["manual", "pops", "programas", "comprovantes", "pessoas"]);

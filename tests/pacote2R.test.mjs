@@ -13,21 +13,15 @@ const ler = (c) => readFileSync(new URL(c, import.meta.url), "utf8");
 const TODOS = { editar: true, verComprovantes: true, gerenciarPessoas: true };
 
 // ===== 2 Estrutura → Cadastros (só o rótulo visível) =====
-test("rótulo 'Cadastros' em todos os pontos de exibição; ids internos continuam 'estrutura'", () => {
+test("grupo 'Estrutura' na Central (o item 'Cadastros' do menu lateral continua); ids internos continuam 'estrutura'", () => {
   const grupos = gruposVisiveis(TODOS);
-  assert.deepEqual(grupos.map((grupo) => grupo.rotulo), ["Empresa", "Cadastros", "Documentos"]);
+  assert.deepEqual(grupos.map((grupo) => grupo.rotulo), ["Empresa", "Estrutura", "Documentos"]);
   assert.deepEqual(grupos.map((grupo) => grupo.id), ["empresa", "estrutura", "documentos"], "o id interno não muda");
-  // menu de seção do topo e botão "Cadastros ▾" (o rótulo do botão vem do grupo)
-  assert.deepEqual(opcoesDoSeletorDeSecao(grupos, "ambientes").map((opcao) => opcao.rotulo), ["Empresa", "Cadastros", "Documentos"]);
-  assert.equal(opcoesDoSeletorDeSecao(grupos, "equipamentos").find((opcao) => opcao.atual).rotulo, "Cadastros");
+  assert.deepEqual(opcoesDoSeletorDeSecao(grupos, "ambientes").map((opcao) => opcao.rotulo), ["Empresa", "Estrutura", "Documentos"]);
+  assert.equal(opcoesDoSeletorDeSecao(grupos, "equipamentos").find((opcao) => opcao.atual).rotulo, "Estrutura");
   assert.ok(ler("../app/page.tsx").includes('grupo.id === grupoDaSubaba(subabaDoMenu))?.rotulo'));
-  // nenhum texto visível diz "Estrutura" como seção (a palavra só sobrevive em ids e em "estrutura física" dos checklists)
-  for (const arquivo of ["../lib/centralEmpresa.ts", "../components/pc/CentralEmpresaNav.tsx", "../components/SeletorDeSecao.tsx", "../components/AppTopbar.tsx", "../components/pc/PcRegistrosDoPop.tsx", "../components/ManualBaseFields.tsx"]) {
-    assert.equal(/["'>`] ?Estrutura ?[<"'`›]|Estrutura ›|Estrutura,|Estrutura e /.test(ler(arquivo)), false, `${arquivo} ainda mostra "Estrutura"`);
-  }
   const guia = ler("../conteudo-privado/guias/fonte/guia-rapido.html");
   assert.ok(guia.includes("<b>Cadastros</b>"));
-  assert.equal(/<b>Estrutura<\/b>|Estrutura:/.test(guia), false);
   assert.ok(ler("../CLAUDE.md").includes("Cadastros ("));
   // aba de dados antiga continua abrindo no lugar certo
   assert.equal(grupoDaSubaba("ambientes"), "estrutura");
@@ -54,14 +48,14 @@ test("item 'Cadastros' na barra lateral: logo depois de Visitas, só para quem e
 test("abas de Cadastros: Ambientes | Equipamentos | Fluxos; contagem no título quando maior que zero", () => {
   const cadastros = GRUPOS_DA_CENTRAL.find((grupo) => grupo.id === "estrutura");
   assert.deepEqual(cadastros.subabas, ["ambientes", "equipamentos", "fluxos"]);
-  assert.equal(ROTULO_DA_SUBABA.ambientes, "Ambientes");
+  assert.equal(ROTULO_DA_SUBABA.ambientes, "Ambientes e equipamentos");
   assert.equal(ROTULO_DA_SUBABA.equipamentos, "Equipamentos");
   assert.equal(ROTULO_DA_SUBABA.fluxos, "Fluxos");
   assert.ok(subabasVisiveis(TODOS).includes("equipamentos"));
   assert.equal(subabasVisiveis({ editar: false, verComprovantes: true, gerenciarPessoas: true }).includes("equipamentos"), false);
   const nav = ler("../components/pc/CentralEmpresaNav.tsx");
-  assert.ok(nav.includes('contagens?.[id] ? ` · ${contagens[id]}` : ""'), "'Equipamentos · 12' só quando > 0");
-  assert.ok(ler("../app/page.tsx").includes("contagens={{ ambientes: setoresEmpresa.length, equipamentos: equipamentosEmpresa.length }}"));
+  assert.ok(nav.includes("contagens?.[id] ?") && nav.includes("cen-bloco-conta"), "a contagem em texto terra só aparece quando maior que zero");
+  assert.equal(ler("../app/page.tsx").includes("contagens={{ ambientes: setoresEmpresa.length"), false, "Ambientes e equipamentos é um bloco só, sem contagem");
   assert.ok(ler("../app/page.tsx").includes('["dados", "manual", "ambientes", "equipamentos", "fluxos", "programas"].includes(secaoEmpresa'), "a barra de salvar continua em todas as abas");
   // pendência de equipamentos abre a aba Equipamentos; setores, Ambientes
   assert.equal(destinoDaPendencia("equipamentos"), "equipamentos");
@@ -133,8 +127,7 @@ test("ordem das etiquetas na linha: o alerta primeiro, a situação por último"
   assert.deepEqual(etiquetasDaLinha(atrasada, { revisar: true, naoConferido: true }), ["atraso", "revisar", "nao-conferido", "situacao"]);
   assert.deepEqual(etiquetasDaLinha(linhaDe(popBase({ conteudo: { frequencia: "mensal", passos: [] } })), {}), ["situacao"]);
   const lista = ler("../components/pc/PcPopsLista.tsx");
-  assert.ok(lista.includes("etiquetasDaLinha(linha, {"));
-  assert.equal(lista.includes("<Etiqueta situacao={linha.situacao} />\n        {linha.registroAtrasado"), false, "a situação não vem mais primeiro");
+  assert.ok(lista.includes("estadoVisualDaLinha(linha)") && lista.indexOf("Registro atrasado") < lista.indexOf("pgl-estado-situacao"), "o alerta vem antes da situação, em texto colorido");
 });
 
 // ===== 1.4 Aviso de responsável =====
@@ -166,8 +159,8 @@ test("topo: título e menu de seção na mesma linha (quebram só abaixo de ~110
   assert.match(bloco, /\.emp-ativa-caixa\{min-width:140px\}/);
   assert.match(bloco, /html\[data-modo\] \.pc-topbar-end\{gap:12px\}/);
   assert.match(bloco, /\.pc-topbar \.pc-voltar\{align-self:center\}/);
-  // nesta ordem: rótulo de status (1300) → chip de modo (1180, já existente) → avatar (880)
-  const ordem = [bloco.indexOf("@container topo (max-width:1300px)"), css.indexOf("@container topo (max-width:1180px)"), bloco.indexOf("@container topo (max-width:880px)")];
+  // nesta ordem: chip de modo (1180, já existente) → avatar (880); o chip de sincronização fica sempre com texto
+  const ordem = [css.indexOf("@container topo (max-width:1180px)"), bloco.indexOf("@container topo (max-width:880px)")];
   assert.ok(ordem.every((posicao) => posicao >= 0));
   const topo = ler("../components/AppTopbar.tsx");
   assert.ok(topo.includes('className="pc-crumb-menu"') && topo.indexOf('className="pc-crumb-menu"') < topo.indexOf("<SeletorDeSecao"));

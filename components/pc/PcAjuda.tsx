@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import PrimeirosPassos, { type PassoDoGuia } from "@/components/pc/PrimeirosPassos";
 
 type Categoria = { id: string; titulo: string; texto: string; cor: string; palavras: string };
 
@@ -72,7 +73,7 @@ function normalizar(texto: string) {
   return texto.normalize("NFD").replace(/[̀-ͯ]/g, "").toLocaleLowerCase("pt-BR");
 }
 
-export default function PcAjuda({ onVoltar, onModoDeTela, guiasLiberados = { guiaRapido: true, manualCompleto: true } }: { onVoltar: () => void; onModoDeTela?: () => void; guiasLiberados?: { guiaRapido: boolean; manualCompleto: boolean } }) {
+export default function PcAjuda({ onVoltar, onModoDeTela, guiasLiberados = { guiaRapido: true, manualCompleto: true }, primeirosPassos }: { onVoltar: () => void; onModoDeTela?: () => void; guiasLiberados?: { guiaRapido: boolean; manualCompleto: boolean }; primeirosPassos?: PassoDoGuia[] }) {
   const [busca, setBusca] = useState("");
   const [categoria, setCategoria] = useState<string | null>(null);
   const [aberta, setAberta] = useState<number | null>(null);
@@ -114,6 +115,7 @@ export default function PcAjuda({ onVoltar, onModoDeTela, guiasLiberados = { gui
       />
 
       <div className="ui-scroll pc-help-scroll">
+        {primeirosPassos && primeirosPassos.length > 0 && !termo && !categoria && <PrimeirosPassos passos={primeirosPassos} />}
         <div className="pc-help-cats" role="group" aria-label="Categorias">
           {categoriasVisiveis.map((c) => (
             <button

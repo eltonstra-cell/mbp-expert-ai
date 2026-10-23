@@ -50,24 +50,16 @@ const textosDoCatalogo = () => {
 };
 
 // ===== 1.1 e 1.2: botão "+ Adicionar POP" e janela de modelos =====
-test("'+ Adicionar POP' fica logo abaixo de 'Criar POPs da norma', na mesma coluna; o botão antigo saiu de 'Outros POPs'", () => {
+test("'+ Adicionar POP' fica à direita dos contadores, laranja médio de 44 px; 'Criar POPs da norma' só aparece quando falta criar", () => {
   const lista = ler("../components/pc/PcPopsLista.tsx");
-  const criar = lista.indexOf("Criar POPs da norma");
-  const adicionar = lista.indexOf("+ Adicionar POP");
-  assert.ok(criar > 0 && adicionar > criar, "o botão vem depois do 'Criar POPs de uma vez'");
   assert.equal(lista.split("+ Adicionar POP").length - 1, 1, "só um botão '+ Adicionar POP'");
   assert.equal(lista.includes("pgl-add-menu"), false, "sem menu de duas opções");
   assert.equal(lista.includes("POP em branco"), false);
-  // mesma coluna: ambos dentro de .pgl-criar, e a coluna estica os dois à mesma largura
-  assert.match(lista, /<div className="pgl-criar">[\s\S]*Criar POPs da norma[\s\S]*\+ Adicionar POP[\s\S]*<\/div>/);
+  assert.ok(lista.indexOf("pgg-contadores\"") < lista.indexOf("pgl-acoes"), "os botões vêm depois dos contadores");
+  assert.match(lista, /temConjunto && faltamCriar > 0 && \(\s*<button type="button" className="ui-btn ui-btn--secondary"/);
+  assert.equal(lista.includes("Os POPs do modelo já foram criados"), false, "sem o texto solto quando o conjunto já foi criado");
   const css = ler("../app/globals.css");
-  assert.match(css, /\.pgl-criar\{display:flex;flex-direction:column;align-items:stretch/);
-  assert.match(css, /\.pgl-criar \.ui-btn\{width:100%/);
-  // cinza quando o outro está habilitado; laranja quando o outro está desabilitado (ou não existe)
-  assert.match(lista, /faltamCriar > 0 \? "ui-btn--secondary" : "ui-btn--criar"/);
-  // a seção "Outros POPs" não tem mais o botão antigo
-  const secao = lista.slice(lista.indexOf('className="pgl-secao-linha"'), lista.indexOf("{podeEditar && deModelo"));
-  assert.equal(secao.includes("Adicionar POP"), false);
+  assert.match(css, /\.pgl-adicionar-botao\{height:44px;[^}]*background:#FFB35C/);
   // abre DIRETO o painel de modelos
   assert.match(lista, /onClick=\{\(\) => \(onCriarDeModelo \? setDeModelo\(true\) : setAdicionando\(true\)\)\}/);
 });
@@ -157,7 +149,7 @@ test("continuar de onde parei: cartão no Início com botões cinza (sem laranja
   const inicio = ler("../components/pc/PcInicio.tsx");
   assert.ok(inicio.includes("Continuar de onde parei"));
   const cartao = inicio.slice(inicio.indexOf('aria-label="Continuar de onde parei"'), inicio.indexOf("{painel}"));
-  assert.ok(cartao.includes("ui-btn ui-btn--secondary") && !cartao.includes("ui-btn--criar"));
+  assert.ok(cartao.includes("pc-link-btn") && !cartao.includes("ui-btn--criar"));
   const pagina = ler("../app/page.tsx");
   assert.ok(pagina.includes("limparContinuar();") && pagina.indexOf("limparContinuar();") < pagina.indexOf("authClient.signOut()"));
   const pops = ler("../components/pc/PcPops.tsx");
@@ -263,16 +255,17 @@ test("pendências: ação clara, sem números do material original nem verbos de
 });
 
 // ===== 2.5: chip e ordem =====
-test("chip 'Modelo não conferido': curto, uma linha, título completo no atributo title; colunas fixas na lista", () => {
+test("chip 'Modelo não conferido': curto, título completo no atributo title; na lista vira texto cinza no estado, sem pílula", () => {
   assert.equal(ROTULO_CURTO_NAO_CONFERIDO, "Modelo não conferido");
   assert.equal(ROTULO_NAO_CONFERIDO, "Conteúdo de modelo não conferido");
-  for (const arquivo of ["../components/pc/PcPopsLista.tsx", "../components/pc/PcFichaPop.tsx"]) {
-    const fonte = ler(arquivo);
-    assert.ok(fonte.includes('className="pop-revisar pop-nao-conferido" title={ROTULO_NAO_CONFERIDO}>{ROTULO_CURTO_NAO_CONFERIDO}'), arquivo);
-  }
+  const ficha = ler("../components/pc/PcFichaPop.tsx");
+  assert.ok(ficha.includes('className="pop-revisar pop-nao-conferido" title={ROTULO_NAO_CONFERIDO}>{ROTULO_CURTO_NAO_CONFERIDO}'));
+  const lista = ler("../components/pc/PcPopsLista.tsx");
+  assert.ok(lista.includes('className="pgl-estado-cinza" title={ROTULO_NAO_CONFERIDO}') && lista.includes("{ROTULO_CURTO_NAO_CONFERIDO}"));
+  assert.equal(lista.includes("pop-nao-conferido"), false, "na lista não há pílula");
   const css = ler("../app/globals.css");
   assert.match(css, /\.pop-nao-conferido\{white-space:nowrap/);
-  assert.match(css, /\.pgl-linha\{display:grid;grid-template-columns:8px minmax\(0,1fr\) 300px 230px 132px/);
+  assert.match(css, /\.pgl-estado-cinza\{color:#51606c\}/);
 });
 
 test("'Outros POPs' em ordem de código (POP-05, POP-06…), não de urgência", () => {
@@ -455,7 +448,7 @@ test("respiro entre o cabeçalho, o caminho e o título; topo colapsa pela largu
   const css = ler("../app/globals.css");
   assert.match(css, /\.ficha-caminho\{margin:10px 0\}/);
   assert.match(css, /\.pc-topbar\{container:topo\/inline-size\}/);
-  assert.match(css, /@container topo \(max-width:1180px\)\{[\s\S]*?\.pc-sync-texto,\.pc-mode-texto\{display:none\}/);
+  assert.match(css, /@container topo \(max-width:1180px\)\{[\s\S]*?\.pc-mode-texto\{display:none\}/);
   assert.match(css, /@container topo \(max-width:920px\)\{\s*\.pc-mode-chip\{display:none\}/);
 });
 

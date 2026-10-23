@@ -120,7 +120,7 @@ async function abrirPagina(n, base, estado) {
 async function abrirJanelaDaCapa(n, codigo) {
   await n.avaliar(clicar("button,a", "POPs e documentos"));
   await n.esperarCondicao(`document.querySelector(".pgl-linha")`, { descricao: "lista de POPs" });
-  await n.avaliar(`(()=>{const linha=[...document.querySelectorAll(".pgl-linha")].find(l=>l.innerText.includes(${JSON.stringify(codigo)}));linha.querySelector("button").click();return true})()`);
+  await n.avaliar(`(()=>{const linha=[...document.querySelectorAll(".pgl-linha")].find(l=>l.innerText.includes(${JSON.stringify(codigo)}));linha.click();return true})()`);
   await n.esperarCondicao(`document.querySelector(".ficha")`, { descricao: "ficha do POP" });
   await n.avaliar(clicar(".ficha-aba", "Documento"));
   await n.esperar(700);

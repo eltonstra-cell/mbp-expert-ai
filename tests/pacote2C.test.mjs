@@ -79,7 +79,7 @@ test("D: regras globais de rótulo pequeno, caixas de marcar e seletores; botõe
   assert.ok(css.includes(".ui-eyebrow,.ui-group-title,.pgl-secao") && css.includes("text-transform:none;color:#12202B}"));
   assert.ok(css.includes('input[type="checkbox"]:checked{border-color:#E8B04B;background:#FEF6E6}'));
   assert.ok(css.includes("select{appearance:none") && css.includes(".ui-btn--primary{background:#E8760A"));
-  assert.ok(ler("../components/pc/PcPopsLista.tsx").includes('className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => onCriarDoModelo'));
+  assert.ok(ler("../components/pc/PcPopsLista.tsx").includes('className="ui-btn ui-btn--secondary" onClick={() => onCriarDoModelo'));
   assert.ok(ler("../app/page.tsx").includes('className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => irParaSubaba("dados")}'));
   assert.ok(!ler("../components/PopsFields.tsx").includes("bg-[var(--brand)] px-4 py-3"));
 });

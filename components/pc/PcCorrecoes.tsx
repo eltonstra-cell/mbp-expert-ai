@@ -81,6 +81,8 @@ type Props = {
   /** Anexa a foto do "depois" (passa pela fila offline como qualquer evidência). */
   onFotoDepois?: (ncId: string, arquivo: File) => void;
   onCriarPop: (codigo: string) => void;
+  /** RT e Administrador: abre a prévia do lembrete ao responsável do estabelecimento (saiu do Início). */
+  onLembrete?: () => void;
   onAbrirPop: () => void;
   onLote: (ids: string[], valores: { responsavel: string; prazo: string }) => void;
   onVoltar: () => void;
@@ -135,6 +137,7 @@ export default function PcCorrecoes({
   onAdicionarEvidencia,
   onFotoDepois,
   onCriarPop,
+  onLembrete,
   onAbrirPop,
   onLote,
   pessoas,
@@ -220,6 +223,11 @@ export default function PcCorrecoes({
           <p className="ui-subtitle">{subtitulo}</p>
         </div>
         <div className="ui-head-actions">
+          {onLembrete && (
+            <button type="button" className="ui-btn ui-btn--secondary" onClick={onLembrete}>
+              Lembrete ao responsável
+            </button>
+          )}
           {podeEditar && (
             <button type="button" className="ui-btn ui-btn--creme" onClick={() => setLote(true)} disabled={itens.every((nc) => nc.status === "Resolvida")}>
               Definir em lote

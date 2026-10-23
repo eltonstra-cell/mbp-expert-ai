@@ -60,7 +60,7 @@ type Props = {
   usuario: { nome: string; perfil: string; iniciais: string } | null;
   versao: string;
   /** Grupo "Visita atual" do menu do PC; null quando não há visita aberta. */
-  visitaMenu?: { empresa: string; cor?: string; data: string; passos: PassoTrilha[]; atual: PassoVisita | null; emTelaDaVisita: boolean } | null;
+  visitaMenu?: { numero?: number; empresa: string; cor?: string; data: string; passos: PassoTrilha[]; atual: PassoVisita | null; emTelaDaVisita: boolean } | null;
   /** Abre a janela "Meu perfil" (menu do cartão do usuário). */
   onMeuPerfil?: () => void;
   onIrPasso?: (passo: PassoVisita) => void;
@@ -364,14 +364,11 @@ export default function AppNavigation({
                 <button
                   type="button"
                   className={`pc-vcard-head${visitaMenu.atual === "central" ? " is-active" : ""}`}
-                  aria-label={`Central da visita de ${visitaMenu.empresa}`}
+                  aria-label={`Central da visita ${visitaMenu.numero ?? ""}`.trim()}
                   onClick={() => onIrPasso?.("central")}
                 >
-                  <span className="pc-vcard-mono" style={{ "--emp-cor": visitaMenu.cor || "#4A5D73" } as CSSProperties} aria-hidden="true">
-                    {iniciaisDaEmpresa(visitaMenu.empresa, usuario?.iniciais || "?")}
-                  </span>
                   <span className="pc-vgroup-text">
-                    <span className="pc-vcard-company">{visitaMenu.empresa}</span>
+                    <span className="pc-vcard-company">Visita {visitaMenu.numero ?? ""}</span>
                     <span className="pc-vcard-sub">{visitaMenu.data}</span>
                   </span>
                 </button>

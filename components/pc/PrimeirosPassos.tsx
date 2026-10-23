@@ -2,21 +2,21 @@
 
 import { useEffect, useState } from "react";
 
-export type PassoDosPrimeiros = { chave: string; titulo: string; onAbrir: () => void };
+export type PassoDoGuia = { chave: string; titulo: string; feito: boolean; onAbrir: () => void };
 
 type Props = {
-  passos: PassoDosPrimeiros[];
-  onDispensar: () => void;
+  passos: PassoDoGuia[];
   /** Endereço do vídeo de apresentação (arquivo em public/). Sem o arquivo, a janela explica que ainda não foi publicado. */
   video?: string;
 };
 
 export const VIDEO_PRIMEIROS_PASSOS = "/videos/primeiros-passos.mp4";
 
-// Cartão do Início com a ordem de uso do app (Perfil, Empresa, Ambientes, Equipamentos, Fluxos, Visita, Relatório) e o vídeo.
-export default function PrimeirosPassos({ passos, onDispensar, video = VIDEO_PRIMEIROS_PASSOS }: Props) {
+// Guia de uso em Ajuda e guias: a ordem (Perfil, Empresa, Ambientes, Equipamentos, Fluxos, Visita, Relatório), o que já está feito e o vídeo.
+export default function PrimeirosPassos({ passos, video = VIDEO_PRIMEIROS_PASSOS }: Props) {
   const [videoAberto, setVideoAberto] = useState(false);
   const [videoFalhou, setVideoFalhou] = useState(false);
+  const feitos = passos.filter((passo) => passo.feito).length;
 
   useEffect(() => {
     if (!videoAberto) return;
@@ -28,28 +28,24 @@ export default function PrimeirosPassos({ passos, onDispensar, video = VIDEO_PRI
   }, [videoAberto]);
 
   return (
-    <section className="ui-card pp" aria-label="Primeiros passos">
+    <section className="pp" aria-label="Guia de primeiros passos">
       <div className="pp-topo">
         <div className="pp-textos">
-          <div className="ui-eyebrow">Primeiros passos</div>
-          <div className="ui-row-sub">A ordem para começar a usar o Ponto Certo.</div>
+          <h2 className="pp-titulo">Primeiros passos</h2>
+          <p className="ui-row-sub">A ordem para começar a usar o Ponto Certo · {feitos} de {passos.length} feitos</p>
         </div>
-        <div className="pp-acoes">
-          <button type="button" className="ui-btn ui-btn--primary" onClick={() => { setVideoFalhou(false); setVideoAberto(true); }}>
-            Ver o vídeo
-          </button>
-          <button type="button" className="ui-btn ui-btn--secondary" onClick={onDispensar}>
-            Dispensar
-          </button>
-        </div>
+        <button type="button" className="ui-btn ui-btn--primary" onClick={() => { setVideoFalhou(false); setVideoAberto(true); }}>
+          Ver o vídeo
+        </button>
       </div>
       <ol className="pp-lista">
         {passos.map((passo, indice) => (
-          <li key={passo.chave}>
+          <li key={passo.chave} className="pp-linha">
+            <span className={`pp-num${passo.feito ? " is-feito" : ""}`} aria-hidden="true">{passo.feito ? "✓" : indice + 1}</span>
             <button type="button" className="pp-passo" onClick={passo.onAbrir}>
-              <span className="pp-num" aria-hidden="true">{indice + 1}</span>
-              <span className="pp-titulo">{passo.titulo}</span>
+              {passo.titulo}
             </button>
+            <span className={`pp-estado${passo.feito ? " is-feito" : ""}`}>{passo.feito ? "Feito" : "Pendente"}</span>
           </li>
         ))}
       </ol>
@@ -59,7 +55,7 @@ export default function PrimeirosPassos({ passos, onDispensar, video = VIDEO_PRI
           <section className="pc-modal pp-video" role="dialog" aria-modal="true" aria-label="Vídeo dos primeiros passos">
             <h2 className="pc-modal-title">Primeiros passos</h2>
             {videoFalhou ? (
-              <p className="ui-row-sub" role="status">O vídeo ainda não foi publicado. Siga a ordem dos passos do cartão: cada um abre a tela certa.</p>
+              <p className="ui-row-sub" role="status">O vídeo ainda não foi publicado. Siga a ordem dos passos da lista: cada um abre a tela certa.</p>
             ) : (
               <video className="pp-player" src={video} controls autoPlay playsInline onError={() => setVideoFalhou(true)} />
             )}

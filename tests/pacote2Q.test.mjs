@@ -17,7 +17,7 @@ const HOJE = "2026-10-22";
 test("menu de seção: lista Empresa, Cadastros e Documentos, marca a atual e troca para a primeira aba da escolhida", () => {
   const grupos = gruposVisiveis({ editar: true, verComprovantes: true, gerenciarPessoas: true });
   const opcoes = opcoesDoSeletorDeSecao(grupos, "pops");
-  assert.deepEqual(opcoes.map((opcao) => opcao.rotulo), ["Empresa", "Cadastros", "Documentos"]);
+  assert.deepEqual(opcoes.map((opcao) => opcao.rotulo), ["Empresa", "Estrutura", "Documentos"]);
   assert.deepEqual(opcoes.filter((opcao) => opcao.atual).map((opcao) => opcao.id), ["documentos"]);
   assert.equal(subabaAoEscolherSecao(grupos, "empresa", "pops"), "dados");
   assert.equal(subabaAoEscolherSecao(grupos, "estrutura", "pops"), "ambientes");
@@ -38,15 +38,15 @@ test("menu de seção: teclado (Enter/Esc/setas), fecha ao clicar fora, creme co
   const topo = ler("../components/AppTopbar.tsx");
   assert.ok(topo.includes("<SeletorDeSecao") && topo.includes('"Central da Empresa"') === false, "o título vem da página");
   const pagina = ler("../app/page.tsx");
-  assert.ok(pagina.includes('? ["Central da Empresa"]') && pagina.includes("secao={secaoDoTopo}"));
+  assert.ok(pagina.includes('? ["Central da Empresa"]') && pagina.includes("ocultarChipDeModo={Boolean(secaoDoTopo)}"));
   const nav = ler("../components/pc/CentralEmpresaNav.tsx");
-  assert.equal(nav.includes("cen-grupo"), false, "os três botões Empresa/Cadastros/Documentos saíram da linha própria");
+  assert.ok(nav.includes("cen-barra") && nav.includes("cen-bloco"), "duas barras de blocos: grupos e seções");
   const css = ler("../app/globals.css");
   assert.match(css, /\.sec-menu-botao\{[^}]*border:1\.5px solid #E8B04B[^}]*background:#FEF6E6/);
   assert.match(css, /\.sec-menu-item\.is-atual\{background:#FEF6E6\}/);
-  assert.match(css, /\.cen-sub\.is-ativa\{border-bottom-color:#E8760A\}/);
-  assert.match(css, /border-bottom:3px solid transparent/);
-  assert.match(css, /\.cen-nav\{[^}]*border-bottom:1px solid #D5DCE3/);
+  assert.match(css, /\.cen-bloco\.is-ativa\{border-radius:9px;background:#BFDDF7;color:#12202B\}/);
+  assert.match(css, /\.cen-barra\{display:inline-flex;align-items:stretch;height:40px;border-radius:12px;background:#EEF1F5\}/);
+  assert.match(css, /\.cen-divisor\{[^}]*height:1px[^}]*background:#D5DCE3\}/);
 });
 
 test("barra do topo fixa (sticky) na Central e o título pode quebrar em 2 linhas sem cortar", () => {
@@ -62,13 +62,10 @@ test("'Criar POPs da norma': texto de apoio com o N real; desligado em laranja c
   assert.equal(textoDoCriarDaNorma(1), "Cria o POP da norma que ainda não existe.");
   const lista = ler("../components/pc/PcPopsLista.tsx");
   assert.ok(lista.includes("Criar POPs da norma") && !lista.includes("Criar POPs de uma vez") && !lista.includes("de uma vez"));
-  assert.ok(lista.includes("disabled={faltamCriar === 0}") && lista.includes('faltamCriar === 0 ? " is-desligado" : ""'));
+  assert.ok(lista.includes("temConjunto && faltamCriar > 0"), "o botão desligado cinza saiu: só aparece quando falta criar");
   assert.ok(lista.includes("textoDoCriarDaNorma(faltamCriar)"));
   const css = ler("../app/globals.css");
-  assert.match(css, /\.is-desligado:disabled\{background:#F8CFA3;color:#fff/);
-  // um só laranja vivo por bloco: "+ Adicionar POP" é cinza enquanto o outro está ligado
-  assert.match(lista, /temConjunto && faltamCriar > 0 \? "ui-btn--secondary" : "ui-btn--criar"/);
-  assert.match(css, /\.pgl-lateral\{[^}]*width:216px[^}]*justify-self:end/);
+  assert.match(css, /\.pgl-adicionar-botao\{height:44px;[^}]*background:#FFB35C;[^}]*color:#12202B/);
 });
 
 // ===== 1.4 Filtro por chip =====
@@ -98,11 +95,11 @@ test("filtro por chip: cada chip mostra exatamente a sua contagem; 'Todos' (null
 
 test("filtro por chip: só no cliente (estado da tela, nada guardado), 'Todos' limpa e clicar de novo no chip ativo também", () => {
   const lista = ler("../components/pc/PcPopsLista.tsx");
-  assert.ok(lista.includes("useState<FiltroDaLista | null>(null)") && lista.includes("setFiltro(null)"));
-  assert.ok(lista.includes("setFiltro(filtro === chip.id ? null : chip.id)") && lista.includes("aria-pressed={filtro === chip.id}"));
-  assert.equal(/localStorage|sessionStorage|persistir\(.*filtro/.test(lista), false);
-  assert.ok(lista.includes("Mostrar:") && lista.includes("Todos"));
-  assert.match(ler("../app/globals.css"), /\.pgl-chip\.is-ativo\{background:#FEF6E6;box-shadow:inset 0 0 0 2px #E8B04B\}/);
+  assert.ok(lista.includes("useState<FiltroDaLista | null>(null)") && lista.includes("setFiltro(item.id === null ? null"));
+  assert.ok(lista.includes("setFiltro(item.id === null ? null : filtro === item.id ? null : item.id)") && lista.includes("aria-pressed={ativo}"));
+  assert.equal(/persistir\(.*filtro|setItem\([^)]*filtro/.test(lista), false, "o filtro não é guardado (só o estado aberto dos grupos fica no aparelho)");
+  assert.ok(lista.includes('rotulo: "todos"'));
+  assert.match(ler("../app/globals.css"), /\.pgg-conta\.is-ativo\{border-bottom-color:#E8760A;color:#12202B\}/);
 });
 
 // ===== 1.7 Linha =====
@@ -116,7 +113,7 @@ test("'Aprovar' (laranja) só para POP aguardando aprovação E usuário que pod
   assert.deepEqual(botaoDaLinha(linhaDe(popBase({ status: "Rascunho" }), { podeAprovar: true })), { rotulo: "Abrir", principal: false });
   // "Aprovar" não aprova com um clique: abre a ficha na aba onde está o fluxo de aprovação
   const lista = ler("../components/pc/PcPopsLista.tsx");
-  assert.ok(lista.includes('onAbrirFicha(linha.pop!.id, botao.principal ? "documento" : undefined)'));
+  assert.ok(lista.includes('onAbrirFicha(linha.pop!.id, "documento")') && lista.includes("pgl-aprovar"));
   assert.equal(/aprovarPop|onAprovar/.test(lista), false);
   assert.ok(ler("../components/pc/PcPops.tsx").includes("setAbaInicial(destino.aba)"));
 });
@@ -137,22 +134,15 @@ test("etiquetas e cores da linha: Rascunho #FDEBC2, Aguardando #F6C65B, Vigente 
   assert.equal(linhaPedeAtencao(linhaDe(popBase({ status: "Aguardando aprovação" }))), true);
 });
 
-test("linha de POP: uma linha só, altura mínima de 48 px que cresce (sem altura fixa), título que quebra, gap de 6 px, só a página rola", () => {
+test("linha de POP: fundo branco, moldura de 1,5 px na cor do estado, raio 12, 8 px entre linhas, a linha inteira abre o POP", () => {
   const css = ler("../app/globals.css");
-  const bloco = css.slice(css.indexOf("/* ===== Central da Empresa › POPs (pacote 2Q) ===== */"));
-  const linha = bloco.match(/\.pgl-linha\{[^}]*\}/)[0];
-  assert.ok(linha.includes("min-height:48px") && linha.includes("height:auto"));
-  assert.equal(/[^-]height:(?!auto)\d/.test(linha), false, "sem altura fixa");
-  assert.equal(/overflow:hidden/.test(linha), false, "nunca corta");
-  assert.match(bloco, /\.pgl-titulo\{[^}]*font-size:17px;font-weight:500[^}]*overflow-wrap:anywhere/);
-  assert.match(bloco, /\.pgl-lista\{max-height:none;overflow:visible;padding-right:0;gap:6px/);
-  assert.match(linha, /border:2px solid #B4C2CE/);
-  assert.match(bloco, /\.pgl-linha\.is-destaque\{border-color:#E8B04B;background:#FEF6E6\}/);
-  assert.match(linha, /box-shadow:inset 6px 0 0 0 var\(--faixa/);
+  const bloco = css.slice(css.indexOf("/* ===== Pacote 4 · Central sem caixas"));
+  assert.match(bloco, /\.pgl \.pgl-linha\{display:flex;flex-wrap:nowrap;[^}]*min-height:60px[^}]*border:1\.5px solid var\(--cor-do-estado,#B4C2CE\);border-radius:12px;background:#fff;box-shadow:none\}/);
+  assert.match(bloco, /\.pgl-grupo-corpo\{display:flex;flex-direction:column;gap:8px\}/);
+  assert.match(bloco, /\.pgl-bolinha\{[^}]*background:var\(--cor-do-estado,#B4C2CE\)\}/);
   const lista = ler("../components/pc/PcPopsLista.tsx");
-  assert.equal(lista.includes('className="pgl-acao"'), false, "a frase da próxima ação saiu da lista");
-  assert.equal(lista.includes("pgl-textos"), false);
-  assert.ok(lista.includes("title={linha.situacao !== \"Falta criar\" ? linha.acao.texto : undefined}"));
+  assert.ok(lista.includes('role={abre ? "link" : undefined}') && lista.includes("onClick={abre ? () => onAbrirFicha(linha.pop!.id) : undefined}"), "sem botão Abrir: a linha inteira abre");
+  assert.equal(/>s*Abrirs*</.test(lista), false, "nenhum botão Abrir");
 });
 
 test("próxima ação: a frase completa vai ao topo da ficha (sem duplicar no Resumo, que já tem o cartão)", () => {
@@ -177,7 +167,7 @@ test("Responsável: sai a faixa 'Dados diz … e os POPs trazem …' e a linha s
   assert.equal(pagina.includes("Dados diz"), false);
   assert.equal(pagina.includes("Responsável do estabelecimento: <strong>"), false);
   const lista = ler("../components/pc/PcPopsLista.tsx");
-  assert.ok(lista.includes("Responsável: <strong>") && lista.includes("Alterar em Dados") && lista.includes("pgl-resp-link"));
+  assert.ok(lista.includes("Responsável: <strong>") && lista.includes("alterar em Dados") && lista.includes("pgl-resp-link"));
   const inicio = lista.indexOf("Conjunto da norma");
   assert.ok(lista.indexOf("respostaDoResponsavel", inicio) > inicio && lista.indexOf("respostaDoResponsavel", inicio) < lista.indexOf("Outros POPs e documentos da empresa"));
   assert.match(ler("../app/globals.css"), /\.pgl-resp-linha strong\{font-weight:500/);
@@ -233,9 +223,9 @@ test("'Não sincronizou' (com internet) × 'Sem conexão' (offline de verdade)",
   assert.equal(rotuloDoSeloComProblema(true), "Não sincronizou");
   assert.equal(rotuloDoSeloComProblema(false), "Sem conexão");
   const pagina = ler("../app/page.tsx");
-  assert.ok(pagina.includes("rotuloDoSeloComProblema(estaOnline)"));
+  assert.ok(pagina.includes("seloDeSincronizacao({ online: estaOnline"));
   const topo = ler("../components/AppTopbar.tsx");
-  assert.ok(topo.includes("sincronizacao.rotulo || ROTULO_SYNC[sincronizacao.estado]"));
+  assert.ok(topo.includes("sincronizacao.rotulo || ROTULO_SYNC[sincronizacao.estado]") && topo.includes("sincronizacao.dica"));
 });
 
 test("leitura da nuvem: espera crescente 1,5 / 4 / 8 s; o aviso só depois da última tentativa", () => {

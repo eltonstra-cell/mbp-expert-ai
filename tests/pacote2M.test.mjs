@@ -23,7 +23,7 @@ test("topo: busca compacta abaixo de 1400 px, status em ícone abaixo de 1500 px
   assert.equal(modoDaBusca(1200), "compacta");
   assert.equal(modoDaBusca(1400), "larga");
   assert.equal(modoDaBusca(1920), "larga");
-  assert.equal(modoDoStatus(1499), "icone");
+  assert.equal(modoDoStatus(1499), "por-extenso", "o chip de sincronização sempre traz o texto");
   assert.equal(modoDoStatus(1500), "por-extenso");
   assert.equal(nomeDaPaginaPodeCortar(1099), true);
   assert.equal(nomeDaPaginaPodeCortar(1100), false);
@@ -40,7 +40,7 @@ test("topo: busca compacta abaixo de 1400 px, status em ícone abaixo de 1500 px
   assert.ok(css.includes(".emp-ativa{flex:1 1 180px;min-width:180px") && css.includes(".emp-ativa-caixa{min-width:180px}"));
   assert.ok(css.includes(".pc-sync-chip,.pc-mode-chip{flex:none;white-space:nowrap}"), "nunca quebra em duas linhas");
   const topo = ler("../components/AppTopbar.tsx");
-  assert.ok(topo.includes('aria-label={`${sincronizacao.rotulo || ROTULO_SYNC[sincronizacao.estado]}. Toque para atualizar agora`}') && topo.includes("Configurar o modo de tela`}"));
+  assert.ok(topo.includes('aria-label={sincronizacao.dica || `${sincronizacao.rotulo || ROTULO_SYNC[sincronizacao.estado]}. Toque para atualizar agora`}') && topo.includes("Configurar o modo de tela`}"));
   const busca = ler("../components/BuscaNaBarra.tsx");
   assert.ok(busca.includes("modoDaBusca(window.innerWidth)") && busca.includes("pc-busca-gatilho") && busca.includes("pc-smartbar--no-painel"));
 });

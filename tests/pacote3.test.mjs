@@ -212,11 +212,12 @@ test("27/40. botão Preencher completa só os campos vazios com dados já existe
 
 test("34/41. cartão Primeiros passos no Início, na ordem de uso, com o vídeo", () => {
   const cartao = ler("../components/pc/PrimeirosPassos.tsx");
-  assert.ok(cartao.includes("Ver o vídeo") && cartao.includes("Dispensar") && cartao.includes("O vídeo ainda não foi publicado"));
-  const pagina = ler("../app/page.tsx");
-  const ordem = ["perfil", "empresa", "ambientes", "equipamentos", "fluxos", "visita", "relatorio"].map((chave) => pagina.indexOf(`{ chave: "${chave}", titulo:`));
+  assert.ok(cartao.includes("Ver o vídeo") && cartao.includes("Feito") && cartao.includes("Pendente") && cartao.includes("O vídeo ainda não foi publicado"));
+  const lib = ler("../lib/inicio.ts");
+  const ordem = ["perfil", "empresa", "ambientes", "equipamentos", "fluxos", "visita", "relatorio"].map((chave) => lib.indexOf(`  ${chave}: "`));
   assert.ok(ordem.every((posicao) => posicao > 0) && ordem.every((posicao, i) => i === 0 || posicao > ordem[i - 1]), "Perfil, Empresa, Ambientes, Equipamentos, Fluxos, Visita, Relatório");
-  assert.ok(ler("../components/pc/PcInicio.tsx").includes("<PrimeirosPassos"));
+  assert.ok(ler("../components/pc/PcAjuda.tsx").includes("<PrimeirosPassos"), "o guia agora mora em Ajuda e guias");
+  assert.equal(ler("../components/pc/PcInicio.tsx").includes("<PrimeirosPassos"), false, "e saiu do Início");
 });
 
 test("24/25/26/28. IA com cor viva, menu de escolha no lugar do select, 40 px e fundos claros", () => {

@@ -9,7 +9,7 @@ import { lerRecentes, registrarRecente, type Recente } from "@/lib/buscaRecentes
 import { modoDaBusca } from "@/lib/topoCompacto";
 
 // Exemplos que trocam a cada poucos segundos (só o texto de ajuda; nada é buscado sozinho).
-const EXEMPLOS = ["nova visita, POPs, correções abertas", "relatório emitido, dossiê, norma", "ambientes, comprovantes, pessoas", "central da empresa, dados, responsável"];
+const PLACEHOLDER = "Busque ou diga o que quer fazer";
 const LIMITE_POR_GRUPO: Record<GrupoBusca, number> = { ir: 6, agir: 4, itens: 8, empresas: 6 };
 /** Depois da voz, destino único de navegação abre sozinho depois desta contagem (com botão Cancelar). */
 const CONTAGEM_DA_ABERTURA_MS = 2000;
@@ -51,7 +51,6 @@ export default function BuscaNaBarra({ destinos, atalhos, usuarioId, onAtiva, on
   const [consulta, setConsulta] = useState("");
   const [aberto, setAberto] = useState(false);
   const [indice, setIndice] = useState(0);
-  const [exemplo, setExemplo] = useState(0);
   const [recentes, setRecentes] = useState<Recente[]>([]);
   const [compacta, setCompacta] = useState(false);
   const [textoDaVoz, setTextoDaVoz] = useState<string | null>(null);
@@ -89,11 +88,6 @@ export default function BuscaNaBarra({ destinos, atalhos, usuarioId, onAtiva, on
     medir();
     window.addEventListener("resize", medir);
     return () => window.removeEventListener("resize", medir);
-  }, []);
-
-  useEffect(() => {
-    const timer = window.setInterval(() => setExemplo((atual) => (atual + 1) % EXEMPLOS.length), 4500);
-    return () => window.clearInterval(timer);
   }, []);
 
   useEffect(() => {
@@ -235,7 +229,7 @@ export default function BuscaNaBarra({ destinos, atalhos, usuarioId, onAtiva, on
       ref={campoRef}
       type="text"
       className="pc-busca-input"
-      placeholder={`Ex.: ${EXEMPLOS[exemplo]}`}
+      placeholder={PLACEHOLDER}
       aria-label="Busca inteligente: diga o que quer fazer ou para onde quer ir"
       role="combobox"
       aria-expanded={aberto}

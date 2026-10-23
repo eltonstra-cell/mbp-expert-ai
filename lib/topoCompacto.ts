@@ -19,8 +19,9 @@ export function modoDaBusca(larguraDaJanela: number): ModoDaBusca {
   return larguraDaJanela >= LARGURA_DA_BUSCA_LARGA ? "larga" : "compacta";
 }
 
-export function modoDoStatus(larguraDaJanela: number): ModoDoStatus {
-  return larguraDaJanela >= LARGURA_DO_STATUS_POR_EXTENSO ? "por-extenso" : "icone";
+/** O chip de sincronização do topo sempre traz o texto ("Sincronizado", "Sem sinal", "N pendentes de envio"). */
+export function modoDoStatus(_larguraDaJanela: number): ModoDoStatus {
+  return "por-extenso";
 }
 
 /** Largura do painel de busca na janela: 520 px, nunca maior que a janela menos uma folga de 16 px de cada lado. */

@@ -7,7 +7,7 @@ export const ROTULO_DA_SUBABA: Record<SubAbaCentral, string> = {
   dados: "Dados",
   norma: "Norma aplicável",
   privacidade: "Privacidade",
-  ambientes: "Ambientes",
+  ambientes: "Ambientes e equipamentos",
   equipamentos: "Equipamentos",
   fluxos: "Fluxos",
   manual: "Manual",
@@ -19,8 +19,8 @@ export const ROTULO_DA_SUBABA: Record<SubAbaCentral, string> = {
 
 export const GRUPOS_DA_CENTRAL: { id: GrupoCentral; rotulo: string; subabas: SubAbaCentral[] }[] = [
   { id: "empresa", rotulo: "Empresa", subabas: ["dados", "norma", "privacidade"] },
-  // O id interno continua "estrutura"; só o rótulo visível é "Cadastros".
-  { id: "estrutura", rotulo: "Cadastros", subabas: ["ambientes", "equipamentos", "fluxos"] },
+  // O id interno continua "estrutura". Ambientes e equipamentos são uma página só (a sub-aba "equipamentos" ainda existe como alias).
+  { id: "estrutura", rotulo: "Estrutura", subabas: ["ambientes", "equipamentos", "fluxos"] },
   { id: "documentos", rotulo: "Documentos", subabas: ["manual", "pops", "programas", "comprovantes", "pessoas"] },
 ];
 
@@ -134,4 +134,14 @@ export function lembrarSubaba(empresaId: string, subaba: SubAbaCentral, armazem:
   } catch {
     /* sem armazenamento: só não lembra */
   }
+}
+
+/** Sub-abas que viram blocos da segunda barra: "equipamentos" não tem bloco próprio (é a mesma página de "ambientes"). */
+export function subabasDaBarra(subabas: SubAbaCentral[]): SubAbaCentral[] {
+  return subabas.filter((subaba) => subaba !== "equipamentos");
+}
+
+/** O bloco que aparece selecionado na segunda barra. */
+export function blocoAtivoDaBarra(subaba: SubAbaCentral): SubAbaCentral {
+  return subaba === "equipamentos" ? "ambientes" : subaba;
 }

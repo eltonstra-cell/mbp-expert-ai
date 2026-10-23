@@ -404,3 +404,46 @@ export function montarListaDePops(entrada: EntradaDaLista): { conjunto: LinhaCom
     .map((pop) => montarLinhaDoPop(pop, undefined, entrada));
   return { conjunto: ordenarLinhas(conjunto), outros: ordenarPorCodigo(outros) };
 }
+
+// ===== Lista de POPs em blocos (Central sem caixas): cor do estado, resumo e abertura dos grupos =====
+
+/** Cores do estado visual da linha: moldura e bolinha. "Registro atrasado" vence rascunho e os outros estados. */
+export const COR_DO_ESTADO = { atrasado: "#D93A3A", rascunho: "#E89A0C", aguardando: "#0E7FB8", vigente: "#15803D", pendencia: "#B35A36", neutro: "#B4C2CE" } as const;
+export type EstadoVisual = keyof typeof COR_DO_ESTADO;
+
+export function estadoVisualDaLinha(linha: Pick<LinhaDaLista, "situacao" | "registroAtrasado">): EstadoVisual {
+  if (linha.situacao === "Falta criar" || linha.situacao === "Inativo") return "neutro";
+  if (linha.registroAtrasado) return "atrasado";
+  if (linha.situacao === "Rascunho") return "rascunho";
+  if (linha.situacao === "Aguardando aprovação") return "aguardando";
+  if (linha.situacao === "Revisão vencida") return "pendencia";
+  return "vigente";
+}
+
+/** Faixa de cabeçalho do grupo: "7 POPs · 1 atrasado · 5 rascunhos" (só o que existe). */
+export function resumoDoGrupo(linhas: Pick<LinhaDaLista, "situacao" | "registroAtrasado">[]): string {
+  const reais = linhas.filter((linha) => linha.situacao !== "Falta criar" && linha.situacao !== "Inativo");
+  const atrasados = reais.filter((linha) => linha.registroAtrasado).length;
+  const rascunhos = reais.filter((linha) => linha.situacao === "Rascunho").length;
+  const faltam = linhas.filter((linha) => linha.situacao === "Falta criar").length;
+  const partes = [`${reais.length} ${reais.length === 1 ? "POP" : "POPs"}`];
+  if (atrasados > 0) partes.push(`${atrasados} ${atrasados === 1 ? "atrasado" : "atrasados"}`);
+  if (rascunhos > 0) partes.push(`${rascunhos} ${rascunhos === 1 ? "rascunho" : "rascunhos"}`);
+  if (faltam > 0) partes.push(`${faltam} ${faltam === 1 ? "falta criar" : "faltam criar"}`);
+  return partes.join(" · ");
+}
+
+/** O grupo começa aberto quando há POP atrasado, aguardando aprovação ou qualquer coisa fora de "vigente"; fechado só quando tudo está vigente. */
+export function grupoComecaAberto(linhas: Pick<LinhaDaLista, "situacao" | "registroAtrasado">[]): boolean {
+  if (linhas.length === 0) return true;
+  return linhas.some((linha) => estadoVisualDaLinha(linha) !== "vigente");
+}
+
+export const LIMITE_DE_POPS_NO_GRUPO = 8;
+export const POPS_EM_DESTAQUE = 5;
+
+/** Com mais de 8 POPs no grupo, só os 5 mais urgentes (a ordem de `ordenarLinhas`); até 8, todos. */
+export function linhasDoGrupo<T extends { acao: AcaoDoPop }>(linhas: T[], verTodos: boolean): T[] {
+  if (verTodos || linhas.length <= LIMITE_DE_POPS_NO_GRUPO) return linhas;
+  return ordenarLinhas(linhas).slice(0, POPS_EM_DESTAQUE);
+}

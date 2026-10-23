@@ -94,7 +94,7 @@ test("Central e lista de POPs: sem 'Voltar às empresas', sem frase repetida e s
   assert.ok(!pagina.includes("Voltar às empresas"));
   assert.ok(pagina.includes("{!editingEmpresaId && (\n            <div className=\"ui-head cen-cabeca\">") || pagina.includes("{!editingEmpresaId && (\r\n            <div className=\"ui-head cen-cabeca\">"));
   const lista = ler("../components/pc/PcPopsLista.tsx");
-  assert.ok(/temConjunto && \(\s*<button type="button" className=\{`ui-btn ui-btn--criar ui-btn--small/.test(lista) && lista.includes("Ir para Norma aplicável") && lista.includes("{avisoSemVinculo}"));
+  assert.ok(/temConjunto && faltamCriar > 0 && \(\s*<button type="button" className="ui-btn ui-btn--secondary"/.test(lista) && lista.includes("Ir para Norma aplicável") && lista.includes("{avisoSemVinculo}"));
   assert.ok(!ler("../components/pc/PcPops.tsx").includes("motivoSemCriar={definicoes.length === 0"));
   assert.ok(pagina.includes("Vincular em Dados") && !pagina.includes('<span className="pgl-resp-aviso">'));
   const css = ler("../app/globals.css");

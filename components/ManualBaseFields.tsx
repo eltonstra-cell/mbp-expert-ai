@@ -36,7 +36,7 @@ type Props = {
   onModelosChange?: (modelos: Record<string, string>) => void;
   /** Opcional: renomear ambiente próprio com cascata (quem chama pede a confirmação e aplica). Devolve true se renomeou. */
   onRenomearAmbiente?: (de: string, para: string) => Promise<boolean>;
-  modo?: "completo" | "responsabilidades" | "ambientes" | "equipamentos";
+  modo?: "completo" | "responsabilidades" | "ambientes" | "equipamentos" | "estrutura";
 };
 
 function SectionTitle({ title, description }: { title: string; description: string }) {
@@ -81,8 +81,8 @@ export default function ManualBaseFields({
   const [gruposRecolhidos, setGruposRecolhidos] = useState<PapelResponsabilidadeManual[]>([]);
 
   const setoresParaEquipamentos = setores.length ? setores : [...SETORES_OFICIAIS_MANUAL];
-  const mostrarAmbientes = modo === "completo" || modo === "ambientes";
-  const mostrarEquipamentos = modo === "completo" || modo === "equipamentos";
+  const mostrarAmbientes = modo === "completo" || modo === "ambientes" || modo === "estrutura";
+  const mostrarEquipamentos = modo === "completo" || modo === "equipamentos" || modo === "estrutura";
   const mostrarResponsabilidades = modo === "completo" || modo === "responsabilidades";
   const proprios = setores.filter((setor) => !SETORES_OFICIAIS_MANUAL.includes(setor as (typeof SETORES_OFICIAIS_MANUAL)[number]));
   const oficiaisMarcados = setores.filter((setor) => SETORES_OFICIAIS_MANUAL.includes(setor as (typeof SETORES_OFICIAIS_MANUAL)[number]));

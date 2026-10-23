@@ -48,7 +48,7 @@ test("visitas: placeholder da busca cabe sem corte; Início: Hoje com 'Ver todos
   assert.ok(ler("../components/pc/PcVisitas.tsx").includes('placeholder="Buscar empresa ou responsável"'));
   assert.match(ler("../app/globals.css"), /\.vis-toolbar-fim \.pc-search\{width:300px/);
   const painel = ler("../components/PainelHoje.tsx");
-  assert.ok(painel.includes("Ver todos (") && painel.includes("ITENS_INICIAIS"));
+  assert.ok(painel.includes("Ver todas (") && painel.includes("ITENS_INICIAIS"));
   assert.match(ler("../app/globals.css"), /\.hoje-lista\{max-height:min\(38vh,300px\)\}/);
 });
 
