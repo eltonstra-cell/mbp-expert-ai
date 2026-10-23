@@ -52,6 +52,7 @@ export function linhasParaCss(linhas: string[]): string {
     .join("\\A ");
 }
 
+
 export function cssDoDocumentoImpresso(opcoes: { cabecalho: CabecalhoDeImpressao; comCaixasDeMargem: boolean }): string {
   if (!opcoes.comCaixasDeMargem) return "";
   const { cabecalho } = opcoes;
@@ -67,7 +68,8 @@ export function cssDoDocumentoImpresso(opcoes: { cabecalho: CabecalhoDeImpressao
     `@bottom-right{content:"Página " counter(page) " de " counter(pages);${base}text-align:right;}}}` +
     // O que o cabeçalho corrido já diz não se repete no corpo (só quando as caixas de margem existem, que é este ramo).
     (cabecalho.ocultarNoCorpo || []).map((seletor) => `@media print{${seletor}{display:none!important}}`).join("") +
-    // Capa opcional (página nomeada "capa"): sem cabeçalho corrido e sem rodapé. O número da página continua contando a capa, mas ela não mostra número.
-    `@media print{@page capa{@top-left{content:none;border:0}@top-right{content:none;border:0}@bottom-left{content:none}@bottom-right{content:none}}}`
+    // Capa opcional (página nomeada "capa"): A4 inteira, sem margens, sem cabeçalho corrido e sem rodapé. O número da página continua contando a capa, mas ela não mostra número.
+    // A margem zero da capa vem DEPOIS do @page geral de propósito: no Chrome, o @page geral declarado depois anula a margem da página nomeada (a capa vazava para uma folha em branco).
+    `@media print{@page capa{size:A4;margin:0;@top-left{content:none;border:0}@top-right{content:none;border:0}@bottom-left{content:none}@bottom-right{content:none}}}`
   );
 }

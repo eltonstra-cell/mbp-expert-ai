@@ -3937,6 +3937,14 @@ html[data-modo="campo"] .chk-foco-amb-pos{font-size:.78rem}
   #pop-folha,#pop-folha *{visibility:visible}
   #pop-folha{position:absolute;inset:0 auto auto 0;width:100%;max-width:none;padding:0;border:0;border-radius:0;box-shadow:none;font-size:10.5pt}
 }
+/* POP com capa: o papel é montado num bloco próprio (#impressao-pop, no fim do body) e o resto do app some da impressão.
+   Assim a capa fica no fluxo normal, na página nomeada "capa" (A4 inteira, sem margens), e o conteúdo começa na página seguinte. */
+@media print{
+  body:has(#impressao-pop) > *:not(#impressao-pop){display:none!important}
+  #impressao-pop,#impressao-pop *{visibility:visible}
+  #impressao-pop{display:block;position:static;width:auto;margin:0;padding:0}
+  #pop-folha-papel{position:static;width:100%;max-width:none;margin:0;padding:0;border:0;border-radius:0;box-shadow:none;font-size:10.5pt}
+}
 
 /* Pacote 2 · C2: Visitas, lista por empresa com colunas fixas */
 .vis-toolbar{justify-content:space-between;align-items:center}
@@ -4238,7 +4246,8 @@ html[data-modo="equilibrado"] .pc-busca,html[data-modo="completo"] .pc-busca{dis
 .pfolha-tabela-aviso{margin:0;font-size:.78em;color:#3D5160}
 .pfolha-capa{display:none}
 @media print{
-  .pfolha-capa{display:block;width:210mm;height:297mm;margin:0;padding:0;border:0;overflow:hidden;break-after:page;page-break-after:always}
+  .pfolha-capa{display:block;position:relative;width:210mm;height:296.5mm;margin:0;padding:0;border:0;overflow:hidden;page:capa}
+  .pfolha-capa .capa-pop{position:absolute;left:0;top:0;width:210mm;height:296.5mm}
   .pop-notas{display:none!important}
 }
 
@@ -4788,3 +4797,6 @@ button.esc-chip--mais:focus-visible{outline:3px solid #E8B04B;outline-offset:1px
   .cartaz-so-papel{position:absolute;left:0;top:0;z-index:99999}
   #cartaz-lavagem,#cartaz-lavagem *{visibility:visible}
 }
+/* O bloco de impressão do POP com capa fica fora da tela e só aparece no papel. */
+#impressao-pop{position:fixed;left:-10000px;top:0;width:190mm;pointer-events:none}
+@media print{#impressao-pop{position:static;left:auto;width:auto}}

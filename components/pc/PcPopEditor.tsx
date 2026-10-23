@@ -37,6 +37,7 @@ import CaixaQueCresce from "@/components/CaixaQueCresce";
 import { modeloPorId } from "@/lib/popModelos";
 import ConfigCapaDoPop from "@/components/pc/ConfigCapaDoPop";
 import ConfigCartazLavagem from "@/components/pc/ConfigCartazLavagem";
+import { aguardarImagensParaImprimir } from "@/lib/aguardarImagens";
 import CartazLavagem from "@/components/CartazLavagem";
 import { createPortal } from "react-dom";
 import { conteudoDoCartaz, eDeLavagemDeMaos, podeGerarOCartaz, popAprovadoParaOCartaz, rodapeDoCartaz, temaDoCartaz as coresDoTema, type DadosDoCartaz, type TemaDoCartaz } from "@/lib/cartazLavagem";
@@ -408,17 +409,21 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
   }
   const iconeAutomaticoDaCapa = iconeDoPop({ origemModelo: pop.origemModelo, catalogoId: pop.catalogoId });
   const iconeEscolhidoDaCapa = eIconeConhecido(pop.iconeCapa) ? pop.iconeCapa : "";
-  function imprimirFolha(capa: CapaCompleta | null, icone: string) {
+  async function imprimirFolha(capa: CapaCompleta | null, icone: string) {
     setEscolhendoImpressao(false);
-    setCapaNoPapel(capa?.ativa ? modeloDaCapa(capa, { ...folhaDeLeitura.capa, iconeId: icone || iconeAutomaticoDaCapa }) : null);
+    // Vale o que está na janela (salvo ou não), nunca só o que está guardado na empresa.
+    const modeloDaCapaImpressa = capa?.ativa ? modeloDaCapa(capa, { ...folhaDeLeitura.capa, iconeId: icone || iconeAutomaticoDaCapa }) : null;
+    setCapaNoPapel(modeloDaCapaImpressa);
     // A capa só existe no papel: some de novo quando a impressão termina.
     if (capa?.ativa) window.addEventListener("afterprint", () => setCapaNoPapel(null), { once: true });
+    // Espera a capa ser desenhada e o ícone e o logotipo carregarem: senão o PDF sai com o lugar vazio.
+    if (modeloDaCapaImpressa) await aguardarImagensParaImprimir(document, modeloDaCapaImpressa.icone ? [modeloDaCapaImpressa.icone.url] : []);
     onImprimir?.(`${rascunho.codigo || "POP"} - ${rascunho.titulo}`, {
       esquerda: [dadosDaEmpresa.nome, dadosDaEmpresa.cnpj ? `CNPJ ${formatarCnpj(dadosDaEmpresa.cnpj)}` : ""],
       // O cabeçalho corrido tem só empresa, CNPJ e "POP-01 · versão 1.1"; "Aprovada por …" fica uma vez só, abaixo do título.
       direita: [`${rascunho.codigo ? `${rascunho.codigo} · ` : ""}versão ${rascunho.versao}`],
       rodape: rascunho.titulo,
-      ocultarNoCorpo: ["#pop-folha .pfolha-topo"],
+      ocultarNoCorpo: ["#pop-folha .pfolha-topo"].concat(modeloDaCapaImpressa ? ["#pop-folha-papel .pfolha-topo"] : []),
     });
   }
 
@@ -491,7 +496,7 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
             )}
           </div>
           {notasAbertas && itensDasNotasNaTela.length > 0 && <PainelDasNotas itens={itensDasNotasNaTela} onAcao={resolverPendencia} />}
-          <PopFolha folha={folhaDeLeitura} modo="leitura" id="pop-folha" capa={capaNoPapel} />
+          <PopFolha folha={folhaDeLeitura} modo="leitura" id="pop-folha" />
         </div>
       )}
 
@@ -822,7 +827,7 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
           {onImprimir && (
             // Cópia da folha só para o papel (o rascunho sai marcado “Rascunho” na linha de situação).
             <div className="pdoc-so-papel" aria-hidden="true">
-              <PopFolha folha={folhaDeLeitura} modo="leitura" id="pop-folha" capa={capaNoPapel} />
+              <PopFolha folha={folhaDeLeitura} modo="leitura" id="pop-folha" />
             </div>
           )}
         </div>
@@ -962,6 +967,12 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
           onSalvar={(tema, logotipo) => onSalvarCartaz?.(tema, logotipo)}
           onGerar={gerarCartaz}
         />
+      )}
+      {capaNoPapel && createPortal(
+        <div id="impressao-pop" aria-hidden="true">
+          <PopFolha folha={folhaDeLeitura} modo="leitura" id="pop-folha-papel" capa={capaNoPapel} />
+        </div>,
+        document.body
       )}
       {cartazNoPapel && createPortal(<div id="cartaz-lavagem" className="cartaz-so-papel" aria-hidden="true"><CartazLavagem dados={cartazNoPapel} /></div>, document.body)}
       {escolhendoImpressao && (
