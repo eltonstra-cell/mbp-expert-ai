@@ -183,3 +183,29 @@ test("estados vazios: Tudo em dia, só um bloco e contadores/lembrete só com it
   assert.match(css, /\.ini2-caixa\{flex:0 0 auto;width:auto;max-width:100%/);
   assert.match(css, /\.ini2-colunas\.is-uma\{grid-template-columns:minmax\(0,1fr\)\}/);
 });
+
+test("dados de teste do Início: só Beyond Nutri, 4 itens, remoção limpa e Chico recusado", async () => {
+  const { adicionarDadosDeTeste, contarDadosDeTeste, eEmpresaDeTeste, removerDadosDeTeste } = await import("../lib/dadosDeTesteInicio.ts");
+  const db = () => ({ empresas: { b: { id: "b", nomeFantasia: "Beyond Nutri", pops: [] }, o: { id: "o", nomeFantasia: "Outra Empresa", pops: [] } }, empresaAtualId: "b", visitas: [], ncs: [], evidencias: [], usuarios: [], registrosAuditoria: [] });
+  assert.equal(eEmpresaDeTeste({ nomeFantasia: "beyond nutri " }), true);
+  assert.equal(eEmpresaDeTeste({ nomeFantasia: "Churrascaria do Chico" }), false);
+  const com = adicionarDadosDeTeste(db(), "2026-10-23");
+  assert.equal(contarDadosDeTeste(com), 6, "visita, correção, pessoa, treinamento e 2 POPs");
+  assert.equal(com.empresas.o.pops.length, 0, "nada em outra empresa");
+  assert.equal(com.empresas.b.pops.length, 2);
+  assert.equal(com.ncs[0].prazo, "2026-10-18", "correção vencida há 5 dias");
+  assert.equal(com.ncs[0].responsavelAcao, "Maria (teste)");
+  assert.equal(com.capacitacoes[0].venceEm, "2026-11-02", "treinamento vence em 10 dias");
+  assert.equal(com.empresas.b.pops.find((p) => p.codigo === "POP-T1").status, "Aguardando aprovação");
+  assert.equal(com.empresas.b.pops.find((p) => p.codigo === "POP-T2").proximaRevisao, "2026-11-12", "revisão em 20 dias");
+  assert.equal(contarDadosDeTeste(adicionarDadosDeTeste(com, "2026-10-23")), 6, "rodar de novo não duplica");
+  // as colunas do Início enxergam os 4 itens
+  const { colunasDoInicio, correcoesSemPrazo } = await import("../lib/inicio.ts");
+  const semChico = removerDadosDeTeste(com);
+  assert.equal(contarDadosDeTeste(semChico), 0);
+  const { colaboradores, capacitacoes, ...resto } = semChico;
+  assert.deepEqual(resto, db(), "remover devolve o estado anterior (só sobram listas vazias de pessoas e treinamentos)");
+  assert.deepEqual([colaboradores, capacitacoes], [[], []]);
+  assert.throws(() => adicionarDadosDeTeste({ ...db(), empresas: { c: { id: "c", nomeFantasia: "Churrascaria do Chico", pops: [] } } }, "2026-10-23"), /não encontrada/);
+  void colunasDoInicio; void correcoesSemPrazo;
+});
