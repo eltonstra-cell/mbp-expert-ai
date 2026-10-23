@@ -180,7 +180,8 @@ test("estados vazios: Tudo em dia, só um bloco e contadores/lembrete só com it
   assert.match(css, /\.ini2-tudo-titulo\{[^}]*color:#15803D\}/);
   assert.match(css, /\.ini2-nova\{height:48px;[^}]*background:#E8760A;font-size:16px;font-weight:400;color:#fff/);
   assert.match(css, /\.ini2-caixas\{display:flex;flex-wrap:wrap;gap:14px\}/);
-  assert.match(css, /\.ini2-caixa\{flex:0 0 auto;width:auto;max-width:100%/);
+  assert.match(css, /\.ini2-caixa\{flex:0 1 360px;min-width:0;max-width:360px\}/);
+  assert.match(css, /@media \(min-width:1201px\)\{\.ini2-caixas\{flex-wrap:nowrap\}\}/);
   assert.match(css, /\.ini2-colunas\.is-uma\{grid-template-columns:minmax\(0,1fr\)\}/);
 });
 

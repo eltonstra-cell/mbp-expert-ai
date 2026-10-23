@@ -101,7 +101,7 @@ export default function PcInicio({ nome, avisoPops = null, caixas, onNovaVisita 
           {caixas.length > 0 && (
             <div className="ini2-caixas">
               {caixas.map((caixa) => (
-                <button key={caixa.chave} type="button" className="ini2-caixa" onClick={caixa.onAbrir}>
+                <button key={caixa.chave} type="button" className="ini2-caixa" title={caixa.subtitulo ? `${caixa.titulo} · ${caixa.subtitulo}` : caixa.titulo} onClick={caixa.onAbrir}>
                   {caixa.tipo === "visita" ? <IconeVisita /> : caixa.tipo === "pop" ? <IconePop /> : <IconeComprovante />}
                   <span className="ini2-caixa-textos">
                     <span className="ini2-caixa-titulo">{caixa.titulo}</span>
