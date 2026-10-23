@@ -144,3 +144,42 @@ test("fora do Início nada mudou: celular/campo e demais telas seguem no estado 
   const pagina = ler("../app/page.tsx");
   assert.ok(pagina.includes("painel={painelNode}"), "o Início do modo campo segue usando o painel Hoje");
 });
+
+test("correções abertas sem prazo entram em Hoje precisa de você, depois das vencidas e dos POPs aguardando", async () => {
+  const { correcoesSemPrazo } = await import("../lib/inicio.ts");
+  const ncs = [
+    { id: "a", empresaId: "e", titulo: "Sem prazo", status: "Aberta", prazo: "", responsavelAcao: "Maria" },
+    { id: "b", empresaId: "e", titulo: "Com prazo", status: "Aberta", prazo: "2026-11-01" },
+    { id: "c", empresaId: "e", titulo: "Resolvida", status: "Resolvida", prazo: "" },
+    { id: "d", empresaId: "outra", titulo: "Outra empresa", status: "Aberta", prazo: "" },
+    { id: "f", empresaId: "e", titulo: "Inativa", status: "Aberta", prazo: "", inativaNoChecklist: true },
+    { id: "g", empresaId: "e", titulo: "Em tratamento sem responsável", status: "Em tratamento", prazo: "  " },
+  ];
+  const extras = correcoesSemPrazo(ncs, "e");
+  assert.deepEqual(extras.map((i) => i.id), ["correcao:a", "correcao:g"]);
+  assert.equal(extras[0].quem, "Maria");
+  assert.equal(extras[1].quem, "Responsável ainda não definido");
+  assert.equal(extras[0].prazo, "aberta", "linha: Correção · aberta · responsável");
+  const itens = [painelItem("venc", "correcao", "vencido", -2, "2026-10-21"), painelItem("pop", "pop", "aguardando", null, undefined)];
+  const c = colunasDoInicio(itens, [], "2026-10-23", extras);
+  assert.deepEqual(c.precisa.map((i) => i.id), ["venc", "pop", "correcao:a", "correcao:g"]);
+  assert.deepEqual([c.vencidos, c.aguardando], [1, 1], "o contador só conta vencidos e aprovações");
+});
+
+test("estados vazios: Tudo em dia, só um bloco e contadores/lembrete só com itens; sem visita, Comece por aqui com Nova visita", () => {
+  const inicio = ler("../components/pc/PcInicio.tsx");
+  assert.ok(inicio.includes("colunas && semPendencias && semVencimentos") && inicio.includes("Tudo em dia") && inicio.includes("Nada vencido e nada vencendo nos próximos 30 dias."));
+  assert.ok(inicio.includes("{!semPendencias && (") && inicio.includes("{!semVencimentos && (") && inicio.includes('semPendencias || semVencimentos ? " is-uma" : ""'), "um bloco vazio não aparece e o outro ocupa a largura toda");
+  assert.equal(inicio.includes("Nada vence nos próximos 30 dias."), false);
+  assert.ok(inicio.includes("temVisita ? \"Continuar de onde parei\" : \"Comece por aqui\"") && inicio.includes("Nenhuma visita em andamento.") && inicio.includes("Nova visita"));
+  // contador e lembrete ficam dentro do bloco que só existe com itens
+  const bloco = inicio.slice(inicio.indexOf("{!semPendencias && ("), inicio.indexOf("{!semVencimentos && ("));
+  assert.ok(bloco.includes("aguardando aprovação") && bloco.includes("Lembrete ao responsável"));
+  const css = ler("../app/globals.css");
+  assert.match(css, /\.ini2-tudo-em-dia\{padding:22px 26px;border-radius:20px;background:#F0FAF3\}/);
+  assert.match(css, /\.ini2-tudo-titulo\{[^}]*color:#15803D\}/);
+  assert.match(css, /\.ini2-nova\{height:48px;[^}]*background:#E8760A;font-size:16px;font-weight:400;color:#fff/);
+  assert.match(css, /\.ini2-caixas\{display:flex;flex-wrap:wrap;gap:14px\}/);
+  assert.match(css, /\.ini2-caixa\{flex:0 0 auto;width:auto;max-width:100%/);
+  assert.match(css, /\.ini2-colunas\.is-uma\{grid-template-columns:minmax\(0,1fr\)\}/);
+});

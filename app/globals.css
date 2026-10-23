@@ -5174,3 +5174,16 @@ html[data-modo] .pc-offset:has(.ini2){height:auto;min-height:100vh;overflow:visi
 .ini2-titulo{word-spacing:.12em}
 .pc-topbar--inicio .pc-busca{flex:1 1 360px;max-width:520px;min-width:150px}
 .pc-topbar--inicio .pc-sync-chip{flex:none;white-space:nowrap}
+
+/* Estados vazios e caixas com o tamanho do texto */
+.ini2-caixas{display:flex;flex-wrap:wrap;gap:14px}
+.ini2-caixa{flex:0 0 auto;width:auto;max-width:100%;padding:0 20px}
+.ini2-sem-visita{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px}
+.ini2-sem-visita-texto{margin:0;font-size:16px;color:#3D5160}
+.ini2-nova{height:48px;padding:0 26px;border:0;border-radius:12px;background:#E8760A;font-size:16px;font-weight:400;color:#fff;cursor:pointer}
+.ini2-nova:hover{background:#D66A06}
+.ini2-nova:focus-visible{outline:3px solid #E8B04B;outline-offset:2px}
+.ini2-colunas.is-uma{grid-template-columns:minmax(0,1fr)}
+.ini2-tudo-em-dia{padding:22px 26px;border-radius:20px;background:#F0FAF3}
+.ini2-tudo-titulo{margin:0;font-family:var(--font-display),"Outfit",sans-serif;font-size:20px;font-weight:500;word-spacing:.12em;color:#15803D}
+.ini2-tudo-sub{margin:6px 0 0;font-size:14px;color:#3D5160}

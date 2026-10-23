@@ -87,7 +87,7 @@ export function resumoDaConfiguracao(passos: PassoDeConfiguracao[]): { feitos: n
 import { diasEntre } from "./registrosEmpresa.ts";
 import type { TelaRecente } from "./continuarDeOndeParei.ts";
 import type { ItemDoPainel } from "./painelHoje.ts";
-import type { ProcedimentoOperacionalPadronizado } from "../types/index.ts";
+import type { NaoConformidade, ProcedimentoOperacionalPadronizado } from "../types/index.ts";
 
 export const MAXIMO_DE_CAIXAS = 3;
 
@@ -155,9 +155,30 @@ export type ItemDeVencimento = {
   dias: number;
 };
 
+/** Correção aberta que ainda não tem prazo: entra em "Hoje precisa de você" depois das vencidas e dos POPs aguardando. */
+export type ItemSemPrazo = Omit<ItemDoPainel, "situacao"> & { situacao: "sem-prazo" };
+export type ItemDaEsquerda = ItemDoPainel | ItemSemPrazo;
+
+/** Correções abertas (não resolvidas, ativas) da empresa que ainda não têm prazo. */
+export function correcoesSemPrazo(ncs: Pick<NaoConformidade, "id" | "empresaId" | "titulo" | "status" | "prazo" | "inativaNoChecklist" | "canceladaPeloUsuarioEm" | "responsavelAcao">[] | undefined, empresaId: string): ItemSemPrazo[] {
+  return (ncs || [])
+    .filter((nc) => nc.empresaId === empresaId && nc.status !== "Resolvida" && !nc.inativaNoChecklist && !nc.canceladaPeloUsuarioEm && !(nc.prazo || "").trim())
+    .map((nc) => ({
+      id: `correcao:${nc.id}`,
+      origem: "correcao" as const,
+      titulo: nc.titulo,
+      prazo: "aberta",
+      situacao: "sem-prazo" as const,
+      dias: null,
+      quem: nc.responsavelAcao?.trim() ? nc.responsavelAcao.trim() : "Responsável ainda não definido",
+      acao: "abrir" as const,
+      rotuloDaAcao: "Abrir",
+    }));
+}
+
 export type ColunasDoInicio = {
-  /** Vencidos e POPs aguardando aprovação (o painel já vem por urgência). */
-  precisa: ItemDoPainel[];
+  /** Vencidos, POPs aguardando aprovação e, por último, correções abertas sem prazo. */
+  precisa: ItemDaEsquerda[];
   /** Vence em até 30 dias, por data. */
   vencendo: ItemDeVencimento[];
   vencidos: number;
@@ -171,8 +192,9 @@ export const DIAS_DO_AMARELO = 14;
  * Coluna esquerda: o que já venceu e o que espera aprovação. Coluna direita: só itens que o app JÁ guarda com data (correção com prazo,
  * comprovante com validade, treinamento com vencimento e a data "Revisar até" do POP aprovado), de hoje a 30 dias, ordenados por data.
  */
-export function colunasDoInicio(itens: ItemDoPainel[], pops: Pick<ProcedimentoOperacionalPadronizado, "id" | "codigo" | "titulo" | "status" | "proximaRevisao" | "arquivado" | "responsavel">[], hoje: string): ColunasDoInicio {
-  const precisa = itens.filter((item) => item.situacao === "vencido" || item.situacao === "aguardando");
+export function colunasDoInicio(itens: ItemDoPainel[], pops: Pick<ProcedimentoOperacionalPadronizado, "id" | "codigo" | "titulo" | "status" | "proximaRevisao" | "arquivado" | "responsavel">[], hoje: string, semPrazo: ItemSemPrazo[] = []): ColunasDoInicio {
+  const urgentes = itens.filter((item) => item.situacao === "vencido" || item.situacao === "aguardando");
+  const precisa: ItemDaEsquerda[] = [...urgentes, ...semPrazo.filter((extra) => !urgentes.some((item) => item.id === extra.id))];
   const vencendo: ItemDeVencimento[] = [];
   for (const item of itens) {
     if (item.situacao !== "vence-em-breve" || item.dias === null || !item.validade) continue;
@@ -186,7 +208,7 @@ export function colunasDoInicio(itens: ItemDoPainel[], pops: Pick<ProcedimentoOp
     vencendo.push({ id: `revisao:${pop.id}`, origem: "pop-revisao", titulo: `${pop.codigo ? `${pop.codigo} · ` : ""}${pop.titulo} (revisão)`, quem: pop.responsavel?.trim() || "Responsável do estabelecimento", validade: pop.proximaRevisao, dias });
   }
   vencendo.sort((a, b) => a.validade.localeCompare(b.validade) || a.titulo.localeCompare(b.titulo, "pt-BR"));
-  return { precisa, vencendo, vencidos: precisa.filter((item) => item.situacao === "vencido").length, aguardando: precisa.filter((item) => item.situacao === "aguardando").length };
+  return { precisa, vencendo, vencidos: urgentes.filter((item) => item.situacao === "vencido").length, aguardando: urgentes.filter((item) => item.situacao === "aguardando").length };
 }
 
 const MESES = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];

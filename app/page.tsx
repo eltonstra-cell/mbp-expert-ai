@@ -118,7 +118,7 @@ import RelatoriosAbas, { type AbaDeRelatorios } from "@/components/pc/Relatorios
 import { niveisDoCaminho } from "@/lib/caminhoDaFicha";
 import { assinaturaEdicaoEmpresa, temAlteracoesNaoSalvas } from "@/lib/estadoNaoSalvo";
 import { renomearAmbiente, resumoDaRenomeacao, textoDoResumo } from "@/lib/renomearAmbiente";
-import { caixasDoContinuar, colunasDoInicio, passosDeConfiguracao, resumoDaConfiguracao } from "@/lib/inicio";
+import { caixasDoContinuar, colunasDoInicio, correcoesSemPrazo, passosDeConfiguracao, resumoDaConfiguracao } from "@/lib/inicio";
 import { ePaginaDeCadastro, marcarComoRevisado } from "@/lib/revisaoDeCadastros";
 import RevisaoDaPagina from "@/components/pc/RevisaoDaPagina";
 import { avisoParaEmitir, avisoParaFinalizar, erroDoCnpj, erroDoNomeDaEmpresa, itensRespondidos, pendenciasParaSalvarEmpresa } from "@/lib/regrasDoPacote3";
@@ -2559,7 +2559,7 @@ export default function Home() {
         })
       : null;
 
-  function acaoDoPainel(item: ItemDoPainel) {
+  function acaoDoPainel(item: Pick<ItemDoPainel, "id" | "origem">) {
     if (item.origem === "comprovante") {
       setRenovarComprovanteId(item.id.split(":")[1]);
       abrirComprovantes();
@@ -6679,7 +6679,7 @@ export default function Home() {
     atual && !resumoDoGuia.completo
       ? { feitos: resumoDoGuia.feitos, total: resumoDoGuia.total, faltam: resumoDoGuia.faltam.map((passo) => ({ id: passo.chave, titulo: passo.titulo, onAbrir: () => abrirPassoDoGuia(passo.chave) })), onGuia: () => setView("ajuda") }
       : null;
-  const dadosDasColunas = painelHoje && atual && !ehExecutor ? colunasDoInicio(painelHoje.itens, atual.pops || [], hojeISO()) : null;
+  const dadosDasColunas = painelHoje && atual && !ehExecutor ? colunasDoInicio(painelHoje.itens, atual.pops || [], hojeISO(), permitido("ncs.acompanhar", atual.id) ? correcoesSemPrazo(db.ncs, atual.id) : []) : null;
   const colunasDoInicioPc = dadosDasColunas
     ? {
         ...dadosDasColunas,
@@ -9830,6 +9830,7 @@ export default function Home() {
               nome={usuarioDaSessao?.nome.split(" ").filter(Boolean)[0] || "bem-vindo"}
               avisoPops={avisoPopsDoInicio}
               caixas={caixasDoInicio}
+              onNovaVisita={atual && permitido("visitas.criar", atual.id) && !ehExecutor ? novaVisita : null}
               configuracao={configuracaoDoInicio}
               colunas={colunasDoInicioPc}
             />
