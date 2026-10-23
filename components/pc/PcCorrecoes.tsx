@@ -9,6 +9,7 @@ import { NavIcon } from "@/components/NavIcons";
 import { Pill, type Tom } from "@/components/ui/Pill";
 import { NOME_DA_GRAVIDADE, linhaDaCorrecao, mensagemDeFaltas, primeiroCampoComProblema, type CampoDoPlano } from "@/lib/correcaoRotulos";
 import { acaoPadraoVisivel } from "@/lib/conteudoValidado";
+import { CAUSAS_RAIZ, seloDaReincidencia, validarCausaRaiz } from "@/lib/memoriaDoPlano";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import {
   contarEtapas,
@@ -38,6 +39,16 @@ export type CorrecaoItem = {
   prazo: string;
   reincidente: boolean;
   dataAnterior: string;
+  /** 1 = primeira vez; 2 = "pela 2ª vez"... (histórico do aparelho, funciona sem sinal). */
+  vezes?: number;
+  /** Ação da correção anterior do mesmo critério que foi resolvida. */
+  acaoQueFuncionou?: string;
+  /** Último responsável das correções deste ambiente (proposta, o RT confirma). */
+  responsavelSugerido?: string;
+  /** Chips de memória: últimos responsáveis e últimas ações da empresa. */
+  memoriaResponsaveis?: string[];
+  memoriaAcoes?: string[];
+  causaRaiz?: string;
   orientacao: string;
   /** Ação corretiva real do critério (catálogo normativo); ainda não existe nos dados. */
   acaoSugerida?: string;
@@ -75,7 +86,7 @@ type Props = {
   podeMarcar: boolean;
   onMarcarFeita: (id: string, observacao: string) => void;
   onDesfazerFeita: (id: string) => void;
-  onSalvarPlano: (id: string, dados: { acao: string; responsavel: string; prazo: string; etapa: EtapaCorrecao }) => void;
+  onSalvarPlano: (id: string, dados: { acao: string; responsavel: string; prazo: string; etapa: EtapaCorrecao; causaRaiz?: string }) => void;
   onRegistrar: (id: string, texto: string, status: StatusNc) => void;
   onAdicionarEvidencia: (id: string) => void;
   /** Anexa a foto do "depois" (passa pela fila offline como qualquer evidência). */
@@ -446,8 +457,11 @@ function Detalhe({
   onAbrirPop: Props["onAbrirPop"];
 }) {
   const [acao, setAcao] = useState(nc.acaoCorretiva);
-  const [responsavel, setResponsavel] = useState(nc.responsavelAcao || responsavelPadrao);
-  const [prazo, setPrazo] = useState(nc.prazo);
+  // Propostas (o RT confirma ao salvar): responsável = o último do ambiente; prazo = o da gravidade.
+  const [responsavel, setResponsavel] = useState(nc.responsavelAcao || nc.responsavelSugerido || responsavelPadrao);
+  const [prazo, setPrazo] = useState(nc.prazo || prazoSugerido(nc.gravidade, hoje).data);
+  const [causa, setCausa] = useState(nc.causaRaiz || "");
+  const causaRef = useRef<HTMLInputElement | null>(null);
   // Salvar o plano leva a correção para "Com plano"; quem já está em acompanhamento continua lá.
   const etapaAlvo: EtapaCorrecao = etapaDaCorrecao(nc) === "acompanhamento" ? "acompanhamento" : "plano";
   const [tentou, setTentou] = useState(false);
@@ -463,6 +477,7 @@ function Detalhe({
   const bloqueado = resolvida || !podeEditar;
   const sugestao = prazoSugerido(nc.gravidade, hoje);
   const erros = validarPlano({ acaoCorretiva: acao, responsavelAcao: responsavel, prazo }, hoje, true);
+  const erroCausa = validarCausaRaiz(nc.reincidente, causa);
   // Nenhum erro ao abrir: o campo só acusa depois de sair dele vazio (ou ao tentar salvar).
   const mostrarErro = (campo: CampoDoPlano) => (tentou || tocado[campo] || Boolean(prazo && campo === "prazo")) && erros[campo];
   const marcarTocado = (campo: CampoDoPlano) => setTocado((atual) => ({ ...atual, [campo]: true }));
@@ -470,6 +485,11 @@ function Detalhe({
 
   function salvar() {
     setTentou(true);
+    if (erroCausa) {
+      setFaltas(erroCausa);
+      causaRef.current?.focus();
+      return;
+    }
     const faltando = (Object.keys(vazioNoPlano) as CampoDoPlano[]).filter((campo) => vazioNoPlano[campo]);
     const invalidos = (Object.keys(erros) as CampoDoPlano[]).filter((campo) => !vazioNoPlano[campo]);
     if (faltando.length > 0 || invalidos.length > 0) {
@@ -480,14 +500,14 @@ function Detalhe({
       return;
     }
     setFaltas("");
-    onSalvarPlano(nc.id, { acao, responsavel, prazo, etapa: etapaAlvo });
+    onSalvarPlano(nc.id, { acao, responsavel, prazo, etapa: etapaAlvo, ...(nc.reincidente ? { causaRaiz: causa.trim() } : {}) });
     setTentou(false);
   }
 
   // A mensagem do botão some assim que tudo é preenchido.
   useEffect(() => {
-    if (faltas && Object.keys(erros).length === 0) setFaltas("");
-  }, [faltas, erros]);
+    if (faltas && Object.keys(erros).length === 0 && !erroCausa) setFaltas("");
+  }, [faltas, erros, erroCausa]);
 
   const vazio = (valor: string) => !valor.trim();
 
@@ -500,7 +520,7 @@ function Detalhe({
             {NOME_DA_GRAVIDADE[nc.gravidade]}
           </span>
           <span className="pc-codigo-chip">{linhaDaCorrecao(nc).codigo}</span>
-          {nc.reincidente && <span className="pc-codigo-chip">Reincidente</span>}
+          {nc.reincidente && <span className="pc-codigo-chip">{seloDaReincidencia(nc.vezes || 0) || "Reincidente"}</span>}
           {nc.referencia && <span className="pc-norma">{nc.referencia}</span>}
         </div>
         <h2 className="pc-detail-title" title={nc.titulo}>
@@ -602,6 +622,30 @@ function Detalhe({
                   )}
                 </div>
               )}
+              {!bloqueado && nc.acaoQueFuncionou && acao.trim() !== nc.acaoQueFuncionou && (
+                <div className="pc-acao-padrao">
+                  <span className="ui-row-sub">Ação que funcionou antes: “{nc.acaoQueFuncionou}”</span>
+                  <button type="button" className="pc-chip-btn pc-chip-btn--soft" onClick={() => setAcao(nc.acaoQueFuncionou as string)}>
+                    Usar
+                  </button>
+                </div>
+              )}
+              {nc.reincidente && (
+                <div className="pc-plan-block">
+                  <span className="ui-eyebrow">
+                    Causa raiz <span className="pc-obrig">· obrigatória: o problema voltou</span>
+                  </span>
+                  <div className="pc-memoria" role="group" aria-label="Causas comuns">
+                    {CAUSAS_RAIZ.map((opcao) => (
+                      <button key={opcao} type="button" className={`pc-chip-btn pc-chip-btn--soft${causa === opcao ? " is-on" : ""}`} disabled={bloqueado} aria-pressed={causa === opcao} onClick={() => setCausa(opcao)}>
+                        {opcao}
+                      </button>
+                    ))}
+                  </div>
+                  <input ref={causaRef} className={`ui-input${tentou && erroCausa ? " is-invalid" : ""}`} value={causa} disabled={bloqueado} onChange={(evento) => setCausa(evento.target.value)} placeholder="Por que voltou a acontecer?" aria-label="Causa raiz" aria-invalid={Boolean(tentou && erroCausa)} />
+                  {tentou && erroCausa && <span className="ui-field-error">{erroCausa}</span>}
+                </div>
+              )}
               {!bloqueado && acaoPadraoVisivel(nc) && acao.trim() !== acaoPadraoVisivel(nc) && (
                 <div className="pc-acao-padrao">
                   <span className="ui-row-sub">Ação padrão do critério: “{acaoPadraoVisivel(nc)}”</span>
@@ -642,6 +686,15 @@ function Detalhe({
                     </span>
                   )}
                 </span>
+                {!bloqueado && (nc.memoriaAcoes || []).filter((texto) => texto !== acao.trim()).length > 0 && (
+                  <div className="pc-memoria" role="group" aria-label="Ações usadas antes">
+                    {(nc.memoriaAcoes || []).filter((texto) => texto !== acao.trim()).map((texto) => (
+                      <button key={texto} type="button" className="pc-chip-btn pc-chip-btn--soft" title={texto} onClick={() => setAcao(texto)}>
+                        {texto.length > 46 ? `${texto.slice(0, 46)}…` : texto}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 {mostrarErro("acao") && <span className="ui-field-error">{erros.acao}</span>}
               </div>
               <div className="pc-plan-two">
@@ -663,6 +716,15 @@ function Detalhe({
                       <option key={pessoa} value={pessoa} />
                     ))}
                   </datalist>
+                  {!bloqueado && (nc.memoriaResponsaveis || []).filter((nome) => nome !== responsavel.trim()).length > 0 && (
+                    <span className="pc-memoria" role="group" aria-label="Responsáveis recentes">
+                      {(nc.memoriaResponsaveis || []).filter((nome) => nome !== responsavel.trim()).map((nome) => (
+                        <button key={nome} type="button" className="pc-chip-btn pc-chip-btn--soft" onClick={() => setResponsavel(nome)}>
+                          {nome}
+                        </button>
+                      ))}
+                    </span>
+                  )}
                   {mostrarErro("responsavel") && <span className="ui-field-error">{erros.responsavel}</span>}
                 </label>
                 <label className="pc-plan-block">

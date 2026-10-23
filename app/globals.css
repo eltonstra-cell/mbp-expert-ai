@@ -5204,3 +5204,8 @@ html[data-modo] .pc-offset:has(.ini2){height:auto;min-height:100vh;overflow:visi
 
 /* Modo caminhada: faixa com a posição e o próximo ambiente */
 .chk-caminhada{margin:4px 0 0;font-size:14px;color:#3D5160}
+
+/* Chips de memória do plano (responsáveis e ações usados antes) e causa raiz */
+.pc-memoria{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.pc-memoria .pc-chip-btn{height:32px}
+.pc-memoria .pc-chip-btn.is-on{background:#FFF1D6;border-color:#E8B04B;color:#12202B}

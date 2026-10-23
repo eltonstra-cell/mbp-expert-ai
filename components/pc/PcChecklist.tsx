@@ -17,6 +17,8 @@ export type ApoioDoItem = {
   baseLegal?: { referencia: string; trecho?: string };
   /** POP sugerido para o critério do item. */
   pop?: { codigo: string; titulo: string; situacao: string };
+  /** "Pela 2ª vez": só quando o item está Não conforme e o critério já reprovou antes. */
+  reincidencia?: string;
   /** Resultado do mesmo item na visita anterior da empresa. */
   ultimaVisita?: { data: string; status: string; observacao: string };
   evidencias: { id: string; url: string; tipo: string; nome: string; criadoEm?: string }[];
@@ -99,9 +101,14 @@ function CartaoDeApoio({ titulo, tom, children }: { titulo: string; tom: string;
 function PainelDeApoio({ apoio }: { apoio: ApoioDoItem }) {
   const [ampliadaId, setAmpliadaId] = useState<string | null>(null);
   const ampliada = apoio.evidencias.find((evidencia) => evidencia.id === ampliadaId && evidencia.tipo === "Foto");
-  const vazio = !apoio.orientacao && !apoio.baseLegal && !apoio.pop && !apoio.ultimaVisita && apoio.evidencias.length === 0;
+  const vazio = !apoio.reincidencia && !apoio.orientacao && !apoio.baseLegal && !apoio.pop && !apoio.ultimaVisita && apoio.evidencias.length === 0;
   return (
     <aside className="chk-apoio" aria-label="Apoio ao item">
+      {apoio.reincidencia && (
+        <CartaoDeApoio titulo="Reincidência" tom="ambar">
+          <p className="chk-apoio-texto">{apoio.reincidencia}</p>
+        </CartaoDeApoio>
+      )}
       {apoio.orientacao && (
         <CartaoDeApoio titulo="O que verificar" tom="azul">
           <p className="chk-apoio-texto">{apoio.orientacao}</p>

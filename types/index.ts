@@ -397,6 +397,8 @@ export type NaoConformidade = {
   status: "Aberta" | "Em tratamento" | "Resolvida";
   acaoCorretiva?: string;
   responsavelAcao?: string;
+  /** Causa raiz: obrigatória quando o problema volta (reincidência). Opcional nos dados antigos. */
+  causaRaiz?: string;
   prazo?: string;
   acompanhamento?: string;
   historicoAcompanhamento?: HistoricoAcompanhamento[];

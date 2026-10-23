@@ -311,7 +311,7 @@ export function CampoCorrecoes({
   podeMarcar: boolean;
   pessoas: string[];
   subtituloDaLista?: string;
-  onSalvarPlano: (id: string, dados: { acao: string; responsavel: string; prazo: string; etapa: EtapaCorrecao }) => void;
+  onSalvarPlano: (id: string, dados: { acao: string; responsavel: string; prazo: string; etapa: EtapaCorrecao; causaRaiz?: string }) => void;
   onMarcarFeita: (id: string) => void;
   onDesfazerFeita: (id: string) => void;
   onLote: (ids: string[], valores: { responsavel: string; prazo: string }) => void;

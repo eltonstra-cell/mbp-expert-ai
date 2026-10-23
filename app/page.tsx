@@ -227,6 +227,7 @@ import {
   SYNC_ACTIVATION_DEDUP_MS,
 } from "@/lib/syncPolicy";
 import { ambientesIniciais, moverAmbiente } from "@/lib/visitaRapida";
+import { historicoDaReincidencia, memoriaDoPlano, seloDaReincidencia } from "@/lib/memoriaDoPlano";
 import ConflitosDeEdicao from "@/components/ConflitosDeEdicao";
 import { contarAlteracoesPendentes, iguais as estadosIguais, mesclarTresVias, usarVersaoDaNuvem, type Conflito } from "@/lib/mesclaTresVias";
 import { gravarBase, gravarConflitos, juntarConflitos, lerBase, lerConflitos, type BaseSalva } from "@/lib/estadoBase";
@@ -4986,7 +4987,7 @@ export default function Home() {
       pessoas={nomesDasPessoasDaEmpresa(visitaAtual.empresaId)}
       subtituloDaLista={correcoesDaEmpresa ? `${nomeSemNumerosNoInicio(nomeParaExibir(empresaVisita))} · todas as visitas` : `${nomeSemNumerosNoInicio(nomeParaExibir(empresaVisita))}`}
       onSalvarPlano={(id, dados) =>
-        atualizarNC(id, { acaoCorretiva: dados.acao, responsavelAcao: dados.responsavel, prazo: dados.prazo, status: dados.etapa === "acompanhamento" ? "Em tratamento" : "Aberta" })
+        atualizarNC(id, { acaoCorretiva: dados.acao, responsavelAcao: dados.responsavel, prazo: dados.prazo, ...(dados.causaRaiz !== undefined ? { causaRaiz: dados.causaRaiz } : {}), status: dados.etapa === "acompanhamento" ? "Em tratamento" : "Aberta" })
       }
       onMarcarFeita={(id) => marcarCorrecaoComoFeita(id, "")}
       onDesfazerFeita={desfazerCorrecaoFeita}
@@ -5048,9 +5049,17 @@ export default function Home() {
           (id) => db.visitas.find((visita) => visita.id === id)?.data || ""
         );
         const linhaPop = indice >= 0 ? resumoPopsVisita.linhas.find((linha) => linha.ncs.includes(indice + 1)) : undefined;
+        const historico = historicoDaReincidencia(nc, (db.ncs || []).filter((outra) => !outra.inativaNoChecklist), (id) => db.visitas.find((visita) => visita.id === id)?.data || "");
+        const memoria = memoriaDoPlano(db.ncs || [], nc);
         return {
           id: nc.id,
           numero: posicao + 1,
+          vezes: historico.vezes,
+          acaoQueFuncionou: historico.acaoQueFuncionou || undefined,
+          responsavelSugerido: memoria.responsavelDoAmbiente || undefined,
+          memoriaResponsaveis: memoria.responsaveis,
+          memoriaAcoes: memoria.acoes,
+          causaRaiz: nc.causaRaiz || "",
           titulo: nc.titulo,
           ambiente: nc.ambiente,
           criterio: nc.categoria,
@@ -8306,6 +8315,7 @@ export default function Home() {
                   acaoCorretiva: dados.acao,
                   responsavelAcao: dados.responsavel,
                   prazo: dados.prazo,
+                  ...(dados.causaRaiz !== undefined ? { causaRaiz: dados.causaRaiz } : {}),
                   status: dados.etapa === "acompanhamento" ? "Em tratamento" : "Aberta",
                 })
               }
@@ -8382,7 +8392,12 @@ export default function Home() {
                   break;
                 }
               }
+              const historicoDoItem = foco.status === "Não Conforme"
+                ? historicoDaReincidencia({ id: `${visitaAtual.id}:${foco.id}`, empresaId: visitaAtual.empresaId, visitaId: visitaAtual.id, ambiente: foco.ambiente, categoria: foco.categoria, titulo: foco.titulo }, (db.ncs || []).filter((outra) => !outra.inativaNoChecklist), (id) => db.visitas.find((visita) => visita.id === id)?.data || "")
+                : null;
+              const seloDoItem = historicoDoItem ? seloDaReincidencia(historicoDoItem.vezes) : "";
               apoio = {
+                reincidencia: seloDoItem ? `${seloDoItem} neste critério. Informe a causa raiz no plano de ação.` : undefined,
                 orientacao: foco.orientacao || undefined,
                 baseLegal: textoDeBaseLegal(foco) ? { referencia: textoDeBaseLegal(foco) } : undefined,
                 pop: linhaPop ? { codigo: linhaPop.sugestao.codigo, titulo: linhaPop.sugestao.titulo, situacao: linhaPop.situacao } : undefined,
