@@ -279,7 +279,7 @@ test("layout: medidas do desenho aprovado em cada estilo e fontes do app", () =>
   assert.match(bloco, /--cz-mx:calc\(var\(--u\) \* 36\);--cz-alt:calc\(var\(--u\) \* 150\)/);
   assert.match(bloco, /\.cz-grade\{[^}]*grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
   assert.match(bloco, /\.cz-numero\{[^}]*width:calc\(var\(--u\) \* 28\);height:calc\(var\(--u\) \* 28\)/);
-  assert.match(bloco, /\.cz-rotulo\{[^}]*font-size:calc\(var\(--u\) \* 13\.5\);font-weight:600/);
+  assert.match(bloco, /\.cz-rotulo\{[^}]*font-size:calc\(var\(--u\) \* 13\.5\);font-weight:700/);
   // Azulejo laranja
   assert.match(bloco, /background-color:#FFFDF8;background-image:linear-gradient\(rgba\(42,111,181,\.10\)[^}]*background-size:calc\(var\(--u\) \* 44\) calc\(var\(--u\) \* 44\)/);
   assert.match(bloco, /\.cz--azulejo \.cz-faixa\{[^}]*height:calc\(var\(--u\) \* 172\);background:#E8760A\}/);

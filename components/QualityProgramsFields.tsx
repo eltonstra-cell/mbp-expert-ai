@@ -1,5 +1,6 @@
 "use client";
 
+import Select from "@/components/Select";
 import type {
   ProgramaControleQualidade,
   StatusProgramaControle,
@@ -52,7 +53,7 @@ export default function QualityProgramsFields({ programas, onChange, aberto = fa
                     <div className="text-sm font-extrabold text-slate-900">{programa.nome}</div>
                     <div className="mt-0.5 text-xs text-slate-500">{definicao?.objetivo}</div>
                   </div>
-                  <select
+                  <Select
                     aria-label={`Situação de ${programa.nome}`}
                     value={programa.status}
                     onClick={(event) => event.stopPropagation()}
@@ -60,7 +61,7 @@ export default function QualityProgramsFields({ programas, onChange, aberto = fa
                     className="min-w-0 w-full rounded-lg border bg-white p-2 text-sm font-bold"
                   >
                     {statusDisponiveis.map((status) => <option key={status}>{status}</option>)}
-                  </select>
+                  </Select>
                 </div>
               </summary>
 

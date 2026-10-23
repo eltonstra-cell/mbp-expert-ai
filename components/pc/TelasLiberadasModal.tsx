@@ -1,4 +1,5 @@
 "use client";
+import Select from "@/components/Select";
 import { nomeDeExibicaoDaEmpresa } from "@/lib/nomeEmpresa";
 
 import { useEffect, useMemo, useState } from "react";
@@ -111,13 +112,13 @@ export default function TelasLiberadasModal({ usuario, empresas, onSalvar, onFec
           </div>
           <label className="pc-telas-field">
             <span className="ui-eyebrow">Perfil</span>
-            <select className="ui-input" value={perfil} onChange={(evento) => trocarPerfil(evento.target.value as PerfilUsuario)}>
+            <Select className="ui-input" value={perfil} onChange={(evento) => trocarPerfil(evento.target.value as PerfilUsuario)}>
               {PERFIS.map((opcao) => (
                 <option key={opcao} value={opcao}>
                   {opcao}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
           <div className="pc-telas-field pc-telas-empresas">
             <span className="ui-eyebrow">Empresa</span>
@@ -139,7 +140,7 @@ export default function TelasLiberadasModal({ usuario, empresas, onSalvar, onFec
               )}
               {perfil !== "Administrador" &&
                 (adicionando ? (
-                  <select
+                  <Select
                     className="ui-input pc-chip-select"
                     value=""
                     autoFocus
@@ -155,7 +156,7 @@ export default function TelasLiberadasModal({ usuario, empresas, onSalvar, onFec
                         {nomeDaEmpresa(empresa)}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 ) : (
                   <button type="button" className="pc-chip pc-chip--add" disabled={empresasDisponiveis.length === 0} onClick={() => setAdicionando(true)}>
                     + adicionar

@@ -1,12 +1,15 @@
 "use client";
 
+import Select from "@/components/Select";
 import { useState } from "react";
 import type {
   EquipamentoSetor,
   PapelResponsabilidadeManual,
   ResponsabilidadeManual,
 } from "@/types";
-import { SETORES_OFICIAIS_MANUAL, agruparEquipamentosPorAmbiente, resumoDosSetoresMarcados } from "@/lib/manualBase";
+import { OPCOES_MODELO_QUESTIONARIO, SETORES_OFICIAIS_MANUAL, agruparEquipamentosPorAmbiente, resumoDosSetoresMarcados } from "@/lib/manualBase";
+import { MODELO_GENERICO, ambientesSemQuestionario, bloqueioDeExcluirAmbiente, vincularQuestionarioEmLote } from "@/lib/regrasDoPacote3";
+import { erroDoNovoNome } from "@/lib/renomearAmbiente";
 import { aplicarEscolhaDeSetores } from "@/lib/escolhaEmJanela";
 import { ambientesParaMover, moverEquipamento } from "@/lib/equipamentosCadastro";
 import { textoCurtoDaResponsabilidade, textoDosAtivos } from "@/lib/manualIdentificacao";
@@ -28,6 +31,11 @@ type Props = {
   /** Opcional: ambiente com nome próprio -> setor oficial marcado. */
   vinculos?: Record<string, string>;
   onVinculosChange?: (vinculos: Record<string, string>) => void;
+  /** Opcional: questionário (modelo) de cada ambiente; permite o vínculo em lote. */
+  modelos?: Record<string, string>;
+  onModelosChange?: (modelos: Record<string, string>) => void;
+  /** Opcional: renomear ambiente próprio com cascata (quem chama pede a confirmação e aplica). Devolve true se renomeou. */
+  onRenomearAmbiente?: (de: string, para: string) => Promise<boolean>;
   modo?: "completo" | "responsabilidades" | "ambientes" | "equipamentos";
 };
 
@@ -50,6 +58,9 @@ export default function ManualBaseFields({
   setoresSalvos,
   vinculos = {},
   onVinculosChange,
+  modelos = {},
+  onModelosChange,
+  onRenomearAmbiente,
   modo = "completo",
 }: Props) {
   const [setorEquipamento, setSetorEquipamento] = useState(setores[0] || SETORES_OFICIAIS_MANUAL[0]);
@@ -57,6 +68,12 @@ export default function ManualBaseFields({
   const [quantidadeEquipamento, setQuantidadeEquipamento] = useState("1");
   const [papelAdicional, setPapelAdicional] = useState<PapelResponsabilidadeManual>("Proprietário");
   const [novoAmbiente, setNovoAmbiente] = useState("");
+  const [renomeando, setRenomeando] = useState<{ de: string; texto: string } | null>(null);
+  const [bloqueio, setBloqueio] = useState<{ ambiente: string; mensagem: string } | null>(null);
+  const [destinoDoMover, setDestinoDoMover] = useState("");
+  const [loteAberto, setLoteAberto] = useState(false);
+  const [loteSelecionados, setLoteSelecionados] = useState<string[]>([]);
+  const [loteModelo, setLoteModelo] = useState("");
   const [detalhesAbertos, setDetalhesAbertos] = useState<string[]>([]);
   // Itens falados esperando conferência (nada entra no quadro sem confirmar).
   const [falados, setFalados] = useState<ItemParaConferir[]>([]);
@@ -70,9 +87,73 @@ export default function ManualBaseFields({
   const proprios = setores.filter((setor) => !SETORES_OFICIAIS_MANUAL.includes(setor as (typeof SETORES_OFICIAIS_MANUAL)[number]));
   const oficiaisMarcados = setores.filter((setor) => SETORES_OFICIAIS_MANUAL.includes(setor as (typeof SETORES_OFICIAIS_MANUAL)[number]));
   const gruposDeEquipamentos = agruparEquipamentosPorAmbiente(equipamentos, setoresParaEquipamentos);
+  const semQuestionario = ambientesSemQuestionario(setores, SETORES_OFICIAIS_MANUAL, modelos, vinculos);
+  const destinosParaMover = bloqueio ? setores.filter((setor) => setor !== bloqueio.ambiente) : [];
+  const erroDoNovoAmbiente = (() => {
+    const nome = novoAmbiente.trim();
+    if (!nome) return "";
+    if (setores.includes(nome)) return "Esse ambiente já está na lista.";
+    const existente = nomeJaExistente(nome, setores);
+    return existente ? `Já existe: ${existente}.` : "";
+  })();
+
+  function abrirLote(preselecionados: string[]) {
+    setLoteSelecionados(preselecionados);
+    setLoteModelo("");
+    setLoteAberto(true);
+  }
+
+  function aplicarLote() {
+    if (!onModelosChange || !loteModelo || loteSelecionados.length === 0) return;
+    onModelosChange(vincularQuestionarioEmLote(modelos, loteSelecionados, loteModelo));
+    setLoteAberto(false);
+  }
+
+  async function confirmarRenomear() {
+    if (!renomeando || !onRenomearAmbiente) return;
+    if (erroDoNovoNome(renomeando.de, renomeando.texto, setores)) return;
+    const feito = await onRenomearAmbiente(renomeando.de, renomeando.texto.trim());
+    if (feito) setRenomeando(null);
+  }
+
+  // Excluir ambiente com equipamentos: bloqueia, diz quais são e oferece mover ou excluir.
+  function pedirRemover(setor: string) {
+    const resultado = bloqueioDeExcluirAmbiente(setor, equipamentos);
+    if (resultado.bloqueado) {
+      setDestinoDoMover("");
+      setBloqueio({ ambiente: setor, mensagem: resultado.mensagem });
+      return;
+    }
+    setBloqueio(null);
+    onSetoresChange(setores.filter((item) => item !== setor));
+  }
+
+  function moverEEExcluir() {
+    if (!bloqueio || !destinoDoMover) return;
+    onEquipamentosChange(equipamentos.map((item) => (item.setor === bloqueio.ambiente ? { ...item, setor: destinoDoMover } : item)));
+    onSetoresChange(setores.filter((item) => item !== bloqueio.ambiente));
+    setBloqueio(null);
+  }
+
+  function excluirTudo() {
+    if (!bloqueio) return;
+    onEquipamentosChange(equipamentos.filter((item) => item.setor !== bloqueio.ambiente));
+    onSetoresChange(setores.filter((item) => item !== bloqueio.ambiente));
+    setBloqueio(null);
+  }
 
   // "Concluir" na janela de setores: aplica no estado da tela (quem grava é o Salvar da barra de baixo).
   function aplicarSetores(escolhidos: string[]) {
+    const retirados = setores.filter((setor) => SETORES_OFICIAIS_MANUAL.includes(setor as (typeof SETORES_OFICIAIS_MANUAL)[number]) && !escolhidos.includes(setor));
+    const comEquipamentos = retirados.find((setor) => bloqueioDeExcluirAmbiente(setor, equipamentos).bloqueado);
+    if (comEquipamentos) {
+      const resultado = bloqueioDeExcluirAmbiente(comEquipamentos, equipamentos);
+      if (resultado.bloqueado) {
+        setDestinoDoMover("");
+        setBloqueio({ ambiente: comEquipamentos, mensagem: resultado.mensagem });
+      }
+      escolhidos = [...escolhidos, comEquipamentos];
+    }
     const proximos = aplicarEscolhaDeSetores(setores, SETORES_OFICIAIS_MANUAL, escolhidos);
     if (proximos === setores) return;
     onSetoresChange(proximos);
@@ -148,7 +229,7 @@ export default function ManualBaseFields({
 
   function adicionarAmbienteReal() {
     const nome = novoAmbiente.trim();
-    if (!nome || setores.includes(nome)) return;
+    if (!nome || erroDoNovoAmbiente) return;
     onSetoresChange([...setores, nome]);
     setNovoAmbiente("");
   }
@@ -174,48 +255,159 @@ export default function ManualBaseFields({
       </div>}
 
       {mostrarAmbientes && (
-        <EscolhaEmJanela
-          titulo="Setores do estabelecimento"
-          apoio="Marque somente os setores que realmente existem nesta empresa."
-          opcoes={SETORES_OFICIAIS_MANUAL.map((setor) => ({ id: setor, titulo: setor }))}
-          marcadas={setores.filter((setor) => SETORES_OFICIAIS_MANUAL.includes(setor as (typeof SETORES_OFICIAIS_MANUAL)[number]))}
-          palavra="setores marcados"
-          rotuloDoBotao="Escolher setores"
-          vazio="Nenhum setor marcado"
-          salvas={setoresSalvos}
-          onAplicar={aplicarSetores}
-        />
-      )}
+        <section className="cad-cartao cadamb-unico" aria-label="Ambientes da empresa">
+          <div className="cadamb-topo">
+            <div className="cadamb-topo-textos">
+              <div className="cad-titulo">Ambientes da empresa</div>
+              <div className="cad-descricao">{resumoDosSetoresMarcados(setores)}</div>
+            </div>
+            <div className="cadamb-topo-acoes">
+              <EscolhaEmJanela
+                modo="botao"
+                titulo="Setores do estabelecimento"
+                apoio="Marque somente os setores que realmente existem nesta empresa."
+                opcoes={SETORES_OFICIAIS_MANUAL.map((setor) => ({ id: setor, titulo: setor }))}
+                marcadas={oficiaisMarcados}
+                palavra="setores marcados"
+                rotuloDoBotao="Escolher setores"
+                vazio="Nenhum setor marcado"
+                salvas={setoresSalvos}
+                onAplicar={aplicarSetores}
+              />
+              {onModelosChange && semQuestionario.length > 0 && (
+                <button type="button" className="ui-btn ui-btn--secondary" aria-expanded={loteAberto} onClick={() => abrirLote(semQuestionario)}>
+                  Vincular questionário
+                </button>
+              )}
+            </div>
+          </div>
 
-      {mostrarAmbientes && (
-        <section className="cad-cartao" aria-label="Ambientes com nomes próprios da empresa">
-          <div className="cad-titulo">Ambientes com nomes próprios da empresa</div>
-          {proprios.length > 0 && (
-            <ul className="cad-lista">
-              {proprios.map((setor) => (
-                <li key={setor} className="cad-item">
-                  <span className="cad-item-nome">{setor}</span>
-                  {onVinculosChange && oficiaisMarcados.length > 0 && (
-                    <label className="cad-vinculo">
-                      <span>Setor oficial</span>
-                      <select
-                        value={vinculos[setor] && oficiaisMarcados.includes(vinculos[setor]) ? vinculos[setor] : ""}
-                        onChange={(event) => {
-                          const { [setor]: _removido, ...resto } = vinculos;
-                          onVinculosChange(event.target.value ? { ...resto, [setor]: event.target.value } : resto);
-                        }}
-                        aria-label={`Setor oficial de ${setor}`}
-                      >
-                        <option value="">Nenhum (opcional)</option>
-                        {oficiaisMarcados.map((oficial) => <option key={oficial} value={oficial}>{oficial}</option>)}
-                      </select>
-                    </label>
-                  )}
-                  <button type="button" onClick={() => onSetoresChange(setores.filter((item) => item !== setor))} className="cad-remover">Remover</button>
-                </li>
-              ))}
+          {setores.length === 0 ? (
+            <p className="esc-vazio">Nenhum ambiente ainda. Escolha os setores ou adicione um ambiente com nome próprio abaixo.</p>
+          ) : (
+            <ul className="cadamb-lista">
+              {setores.map((setor) => {
+                const proprio = !SETORES_OFICIAIS_MANUAL.includes(setor as (typeof SETORES_OFICIAIS_MANUAL)[number]);
+                const semModelo = semQuestionario.includes(setor);
+                const editandoNome = renomeando?.de === setor;
+                const erroNome = editandoNome ? erroDoNovoNome(setor, renomeando.texto, setores) : "";
+                return (
+                  <li key={setor} className="cadamb-linha">
+                    <div className="cadamb-nome">
+                      {editandoNome ? (
+                        <span className="cadamb-renomear">
+                          <input
+                            className="ui-input cad-input"
+                            value={renomeando.texto}
+                            autoFocus
+                            aria-label={`Novo nome de ${setor}`}
+                            aria-invalid={Boolean(erroNome)}
+                            onChange={(event) => setRenomeando({ de: setor, texto: event.target.value })}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter") {
+                                event.preventDefault();
+                                void confirmarRenomear();
+                              } else if (event.key === "Escape") setRenomeando(null);
+                            }}
+                          />
+                          <button type="button" className="ui-btn ui-btn--save" disabled={Boolean(erroNome)} onClick={() => void confirmarRenomear()}>Renomear</button>
+                          <button type="button" className="ui-btn ui-btn--secondary" onClick={() => setRenomeando(null)}>Cancelar</button>
+                          {erroNome && renomeando.texto !== setor && <span className="ui-field-error" role="alert">{erroNome}</span>}
+                        </span>
+                      ) : (
+                        <>
+                          <span className="cad-item-nome">{setor}</span>
+                          <span className="cadamb-tipo">{proprio ? "Nome próprio" : "Setor oficial"}</span>
+                        </>
+                      )}
+                    </div>
+                    <div className="cadamb-meio">
+                      {proprio && onVinculosChange && oficiaisMarcados.length > 0 && (
+                        <label className="cad-vinculo">
+                          <span>Setor oficial</span>
+                          <Select
+                            value={vinculos[setor] && oficiaisMarcados.includes(vinculos[setor]) ? vinculos[setor] : ""}
+                            onChange={(event) => {
+                              const { [setor]: _removido, ...resto } = vinculos;
+                              onVinculosChange(event.target.value ? { ...resto, [setor]: event.target.value } : resto);
+                            }}
+                            aria-label={`Setor oficial de ${setor}`}
+                          >
+                            <option value="">Nenhum (opcional)</option>
+                            {oficiaisMarcados.map((oficial) => <option key={oficial} value={oficial}>{oficial}</option>)}
+                          </Select>
+                        </label>
+                      )}
+                      {proprio && semModelo && (
+                        <span className="cadamb-aviso" role="status">
+                          Sem questionário
+                          {onModelosChange && <button type="button" className="cadamb-aviso-acao" onClick={() => abrirLote([setor])}>Vincular</button>}
+                        </span>
+                      )}
+                      {proprio && !semModelo && modelos[setor] && <span className="cadamb-modelo">Questionário: {modelos[setor]}</span>}
+                    </div>
+                    <div className="cadamb-acoes">
+                      {proprio && onRenomearAmbiente && !editandoNome && (
+                        <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" aria-label={`Renomear ${setor}`} onClick={() => setRenomeando({ de: setor, texto: setor })}>Renomear</button>
+                      )}
+                      <button type="button" onClick={() => pedirRemover(setor)} className="cad-remover" aria-label={`Remover ${setor}`}>Remover</button>
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           )}
+
+          {bloqueio && (
+            <div className="cadamb-bloqueio" role="alert">
+              <p>{bloqueio.mensagem}</p>
+              <div className="cadamb-bloqueio-acoes">
+                {destinosParaMover.length > 0 && (
+                  <label className="cad-vinculo">
+                    <span>Mover para</span>
+                    <Select value={destinoDoMover} onChange={(event) => setDestinoDoMover(event.target.value)} aria-label="Ambiente de destino dos equipamentos">
+                      <option value="">Escolher o ambiente…</option>
+                      {destinosParaMover.map((destino) => <option key={destino} value={destino}>{destino}</option>)}
+                    </Select>
+                  </label>
+                )}
+                <button type="button" className="ui-btn ui-btn--primary" disabled={!destinoDoMover} onClick={moverEEExcluir}>Mover e remover o ambiente</button>
+                <button type="button" className="ui-btn ui-btn--secondary" onClick={excluirTudo}>Excluir equipamentos e o ambiente</button>
+                <button type="button" className="ui-btn ui-btn--secondary" onClick={() => setBloqueio(null)}>Cancelar</button>
+              </div>
+            </div>
+          )}
+
+          {loteAberto && onModelosChange && (
+            <div className="cadamb-lote" role="group" aria-label="Vincular questionário em lote">
+              <div className="cad-titulo">Vincular questionário a vários ambientes</div>
+              <ul className="cadamb-lote-lista">
+                {setores.filter((setor) => !SETORES_OFICIAIS_MANUAL.includes(setor as (typeof SETORES_OFICIAIS_MANUAL)[number])).map((setor) => (
+                  <li key={setor}>
+                    <label className="cadamb-lote-item">
+                      <input type="checkbox" checked={loteSelecionados.includes(setor)} onChange={() => setLoteSelecionados((atual) => (atual.includes(setor) ? atual.filter((item) => item !== setor) : [...atual, setor]))} />
+                      <span>{setor}</span>
+                      {semQuestionario.includes(setor) && <span className="cadamb-aviso">Sem questionário</span>}
+                    </label>
+                  </li>
+                ))}
+              </ul>
+              <label className="cad-vinculo">
+                <span>Questionário</span>
+                <Select value={loteModelo} onChange={(event) => setLoteModelo(event.target.value)} aria-label="Questionário a vincular">
+                  <option value="">Escolher o questionário…</option>
+                  {OPCOES_MODELO_QUESTIONARIO.filter((modelo) => modelo !== MODELO_GENERICO).map((modelo) => <option key={modelo} value={modelo}>{modelo}</option>)}
+                </Select>
+              </label>
+              <div className="cadamb-bloqueio-acoes">
+                <button type="button" className="ui-btn ui-btn--save" disabled={!loteModelo || loteSelecionados.length === 0} onClick={aplicarLote}>
+                  Vincular a {loteSelecionados.length === 1 ? "1 ambiente" : `${loteSelecionados.length} ambientes`}
+                </button>
+                <button type="button" className="ui-btn ui-btn--secondary" onClick={() => setLoteAberto(false)}>Cancelar</button>
+              </div>
+            </div>
+          )}
+
           {/* Uma linha só: o campo (com o microfone dentro, na ponta direita) e o botão de 40 px alinhado a ele. */}
           <div className="cad-linha cad-linha--ambiente">
             <span className="ui-field-wrap cad-campo-voz">
@@ -230,6 +422,7 @@ export default function ManualBaseFields({
                 }}
                 placeholder="Nome real do ambiente, ex.: Churrasqueira"
                 aria-label="Nome real do ambiente"
+                aria-invalid={Boolean(erroDoNovoAmbiente)}
                 className="ui-input cad-input cad-input--voz"
               />
               <span className="ui-field-tools cad-mic">
@@ -243,9 +436,9 @@ export default function ManualBaseFields({
                 />
               </span>
             </span>
-            <button type="button" onClick={adicionarAmbienteReal} className="ui-btn ui-btn--criar cad-adicionar">Adicionar</button>
+            <button type="button" onClick={adicionarAmbienteReal} disabled={Boolean(erroDoNovoAmbiente)} className="ui-btn ui-btn--criar cad-adicionar">Adicionar</button>
           </div>
-          <div className="cad-resumo">{resumoDosSetoresMarcados(setores)}</div>
+          {erroDoNovoAmbiente && <span className="ui-field-error" role="alert">{erroDoNovoAmbiente}</span>}
         </section>
       )}
 
@@ -301,10 +494,10 @@ export default function ManualBaseFields({
             })}
           </div>
           <div className="resp-rodape">
-            <select value={papelAdicional} onChange={(event) => setPapelAdicional(event.target.value as PapelResponsabilidadeManual)} className="cad-input resp-papel" aria-label="Papel da nova responsabilidade">
+            <Select value={papelAdicional} onChange={(event) => setPapelAdicional(event.target.value as PapelResponsabilidadeManual)} className="cad-input resp-papel" aria-label="Papel da nova responsabilidade">
               <option>Proprietário</option>
               <option>Consultor/RT</option>
-            </select>
+            </Select>
             <button type="button" onClick={adicionarResponsabilidade} className="ui-btn ui-btn--secondary">+ Adicionar responsabilidade</button>
           </div>
         </section>
@@ -318,9 +511,9 @@ export default function ManualBaseFields({
           <div className="cad-linha cad-linha--equipamento">
             <label className="cad-rotulado cad-rotulado--ambiente">
               <span>Ambiente</span>
-              <select value={setorEquipamento} onChange={(event) => setSetorEquipamento(event.target.value)} className="cad-input" aria-label="Ambiente ou setor do equipamento">
+              <Select value={setorEquipamento} onChange={(event) => setSetorEquipamento(event.target.value)} className="cad-input" aria-label="Ambiente ou setor do equipamento">
                 {setoresParaEquipamentos.map((setor) => <option key={setor}>{setor}</option>)}
-              </select>
+              </Select>
             </label>
             <label className="cad-rotulado cad-rotulado--nome">
               <span>Equipamento ou móvel</span>
@@ -383,10 +576,10 @@ export default function ManualBaseFields({
                           <div className="cad-equip-detalhes">
                             <label className="cad-rotulado cad-rotulado--mover">
                               <span>Mover para outro ambiente</span>
-                              <select value="" onChange={(event) => onEquipamentosChange(moverEquipamento(equipamentos, equipamento.id, event.target.value))} className="cad-input">
+                              <Select value="" onChange={(event) => onEquipamentosChange(moverEquipamento(equipamentos, equipamento.id, event.target.value))} className="cad-input">
                                 <option value="">Escolher o ambiente…</option>
                                 {ambientesParaMover(setoresParaEquipamentos, equipamento.setor).map((setor) => <option key={setor} value={setor}>{setor}</option>)}
-                              </select>
+                              </Select>
                             </label>
                             <label className="cad-rotulado">
                               <span>Observações do equipamento</span>

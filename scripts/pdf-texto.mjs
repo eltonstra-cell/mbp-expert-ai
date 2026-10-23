@@ -122,3 +122,12 @@ export function paginasDoPdf(buffer) {
   }
   return paginas;
 }
+
+/** Título do documento (/Title) do PDF, já em texto; vazio se não tiver. */
+export function tituloDoPdf(pdf) {
+  const achado = pdf.toString("latin1").match(/\/Title\s*(\([^)]*\)|<[0-9A-Fa-f]+>)/);
+  if (!achado) return "";
+  const valor = achado[1];
+  if (valor[0] === "<") return Buffer.from(valor.slice(1, -1), "hex").swap16().toString("utf16le").replace(/^﻿/, "");
+  return valor.slice(1, -1);
+}

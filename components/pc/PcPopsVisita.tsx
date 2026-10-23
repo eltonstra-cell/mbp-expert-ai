@@ -1,5 +1,6 @@
 "use client";
 
+import Select from "@/components/Select";
 import { useState } from "react";
 import { ListRow } from "@/components/ui/ListRow";
 import { Pill, type Tom } from "@/components/ui/Pill";
@@ -164,7 +165,7 @@ export default function PcPopsVisita({ empresa, data, resumo, linhas, podeCriar,
                     {codigoNc(nc.numero)} · {nc.titulo}
                     {nc.ambiente ? ` · ${nc.ambiente}` : ""}
                   </span>
-                  <select className="ui-input" value={nc.popCatalogoId} onChange={(evento) => onTrocarVinculo(nc.numero, evento.target.value)}>
+                  <Select className="ui-input" value={nc.popCatalogoId} onChange={(evento) => onTrocarVinculo(nc.numero, evento.target.value)}>
                     <option value="">Padrão pela categoria</option>
                     {opcoesDeVinculo.map((opcao) => (
                       <option key={opcao.catalogoId} value={opcao.catalogoId}>
@@ -172,7 +173,7 @@ export default function PcPopsVisita({ empresa, data, resumo, linhas, podeCriar,
                       </option>
                     ))}
                     <option value="nenhum">Sem POP</option>
-                  </select>
+                  </Select>
                 </label>
               ))}
             </div>

@@ -6,7 +6,7 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { inflateSync } from "node:zlib";
 import { abrirNavegador } from "./navegador-cdp.mjs";
-import { paginasDoPdf } from "./pdf-texto.mjs";
+import { paginasDoPdf, tituloDoPdf } from "./pdf-texto.mjs";
 import { iniciarApp, montarEstado, prerequisitos } from "./verificar-capa-pdf.mjs";
 
 export { prerequisitos };
@@ -148,6 +148,7 @@ export function problemasDoCartaz(r) {
   const esperadas = caso.passos + (caso.logotipo === false ? 0 : 1);
   if (paginas[0] && paginas[0].imagens < caso.passos) falha(`imagens na página: ${paginas[0].imagens} (esperadas pelo menos ${caso.passos})`);
   void esperadas;
+  if (pdf && tituloDoPdf(pdf) !== `Cartaz – Como lavar as mãos – ${caso.pop}`) falha(`título do PDF: “${tituloDoPdf(pdf)}”`);
   if (pdf && pdf.length > 2 * 1024 * 1024) falha(`PDF com ${(pdf.length / 1048576).toFixed(2)} MB (limite 2 MB)`);
   if (caso.estilo?.[0] === "pastel" && temMultiplicarNoPdf(pdf)) falha("mix-blend-mode multiply chegou ao PDF (a página vira imagem): use o PNG transparente");
   return problemas;

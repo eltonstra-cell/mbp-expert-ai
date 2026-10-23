@@ -1,5 +1,6 @@
 "use client";
 
+import Select from "@/components/Select";
 import { formatarCnpj } from "@/lib/cnpj";
 import { useEffect, useMemo, useRef, useState } from "react";
 import MetricCard from "@/components/MetricCard";
@@ -116,9 +117,13 @@ import CentralEmpresaNav from "@/components/pc/CentralEmpresaNav";
 import RelatoriosAbas, { type AbaDeRelatorios } from "@/components/pc/RelatoriosAbas";
 import { niveisDoCaminho } from "@/lib/caminhoDaFicha";
 import { assinaturaEdicaoEmpresa, temAlteracoesNaoSalvas } from "@/lib/estadoNaoSalvo";
+import { renomearAmbiente, resumoDaRenomeacao, textoDoResumo } from "@/lib/renomearAmbiente";
+import { ePaginaDeCadastro, marcarComoRevisado } from "@/lib/revisaoDeCadastros";
+import RevisaoDaPagina from "@/components/pc/RevisaoDaPagina";
+import { avisoParaEmitir, avisoParaFinalizar, erroDoCnpj, erroDoNomeDaEmpresa, itensRespondidos, pendenciasParaSalvarEmpresa } from "@/lib/regrasDoPacote3";
 import { ambientesParaVisita, limparVinculos, nomeJaExistente } from "@/lib/ambientesVisita";
 import IdentificacaoComplementar from "@/components/IdentificacaoComplementar";
-import { prefillDoPerfilDoRt, semOCampo, type CampoDaIdentificacao } from "@/lib/manualIdentificacao";
+import { prefillDoPerfilDoRt, preencherIdentificacao, semOCampo, type CampoDaIdentificacao } from "@/lib/manualIdentificacao";
 import { estadoDaBarraDeSalvar, marcadosDoUltimoSalvo } from "@/lib/escolhaEmJanela";
 import { TENTATIVAS_DA_NUVEM, conexaoAtual, esperaAposFalhaDaNuvem, rotuloDoSeloComProblema, umaTentativa } from "@/lib/conexao";
 import { mostrarVoltar, nivelAcima, registrarLocal, voltarUma, type LocalDeTela } from "@/lib/historicoDeTelas";
@@ -1176,6 +1181,14 @@ export default function Home() {
   >(criarResponsabilidadesPadrao());
   const [setoresEmpresa, setSetoresEmpresa] = useState<string[]>([]);
   const [vinculosEmpresa, setVinculosEmpresa] = useState<Record<string, string>>({});
+  // Questionário (modelo) de cada ambiente, editado na lista de ambientes e gravado no Salvar da barra de baixo.
+  const [modelosEmpresa, setModelosEmpresa] = useState<Record<string, string>>({});
+  // Renomeações de ambiente feitas nesta edição: o formulário já mostra o nome novo; visitas, NCs e o resto mudam ao salvar.
+  const [renomeacoesPendentes, setRenomeacoesPendentes] = useState<{ de: string; para: string }[]>([]);
+  // Avisos na hora, no campo: nome e CNPJ da empresa.
+  const [tocouNomeEmpresa, setTocouNomeEmpresa] = useState(false);
+  const [tocouCnpjEmpresa, setTocouCnpjEmpresa] = useState(false);
+  const [tentouSalvarEmpresa, setTentouSalvarEmpresa] = useState(false);
   // Campos do Manual que vieram do perfil do RT e ainda não foram editados (selo "do perfil do RT").
   const [camposDoPerfilRt, setCamposDoPerfilRt] = useState<CampoDaIdentificacao[]>([]);
   const [equipamentosEmpresa, setEquipamentosEmpresa] = useState<EquipamentoSetor[]>([]);
@@ -1195,6 +1208,7 @@ export default function Home() {
     fluxos: fluxosEmpresa,
     programas: programasEmpresa,
     vinculos: limparVinculos(vinculosEmpresa, setoresEmpresa),
+    modelos: modelosEmpresa,
     pops: popsEmpresa,
   });
   const empresaTemAlteracoes = temAlteracoesNaoSalvas(showEmpresaForm, assinaturaEmpresaSalva, assinaturaEmpresaAtual);
@@ -1830,6 +1844,7 @@ export default function Home() {
 
   async function emitirRelatorioDaVisita(motivo: string) {
     if (!visitaAtual || emitindoRelatorio) return;
+    if (avisoParaEmitir(visitaAtual.status, itensRespondidos(checklistAtual))) return;
     setEmitindoRelatorio(true);
     setErroDeEmissao("");
     try {
@@ -1868,7 +1883,7 @@ export default function Home() {
     estilo.textContent = cssDoDocumentoImpresso({ cabecalho, comCaixasDeMargem: suportaCaixasDeMargem(marcas, navigator.userAgent) });
     document.head.appendChild(estilo);
     const tituloAntes = document.title;
-    document.title = titulo.replace(/[^\w\s.-]+/g, "");
+    document.title = titulo.replace(/[\\/:*?"<>|]+/g, "").trim();
     const limpar = () => {
       estilo.remove();
       document.title = tituloAntes;
@@ -2754,6 +2769,15 @@ export default function Home() {
   const [fichaAbertaId, setFichaAbertaId] = useState<string | null>(null);
   const [fichaAbertaRotuloCompleto, setFichaAbertaRotuloCompleto] = useState<string | null>(null);
   const [telasRecentes, setTelasRecentes] = useState<TelaRecente[]>([]);
+  // Cartão "Primeiros passos" do Início: some ao dispensar (só neste aparelho; try/catch porque o armazenamento pode estar bloqueado).
+  const [primeirosPassosDispensado, setPrimeirosPassosDispensado] = useState(true);
+  useEffect(() => {
+    try {
+      setPrimeirosPassosDispensado(window.localStorage.getItem("mbp-primeiros-passos-dispensado") === "1");
+    } catch {
+      setPrimeirosPassosDispensado(false);
+    }
+  }, []);
   const pilhaDeTelasRef = useRef<LocalDeTela[]>([]);
   const subDoLocal = view === "empresas" && showEmpresaForm && editingEmpresaId ? String(secaoEmpresa ?? "") : view === "pops" ? subabaDosDocumentos : "";
   const localDaTela: LocalDeTela = { view, ...(fichaAbertaId ? { popId: fichaAbertaId } : {}), ...(subDoLocal ? { sub: subDoLocal } : {}) };
@@ -3340,6 +3364,11 @@ export default function Home() {
   async function finalizarInspecao() {
     if (!visitaAtual) return;
     if (!exigirPermissao("visitas.concluir", visitaAtual.empresaId)) return;
+    const avisoSemItem = avisoParaFinalizar(itensRespondidos(checklistAtual));
+    if (avisoSemItem) {
+      void avisar(avisoSemItem);
+      return;
+    }
 
     // Uma inspeção só pode ser marcada como concluída quando todos os itens
     // do checklist dos ambientes selecionados tiverem sido avaliados.
@@ -3461,6 +3490,12 @@ export default function Home() {
 
   function salvarEmpresa() {
     if (!exigirPermissao("empresas.editar")) return;
+    setTentouSalvarEmpresa(true);
+    const faltasDaEmpresa = pendenciasParaSalvarEmpresa(form, Boolean(editingEmpresaId));
+    if (faltasDaEmpresa.length) {
+      setMsg(faltasDaEmpresa.join(" "));
+      return;
+    }
     if (Object.keys(validarCapacidade(capacidadeForm)).length) {
       void avisar("Confira os números de capacidade e turnos antes de salvar.");
       return;
@@ -3484,7 +3519,7 @@ export default function Home() {
       setoresManual: setoresEmpresa,
       modelosQuestionarioAmbientes: criarModelosQuestionarioAmbientes(
         setoresEmpresa,
-        anterior?.modelosQuestionarioAmbientes
+        { ...(anterior?.modelosQuestionarioAmbientes || {}), ...modelosEmpresa }
       ),
       ...(Object.keys(limparVinculos(vinculosEmpresa, setoresEmpresa)).length ? { setorOficialDoAmbiente: limparVinculos(vinculosEmpresa, setoresEmpresa) } : {}),
       equipamentosSetores: normalizarEquipamentos(equipamentosEmpresa),
@@ -3505,6 +3540,7 @@ export default function Home() {
             questionarios: anterior.questionarios,
             capaDosPops: anterior.capaDosPops,
             cartazLavagem: anterior.cartazLavagem,
+            cadastrosRevisados: anterior.cadastrosRevisados,
             registroProvaPorPop: anterior.registroProvaPorPop,
             // Empresa cadastrada antes do "Colocar em dia" não ganha o cartão: o campo só existe em empresa nova.
             ...(anterior.implantacao ? { implantacao: anterior.implantacao } : {}),
@@ -3515,24 +3551,52 @@ export default function Home() {
           ? { nome: nomeResponsavel, cargo: cargoResponsavel, ...(vinculoResponsavel ? { usuarioId: vinculoResponsavel } : {}) }
           : undefined,
     };
-    setDb((o) => ({
-      ...o,
-      empresaAtualId: id,
-      empresas: { ...o.empresas, [id]: emp },
-      visitas: o.visitas.map((visita) => {
-        if (visita.empresaId !== id) return visita;
-        const possuiRespostas = checklistPossuiRespostas(visita.checklist);
-        return possuiRespostas
-          ? visita
-          : { ...visita, checklist: [], checklistVersao: CHECKLIST_VERSAO_ATUAL };
-      }),
-    }));
+    setDb((o) => {
+      const base: AppDB = {
+        ...o,
+        empresaAtualId: id,
+        empresas: { ...o.empresas, [id]: emp },
+        visitas: o.visitas.map((visita) => {
+          if (visita.empresaId !== id) return visita;
+          const possuiRespostas = checklistPossuiRespostas(visita.checklist);
+          return possuiRespostas
+            ? visita
+            : { ...visita, checklist: [], checklistVersao: CHECKLIST_VERSAO_ATUAL };
+        }),
+      };
+      // Ambiente renomeado: o nome novo entra também em visitas, não conformidades, evidências, registros de POP e questionário personalizado.
+      return renomeacoesPendentes.reduce((atual, troca) => renomearAmbiente(atual, id, troca.de, troca.para), base);
+    });
+    setRenomeacoesPendentes([]);
     setAssinaturaEmpresaSalva(assinaturaEmpresaAtual);
     setEditingEmpresaId(id);
     setEmpresaSecao(null);
     setShowEmpresaForm(true);
     setMsg("");
     setView("empresas");
+  }
+
+  // Renomear ambiente próprio: mostra quantos registros serão afetados antes de confirmar; o formulário muda já, o resto ao Salvar.
+  async function renomearAmbienteDaEmpresa(de: string, para: string): Promise<boolean> {
+    const novo = para.trim();
+    if (!editingEmpresaId || !novo || novo === de) return false;
+    const resumo = resumoDaRenomeacao(db, editingEmpresaId, de);
+    const confirmado = await confirmar(
+      `Renomear “${de}” para “${novo}”?\n\n${textoDoResumo(resumo)}\n\nOs relatórios já emitidos não mudam. A troca vale ao salvar.`,
+      { titulo: "Renomear ambiente", confirmarRotulo: "Renomear" }
+    );
+    if (!confirmado) return false;
+    const troca = (nome: string) => (nome === de ? novo : nome);
+    setSetoresEmpresa((atual) => atual.map(troca));
+    setEquipamentosEmpresa((atual) => atual.map((item) => (item.setor === de ? { ...item, setor: novo } : item)));
+    setFluxosEmpresa((atual) => atual.map((item) => (item.setorVinculado === de ? { ...item, setorVinculado: novo } : item)));
+    setVinculosEmpresa((atual) => (de in atual ? Object.fromEntries(Object.entries(atual).map(([nome, oficial]) => [troca(nome), oficial])) : atual));
+    setModelosEmpresa((atual) => (de in atual ? Object.fromEntries(Object.entries(atual).map(([nome, modelo]) => [troca(nome), modelo])) : atual));
+    setRenomeacoesPendentes((atual) => {
+      const anterior = atual.find((item) => item.para === de);
+      return anterior ? atual.map((item) => (item === anterior ? { de: item.de, para: novo } : item)) : [...atual, { de, para: novo }];
+    });
+    return true;
   }
 
   // RT da empresa para preencher a identificação do Manual: a pessoa logada (se for RT) ou o primeiro RT com acesso à empresa.
@@ -3605,6 +3669,11 @@ export default function Home() {
     setResponsabilidadesEmpresa(responsabilidadesCarregadas);
     setSetoresEmpresa(setoresCarregados);
     setVinculosEmpresa(limparVinculos(empresa.setorOficialDoAmbiente, setoresCarregados));
+    setModelosEmpresa(empresa.modelosQuestionarioAmbientes || {});
+    setRenomeacoesPendentes([]);
+    setTocouNomeEmpresa(false);
+    setTocouCnpjEmpresa(false);
+    setTentouSalvarEmpresa(false);
     setEquipamentosEmpresa(equipamentosCarregados);
     setFluxosEmpresa(fluxosCarregados);
     setProgramasEmpresa(programasCarregados);
@@ -3617,6 +3686,7 @@ export default function Home() {
       fluxos: fluxosCarregados,
       programas: programasCarregados,
       vinculos: limparVinculos(empresa.setorOficialDoAmbiente, setoresCarregados),
+      modelos: empresa.modelosQuestionarioAmbientes || {},
       pops: popsCarregados,
     }));
     setUsuarioResponsavelForm(empresa.responsavelEstabelecimento?.usuarioId || "");
@@ -4485,6 +4555,11 @@ export default function Home() {
     setResponsabilidadesEmpresa(responsabilidadesIniciais);
     setSetoresEmpresa([]);
     setVinculosEmpresa({});
+    setModelosEmpresa({});
+    setRenomeacoesPendentes([]);
+    setTocouNomeEmpresa(false);
+    setTocouCnpjEmpresa(false);
+    setTentouSalvarEmpresa(false);
     setCamposDoPerfilRt([]);
     setEquipamentosEmpresa([]);
     setFluxosEmpresa(fluxosIniciais);
@@ -7580,6 +7655,8 @@ export default function Home() {
                           className="w-full rounded-xl border p-3 disabled:bg-slate-100 disabled:text-slate-500"
                           value={form.cnpj}
                           disabled={Boolean(editingEmpresaId)}
+                          aria-invalid={Boolean(!editingEmpresaId && erroDoCnpj(form.cnpj) && (tocouCnpjEmpresa || tentouSalvarEmpresa || form.cnpj.replace(/\D/g, "").length >= 14))}
+                          onBlur={() => setTocouCnpjEmpresa(true)}
                           onChange={(e) => setForm({ ...form, cnpj: e.target.value })}
                         />
                         {!editingEmpresaId && (
@@ -7588,6 +7665,7 @@ export default function Home() {
                           </button>
                         )}
                       </div>
+                      {!editingEmpresaId && (tocouCnpjEmpresa || tentouSalvarEmpresa || form.cnpj.replace(/D/g, "").length >= 14) && erroDoCnpj(form.cnpj) && <span className="ui-field-error" role="alert">{erroDoCnpj(form.cnpj)}</span>}
                     </label>
 
                     {camposEmpresaPrincipais.filter((k) => k !== "responsavel" && k !== "cargoResponsavel").map((k) => (
@@ -7608,11 +7686,14 @@ export default function Home() {
                         className="w-full rounded-xl border p-3"
                         value={form[k]}
                         placeholder={k === "horarioFuncionamento" ? "Ex.: Seg a sáb, 11h às 23h" : undefined}
+                        aria-invalid={k === "nomeFantasia" && (tocouNomeEmpresa || tentouSalvarEmpresa) && Boolean(erroDoNomeDaEmpresa(form.nomeFantasia, form.razaoSocial))}
+                        onBlur={k === "nomeFantasia" ? () => setTocouNomeEmpresa(true) : undefined}
                         onChange={(e) =>
                           setForm({ ...form, [k]: e.target.value })
                         }
                       />
                     )}
+                    {k === "nomeFantasia" && (tocouNomeEmpresa || tentouSalvarEmpresa) && erroDoNomeDaEmpresa(form.nomeFantasia, form.razaoSocial) && <span className="ui-field-error" role="alert">{erroDoNomeDaEmpresa(form.nomeFantasia, form.razaoSocial)}</span>}
                   </label>
                     ))}
                     {(() => {
@@ -7627,7 +7708,7 @@ export default function Home() {
                             {editingEmpresaId && (
                               <label>
                                 <span className="mb-1 block text-xs font-bold text-slate-500">Acesso vinculado (quem aprova os POPs)</span>
-                                <select
+                                <Select
                                   className="w-full rounded-xl border p-3"
                                   value={usuarioResponsavelForm}
                                   disabled={!podeVincular}
@@ -7645,7 +7726,7 @@ export default function Home() {
                                         {pessoa.nome} · {pessoa.perfil}
                                       </option>
                                     ))}
-                                </select>
+                                </Select>
                                 {!podeVincular && <span className="mt-1 block text-xs text-slate-500">Só o Administrador vincula a pessoa de Acessos.</span>}
                               </label>
                             )}
@@ -7724,15 +7805,45 @@ export default function Home() {
                         setForm({ ...form, [campo]: valor });
                         setCamposDoPerfilRt((atuais) => semOCampo(atuais, campo));
                       }}
+                      onPreencher={() => {
+                        const empresaAberta = db.empresas[editingEmpresaId];
+                        const rt = empresaAberta ? usuarioRtDaEmpresa(empresaAberta) : undefined;
+                        const resultado = preencherIdentificacao(form as unknown as Record<CampoDaIdentificacao, string>, {
+                          rt: rt ? { nome: rt.nome, cargo: rt.cargo, crn: rt.crn, telefone: rt.telefone } : undefined,
+                          juntar: (cargo, crn) => nomeECargo(cargo, crn, " "),
+                          atividade: form.cnaeDescricao,
+                          responsavel: form.responsavel,
+                          cargoResponsavel: form.cargoResponsavel,
+                        });
+                        if (resultado.preenchidos.length === 0) return resultado.semFonte.length ? "Nada novo para preencher: o que falta não existe no cadastro." : "Tudo já está preenchido.";
+                        setForm({ ...form, ...resultado.valores });
+                        setCamposDoPerfilRt((atuais) => [...new Set([...atuais, ...resultado.doPerfil])]);
+                        const faltam = resultado.semFonte.length;
+                        return `${resultado.preenchidos.length === 1 ? "1 campo preenchido" : `${resultado.preenchidos.length} campos preenchidos`}.${faltam ? ` ${faltam === 1 ? "1 campo continua vazio" : `${faltam} campos continuam vazios`}: não há esse dado no cadastro.` : ""} Salve para guardar.`;
+                      }}
                     />
                     <ManualBaseFields responsabilidades={responsabilidadesEmpresa} onResponsabilidadesChange={setResponsabilidadesEmpresa} setores={setoresEmpresa} onSetoresChange={setSetoresEmpresa} equipamentos={equipamentosEmpresa} onEquipamentosChange={setEquipamentosEmpresa} modo="responsabilidades" />
                   </div>
                 )}
 
+                {editingEmpresaId && ePaginaDeCadastro(secaoEmpresa) && db.empresas[editingEmpresaId] && (
+                  <RevisaoDaPagina
+                    pagina={secaoEmpresa}
+                    empresa={db.empresas[editingEmpresaId]}
+                    podeMarcar={permitido("empresas.editar", editingEmpresaId)}
+                    naoSalvo={empresaTemAlteracoes}
+                    onMarcar={() => {
+                      const quem = usuarioDaSessao;
+                      atualizarEmpresaDosRegistros(editingEmpresaId, (empresa) => marcarComoRevisado(empresa, secaoEmpresa, { nome: quem?.nome || sessaoAtual?.name || "Usuário", cargo: quem?.cargo, id: quem?.id }, new Date().toISOString()));
+                      mostrarToast("Página marcada como revisada");
+                    }}
+                  />
+                )}
+
                 {editingEmpresaId && (secaoEmpresa === "ambientes" || secaoEmpresa === "equipamentos") && (
                   <div className="cen-cadastro">
                     <p className="cen-apoio">Cadastro dos setores, ambientes e equipamentos da empresa.</p>
-                    <ManualBaseFields responsabilidades={responsabilidadesEmpresa} onResponsabilidadesChange={setResponsabilidadesEmpresa} setores={setoresEmpresa} onSetoresChange={setSetoresEmpresa} vinculos={vinculosEmpresa} onVinculosChange={setVinculosEmpresa} equipamentos={equipamentosEmpresa} onEquipamentosChange={setEquipamentosEmpresa} setoresSalvos={marcadosSalvos.setores} modo={secaoEmpresa} />
+                    <ManualBaseFields responsabilidades={responsabilidadesEmpresa} onResponsabilidadesChange={setResponsabilidadesEmpresa} setores={setoresEmpresa} onSetoresChange={setSetoresEmpresa} vinculos={vinculosEmpresa} onVinculosChange={setVinculosEmpresa} modelos={modelosEmpresa} onModelosChange={setModelosEmpresa} onRenomearAmbiente={renomearAmbienteDaEmpresa} equipamentos={equipamentosEmpresa} onEquipamentosChange={setEquipamentosEmpresa} setoresSalvos={marcadosSalvos.setores} modo={secaoEmpresa} />
                   </div>
                 )}
 
@@ -8830,6 +8941,8 @@ export default function Home() {
                 }}
                 onSelecionavel={(tipo) => void gerarPdfSelecionavel(tipo)}
                 onFinalizar={finalizarInspecao}
+                avisoFinalizar={avisoParaFinalizar(itensRespondidos(checklistAtual))}
+                avisoEmitir={avisoParaEmitir(visitaAtual.status, itensRespondidos(checklistAtual))}
                 onReabrir={reabrirInspecao}
                 onVoltar={() => setView("visita")}
                 podeEmitir={podeEmitirRelatorio(usuarioDaSessao) || (!usuarioDaSessao && true)}
@@ -8837,7 +8950,7 @@ export default function Home() {
                   const ultimo = ultimaVersao(db.relatoriosEmitidos || [], visitaAtual.id);
                   return ultimo ? { numero: ultimo.numero, versao: ultimo.versao } : undefined;
                 })()}
-                onEmitir={() => { setErroDeEmissao(""); setEmitirAberto(true); }}
+                onEmitir={() => { if (avisoParaEmitir(visitaAtual.status, itensRespondidos(checklistAtual))) return; setErroDeEmissao(""); setEmitirAberto(true); }}
                 onVerEmitidos={() => setView("relatoriosemitidos")}
               />
             )}
@@ -9686,6 +9799,29 @@ export default function Home() {
             <PcInicio
               somenteCampo={ehExecutor}
               avisoPops={avisoPopsDoInicio}
+              primeirosPassos={
+                primeirosPassosDispensado
+                  ? null
+                  : {
+                      passos: [
+                        { chave: "perfil", titulo: "Perfil", onAbrir: () => setPerfilAberto(true) },
+                        { chave: "empresa", titulo: "Empresa", onAbrir: () => (atual ? void abrirSecaoEmpresaPeloMenu("dados") : setView("empresas")) },
+                        { chave: "ambientes", titulo: "Ambientes", onAbrir: () => void abrirSecaoEmpresaPeloMenu("ambientes") },
+                        { chave: "equipamentos", titulo: "Equipamentos", onAbrir: () => void abrirSecaoEmpresaPeloMenu("equipamentos") },
+                        { chave: "fluxos", titulo: "Fluxos", onAbrir: () => void abrirSecaoEmpresaPeloMenu("fluxos") },
+                        { chave: "visita", titulo: "Visita", onAbrir: atual ? novaVisita : () => setView("empresas") },
+                        { chave: "relatorio", titulo: "Relatório", onAbrir: () => irParaMenu("relatorio") },
+                      ],
+                      onDispensar: () => {
+                        setPrimeirosPassosDispensado(true);
+                        try {
+                          window.localStorage.setItem("mbp-primeiros-passos-dispensado", "1");
+                        } catch {
+                          /* sem armazenamento: o cartão volta na próxima abertura */
+                        }
+                      },
+                    }
+              }
               retomar={telasRecentes.map((tela) => ({ chave: `${tela.tipo}:${tela.id}`, rotulo: tela.rotulo, onAbrir: () => abrirTelaRecente(tela) }))}
               painel={painelNode}
               simples={nivelDe("inicio") === "simples"}

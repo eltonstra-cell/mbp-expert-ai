@@ -8,7 +8,7 @@ import net from "node:net";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { abrirNavegador, acharNavegador } from "./navegador-cdp.mjs";
-import { paginasDoPdf } from "./pdf-texto.mjs";
+import { paginasDoPdf, tituloDoPdf } from "./pdf-texto.mjs";
 
 const raiz = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const EMAIL = "elton.teste@example.com";
@@ -183,6 +183,7 @@ export function problemasDoResultado(r, paginasSemCapa, titulos) {
   const { caso, paginas, nome } = r;
   const referencia = paginasSemCapa.get(caso.pop);
   const falha = (texto) => problemas.push(`${nome}: ${texto}`);
+  if (!tituloDoPdf(r.pdf).startsWith(`${caso.pop} – `)) falha(`título do PDF: “${tituloDoPdf(r.pdf)}”`);
   if (!paginas.every((p) => p.texto.replace(/\s/g, "").length > 20)) falha("há página em branco");
   const primeira = paginas[0]?.texto || "";
   if (!caso.capa) {
@@ -198,10 +199,10 @@ export function problemasDoResultado(r, paginasSemCapa, titulos) {
   if (/Página \d+ de/.test(primeira)) falha("a capa tem numeração");
   if (/Objetivo|Passos/.test(primeira)) falha("o texto do POP entrou na capa");
   if (!(paginas[1] && /Objetivo/.test(paginas[1].texto) && /Página 2 de/.test(paginas[1].texto))) falha("o conteúdo deveria começar na página 2, com cabeçalho e numeração");
-  if (caso.estilo !== "A" && caso.icone === "colorido" && paginas[0].imagens < 1) falha("falta o ícone colorido na capa");
+  // O ícone colorido agora é vetorial (SVG): não conta como imagem no PDF. Só o logotipo (PNG) conta.
   if (caso.estilo === "C") {
     if (!(/Beyond Nutri/.test(primeira) && /CNPJ 12\.345\.678\/0001-95/.test(primeira))) falha("rodapé sem empresa e CNPJ");
-    if (caso.icone === "colorido" && paginas[0].imagens < (caso.logotipo ? 2 : 1)) falha(`logotipo ${caso.logotipo ? "ausente" : "inesperado"}`);
+    if (caso.logotipo ? paginas[0].imagens < 1 : paginas[0].imagens > 0) falha(`logotipo ${caso.logotipo ? "ausente" : "inesperado"}`);
     if (!r.rodape || !r.rodape.temCnpj) falha("rodapé não medido");
     else {
       if (!(r.rodape.lacuna > r.rodape.largura * 0.05)) falha(`CNPJ colado ao nome (${Math.round(r.rodape.lacuna)} px)`);

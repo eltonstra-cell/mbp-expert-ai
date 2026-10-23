@@ -1,5 +1,6 @@
 "use client";
 
+import Select from "@/components/Select";
 import { useState } from "react";
 import type {
   ProcedimentoOperacionalPadronizado,
@@ -140,13 +141,13 @@ export default function PopsFields({ pops, onChange, aberto = false }: Props) {
                 <FieldVoiceTools fieldKey={`pop-titulo-${pop.id}`} value={pop.titulo} onChange={(texto) => atualizar(indice, { titulo: texto })} contexto="Título curto e objetivo de um POP." />
               </div>
               <input value={pop.versao} onChange={(event) => atualizar(indice, { versao: event.target.value })} placeholder="Versão" className="min-w-0 w-full rounded-lg border p-2 text-sm" />
-              <select value={pop.status} onChange={(event) => atualizar(indice, { status: event.target.value as StatusPOP })} className="min-w-0 w-full rounded-lg border bg-white p-2 text-sm">
+              <Select value={pop.status} onChange={(event) => atualizar(indice, { status: event.target.value as StatusPOP })} className="min-w-0 w-full rounded-lg border bg-white p-2 text-sm">
                 {statusDisponiveis.map((status) => <option key={status}>{status}</option>)}
-              </select>
-              <select value={pop.programaRelacionado} onChange={(event) => atualizar(indice, { programaRelacionado: event.target.value })} className="min-w-0 w-full rounded-lg border bg-white p-2 text-sm">
+              </Select>
+              <Select value={pop.programaRelacionado} onChange={(event) => atualizar(indice, { programaRelacionado: event.target.value })} className="min-w-0 w-full rounded-lg border bg-white p-2 text-sm">
                 <option value="">Programa relacionado</option>
                 {DEFINICOES_PROGRAMAS_CONTROLE.map((programa) => <option key={programa.nome}>{programa.nome}</option>)}
-              </select>
+              </Select>
               <div className="min-w-0">
                 <input value={pop.responsavel} onChange={(event) => atualizar(indice, { responsavel: event.target.value })} placeholder="Responsável" className="min-w-0 w-full rounded-lg border p-2 text-sm" />
                 <FieldVoiceTools fieldKey={`pop-responsavel-${pop.id}`} value={pop.responsavel} onChange={(texto) => atualizar(indice, { responsavel: texto })} contexto="Nome ou função do responsável por um POP." somenteVoz />

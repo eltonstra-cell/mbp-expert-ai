@@ -28,6 +28,9 @@ type Props = {
   /** PDF pela impressão do navegador (texto selecionável). */
   onSelecionavel: (tipo: "previa" | "parcial" | "oficial") => void;
   onFinalizar: () => void;
+  /** Aviso na hora, no botão: texto vazio = pode finalizar / emitir. */
+  avisoFinalizar?: string;
+  avisoEmitir?: string;
   onReabrir: () => void;
   onVoltar: () => void;
   /** RT e Administrador emitem o relatório assinado (número e data atribuídos pelo servidor). */
@@ -50,6 +53,8 @@ export default function PcRelatorio({
   onIr,
   onSelecionavel,
   onFinalizar,
+  avisoFinalizar = "",
+  avisoEmitir = "",
   onReabrir,
   onVoltar,
   podeEmitir = false,
@@ -105,9 +110,12 @@ export default function PcRelatorio({
             </button>
           )}
           {podeEmitir && onEmitir && (
-            <button type="button" className="ui-btn ui-btn--primary" onClick={onEmitir}>
-              {emitido ? `Emitir versão ${emitido.versao + 1}` : "Emitir assinado"}
-            </button>
+            <span className="rel-acao-com-aviso">
+              <button type="button" className={`ui-btn ui-btn--primary${avisoEmitir ? " is-apagado" : ""}`} aria-disabled={Boolean(avisoEmitir)} aria-describedby={avisoEmitir ? "aviso-emitir" : undefined} onClick={avisoEmitir ? undefined : onEmitir}>
+                {emitido ? `Emitir versão ${emitido.versao + 1}` : "Emitir assinado"}
+              </button>
+              {avisoEmitir && <span id="aviso-emitir" className="ui-field-error" role="status">{avisoEmitir}</span>}
+            </span>
           )}
           {podeConcluir &&
             (concluida ? (
@@ -115,9 +123,12 @@ export default function PcRelatorio({
                 Reabrir inspeção
               </button>
             ) : (
-              <button type="button" className="ui-btn ui-btn--secondary" onClick={onFinalizar}>
-                Finalizar inspeção
-              </button>
+              <span className="rel-acao-com-aviso">
+                <button type="button" className={`ui-btn ui-btn--secondary${avisoFinalizar ? " is-apagado" : ""}`} aria-disabled={Boolean(avisoFinalizar)} aria-describedby={avisoFinalizar ? "aviso-finalizar" : undefined} onClick={avisoFinalizar ? undefined : onFinalizar}>
+                  Finalizar inspeção
+                </button>
+                {avisoFinalizar && <span id="aviso-finalizar" className="ui-field-error" role="status">{avisoFinalizar}</span>}
+              </span>
             ))}
           <button type="button" className="ui-btn ui-btn--secondary" onClick={onVoltar}>
             ← Central

@@ -6,6 +6,7 @@ import { Pill } from "@/components/ui/Pill";
 import { ProgressBar, SegmentedProgress } from "@/components/ui/ProgressBar";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import { StatStrip } from "@/components/ui/StatStrip";
+import PrimeirosPassos, { type PassoDosPrimeiros } from "@/components/pc/PrimeirosPassos";
 
 export type VisitaRecenteInicio = {
   id: string;
@@ -53,6 +54,8 @@ type Props = {
   /** Painel "Hoje precisa de você" (só gestor: Administrador, RT, Gestor, Gerente). */
   painel?: ReactNode;
   onVerTodas: () => void;
+  /** Cartão "Primeiros passos" (ordem de uso e vídeo); sem ele, nada aparece. */
+  primeirosPassos?: { passos: PassoDosPrimeiros[]; onDispensar: () => void } | null;
   /** "Continuar de onde parei": as últimas telas abertas (só rótulo e destino; sem nome de pessoa). */
   retomar?: { chave: string; rotulo: string; onAbrir: () => void }[];
 };
@@ -76,6 +79,7 @@ export default function PcInicio({
   avisoPops = null,
   painel = null,
   retomar = [],
+  primeirosPassos = null,
 }: Props) {
   return (
     <section className="ui-screen" aria-label="Início">
@@ -119,6 +123,8 @@ export default function PcInicio({
           </>
         )}
       </div>
+
+      {primeirosPassos && !somenteCampo && <PrimeirosPassos passos={primeirosPassos.passos} onDispensar={primeirosPassos.onDispensar} />}
 
       {retomar.length > 0 && (
         <section className="ui-card pc-retomar" aria-label="Continuar de onde parei">

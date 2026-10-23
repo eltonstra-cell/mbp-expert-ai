@@ -1,5 +1,6 @@
 "use client";
 
+import Select from "@/components/Select";
 import { useEffect, useRef, useState, type DragEvent } from "react";
 import { mostrarToast } from "@/lib/toast";
 import { ListRow } from "@/components/ui/ListRow";
@@ -220,13 +221,13 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
               {popFixo && (tiposDisponiveis.length === 1 || Boolean(dados.renovaId)) ? (
                 <span className="comp-tipo-fixo">{rotuloDoTipoNaFicha(dados.tipo)}</span>
               ) : (
-              <select className="ui-input ui-input--lista" value={dados.tipo} onChange={(evento) => campo("tipo", evento.target.value as TipoComprovante)}>
+              <Select className="ui-input ui-input--lista" value={dados.tipo} onChange={(evento) => campo("tipo", evento.target.value as TipoComprovante)}>
                 {(tiposDisponiveis.some((tipo) => tipo.id === dados.tipo) ? tiposDisponiveis : [...tiposDisponiveis, { id: dados.tipo, rotulo: rotuloDoTipo(dados.tipo) }]).map((tipo) => (
                   <option key={tipo.id} value={tipo.id}>
                     {tipo.rotulo}
                   </option>
                 ))}
-              </select>
+              </Select>
               )}
             </label>
             {popsParaEscolher.length > 0 && (
@@ -235,14 +236,14 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
                 {popFixo ? (
                   <span className="comp-tipo-fixo" id="comp-pop-fixo">{(() => { const doPop = listaDePops.find((pop) => pop.id === popFixo.id); return doPop ? rotuloDoPop(doPop) : popFixo.rotulo; })()}</span>
                 ) : (
-                <select className="ui-input ui-input--lista" value={dados.popId || ""} onChange={(evento) => setDados((atual) => ({ ...atual, popId: evento.target.value || undefined }))}>
+                <Select className="ui-input ui-input--lista" value={dados.popId || ""} onChange={(evento) => setDados((atual) => ({ ...atual, popId: evento.target.value || undefined }))}>
                   <option value="">Nenhum (comprovante geral da empresa)</option>
                   {popsParaEscolher.map((pop) => (
                     <option key={pop.id} value={pop.id}>
                       {pop.rotulo}
                     </option>
                   ))}
-                </select>
+                </Select>
                 )}
                 {sugestaoDePop?.situacao === "falta-criar" && (
                   <span className="comp-aviso-pop">
@@ -336,14 +337,14 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
           <div className="ui-card comp-alterar-pop" role="group" aria-label={popFixo ? "Mover para outro POP" : "Alterar POP vinculado"}>
             <label className="pc-field">
               <span className="ui-eyebrow">{popFixo ? "Mover" : "POP vinculado de"} {rotuloDoTipo(comprovantes.find((item) => item.id === alterandoPop.id)?.tipo || "outro")}{popFixo ? " para o POP" : ""}</span>
-              <select className="ui-input ui-input--lista" value={alterandoPop.popId} onChange={(evento) => setAlterandoPop({ ...alterandoPop, popId: evento.target.value })}>
+              <Select className="ui-input ui-input--lista" value={alterandoPop.popId} onChange={(evento) => setAlterandoPop({ ...alterandoPop, popId: evento.target.value })}>
                 {popFixo ? <option value="">Escolha o POP…</option> : <option value="">Nenhum (comprovante geral da empresa)</option>}
                 {listaDePops.filter((pop) => !pop.arquivado && pop.id !== popFixo?.id).map((pop) => (
                   <option key={pop.id} value={pop.id}>
                     {rotuloDoPop(pop)}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             {(() => {
               const alvoDoPainel = comprovantes.find((item) => item.id === alterandoPop.id);

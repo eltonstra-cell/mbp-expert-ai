@@ -1,5 +1,6 @@
 "use client";
 
+import Select from "@/components/Select";
 import { nomeDeExibicaoDoAmbiente } from "@/lib/checklistEnvs";
 import { nomeJaExistente } from "@/lib/ambientesVisita";
 import { resumoCurtoDosSetores } from "@/lib/manualBase";
@@ -276,13 +277,13 @@ function mostrarRoteiroLista(
       <span className="pc-route-name">{nome}</span>
       <label className="pc-route-model">
         <span>Questionário:</span>
-        <select value={modeloDoAmbiente(nome)} onChange={(evento) => onModelo(nome, evento.target.value)} aria-label={`Questionário de ${nome}`}>
+        <Select value={modeloDoAmbiente(nome)} onChange={(evento) => onModelo(nome, evento.target.value)} aria-label={`Questionário de ${nome}`}>
           {opcoesModelo.map((modelo) => (
             <option key={modelo} value={modelo}>
               {modelo}
             </option>
           ))}
-        </select>
+        </Select>
       </label>
       {onQuestionario && (
         <button type="button" className="ui-btn ui-btn--secondary ui-btn--small pc-route-editar" onClick={() => onQuestionario(nome)}>

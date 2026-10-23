@@ -53,7 +53,7 @@ test("ícone por modelo conforme o mapa; norma, POP em branco e fallback 'padrao
 test("os 16 ícones existem (PNG e traço) e a escolha por POP só aceita um deles", () => {
   assert.equal(ICONES_DE_CAPA.length, 16);
   for (const icone of ICONES_DE_CAPA) {
-    assert.ok(existsSync(new URL(`../public/capas/${icone.png}`, import.meta.url)), icone.png);
+    assert.ok(existsSync(new URL(`../public/capas/${icone.svg}`, import.meta.url)), icone.svg);
     assert.ok(existsSync(new URL(`../public/capas/${icone.traco}`, import.meta.url)), icone.traco);
   }
   for (const valor of Object.values(mapa)) assert.ok(ICONES_DE_CAPA.some((icone) => icone.id === valor), valor);
@@ -61,9 +61,9 @@ test("os 16 ícones existem (PNG e traço) e a escolha por POP só aceita um del
   assert.equal(iconeDoPop({ iconeCapa: "inventado", origemModelo: { id: "comp-01", versaoCatalogo: 1 } }), mapa["comp-01"], "escolha inválida volta ao mapa");
   assert.equal(comIconeDeCapa({ id: "x" }, "pisos").iconeCapa, "pisos");
   assert.equal("iconeCapa" in comIconeDeCapa({ id: "x", iconeCapa: "pisos" }, ""), false, "vazio volta ao automático");
-  assert.equal(urlDoIcone("maos", "colorido"), "/capas/icones/maos.png");
+  assert.equal(urlDoIcone("maos", "colorido"), "/capas/icones-svg/maos.svg");
   assert.equal(urlDoIcone("maos", "traco"), "/capas/icones-traco/maos.svg");
-  assert.equal(urlDoIcone("nao-existe", "colorido"), "/capas/icones/padrao.png");
+  assert.equal(urlDoIcone("nao-existe", "colorido"), "/capas/icones-svg/padrao.svg");
 });
 
 test("a capa vem DESLIGADA por padrão: estilo C, laranja, ícone colorido, sem logotipo", () => {
@@ -83,7 +83,7 @@ test("modelo da capa: o que aparece em cada estilo; logotipo ausente e CNPJ ause
   assert.equal(modelo("A").rodape, null);
   assert.equal(modelo("A").empresaNoCorpo, "Beyond Nutri");
   // B: barra no topo e ícone; D, E, F também têm ícone
-  for (const e of ["B", "C", "D", "E", "F"]) assert.equal(modelo(e).icone.url, "/capas/icones/maos.png", e);
+  for (const e of ["B", "C", "D", "E", "F"]) assert.equal(modelo(e).icone.url, "/capas/icones-svg/maos.svg", e);
   // C: ícone, barra curta, rodapé com empresa e CNPJ
   const c = modelo("C");
   assert.equal(c.barraCurta, true);

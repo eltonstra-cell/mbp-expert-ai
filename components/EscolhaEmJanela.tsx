@@ -20,15 +20,42 @@ type Props = {
   salvas?: string[];
   /** "Concluir": recebe os ids marcados. Só é chamado quando a escolha mudou de verdade (senão a área não vira "não salva"). */
   onAplicar: (ids: string[]) => void;
+  /** "botao": só o botão que abre a janela (a lista de quem chama já mostra o que está marcado). */
+  modo?: "cartao" | "botao";
 };
 
 // Cartão-resumo (título, "N de T … marcados", chips dos marcados) + botão que abre a janela de escolha.
 // A janela trabalha numa cópia: "Concluir" aplica no estado da tela (quem grava é a barra fixa de baixo); "Cancelar" e Esc descartam.
-export default function EscolhaEmJanela({ titulo, apoio, opcoes, marcadas, palavra, rotuloDoBotao, vazio, salvas, onAplicar }: Props) {
+export default function EscolhaEmJanela({ titulo, apoio, opcoes, marcadas, palavra, rotuloDoBotao, vazio, salvas, onAplicar, modo = "cartao" }: Props) {
   const [aberta, setAberta] = useState(false);
   const ids = opcoes.map((opcao) => opcao.id);
   const marcadosAgora = marcadosNaOrdem(ids, marcadas);
   const tituloDe = (id: string) => opcoes.find((opcao) => opcao.id === id)?.titulo || id;
+
+  const janela = aberta ? (
+    <JanelaDeEscolha
+      titulo={titulo}
+      apoio={apoio}
+      opcoes={opcoes}
+      marcadasAoAbrir={marcadosAgora}
+      onCancelar={() => setAberta(false)}
+      onConcluir={(escolhidos) => {
+        setAberta(false);
+        if (escolhaMudou(marcadosAgora, escolhidos)) onAplicar(escolhidos);
+      }}
+    />
+  ) : null;
+
+  if (modo === "botao") {
+    return (
+      <>
+        <button type="button" className="ui-btn ui-btn--secondary esc-botao" aria-haspopup="dialog" onClick={() => setAberta(true)}>
+          {rotuloDoBotao}
+        </button>
+        {janela}
+      </>
+    );
+  }
 
   return (
     <section className="cad-cartao esc-resumo" aria-label={titulo}>
@@ -46,19 +73,7 @@ export default function EscolhaEmJanela({ titulo, apoio, opcoes, marcadas, palav
       ) : (
         <ChipsRecolhiveis titulo={titulo} ids={marcadosAgora} tituloDe={tituloDe} salvas={salvas} />
       )}
-      {aberta && (
-        <JanelaDeEscolha
-          titulo={titulo}
-          apoio={apoio}
-          opcoes={opcoes}
-          marcadasAoAbrir={marcadosAgora}
-          onCancelar={() => setAberta(false)}
-          onConcluir={(escolhidos) => {
-            setAberta(false);
-            if (escolhaMudou(marcadosAgora, escolhidos)) onAplicar(escolhidos);
-          }}
-        />
-      )}
+      {janela}
     </section>
   );
 }

@@ -43,7 +43,7 @@ export const ICONE_PADRAO: TipoDeIcone = "colorido";
 export const LOGOTIPO_MAX_LARGURA = 600;
 export const LOGOTIPO_ALVO_BYTES = 200 * 1024;
 
-export type IconeDeCapa = { id: string; rotulo: string; png: string; traco: string };
+export type IconeDeCapa = { id: string; rotulo: string; svg: string; traco: string };
 export const ICONES_DE_CAPA: IconeDeCapa[] = listaDeIcones as IconeDeCapa[];
 const IDS_DOS_ICONES = new Set(ICONES_DE_CAPA.map((icone) => icone.id));
 export const ICONE_SEM_ENTRADA = "padrao";
@@ -91,7 +91,7 @@ export function iconeDoPop(pop: PopParaIcone): string {
 
 export function urlDoIcone(id: string, tipo: TipoDeIcone): string {
   const seguro = eIconeConhecido(id) ? id : ICONE_SEM_ENTRADA;
-  return tipo === "traco" ? `/capas/icones-traco/${seguro}.svg` : `/capas/icones/${seguro}.png`;
+  return tipo === "traco" ? `/capas/icones-traco/${seguro}.svg` : `/capas/icones-svg/${seguro}.svg`;
 }
 
 export type DadosDaCapa = {

@@ -42,6 +42,8 @@ export type Empresa = {
   capaDosPops?: CapaDosPops;
   /** Cartaz "Como lavar as mãos": tema escolhido (o logotipo é o mesmo da capa dos POPs). */
   cartazLavagem?: { tema?: string };
+  /** Páginas de Cadastros revisadas pelo RT (quem, quando e a assinatura do que foi revisado). Ausente = nunca revisadas. */
+  cadastrosRevisados?: Partial<Record<"ambientes" | "equipamentos" | "fluxos", { nome: string; cargo?: string; usuarioId?: string; em: string; assinatura: string }>>;
   equipamentosSetores?: EquipamentoSetor[];
   fluxosOperacionais?: FluxoOperacional[];
   programasControleQualidade?: ProgramaControleQualidade[];

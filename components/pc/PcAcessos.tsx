@@ -1,5 +1,6 @@
 "use client";
 
+import Select from "@/components/Select";
 import { formatarDataHora } from "@/lib/dataLocal";
 import { useEffect, useMemo, useState } from "react";
 import type { Empresa, PerfilUsuario, RegistroAuditoria, StatusUsuario, UsuarioSistema } from "@/types";
@@ -211,7 +212,7 @@ export default function PcAcessos({
                   </label>
                   <label className="pc-field">
                     <span className="ui-eyebrow">Perfil</span>
-                    <select
+                    <Select
                       className="ui-input"
                       value={formulario.perfil}
                       onChange={(evento) =>
@@ -224,7 +225,7 @@ export default function PcAcessos({
                       {PERFIS.map((perfil) => (
                         <option key={perfil}>{perfil}</option>
                       ))}
-                    </select>
+                    </Select>
                   </label>
                 </div>
                 <div className="acc-grade">
@@ -248,7 +249,7 @@ export default function PcAcessos({
                 {formulario.perfil === "Fiscal" && !formulario.jaEraFiscal && (
                   <label className="pc-field">
                     <span className="ui-eyebrow">Validade do acesso</span>
-                    <select
+                    <Select
                       className={`ui-input${erroValidade ? " is-invalid" : ""}`}
                       value={formulario.validadeDias ?? ""}
                       onChange={(evento) => onCampo({ validadeDias: evento.target.value ? Number(evento.target.value) : undefined })}
@@ -260,7 +261,7 @@ export default function PcAcessos({
                           {dias} dias
                         </option>
                       ))}
-                    </select>
+                    </Select>
                     {erroValidade ? (
                       <span className="ui-field-error">{erroValidade}</span>
                     ) : formulario.validadeDias ? (
@@ -471,14 +472,14 @@ export default function PcAcessos({
             <p className="ui-subtitle">{renovarDe.nome} · escolha a nova validade, contada a partir de hoje.</p>
             <label className="pc-field">
               <span className="ui-eyebrow">Nova validade</span>
-              <select className="ui-input" value={diasRenovacao || ""} onChange={(evento) => setDiasRenovacao(Number(evento.target.value))}>
+              <Select className="ui-input" value={diasRenovacao || ""} onChange={(evento) => setDiasRenovacao(Number(evento.target.value))}>
                 <option value="">Escolha…</option>
                 {PRAZOS_DE_VALIDADE.map((dias) => (
                   <option key={dias} value={dias}>
                     {dias} dias
                   </option>
                 ))}
-              </select>
+              </Select>
               {diasRenovacao ? <span className="ui-row-sub">{textoDoConvite(calcularValidade(diasRenovacao))}</span> : <span className="ui-field-error">Escolha 3, 7, 15 ou 30 dias.</span>}
             </label>
             <div className="ui-footer-actions">

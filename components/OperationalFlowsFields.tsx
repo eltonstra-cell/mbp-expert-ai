@@ -1,5 +1,6 @@
 "use client";
 
+import Select from "@/components/Select";
 import { useEffect } from "react";
 import type { FluxoOperacional } from "@/types";
 import {
@@ -61,10 +62,10 @@ export default function OperationalFlowsFields({ fluxos, setores, onChange, flux
             <div className="grid min-w-0 gap-2 md:grid-cols-2">
               <label className="cad-rotulado">
                 <span>Setor onde ocorre</span>
-                <select value={fluxo.setorVinculado} onChange={(event) => atualizar(indice, { setorVinculado: event.target.value })} className="cad-input">
+                <Select value={fluxo.setorVinculado} onChange={(event) => atualizar(indice, { setorVinculado: event.target.value })} className="cad-input">
                   {setores.length === 0 && <option value={fluxo.setorVinculado}>{fluxo.setorVinculado}</option>}
                   {setores.map((setor) => <option key={setor} value={setor}>{setor}</option>)}
-                </select>
+                </Select>
               </label>
 
               <label className="cad-rotulado">

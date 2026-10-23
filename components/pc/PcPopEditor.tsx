@@ -1,5 +1,6 @@
 "use client";
 
+import Select from "@/components/Select";
 import { formatarCnpj } from "@/lib/cnpj";
 import { formatarData, formatarHora, hojeLocalISO } from "@/lib/dataLocal";
 import { limparTextoDePessoa, nomeECargo } from "@/lib/nomeCargo";
@@ -253,6 +254,8 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
   const [secao, setSecao] = useState<Secao | null>("passos");
   const [tocado, setTocado] = useState(false);
   const [passoEmFoco, setPassoEmFoco] = useState<string | null>(null);
+  /** Menu aberto numa linha de passo: "⋯" (subtítulo e remover) ou "↕" (subir e descer). Um por vez. */
+  const [menuDoPasso, setMenuDoPasso] = useState<{ id: string; tipo: "mais" | "ordem" } | null>(null);
   const [passosTocados, setPassosTocados] = useState<Record<string, boolean>>({});
   const [salvoEm, setSalvoEm] = useState("");
   const [confirmandoAprovacao, setConfirmandoAprovacao] = useState(false);
@@ -399,7 +402,11 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
     regra.id = "estilo-impressao-cartaz";
     regra.textContent = "@media print{@page{size:A4;margin:0}#pop-folha,#pop-folha *{display:none!important}}";
     document.head.appendChild(regra);
+    // O PDF já sai com o nome "Cartaz – Como lavar as mãos – POP-XX"; o título da página volta depois.
+    const tituloAntes = document.title;
+    document.title = `Cartaz – Como lavar as mãos – ${aprovadoDoCartaz.pop.codigo || "POP"}`;
     const limpar = () => {
+      document.title = tituloAntes;
       regra.remove();
       setCartazNoPapel(null);
       window.removeEventListener("afterprint", limpar);
@@ -418,7 +425,7 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
     if (capa?.ativa) window.addEventListener("afterprint", () => setCapaNoPapel(null), { once: true });
     // Espera a capa ser desenhada e o ícone e o logotipo carregarem: senão o PDF sai com o lugar vazio.
     if (modeloDaCapaImpressa) await aguardarImagensParaImprimir(document, modeloDaCapaImpressa.icone ? [modeloDaCapaImpressa.icone.url] : []);
-    onImprimir?.(`${rascunho.codigo || "POP"} - ${rascunho.titulo}`, {
+    onImprimir?.(`${rascunho.codigo || "POP"} – ${rascunho.titulo}`, {
       esquerda: [dadosDaEmpresa.nome, dadosDaEmpresa.cnpj ? `CNPJ ${formatarCnpj(dadosDaEmpresa.cnpj)}` : ""],
       // O cabeçalho corrido tem só empresa, CNPJ e "POP-01 · versão 1.1"; "Aprovada por …" fica uma vez só, abaixo do título.
       direita: [`${rascunho.codigo ? `${rascunho.codigo} · ` : ""}versão ${rascunho.versao}`],
@@ -531,7 +538,7 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
               ))}
             </ul>
           </aside>
-          <div className="pdoc-meio">
+          <div className={`pdoc-meio${secao === "passos" ? " pdoc-meio--passos" : ""}`}>
           {notasAbertas && itensDasNotasNaTela.length > 0 && <PainelDasNotas itens={itensDasNotasNaTela} onAcao={resolverPendencia} />}
           <SecaoRecolhivel id="identificacao" titulo="Identificação" resumo={rascunho.proximaRevisao ? `revisar até ${rascunho.proximaRevisao.split("-").reverse().join("/")}` : "revisar até: não definido"} aberta={secao === "identificacao"} onAlternar={alternar}>
             <div className="pop-grade">
@@ -666,14 +673,26 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
                     </span>
                     {editavel && (
                       <span className="pop-passo-acoes">
-                        {passo.subtitulo === undefined && (
-                          <button type="button" className="ui-btn ui-btn--soft ui-btn--small" aria-label={`Acrescentar subtítulo ao passo ${indice + 1}`} onClick={() => mudarSubtitulo(passo.id, "")}>
-                            + Subtítulo
-                          </button>
+                        {menuDoPasso?.id === passo.id && menuDoPasso.tipo === "mais" && (
+                          <span className="pop-passo-menu" role="menu" aria-label={`Ações do passo ${indice + 1}`}>
+                            {passo.subtitulo === undefined && (
+                              <button type="button" role="menuitem" className="ui-btn ui-btn--soft ui-btn--small" onClick={() => { mudarSubtitulo(passo.id, ""); setMenuDoPasso(null); }}>
+                                + Subtítulo
+                              </button>
+                            )}
+                            <button type="button" role="menuitem" className="ui-btn ui-btn--soft ui-btn--small" onClick={() => { mudar({ passos: passos.filter((item) => item.id !== passo.id) }); setMenuDoPasso(null); }}>
+                              Remover o passo
+                            </button>
+                          </span>
                         )}
-                        <button type="button" className="ui-btn ui-btn--soft ui-btn--small" aria-label={`Subir o passo ${indice + 1}`} disabled={indice === 0} onClick={() => moverPasso(indice, -1)}>↑</button>
-                        <button type="button" className="ui-btn ui-btn--soft ui-btn--small" aria-label={`Descer o passo ${indice + 1}`} disabled={indice === passos.length - 1} onClick={() => moverPasso(indice, 1)}>↓</button>
-                        <button type="button" className="ui-btn ui-btn--soft ui-btn--small" aria-label={`Remover o passo ${indice + 1}`} title="Remover o passo" onClick={() => mudar({ passos: passos.filter((item) => item.id !== passo.id) })}>✕</button>
+                        {menuDoPasso?.id === passo.id && menuDoPasso.tipo === "ordem" && (
+                          <span className="pop-passo-menu" role="menu" aria-label={`Ordem do passo ${indice + 1}`}>
+                            <button type="button" role="menuitem" className="ui-btn ui-btn--soft ui-btn--small" disabled={indice === 0} onClick={() => moverPasso(indice, -1)}>↑ Subir</button>
+                            <button type="button" role="menuitem" className="ui-btn ui-btn--soft ui-btn--small" disabled={indice === passos.length - 1} onClick={() => moverPasso(indice, 1)}>↓ Descer</button>
+                          </span>
+                        )}
+                        <button type="button" className="ui-btn ui-btn--soft ui-btn--small" aria-haspopup="menu" aria-expanded={menuDoPasso?.id === passo.id && menuDoPasso.tipo === "ordem"} aria-label={`Reordenar o passo ${indice + 1}`} title="Reordenar" onClick={() => setMenuDoPasso((atual) => (atual?.id === passo.id && atual.tipo === "ordem" ? null : { id: passo.id, tipo: "ordem" }))}>↕</button>
+                        <button type="button" className="ui-btn ui-btn--soft ui-btn--small" aria-haspopup="menu" aria-expanded={menuDoPasso?.id === passo.id && menuDoPasso.tipo === "mais"} aria-label={`Mais ações do passo ${indice + 1}`} title="Mais ações" onClick={() => setMenuDoPasso((atual) => (atual?.id === passo.id && atual.tipo === "mais" ? null : { id: passo.id, tipo: "mais" }))}>⋯</button>
                       </span>
                     )}
                   </li>
@@ -754,11 +773,11 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
               <div className="pop-grade">
                 <label className="pc-field">
                   <span className="ui-eyebrow">Exames: situação</span>
-                  <select className="ui-input" value={conteudo.manipuladores.examesApto} disabled={!editavel} onChange={(evento) => mudar({ manipuladores: { ...conteudo.manipuladores!, examesApto: evento.target.value as "" | "apto" | "nao-apto" } })}>
+                  <Select className="ui-input" value={conteudo.manipuladores.examesApto} disabled={!editavel} onChange={(evento) => mudar({ manipuladores: { ...conteudo.manipuladores!, examesApto: evento.target.value as "" | "apto" | "nao-apto" } })}>
                     <option value="">Não informado</option>
                     <option value="apto">Apto</option>
                     <option value="nao-apto">Não apto</option>
-                  </select>
+                  </Select>
                 </label>
                 <Campo rotulo="Exames: válidos até" tipo="data" valor={conteudo.manipuladores.examesValidade} desabilitado={!editavel} onChange={(valor) => mudar({ manipuladores: { ...conteudo.manipuladores!, examesValidade: valor } })} />
                 <Campo rotulo="Exames: periodicidade" valor={conteudo.manipuladores.examesPeriodicidade} desabilitado={!editavel} onChange={(valor) => mudar({ manipuladores: { ...conteudo.manipuladores!, examesPeriodicidade: valor } })} />
@@ -854,19 +873,19 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
               <div className="pop-comparar-escolha">
                 <label className="pc-field">
                   <span className="ui-eyebrow">Comparar</span>
-                  <select className="ui-input ui-input--lista pop-seletor-baixo" value={escolhidaA?.versao} onChange={(evento) => setVersaoA(evento.target.value)}>
+                  <Select className="ui-input ui-input--lista pop-seletor-baixo" value={escolhidaA?.versao} onChange={(evento) => setVersaoA(evento.target.value)}>
                     {versoes.map((versao) => (
                       <option key={versao.versao} value={versao.versao}>v{versao.versao}</option>
                     ))}
-                  </select>
+                  </Select>
                 </label>
                 <label className="pc-field">
                   <span className="ui-eyebrow">com</span>
-                  <select className="ui-input ui-input--lista pop-seletor-baixo" value={escolhidaB?.versao} onChange={(evento) => setVersaoB(evento.target.value)}>
+                  <Select className="ui-input ui-input--lista pop-seletor-baixo" value={escolhidaB?.versao} onChange={(evento) => setVersaoB(evento.target.value)}>
                     {versoes.map((versao) => (
                       <option key={versao.versao} value={versao.versao}>v{versao.versao}</option>
                     ))}
-                  </select>
+                  </Select>
                 </label>
               </div>
               <div className="pop-comparacao" role="table" aria-label="Comparação de versões">

@@ -1,5 +1,6 @@
 "use client";
 
+import Select from "@/components/Select";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { NavIcon } from "@/components/NavIcons";
 import { useAvisoAntesDeFotografar } from "@/components/AvisoAntesDeFotografar";
@@ -202,7 +203,7 @@ export default function RegistrarAgoraModal({ aparelho = "computador", visitas, 
           </div>
         )}
         {trocando && (
-          <select
+          <Select
             className="ui-input"
             value={visitaId}
             aria-label="Visita para salvar"
@@ -217,7 +218,7 @@ export default function RegistrarAgoraModal({ aparelho = "computador", visitas, 
                 {registro.rotulo}
               </option>
             ))}
-          </select>
+          </Select>
         )}
 
         <div className="pc-reg-cards">
@@ -388,14 +389,14 @@ export default function RegistrarAgoraModal({ aparelho = "computador", visitas, 
 
         <label className="pc-plan-block">
           <span className="ui-eyebrow">Vincular ao item do checklist (opcional)</span>
-          <select className="ui-input" value={itemId} disabled={camposDesabilitados} onChange={(evento) => setItemId(evento.target.value)}>
+          <Select className="ui-input" value={itemId} disabled={camposDesabilitados} onChange={(evento) => setItemId(evento.target.value)}>
             <option value="">Sem vínculo, só registrar</option>
             {(visita?.itens || []).map((item) => (
               <option key={item.id} value={item.id}>
                 {item.ambiente} · {item.rotulo}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
 
         <label className="pc-plan-block">

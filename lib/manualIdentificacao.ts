@@ -86,3 +86,47 @@ export function textoCurtoDaResponsabilidade(descricao: string, limite = 220): s
   if (!limpo) return "Sem texto: toque para escrever";
   return limpo.length > limite ? `${limpo.slice(0, limite - 1).trimEnd()}…` : limpo;
 }
+
+export type FontesParaPreencher = {
+  rt?: PerfilDoRt;
+  juntar: (cargo?: string, crn?: string) => string;
+  /** CNAE (descrição) da empresa: serve de ponto de partida para a descrição da atividade. */
+  atividade?: string;
+  responsavel?: string;
+  cargoResponsavel?: string;
+};
+
+export type ResultadoDoPreencher = {
+  valores: Partial<Record<CampoDaIdentificacao, string>>;
+  /** Campos que vieram do perfil do RT (selo "do perfil do RT"). */
+  doPerfil: CampoDaIdentificacao[];
+  preenchidos: CampoDaIdentificacao[];
+  /** Campos vazios que não têm de onde vir hoje (CPF/CNPJ e endereço do RT, data). */
+  semFonte: CampoDaIdentificacao[];
+};
+
+/**
+ * Botão "Preencher": completa SÓ os campos vazios, com dados que já existem (perfil do RT, responsável do estabelecimento e CNAE da empresa).
+ * O que já foi digitado nunca é trocado.
+ */
+export function preencherIdentificacao(atuais: Partial<Record<CampoDaIdentificacao, string>>, fontes: FontesParaPreencher): ResultadoDoPreencher {
+  const { valores, doPerfil } = prefillDoPerfilDoRt(atuais, fontes.rt, fontes.juntar);
+  const depois = { ...atuais, ...valores };
+  const candidatos: [CampoDaIdentificacao, string][] = [
+    ["atividadeDescricao", (fontes.atividade || "").trim()],
+    ["elaboradoPor", (depois.consultorNome || "").trim()],
+    ["revisadoPor", (depois.consultorNome || "").trim()],
+    ["aprovadoPor", [fontes.responsavel, fontes.cargoResponsavel].map((parte) => (parte || "").trim()).filter(Boolean).join(", ")],
+  ];
+  for (const [campo, valor] of candidatos) {
+    if (escrito(atuais[campo]) || escrito(valores[campo]) || !valor) continue;
+    valores[campo] = valor;
+  }
+  const finais = { ...atuais, ...valores };
+  return {
+    valores,
+    doPerfil,
+    preenchidos: CAMPOS_DA_IDENTIFICACAO.filter((campo) => escrito(valores[campo])),
+    semFonte: CAMPOS_DA_IDENTIFICACAO.filter((campo) => !escrito(finais[campo])),
+  };
+}

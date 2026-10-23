@@ -1,5 +1,6 @@
 "use client";
 
+import Select from "@/components/Select";
 import { useOnline } from "@/components/useOnline";
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
@@ -1043,7 +1044,7 @@ export default function PcEvidencias({
               <span className="ev7-filtro-rotulo">Ambiente</span>
               <span className="ev7-filtro-valor">{filtroAmbiente ? (filtroAmbiente === SEM_AMBIENTE ? "Sem ambiente" : opcoesAmbiente.find((opcao) => opcao.valor === filtroAmbiente)?.rotulo || filtroAmbiente) : "Todos"}</span>
               <span className="ev7-filtro-seta" aria-hidden="true">▾</span>
-              <select className="ev7-filtro-select" value={filtroAmbiente} onChange={(evento) => setFiltroAmbiente(evento.target.value)} aria-label="Filtrar por ambiente">
+              <Select className="ev7-filtro-select" value={filtroAmbiente} onChange={(evento) => setFiltroAmbiente(evento.target.value)} aria-label="Filtrar por ambiente">
                 <option value="">Todos</option>
                 {opcoesAmbiente.map((opcao) => (
                   <option key={opcao.valor} value={opcao.valor}>
@@ -1051,7 +1052,7 @@ export default function PcEvidencias({
                   </option>
                 ))}
                 <option value={SEM_AMBIENTE}>Sem ambiente</option>
-              </select>
+              </Select>
               {filtroAmbiente && (
                 <button type="button" className="ev7-filtro-limpar" onClick={() => setFiltroAmbiente("")} aria-label="Limpar o filtro de ambiente">
                   ✕

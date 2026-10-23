@@ -39,7 +39,7 @@ test("POP em campos: documento e histórico, blocos extras, faixa do texto-base 
   }
   assert.ok(editor.includes("textoDaFaixaDoTextoBase(rascunho)"));
   assert.ok(editor.includes("FieldVoiceTools"));
-  assert.ok(editor.includes("Subir o passo") && editor.includes("Descer o passo") && editor.includes("Remover o passo"));
+  assert.ok(editor.includes("↑ Subir") && editor.includes("↓ Descer") && editor.includes("Remover o passo") && editor.includes("Reordenar o passo") && editor.includes("Mais ações do passo"));
   // exames: só apto e validade
   assert.ok(editor.includes("examesApto") && editor.includes("examesValidade"));
   assert.ok(!/laudo[A-Za-z]*:/i.test(editor.replace(/Nunca o laudo/g, "")));

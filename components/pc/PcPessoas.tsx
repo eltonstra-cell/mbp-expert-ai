@@ -1,5 +1,6 @@
 "use client";
 
+import Select from "@/components/Select";
 import { limparTextoDePessoa, nomeProprio } from "@/lib/nomeCargo";
 import { useState } from "react";
 import { ListRow } from "@/components/ui/ListRow";
@@ -208,14 +209,14 @@ export default function PcPessoas({ empresa, normas, colaboradores, capacitacoes
             <div className="pess-linha pess-linha--2-1">
             <label className="pc-field">
               <span className="ui-eyebrow">Pessoa</span>
-              <select className={`ui-input${capTocada && errosCap.colaboradorId ? " is-invalid" : ""}`} value={cap.colaboradorId} onChange={(evento) => setCap({ ...cap, colaboradorId: evento.target.value })}>
+              <Select className={`ui-input${capTocada && errosCap.colaboradorId ? " is-invalid" : ""}`} value={cap.colaboradorId} onChange={(evento) => setCap({ ...cap, colaboradorId: evento.target.value })}>
                 <option value="">Escolha</option>
                 {ativos.map((item) => (
                   <option key={item.id} value={item.id}>
                     {item.nome} · {item.cargo}
                   </option>
                 ))}
-              </select>
+              </Select>
               {capTocada && errosCap.colaboradorId && <span className="ui-field-error">{errosCap.colaboradorId}</span>}
             </label>
             <label className="pc-field">

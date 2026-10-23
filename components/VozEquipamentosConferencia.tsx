@@ -1,5 +1,6 @@
 "use client";
 
+import Select from "@/components/Select";
 import { linhaDeConferencia, podeConfirmar, type ItemInterpretado } from "@/lib/vozEquipamentos";
 
 export type ItemParaConferir = ItemInterpretado & { id: string };
@@ -48,10 +49,10 @@ export default function VozEquipamentosConferencia({ itens, ambientes, onEscolhe
               {item.situacao !== "ok" && (
                 <label className="vz-escolha">
                   <span className="sr-only">Ambiente de {item.nome}</span>
-                  <select className="cad-input" value={item.ambiente} onChange={(evento) => onEscolherAmbiente(item.id, evento.target.value)} aria-label={`Ambiente de ${item.nome}`}>
+                  <Select className="cad-input" value={item.ambiente} onChange={(evento) => onEscolherAmbiente(item.id, evento.target.value)} aria-label={`Ambiente de ${item.nome}`}>
                     <option value="">{item.situacao === "inexistente" ? "ou escolher na lista…" : "Escolher o ambiente…"}</option>
                     {opcoes.map((ambiente) => <option key={ambiente} value={ambiente}>{ambiente}</option>)}
-                  </select>
+                  </Select>
                 </label>
               )}
               <span className="vz-acoes">

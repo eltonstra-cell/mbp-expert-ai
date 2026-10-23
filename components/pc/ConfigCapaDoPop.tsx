@@ -1,5 +1,6 @@
 "use client";
 
+import Select from "@/components/Select";
 import { useEffect, useRef, useState } from "react";
 import CapaDoPop from "@/components/CapaDoPop";
 import { prepararLogotipo } from "@/lib/logotipoCapa";
@@ -119,12 +120,12 @@ export default function ConfigCapaDoPop({ dados, iconeAutomatico, iconeEscolhido
                   <button type="button" className={`ccp-chip${capa.icone === "traco" ? " is-ativo" : ""}`} aria-pressed={capa.icone === "traco"} onClick={() => mudar({ icone: "traco" })}>
                     Traço (uma cor)
                   </button>
-                  <select className="ccp-select" value={icone} onChange={(evento) => setIcone(evento.target.value)} aria-label="Ícone deste POP">
+                  <Select className="ccp-select" value={icone} onChange={(evento) => setIcone(evento.target.value)} aria-label="Ícone deste POP">
                     <option value="">Ícone automático do tema</option>
                     {ICONES_DE_CAPA.map((item) => (
                       <option key={item.id} value={item.id}>{item.rotulo}</option>
                     ))}
-                  </select>
+                  </Select>
                 </fieldset>
 
                 <fieldset className="ccp-grupo ccp-linha">

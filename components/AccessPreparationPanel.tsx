@@ -1,4 +1,5 @@
 "use client";
+import Select from "@/components/Select";
 import { nomeDeExibicaoDaEmpresa } from "@/lib/nomeEmpresa";
 
 import { formatarDataHora } from "@/lib/dataLocal";
@@ -194,7 +195,7 @@ export default function AccessPreparationPanel(props: Props) {
             <div className="grid gap-3 md:grid-cols-2">
               <Campo titulo="Nome"><input className="w-full rounded-xl border bg-white p-3" value={formulario.nome} onChange={(e) => setFormulario({ ...formulario, nome: e.target.value })} /></Campo>
               <Campo titulo="E-mail"><input type="email" className="w-full rounded-xl border bg-white p-3" value={formulario.email} onChange={(e) => setFormulario({ ...formulario, email: e.target.value })} /></Campo>
-              <Campo titulo="Perfil"><select className="w-full rounded-xl border bg-white p-3" value={formulario.perfil} onChange={(e) => setFormulario({ ...formulario, perfil: e.target.value as PerfilUsuario, empresaIds: e.target.value === "Administrador" ? [] : formulario.empresaIds })}>{perfis.map((perfil) => <option key={perfil}>{perfil}</option>)}</select></Campo>
+              <Campo titulo="Perfil"><Select className="w-full rounded-xl border bg-white p-3" value={formulario.perfil} onChange={(e) => setFormulario({ ...formulario, perfil: e.target.value as PerfilUsuario, empresaIds: e.target.value === "Administrador" ? [] : formulario.empresaIds })}>{perfis.map((perfil) => <option key={perfil}>{perfil}</option>)}</Select></Campo>
             </div>
             {formulario.perfil !== "Administrador" && (
               <div className="mt-4">

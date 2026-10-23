@@ -117,7 +117,7 @@ test("microfone como ícone DENTRO do campo, na ponta direita; sem a linha 'Fala
   assert.match(css, /\.cad-linha--equipamento \.cad-rotulado--qtd\{flex:0 0 80px;width:80px\}/);
   assert.match(css, /\.cad-remover\{[^}]*background:#FDE3E3/);
   assert.match(css, /input::placeholder,textarea::placeholder\{color:#6B7A86/);
-  assert.ok(campos.includes("Nome real do ambiente, ex.: Churrasqueira") && campos.includes("Ambientes com nomes próprios da empresa") && campos.includes("Setores do estabelecimento"));
+  assert.ok(campos.includes("Nome real do ambiente, ex.: Churrasqueira") && campos.includes("Ambientes da empresa") && campos.includes("Setores do estabelecimento"));
   assert.ok(campos.includes("resumoDosSetoresMarcados(setores)"), "mantém a linha de setores marcados e ambientes próprios");
 });
 

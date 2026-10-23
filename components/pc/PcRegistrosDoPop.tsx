@@ -1,5 +1,6 @@
 "use client";
 
+import Select from "@/components/Select";
 import { useMemo, useState } from "react";
 import { Pill } from "@/components/ui/Pill";
 import { agoraParaCampoLocal, formatarDataHora, localParaISO } from "@/lib/dataLocal";
@@ -135,14 +136,14 @@ export default function PcRegistrosDoPop({ pop }: { pop: ProcedimentoOperacional
               </label>
               <label className="pc-field">
                 <span className="ui-eyebrow">Ambiente (opcional)</span>
-                <select className="ui-input ui-input--lista" value={ambiente} onChange={(evento) => setAmbiente(evento.target.value)}>
+                <Select className="ui-input ui-input--lista" value={ambiente} onChange={(evento) => setAmbiente(evento.target.value)}>
                   <option value="">Sem ambiente</option>
                   {contexto.ambientes.map((nome) => (
                     <option key={nome} value={nome}>
                       {nome}
                     </option>
                   ))}
-                </select>
+                </Select>
                 {contexto.ambientes.length === 0 && <span className="ui-row-sub">Cadastre os ambientes em Cadastros › Ambientes.</span>}
               </label>
             </div>
