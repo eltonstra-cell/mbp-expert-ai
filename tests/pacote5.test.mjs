@@ -128,8 +128,9 @@ test("barra do topo do Início: título 30 px, busca sem Ctrl K nem Ir, microfon
   assert.match(css, /\.pc-topbar--inicio \.pc-smartbar\{border:0;box-shadow:none;background:#F5F7FA;border-radius:14px;height:46px\}/);
   assert.match(css, /\.pc-topbar--inicio \.pc-mic\{[^}]*background:#0E7FB8/);
   assert.match(css, /\.pc-topbar--inicio \.pc-sync-chip\{background:transparent/);
-  assert.match(css, /\.pc-topbar--inicio \.emp-ativa-caixa\{[^}]*height:46px;border:0;border-radius:14px;background:#F5F7FA/);
-  assert.match(css, /\.pc-topbar--inicio \.emp-ativa-selo\{[^}]*color:#2456D6/);
+  assert.match(css, /\.pc-topbar--inicio \.emp-ativa-caixa\{[^}]*height:44px;padding:0 14px;border:1\.5px solid #2456D6;border-radius:12px;background:#FFFFFF\}/);
+  assert.match(css, /\.pc-topbar--inicio \.emp-ativa-selo\{position:absolute;top:-9px;left:12px;[^}]*background:#FFFFFF;font-size:11px;[^}]*color:#2456D6\}/);
+  assert.match(css, /\.pc-topbar--inicio \.emp-ativa-nome\{[^}]*font-size:16px/);
   const pagina = ler("../app/page.tsx");
   assert.ok(pagina.includes('variante={view === "inicio" && ehPC && !ehFiscal ? "inicio" : undefined}'), "só o Início usa a variante");
 });

@@ -5097,11 +5097,6 @@ button.esc-chip--mais:focus-visible{outline:3px solid #E8B04B;outline-offset:1px
 .pc-topbar--inicio .pc-sync-chip.is-ok .pc-sync-dot,.pc-topbar--inicio .pc-sync-chip .pc-sync-dot{background:#15803D}
 .pc-topbar--inicio .pc-sync-chip.is-pendente .pc-sync-dot{background:#E89A0C}
 .pc-topbar--inicio .pc-sync-chip.is-erro .pc-sync-dot{background:#D93A3A}
-.pc-topbar--inicio .emp-ativa{flex:0 1 260px;min-width:0}
-.pc-topbar--inicio .emp-ativa-avatar{display:none}
-.pc-topbar--inicio .emp-ativa-caixa{min-width:0;height:46px;border:0;border-radius:14px;background:#F5F7FA;padding:0 14px}
-.pc-topbar--inicio .emp-ativa-selo{position:static;display:block;padding:0;background:transparent;font-size:.7rem;color:#2456D6}
-.pc-topbar--inicio .emp-ativa-nome{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:1rem;color:#12202B}
 .pc-topbar--inicio .pc-mode-chip{display:none}
 
 .ini2{gap:28px;padding:0 36px 24px;background:#fff;overflow:hidden}
@@ -5155,16 +5150,22 @@ button.esc-chip--mais:focus-visible{outline:3px solid #E8B04B;outline-offset:1px
 .pc-offset:has(.ini2){padding-left:36px!important;padding-right:36px!important}
 .ini2{padding:0 0 24px}
 .pc-topbar--inicio .pc-busca{flex:1 1 360px;max-width:520px}
-.pc-topbar--inicio .emp-ativa{flex:0 1 240px;min-width:190px}
 .ini2-colunas{grid-template-columns:minmax(0,2fr) minmax(0,1fr)}
 @media (max-width:1200px){.ini2-colunas{grid-template-columns:minmax(0,1fr)}}
 @media (max-width:1100px){
   .pc-topbar--inicio{flex-wrap:wrap;row-gap:10px}
   .pc-topbar--inicio .pc-busca{order:9;flex:1 1 100%;max-width:none}
-  .pc-topbar--inicio .emp-ativa{flex:0 1 240px;min-width:190px}
 }
 .ini2-sub-vence{display:flex;min-width:0}
 .ini2-sub-quem{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ini2-sub-dias{flex:none;white-space:pre}
 .ini2-aviso{margin:0;font-size:14px;color:#3D5160}
 .ini2-aviso-marca{color:#B35A36}
+
+/* Seletor "Empresa ativa" do Início: caixa branca com borda azul forte e o selo preso à borda de cima (só nesta barra) */
+.pc-topbar--inicio .emp-ativa{flex:0 0 auto;max-width:300px;min-width:0}
+.pc-topbar--inicio .emp-ativa-avatar{display:none}
+.pc-topbar--inicio .emp-ativa-caixa{position:relative;flex:none;min-width:0;height:44px;padding:0 14px;border:1.5px solid #2456D6;border-radius:12px;background:#FFFFFF}
+.pc-topbar--inicio .emp-ativa-selo{position:absolute;top:-9px;left:12px;display:block;padding:0 6px;border-radius:0;background:#FFFFFF;font-size:11px;line-height:16px;color:#2456D6}
+.pc-topbar--inicio .emp-ativa-nome{flex:1 1 auto;min-width:0;font-family:var(--font-body),"Nunito Sans",sans-serif;font-size:16px;font-weight:400;color:#12202B}
+.pc-topbar--inicio .emp-ativa-seta{font-size:11px;color:#51606c}
