@@ -226,6 +226,9 @@ import {
   shouldSyncOnActivation,
   SYNC_ACTIVATION_DEDUP_MS,
 } from "@/lib/syncPolicy";
+import ConflitosDeEdicao from "@/components/ConflitosDeEdicao";
+import { contarAlteracoesPendentes, iguais as estadosIguais, mesclarTresVias, usarVersaoDaNuvem, type Conflito } from "@/lib/mesclaTresVias";
+import { gravarBase, gravarConflitos, juntarConflitos, lerBase, lerConflitos, type BaseSalva } from "@/lib/estadoBase";
 import {
   hasLocalOnlyRecords,
   localOnlyCounts,
@@ -1105,6 +1108,17 @@ export default function Home() {
     "conectando" | "sincronizado" | "local" | "erro" | "recuperacao"
   >("conectando");
   const [syncErroVisivel, setSyncErroVisivel] = useState(false);
+  // Fila do estado (visitas, respostas, correções): a base é o que o servidor tinha na última sincronização; o que difere dela está pendente.
+  const baseRef = useRef<BaseSalva | null>(null);
+  const dbRef = useRef<AppDB>(emptyDB);
+  dbRef.current = db;
+  const [conflitos, setConflitos] = useState<Conflito[]>([]);
+  const conflitosRef = useRef<Conflito[]>([]);
+  const [pendentesDoEstado, setPendentesDoEstado] = useState(0);
+  const [envioForcado, setEnvioForcado] = useState(0);
+  const [versaoDaBase, setVersaoDaBase] = useState(0);
+  const [sessaoDoEstadoExpirou, setSessaoDoEstadoExpirou] = useState(false);
+  const [armazenamentoNaoGarantido, setArmazenamentoNaoGarantido] = useState(false);
   const [syncAtualizadoEm, setSyncAtualizadoEm] = useState("");
   const ultimaNuvemRef = useRef<number>(0);
   const ultimaNuvemVersaoRef = useRef<string | null>(null);
@@ -1257,8 +1271,29 @@ export default function Home() {
   });
 
 
+  function registrarBase(estado: AppDB, versao: string | null) {
+    baseRef.current = { estado, versao, salvoEm: new Date().toISOString() };
+    setVersaoDaBase((n) => n + 1);
+    void gravarBase(storageIdentityRef.current, estado, versao);
+  }
+
+  function definirConflitos(lista: Conflito[]) {
+    conflitosRef.current = lista;
+    setConflitos(lista);
+    gravarConflitos(storageIdentityRef.current, lista);
+  }
+
+  function escolherConflito(conflito: Conflito, escolha: "meu" | "nuvem") {
+    if (escolha === "nuvem") setDb((atual) => usarVersaoDaNuvem(atual, conflito));
+    const restantes = conflitosRef.current.filter((item) => item.id !== conflito.id);
+    definirConflitos(restantes);
+    if (restantes.length === 0) setEnvioForcado((n) => n + 1);
+  }
+
   function sincronizacaoOk() {
     falhasSyncRef.current = 0;
+    setSessaoDoEstadoExpirou(false);
+    if (!syncBloqueadaRef.current) setProtecaoLocalAtiva(false);
 
     if (retrySyncTimerRef.current !== null) {
       window.clearTimeout(retrySyncTimerRef.current);
@@ -1308,11 +1343,23 @@ export default function Home() {
       ? new Date(cloud.updatedAt).getTime()
       : 0;
 
-    setDb(novo);
-    salvarDBLocal(novo);
+    // O que este aparelho mudou e ainda não enviou NUNCA é trocado pelo estado da nuvem: mescla por item e, se os dois mudaram o mesmo item, pergunta.
+    let aplicar = novo;
+    const base = baseRef.current?.estado;
+    if (base && !estadosIguais(base, dbRef.current)) {
+      const mesclado = mesclarTresVias(base, dbRef.current, novo);
+      aplicar = mesclado.estado;
+      if (mesclado.conflitos.length) definirConflitos(juntarConflitos(conflitosRef.current, mesclado.conflitos));
+    }
+    registrarBase(novo, cloud.updatedAt || null);
+
+    setDb(aplicar);
+    salvarDBLocal(aplicar);
 
     window.setTimeout(() => {
       aplicandoNuvemRef.current = false;
+      // Sobrou algo deste aparelho: envia agora, já em cima da versão nova da nuvem.
+      if (aplicar !== novo && !estadosIguais(novo, aplicar)) setEnvioForcado((n) => n + 1);
     }, 0);
 
     return true;
@@ -1440,6 +1487,9 @@ export default function Home() {
 
       const local = loadDB(identidadeLocal);
       let s = local;
+      baseRef.current = await lerBase(identidadeLocal);
+      conflitosRef.current = lerConflitos(identidadeLocal);
+      if (!cancelado) setConflitos(conflitosRef.current);
 
       setSyncStatus("conectando");
 
@@ -1458,7 +1508,17 @@ export default function Home() {
             const cloudDb = cloud.data as AppDB;
             const counts = localOnlyCounts(local, cloudDb);
 
-            if (hasLocalOnlyRecords(counts)) {
+            if (baseRef.current) {
+              // Este aparelho já sabe o que o servidor tinha da última vez: o que foi feito sem sinal é mesclado, nunca trocado.
+              const mesclado = mesclarTresVias(baseRef.current.estado, local, cloudDb);
+              s = mesclado.estado;
+              if (mesclado.conflitos.length) definirConflitos(juntarConflitos(conflitosRef.current, mesclado.conflitos));
+              registrarBase(cloudDb, cloud.updatedAt || null);
+              salvarDBLocal(s);
+              sincronizacaoOk();
+              setSyncStatus("sincronizado");
+              if (!estadosIguais(cloudDb, s)) window.setTimeout(() => setEnvioForcado((n) => n + 1), 0);
+            } else if (hasLocalOnlyRecords(counts)) {
               // Nunca apaga silenciosamente registros que existam somente
               // neste navegador. Bloqueia a sincronização até o profissional
               // confirmar a mesclagem segura com a nuvem.
@@ -1477,6 +1537,7 @@ export default function Home() {
             } else {
               // Nuvem já existente e sem perda local: passa a ser a fonte compartilhada.
               s = cloudDb;
+              registrarBase(cloudDb, cloud.updatedAt || null);
               salvarDBLocal(s);
               sincronizacaoOk();
               setSyncStatus("sincronizado");
@@ -1511,6 +1572,7 @@ export default function Home() {
 
               if (upload.ok) {
                 const salvo = await upload.json();
+                registrarBase(s, salvo.updatedAt || null);
                 ultimaNuvemRef.current = salvo.updatedAt
                   ? new Date(salvo.updatedAt).getTime()
                   : Date.now();
@@ -1536,9 +1598,9 @@ export default function Home() {
           setSyncStatus("local");
         }
       } catch {
-        // Preserva o localStorage, mas bloqueia qualquer gravação automática.
-        // Uma falha de leitura nunca pode ser tratada como nuvem vazia.
-        syncBloqueadaRef.current = true;
+        // Preserva o localStorage. Uma falha de leitura nunca pode ser tratada como nuvem vazia: sem a base da última
+        // sincronização, bloqueia a gravação automática; com a base, o trabalho segue e é mesclado quando o sinal voltar.
+        syncBloqueadaRef.current = !baseRef.current;
         falhasSyncRef.current = TENTATIVAS_DA_NUVEM;
         setSyncStatus("erro");
         setSyncErroVisivel(true);
@@ -1827,13 +1889,17 @@ export default function Home() {
   // Itens na fila continuam guardados ao sair ou trocar de empresa; só avisa antes.
   async function confirmarComFila(acao: "sair" | "trocar"): Promise<boolean> {
     const n = fila.resumo.pendentes;
-    if (!n) return true;
-    const plural = n === 1 ? "1 evidência aguardando envio" : `${n} evidências aguardando envio`;
+    const alteracoes = pendentesDoEstado;
+    if (!n && !alteracoes) return true;
+    const partes = [];
+    if (alteracoes) partes.push(alteracoes === 1 ? "1 alteração" : `${alteracoes} alterações`);
+    if (n) partes.push(n === 1 ? "1 evidência" : `${n} evidências`);
+    const plural = `${partes.join(" e ")} aguardando envio`;
     return confirmar(
       acao === "sair"
-        ? `Há ${plural} neste aparelho.\n\nSe você sair, elas continuam guardadas, mas só serão enviadas quando você entrar de novo com a mesma conta e houver conexão. Não limpe os dados do navegador antes disso.`
-        : `Há ${plural} neste aparelho.\n\nElas continuam na fila e serão enviadas normalmente, com qualquer empresa aberta.`,
-      { titulo: "Evidências na fila", confirmarRotulo: acao === "sair" ? "Sair mesmo assim" : "Trocar mesmo assim" }
+        ? `Há ${plural} neste aparelho.\n\nSe você sair, ficam guardadas, mas só serão enviadas quando você entrar de novo com a mesma conta e houver conexão. Não limpe os dados do navegador antes disso.`
+        : `Há ${plural} neste aparelho.\n\nContinuam guardadas e serão enviadas normalmente, com qualquer empresa aberta.`,
+      { titulo: "Envio pendente", confirmarRotulo: acao === "sair" ? "Sair mesmo assim" : "Trocar mesmo assim" }
     );
   }
 
@@ -2231,16 +2297,24 @@ export default function Home() {
     if (
       aplicandoNuvemRef.current ||
       salvamentoImediatoRef.current ||
-      syncBloqueadaRef.current
+      syncBloqueadaRef.current ||
+      conflitosRef.current.length > 0
     ) return;
 
     const timer = window.setTimeout(async () => {
       try {
+        // Nada mudou desde a última sincronização: não há o que enviar.
+        if (baseRef.current && estadosIguais(baseRef.current.estado, db)) return;
         // Checagem leve antes de gravar: não baixa o banco completo.
         const metaResponse = await fetch("/api/state?meta=1", {
           method: "GET",
           cache: "no-store",
         });
+        if (metaResponse.status === 401) {
+          setSessaoDoEstadoExpirou(true);
+          setSyncStatus("erro");
+          return;
+        }
         if (!metaResponse.ok) {
           throw new Error(`Falha ao consultar a nuvem (${metaResponse.status})`);
         }
@@ -2291,10 +2365,17 @@ export default function Home() {
 
         if (await tratarConflitoDaNuvem(response)) return;
 
+        if (response.status === 401) {
+          setSessaoDoEstadoExpirou(true);
+          setSyncStatus("erro");
+          return;
+        }
+
         if (response.ok) {
           const result = await response.json();
 
           if (result?.configured !== false) {
+            registrarBase(db, result.updatedAt || null);
             ultimaNuvemVersaoRef.current = result.updatedAt || null;
             ultimaNuvemRef.current = result.updatedAt
               ? new Date(result.updatedAt).getTime()
@@ -2321,7 +2402,54 @@ export default function Home() {
     }, 1200);
 
     return () => window.clearTimeout(timer);
-  }, [db, ready]);
+  }, [db, ready, envioForcado]);
+
+  // Contador de pendências do estado (respostas, correções e registros que ainda não chegaram ao servidor).
+  useEffect(() => {
+    if (!ready) return;
+    const timer = window.setTimeout(() => {
+      setPendentesDoEstado(baseRef.current ? contarAlteracoesPendentes(baseRef.current.estado, db) : 0);
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [db, ready, versaoDaBase]);
+
+  // O sinal voltou: lê a nuvem (mescla) e envia o que ficou pendente. Sem Background Sync (iPhone), vale também ao voltar para o app (efeito de foco abaixo).
+  useEffect(() => {
+    if (!ready) return;
+    const aoVoltarOnline = () => {
+      falhasSyncRef.current = 0;
+      void buscarEstadoNuvem(false);
+      setEnvioForcado((n) => n + 1);
+    };
+    window.addEventListener("online", aoVoltarOnline);
+    return () => window.removeEventListener("online", aoVoltarOnline);
+  }, [ready]);
+
+  // Saída com pendência: o navegador pergunta antes de fechar a página.
+  useEffect(() => {
+    if (pendentesDoEstado <= 0 && fila.resumo.pendentes <= 0) return;
+    const avisarSaida = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", avisarSaida);
+    return () => window.removeEventListener("beforeunload", avisarSaida);
+  }, [pendentesDoEstado, fila.resumo.pendentes]);
+
+  // Pede armazenamento persistente; se o navegador negar, avisa (ele pode apagar o que está guardado no aparelho).
+  useEffect(() => {
+    if (!ready) return;
+    void (async () => {
+      try {
+        if (!navigator.storage?.persist) return;
+        const ja = (await navigator.storage.persisted?.()) ?? false;
+        const garantido = ja || (await navigator.storage.persist());
+        setArmazenamentoNaoGarantido(!garantido);
+      } catch {
+        // Sem a API, nada a avisar.
+      }
+    })();
+  }, [ready]);
 
 
   useEffect(() => {
@@ -6912,7 +7040,7 @@ export default function Home() {
         onFecharMais={() => setMenuMaisAberto(false)}
         utilitarias={[
           { id: "texto", rotulo: "Texto", onClick: () => { setTamanhoTextoRascunho(tamanhoTexto); setPainelTamanhoTextoAberto(true); } },
-          { id: "sincronizar", rotulo: fila.resumo.pendentes ? `Sincronizar · ${fila.resumo.pendentes} ${fila.resumo.pendentes === 1 ? "pendente" : "pendentes"}` : "Sincronizar", onClick: () => { setMenuMaisAberto(false); void atualizarNuvemManualmente(); setView("fila"); } },
+          { id: "sincronizar", rotulo: fila.resumo.pendentes + pendentesDoEstado ? `Sincronizar · ${fila.resumo.pendentes + pendentesDoEstado} ${fila.resumo.pendentes + pendentesDoEstado === 1 ? "pendente" : "pendentes"}` : "Sincronizar", onClick: () => { setMenuMaisAberto(false); void atualizarNuvemManualmente(); setView("fila"); } },
           { id: "modo", rotulo: "Modo de tela", onClick: () => { setMenuMaisAberto(false); setView("modotela"); } },
           { id: "sobre", rotulo: "Sobre", onClick: () => void avisar(`${BRAND.name}\n${BRAND.subtitle}`, { titulo: "Sobre" }) },
           { id: "sair", rotulo: "Sair", desabilitado: saindo, onClick: () => { setMenuMaisAberto(false); void sairDoSistema(); } },
@@ -7175,6 +7303,26 @@ export default function Home() {
         </div>
       )}
 
+      <ConflitosDeEdicao conflitos={conflitos} onEscolher={escolherConflito} />
+
+      {sessaoDoEstadoExpirou && (
+        <div className="border-b border-amber-300 bg-[var(--pend-bg)] pc-offset">
+          <div className="mx-auto max-w-7xl px-4 py-3 text-amber-950">
+            <div className="font-extrabold">Sua sessão expirou.</div>
+            <p className="mt-1 text-sm">O que você fez continua guardado neste aparelho e nada foi descartado. Entre de novo para enviar.</p>
+            <button type="button" onClick={() => window.location.assign("/auth/sign-in")} className="mt-3 rounded-xl bg-[var(--brand)] px-4 py-2 font-bold text-white">Entrar de novo</button>
+          </div>
+        </div>
+      )}
+
+      {armazenamentoNaoGarantido && (
+        <div className="border-b border-amber-300 bg-[var(--pend-bg)] pc-offset">
+          <div className="mx-auto max-w-7xl px-4 py-2 text-sm text-amber-950">
+            O navegador não garantiu o armazenamento deste aparelho: ele pode apagar o que está guardado se faltar espaço. Envie o que está pendente assim que tiver sinal.
+          </div>
+        </div>
+      )}
+
       {protecaoLocalAtiva && !recuperacaoPendente && (
         <div className={`border-b pc-offset ${estaOnline ? "border-red-200 bg-[var(--nc-bg)]" : "border-blue-200 bg-[var(--brand-soft)]"}`}>
           <div className={`mx-auto max-w-7xl px-4 py-3 ${estaOnline ? "text-red-950" : "text-blue-950"}`}>
@@ -7277,7 +7425,7 @@ export default function Home() {
               empresa={nomeEmFormatoNatural(atual?.nomeFantasia) || ""}
               empresaCor={atual ? corDaEmpresa(atual) : undefined}
               empresaIniciais={atual ? iniciaisDaEmpresa(atual.nomeFantasia || "") : ""}
-              sincronizacao={{ ...seloDeSincronizacao({ online: estaOnline, syncStatus, pendentes: fila.resumo.pendentes }), onClick: () => void atualizarNuvemManualmente() }}
+              sincronizacao={{ ...seloDeSincronizacao({ online: estaOnline, syncStatus, pendentes: fila.resumo.pendentes + pendentesDoEstado }), onClick: () => void atualizarNuvemManualmente() }}
               menuModo={itensMenuModo}
               onTrocarEmpresa={() => setTrocarEmpresaAberto(true)}
               onVoltar={mostrarVoltar(localDaTela) ? () => void voltarUmaTela() : undefined}
@@ -7311,7 +7459,7 @@ export default function Home() {
           contextoDaVoz={contextoDaVoz}
           micDisponivel={deveExibirRecursosDeIa(usuarioDaSessao)}
           modo={modo}
-          sincronizacao={{ ...seloDeSincronizacao({ online: estaOnline, syncStatus, pendentes: fila.resumo.pendentes }), onClick: () => void atualizarNuvemManualmente() }}
+          sincronizacao={{ ...seloDeSincronizacao({ online: estaOnline, syncStatus, pendentes: fila.resumo.pendentes + pendentesDoEstado }), onClick: () => void atualizarNuvemManualmente() }}
           automatico={telaModo.preferencia.automatico}
           onEscolherModo={telaModo.escolherModo}
           onVoltarAoAutomatico={telaModo.voltarAoAutomatico}
@@ -7408,7 +7556,7 @@ export default function Home() {
               { id: "trocar-empresa", rotulo: "Trocar empresa", icone: "empresas", tom: "turquesa", onClick: () => setTrocarEmpresaAberto(true) },
               { id: "ajuda", rotulo: "Ajuda", icone: "ajuda", tom: "laranja", onClick: () => irParaMenu("ajuda") },
               { id: "modo", rotulo: "Modo de tela", icone: "modo", tom: "roxo", onClick: () => setView("modotela") },
-              { id: "sincronizar", rotulo: fila.resumo.pendentes ? `Sincronizar · ${fila.resumo.pendentes} ${fila.resumo.pendentes === 1 ? "pendente" : "pendentes"}` : "Sincronizar", icone: "sincronizar", tom: "verde", onClick: () => { void atualizarNuvemManualmente(); setView("fila"); } },
+              { id: "sincronizar", rotulo: fila.resumo.pendentes + pendentesDoEstado ? `Sincronizar · ${fila.resumo.pendentes + pendentesDoEstado} ${fila.resumo.pendentes + pendentesDoEstado === 1 ? "pendente" : "pendentes"}` : "Sincronizar", icone: "sincronizar", tom: "verde", onClick: () => { void atualizarNuvemManualmente(); setView("fila"); } },
               { id: "sair", rotulo: "Sair", icone: "sair", tom: "vermelho", onClick: () => void sairDoSistema() },
             ]}
             destaque={{
