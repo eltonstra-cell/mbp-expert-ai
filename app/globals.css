@@ -5226,3 +5226,11 @@ html[data-modo] .pc-offset:has(.ini2){height:auto;min-height:100vh;overflow:visi
 
 /* Aviso com Desfazer depois de marcar o restante como Conforme */
 .lote-desfazer{position:fixed;left:50%;bottom:24px;z-index:70;display:flex;align-items:center;gap:14px;max-width:calc(100vw - 32px);padding:12px 18px;border:1.5px solid #E8B04B;border-radius:14px;background:#FFF8E8;font-size:.95rem;color:#12202B;transform:translateX(-50%);box-shadow:0 8px 24px rgba(18,32,43,.18)}
+
+/* Ditar o ambiente */
+.voz-ambiente{max-width:760px;width:calc(100vw - 32px);max-height:88vh;overflow-y:auto}
+.voz-ambiente-entrada{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:start;margin:12px 0}
+.voz-ambiente-lista{display:grid;gap:10px;margin:10px 0;padding:0;list-style:none}
+.voz-ambiente-linha{display:grid;gap:8px;padding:12px;border:1px solid #D5DDE5;border-radius:12px}
+.voz-ambiente-marca{display:flex;gap:10px;align-items:center;font-size:.95rem}
+.voz-ambiente-campos{display:grid;grid-template-columns:1fr 1fr;gap:10px}

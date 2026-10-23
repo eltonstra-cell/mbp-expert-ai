@@ -39,6 +39,8 @@ type Props = {
   onPularAmbiente?: (proximo: string) => void;
   /** "Marcar o restante como Conforme" do ambiente atual; o número é quantos itens o lote marcaria. */
   restanteDoLote?: { quantos: number; onMarcar: () => void };
+  /** "Ditar o ambiente" (voz com conferência). */
+  ditado?: ReactNode;
   /** Sem apoio (tablet), o painel da direita não aparece. */
   apoio?: ApoioDoItem;
 };
@@ -170,7 +172,7 @@ function PainelDeApoio({ apoio }: { apoio: ApoioDoItem }) {
   );
 }
 
-export default function PcChecklist({ titulo, subtitulo, ambientes, ambienteAtual, onAmbiente, fila, itemAtualId, onItem, onVoltar, principal, apoio, onPularAmbiente, restanteDoLote }: Props) {
+export default function PcChecklist({ titulo, subtitulo, ambientes, ambienteAtual, onAmbiente, fila, itemAtualId, onItem, onVoltar, principal, apoio, onPularAmbiente, restanteDoLote, ditado }: Props) {
   const [recolhidosAbertos, setRecolhidosAbertos] = useState(false);
   const caminhada = progressoDaCaminhada(ambientes, ambienteAtual);
   const recolhidos = fila.filter((item) => item.recolhido && item.id !== itemAtualId);
@@ -181,6 +183,7 @@ export default function PcChecklist({ titulo, subtitulo, ambientes, ambienteAtua
         <div>
           <h1 className="ui-title">{titulo}</h1>
           <p className="ui-subtitle">{subtitulo}</p>
+          {ditado && <p className="chk-caminhada">{ditado}</p>}
           {restanteDoLote && restanteDoLote.quantos > 0 && (
             <p className="chk-caminhada">
               <button type="button" className="pc-link-btn" onClick={restanteDoLote.onMarcar}>Marcar o restante como Conforme ({restanteDoLote.quantos})</button>

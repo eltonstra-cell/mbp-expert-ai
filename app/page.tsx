@@ -230,6 +230,8 @@ import { ambientesIniciais, moverAmbiente } from "@/lib/visitaRapida";
 import { historicoDaReincidencia, memoriaDoPlano, seloDaReincidencia } from "@/lib/memoriaDoPlano";
 import { ordemAdaptativa, VISITAS_RECENTES } from "@/lib/checklistAdaptativo";
 import { aplicarLote, contarEmLote, desfazerLote, planoDoLote, textoDaConfirmacaoDoLote } from "@/lib/loteConforme";
+import DitadoDoAmbiente from "@/components/DitadoDoAmbiente";
+import type { PropostaDeVoz } from "@/lib/vozDoAmbiente";
 import ConflitosDeEdicao from "@/components/ConflitosDeEdicao";
 import { contarAlteracoesPendentes, iguais as estadosIguais, mesclarTresVias, usarVersaoDaNuvem, type Conflito } from "@/lib/mesclaTresVias";
 import { gravarBase, gravarConflitos, juntarConflitos, lerBase, lerConflitos, type BaseSalva } from "@/lib/estadoBase";
@@ -4485,7 +4487,7 @@ export default function Home() {
 
   function atualizarChecklistItem(
     itemId: string,
-    patch: Partial<Pick<ChecklistItem, "status" | "observacao" | "criticidade" | "criticidadeSugerida" | "temperatura">>
+    patch: Partial<Pick<ChecklistItem, "status" | "observacao" | "criticidade" | "criticidadeSugerida" | "temperatura" | "porVoz">>
   ) {
     if (!visitaAtual) return;
     if (!exigirPermissao("visitas.executar", visitaAtual.empresaId)) return;
@@ -4505,6 +4507,7 @@ export default function Home() {
           let patchNormalizado: any = { ...patch };
           // Responder o item (de qualquer forma) tira a marca de "resposta em lote".
           if (patch.status !== undefined && item.lote) patchNormalizado.lote = undefined;
+          if (patch.status !== undefined && item.porVoz && patch.porVoz === undefined) patchNormalizado.porVoz = undefined;
 
           // Ao sair de "Não Conforme", limpa a observação visível,
           // mas guarda internamente a última constatação para possível retorno.
@@ -4746,6 +4749,20 @@ export default function Home() {
     const texto = `${ids.length === 1 ? "1 item marcado" : `${ids.length} itens marcados`} como Conforme em lote.`;
     setLoteParaDesfazer({ visitaId, ids, em, texto });
     window.setTimeout(() => setLoteParaDesfazer((atual) => (atual && atual.em === em ? null : atual)), 12000);
+  }
+
+  // Ditado do ambiente: só o que o RT confirmou na tela de conferência; as respostas ficam marcadas "por voz" no relatório.
+  function gravarDitadoDoAmbiente(propostas: PropostaDeVoz[]) {
+    for (const proposta of propostas) {
+      if (!proposta.itemId || !proposta.status) continue;
+      atualizarChecklistItem(proposta.itemId, {
+        status: proposta.status,
+        ...(proposta.status === "Não Conforme" ? { observacao: proposta.observacao } : {}),
+        ...(proposta.temperatura ? { temperatura: proposta.temperatura } : {}),
+        porVoz: true,
+      });
+    }
+    mostrarToast(propostas.length === 1 ? "1 resposta gravada por voz." : `${propostas.length} respostas gravadas por voz.`);
   }
 
   function desfazerOLote() {
@@ -8495,6 +8512,7 @@ export default function Home() {
                   setAmbienteChecklistAtivo(nome);
                   if (primeiro) setItemFocoId(primeiro.id);
                 }}
+                ditado={podeEditar ? <DitadoDoAmbiente ambienteRotulo={nomeDeExibicaoDoAmbiente(ambienteDoFoco)} itens={lista.filter((item) => item.ambiente === ambienteDoFoco)} equipamentos={(empresaVisita?.equipamentosSetores || []).filter((equipamento) => equipamento.setor === ambienteDoFoco).map((equipamento) => equipamento.nome)} onGravar={gravarDitadoDoAmbiente} /> : undefined}
                 restanteDoLote={podeEditar ? { quantos: planoDoLoteDoAmbiente(ambienteDoFoco).marcar.length, onMarcar: () => void marcarRestanteDoAmbiente(ambienteDoFoco) } : undefined}
                 fila={filaDoAmbiente(doAmbiente)}
                 itemAtualId={foco?.id || ""}
@@ -9260,6 +9278,11 @@ export default function Home() {
                   <p className="mt-1 text-sm text-slate-500">
                     Revisão consolidada dos registros realizados em campo.
                   </p>
+                  {(visitaAtual.checklist || []).some((item) => item.porVoz) && (
+                    <p className="mt-1 text-sm text-slate-500">
+                      {(visitaAtual.checklist || []).filter((item) => item.porVoz).length} {(visitaAtual.checklist || []).filter((item) => item.porVoz).length === 1 ? "resposta foi registrada" : "respostas foram registradas"} por voz (conferidas pelo responsável técnico antes de gravar).
+                    </p>
+                  )}
                   {contarEmLote(visitaAtual.checklist || []) > 0 && (
                     <p className="mt-1 text-sm text-slate-500">
                       {contarEmLote(visitaAtual.checklist || [])} {contarEmLote(visitaAtual.checklist || []) === 1 ? "item foi marcado" : "itens foram marcados"} como Conforme em lote (resposta em bloco, não individual).

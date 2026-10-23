@@ -338,6 +338,8 @@ export type ChecklistItem = {
   temperatura?: { valor: number; limiteId: string };
   /** Marcado como Conforme em lote ("marcar o restante do ambiente"): fica registrado no relatório; some quando o RT responde o item. */
   lote?: { em: string };
+  /** Resposta que veio de ditado por voz (conferida pelo RT antes de gravar): fica marcada no relatório; some quando o RT responde o item de outra forma. */
+  porVoz?: boolean;
   /** Texto oficial da norma para o critério. Só existe quando foi salvo e conferido; sem ele o bloco "Base legal" não aparece. */
   baseLegal?: string;
   orientacao?: string;
