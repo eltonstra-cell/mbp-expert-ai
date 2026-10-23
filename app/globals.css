@@ -5219,3 +5219,10 @@ html[data-modo] .pc-offset:has(.ini2){height:auto;min-height:100vh;overflow:visi
 .chk-temp-msg{grid-column:1/-1;margin:0;font-size:.9rem;color:#3D5160}
 .chk-temp-msg.is-ok{color:#15803D}
 .chk-temp-msg.is-nc{color:#B42318}
+
+/* Checklist adaptativo: selo de item que reprovou antes e bloco recolhido */
+.chk-pc-num.is-reprovou{box-shadow:0 0 0 2px #D93A3A}
+.chk-pc-recolhidos{align-self:center;white-space:nowrap}
+
+/* Aviso com Desfazer depois de marcar o restante como Conforme */
+.lote-desfazer{position:fixed;left:50%;bottom:24px;z-index:70;display:flex;align-items:center;gap:14px;max-width:calc(100vw - 32px);padding:12px 18px;border:1.5px solid #E8B04B;border-radius:14px;background:#FFF8E8;font-size:.95rem;color:#12202B;transform:translateX(-50%);box-shadow:0 8px 24px rgba(18,32,43,.18)}

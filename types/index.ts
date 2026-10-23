@@ -336,6 +336,8 @@ export type ChecklistItem = {
   referencia?: string;
   /** Temperatura medida e o tipo de limite usado para classificar a resposta (opcional; a resposta pode ser corrigida pelo RT). */
   temperatura?: { valor: number; limiteId: string };
+  /** Marcado como Conforme em lote ("marcar o restante do ambiente"): fica registrado no relatório; some quando o RT responde o item. */
+  lote?: { em: string };
   /** Texto oficial da norma para o critério. Só existe quando foi salvo e conferido; sem ele o bloco "Base legal" não aparece. */
   baseLegal?: string;
   orientacao?: string;

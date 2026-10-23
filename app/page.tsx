@@ -228,6 +228,8 @@ import {
 } from "@/lib/syncPolicy";
 import { ambientesIniciais, moverAmbiente } from "@/lib/visitaRapida";
 import { historicoDaReincidencia, memoriaDoPlano, seloDaReincidencia } from "@/lib/memoriaDoPlano";
+import { ordemAdaptativa, VISITAS_RECENTES } from "@/lib/checklistAdaptativo";
+import { aplicarLote, contarEmLote, desfazerLote, planoDoLote, textoDaConfirmacaoDoLote } from "@/lib/loteConforme";
 import ConflitosDeEdicao from "@/components/ConflitosDeEdicao";
 import { contarAlteracoesPendentes, iguais as estadosIguais, mesclarTresVias, usarVersaoDaNuvem, type Conflito } from "@/lib/mesclaTresVias";
 import { gravarBase, gravarConflitos, juntarConflitos, lerBase, lerConflitos, type BaseSalva } from "@/lib/estadoBase";
@@ -1118,6 +1120,7 @@ export default function Home() {
   const conflitosRef = useRef<Conflito[]>([]);
   const [pendentesDoEstado, setPendentesDoEstado] = useState(0);
   const [envioForcado, setEnvioForcado] = useState(0);
+  const [loteParaDesfazer, setLoteParaDesfazer] = useState<{ visitaId: string; ids: string[]; em: string; texto: string } | null>(null);
   const [versaoDaBase, setVersaoDaBase] = useState(0);
   const [sessaoDoEstadoExpirou, setSessaoDoEstadoExpirou] = useState(false);
   const [armazenamentoNaoGarantido, setArmazenamentoNaoGarantido] = useState(false);
@@ -4500,6 +4503,8 @@ export default function Home() {
           };
 
           let patchNormalizado: any = { ...patch };
+          // Responder o item (de qualquer forma) tira a marca de "resposta em lote".
+          if (patch.status !== undefined && item.lote) patchNormalizado.lote = undefined;
 
           // Ao sair de "Não Conforme", limpa a observação visível,
           // mas guarda internamente a última constatação para possível retorno.
@@ -4699,13 +4704,61 @@ export default function Home() {
   }
 
   // Lista plana na ordem da visita: base do "um item por vez" (Campo e Equilibrado).
+  // Checklist adaptativo: usa só as últimas visitas da empresa que já estão no aparelho.
+  function adaptativoDaVisita() {
+    const base = (() => {
+      const ordem = infosAmbientes.map((info) => info.nome);
+      const lista = checklistAtual;
+      const ordenados = ordem.flatMap((nome) => lista.filter((item) => item.ambiente === nome));
+      // Itens de um ambiente que não está na lista não somem: entram no fim, para o total bater com o do menu.
+      const nomes = new Set(ordem);
+      return [...ordenados, ...lista.filter((item) => !nomes.has(item.ambiente))];
+    })();
+    const anteriores = visitaAtual
+      ? db.visitas
+          .filter((visita) => visita.empresaId === visitaAtual.empresaId && visita.id !== visitaAtual.id && visita.data <= visitaAtual.data && !visita.arquivada)
+          .sort((a, b) => b.data.localeCompare(a.data) || b.criadoEm.localeCompare(a.criadoEm))
+          .slice(0, VISITAS_RECENTES)
+      : [];
+    return ordemAdaptativa(base, anteriores);
+  }
+
   function itensEmOrdem(): ChecklistItem[] {
-    const ordem = infosAmbientes.map((info) => info.nome);
-    const lista = checklistAtual;
-    const ordenados = ordem.flatMap((nome) => lista.filter((item) => item.ambiente === nome));
-    // Itens de um ambiente que não está na lista não somem: entram no fim, para o total bater com o do menu.
-    const nomes = new Set(ordem);
-    return [...ordenados, ...lista.filter((item) => !nomes.has(item.ambiente))];
+    return adaptativoDaVisita().itens;
+  }
+
+  // Marcar o restante do ambiente como Conforme: confirma com o número, registra como lote e deixa desfazer por 12 s.
+  function planoDoLoteDoAmbiente(ambiente: string) {
+    return planoDoLote(visitaAtual?.checklist || [], ambiente, adaptativoDaVisita().reprovaram);
+  }
+
+  async function marcarRestanteDoAmbiente(ambiente: string) {
+    if (!visitaAtual || !exigirPermissao("visitas.executar", visitaAtual.empresaId)) return;
+    const plano = planoDoLoteDoAmbiente(ambiente);
+    if (plano.marcar.length === 0) return;
+    const rotulo = nomeDeExibicaoDoAmbiente(ambiente);
+    const ok = await confirmar(textoDaConfirmacaoDoLote(rotulo, plano), { titulo: "Marcar o restante como Conforme", confirmarRotulo: `Marcar ${plano.marcar.length}` });
+    if (!ok) return;
+    const visitaId = visitaAtual.id;
+    const em = new Date().toISOString();
+    const ids = plano.marcar.map((item) => item.id);
+    setDb((o) => ({ ...o, visitas: o.visitas.map((v) => (v.id === visitaId ? { ...v, checklist: aplicarLote(v.checklist || [], ids, em) } : v)) }));
+    const texto = `${ids.length === 1 ? "1 item marcado" : `${ids.length} itens marcados`} como Conforme em lote.`;
+    setLoteParaDesfazer({ visitaId, ids, em, texto });
+    window.setTimeout(() => setLoteParaDesfazer((atual) => (atual && atual.em === em ? null : atual)), 12000);
+  }
+
+  function desfazerOLote() {
+    const lote = loteParaDesfazer;
+    if (!lote) return;
+    setDb((o) => ({ ...o, visitas: o.visitas.map((v) => (v.id === lote.visitaId ? { ...v, checklist: desfazerLote(v.checklist || [], lote.ids, lote.em) } : v)) }));
+    setLoteParaDesfazer(null);
+  }
+
+  // Fila numerada do ambiente com o selo de "reprovou antes" e os itens recolhidos (Não se aplica em todas as visitas recentes).
+  function filaDoAmbiente(doAmbiente: ChecklistItem[]) {
+    const { reprovaram, recolhidos } = adaptativoDaVisita();
+    return doAmbiente.map((item) => ({ id: item.id, status: item.status, reprovou: reprovaram.has(item.id), recolhido: recolhidos.has(item.id) }));
   }
 
   function itemEmFoco(): ChecklistItem | undefined {
@@ -7324,6 +7377,13 @@ export default function Home() {
 
       <ConflitosDeEdicao conflitos={conflitos} onEscolher={escolherConflito} />
 
+      {loteParaDesfazer && (
+        <div className="lote-desfazer" role="status">
+          <span>{loteParaDesfazer.texto}</span>
+          <button type="button" className="pc-link-btn" onClick={desfazerOLote}>Desfazer</button>
+        </div>
+      )}
+
       {sessaoDoEstadoExpirou && (
         <div className="border-b border-amber-300 bg-[var(--pend-bg)] pc-offset">
           <div className="mx-auto max-w-7xl px-4 py-3 text-amber-950">
@@ -8435,7 +8495,8 @@ export default function Home() {
                   setAmbienteChecklistAtivo(nome);
                   if (primeiro) setItemFocoId(primeiro.id);
                 }}
-                fila={doAmbiente.map((item) => ({ id: item.id, status: item.status }))}
+                restanteDoLote={podeEditar ? { quantos: planoDoLoteDoAmbiente(ambienteDoFoco).marcar.length, onMarcar: () => void marcarRestanteDoAmbiente(ambienteDoFoco) } : undefined}
+                fila={filaDoAmbiente(doAmbiente)}
                 itemAtualId={foco?.id || ""}
                 onItem={(id) => {
                   setItemFocoId(id);
@@ -8507,7 +8568,7 @@ export default function Home() {
                   setAmbienteChecklistAtivo(nome);
                   if (primeiro) setItemFocoId(primeiro.id);
                 }}
-                fila={doAmbiente.map((item) => ({ id: item.id, status: item.status }))}
+                fila={filaDoAmbiente(doAmbiente)}
                 itemAtualId={foco?.id || ""}
                 onItem={(id) => {
                   setItemFocoId(id);
@@ -9199,6 +9260,11 @@ export default function Home() {
                   <p className="mt-1 text-sm text-slate-500">
                     Revisão consolidada dos registros realizados em campo.
                   </p>
+                  {contarEmLote(visitaAtual.checklist || []) > 0 && (
+                    <p className="mt-1 text-sm text-slate-500">
+                      {contarEmLote(visitaAtual.checklist || [])} {contarEmLote(visitaAtual.checklist || []) === 1 ? "item foi marcado" : "itens foram marcados"} como Conforme em lote (resposta em bloco, não individual).
+                    </p>
+                  )}
                   <div className="mt-3">
                     <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${visitaAtual.status === "Concluída" ? "bg-[var(--ok-bg)] text-[color:var(--ink)]" : "bg-[var(--pend-bg)] text-[color:var(--ink)]"}`}>
                       {visitaAtual.status === "Concluída" ? "● Inspeção concluída" : "● Inspeção em andamento"}

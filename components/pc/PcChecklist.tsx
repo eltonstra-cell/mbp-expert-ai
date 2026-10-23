@@ -8,7 +8,7 @@ import { progressoDaCaminhada, textoDaCaminhada } from "@/lib/caminhada";
 import { legendaDaEvidencia, rotuloDoSegmento } from "@/lib/checklistSegmentos";
 import type { ChecklistStatus } from "@/types";
 
-export type ItemDaFila = { id: string; status: ChecklistStatus };
+export type ItemDaFila = { id: string; status: ChecklistStatus; /** Reprovou nas últimas visitas. */ reprovou?: boolean; /** Não se aplica em todas as visitas recentes: fica no bloco recolhido. */ recolhido?: boolean };
 
 export type ApoioDoItem = {
   /** Orientação do item ("O que verificar"). */
@@ -37,6 +37,8 @@ type Props = {
   principal: ReactNode;
   /** Pular o ambiente atual: abre o próximo sem marcar nada (os itens ficam pendentes). */
   onPularAmbiente?: (proximo: string) => void;
+  /** "Marcar o restante como Conforme" do ambiente atual; o número é quantos itens o lote marcaria. */
+  restanteDoLote?: { quantos: number; onMarcar: () => void };
   /** Sem apoio (tablet), o painel da direita não aparece. */
   apoio?: ApoioDoItem;
 };
@@ -168,8 +170,10 @@ function PainelDeApoio({ apoio }: { apoio: ApoioDoItem }) {
   );
 }
 
-export default function PcChecklist({ titulo, subtitulo, ambientes, ambienteAtual, onAmbiente, fila, itemAtualId, onItem, onVoltar, principal, apoio, onPularAmbiente }: Props) {
+export default function PcChecklist({ titulo, subtitulo, ambientes, ambienteAtual, onAmbiente, fila, itemAtualId, onItem, onVoltar, principal, apoio, onPularAmbiente, restanteDoLote }: Props) {
+  const [recolhidosAbertos, setRecolhidosAbertos] = useState(false);
   const caminhada = progressoDaCaminhada(ambientes, ambienteAtual);
+  const recolhidos = fila.filter((item) => item.recolhido && item.id !== itemAtualId);
   const textoCaminhada = textoDaCaminhada(caminhada);
   return (
     <section className="ui-screen chk-pc" aria-label="Checklist">
@@ -177,6 +181,11 @@ export default function PcChecklist({ titulo, subtitulo, ambientes, ambienteAtua
         <div>
           <h1 className="ui-title">{titulo}</h1>
           <p className="ui-subtitle">{subtitulo}</p>
+          {restanteDoLote && restanteDoLote.quantos > 0 && (
+            <p className="chk-caminhada">
+              <button type="button" className="pc-link-btn" onClick={restanteDoLote.onMarcar}>Marcar o restante como Conforme ({restanteDoLote.quantos})</button>
+            </p>
+          )}
           {textoCaminhada && (
             <p className="chk-caminhada" role="status">
               {textoCaminhada}
@@ -203,18 +212,26 @@ export default function PcChecklist({ titulo, subtitulo, ambientes, ambienteAtua
           onSelecionar={onAmbiente}
         />
         <div className="chk-pc-fila" role="group" aria-label="Itens do ambiente">
-          {fila.map((item, indice) => (
-            <button
-              key={item.id}
-              type="button"
-              className={`chk-pc-num ${CLASSE_DO_STATUS[item.status]}${item.id === itemAtualId ? " is-atual" : ""}`}
-              aria-current={item.id === itemAtualId ? "true" : undefined}
-              aria-label={rotuloDoSegmento(indice, item.status)}
-              onClick={() => onItem(item.id)}
-            >
-              {indice + 1}
+          {fila.map((item, indice) =>
+            item.recolhido && !recolhidosAbertos && item.id !== itemAtualId ? null : (
+              <button
+                key={item.id}
+                type="button"
+                className={`chk-pc-num ${CLASSE_DO_STATUS[item.status]}${item.id === itemAtualId ? " is-atual" : ""}${item.reprovou ? " is-reprovou" : ""}`}
+                aria-current={item.id === itemAtualId ? "true" : undefined}
+                aria-label={`${rotuloDoSegmento(indice, item.status)}${item.reprovou ? ". Reprovou nas últimas visitas" : ""}`}
+                title={item.reprovou ? "Reprovou nas últimas visitas" : undefined}
+                onClick={() => onItem(item.id)}
+              >
+                {indice + 1}
+              </button>
+            )
+          )}
+          {recolhidos.length > 0 && (
+            <button type="button" className="pc-link-btn chk-pc-recolhidos" aria-expanded={recolhidosAbertos} onClick={() => setRecolhidosAbertos((aberto) => !aberto)}>
+              {recolhidosAbertos ? "Recolher" : `${recolhidos.length} ${recolhidos.length === 1 ? "item recolhido" : "itens recolhidos"}`} {recolhidosAbertos ? "▴" : "▾"}
             </button>
-          ))}
+          )}
         </div>
       </div>
 
