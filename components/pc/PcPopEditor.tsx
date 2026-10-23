@@ -36,6 +36,10 @@ import { conteudoComResponsavelEfetivo, diferencaComDados, marcaManualApos, resp
 import CaixaQueCresce from "@/components/CaixaQueCresce";
 import { modeloPorId } from "@/lib/popModelos";
 import ConfigCapaDoPop from "@/components/pc/ConfigCapaDoPop";
+import ConfigCartazLavagem from "@/components/pc/ConfigCartazLavagem";
+import CartazLavagem from "@/components/CartazLavagem";
+import { createPortal } from "react-dom";
+import { conteudoDoCartaz, eDeLavagemDeMaos, podeGerarOCartaz, popAprovadoParaOCartaz, rodapeDoCartaz, temaDoCartaz as coresDoTema, type DadosDoCartaz, type TemaDoCartaz } from "@/lib/cartazLavagem";
 import { capaInicialDoDialogo, comIconeDeCapa, eIconeConhecido, iconeDoPop, modeloDaCapa, type CapaCompleta, type ModeloDaCapa } from "@/lib/capaPop";
 import { itensDasNotas, totalDePendencias, type AlvoDaPendencia, type ItemDasNotas } from "@/lib/popPendencias";
 
@@ -60,6 +64,9 @@ type Props = {
   /** Capa dos POPs guardada na empresa (desligada por padrão) e como salvá-la; sem salvar, a capa vale só para esta impressão. */
   capaDaEmpresa?: CapaDosPops;
   onSalvarCapa?: (capa: CapaDosPops) => void;
+  /** Cartaz de lavagem de mãos (só no POP do modelo de lavagem): tema guardado e como salvar tema e logotipo. */
+  temaDoCartaz?: TemaDoCartaz;
+  onSalvarCartaz?: (tema: TemaDoCartaz, logotipo: string | undefined) => void;
   /** Grava o POP com a escolha de ícone da capa (sem criar versão: é só apresentação). */
   onTrocarIconeDeCapa?: (pop: ProcedimentoOperacionalPadronizado) => void;
   /** Frase da próxima ação: fica na mesma linha dos botões, à esquerda. */
@@ -238,7 +245,7 @@ function horaCerta(): string {
 }
 
 // Documento (editor em painéis) e Histórico (versões, aprovações e motivo) do POP. O cabeçalho e as abas ficam na ficha (PcFichaPop).
-export default function PcPopEditor({ pop, empresa, usuario, podeEditar, responsavelDoEstabelecimento, onImprimir, onSalvarRascunho, onEnviar, onAprovar, onNovaVersao, onDescartar, mensagem, proximaAcao, onIrParaConferencia, capaDaEmpresa, onSalvarCapa, onTrocarIconeDeCapa, parte = "documento" }: Props) {
+export default function PcPopEditor({ pop, empresa, usuario, podeEditar, responsavelDoEstabelecimento, onImprimir, onSalvarRascunho, onEnviar, onAprovar, onNovaVersao, onDescartar, mensagem, proximaAcao, onIrParaConferencia, capaDaEmpresa, onSalvarCapa, onTrocarIconeDeCapa, temaDoCartaz, onSalvarCartaz, parte = "documento" }: Props) {
   // Mais de um passo em branco vira um só logo ao abrir.
   const [rascunho, setRascunho] = useState<ProcedimentoOperacionalPadronizado>(() => (pop.conteudo?.passos ? { ...pop, conteudo: { ...pop.conteudo, passos: juntarPassosEmBrancoRepetidos(pop.conteudo.passos) } } : pop));
   const [motivoDaNovaVersao, setMotivoDaNovaVersao] = useState("");
@@ -254,6 +261,9 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
   const [escolhendoImpressao, setEscolhendoImpressao] = useState(false);
   // Capa que sai no papel desta impressão (a página 1 do PDF); sem ela o PDF é o de sempre.
   const [capaNoPapel, setCapaNoPapel] = useState<ModeloDaCapa | null>(null);
+  // Cartaz "Como lavar as mãos": janela de escolhas e a cópia que sai no papel (A4, uma página).
+  const [cartazAberto, setCartazAberto] = useState(false);
+  const [cartazNoPapel, setCartazNoPapel] = useState<DadosDoCartaz | null>(null);
   // Seções do modelo visíveis: as que já têm conteúdo e as que a pessoa adicionou por "+ Adicionar seção".
   const [secoesDoModeloAbertas, setSecoesDoModeloAbertas] = useState<IdDaSecaoDoModelo[]>(() => secoesDoModeloComConteudo(pop.conteudo || {}));
   // Depois de tocar em "Enviar para aprovação" sem estar pronto: mostra "Falta: …" ao lado do botão e marca a seção na lista.
@@ -374,6 +384,28 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
   const folhaDeLeitura = folhaDoPop(comConferenciaAtual(rascunho), dadosDaEmpresa, opcoesDaFolha);
   const folhaDaPrevia = folhaDoPop(comConferenciaAtual(rascunho), dadosDaEmpresa, { ...opcoesDaFolha, marcarBranco: true });
   const dicaDaNorma = (conteudo.referencias || [])[0];
+  const comCartaz = eDeLavagemDeMaos(pop);
+  const aprovadoDoCartaz = comCartaz ? popAprovadoParaOCartaz(pop) : null;
+  const conteudoDoCartazAtual = conteudoDoCartaz(aprovadoDoCartaz?.pop || pop);
+  const rodapeDoCartazAtual = rodapeDoCartaz({ empresa: dadosDaEmpresa.nome, codigo: (aprovadoDoCartaz?.pop || pop).codigo || "", versao: (aprovadoDoCartaz?.pop || pop).versao, aprovadoEm: aprovadoDoCartaz?.aprovadoEm || "" });
+  const bloqueioDoCartaz = podeGerarOCartaz(pop);
+  function gerarCartaz(tema: TemaDoCartaz, logotipo: string | undefined) {
+    if (!aprovadoDoCartaz) return;
+    setCartazAberto(false);
+    setCartazNoPapel({ tema: coresDoTema(tema).id, conteudo: conteudoDoCartaz(aprovadoDoCartaz.pop), rodape: rodapeDoCartazAtual, logotipo });
+    // Uma página A4 sem margens; o POP aberto não sai junto. Tudo some de novo quando a impressão termina.
+    const estilo = document.createElement("style");
+    estilo.id = "estilo-impressao-cartaz";
+    estilo.textContent = "@media print{@page{size:A4;margin:0}#pop-folha,#pop-folha *{display:none!important}}";
+    document.head.appendChild(estilo);
+    const limpar = () => {
+      estilo.remove();
+      setCartazNoPapel(null);
+      window.removeEventListener("afterprint", limpar);
+    };
+    window.addEventListener("afterprint", limpar);
+    window.setTimeout(() => window.print(), 250);
+  }
   const iconeAutomaticoDaCapa = iconeDoPop({ origemModelo: pop.origemModelo, catalogoId: pop.catalogoId });
   const iconeEscolhidoDaCapa = eIconeConhecido(pop.iconeCapa) ? pop.iconeCapa : "";
   function imprimirFolha(capa: CapaCompleta | null, icone: string) {
@@ -425,6 +457,11 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
           <div className="pdoc-barra">
             {proximaAcaoNaBarra}
             {notasNaBarra}
+            {comCartaz && (
+              <button type="button" className="ui-btn ui-btn--secondary" onClick={() => setCartazAberto(true)}>
+                Gerar cartaz
+              </button>
+            )}
             {onImprimir && (
               <button type="button" className="ui-btn ui-btn--secondary" onClick={() => setEscolhendoImpressao(true)}>
                 Imprimir / PDF
@@ -768,6 +805,11 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
           <aside className="pdoc-previa" aria-label="Pré-visualização da folha">
             <div className="pdoc-previa-cabeca">
               <h2 className="pdoc-lista-titulo">Pré-visualização da folha</h2>
+              {comCartaz && (
+                <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => setCartazAberto(true)}>
+                  Gerar cartaz
+                </button>
+              )}
               {onImprimir && (
                 <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => setEscolhendoImpressao(true)}>
                   Imprimir / PDF
@@ -909,6 +951,19 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
           </div>
         </div>
       )}
+      {cartazAberto && comCartaz && (
+        <ConfigCartazLavagem
+          conteudo={conteudoDoCartazAtual}
+          rodape={rodapeDoCartazAtual}
+          guardado={{ tema: coresDoTema(temaDoCartaz).id, logotipo: capaDaEmpresa?.logotipo }}
+          podeSalvar={Boolean(onSalvarCartaz && podeEditar)}
+          bloqueio={bloqueioDoCartaz.pode ? null : { mensagem: bloqueioDoCartaz.mensagem, explicacao: bloqueioDoCartaz.explicacao }}
+          onCancelar={() => setCartazAberto(false)}
+          onSalvar={(tema, logotipo) => onSalvarCartaz?.(tema, logotipo)}
+          onGerar={gerarCartaz}
+        />
+      )}
+      {cartazNoPapel && createPortal(<div id="cartaz-lavagem" className="cartaz-so-papel" aria-hidden="true"><CartazLavagem dados={cartazNoPapel} /></div>, document.body)}
       {escolhendoImpressao && (
         <ConfigCapaDoPop
           dados={folhaDeLeitura.capa}

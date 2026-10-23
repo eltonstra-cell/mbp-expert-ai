@@ -40,6 +40,8 @@ export type Empresa = {
   setorOficialDoAmbiente?: Record<string, string>;
   /** Capa opcional dos POPs (desligada por padrão). */
   capaDosPops?: CapaDosPops;
+  /** Cartaz "Como lavar as mãos": tema escolhido (o logotipo é o mesmo da capa dos POPs). */
+  cartazLavagem?: { tema?: "verde" | "azul" | "terra" | "mostarda" };
   equipamentosSetores?: EquipamentoSetor[];
   fluxosOperacionais?: FluxoOperacional[];
   programasControleQualidade?: ProgramaControleQualidade[];

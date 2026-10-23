@@ -3504,6 +3504,7 @@ export default function Home() {
             guardaRegistrosDias: anterior.guardaRegistrosDias,
             questionarios: anterior.questionarios,
             capaDosPops: anterior.capaDosPops,
+            cartazLavagem: anterior.cartazLavagem,
             registroProvaPorPop: anterior.registroProvaPorPop,
             // Empresa cadastrada antes do "Colocar em dia" não ganha o cartão: o campo só existe em empresa nova.
             ...(anterior.implantacao ? { implantacao: anterior.implantacao } : {}),
@@ -6326,6 +6327,11 @@ export default function Home() {
           podeEditar={podeEditarDoc}
           onPersistir={(novos) => persistirPopsDaEmpresa(empresaDoc.id, novos)}
           topo={topo}
+          onSalvarCartaz={podeEditarDoc ? (tema, logotipo) => atualizarEmpresaDosRegistros(empresaDoc.id, (empresa) => {
+            const { logotipo: _antigo, ...restoDaCapa } = empresa.capaDosPops || {};
+            void _antigo;
+            return { ...empresa, cartazLavagem: { ...(empresa.cartazLavagem || {}), tema }, capaDosPops: { ...restoDaCapa, ...(logotipo ? { logotipo } : {}) } };
+          }) : undefined}
           onSalvarCapaDosPops={podeEditarDoc ? (capa) => atualizarEmpresaDosRegistros(empresaDoc.id, (empresa) => ({ ...empresa, capaDosPops: capa })) : undefined}
           abas={
             <CentralEmpresaNav

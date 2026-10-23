@@ -5,6 +5,7 @@ import type { Empresa, ProcedimentoOperacionalPadronizado, UsuarioSistema } from
 import PcFichaPop, { type AbaFicha } from "@/components/pc/PcFichaPop";
 import { destinoDoAprovar, type AlvoDaPendencia } from "@/lib/popPendencias";
 import { comCapaNaVersaoAprovada } from "@/lib/capaPop";
+import { temaDoCartaz as temaDaEmpresa, type TemaDoCartaz } from "@/lib/cartazLavagem";
 import type { CapaDosPops } from "@/types";
 import PcPopsLista from "@/components/pc/PcPopsLista";
 import type { CabecalhoDeImpressao } from "@/lib/printFooter";
@@ -43,12 +44,14 @@ type Props = {
   responsavelDoEstabelecimento?: { nome: string; cargo: string; usuarioId?: string };
   /** Guarda a capa dos POPs na empresa (opcional). */
   onSalvarCapaDosPops?: (capa: CapaDosPops) => void;
+  /** Guarda o tema do cartaz de lavagem de mãos e o logotipo (o da capa). */
+  onSalvarCartaz?: (tema: TemaDoCartaz, logotipo: string | undefined) => void;
   /** Muda a cada clique em "POPs" do caminho: fecha a ficha e volta à lista. */
   pedidoDeLista?: number;
 };
 
 // Documentos › POPs: a lista com situação e próxima ação e, ao abrir um POP, a ficha com as seis abas.
-export default function PcPops({ pops, empresa, usuario = null, podeEditar = false, onPersistir, mensagem, topo, abas, onAlterarEmDados, avisoSemVinculo, onIrParaNorma, abrirFicha, aoConsumirPedido, aoMudarFicha, onImprimir, responsavelDoEstabelecimento, onSalvarCapaDosPops, pedidoDeLista = 0 }: Props) {
+export default function PcPops({ pops, empresa, usuario = null, podeEditar = false, onPersistir, mensagem, topo, abas, onAlterarEmDados, avisoSemVinculo, onIrParaNorma, abrirFicha, aoConsumirPedido, aoMudarFicha, onImprimir, responsavelDoEstabelecimento, onSalvarCapaDosPops, onSalvarCartaz, pedidoDeLista = 0 }: Props) {
   const contexto = useRegistrosDaEmpresa();
   const [fichaId, setFichaId] = useState<string | null>(null);
   const [abaInicial, setAbaInicial] = useState<AbaFicha>("resumo");
@@ -195,6 +198,8 @@ export default function PcPops({ pops, empresa, usuario = null, podeEditar = fal
         onAprovar={(novo) => executar(popEmFicha, () => comCapaNaVersaoAprovada(aprovarPop(novo, usuario!, empresa, new Date().toISOString()), empresa.capaDosPops), "POP aprovado e assinado.")}
         capaDaEmpresa={empresa.capaDosPops}
         onSalvarCapa={onSalvarCapaDosPops}
+        temaDoCartaz={temaDaEmpresa(empresa.cartazLavagem?.tema).id}
+        onSalvarCartaz={onSalvarCartaz}
         onAtualizarConferencia={(novo) => onPersistir(pops.map((pop) => (pop.id === novo.id ? novo : pop)))}
         onDescartar={(atual) => executar(popEmFicha, () => descartarRascunho(atual), "Rascunho descartado. A versão aprovada continua vigente.")}
         onNovaVersao={(novo) => executar(popEmFicha, () => iniciarNovaVersao(novo), "Nova versão criada em rascunho. A versão aprovada continua guardada.")}
