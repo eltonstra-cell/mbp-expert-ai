@@ -28,15 +28,15 @@ test("61. visitas recentes da mais recente para a mais antiga", () => {
   assert.deepEqual(ordenadas.map((v) => v.id), ["b", "c", "a"]);
 });
 
-test("57/70. linha da visita e progresso: sem itens não há '0 de 0'", () => {
+test("57/70. linha da visita e progresso (regras da lib; o Início voltou ao estado anterior)", () => {
   assert.equal(linhaDaVisita(5, "22/10/2026"), "Visita 5 · 22/10/2026");
   assert.equal(textoDeProgresso(0, 0), "ainda sem itens respondidos");
   assert.equal(textoDeProgresso(5, 12), "5 de 12 itens respondidos");
   const inicio = ler("../components/pc/PcInicio.tsx");
-  assert.ok(inicio.includes("continuar.total > 0 &&") && inicio.includes("visita.total > 0 &&"), "barra só quando há itens");
+  assert.ok(inicio.includes("itens respondidos"), "Início antigo: texto de progresso do estado anterior");
 });
 
-test("68/73. visitas paradas há mais de 30 dias e o resumo do cabeçalho recolhido", () => {
+test("68/73. visitas paradas há mais de 30 dias e o resumo do cabeçalho recolhido (regras da lib)", () => {
   assert.equal(DIAS_DE_VISITA_PARADA, 30);
   const visitas = [
     { id: "1", status: "Em andamento", data: "2026-09-01" },
@@ -45,17 +45,16 @@ test("68/73. visitas paradas há mais de 30 dias e o resumo do cabeçalho recolh
     { id: "4", status: "Em andamento", data: "2026-08-01", arquivada: true },
     { id: "5", status: "Em andamento", data: "2026-09-22" },
   ];
-  assert.deepEqual(visitasParadas(visitas, "2026-10-23").map((v) => v.id), ["1", "5"], "só em andamento, não arquivada e com mais de 30 dias (22/09 já passa)");
+  assert.deepEqual(visitasParadas(visitas, "2026-10-23").map((v) => v.id), ["1", "5"]);
   assert.equal(textoDasParadas(1), "1 visita parada há mais de 30 dias");
   assert.equal(textoDasParadas(3), "3 visitas paradas há mais de 30 dias");
   assert.equal(resumoDeVisitasRecentes(4, 2), "4 em andamento · 2 paradas há mais de 30 dias");
   assert.equal(resumoDeVisitasRecentes(1, 0), "1 em andamento");
   const pagina = ler("../app/page.tsx");
-  assert.ok(pagina.includes('acao: "visita.arquivada"') && pagina.includes("arquivarVisitasParadas"), "arquivar registra quem e quando na auditoria, sem apagar");
-  assert.ok(pagina.includes("Arquivar visitas paradas"), "pede confirmação");
+  assert.equal(pagina.includes("arquivarVisitasParadas"), false, "o Início antigo não arquiva visitas paradas");
 });
 
-test("58/65. UM cálculo de configuração: 7 passos na ordem e o 'faltam'", () => {
+test("58/65. UM cálculo de configuração: 7 passos na ordem e o faltam (usado pelo guia em Ajuda e guias)", () => {
   const empresa = { id: "e1", nomeFantasia: "Beyond Nutri", cnpj: "11222333000181", responsavel: "Elton Volmir Strapazon", setoresManual: ["Cozinha"], equipamentosSetores: [], fluxosOperacionais: [{ aplicavel: false }] };
   const passos = passosDeConfiguracao({ usuario: { nome: "Elton Volmir Strapazon", cargo: "Nutricionista", perfil: "Administrador", crn: "CRN-2 1", telefone: "5" }, empresa, visitas: [{ empresaId: "e1", status: "Em andamento" }], relatoriosEmitidos: [] });
   assert.deepEqual(passos.map((p) => p.chave), ["perfil", "empresa", "ambientes", "equipamentos", "fluxos", "visita", "relatorio"]);
@@ -63,12 +62,9 @@ test("58/65. UM cálculo de configuração: 7 passos na ordem e o 'faltam'", () 
   const resumo = resumoDaConfiguracao(passos);
   assert.deepEqual([resumo.feitos, resumo.total, resumo.completo], [4, 7, false]);
   assert.deepEqual(resumo.faltam.map((p) => p.chave), ["equipamentos", "fluxos", "relatorio"]);
-  // tudo feito: a linha some
   const completos = passosDeConfiguracao({ usuario: { nome: "A", cargo: "B", perfil: "Gerente" }, empresa: { ...empresa, equipamentosSetores: [{ id: "x" }], fluxosOperacionais: [{ aplicavel: true }] }, visitas: [{ empresaId: "e1", status: "Concluída" }] });
   assert.equal(resumoDaConfiguracao(completos).completo, true);
-  const pagina = ler("../app/page.tsx");
-  assert.ok(pagina.includes("atual && !resumoDoGuia.completo"), "a linha some quando tudo está completo");
-  assert.ok(ler("../components/pc/PcAjuda.tsx").includes("primeirosPassos"), "o guia usa o mesmo cálculo");
+  assert.ok(ler("../components/pc/PcAjuda.tsx").includes("primeirosPassos"), "o guia usa o cálculo");
 });
 
 test("64. chip de sincronização sempre com texto: Sincronizado, Sem sinal, N pendentes de envio", () => {
@@ -83,33 +79,28 @@ test("64. chip de sincronização sempre com texto: Sincronizado, Sem sinal, N p
   assert.equal(/\.pc-sync-texto\{display:none\}/.test(css), false, "o texto do chip nunca é escondido");
 });
 
-test("59/60. um só avatar do usuário (menu) e o nome da empresa só no seletor", () => {
+test("59. um só avatar do usuário (menu) e Visita N na lateral; o Início voltou ao estado anterior", () => {
   const topo = ler("../components/AppTopbar.tsx");
   assert.equal(topo.includes('className="pc-avatar"'), false);
   const nav = ler("../components/AppNavigation.tsx");
   assert.ok(nav.includes("Visita {visitaMenu.numero") && !nav.includes("{visitaMenu.empresa}</span>"));
-  const inicio = ler("../components/pc/PcInicio.tsx");
-  assert.ok(inicio.includes("linhaDaVisita(continuar.numero, continuar.data)"));
+  assert.ok(ler("../components/pc/PcInicio.tsx").includes("continuar.empresa"), "o cartão do Início volta a mostrar a empresa");
 });
 
-test("62/66/67. Hoje precisa de você: bolinha + chip, Ver todas (N) com o total real, lembrete em link; sem chips de relatório", () => {
-  const painel = ler("../components/PainelHoje.tsx");
-  assert.ok(painel.includes("Ver todas (${total})") && painel.includes("const total = painel.itens.length"));
-  assert.ok(painel.includes("hoje-bolinha") && painel.includes("hoje-tipo") && painel.includes("Lembrete ao responsável"));
-  for (const chip of ["Resumo de uma página", "Evolução", "Relatórios emitidos", "Dossiê"]) assert.equal(painel.includes(chip), false, chip);
-  const css = ler("../app/globals.css");
-  assert.match(css, /\.hoje-titulo-card\{[^}]*font-weight:500/);
-  assert.equal(/\.hoje-item--vencido\{border-left-color/.test(css.slice(css.indexOf("/* ===== Pacote 4"))), false);
+test("Lembrete ao responsável também em Correções; painel Hoje do Início voltou ao estado anterior", () => {
   assert.ok(ler("../components/pc/PcCorrecoes.tsx").includes("Lembrete ao responsável"), "o lembrete também fica em Correções");
+  const painel = ler("../components/PainelHoje.tsx");
+  assert.ok(painel.includes("Ver todos (") && painel.includes("ITENS_INICIAIS = 3"));
+  const css = ler("../app/globals.css");
+  assert.ok(css.includes(".hoje-item--vencido{border-left-color:#D64545}"), "estilos do painel anterior de volta");
 });
 
-test("69/70/73. Visitas recentes: da empresa ativa, 5 linhas, recolhível e lembrada no aparelho", () => {
+test("Início antigo restaurado: contadores, preparação e visitas recentes do estado anterior", () => {
   const inicio = ler("../components/pc/PcInicio.tsx");
-  assert.ok(inicio.includes("LINHAS_RECENTES = 5") && inicio.includes("Ver todas as visitas →") && inicio.includes("Recolher") && inicio.includes('aria-expanded={recentes.aberto}'));
-  assert.ok(inicio.includes("Todas as empresas") && inicio.includes('role="switch"'));
+  assert.ok(inicio.includes("Visitas em andamento") && inicio.includes("Preparação da empresa") && inicio.includes("Visitas recentes") && inicio.includes("Ver todas as visitas →"));
   const pagina = ler("../app/page.tsx");
-  assert.ok(pagina.includes("recentesTodasEmpresas || visita.empresaId === atual?.id") && pagina.includes("useState(false)"), "chave desligada por padrão");
-  assert.ok(pagina.includes('"mbp-inicio-visitas-recentes"') && pagina.includes("try {"));
+  assert.ok(pagina.includes("primeirosPassosDispensado") && pagina.includes("mbp-primeiros-passos-dispensado"));
+  assert.equal(pagina.includes("mbp-inicio-visitas-recentes"), false);
 });
 
 test("74. duas barras de blocos na Central; Ambientes e equipamentos é um bloco só; sem chip de modo", () => {

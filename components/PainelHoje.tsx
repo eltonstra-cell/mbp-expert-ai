@@ -1,76 +1,97 @@
 "use client";
 
 import { useState } from "react";
-import type { ItemDoPainel, OrigemDoItem, PainelHoje as Painel } from "@/lib/painelHoje";
+import { Pill, type Tom } from "@/components/ui/Pill";
+import type { ItemDoPainel, OrigemDoItem, PainelHoje as Painel, SituacaoDoItem } from "@/lib/painelHoje";
 import { vencem } from "@/lib/plural";
 
 const ITENS_INICIAIS = 3;
+const TOM: Record<SituacaoDoItem, Tom> = { vencido: "nc", "vence-em-breve": "amber", aguardando: "info" };
+const ROTULO: Record<SituacaoDoItem, string> = { vencido: "Vencido", "vence-em-breve": "Vence em breve", aguardando: "Aguardando" };
 // Tipo de cada item: correção, comprovante, capacitação ou POP.
 const TIPO: Record<OrigemDoItem, string> = { correcao: "Correção", comprovante: "Comprovante", capacitacao: "Capacitação", pop: "POP" };
 
 type Props = {
   painel: Painel;
   onAcao: (item: ItemDoPainel) => void;
-  /** Só RT e Administrador: abre a prévia do lembrete ao responsável do estabelecimento (link no rodapé do cartão). */
+  /** Só RT e Administrador: abre a prévia do lembrete ao responsável do estabelecimento. */
   onLembrete?: () => void;
-  /** Outras correções abertas (prazo além de 30 dias ou sem prazo): não entram na lista; leva a Correções. */
-  outras?: { quantidade: number; onVer: () => void };
+  onResumo: () => void;
+  onEvolucao?: () => void;
+  /** Dossiê para fiscalização (RT, Administrador, Gestor, Gerente). */
+  onDossie?: () => void;
+  onEmitidos?: () => void;
 };
 
-// "Hoje precisa de você": contadores em texto e lista por urgência (bolinha de situação + chip do tipo + ação), tudo do mesmo cálculo.
-export default function PainelHoje({ painel, onAcao, onLembrete, outras }: Props) {
+// "Hoje precisa de você": contadores e lista por urgência, com a ação ao lado de cada item.
+export default function PainelHoje({ painel, onAcao, onLembrete, onResumo, onEvolucao, onDossie, onEmitidos }: Props) {
   const [verTodos, setVerTodos] = useState(false);
-  const total = painel.itens.length;
   const visiveis = verTodos ? painel.itens : painel.itens.slice(0, ITENS_INICIAIS);
   return (
     <section className="ui-card hoje" aria-label="Hoje precisa de você">
       <div className="pc-card-head">
-        <h2 className="hoje-titulo-card">Hoje precisa de você</h2>
+        <h2 className="ui-card-title">Hoje precisa de você</h2>
         <div className="hoje-contadores" role="group" aria-label="Contadores">
-          <span className={`hoje-conta${painel.vencidos ? " is-nc" : ""}`}>{painel.vencidos} {painel.vencidos === 1 ? "vencido" : "vencidos"}</span>
-          <span className={`hoje-conta${painel.vencemEm30Dias ? " is-aviso" : ""}`}>{vencem(painel.vencemEm30Dias)} em 30 dias</span>
-          {painel.aguardando > 0 && <span className="hoje-conta is-info">{painel.aguardando} aguardando aprovação</span>}
+          <Pill tom={painel.vencidos ? "nc" : "ok"}>
+            {painel.vencidos} {painel.vencidos === 1 ? "vencido" : "vencidos"}
+          </Pill>
+          <Pill tom={painel.vencemEm30Dias ? "amber" : "ok"}>{vencem(painel.vencemEm30Dias)} em 30 dias</Pill>
+          {painel.aguardando > 0 && <Pill tom="info">{painel.aguardando} aguardando aprovação</Pill>}
         </div>
       </div>
-      {total === 0 ? (
+      {painel.itens.length === 0 ? (
         <p className="ui-row-sub">Nada vencido nem vencendo.</p>
       ) : (
         <ul className="hoje-lista">
           {visiveis.map((item) => (
-            <li key={item.id} className="hoje-item">
-              <span className={`hoje-bolinha hoje-bolinha--${item.situacao}`} aria-hidden="true" />
+            <li key={item.id} className={`hoje-item hoje-item--${item.situacao}`}>
               <span className={`hoje-tipo hoje-tipo--${item.origem}`}>{TIPO[item.origem]}</span>
               <div className="hoje-textos">
                 <span className="hoje-titulo">{item.titulo}</span>
-                <span className="hoje-apoio">
+                <span className="ui-row-sub">
                   {item.prazo} · quem age: {item.quem}
                 </span>
               </div>
-              <button type="button" className={`ui-btn ${item.acao === "aprovar" || item.acao === "renovar" ? "ui-btn--criar" : "ui-btn--secondary"}`} onClick={() => onAcao(item)}>
+              {/* A faixa colorida e o prazo já dizem "vencido" e "vence em breve"; a etiqueta só entra quando acrescenta algo. */}
+              {item.situacao === "aguardando" && <Pill tom={TOM[item.situacao]}>{ROTULO[item.situacao]}</Pill>}
+              <button type="button" className={`ui-btn ui-btn--small ${item.acao === "aprovar" || item.acao === "renovar" ? "ui-btn--criar" : "ui-btn--secondary"}`} onClick={() => onAcao(item)}>
                 {item.rotuloDaAcao}
               </button>
             </li>
           ))}
         </ul>
       )}
+      {painel.itens.length > ITENS_INICIAIS && (
+        <button type="button" className="pc-link-btn pc-self-start" onClick={() => setVerTodos((valor) => !valor)}>
+          {verTodos ? "Mostrar só os 3 primeiros" : `Ver todos (${painel.itens.length})`}
+        </button>
+      )}
       <div className="hoje-rodape">
-        <span className="hoje-links">
-          {total > ITENS_INICIAIS && (
-            <button type="button" className="pc-link-btn" aria-expanded={verTodos} onClick={() => setVerTodos((valor) => !valor)}>
-              {verTodos ? `Mostrar só os ${ITENS_INICIAIS} primeiros` : `Ver todas (${total})`}
+        <span className="hoje-botoes">
+          <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={onResumo}>
+            Resumo de uma página
+          </button>
+          {onEvolucao && (
+            <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={onEvolucao}>
+              Evolução
             </button>
           )}
-          {outras && outras.quantidade > 0 && (
-            <button type="button" className="pc-link-btn" onClick={outras.onVer}>
-              {outras.quantidade === 1 ? "1 outra correção aberta" : `${outras.quantidade} outras correções abertas`} →
+          {onEmitidos && (
+            <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={onEmitidos}>
+              Relatórios emitidos
+            </button>
+          )}
+          {onDossie && (
+            <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={onDossie}>
+              Dossiê
+            </button>
+          )}
+          {onLembrete && (
+            <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={onLembrete}>
+              Lembrete ao responsável
             </button>
           )}
         </span>
-        {onLembrete && (
-          <button type="button" className="pc-link-btn" onClick={onLembrete}>
-            Lembrete ao responsável
-          </button>
-        )}
       </div>
     </section>
   );

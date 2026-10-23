@@ -3508,6 +3508,9 @@ html[data-modo="equilibrado"] .campo-tela{height:calc(100dvh - 190px - var(--fai
 .hoje-contadores{display:flex;flex-wrap:wrap;gap:6px}
 .hoje-lista{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
 .hoje-item{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:6px 10px;border:1px solid #DDE6EA;border-left-width:5px;border-radius:12px;background:#fff}
+.hoje-item--vencido{border-left-color:#D64545}
+.hoje-item--vence-em-breve{border-left-color:#E8B04B}
+.hoje-item--aguardando{border-left-color:#4A90C2}
 .hoje-textos{display:flex;min-width:0;flex:1 1 220px;flex-direction:column}
 .hoje-titulo{color:var(--ink);overflow-wrap:anywhere}
 .hoje-rodape{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
@@ -4980,52 +4983,7 @@ button.esc-chip--mais:focus-visible{outline:3px solid #E8B04B;outline-offset:1px
 .rev-pagina--desatualizada{border-color:#E8B04B;background:#FFF3D6}
 .rev-acao{display:inline-flex;flex-direction:column;align-items:flex-end;gap:4px}
 
-/* ===== Pacote 4 · Início em 4 blocos (barra do topo, Continuar visita, Hoje precisa de você, Visitas recentes) ===== */
-.ini{gap:12px;overflow-y:auto;padding-right:2px}
-.ini-continuar{display:flex;flex-direction:column;gap:8px;padding:14px 18px}
-.ini-continuar-linha{display:flex;flex-wrap:wrap;align-items:center;gap:10px 24px}
-.ini-continuar-texto{flex:1 1 220px;min-width:0}
-.ini-continuar-titulo{font-family:var(--font-display),"Outfit",sans-serif;font-size:1.25rem;font-weight:500;color:#12202B}
-.ini-continuar-progresso{display:flex;flex:1 1 260px;flex-direction:column;gap:6px;min-width:0}
-.ini-retomar,.ini-config{display:flex;flex-wrap:wrap;align-items:center;gap:2px 8px;padding-top:8px;border-top:1px solid #E3E8EE;font-size:.92rem;color:#12202B}
-.ini-linha-rotulo{color:#51606c}
-.ini-config-faltam{color:#51606c}
-.ini-recentes{display:flex;flex-direction:column;gap:8px;padding:10px 18px 12px}
-.ini-recentes-cabeca{display:flex;align-items:center;gap:12px;width:100%;min-height:40px;padding:0;border:0;background:none;text-align:left;cursor:pointer;color:#12202B}
-.ini-recentes-titulo{font-family:var(--font-display),"Outfit",sans-serif;font-size:1.15rem;font-weight:500}
-.ini-recentes-resumo{flex:1;font-size:.92rem;color:#51606c}
-.ini-recentes-acao{margin-left:auto;font-size:.92rem;color:#51606c}
-.ini-paradas{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;padding:8px 12px;border:1px solid #E8B04B;border-radius:12px;background:#FFF3D6;font-size:.94rem;color:#12202B}
-.ini-recentes-barra{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
-.ini-abas{display:flex;gap:18px;border-bottom:1px solid #E3E8EE}
-.ini-aba{min-height:36px;margin-bottom:-1px;padding:0 2px;border:0;border-bottom:3px solid transparent;background:none;font-size:.95rem;color:#51606c;cursor:pointer}
-.ini-aba.is-ativa{border-bottom-color:#E8760A;color:#12202B}
-.ini-todas{display:inline-flex;align-items:center;gap:8px;min-height:36px;font-size:.92rem;color:#12202B;cursor:pointer}
-.ini-lista{display:flex;flex-direction:column;margin:0;padding:0;list-style:none}
-.ini-lista li + li{border-top:1px solid #E3E8EE}
-.ini-linha-visita{display:flex;align-items:center;gap:14px;width:100%;min-height:48px;padding:4px 0;border:0;background:none;text-align:left;cursor:pointer;color:#12202B}
-.ini-linha-visita:hover{background:#F4F9FE}
-.ini-linha-textos{display:flex;flex:1;flex-direction:column;min-width:0}
-.ini-linha-titulo{font-size:.98rem}
-.ini-linha-progresso{display:flex;align-items:center;gap:10px;flex:none}
 
-/* Hoje precisa de você: sem barra vermelha; bolinha de situação + chip do tipo */
-.hoje{gap:6px;padding:10px 18px 12px}
-.hoje-titulo-card{margin:0;font-family:var(--font-display),"Outfit",sans-serif;font-size:1.15rem;font-weight:500;color:#12202B}
-.hoje-contadores{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:.92rem;color:#51606c}
-.hoje-conta.is-nc{color:#B42318}
-.hoje-conta.is-aviso{color:#9A6B12}
-.hoje-conta.is-info{color:#0A6590}
-.hoje-lista{gap:0;max-height:none;overflow:visible;padding:0}
-.hoje-item{display:flex;align-items:center;gap:10px;min-height:48px;padding:4px 0;border:0;border-radius:0;background:transparent}
-.hoje-item + .hoje-item{border-top:1px solid #E3E8EE}
-.hoje-bolinha{flex:none;width:10px;height:10px;border-radius:50%;background:#8A97A3}
-.hoje-bolinha--vencido{background:#D93A3A}
-.hoje-bolinha--vence-em-breve{background:#E89A0C}
-.hoje-bolinha--aguardando{background:#0E7FB8}
-.hoje-tipo{min-height:24px;padding:0 10px;border-radius:999px;font-weight:400}
-.hoje-links{display:inline-flex;flex-wrap:wrap;gap:4px 16px}
-.hoje-rodape{justify-content:space-between;padding-top:2px}
 
 /* Guia de primeiros passos (Ajuda e guias) */
 .pp{display:flex;flex-direction:column;gap:8px;padding:4px 0 12px}
@@ -5090,30 +5048,6 @@ button.esc-chip--mais:focus-visible{outline:3px solid #E8B04B;outline-offset:1px
 .pgl-estado-cinza{color:#51606c}
 .pgl .pgl-botoes{margin-left:auto}
 @media (max-width:760px){.pgl .pgl-linha{flex-wrap:wrap}}
-/* Início compacto: linhas de 40 px, cabeçalho de Visitas recentes numa linha só */
-.ini{gap:10px}
-.ini-continuar{padding:10px 18px}
-.ini-continuar-linha{gap:8px 24px}
-.hoje{padding:8px 18px 10px}
-.hoje-item{min-height:44px;padding:2px 0}
-.hoje-textos{flex-direction:row;flex-wrap:wrap;align-items:baseline;gap:0 10px}
-.hoje-apoio{font-size:.88rem;color:#51606c}
-.ini-recentes{gap:6px;padding:8px 18px 10px}
-.ini-recentes-cabeca{display:flex;flex-wrap:wrap;align-items:center;gap:4px 18px;min-height:40px}
-.ini-recentes-alternar{display:flex;align-items:baseline;gap:12px;min-height:40px;padding:0;border:0;background:none;text-align:left;cursor:pointer;color:#12202B}
-.ini-recentes-cabeca .ini-abas{margin-left:8px;border-bottom:0}
-.ini-recentes-acao{margin-left:auto;padding:0;border:0;background:none;font-size:.92rem;color:#51606c;cursor:pointer}
-.ini-linha-visita{min-height:40px;padding:0;gap:14px}
-.ini-linha-textos{flex-direction:row;align-items:baseline;gap:12px;flex-wrap:wrap}
-.ini-linha-resp{font-size:.9rem;color:#51606c}
-.ini-paradas{padding:6px 12px}
-.ini{gap:8px}
-.ini-recentes-cabeca .ini-recentes-todas{margin-left:auto}
-.ini-recentes-cabeca .ini-recentes-acao{margin-left:0}
-.ini-continuar{gap:6px}
-.ini-retomar,.ini-config{padding-top:6px}
-.hoje-item{min-height:42px}
-.hoje-rodape{min-height:28px}
 /* Revisado: texto e link, sem caixas */
 .rev-linha{display:flex;flex-wrap:wrap;align-items:center;gap:2px 28px}
 .rev-pagina{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-start;gap:4px 12px;min-height:36px;padding:0;border:0;border-radius:0;background:transparent;font-size:.92rem;color:#51606c}
@@ -5121,13 +5055,6 @@ button.esc-chip--mais:focus-visible{outline:3px solid #E8B04B;outline-offset:1px
 .rev-pagina--desatualizada{border:0;background:transparent;color:#9A6B12}
 .rev-pagina-nome{font-weight:500;color:#12202B}
 .rev-acao{flex-direction:row;align-items:center;gap:8px}
-.ini{gap:6px}
-.ini-continuar{padding:8px 18px}
-.hoje-item{min-height:40px}
-.ini-linha-visita{min-height:36px}
-.ini-recentes{padding:6px 18px 8px}
-.ini-recentes-cabeca{min-height:36px}
-.ini-recentes-alternar{min-height:36px}
 
 /* Topo em janela estreita (tablet 1024 px): o título encolhe e o avatar da empresa some para o nome da empresa e o chip de sincronização caberem inteiros */
 @container topo (max-width:800px){
@@ -5140,10 +5067,6 @@ button.esc-chip--mais:focus-visible{outline:3px solid #E8B04B;outline-offset:1px
 }
 .pc-topbar .pc-busca--compacta{flex:none}
 .pc-crumbs{min-width:0;flex:0 1 auto}
-.hoje-rodape{min-height:24px}
-.ini-config,.ini-retomar{padding-top:4px}
-.hoje{padding:6px 18px 8px}
-.ini-continuar-linha{gap:6px 24px}
 
 /* Lista de Visitas: linhas limpas (divisor fino) e, em janela estreita (tablet), a linha quebra em vez de cortar o botão */
 .vis-linha{border:0;border-bottom:1px solid #E3E8EE;border-radius:0;background:transparent}
@@ -5159,4 +5082,12 @@ button.esc-chip--mais:focus-visible{outline:3px solid #E8B04B;outline-offset:1px
   .emp-ativa{flex-basis:176px;min-width:176px}
   .emp-ativa-caixa{min-width:176px}
 }
-.ini-linha-visita{min-height:34px}
+
+/* Primeiros passos (cartão do Início) */
+.ppc{display:flex;flex-direction:column;gap:12px}
+.ppc-topo{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+.ppc-acoes{display:flex;flex-wrap:wrap;gap:8px}
+.ppc-lista{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:0;padding:0;list-style:none}
+.ppc-passo{display:flex;align-items:center;gap:10px;width:100%;min-height:40px;padding:0 12px;border:1.5px solid #B4C2CE;border-radius:10px;background:#fff;font-size:.95rem;color:#12202B;text-align:left;cursor:pointer}
+.ppc-passo:hover{border-color:#E8B04B;background:#FEF6E6}
+.ppc-num{display:grid;flex:none;place-items:center;width:24px;height:24px;border-radius:50%;background:#FEF6E6;border:1.5px solid #E8B04B;font-size:.8rem;color:#12202B}

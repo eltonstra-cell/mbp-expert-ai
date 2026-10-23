@@ -118,7 +118,7 @@ import RelatoriosAbas, { type AbaDeRelatorios } from "@/components/pc/Relatorios
 import { niveisDoCaminho } from "@/lib/caminhoDaFicha";
 import { assinaturaEdicaoEmpresa, temAlteracoesNaoSalvas } from "@/lib/estadoNaoSalvo";
 import { renomearAmbiente, resumoDaRenomeacao, textoDoResumo } from "@/lib/renomearAmbiente";
-import { ordenarRecentes, passosDeConfiguracao, resumoDaConfiguracao, textoDasParadas, visitasParadas } from "@/lib/inicio";
+import { passosDeConfiguracao } from "@/lib/inicio";
 import { ePaginaDeCadastro, marcarComoRevisado } from "@/lib/revisaoDeCadastros";
 import RevisaoDaPagina from "@/components/pc/RevisaoDaPagina";
 import { avisoParaEmitir, avisoParaFinalizar, erroDoCnpj, erroDoNomeDaEmpresa, itensRespondidos, pendenciasParaSalvarEmpresa } from "@/lib/regrasDoPacote3";
@@ -2568,17 +2568,9 @@ export default function Home() {
     else abrirPopsPeloAtalho();
   }
 
-  // Correções abertas que não entram na lista do painel (prazo além de 30 dias ou sem prazo): um aviso só, com o número que bate.
-  const correcoesAbertasDaEmpresa = atual ? correcoesAbertas(db.ncs, { empresaId: atual.id, visitaIds: new Set(db.visitas.filter((visita) => visita.empresaId === atual.id).map((visita) => visita.id)) }) : 0;
-  const correcoesNaLista = painelHoje ? painelHoje.itens.filter((item) => item.origem === "correcao").length : 0;
   const painelNode =
     painelHoje && atual ? (
-      <PainelHojeCard
-        painel={painelHoje}
-        onAcao={acaoDoPainel}
-        onLembrete={podeEnviarLembrete(usuarioDaSessao) ? () => setLembreteAberto(true) : undefined}
-        outras={{ quantidade: Math.max(0, correcoesAbertasDaEmpresa - correcoesNaLista), onVer: () => abrirCorrecoesDaEmpresa() }}
-      />
+      <PainelHojeCard painel={painelHoje} onEvolucao={() => setView("evolucao")} onDossie={podeGerarDossie(usuarioDaSessao) ? () => setView("dossie") : undefined} onEmitidos={() => setView("relatoriosemitidos")} onAcao={acaoDoPainel} onLembrete={podeEnviarLembrete(usuarioDaSessao) ? () => setLembreteAberto(true) : undefined} onResumo={() => setView("resumo")} />
     ) : null;
 
 
@@ -2778,26 +2770,15 @@ export default function Home() {
   const [fichaAbertaId, setFichaAbertaId] = useState<string | null>(null);
   const [fichaAbertaRotuloCompleto, setFichaAbertaRotuloCompleto] = useState<string | null>(null);
   const [telasRecentes, setTelasRecentes] = useState<TelaRecente[]>([]);
-  // "Visitas recentes" do Início: recolhível (lembra no aparelho; try/catch porque o armazenamento pode estar bloqueado) e só da empresa ativa por padrão.
-  const [visitasRecentesAberto, setVisitasRecentesAberto] = useState(true);
-  const [recentesTodasEmpresas, setRecentesTodasEmpresas] = useState(false);
+  // Cartão "Primeiros passos" do Início: some ao dispensar (só neste aparelho; try/catch porque o armazenamento pode estar bloqueado).
+  const [primeirosPassosDispensado, setPrimeirosPassosDispensado] = useState(true);
   useEffect(() => {
     try {
-      setVisitasRecentesAberto(window.localStorage.getItem("mbp-inicio-visitas-recentes") !== "fechado");
+      setPrimeirosPassosDispensado(window.localStorage.getItem("mbp-primeiros-passos-dispensado") === "1");
     } catch {
-      /* sem armazenamento: fica aberto */
+      setPrimeirosPassosDispensado(false);
     }
   }, []);
-  function alternarVisitasRecentes() {
-    setVisitasRecentesAberto((aberto) => {
-      try {
-        window.localStorage.setItem("mbp-inicio-visitas-recentes", aberto ? "fechado" : "aberto");
-      } catch {
-        /* sem armazenamento: vale só nesta abertura */
-      }
-      return !aberto;
-    });
-  }
   const pilhaDeTelasRef = useRef<LocalDeTela[]>([]);
   const subDoLocal = view === "empresas" && showEmpresaForm && editingEmpresaId ? String(secaoEmpresa ?? "") : view === "pops" ? subabaDosDocumentos : "";
   const localDaTela: LocalDeTela = { view, ...(fichaAbertaId ? { popId: fichaAbertaId } : {}), ...(subDoLocal ? { sub: subDoLocal } : {}) };
@@ -3763,39 +3744,6 @@ export default function Home() {
     }));
     mostrarToast(arquivar ? "Visita arquivada" : "Visita desarquivada");
     if (arquivar && visitaAtualId === id) setVisitaAtualId(null);
-  }
-
-  // Visitas paradas há mais de 30 dias: arquiva todas de uma vez, depois de confirmar. Nada é apagado; a auditoria registra quem e quando, visita a visita.
-  async function arquivarVisitasParadas(ids: string[]) {
-    const alvos = db.visitas.filter((visita) => ids.includes(visita.id) && exigirPermissao("visitas.concluir", visita.empresaId));
-    if (alvos.length === 0) return;
-    const confirmado = await confirmar(
-      `${textoDasParadas(alvos.length)}.\n\nArquivar tira da lista de visitas, sem apagar nada: dá para desarquivar em Visitas. A auditoria guarda quem arquivou e quando.`,
-      { titulo: "Arquivar visitas paradas", confirmarRotulo: "Arquivar" }
-    );
-    if (!confirmado) return;
-    const agora = new Date().toISOString();
-    const registros = alvos.map((visita) =>
-      criarRegistroAuditoria(
-        {
-          usuarioId: usuarioDaSessao?.id || "local",
-          usuarioNome: usuarioDaSessao?.nome || "Usuário local",
-          acao: "visita.arquivada",
-          entidade: "Visita",
-          entidadeId: visita.id,
-          empresaId: visita.empresaId,
-          detalhes: `${nomeParaExibir(db.empresas[visita.empresaId])} • visita de ${fdata(visita.data)} arquivada (parada há mais de 30 dias).`,
-        },
-        agora
-      )
-    );
-    setDb((o) => ({
-      ...o,
-      visitas: o.visitas.map((item) => (alvos.some((visita) => visita.id === item.id) ? { ...item, arquivada: true, arquivadaEm: agora } : item)),
-      registrosAuditoria: [...o.registrosAuditoria, ...registros],
-    }));
-    mostrarToast(alvos.length === 1 ? "Visita arquivada" : "Visitas arquivadas");
-    if (visitaAtualId && alvos.some((visita) => visita.id === visitaAtualId)) setVisitaAtualId(null);
   }
 
   function salvarVisita() {
@@ -6668,8 +6616,7 @@ export default function Home() {
   const inicioPc = {
     continuar: visitaEmAndamentoDestaque
       ? {
-          numero: numeroVisitaPorId.get(visitaEmAndamentoDestaque.id),
-          data: fdata(visitaEmAndamentoDestaque.data),
+          empresa: nomeEmFormatoNatural(db.empresas[visitaEmAndamentoDestaque.empresaId]?.nomeFantasia) || "Empresa",
           proximaEtapa:
             checklistDestaque.find((item) => item.status === "Pendente")?.ambiente ||
             ((visitaEmAndamentoDestaque.ambientes || []).length ? "Revisar a inspeção" : "Definir os ambientes da visita"),
@@ -6715,9 +6662,7 @@ export default function Home() {
         }),
   };
   const nomeParaExibir = (empresa?: Empresa) => nomeDeExibicaoDaEmpresa(empresa);
-  // Início: "Visitas recentes" só da empresa ativa (a chave "Todas as empresas" amplia) e a linha de configuração, calculada UMA vez.
-  const visitasDoEscopo = visitasSemArquivadas.filter((visita) => recentesTodasEmpresas || visita.empresaId === atual?.id);
-  const visitasDoEscopoParadas = visitasParadas(visitasDoEscopo, hojeISO());
+  // Guia "Primeiros passos" (Ajuda e guias): o mesmo cálculo de `passosDeConfiguracao`.
   const passosDoGuia = passosDeConfiguracao({ usuario: usuarioDaSessao, empresa: atual, visitas: db.visitas, relatoriosEmitidos: db.relatoriosEmitidos });
   const abrirPassoDoGuia = (chave: string) => {
     if (chave === "perfil") setPerfilAberto(true);
@@ -6726,11 +6671,6 @@ export default function Home() {
     else if (chave === "visita") (atual ? novaVisita : () => setView("empresas"))();
     else irParaMenu("relatorio");
   };
-  const resumoDoGuia = resumoDaConfiguracao(passosDoGuia);
-  const configuracaoDoInicio =
-    atual && !resumoDoGuia.completo && permitido("empresas.editar", atual.id)
-      ? { feitos: resumoDoGuia.feitos, total: resumoDoGuia.total, faltam: resumoDoGuia.faltam.map((passo) => ({ id: passo.chave, titulo: passo.titulo, onAbrir: () => abrirPassoDoGuia(passo.chave) })), onGuia: () => setView("ajuda") }
-      : null;
   const conjuntoDaVisita = conjuntoDaEmpresa(empresaVisita);
   const resumoPopsVisita = popsDaVisita(
     ncsVisita.map((nc, indice) => ({ numero: indice + 1, categoria: nc.categoria, popCatalogoId: nc.popCatalogoId })),
@@ -9864,6 +9804,29 @@ export default function Home() {
             <PcInicio
               somenteCampo={ehExecutor}
               avisoPops={avisoPopsDoInicio}
+              primeirosPassos={
+                primeirosPassosDispensado
+                  ? null
+                  : {
+                      passos: [
+                        { chave: "perfil", titulo: "Perfil", onAbrir: () => setPerfilAberto(true) },
+                        { chave: "empresa", titulo: "Empresa", onAbrir: () => (atual ? void abrirSecaoEmpresaPeloMenu("dados") : setView("empresas")) },
+                        { chave: "ambientes", titulo: "Ambientes", onAbrir: () => void abrirSecaoEmpresaPeloMenu("ambientes") },
+                        { chave: "equipamentos", titulo: "Equipamentos", onAbrir: () => void abrirSecaoEmpresaPeloMenu("equipamentos") },
+                        { chave: "fluxos", titulo: "Fluxos", onAbrir: () => void abrirSecaoEmpresaPeloMenu("fluxos") },
+                        { chave: "visita", titulo: "Visita", onAbrir: atual ? novaVisita : () => setView("empresas") },
+                        { chave: "relatorio", titulo: "Relatório", onAbrir: () => irParaMenu("relatorio") },
+                      ],
+                      onDispensar: () => {
+                        setPrimeirosPassosDispensado(true);
+                        try {
+                          window.localStorage.setItem("mbp-primeiros-passos-dispensado", "1");
+                        } catch {
+                          /* sem armazenamento: o cartão volta na próxima abertura */
+                        }
+                      },
+                    }
+              }
               retomar={telasRecentes.map((tela) => ({ chave: `${tela.tipo}:${tela.id}`, rotulo: tela.rotulo, onAbrir: () => abrirTelaRecente(tela) }))}
               painel={painelNode}
               simples={nivelDe("inicio") === "simples"}
@@ -9876,35 +9839,39 @@ export default function Home() {
                 botao: atual ? "Nova visita" : "Selecionar empresa →",
                 onClick: atual ? novaVisita : () => setView("empresas"),
               }}
-              configuracao={configuracaoDoInicio}
-              visitasRecentes={{
-                aberto: visitasRecentesAberto,
-                onAlternar: alternarVisitasRecentes,
-                filtro: filtroInicio,
-                onFiltro: setFiltroInicio,
-                contagemEmAndamento: visitasDoEscopo.filter((visita) => visita.status === "Em andamento").length,
-                contagemConcluidas: visitasDoEscopo.filter((visita) => visita.status === "Concluída").length,
-                linhas: ordenarRecentes(visitasDoEscopo.filter((visita) => visita.status === filtroInicio)).map((visita) => {
-                  const progresso = progressoDoChecklist(visita.checklist);
-                  return {
-                    id: visita.id,
-                    numero: numeroVisitaPorId.get(visita.id),
-                    data: fdata(visita.data),
-                    responsavel: visita.responsavel || "Responsável não informado",
-                    empresa: recentesTodasEmpresas ? nomeParaExibir(db.empresas[visita.empresaId]) : undefined,
-                    percentual: progresso.percentual,
-                    respondidos: progresso.respondidos,
-                    total: progresso.total,
-                  };
-                }),
-                paradas: visitasDoEscopoParadas.length,
-                onEncerrarOuArquivar: () => void arquivarVisitasParadas(visitasDoEscopoParadas.map((visita) => visita.id)),
-                podeTodasAsEmpresas: empresasVisiveis.length > 1,
-                todasAsEmpresas: recentesTodasEmpresas,
-                onTodasAsEmpresas: setRecentesTodasEmpresas,
-                onAbrirVisita: (id) => { setVisitaAtualId(id); setView("visita"); },
-                onVerTodas: () => setView("visitas"),
+              indicadores={{
+                emAndamento: visitas.filter((visita) => visita.status === "Em andamento").length,
+                ncAcompanhamento: inicioPc.ncAcompanhamento,
+                concluidasMes: visitasDoMes.filter((visita) => visita.status === "Concluída").length,
+                empresasAtivas: empresasVisiveis.length,
               }}
+              preparacao={
+                atual && inicioPc.preparacaoAtual
+                  ? {
+                      percentual: inicioPc.preparacaoAtual.percentual,
+                      texto: inicioPc.preparacaoAtual.completo
+                        ? "Cadastro completo"
+                        : `${inicioPc.preparacaoAtual.preenchidos} de ${inicioPc.preparacaoAtual.total} itens preenchidos`,
+                      onAbrir: () => editarEmpresa(atual),
+                      faltam: permitido("empresas.editar", atual.id)
+                        ? inicioPc.preparacaoAtual.itens
+                            .filter((item) => !item.ok)
+                            .map((item) => ({ id: item.id, titulo: item.titulo, onAbrir: () => void abrirSecaoEmpresaPeloMenu(SUBABA_DO_ITEM_DE_PREPARACAO[item.id] || "dados") }))
+                        : [],
+                    }
+                  : null
+              }
+              pendencias={{
+                texto: ncsEmpresaAbertas ? `${qtd(ncsEmpresaAbertas, "não conformidade", "não conformidades")} em acompanhamento nesta empresa` : "Nenhuma não conformidade aberta nesta empresa",
+                onVer: permitido("ncs.acompanhar", atual?.id) ? () => irParaMenu("ncs") : null,
+              }}
+              filtro={filtroInicio}
+              onFiltro={setFiltroInicio}
+              contagemEmAndamento={visitas.filter((visita) => visita.status === "Em andamento").length}
+              contagemConcluidas={visitas.filter((visita) => visita.status === "Concluída").length}
+              recentes={inicioPc.recentes(filtroInicio)}
+              onAbrirVisita={(id) => { setVisitaAtualId(id); setView("visita"); }}
+              onVerTodas={() => setView("visitas")}
             />
           ) : (
           <div className="space-y-4">
