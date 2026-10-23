@@ -118,7 +118,7 @@ import RelatoriosAbas, { type AbaDeRelatorios } from "@/components/pc/Relatorios
 import { niveisDoCaminho } from "@/lib/caminhoDaFicha";
 import { assinaturaEdicaoEmpresa, temAlteracoesNaoSalvas } from "@/lib/estadoNaoSalvo";
 import { renomearAmbiente, resumoDaRenomeacao, textoDoResumo } from "@/lib/renomearAmbiente";
-import { caixasDoContinuar, colunasDoInicio, correcoesSemPrazo, passosDeConfiguracao, resumoDaConfiguracao } from "@/lib/inicio";
+import { caixasDoContinuar, colunasDoInicio, comAmbienteDasCorrecoes, correcoesSemPrazo, passosDeConfiguracao, resumoDaConfiguracao } from "@/lib/inicio";
 import { ePaginaDeCadastro, marcarComoRevisado } from "@/lib/revisaoDeCadastros";
 import RevisaoDaPagina from "@/components/pc/RevisaoDaPagina";
 import { avisoParaEmitir, avisoParaFinalizar, erroDoCnpj, erroDoNomeDaEmpresa, itensRespondidos, pendenciasParaSalvarEmpresa } from "@/lib/regrasDoPacote3";
@@ -6683,6 +6683,8 @@ export default function Home() {
   const colunasDoInicioPc = dadosDasColunas
     ? {
         ...dadosDasColunas,
+        precisa: comAmbienteDasCorrecoes(dadosDasColunas.precisa, db.ncs),
+        onVerTodasCorrecoes: abrirCorrecoesDaEmpresa,
         onAbrirPendencia: acaoDoPainel,
         onAbrirVencimento: (item: { id: string; origem: string }) => {
           if (item.origem === "pop-revisao") abrirFichaDoPop(item.id.replace("revisao:", ""));

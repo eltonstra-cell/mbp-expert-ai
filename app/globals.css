@@ -5191,3 +5191,8 @@ html[data-modo] .pc-offset:has(.ini2){height:auto;min-height:100vh;overflow:visi
 /* Caixas azuis: largura máxima de 360px, três na mesma linha a partir de 1200px (abaixo disso podem quebrar) */
 .ini2-caixa{flex:0 1 360px;min-width:0;max-width:360px}
 @media (min-width:1201px){.ini2-caixas{flex-wrap:nowrap}}
+
+/* Cabeçalho de "Hoje precisa de você": "N sem responsável" aparece uma vez, à direita, em âmbar e fonte simples */
+.ini2-painel--precisa .ini2-titulo{white-space:nowrap}
+.ini2-painel--precisa .ini2-painel-topo{flex-wrap:wrap}
+.ini2-sem-resp{margin-left:auto;flex:none;font-family:var(--font-body),"Nunito Sans",sans-serif;font-size:14px;font-weight:400;color:#B45309;white-space:nowrap}

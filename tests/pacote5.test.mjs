@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-import { DIAS_DA_JANELA_DE_VENCIMENTO, caixasDoContinuar, colunasDoInicio, passosDeConfiguracao, quadradoDoVencimento, resumoDaConfiguracao, textoDoPrazoEm } from "../lib/inicio.ts";
+import { DIAS_DA_JANELA_DE_VENCIMENTO, SEM_RESPONSAVEL, caixasDoContinuar, colunasDoInicio, comAmbienteDasCorrecoes, contadorDoPainel, subDaLinhaDoPainel, passosDeConfiguracao, quadradoDoVencimento, resumoDaConfiguracao, textoDoPrazoEm } from "../lib/inicio.ts";
 
 const ler = (c) => readFileSync(new URL(c, import.meta.url), "utf8");
 
@@ -98,7 +98,7 @@ test("linha inteira clicável, sem botão Abrir; barras e quadradinhos nas cores
   assert.ok(inicio.includes('<button key={item.id} type="button" className={`ini2-linha ini2-linha--${item.origem}`} onClick={() => colunas.onAbrirPendencia(item)}>'));
   assert.ok(inicio.includes('className="ini2-linha ini2-linha--vence" onClick={() => colunas.onAbrirVencimento(item)}'));
   assert.equal(/>\s*Abrir\s*</.test(inicio), false, "nenhum botão Abrir");
-  assert.ok(inicio.includes("Ver todas ({linhas.length})") && inicio.includes("LIMITE_DE_LINHAS_DO_PAINEL") && inicio.includes("Ver todos os vencimentos →") && inicio.includes("Lembrete ao responsável"));
+  assert.ok(inicio.includes("Ver todas ({linhas.length})") && inicio.includes("colunas.onVerTodasCorrecoes") && inicio.includes("LIMITE_DE_LINHAS_DO_PAINEL") && inicio.includes("Ver todos os vencimentos →") && inicio.includes("Lembrete ao responsável"));
   const css = ler("../app/globals.css");
   const bloco = css.slice(css.indexOf("/* ===== Pacote 5 · Início"));
   assert.match(bloco, /\.ini2-linha--correcao \.ini2-barra\{background:#B4532A\}/);
@@ -174,7 +174,7 @@ test("estados vazios: Tudo em dia, só um bloco e contadores/lembrete só com it
   assert.ok(inicio.includes("temVisita ? \"Continuar de onde parei\" : \"Comece por aqui\"") && inicio.includes("Nenhuma visita em andamento.") && inicio.includes("Nova visita"));
   // contador e lembrete ficam dentro do bloco que só existe com itens
   const bloco = inicio.slice(inicio.indexOf("{!semPendencias && ("), inicio.indexOf("{!semVencimentos && ("));
-  assert.ok(bloco.includes("aguardando aprovação") && bloco.includes("Lembrete ao responsável"));
+  assert.ok(inicio.includes("contadorDoPainel(colunas)") && bloco.includes("{contador &&") && bloco.includes("Lembrete ao responsável"));
   const css = ler("../app/globals.css");
   assert.match(css, /\.ini2-tudo-em-dia\{padding:22px 26px;border-radius:20px;background:#F0FAF3\}/);
   assert.match(css, /\.ini2-tudo-titulo\{[^}]*color:#15803D\}/);
@@ -209,4 +209,33 @@ test("dados de teste do Início: só Beyond Nutri, 4 itens, remoção limpa e Ch
   assert.deepEqual([colaboradores, capacitacoes], [[], []]);
   assert.throws(() => adicionarDadosDeTeste({ ...db(), empresas: { c: { id: "c", nomeFantasia: "Churrascaria do Chico", pops: [] } } }, "2026-10-23"), /não encontrada/);
   void colunasDoInicio; void correcoesSemPrazo;
+});
+
+test("segunda rodada: contador só com partes maiores que zero, sem prazo à parte de vencidos", () => {
+  assert.equal(contadorDoPainel({ vencidos: 0, aguardando: 0, semPrazo: 0 }), "");
+  assert.equal(contadorDoPainel({ vencidos: 1, aguardando: 0, semPrazo: 0 }), "1 vencido");
+  assert.equal(contadorDoPainel({ vencidos: 2, aguardando: 1, semPrazo: 3 }), "2 vencidos · 1 aguardando aprovação · 3 abertas sem prazo");
+  assert.equal(contadorDoPainel({ vencidos: 0, aguardando: 0, semPrazo: 1 }), "1 aberta sem prazo");
+  const extras = [{ id: "correcao:a", origem: "correcao", titulo: "A", prazo: "aberta", situacao: "sem-prazo", dias: null, quem: SEM_RESPONSAVEL, acao: "abrir", rotuloDaAcao: "Abrir" }];
+  const c = colunasDoInicio([], [], "2026-10-23", extras);
+  assert.deepEqual([c.vencidos, c.aguardando, c.semPrazo, c.semResponsavel], [0, 0, 1, 1]);
+});
+
+test("segunda rodada: ordem vencidas, aguardando aprovação, sem prazo", () => {
+  const item = (id, origem, situacao) => ({ id, origem, titulo: id, prazo: "x", situacao, dias: null, quem: "Ana", acao: "abrir", rotuloDaAcao: "Abrir" });
+  const sem = { ...item("correcao:s", "correcao", "sem-prazo") };
+  const c = colunasDoInicio([item("p", "pop", "aguardando"), item("v", "correcao", "vencido")], [], "2026-10-23", [sem]);
+  assert.deepEqual(c.precisa.map((i) => i.id), ["v", "p", "correcao:s"]);
+});
+
+test("segunda rodada: linha da correção com ambiente e sem repetir o responsável indefinido", () => {
+  const nc = { id: "a", ambiente: "Cozinha / Produção" };
+  const base = { id: "correcao:a", origem: "correcao", titulo: "A", prazo: "aberta", situacao: "sem-prazo", dias: null, quem: SEM_RESPONSAVEL };
+  const [com] = comAmbienteDasCorrecoes([base], [nc]);
+  assert.equal(subDaLinhaDoPainel(com, "Correção"), "Cozinha / Produção · Correção · aberta");
+  assert.equal(subDaLinhaDoPainel(base, "Correção"), "Correção · aberta");
+  assert.equal(subDaLinhaDoPainel({ ...com, quem: "Maria" }, "Correção"), "Cozinha / Produção · Correção · aberta · Maria");
+  const inicio = ler("../components/pc/PcInicio.tsx");
+  assert.ok(inicio.includes("sem responsável") && inicio.includes("ini2-sem-resp"));
+  assert.equal(inicio.includes("verTodas"), false, "Ver todas leva às correções, não expande a lista");
 });

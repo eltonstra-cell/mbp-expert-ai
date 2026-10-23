@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import type { ItemDoPainel } from "@/lib/painelHoje";
-import { LIMITE_DE_LINHAS_DO_PAINEL, quadradoDoVencimento, textoDoPrazoEm, type ItemDaEsquerda, type ItemDeVencimento } from "@/lib/inicio";
+import { contadorDoPainel, subDaLinhaDoPainel, LIMITE_DE_LINHAS_DO_PAINEL, quadradoDoVencimento, textoDoPrazoEm, type ItemDaEsquerda, type ItemDeVencimento } from "@/lib/inicio";
 
 export type CaixaDoInicio = { chave: string; titulo: string; subtitulo: string; tipo: "visita" | "pop" | "comprovantes"; onAbrir: () => void };
 
@@ -21,11 +20,15 @@ type Props = {
     precisa: ItemDaEsquerda[];
     vencidos: number;
     aguardando: number;
+    semPrazo: number;
+    semResponsavel: number;
     vencendo: ItemDeVencimento[];
     onAbrirPendencia: (item: ItemDaEsquerda) => void;
     onAbrirVencimento: (item: ItemDeVencimento) => void;
     onLembrete?: () => void;
     onTodosVencimentos: () => void;
+    /** Abre a lista completa de correções abertas (vencidas, aguardando aprovação e sem prazo, nessa ordem). */
+    onVerTodasCorrecoes: () => void;
   } | null;
 };
 
@@ -50,13 +53,13 @@ const IconeComprovante = () => (
 // Início (PC), desenho aprovado: cartão "Continuar de onde parei" (até 3 caixas azuis + linha de configuração) e duas colunas de mesma altura:
 // "Hoje precisa de você" (vencidos e aprovações) e "Vencendo em 30 dias". A barra do topo é a do app (AppTopbar, variante "inicio").
 export default function PcInicio({ nome, avisoPops = null, caixas, onNovaVisita = null, configuracao, colunas }: Props) {
-  const [verTodas, setVerTodas] = useState(false);
   const linhas = colunas ? colunas.precisa : [];
-  const mostrar = verTodas ? linhas : linhas.slice(0, LIMITE_DE_LINHAS_DO_PAINEL);
+  const mostrar = linhas.slice(0, LIMITE_DE_LINHAS_DO_PAINEL);
   const faltaMostrar = linhas.length > mostrar.length;
   const temVisita = caixas.some((caixa) => caixa.tipo === "visita");
   const mostrarCartao = temVisita || caixas.length > 0 || Boolean(onNovaVisita);
   const semPendencias = linhas.length === 0;
+  const contador = colunas ? contadorDoPainel(colunas) : "";
   const semVencimentos = colunas ? colunas.vencendo.length === 0 : true;
 
   const linhaDeConfiguracao = configuracao && (
@@ -129,15 +132,16 @@ export default function PcInicio({ nome, avisoPops = null, caixas, onNovaVisita 
             <section className="ini2-painel ini2-painel--precisa" aria-label="Hoje precisa de você">
               <div className="ini2-painel-topo">
                 <h2 className="ini2-titulo">Hoje precisa de você</h2>
-                <span className="ini2-resumo">{colunas.vencidos} {colunas.vencidos === 1 ? "vencido" : "vencidos"} · {colunas.aguardando} aguardando aprovação</span>
+                {contador && <span className="ini2-resumo">{contador}</span>}
+                {colunas.semResponsavel > 0 && <span className="ini2-sem-resp">{colunas.semResponsavel} sem responsável</span>}
               </div>
-              <div className={`ini2-lista${verTodas ? " is-rolagem" : ""}`}>
+              <div className="ini2-lista">
                 {mostrar.map((item) => (
                   <button key={item.id} type="button" className={`ini2-linha ini2-linha--${item.origem}`} onClick={() => colunas.onAbrirPendencia(item)}>
                     <span className="ini2-barra" aria-hidden="true" />
                     <span className="ini2-linha-textos">
                       <span className="ini2-linha-titulo">{item.titulo}</span>
-                      <span className="ini2-linha-sub">{TIPO[item.origem]} · {item.prazo} · {item.quem}</span>
+                      <span className="ini2-linha-sub">{subDaLinhaDoPainel(item, TIPO[item.origem])}</span>
                     </span>
                     <span className="ini2-seta" aria-hidden="true">›</span>
                   </button>
@@ -145,7 +149,7 @@ export default function PcInicio({ nome, avisoPops = null, caixas, onNovaVisita 
               </div>
               <div className="ini2-rodape">
                 {faltaMostrar ? (
-                  <button type="button" className="ini2-link" onClick={() => setVerTodas(true)}>Ver todas ({linhas.length})</button>
+                  <button type="button" className="ini2-link" onClick={colunas.onVerTodasCorrecoes}>Ver todas ({linhas.length})</button>
                 ) : (
                   <span />
                 )}

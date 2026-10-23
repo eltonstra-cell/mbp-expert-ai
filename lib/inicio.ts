@@ -157,7 +157,10 @@ export type ItemDeVencimento = {
 
 /** Correção aberta que ainda não tem prazo: entra em "Hoje precisa de você" depois das vencidas e dos POPs aguardando. */
 export type ItemSemPrazo = Omit<ItemDoPainel, "situacao"> & { situacao: "sem-prazo" };
-export type ItemDaEsquerda = ItemDoPainel | ItemSemPrazo;
+export type ItemDaEsquerda = (ItemDoPainel | ItemSemPrazo) & { /** Ambiente da correção (só correções). */ ambiente?: string };
+
+/** Texto que o painel e as correções já usam quando ninguém foi indicado. */
+export const SEM_RESPONSAVEL = "Responsável ainda não definido";
 
 /** Correções abertas (não resolvidas, ativas) da empresa que ainda não têm prazo. */
 export function correcoesSemPrazo(ncs: Pick<NaoConformidade, "id" | "empresaId" | "titulo" | "status" | "prazo" | "inativaNoChecklist" | "canceladaPeloUsuarioEm" | "responsavelAcao">[] | undefined, empresaId: string): ItemSemPrazo[] {
@@ -170,7 +173,7 @@ export function correcoesSemPrazo(ncs: Pick<NaoConformidade, "id" | "empresaId" 
       prazo: "aberta",
       situacao: "sem-prazo" as const,
       dias: null,
-      quem: nc.responsavelAcao?.trim() ? nc.responsavelAcao.trim() : "Responsável ainda não definido",
+      quem: nc.responsavelAcao?.trim() ? nc.responsavelAcao.trim() : SEM_RESPONSAVEL,
       acao: "abrir" as const,
       rotuloDaAcao: "Abrir",
     }));
@@ -183,6 +186,10 @@ export type ColunasDoInicio = {
   vencendo: ItemDeVencimento[];
   vencidos: number;
   aguardando: number;
+  /** Correções abertas sem prazo (parte do contador, nunca "vencidas"). */
+  semPrazo: number;
+  /** Linhas da coluna esquerda sem responsável definido (aparece uma vez, no cabeçalho). */
+  semResponsavel: number;
 };
 
 export const DIAS_DA_JANELA_DE_VENCIMENTO = 30;
@@ -194,7 +201,8 @@ export const DIAS_DO_AMARELO = 14;
  */
 export function colunasDoInicio(itens: ItemDoPainel[], pops: Pick<ProcedimentoOperacionalPadronizado, "id" | "codigo" | "titulo" | "status" | "proximaRevisao" | "arquivado" | "responsavel">[], hoje: string, semPrazo: ItemSemPrazo[] = []): ColunasDoInicio {
   const urgentes = itens.filter((item) => item.situacao === "vencido" || item.situacao === "aguardando");
-  const precisa: ItemDaEsquerda[] = [...urgentes, ...semPrazo.filter((extra) => !urgentes.some((item) => item.id === extra.id))];
+  const ordem = (item: ItemDaEsquerda) => (item.situacao === "vencido" ? 0 : item.situacao === "aguardando" ? 1 : 2);
+  const precisa: ItemDaEsquerda[] = [...urgentes, ...semPrazo.filter((extra) => !urgentes.some((item) => item.id === extra.id))].sort((a, b) => ordem(a) - ordem(b));
   const vencendo: ItemDeVencimento[] = [];
   for (const item of itens) {
     if (item.situacao !== "vence-em-breve" || item.dias === null || !item.validade) continue;
@@ -208,7 +216,31 @@ export function colunasDoInicio(itens: ItemDoPainel[], pops: Pick<ProcedimentoOp
     vencendo.push({ id: `revisao:${pop.id}`, origem: "pop-revisao", titulo: `${pop.codigo ? `${pop.codigo} · ` : ""}${pop.titulo} (revisão)`, quem: pop.responsavel?.trim() || "Responsável do estabelecimento", validade: pop.proximaRevisao, dias });
   }
   vencendo.sort((a, b) => a.validade.localeCompare(b.validade) || a.titulo.localeCompare(b.titulo, "pt-BR"));
-  return { precisa, vencendo, vencidos: urgentes.filter((item) => item.situacao === "vencido").length, aguardando: urgentes.filter((item) => item.situacao === "aguardando").length };
+  return { precisa, vencendo, vencidos: urgentes.filter((item) => item.situacao === "vencido").length, aguardando: urgentes.filter((item) => item.situacao === "aguardando").length, semPrazo: precisa.filter((item) => item.situacao === "sem-prazo").length, semResponsavel: precisa.filter((item) => item.quem === SEM_RESPONSAVEL).length };
+}
+
+/** Acrescenta o ambiente às linhas que são correções (o painel de hoje não o carrega). */
+export function comAmbienteDasCorrecoes(itens: ItemDaEsquerda[], ncs: Pick<NaoConformidade, "id" | "ambiente">[] | undefined): ItemDaEsquerda[] {
+  return itens.map((item) => {
+    if (item.origem !== "correcao") return item;
+    const ambiente = (ncs || []).find((nc) => `correcao:${nc.id}` === item.id)?.ambiente?.trim();
+    return ambiente ? { ...item, ambiente } : item;
+  });
+}
+
+/** Cabeçalho de "Hoje precisa de você": só as partes maiores que zero, separadas por " · "; vazio quando tudo é zero. */
+export function contadorDoPainel(c: { vencidos: number; aguardando: number; semPrazo: number }): string {
+  const partes: string[] = [];
+  if (c.vencidos > 0) partes.push(`${c.vencidos} ${c.vencidos === 1 ? "vencido" : "vencidos"}`);
+  if (c.aguardando > 0) partes.push(`${c.aguardando} aguardando aprovação`);
+  if (c.semPrazo > 0) partes.push(`${c.semPrazo} ${c.semPrazo === 1 ? "aberta" : "abertas"} sem prazo`);
+  return partes.join(" · ");
+}
+
+/** Segunda linha de cada item: correção = "Ambiente · Correção · situação · responsável"; o responsável indefinido não se repete por linha. */
+export function subDaLinhaDoPainel(item: ItemDaEsquerda, tipo: string): string {
+  const partes = [item.origem === "correcao" ? item.ambiente : "", tipo, item.prazo, item.quem === SEM_RESPONSAVEL ? "" : item.quem];
+  return partes.filter((parte) => parte && parte.trim()).join(" · ");
 }
 
 const MESES = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
