@@ -226,6 +226,7 @@ import {
   shouldSyncOnActivation,
   SYNC_ACTIVATION_DEDUP_MS,
 } from "@/lib/syncPolicy";
+import { ambientesIniciais, moverAmbiente } from "@/lib/visitaRapida";
 import ConflitosDeEdicao from "@/components/ConflitosDeEdicao";
 import { contarAlteracoesPendentes, iguais as estadosIguais, mesclarTresVias, usarVersaoDaNuvem, type Conflito } from "@/lib/mesclaTresVias";
 import { gravarBase, gravarConflitos, juntarConflitos, lerBase, lerConflitos, type BaseSalva } from "@/lib/estadoBase";
@@ -3895,7 +3896,7 @@ export default function Home() {
     setShowVisitaForm(false);
     setVisitaAtualId(v.id);
     if (ehPC) {
-      const iniciais = ambientesParaVisita(atual.setoresManual || [], atual.setorOficialDoAmbiente);
+      const iniciais = ambientesIniciais(ambientesParaVisita(atual.setoresManual || [], atual.setorOficialDoAmbiente), db.visitas, atual.id, v.id);
       setAmbientesSelecionados(iniciais);
       setModelosAmbientesSelecionados(criarModelosQuestionarioAmbientes(iniciais, atual.modelosQuestionarioAmbientes, atual.setorOficialDoAmbiente));
       setAmbientePersonalizado("");
@@ -3929,15 +3930,15 @@ export default function Home() {
     }
 
     if (retomarChecklist && !(v.ambientes || []).length) {
-      const ambientesIniciais = ambientesParaVisita(empresaDaVisita?.setoresManual || [], empresaDaVisita?.setorOficialDoAmbiente);
+      const ambientesDaPartida = ambientesIniciais(ambientesParaVisita(empresaDaVisita?.setoresManual || [], empresaDaVisita?.setorOficialDoAmbiente), db.visitas, v.empresaId, v.id);
       setDb((o) => ({
         ...o,
         empresaAtualId: v.empresaId,
         visitas: o.visitas.map((visita) => visita.id === v.id ? v : visita),
       }));
       setVisitaAtualId(id);
-      setAmbientesSelecionados(ambientesIniciais);
-      setModelosAmbientesSelecionados(criarModelosQuestionarioAmbientes(ambientesIniciais, empresaDaVisita?.modelosQuestionarioAmbientes, empresaDaVisita?.setorOficialDoAmbiente));
+      setAmbientesSelecionados(ambientesDaPartida);
+      setModelosAmbientesSelecionados(criarModelosQuestionarioAmbientes(ambientesDaPartida, empresaDaVisita?.modelosQuestionarioAmbientes, empresaDaVisita?.setorOficialDoAmbiente));
       setView("ambientes");
       return;
     }
@@ -3978,17 +3979,13 @@ export default function Home() {
   function abrirAmbientes() {
     if (!visitaAtual) return;
     if (!exigirPermissao("visitas.executar", visitaAtual.empresaId)) return;
-    setAmbientesSelecionados(
-      visitaAtual.ambientes?.length
-        ? visitaAtual.ambientes
-        : ambientesParaVisita(empresaVisita?.setoresManual || [], empresaVisita?.setorOficialDoAmbiente)
-    );
-    const ambientesIniciais = visitaAtual.ambientes?.length
+    const ambientesDaPartida = visitaAtual.ambientes?.length
       ? visitaAtual.ambientes
-      : ambientesParaVisita(empresaVisita?.setoresManual || [], empresaVisita?.setorOficialDoAmbiente);
+      : ambientesIniciais(ambientesParaVisita(empresaVisita?.setoresManual || [], empresaVisita?.setorOficialDoAmbiente), db.visitas, visitaAtual.empresaId, visitaAtual.id);
+    setAmbientesSelecionados(ambientesDaPartida);
     setModelosAmbientesSelecionados(
       criarModelosQuestionarioAmbientes(
-        ambientesIniciais,
+        ambientesDaPartida,
         visitaAtual.modelosQuestionarioAmbientes || empresaVisita?.modelosQuestionarioAmbientes,
         empresaVisita?.setorOficialDoAmbiente
       )
@@ -4737,6 +4734,8 @@ export default function Home() {
     if (!atual) return;
     const alvo = lista[lista.findIndex((item) => item.id === atual.id) + passo];
     if (!alvo) return;
+    // Modo caminhada: ao passar para outro ambiente, diz qual é.
+    if (passo === 1 && alvo.ambiente !== atual.ambiente) mostrarToast(`Próximo ambiente: ${nomeDeExibicaoDoAmbiente(alvo.ambiente)}`);
     setItemFocoId(alvo.id);
     setAmbienteChecklistAtivo(alvo.ambiente);
     setUltimoItemChecklistId(alvo.id);
@@ -8173,6 +8172,7 @@ export default function Home() {
             onPersonalizado={setAmbientePersonalizado}
             statusSalvo={statusAmbientes}
             onToggle={alternarAmbientePc}
+            onMover={(nome, delta) => atualizarAmbientesDaVisita(moverAmbiente(ambientesSelecionados, nome, delta))}
             ocultos={resumoOcultos(visitaAtual)}
             onMostrar={mostrarAmbienteDaVisita}
             onExcluirOculto={excluirAmbienteOcultoDaVisita}
@@ -8403,6 +8403,11 @@ export default function Home() {
                   setAmbienteChecklistAtivo(nome);
                   if (primeiro) setItemFocoId(primeiro.id);
                 }}
+                onPularAmbiente={(nome) => {
+                  const primeiro = lista.find((item) => item.ambiente === nome && item.status === "Pendente") || lista.find((item) => item.ambiente === nome);
+                  setAmbienteChecklistAtivo(nome);
+                  if (primeiro) setItemFocoId(primeiro.id);
+                }}
                 fila={doAmbiente.map((item) => ({ id: item.id, status: item.status }))}
                 itemAtualId={foco?.id || ""}
                 onItem={(id) => {
@@ -8465,6 +8470,11 @@ export default function Home() {
                 ambientes={infosAmbientes}
                 ambienteAtual={ambienteDoFoco}
                 onAmbiente={(nome) => {
+                  const primeiro = lista.find((item) => item.ambiente === nome && item.status === "Pendente") || lista.find((item) => item.ambiente === nome);
+                  setAmbienteChecklistAtivo(nome);
+                  if (primeiro) setItemFocoId(primeiro.id);
+                }}
+                onPularAmbiente={(nome) => {
                   const primeiro = lista.find((item) => item.ambiente === nome && item.status === "Pendente") || lista.find((item) => item.ambiente === nome);
                   setAmbienteChecklistAtivo(nome);
                   if (primeiro) setItemFocoId(primeiro.id);

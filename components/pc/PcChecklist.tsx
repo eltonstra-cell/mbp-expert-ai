@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react";
 import FotoAmpliada from "@/components/FotoAmpliada";
 import AmbientesCortina from "@/components/AmbientesCortina";
 import type { InfoAmbiente } from "@/lib/checklistEnvs";
+import { progressoDaCaminhada, textoDaCaminhada } from "@/lib/caminhada";
 import { legendaDaEvidencia, rotuloDoSegmento } from "@/lib/checklistSegmentos";
 import type { ChecklistStatus } from "@/types";
 
@@ -32,6 +33,8 @@ type Props = {
   onItem: (id: string) => void;
   onVoltar: () => void;
   principal: ReactNode;
+  /** Pular o ambiente atual: abre o próximo sem marcar nada (os itens ficam pendentes). */
+  onPularAmbiente?: (proximo: string) => void;
   /** Sem apoio (tablet), o painel da direita não aparece. */
   apoio?: ApoioDoItem;
 };
@@ -158,13 +161,26 @@ function PainelDeApoio({ apoio }: { apoio: ApoioDoItem }) {
   );
 }
 
-export default function PcChecklist({ titulo, subtitulo, ambientes, ambienteAtual, onAmbiente, fila, itemAtualId, onItem, onVoltar, principal, apoio }: Props) {
+export default function PcChecklist({ titulo, subtitulo, ambientes, ambienteAtual, onAmbiente, fila, itemAtualId, onItem, onVoltar, principal, apoio, onPularAmbiente }: Props) {
+  const caminhada = progressoDaCaminhada(ambientes, ambienteAtual);
+  const textoCaminhada = textoDaCaminhada(caminhada);
   return (
     <section className="ui-screen chk-pc" aria-label="Checklist">
       <div className="ui-head">
         <div>
           <h1 className="ui-title">{titulo}</h1>
           <p className="ui-subtitle">{subtitulo}</p>
+          {textoCaminhada && (
+            <p className="chk-caminhada" role="status">
+              {textoCaminhada}
+              {onPularAmbiente && caminhada.nomeDoProximo && (
+                <>
+                  {" · "}
+                  <button type="button" className="pc-link-btn" onClick={() => onPularAmbiente(caminhada.nomeDoProximo as string)}>Pular ambiente</button>
+                </>
+              )}
+            </p>
+          )}
         </div>
         <button type="button" className="ui-btn ui-btn--secondary" onClick={onVoltar}>
           ← Central da visita

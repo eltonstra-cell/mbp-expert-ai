@@ -5196,3 +5196,11 @@ html[data-modo] .pc-offset:has(.ini2){height:auto;min-height:100vh;overflow:visi
 .ini2-painel--precisa .ini2-titulo{white-space:nowrap}
 .ini2-painel--precisa .ini2-painel-topo{flex-wrap:wrap}
 .ini2-sem-resp{margin-left:auto;flex:none;font-family:var(--font-body),"Nunito Sans",sans-serif;font-size:14px;font-weight:400;color:#B45309;white-space:nowrap}
+
+/* Roteiro da visita: subir e descer ambiente */
+.pc-route-ordem{display:inline-flex;gap:4px}
+.pc-route-mover{height:32px;width:32px;border:1.5px solid #C9D3DD;border-radius:8px;background:#fff;font-size:16px;color:#12202B;cursor:pointer}
+.pc-route-mover:disabled{opacity:.35;cursor:default}
+
+/* Modo caminhada: faixa com a posição e o próximo ambiente */
+.chk-caminhada{margin:4px 0 0;font-size:14px;color:#3D5160}

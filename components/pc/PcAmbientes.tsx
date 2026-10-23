@@ -18,6 +18,8 @@ type Props = {
   onPersonalizado: (valor: string) => void;
   statusSalvo: string;
   onToggle: (nome: string) => void;
+  /** Sobe (-1) ou desce (+1) um ambiente no roteiro. */
+  onMover?: (nome: string, delta: -1 | 1) => void;
   ocultos: { ambiente: string; respostas: number }[];
   onMostrar: (nome: string) => void;
   onExcluirOculto: (nome: string) => void;
@@ -51,6 +53,7 @@ export default function PcAmbientes({
   onPersonalizado,
   statusSalvo,
   onToggle,
+  onMover,
   ocultos,
   onMostrar,
   onExcluirOculto,
@@ -202,7 +205,7 @@ export default function PcAmbientes({
           <div className="ui-scroll">
             {semAmbientes && <div className="ui-empty">Nenhum ambiente escolhido ainda.</div>}
             <ol className="pc-route">
-              {mostrarRoteiroLista(mostrarRoteiro, opcoesModelo, modeloDoAmbiente, onModelo, onToggle, onQuestionario)}
+              {mostrarRoteiroLista(mostrarRoteiro, opcoesModelo, modeloDoAmbiente, onModelo, onToggle, onQuestionario, onMover)}
             </ol>
             {selecionados.length > LIMITE_ROTEIRO && (
               <button type="button" className="pc-link-btn" onClick={() => setVerTodosRoteiro((aberto) => !aberto)}>
@@ -269,7 +272,8 @@ function mostrarRoteiroLista(
   modeloDoAmbiente: (nome: string) => string,
   onModelo: (nome: string, modelo: string) => void,
   onToggle: (nome: string) => void,
-  onQuestionario?: (nome: string) => void
+  onQuestionario?: (nome: string) => void,
+  onMover?: (nome: string, delta: -1 | 1) => void
 ) {
   return nomes.map((nome, indice) => (
     <li key={nome} className="pc-route-row">
@@ -289,6 +293,12 @@ function mostrarRoteiroLista(
         <button type="button" className="ui-btn ui-btn--secondary ui-btn--small pc-route-editar" onClick={() => onQuestionario(nome)}>
           Editar perguntas
         </button>
+      )}
+      {onMover && (
+        <span className="pc-route-ordem">
+          <button type="button" className="pc-route-mover" aria-label={`Subir ${nome}`} title="Subir" disabled={indice === 0} onClick={() => onMover(nome, -1)}>↑</button>
+          <button type="button" className="pc-route-mover" aria-label={`Descer ${nome}`} title="Descer" onClick={() => onMover(nome, 1)}>↓</button>
+        </span>
       )}
       <button type="button" className="pc-route-remove" aria-label={`Remover ambiente ${nome}`} title="Remover ambiente" onClick={() => onToggle(nome)}>
         ×
