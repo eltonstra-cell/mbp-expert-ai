@@ -5152,10 +5152,6 @@ button.esc-chip--mais:focus-visible{outline:3px solid #E8B04B;outline-offset:1px
 .pc-topbar--inicio .pc-busca{flex:1 1 360px;max-width:520px}
 .ini2-colunas{grid-template-columns:minmax(0,2fr) minmax(0,1fr)}
 @media (max-width:1200px){.ini2-colunas{grid-template-columns:minmax(0,1fr)}}
-@media (max-width:1100px){
-  .pc-topbar--inicio{flex-wrap:wrap;row-gap:10px}
-  .pc-topbar--inicio .pc-busca{order:9;flex:1 1 100%;max-width:none}
-}
 .ini2-sub-vence{display:flex;min-width:0}
 .ini2-sub-quem{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ini2-sub-dias{flex:none;white-space:pre}
@@ -5169,3 +5165,12 @@ button.esc-chip--mais:focus-visible{outline:3px solid #E8B04B;outline-offset:1px
 .pc-topbar--inicio .emp-ativa-selo{position:absolute;top:-9px;left:12px;display:block;padding:0 6px;border-radius:0;background:#FFFFFF;font-size:11px;line-height:16px;color:#2456D6}
 .pc-topbar--inicio .emp-ativa-nome{flex:1 1 auto;min-width:0;font-family:var(--font-body),"Nunito Sans",sans-serif;font-size:16px;font-weight:400;color:#12202B}
 .pc-topbar--inicio .emp-ativa-seta{font-size:11px;color:#51606c}
+
+/* Acabamento do Início: blocos com a altura do próprio conteúdo (sem esticar), sem altura calculada em runtime, rolagem só da página */
+.ini2-colunas{align-items:flex-start;flex:none}
+.ini2-lista{flex:none;overflow:visible}
+.ini2{overflow:visible;flex:none}
+html[data-modo] .pc-offset:has(.ini2){height:auto;min-height:100vh;overflow:visible}
+.ini2-titulo{word-spacing:.12em}
+.pc-topbar--inicio .pc-busca{flex:1 1 360px;max-width:520px;min-width:150px}
+.pc-topbar--inicio .pc-sync-chip{flex:none;white-space:nowrap}

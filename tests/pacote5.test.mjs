@@ -112,7 +112,10 @@ test("linha inteira clicável, sem botão Abrir; barras e quadradinhos nas cores
   assert.match(bloco, /\.ini2-caixas\{display:grid;grid-template-columns:repeat\(3,minmax\(0,1fr\)\);gap:14px\}/);
   assert.match(bloco, /\.ini2-cartao\{[^}]*padding:22px 28px 24px;border:1px solid #E3E9EF;border-radius:20px/);
   assert.match(bloco, /\.ini2-colunas\{grid-template-columns:minmax\(0,2fr\) minmax\(0,1fr\)\}/);
-  assert.match(css, /\.ini2-colunas\{display:grid;flex:1;min-height:0;grid-template-columns:2fr 1fr;gap:28px;align-items:stretch\}/);
+  assert.match(css, /\.ini2-colunas\{display:grid;flex:1;min-height:0;grid-template-columns:2fr 1fr;gap:28px;align-items:stretch\}/, "base");
+  assert.match(bloco, /\.ini2-colunas\{align-items:flex-start;flex:none\}/, "ccada bloco tem a altura do próprio conteúdo");
+  assert.equal(inicio.includes("useLinhasQueCabem") || inicio.includes("ResizeObserver"), false, "sem altura calculada em runtime");
+  assert.match(bloco, /html\[data-modo\] \.pc-offset:has\(\.ini2\)\{height:auto;min-height:100vh;overflow:visible\}/);
   assert.match(bloco, /\.ini2\{gap:28px;/);
   assert.match(bloco, /@media \(max-width:1200px\)\{[^}]*\.ini2\{overflow-y:auto\}/);
 });

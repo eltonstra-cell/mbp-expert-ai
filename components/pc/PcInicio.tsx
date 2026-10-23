@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useState } from "react";
+import { useState } from "react";
 import type { ItemDoPainel } from "@/lib/painelHoje";
 import { LIMITE_DE_LINHAS_DO_PAINEL, quadradoDoVencimento, textoDoPrazoEm, type ItemDeVencimento } from "@/lib/inicio";
 
@@ -27,9 +27,6 @@ type Props = {
   } | null;
 };
 
-/** Altura de cada linha com o espaço de cima: a da esquerda (2 linhas de texto) e a da direita (quadradinho de 48 px). */
-const ALTURA_ESQUERDA = 80;
-const ALTURA_DIREITA = 84;
 const TIPO: Record<ItemDoPainel["origem"], string> = { correcao: "Correção", comprovante: "Comprovante", capacitacao: "Capacitação", pop: "Aprovação" };
 
 const IconeVisita = () => (
@@ -48,30 +45,12 @@ const IconeComprovante = () => (
   </svg>
 );
 
-/** Quantas linhas cabem na coluna sem criar rolagem (80 px na esquerda, 84 px na direita). Mede quando a coluna aparece e a cada mudança de tamanho. */
-function useLinhasQueCabem(): [(elemento: HTMLDivElement | null) => void, number, number] {
-  const [elemento, setElemento] = useState<HTMLDivElement | null>(null);
-  const [altura, setAltura] = useState(0);
-  useLayoutEffect(() => {
-    if (!elemento) return;
-    const medir = () => setAltura(elemento.clientHeight);
-    medir();
-    if (typeof ResizeObserver === "undefined") return;
-    const observador = new ResizeObserver(medir);
-    observador.observe(elemento);
-    return () => observador.disconnect();
-  }, [elemento]);
-  const quantas = (pitch: number) => (altura === 0 ? LIMITE_DE_LINHAS_DO_PAINEL : Math.max(1, Math.min(LIMITE_DE_LINHAS_DO_PAINEL, Math.floor((altura + 12) / pitch))));
-  return [setElemento, quantas(ALTURA_ESQUERDA), quantas(ALTURA_DIREITA)];
-}
-
 // Início (PC), desenho aprovado: cartão "Continuar de onde parei" (até 3 caixas azuis + linha de configuração) e duas colunas de mesma altura:
 // "Hoje precisa de você" (vencidos e aprovações) e "Vencendo em 30 dias". A barra do topo é a do app (AppTopbar, variante "inicio").
 export default function PcInicio({ nome, avisoPops = null, caixas, configuracao, colunas }: Props) {
   const [verTodas, setVerTodas] = useState(false);
-  const [refLista, cabemEsquerda, cabemDireita] = useLinhasQueCabem();
   const linhas = colunas ? colunas.precisa : [];
-  const mostrar = verTodas ? linhas : linhas.slice(0, cabemEsquerda);
+  const mostrar = verTodas ? linhas : linhas.slice(0, LIMITE_DE_LINHAS_DO_PAINEL);
   const faltaMostrar = linhas.length > mostrar.length;
 
   const linhaDeConfiguracao = configuracao && (
@@ -126,7 +105,7 @@ export default function PcInicio({ nome, avisoPops = null, caixas, configuracao,
               <h2 className="ini2-titulo">Hoje precisa de você</h2>
               <span className="ini2-resumo">{colunas.vencidos} {colunas.vencidos === 1 ? "vencido" : "vencidos"} · {colunas.aguardando} aguardando aprovação</span>
             </div>
-            <div className={`ini2-lista${verTodas ? " is-rolagem" : ""}`} ref={refLista}>
+            <div className={`ini2-lista${verTodas ? " is-rolagem" : ""}`}>
               {linhas.length === 0 && <p className="ini2-vazio">Nada vencido nem esperando aprovação.</p>}
               {mostrar.map((item) => (
                 <button key={item.id} type="button" className={`ini2-linha ini2-linha--${item.origem}`} onClick={() => colunas.onAbrirPendencia(item)}>
@@ -156,7 +135,7 @@ export default function PcInicio({ nome, avisoPops = null, caixas, configuracao,
             </div>
             <div className="ini2-lista">
               {colunas.vencendo.length === 0 && <p className="ini2-vazio">Nada vence nos próximos 30 dias.</p>}
-              {colunas.vencendo.slice(0, cabemDireita).map((item) => {
+              {colunas.vencendo.slice(0, LIMITE_DE_LINHAS_DO_PAINEL).map((item) => {
                 const quadrado = quadradoDoVencimento(item.validade, item.dias);
                 return (
                   <button key={item.id} type="button" className="ini2-linha ini2-linha--vence" onClick={() => colunas.onAbrirVencimento(item)}>
