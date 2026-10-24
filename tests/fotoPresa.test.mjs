@@ -57,7 +57,6 @@ test("estado que a pessoa vê: Na fila, Enviando, Enviada, Erro com motivo; 'Env
   assert.deepEqual(estadoVisivelDaEvidencia(i("falhou", "permissao"), "aguardando", false), { rotulo: "Erro", motivo: "Sem permissão ou visita ainda não enviada", podeEnviarAgora: true });
   assert.equal(estadoVisivelDaEvidencia(undefined, "enviada", true).rotulo, "Enviada");
   assert.equal(estadoVisivelDaEvidencia(undefined, undefined, true), null, "foto enviada direto, sem fila, não tem etiqueta");
-  assert.match(estadoVisivelDaEvidencia(undefined, "aguardando", false).motivo, /não encontrado/);
 });
 
 test("reconciliar: foto na fila sem registro é recriada; resultado não aplicado é aplicado; histórico aplicado não volta", () => {
@@ -98,4 +97,44 @@ test("queda de conexão no meio do envio não gasta tentativa; falha só de cone
   assert.equal(await reabrirFalhasDeConexao(armazem, "ana@x.com"), 1);
   assert.equal((await armazem.ler("queda-meio-1")).estado, "aguardando");
   assert.equal((await armazem.ler("invalida-12345")).estado, "falhou", "erro de arquivo continua precisando da pessoa");
+});
+
+test("registro sem arquivo enviado e sem item na fila mostra 'Arquivo não enviado' com 'Anexar de novo', qualquer que seja o campo envio", () => {
+  for (const envio of [undefined, "aguardando", "enviada"]) {
+    const estado = estadoVisivelDaEvidencia(undefined, envio, false);
+    assert.equal(estado.rotulo, "Arquivo não enviado", String(envio));
+    assert.equal(estado.podeAnexarDeNovo, true);
+    assert.equal(estado.podeEnviarAgora, false);
+  }
+  // o arquivo existe no registro mas o servidor não o entrega
+  const indisponivel = estadoVisivelDaEvidencia(undefined, "enviada", true, true);
+  assert.equal(indisponivel.rotulo, "Arquivo não enviado");
+  assert.match(indisponivel.motivo, /servidor não encontrou/);
+  // com item na fila o estado é o da fila, nunca "Arquivo não enviado"
+  const item = { ...base("x"), estado: "aguardando", tentativas: 0, bytes: 1 };
+  assert.equal(estadoVisivelDaEvidencia(item, undefined, false).rotulo, "Na fila");
+});
+
+test("anexar de novo entra na fila com o MESMO id e a data da captura, e não duplica", async () => {
+  const armazem = armazemEmMemoria();
+  const registro = { id: "sem-arquivo-2259", empresaId: "e1", visitaId: "v1", criadoEm: "2026-10-23T22:59:00.000Z" };
+  const dados = { ...base(registro.id), capturadoEm: registro.criadoEm };
+  await enfileirar(armazem, dados, blob());
+  await enfileirar(armazem, dados, blob());
+  assert.equal((await armazem.listar()).length, 1, "o mesmo id nunca vira dois itens");
+  let enviados = [];
+  await processarFila(contexto(armazem, { enviar: async (item) => { enviados.push([item.id, item.capturadoEm]); return { pathname: "p", url: "u" }; } }));
+  assert.deepEqual(enviados, [["sem-arquivo-2259", "2026-10-23T22:59:00.000Z"]]);
+});
+
+test("código: guardar na fila nunca espera o service worker; envio pedido durante outro envio roda depois; Anexar de novo liga ao mesmo registro", async () => {
+  const { readFileSync } = await import("node:fs");
+  const hook = readFileSync(new URL("../components/useFilaDeEvidencias.ts", import.meta.url), "utf8");
+  assert.ok(hook.includes("void (async () => {") && hook.includes("NUNCA espera"), "serviceWorker.ready não trava o fluxo");
+  assert.ok(hook.includes("repetirDepois") && hook.includes("rodando.current"));
+  const page = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
+  assert.ok(page.includes("async function anexarDeNovo(ev: Evidencia, arquivo: File)") && page.includes("id: ev.id,") && page.includes("capturadoEm: ev.criadoEm"));
+  assert.ok(page.includes("falhas: fila.resumo.falhou + semArquivo"), "registro sem arquivo conta no selo como erro");
+  const tela = readFileSync(new URL("../components/pc/PcEvidencias.tsx", import.meta.url), "utf8");
+  assert.ok(tela.includes("Anexar de novo") && tela.includes("Ver detalhes do registro"));
 });

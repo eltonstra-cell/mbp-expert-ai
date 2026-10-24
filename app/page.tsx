@@ -2256,6 +2256,70 @@ export default function Home() {
     aplicarResultado: aplicarEvidenciaEnviada,
   });
 
+  // Imagens que o servidor não entregou (404): o registro mostra "Arquivo não enviado" com "Anexar de novo".
+  // Guarda o arquivo (pathname) que o servidor não entregou; vale só enquanto o registro aponta para esse mesmo arquivo.
+  const [arquivosIndisponiveis, setArquivosIndisponiveis] = useState<Record<string, string>>({});
+
+  // "Anexar de novo": o RT escolhe o arquivo outra vez; ele entra na fila COM O MESMO id do registro (sem duplicar) e com a data da captura original.
+  async function anexarDeNovo(ev: Evidencia, arquivo: File) {
+    if (!exigirPermissao("evidencias.adicionar", ev.empresaId)) return;
+    try {
+      let conteudo: Blob | File = arquivo;
+      let nomeArquivo = arquivo.name || ev.nomeArquivo;
+      if (ev.tipo === "Foto") {
+        const validacao = await validarFotoEscolhida(arquivo, dependenciasDoNavegador);
+        if (!validacao.ok) return void avisar(validacao.motivo, { titulo: "Arquivo não aceito" });
+        const preparo = await prepararFotoParaEnvio(arquivo, dependenciasDoNavegador);
+        if (!preparo.ok) return void avisar(preparo.motivo, { titulo: "Foto não aceita" });
+        conteudo = preparo.arquivo;
+        nomeArquivo = preparo.nome;
+      }
+      await fila.guardar(
+        {
+          id: ev.id,
+          usuarioId: usuarioDaFila,
+          empresaId: ev.empresaId,
+          visitaId: ev.visitaId,
+          tipo: ev.tipo,
+          nomeArquivo,
+          mimeType: ev.tipo === "Foto" ? "image/jpeg" : arquivo.type || ev.mimeType || "audio/mpeg",
+          ambiente: ev.ambiente || "",
+          checklistItemId: ev.checklistItemId,
+          ncId: ev.ncId,
+          descricao: ev.descricao || "",
+          capturadoEm: ev.criadoEm,
+        },
+        conteudo
+      );
+      // Mesmo registro: só muda o estado (o arquivo antigo, se existia, deixa de valer; a data e o vínculo continuam).
+      setArquivosIndisponiveis((atual) => {
+        const { [ev.id]: _tira, ...resto } = atual;
+        return resto;
+      });
+      atualizarEvidenciaRegistrada(ev.id, (registro) => {
+        const { blobPathname: _p, blobUrl: _u, ...semArquivo } = registro;
+        return { ...semArquivo, nomeArquivo, envio: "aguardando" as const };
+      });
+      mostrarToast("Arquivo anexado. Enviando…");
+      void fila.enviarAgora();
+    } catch {
+      void avisar("Não foi possível guardar o arquivo neste aparelho. Libere espaço e tente de novo.", { titulo: "Não foi anexado" });
+    }
+  }
+
+  // Detalhes do registro para conferência (sem nome de pessoa e sem endereço do arquivo).
+  function detalhesDoRegistro(ev: Evidencia): string {
+    const item = fila.itens.find((registro) => registro.id === ev.id);
+    return [
+      `Registro: ${ev.id.slice(0, 8)}… · ${ev.tipo}`,
+      `Data da captura: ${ev.criadoEm}`,
+      `Campo envio: ${ev.envio ?? "(vazio)"}`,
+      `Arquivo no servidor: ${ev.blobPathname ? "sim" : "não"} · Arquivo antigo no registro: ${ev.dataUrl ? "sim" : "não"}`,
+      `Item vinculado: ${ev.checklistItemId ? "sim" : "não"} · Registrado por (id): ${ev.registradoPorId ? ev.registradoPorId.slice(0, 8) + "…" : "(vazio)"}`,
+      item ? `Fila neste aparelho: ${item.estado} · tentativas ${item.tentativas} · causa ${item.causaDaFalha ?? "-"} · conta ${item.usuarioId === usuarioDaFila ? "esta" : item.usuarioId === "local" ? "sem conta" : "outra"}` : "Fila neste aparelho: sem item",
+    ].join("\n");
+  }
+
   // Miniaturas das fotos que ainda estão só neste aparelho (a foto na fila aparece, e ampliar ao tocar funciona antes do envio).
   const [miniaturasDaFila, setMiniaturasDaFila] = useState<Record<string, string>>({});
   const miniaturasRef = useRef<Record<string, string>>({});
@@ -2297,7 +2361,16 @@ export default function Home() {
   }, [ready, fila.itens, db.evidencias]);
 
   // Selo de sincronização: "Sincronizado" só com AS DUAS filas vazias (estado e fotos/áudios); falha de foto vira "Erro ao enviar" (toque abre a fila).
-  const seloAtual = seloDeSincronizacao({ online: estaOnline, syncStatus, pendentes: fila.resumo.pendentes + pendentesDoEstado, falhas: fila.resumo.falhou });
+  // Registro sem arquivo enviado e sem item na fila (e que é do usuário atual) conta como "Erro ao enviar".
+  const idsNaFila = new Set(fila.itens.map((item) => item.id));
+  const semArquivo = (db.evidencias || []).filter(
+    (ev) => !ev.blobPathname && !ev.dataUrl && !idsNaFila.has(ev.id) && (!ev.registradoPorId || ev.registradoPorId === usuarioDaSessao?.id) && Boolean(visitaPorIdParaSelo(ev.visitaId))
+  ).length;
+  const seloAtual = seloDeSincronizacao({ online: estaOnline, syncStatus, pendentes: fila.resumo.pendentes + pendentesDoEstado, falhas: fila.resumo.falhou + semArquivo + (db.evidencias || []).filter((ev) => ev.blobPathname && arquivosIndisponiveis[ev.id] === ev.blobPathname).length });
+  function visitaPorIdParaSelo(id: string) {
+    return db.visitas.find((visita) => visita.id === id);
+  }
+
   function tocarNoSelo() {
     if (!estaOnline) {
       mostrarToast("Sem sinal · alterações guardadas neste aparelho. Elas são enviadas quando a conexão voltar.", { tipo: "aviso", duracaoMs: 4500 });
@@ -8455,7 +8528,14 @@ export default function Home() {
                 dataCompleta: `${formatarData(ev.criadoEm)} · ${hora}`,
                 url: urlEvidencia(ev) || miniaturasDaFila[ev.id] || "",
                 envio: ev.envio,
-                estadoEnvio: estadoVisivelDaEvidencia(itemDaFila, ev.envio, Boolean(ev.blobPathname)),
+                estadoEnvio: estadoVisivelDaEvidencia(itemDaFila, ev.envio, Boolean(ev.blobPathname || ev.dataUrl), Boolean(ev.blobPathname && arquivosIndisponiveis[ev.id] === ev.blobPathname)),
+                onAnexarDeNovo: (arquivo: File) => void anexarDeNovo(ev, arquivo),
+                detalhes: detalhesDoRegistro(ev),
+                onDetalhes: () => void avisar(detalhesDoRegistro(ev), { titulo: "Detalhes do registro" }),
+                onArquivoIndisponivel: (id: string) => {
+                  const caminho = (db.evidencias || []).find((registro) => registro.id === id)?.blobPathname;
+                  if (caminho) setArquivosIndisponiveis((atual) => (atual[id] === caminho ? atual : { ...atual, [id]: caminho }));
+                },
                 onEnviarAgora: () => void fila.repetir(ev.id).then(() => fila.enviarAgora()),
                 registradoPor: ev.registradoPorNome,
                 emRelatorio: evidenciasEmRelatorioEmitido(db.relatoriosEmitidos).has(ev.id),

@@ -36,6 +36,9 @@ export function useFilaDeEvidencias({ usuarioId, pronto, podeAcessarEmpresa, apl
   const [semConexao, setSemConexao] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const relogio = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Pedido de envio que chegou enquanto outro envio rodava: roda de novo assim que o atual terminar (antes ele se perdia e o item ficava esperando).
+  const rodando = useRef(false);
+  const repetirDepois = useRef<{ forcar: boolean } | null>(null);
   const opcoes = useRef({ usuarioId, podeAcessarEmpresa, aplicarResultado });
   opcoes.current = { usuarioId, podeAcessarEmpresa, aplicarResultado };
 
@@ -54,6 +57,11 @@ export function useFilaDeEvidencias({ usuarioId, pronto, podeAcessarEmpresa, apl
     async (forcar = false) => {
       const atual = opcoes.current;
       if (!atual.usuarioId || !indexedDbDisponivel()) return;
+      if (rodando.current) {
+        repetirDepois.current = { forcar: forcar || Boolean(repetirDepois.current?.forcar) };
+        return;
+      }
+      rodando.current = true;
       setEnviando(true);
       try {
         const resultado = await processarFila(
@@ -76,8 +84,12 @@ export function useFilaDeEvidencias({ usuarioId, pronto, podeAcessarEmpresa, apl
           relogio.current = setTimeout(() => void processar(false), Math.max(1000, resultado.proximaEm - Date.now()));
         }
       } finally {
+        rodando.current = false;
         setEnviando(false);
         void recarregar();
+        const outro = repetirDepois.current;
+        repetirDepois.current = null;
+        if (outro) void processar(outro.forcar);
       }
     },
     [recarregar]
@@ -133,13 +145,17 @@ export function useFilaDeEvidencias({ usuarioId, pronto, podeAcessarEmpresa, apl
       const item = await enfileirar(armazemDoAparelho, dados, arquivo);
       await recarregar();
       // Pede o envio em segundo plano onde o navegador permite; onde não, vale o envio com o app aberto.
-      try {
-        const registro = await navigator.serviceWorker?.ready;
-        const sync = (registro as unknown as { sync?: { register: (tag: string) => Promise<void> } } | undefined)?.sync;
-        await sync?.register("mbp-fila-evidencias");
-      } catch {
-        // Sem Background Sync (Safari/iPhone): o envio acontece com o app aberto.
-      }
+      // NUNCA espera por isso: `serviceWorker.ready` pode não resolver (service worker ainda instalando, aba privada), e quem chamou
+      // precisa criar o registro da evidência assim que o arquivo está guardado no aparelho.
+      void (async () => {
+        try {
+          const registro = await navigator.serviceWorker?.ready;
+          const sync = (registro as unknown as { sync?: { register: (tag: string) => Promise<void> } } | undefined)?.sync;
+          await sync?.register("mbp-fila-evidencias");
+        } catch {
+          // Sem Background Sync (Safari/iPhone): o envio acontece com o app aberto.
+        }
+      })();
       return item;
     },
     [recarregar]

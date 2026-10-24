@@ -46,6 +46,14 @@ export type CartaoEvidencia = {
   estadoEnvio?: EstadoVisivel | null;
   /** Tenta enviar este arquivo agora. */
   onEnviarAgora?: () => void;
+  /** "Arquivo não enviado": o RT escolhe o arquivo de novo; ele é ligado ao MESMO registro (sem duplicar, com a data da captura). */
+  onAnexarDeNovo?: (arquivo: File) => void;
+  /** Texto para conferir o que o registro e a fila guardam (sem dados pessoais). */
+  detalhes?: string;
+  onDetalhes?: () => void;
+  /** A imagem deste registro não carregou: o servidor não entrega o arquivo. */
+  onArquivoIndisponivel?: (id: string) => void;
+  arquivoIndisponivel?: boolean;
   /** Nome completo do ambiente, para o title do título curto. */
   tituloCompleto?: string;
   /** Quem registrou (carimbo gravado pelo app, não editável). */
@@ -245,6 +253,7 @@ function CaixaIA({ ev, vazia = false }: { ev: CartaoEvidencia; vazia?: boolean }
 
 function Cartao({ ev, onAmpliar }: { ev: CartaoEvidencia; onAmpliar: (id: string) => void }) {
   const online = useOnline();
+  const anexoRef = useRef<HTMLInputElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [tocando, setTocando] = useState(false);
   const aguardando = ev.analise?.status === "Aguardando revisão";
@@ -265,7 +274,7 @@ function Cartao({ ev, onAmpliar }: { ev: CartaoEvidencia; onAmpliar: (id: string
           <button type="button" className="ev7-card-mini" disabled={!ev.url} onClick={() => onAmpliar(ev.id)} aria-label="Ampliar a foto">
             {ev.url ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={ev.url} alt="" />
+              <img src={ev.url} alt="" onError={(evento) => { if (!evento.currentTarget.src.startsWith("blob:")) ev.onArquivoIndisponivel?.(ev.id); }} />
             ) : (
               <ArquivoIcon />
             )}
@@ -278,14 +287,16 @@ function Cartao({ ev, onAmpliar }: { ev: CartaoEvidencia; onAmpliar: (id: string
         <div className="ev7-card-conteudo">
       <div className="ev7-card-topo">
         <h3 className="ev7-card-titulo" title={ev.tituloCompleto || ev.titulo}>{ev.titulo}</h3>
-        {ev.podeExcluir && (
+        {(ev.podeExcluir || ev.onDetalhes || ev.estadoEnvio?.podeAnexarDeNovo) && (
           <RowMenu
             itens={[
               ...(ev.estadoEnvio?.podeEnviarAgora && ev.onEnviarAgora ? [{ rotulo: "Enviar agora", onClick: ev.onEnviarAgora }] : []),
+              ...(ev.estadoEnvio?.podeAnexarDeNovo && ev.onAnexarDeNovo ? [{ rotulo: "Anexar de novo", onClick: () => anexoRef.current?.click() }] : []),
+              ...(ev.onDetalhes ? [{ rotulo: "Ver detalhes do registro", onClick: ev.onDetalhes }] : []),
               ev.tipo === "Foto" && ev.url
                 ? { rotulo: "Ampliar foto", onClick: () => onAmpliar(ev.id) }
                 : { rotulo: "Abrir arquivo", onClick: () => window.open(ev.url, "_blank", "noopener"), desabilitado: !ev.url },
-              { rotulo: "Excluir evidência", perigo: true, onClick: ev.onExcluir },
+              ...(ev.podeExcluir ? [{ rotulo: "Excluir evidência", perigo: true, onClick: ev.onExcluir }] : []),
             ]}
           />
         )}
@@ -306,10 +317,29 @@ function Cartao({ ev, onAmpliar }: { ev: CartaoEvidencia; onAmpliar: (id: string
         {ev.emRelatorio && <span className="ev7-chip ev7-chip--fila">em relatório emitido</span>}
         {ev.registradoPor && <span className="ev7-chip" title="Quem registrou (gravado pelo app)">{ev.registradoPor}</span>}
         {ev.estadoEnvio && (
-          <span className={`ev7-chip ${ev.estadoEnvio.rotulo === "Erro" ? "ev7-chip--erro" : ev.estadoEnvio.rotulo === "Enviada" ? "ev7-chip--enviada" : "ev7-chip--fila"}`} title={ev.estadoEnvio.motivo}>
+          <span className={`ev7-chip ${ev.estadoEnvio.rotulo === "Erro" || ev.estadoEnvio.rotulo === "Arquivo não enviado" ? "ev7-chip--erro" : ev.estadoEnvio.rotulo === "Enviada" ? "ev7-chip--enviada" : "ev7-chip--fila"}`} title={ev.estadoEnvio.motivo}>
             {ev.estadoEnvio.rotulo}
             {ev.estadoEnvio.motivo ? ` · ${ev.estadoEnvio.motivo}` : ""}
           </span>
+        )}
+        {ev.estadoEnvio?.podeAnexarDeNovo && ev.onAnexarDeNovo && (
+          <>
+            <button type="button" className="ev7-chip ev7-chip--botao ev7-chip--agora" onClick={() => anexoRef.current?.click()}>
+              Anexar de novo
+            </button>
+            <input
+              ref={anexoRef}
+              type="file"
+              accept={ev.tipo === "Foto" ? "image/*" : "audio/*"}
+              className="sr-only"
+              tabIndex={-1}
+              onChange={(evento) => {
+                const arquivo = evento.currentTarget.files?.[0];
+                evento.currentTarget.value = "";
+                if (arquivo) ev.onAnexarDeNovo?.(arquivo);
+              }}
+            />
+          </>
         )}
         {ev.estadoEnvio?.podeEnviarAgora && ev.onEnviarAgora && (
           <button type="button" className="ev7-chip ev7-chip--botao ev7-chip--agora" onClick={ev.onEnviarAgora}>

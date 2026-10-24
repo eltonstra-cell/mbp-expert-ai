@@ -3,22 +3,25 @@
 import { MOTIVO_CURTO_DA_CAUSA, type ArmazemDaFila, type EstadoDoItem, type ItemSemArquivo } from "./filaEvidencias.ts";
 
 /** Estado que a pessoa vê em cada foto/áudio: "Na fila", "Enviando", "Enviada" ou "Erro" (com o motivo curto). */
-export type EstadoVisivel = { rotulo: "Na fila" | "Enviando" | "Enviada" | "Erro"; motivo?: string; podeEnviarAgora: boolean };
+export type EstadoVisivel = { rotulo: "Na fila" | "Enviando" | "Enviada" | "Erro" | "Arquivo não enviado"; motivo?: string; podeEnviarAgora: boolean; /** O RT escolhe o arquivo de novo e ele é ligado ao MESMO registro. */ podeAnexarDeNovo?: boolean };
 
 /**
  * `item` é o da fila (se existir); `envio` é o que o registro da evidência diz; `temArquivoEnviado` = a evidência já aponta para o arquivo no servidor.
  * Registro marcado "aguardando" sem item na fila e sem arquivo enviado é ERRO: o arquivo não está mais neste aparelho.
  * Foto enviada direto (sem passar pela fila) não tem etiqueta: devolve null.
  */
-export function estadoVisivelDaEvidencia(item: ItemSemArquivo | undefined, envio: "aguardando" | "enviada" | undefined, temArquivoEnviado: boolean): EstadoVisivel | null {
+export function estadoVisivelDaEvidencia(item: ItemSemArquivo | undefined, envio: "aguardando" | "enviada" | undefined, temArquivoEnviado: boolean, arquivoIndisponivel = false): EstadoVisivel | null {
   if (item) {
     if (item.estado === "enviando") return { rotulo: "Enviando", podeEnviarAgora: false };
     if (item.estado === "aguardando") return { rotulo: "Na fila", ...(item.causaDaFalha ? { motivo: MOTIVO_CURTO_DA_CAUSA[item.causaDaFalha] } : {}), podeEnviarAgora: true };
     if (item.estado === "falhou") return { rotulo: "Erro", motivo: item.causaDaFalha ? MOTIVO_CURTO_DA_CAUSA[item.causaDaFalha] : "Não foi possível enviar", podeEnviarAgora: true };
     if (item.estado === "enviado" && !temArquivoEnviado) return { rotulo: "Enviando", podeEnviarAgora: false };
   }
-  if (temArquivoEnviado && envio === "enviada") return { rotulo: "Enviada", podeEnviarAgora: false };
-  if (envio === "aguardando" && !temArquivoEnviado) return { rotulo: "Erro", motivo: "Arquivo não encontrado neste aparelho (pode estar no aparelho que tirou a foto)", podeEnviarAgora: false };
+  // Sem item na fila: todo registro sem arquivo enviado mostra "Arquivo não enviado" (qualquer que seja o campo `envio`), e o RT pode anexar de novo.
+  if (!temArquivoEnviado) return { rotulo: "Arquivo não enviado", motivo: "O arquivo não está neste aparelho nem no servidor", podeEnviarAgora: false, podeAnexarDeNovo: true };
+  // O registro aponta para um arquivo que o servidor não entrega (a imagem não carregou).
+  if (arquivoIndisponivel) return { rotulo: "Arquivo não enviado", motivo: "O servidor não encontrou o arquivo", podeEnviarAgora: false, podeAnexarDeNovo: true };
+  if (envio === "enviada") return { rotulo: "Enviada", podeEnviarAgora: false };
   return null;
 }
 
