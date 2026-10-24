@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   descartarItem,
   enfileirar,
+  reabrirFalhasDeConexao,
   itensDoUsuario,
   processarFila,
   recuperarInterrompidos,
@@ -14,6 +15,7 @@ import {
   type ItemSemArquivo,
 } from "@/lib/filaEvidencias";
 import { armazemDoAparelho, enviarItemPeloNavegador, indexedDbDisponivel } from "@/lib/filaEvidenciasIdb";
+import { adotarOrfaos, contarDeOutraConta } from "@/lib/filaReconciliacao";
 
 type Opcoes = {
   /** Identidade de quem está logado neste aparelho (e-mail, minúsculo). Vazio: a fila fica parada. */
@@ -28,6 +30,8 @@ type Opcoes = {
 // Background Sync só acorda o app onde o navegador oferece; no iPhone/Safari o envio acontece com o app aberto.
 export function useFilaDeEvidencias({ usuarioId, pronto, podeAcessarEmpresa, aplicarResultado }: Opcoes) {
   const [itens, setItens] = useState<ItemSemArquivo[]>([]);
+  /** Fotos e áudios guardados neste aparelho por OUTRA conta (esta conta não os envia). */
+  const [deOutraConta, setDeOutraConta] = useState(0);
   const [sessaoExpirada, setSessaoExpirada] = useState(false);
   const [semConexao, setSemConexao] = useState(false);
   const [enviando, setEnviando] = useState(false);
@@ -40,6 +44,7 @@ export function useFilaDeEvidencias({ usuarioId, pronto, podeAcessarEmpresa, apl
     try {
       const todos = await armazemDoAparelho.listar();
       setItens(itensDoUsuario(todos, opcoes.current.usuarioId).map(semArquivo).sort((a, b) => a.capturadoEm.localeCompare(b.capturadoEm)));
+      setDeOutraConta(contarDeOutraConta(todos, opcoes.current.usuarioId));
     } catch {
       setItens([]);
     }
@@ -85,6 +90,9 @@ export function useFilaDeEvidencias({ usuarioId, pronto, podeAcessarEmpresa, apl
     void (async () => {
       try {
         await recuperarInterrompidos(armazemDoAparelho, usuarioId);
+        // Itens guardados antes de a conta ser conhecida passam para esta conta (senão ficariam invisíveis e nunca seriam enviados).
+        await adotarOrfaos(armazemDoAparelho, usuarioId);
+        await reabrirFalhasDeConexao(armazemDoAparelho, usuarioId);
         // Pede ao navegador para não apagar a fila por falta de espaço (nem sempre ele concede).
         void navigator.storage?.persist?.();
       } catch {
@@ -156,5 +164,5 @@ export function useFilaDeEvidencias({ usuarioId, pronto, podeAcessarEmpresa, apl
 
   const resumo = useMemo(() => resumirFila(itens), [itens]);
 
-  return { itens, resumo, sessaoExpirada, semConexao, enviando, guardar, descartar, repetir, enviarAgora: () => processar(true), recarregar };
+  return { itens, deOutraConta, resumo, sessaoExpirada, semConexao, enviando, guardar, descartar, repetir, enviarAgora: () => processar(true), recarregar };
 }

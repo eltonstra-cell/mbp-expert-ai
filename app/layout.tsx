@@ -36,7 +36,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script
           dangerouslySetInnerHTML={{
             __html:
-              "(function(){var w=window.innerWidth;var m=w<768?\"campo\":w<1024?\"equilibrado\":\"completo\";try{var p=JSON.parse(localStorage.getItem(\"mbp-expert-ai:modo-tela:v1\")||\"null\");if(p&&p.automatico===false&&[\"campo\",\"equilibrado\",\"completo\"].indexOf(p.modo)>-1)m=p.modo;}catch(e){}document.documentElement.setAttribute(\"data-modo\",m);})();",
+              "(function(){var w=window.innerWidth;var m=w<768?\"campo\":w<1100?\"equilibrado\":\"completo\";try{var p=JSON.parse(localStorage.getItem(\"mbp-expert-ai:modo-tela:v1\")||\"null\");if(p&&p.automatico===false&&[\"campo\",\"equilibrado\",\"completo\"].indexOf(p.modo)>-1)m=p.modo;}catch(e){}document.documentElement.setAttribute(\"data-modo\",m);})();",
           }}
         />
       </head>

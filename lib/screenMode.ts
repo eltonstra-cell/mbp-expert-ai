@@ -22,10 +22,10 @@ export const ROTULO_DO_MODO: Record<ModoTela, string> = {
   completo: "Completo",
 };
 
-/** Automático: < 768 px Campo; 768 a 1023 Equilibrado; >= 1024 Completo. */
+/** Automático: < 768 px Campo; 768 a 1099 Equilibrado (menu lateral recolhido em ícones); >= 1100 Completo. */
 export function modoAutomatico(larguraDaTela: number): ModoTela {
   if (larguraDaTela < 768) return "campo";
-  if (larguraDaTela < 1024) return "equilibrado";
+  if (larguraDaTela < 1100) return "equilibrado";
   return "completo";
 }
 
@@ -59,7 +59,7 @@ export function serializarPreferencia(preferencia: PreferenciaDeTela): string {
 /** Rótulo do aparelho para a tela de configuração ("Celular", "Tablet 11\"", "Computador"). */
 export function descreverAparelho(larguraDaTela: number): string {
   if (larguraDaTela < 768) return "Celular";
-  if (larguraDaTela < 1024) return "Tablet";
+  if (larguraDaTela < 1100) return "Tablet";
   return "Computador";
 }
 

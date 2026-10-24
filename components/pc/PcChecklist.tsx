@@ -183,11 +183,15 @@ export default function PcChecklist({ titulo, subtitulo, ambientes, ambienteAtua
         <div>
           <h1 className="ui-title">{titulo}</h1>
           <p className="ui-subtitle">{subtitulo}</p>
-          {ditado && <p className="chk-caminhada">{ditado}</p>}
-          {restanteDoLote && restanteDoLote.quantos > 0 && (
-            <p className="chk-caminhada">
-              <button type="button" className="pc-link-btn" onClick={restanteDoLote.onMarcar}>Marcar o restante como Conforme ({restanteDoLote.quantos})</button>
-            </p>
+          {(ditado || (restanteDoLote && restanteDoLote.quantos > 0)) && (
+            <div className="chk-acoes-ambiente">
+              {ditado}
+              {restanteDoLote && restanteDoLote.quantos > 0 && (
+                <button type="button" className="chk-acao chk-acao--conforme" onClick={restanteDoLote.onMarcar}>
+                  Marcar o restante como Conforme ({restanteDoLote.quantos})
+                </button>
+              )}
+            </div>
           )}
           {textoCaminhada && (
             <p className="chk-caminhada" role="status">

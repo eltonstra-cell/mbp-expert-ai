@@ -41,9 +41,10 @@ test("selo de sincronização: texto curto e cor com função", () => {
   assert.match(css, /\.campo-sync\.is-erro\{background:#D93A3A;color:#fff\}/);
 });
 
-test("faixa de offline fina e selo com texto no topo do celular, com o nome da página", () => {
+test("selo com texto no topo do celular, com o nome da página; a frase do sem sinal aparece ao tocar no selo (sem faixa repetida)", () => {
   const page = ler("../app/page.tsx");
-  assert.ok(page.includes("Sem sinal · alterações guardadas neste aparelho"));
+  assert.equal(page.includes('<div className="faixa-fina" role="status">Sem sinal'), false, "a faixa que repetia o selo saiu");
+  assert.ok(page.includes("Sem sinal · alterações guardadas neste aparelho. Elas são enviadas quando a conexão voltar."));
   assert.ok(page.includes("titulo={TITULO_DA_TELA_NO_CAMPO[view] || \"\"}"));
   const campo = ler("../components/campo/CampoTelas.tsx");
   assert.ok(campo.includes("campo-head-pagina") && campo.includes("campo-sync-texto"));
@@ -57,7 +58,7 @@ test("botões: resposta com 40 px em uma linha, gravidade em contorno, Falar e I
   assert.ok(voz.includes("voz-semsinal"));
   assert.equal(/linhaInicio[\s\S]{0,40}Precisa de internet/.test(voz), false);
   const item = ler("../components/ChecklistFocoItem.tsx");
-  assert.ok(item.includes('ehItemDeTemperatura(item.titulo) ? "Ex.: termômetro a 9 °C" : "Observação (opcional)"'));
+  assert.ok(item.includes('ehItemDeTemperatura(item.titulo) ? "Ex.: termômetro a 9 °C" : ""'), "o placeholder não repete o rótulo");
 });
 
 test("relatório: temperatura classificada pelo app imprime valor, limite e a marca; resposta trocada pelo RT também é dita", () => {
@@ -85,4 +86,41 @@ test("a faixa 'Ambiente X de Y · Próximo' também aparece no item do celular, 
   const item = ler("../components/ChecklistFocoItem.tsx");
   assert.ok(item.includes("textoDaCaminhada(caminhada)") && item.includes("Pular ambiente"));
   assert.match(ler("../app/globals.css"), /\.campo-tela \.chk-foco-count\{display:block/);
+});
+
+test("selo: 'Sincronizado' só com as duas filas vazias; falha de foto vira 'Erro ao enviar' (vermelho)", () => {
+  const s = (entrada) => seloDeSincronizacao({ online: true, syncStatus: "sincronizado", pendentes: 0, ...entrada });
+  assert.equal(s({}).rotulo, "Sincronizado");
+  assert.equal(s({ pendentes: 1 }).rotulo, "1 pendente");
+  assert.deepEqual([s({ pendentes: 1, falhas: 1 }).estado, s({ pendentes: 1, falhas: 1 }).rotulo], ["erro", "Erro ao enviar"]);
+  assert.match(s({ pendentes: 2, falhas: 2 }).dica, /Toque para ver e enviar agora/);
+});
+
+test("evidências no celular: aviso de IA uma vez no topo, título curto com nome completo no title, botão baixo e 'Enviar agora'", () => {
+  const ev = ler("../components/pc/PcEvidencias.tsx");
+  assert.ok(ev.includes('className="ev7-aviso-ia"') && ev.includes("🔒 Analisar com IA"));
+  assert.equal(ev.includes('className="ev7-nota ev7-nota--ia"'), false, "o aviso não se repete em cada cartão");
+  assert.ok(ev.includes("title={ev.tituloCompleto || ev.titulo}") && ev.includes("Enviar agora"));
+  const css = ler("../app/globals.css");
+  assert.ok(css.includes('html[data-modo="campo"] .ev7-nova-campo{width:auto;height:40px'));
+  assert.ok(css.includes('.ui-screen[aria-label="Evidências da visita"] .ui-head .ui-title{position:absolute'));
+  const page = ler("../app/page.tsx");
+  assert.ok(page.includes("nomeCurtoDoAmbiente(ev.ambiente)") && page.includes("estadoVisivelDaEvidencia("));
+});
+
+test("PC: ações do ambiente são botões de 40 px, barra lateral clara com seleção em creme e recolhida abaixo de 1100 px", () => {
+  const css = ler("../app/globals.css");
+  assert.ok(css.includes('.chk-acao{display:inline-flex;align-items:center;justify-content:center;height:40px'));
+  assert.ok(css.includes('.pc-side,.pc-rail{--side-from:#F7F9FC;') && css.includes('background:#F7F9FC!important'));
+  assert.ok(css.includes('.pc-side .pc-link.is-active{background:#FEF6E6}'));
+  assert.ok(css.includes('.pc-side .pc-step-count{display:none}'));
+  assert.ok(css.includes('html .pc-topbar .emp-ativa{flex:0 0 auto;width:auto;min-width:240px'));
+  assert.ok(ler("../lib/screenMode.ts").includes('if (larguraDaTela < 1100) return "equilibrado"'));
+});
+
+test("campo de observação: um só texto (sem rótulo repetido no placeholder) e miniatura da foto ao lado do botão Foto", () => {
+  const item = ler("../components/ChecklistFocoItem.tsx");
+  assert.ok(item.includes(': ehItemDeTemperatura(item.titulo) ? "Ex.: termômetro a 9 °C" : ""'));
+  assert.ok(item.includes("chk-foto-mini-ao-lado") && item.includes('"Foto guardada · Na fila"'));
+  assert.ok(ler("../app/globals.css").includes('.chk-foco-amb-pos{flex:none;padding:0;border:0;border-radius:0;background:transparent'));
 });

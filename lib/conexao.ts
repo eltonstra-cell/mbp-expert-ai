@@ -71,10 +71,12 @@ export type SeloDeSincronizacao = { estado: "ok" | "pendente" | "sem-sinal" | "e
  * Chip do topo, sempre com texto: "Sincronizado", "Sincronizando…", "Sem sinal" (sem rede de verdade), "Erro ao enviar" (rede, mas a nuvem não
  * respondeu) e "N pendentes" (respostas, fotos e áudios guardados neste aparelho esperando o envio).
  */
-export function seloDeSincronizacao(entrada: { online: boolean; syncStatus: "sincronizado" | "conectando" | "erro" | string; pendentes: number }): SeloDeSincronizacao {
+export function seloDeSincronizacao(entrada: { online: boolean; syncStatus: "sincronizado" | "conectando" | "erro" | string; pendentes: number; /** Fotos e áudios que falharam de vez (precisam de "Enviar agora"). */ falhas?: number }): SeloDeSincronizacao {
   const { online, syncStatus, pendentes } = entrada;
+  const falhas = entrada.falhas ?? 0;
   const fila = pendentes === 1 ? "1 pendente" : `${pendentes} pendentes`;
   if (!online) return { estado: "sem-sinal", rotulo: pendentes > 0 ? `Sem sinal · ${pendentes}` : "Sem sinal", dica: `Sem sinal: o que você fizer fica guardado neste aparelho e é enviado quando a conexão voltar.${pendentes > 0 ? ` ${fila}.` : ""} Toque para tentar de novo.` };
+  if (falhas > 0) return { estado: "erro", rotulo: "Erro ao enviar", dica: `${falhas === 1 ? "1 foto ou áudio não foi enviado" : `${falhas} fotos ou áudios não foram enviados`}. Continuam guardados neste aparelho. Toque para ver e enviar agora.` };
   if (syncStatus === "erro") return { estado: "erro", rotulo: "Erro ao enviar", dica: "Há conexão, mas a nuvem não respondeu. Seus dados continuam guardados neste aparelho. Toque para tentar de novo." };
   if (pendentes > 0) return { estado: "pendente", rotulo: fila, dica: `${fila}: guardados neste aparelho até o envio. Toque para enviar agora.` };
   if (syncStatus === "conectando") return { estado: "pendente", rotulo: "Sincronizando…", dica: "Sincronizando com a nuvem." };

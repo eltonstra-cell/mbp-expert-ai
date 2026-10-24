@@ -58,7 +58,7 @@ export default function DitadoDoAmbiente({ ambienteRotulo, itens, equipamentos, 
 
   return (
     <>
-      <button type="button" className="pc-link-btn" onClick={() => setAberto(true)}>
+      <button type="button" className="chk-acao chk-acao--voz" onClick={() => setAberto(true)}>
         Ditar o ambiente
       </button>
       {aberto && (

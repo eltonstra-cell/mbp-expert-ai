@@ -165,7 +165,8 @@ export default function ChecklistFocoItem({
       }
       if (recenteRef.current) URL.revokeObjectURL(recenteRef.current.url);
       setRecente({ id, url });
-      setAvisoFoto({ texto: "Foto salva em Evidências", id });
+      // Sem sinal a foto fica guardada no aparelho e entra na fila de envio.
+      setAvisoFoto({ texto: typeof navigator !== "undefined" && !navigator.onLine ? "Foto guardada · Na fila" : "Foto guardada", id });
       timerFoto.current = setTimeout(() => setAvisoFoto(null), 6000);
     },
     [onFotoCapturada]
@@ -209,6 +210,7 @@ export default function ChecklistFocoItem({
   }, [item.id]);
 
   const botaoFoto = (gravando: boolean) => (
+    <>
     <button
       type="button"
       className={`chk-linha-foto${naoConforme ? " chk-linha-foto--destaque" : ""}${gravando ? " is-apagado" : ""}`}
@@ -221,6 +223,13 @@ export default function ChecklistFocoItem({
     >
       <NavIcon name="registrar" size={18} strokeWidth={1.9} /> <span>{salvandoFoto ? "Salvando..." : fotosNoItem > 0 ? `Foto ${fotosNoItem}/${maxFotos}` : "Foto"}</span>
     </button>
+    {recente && miniaturaNoItem && (
+      <button type="button" className="chk-foto-mini-botao chk-foto-mini-ao-lado" onClick={() => setAmpliada(true)} aria-label="Ampliar a foto deste item">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img className="chk-foto-mini" src={recente.url} alt="Última foto deste item" />
+      </button>
+    )}
+    </>
   );
 
   function desfazerFoto() {
@@ -389,14 +398,8 @@ export default function ChecklistFocoItem({
         ) : (
           <div className="voz-linha">{botaoFoto(false)}</div>
         )}
-        {((recente && miniaturaNoItem) || avisoFoto || camera.aviso) && (
+        {(avisoFoto || camera.aviso) && (
           <div className="chk-foto-linha" role="status">
-            {recente && miniaturaNoItem && (
-              <button type="button" className="chk-foto-mini-botao" onClick={() => setAmpliada(true)} aria-label="Ampliar a foto deste item">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img className="chk-foto-mini" src={recente.url} alt="Última foto deste item" />
-              </button>
-            )}
             {(avisoFoto || camera.aviso) && (
               <span className="chk-foto-aviso">{camera.aviso || avisoFoto?.texto}</span>
             )}
@@ -458,7 +461,7 @@ export default function ChecklistFocoItem({
             className="ui-input chk-obs-area"
             value={texto}
             disabled={!podeEditar}
-            placeholder={estadoVoz === "gravando" ? "Ouvindo… fale a observação" : ehItemDeTemperatura(item.titulo) ? "Ex.: termômetro a 9 °C" : "Observação (opcional)"}
+            placeholder={estadoVoz === "gravando" ? "Ouvindo… fale a observação" : ehItemDeTemperatura(item.titulo) ? "Ex.: termômetro a 9 °C" : ""}
             rows={2}
             aria-label="Observação do item"
             onChange={(evento) => setTexto(evento.target.value)}

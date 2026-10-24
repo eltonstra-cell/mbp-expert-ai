@@ -317,7 +317,10 @@ test("Servidor e telas: chave de envio idempotente, sem log de conteúdo e texto
   assert.ok(ajuda.includes("Aguardando envio"));
   assert.ok(!ajuda.includes("a evidência não é salva"));
   const evid = readFileSync(new URL("../components/pc/PcEvidencias.tsx", import.meta.url), "utf8");
-  assert.ok(evid.includes("Aguardando envio") && evid.includes("Enviada") && evid.includes("Precisa de internet"));
+  // O estado de cada foto/áudio vem da fila (Na fila, Enviando, Enviada, Erro); sem sinal o botão de IA fica esmaecido com cadeado, sem texto longo.
+  const reconc = readFileSync(new URL("../lib/filaReconciliacao.ts", import.meta.url), "utf8");
+  assert.ok(evid.includes("estadoEnvio") && evid.includes("Enviar agora") && evid.includes("🔒 Analisar com IA"));
+  assert.ok(reconc.includes('"Na fila"') && reconc.includes('"Enviada"') && reconc.includes('"Erro"') && reconc.includes('"Enviando"'));
   const voz = readFileSync(new URL("../components/FieldVoiceTools.tsx", import.meta.url), "utf8");
   assert.ok(voz.includes("Precisa de internet"));
 });

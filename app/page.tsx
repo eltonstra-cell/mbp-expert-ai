@@ -41,6 +41,8 @@ import { montarLembrete, montarPainelHoje, montarResumo, podeEnviarLembrete, pod
 import { useFilaDeEvidencias } from "@/components/useFilaDeEvidencias";
 import { useOnline } from "@/components/useOnline";
 import { FalhaDeEnvio, LIMITE_AVISO_FILA_BYTES, causaDaResposta, textoDeEspaco, type ItemSemArquivo } from "@/lib/filaEvidencias";
+import { estadoVisivelDaEvidencia, reconciliarComEvidencias } from "@/lib/filaReconciliacao";
+import { armazemDoAparelho } from "@/lib/filaEvidenciasIdb";
 import { MENSAGEM_SEM_NORMA_APLICADA, acaoCorretivaDoPopVigente, popVigente, avisoDePopsComNormaAlterada, conjuntoDaEmpresa, criarPopsFaltantesDoConjunto, CONJUNTO_DA_NORMA, criarPopDoTextoBase } from "@/lib/popsNorma";
 import AccessPreparationPanel from "@/components/AccessPreparationPanel";
 import AppNavigation, { type CartaoVisita, type ContagemEtapa } from "@/components/AppNavigation";
@@ -91,7 +93,7 @@ import MeuPerfilModal from "@/components/pc/MeuPerfilModal";
 import { iniciarMedidorDeVolume } from "@/components/useNivelDeAudio";
 import { MENSAGEM_SEM_FALA, ehSilencio } from "@/lib/transcricao";
 import { nomeDoArquivoPdf, rotuloDoRelatorio, seloDoPdf } from "@/lib/reportLabels";
-import { nomeDeExibicaoDoAmbiente } from "@/lib/checklistEnvs";
+import { nomeCurtoDoAmbiente, nomeDeExibicaoDoAmbiente } from "@/lib/checklistEnvs";
 import { calcularCortes } from "@/lib/pdfPaginacao";
 import { cssDoDocumentoImpresso, cssDoRodapeDeImpressao, suportaCaixasDeMargem, type CabecalhoDeImpressao } from "@/lib/printFooter";
 import { sincronizarNcDoItem } from "@/lib/checklistNcs";
@@ -1356,22 +1358,25 @@ export default function Home() {
       : 0;
 
     // O que este aparelho mudou e ainda não enviou NUNCA é trocado pelo estado da nuvem: mescla por item e, se os dois mudaram o mesmo item, pergunta.
-    let aplicar = novo;
+    // A mesclagem roda sobre o estado MAIS RECENTE (função de atualização): nada que mudou entre a leitura e agora se perde,
+    // por exemplo a foto que acabou de ser marcada como enviada.
     const base = baseRef.current?.estado;
-    if (base && !estadosIguais(base, dbRef.current)) {
-      const mesclado = mesclarTresVias(base, dbRef.current, novo);
-      aplicar = mesclado.estado;
-      if (mesclado.conflitos.length) definirConflitos(juntarConflitos(conflitosRef.current, mesclado.conflitos));
-    }
     registrarBase(novo, cloud.updatedAt || null);
-
-    setDb(aplicar);
-    salvarDBLocal(aplicar);
+    setDb((atual) => {
+      let aplicar = novo;
+      if (base && !estadosIguais(base, atual)) {
+        const mesclado = mesclarTresVias(base, atual, novo);
+        aplicar = mesclado.estado;
+        if (mesclado.conflitos.length) definirConflitos(juntarConflitos(conflitosRef.current, mesclado.conflitos));
+      }
+      salvarDBLocal(aplicar);
+      return aplicar;
+    });
 
     window.setTimeout(() => {
       aplicandoNuvemRef.current = false;
-      // Sobrou algo deste aparelho: envia agora, já em cima da versão nova da nuvem.
-      if (aplicar !== novo && !estadosIguais(novo, aplicar)) setEnvioForcado((n) => n + 1);
+      // Se sobrou algo deste aparelho, envia agora, já em cima da versão nova da nuvem (o envio é dispensado quando nada difere da base).
+      setEnvioForcado((n) => n + 1);
     }, 0);
 
     return true;
@@ -2183,12 +2188,37 @@ export default function Home() {
   function aplicarEvidenciaEnviada(item: ItemSemArquivo, resultado: { pathname: string; url: string }): boolean {
     const existe = (dbAtualRef.current.evidencias || []).some((ev) => ev.id === item.id);
     if (!existe) {
-      // A evidência foi removida enquanto esperava: não deixa o arquivo órfão no armazenamento.
-      void fetch(`/api/evidencias/file?pathname=${encodeURIComponent(resultado.pathname)}`, { method: "DELETE" }).catch(() => undefined);
+      // O registro da evidência sumiu (a pessoa que remove uma evidência com foto na fila já descarta o item antes): o arquivo enviado
+      // NUNCA é apagado aqui; o registro é recriado para a foto não ficar invisível.
+      recriarEvidenciaDaFila(item, resultado);
       return true;
     }
     atualizarEvidenciaRegistrada(item.id, (ev) => ({ ...ev, blobPathname: resultado.pathname, blobUrl: resultado.url, envio: "enviada" }));
     return true;
+  }
+
+  // Refaz o registro da evidência a partir do que a fila guardou (a foto na fila é, muitas vezes, a única cópia).
+  function recriarEvidenciaDaFila(item: ItemSemArquivo, resultado?: { pathname: string; url: string }) {
+    const recriada: Evidencia = {
+      id: item.id,
+      empresaId: item.empresaId,
+      visitaId: item.visitaId,
+      tipo: item.tipo,
+      nomeArquivo: item.nomeArquivo,
+      mimeType: item.mimeType,
+      ...(resultado ? { blobPathname: resultado.pathname, blobUrl: resultado.url, envio: "enviada" as const } : { envio: "aguardando" as const }),
+      descricao: item.descricao,
+      ambiente: item.ambiente,
+      checklistItemId: item.checklistItemId,
+      ncId: item.ncId,
+      criadoEm: item.capturadoEm,
+    };
+    setDb((o) => {
+      if ((o.evidencias || []).some((ev) => ev.id === item.id)) return o;
+      const atualizado: AppDB = { ...o, evidencias: [recriada, ...(o.evidencias || [])] };
+      salvarDBLocal(atualizado);
+      return atualizado;
+    });
   }
 
   async function sairDoSistema() {
@@ -2225,6 +2255,64 @@ export default function Home() {
     podeAcessarEmpresa: (empresaId) => !usuarioDaSessao || podeAcessarEmpresa(usuarioDaSessao, empresaId),
     aplicarResultado: aplicarEvidenciaEnviada,
   });
+
+  // Miniaturas das fotos que ainda estão só neste aparelho (a foto na fila aparece, e ampliar ao tocar funciona antes do envio).
+  const [miniaturasDaFila, setMiniaturasDaFila] = useState<Record<string, string>>({});
+  const miniaturasRef = useRef<Record<string, string>>({});
+  useEffect(() => {
+    let cancelado = false;
+    const idsPendentes = new Set(fila.itens.filter((item) => item.estado !== "enviado" && item.tipo === "Foto").map((item) => item.id));
+    for (const id of Object.keys(miniaturasRef.current)) {
+      if (!idsPendentes.has(id)) {
+        URL.revokeObjectURL(miniaturasRef.current[id]);
+        delete miniaturasRef.current[id];
+      }
+    }
+    void (async () => {
+      for (const id of idsPendentes) {
+        if (miniaturasRef.current[id]) continue;
+        try {
+          const guardado = await armazemDoAparelho.ler(id);
+          if (cancelado || !guardado?.arquivo) continue;
+          miniaturasRef.current[id] = URL.createObjectURL(guardado.arquivo);
+        } catch {
+          // Sem leitura do aparelho: o cartão fica sem miniatura, o envio continua.
+        }
+      }
+      if (!cancelado) setMiniaturasDaFila({ ...miniaturasRef.current });
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, [fila.itens]);
+
+  // Conferência da fila com o registro da visita: foto que está na fila e não aparece em Evidências é recriada; resultado que não chegou é aplicado.
+  useEffect(() => {
+    if (!ready) return;
+    for (const acao of reconciliarComEvidencias(fila.itens, db.evidencias || [])) {
+      if (acao.tipo === "recriar") recriarEvidenciaDaFila(acao.item, acao.item.estado === "enviado" ? acao.item.resultado : undefined);
+      else aplicarEvidenciaEnviada(acao.item, acao.resultado);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, fila.itens, db.evidencias]);
+
+  // Selo de sincronização: "Sincronizado" só com AS DUAS filas vazias (estado e fotos/áudios); falha de foto vira "Erro ao enviar" (toque abre a fila).
+  const seloAtual = seloDeSincronizacao({ online: estaOnline, syncStatus, pendentes: fila.resumo.pendentes + pendentesDoEstado, falhas: fila.resumo.falhou });
+  function tocarNoSelo() {
+    if (!estaOnline) {
+      mostrarToast("Sem sinal · alterações guardadas neste aparelho. Elas são enviadas quando a conexão voltar.", { tipo: "aviso", duracaoMs: 4500 });
+      return;
+    }
+    if (fila.resumo.pendentes > 0) {
+      setView("fila");
+      void fila.enviarAgora();
+    }
+    void atualizarNuvemManualmente();
+  }
+  async function enviarTudoAgora() {
+    await fila.enviarAgora();
+    await atualizarNuvemManualmente();
+  }
 
   const ehExecutor = usuarioDaSessao?.perfil === "Executor de campo";
   const ehFiscal = usuarioDaSessao?.perfil === "Fiscal";
@@ -5893,7 +5981,6 @@ export default function Home() {
       void avisar("Esta foto está citada em um relatório emitido e não pode ser removida.", { titulo: "Foto em relatório emitido" });
       return;
     }
-    if (evidencia.envio === "aguardando") void fila.descartar(id);
 
     const ncRelacionada = evidencia.ncId
       ? (db.ncs || []).find((nc) => nc.id === evidencia.ncId)
@@ -5915,6 +6002,8 @@ export default function Home() {
       ))
     ) return;
 
+    // Só depois da confirmação: o arquivo guardado no aparelho nunca é apagado antes (pode ser a única cópia).
+    if (evidencia.envio === "aguardando" || fila.itens.some((registro) => registro.id === id && registro.estado !== "enviado")) void fila.descartar(id);
     apagarArquivoDaEvidenciaNaNuvem(evidencia);
     setDb((o) => ({
       ...o,
@@ -7135,15 +7224,12 @@ export default function Home() {
         utilitarias={[
           { id: "texto", rotulo: "Texto", onClick: () => { setTamanhoTextoRascunho(tamanhoTexto); setPainelTamanhoTextoAberto(true); } },
           { id: "sincronizar", rotulo: fila.resumo.pendentes + pendentesDoEstado ? `Sincronizar · ${fila.resumo.pendentes + pendentesDoEstado} ${fila.resumo.pendentes + pendentesDoEstado === 1 ? "pendente" : "pendentes"}` : "Sincronizar", onClick: () => { setMenuMaisAberto(false); void atualizarNuvemManualmente(); setView("fila"); } },
+          ...(fila.resumo.pendentes > 0 ? [{ id: "enviar-agora" as const, rotulo: "Enviar agora", onClick: () => { setMenuMaisAberto(false); void enviarTudoAgora(); } }] : []),
           { id: "modo", rotulo: "Modo de tela", onClick: () => { setMenuMaisAberto(false); setView("modotela"); } },
           { id: "sobre", rotulo: "Sobre", onClick: () => void avisar(`${BRAND.name}\n${BRAND.subtitle}`, { titulo: "Sobre" }) },
           { id: "sair", rotulo: "Sair", desabilitado: saindo, onClick: () => { setMenuMaisAberto(false); void sairDoSistema(); } },
         ]}
-        sincronizacao={{
-          estado: syncStatus === "sincronizado" ? "ok" : syncStatus === "erro" ? "erro" : "pendente",
-          rotulo: syncStatus === "sincronizado" ? "Dados sincronizados" : syncStatus === "conectando" ? "Sincronizando dados" : "Verificar sincronização",
-          onClick: () => void atualizarNuvemManualmente(),
-        }}
+        sincronizacao={{ estado: seloAtual.estado, rotulo: seloAtual.rotulo, onClick: tocarNoSelo }}
         contagens={contagensMenu}
         visita={cartaoVisita}
         onSair={() => void sairDoSistema()}
@@ -7425,12 +7511,6 @@ export default function Home() {
         </div>
       )}
 
-      {protecaoLocalAtiva && !recuperacaoPendente && !estaOnline && (
-        <div className="border-b border-orange-200 bg-[#FFEBD2] pc-offset">
-          <div className="faixa-fina" role="status">Sem sinal · alterações guardadas neste aparelho</div>
-        </div>
-      )}
-
       {protecaoLocalAtiva && !recuperacaoPendente && estaOnline && (
         <div className={`border-b pc-offset ${estaOnline ? "border-red-200 bg-[var(--nc-bg)]" : "border-blue-200 bg-[var(--brand-soft)]"}`}>
           <div className={`mx-auto max-w-7xl px-4 py-3 ${estaOnline ? "text-red-950" : "text-blue-950"}`}>
@@ -7535,7 +7615,7 @@ export default function Home() {
               empresaCor={atual ? corDaEmpresa(atual) : undefined}
               empresaIniciais={atual ? iniciaisDaEmpresa(atual.nomeFantasia || "") : ""}
               titulo={TITULO_DA_TELA_NO_CAMPO[view] || ""}
-              sincronizacao={{ ...seloDeSincronizacao({ online: estaOnline, syncStatus, pendentes: fila.resumo.pendentes + pendentesDoEstado }), onClick: () => void atualizarNuvemManualmente() }}
+              sincronizacao={{ ...seloAtual, onClick: tocarNoSelo }}
               menuModo={itensMenuModo}
               onTrocarEmpresa={() => setTrocarEmpresaAberto(true)}
               onVoltar={mostrarVoltar(localDaTela) ? () => void voltarUmaTela() : undefined}
@@ -7569,7 +7649,7 @@ export default function Home() {
           contextoDaVoz={contextoDaVoz}
           micDisponivel={deveExibirRecursosDeIa(usuarioDaSessao)}
           modo={modo}
-          sincronizacao={{ ...seloDeSincronizacao({ online: estaOnline, syncStatus, pendentes: fila.resumo.pendentes + pendentesDoEstado }), onClick: () => void atualizarNuvemManualmente() }}
+          sincronizacao={{ ...seloAtual, onClick: tocarNoSelo }}
           automatico={telaModo.preferencia.automatico}
           onEscolherModo={telaModo.escolherModo}
           onVoltarAoAutomatico={telaModo.voltarAoAutomatico}
@@ -7667,6 +7747,7 @@ export default function Home() {
               { id: "ajuda", rotulo: "Ajuda", icone: "ajuda", tom: "laranja", onClick: () => irParaMenu("ajuda") },
               { id: "modo", rotulo: "Modo de tela", icone: "modo", tom: "roxo", onClick: () => setView("modotela") },
               { id: "sincronizar", rotulo: fila.resumo.pendentes + pendentesDoEstado ? `Sincronizar · ${fila.resumo.pendentes + pendentesDoEstado} ${fila.resumo.pendentes + pendentesDoEstado === 1 ? "pendente" : "pendentes"}` : "Sincronizar", icone: "sincronizar", tom: "verde", onClick: () => { void atualizarNuvemManualmente(); setView("fila"); } },
+              ...(fila.resumo.pendentes > 0 ? [{ id: "enviar-agora", rotulo: "Enviar agora", icone: "sincronizar" as const, tom: "verde" as const, onClick: () => { void enviarTudoAgora(); } }] : []),
               { id: "sair", rotulo: "Sair", icone: "sair", tom: "vermelho", onClick: () => void sairDoSistema() },
             ]}
             destaque={{
@@ -8356,7 +8437,10 @@ export default function Home() {
               const itemDaEvidencia = ev.checklistItemId ? checklistAtual.find((registro) => registro.id === ev.checklistItemId) : undefined;
               const numeroDoItem = itemDaEvidencia ? checklistAtual.filter((registro) => registro.ambiente === itemDaEvidencia.ambiente).findIndex((registro) => registro.id === itemDaEvidencia.id) + 1 : 0;
               const ambienteDaEvidencia = ev.ambiente ? nomeDeExibicaoDoAmbiente(ev.ambiente) : "Sem ambiente";
-              const titulo = numeroDoItem ? `${ambienteDaEvidencia} · Item ${numeroDoItem}` : ambienteDaEvidencia;
+              const ambienteCurto = ev.ambiente ? nomeCurtoDoAmbiente(ev.ambiente) : "Sem ambiente";
+              const titulo = numeroDoItem ? `${ambienteCurto} · Item ${numeroDoItem}` : ambienteCurto;
+              const tituloCompleto = numeroDoItem ? `${ambienteDaEvidencia} · Item ${numeroDoItem}` : ambienteDaEvidencia;
+              const itemDaFila = fila.itens.find((registro) => registro.id === ev.id);
               const hora = formatarHora(ev.criadoEm);
               return {
                 id: ev.id,
@@ -8364,12 +8448,15 @@ export default function Home() {
                 ambiente: ev.ambiente || "",
                 ambienteRotulo: ev.ambiente ? nomeDeExibicaoDoAmbiente(ev.ambiente) : "",
                 titulo,
+                tituloCompleto,
                 descricao: ev.descricao || "",
-                vinculo: itemDaEvidencia ? `${titulo} · ${itemDaEvidencia.titulo}` : titulo,
+                vinculo: itemDaEvidencia ? `${tituloCompleto} · ${itemDaEvidencia.titulo}` : tituloCompleto,
                 dataCurta: `${formatarDataCurta(ev.criadoEm)} · ${hora}`,
                 dataCompleta: `${formatarData(ev.criadoEm)} · ${hora}`,
-                url: urlEvidencia(ev),
+                url: urlEvidencia(ev) || miniaturasDaFila[ev.id] || "",
                 envio: ev.envio,
+                estadoEnvio: estadoVisivelDaEvidencia(itemDaFila, ev.envio, Boolean(ev.blobPathname)),
+                onEnviarAgora: () => void fila.repetir(ev.id).then(() => fila.enviarAgora()),
                 registradoPor: ev.registradoPorNome,
                 emRelatorio: evidenciasEmRelatorioEmitido(db.relatoriosEmitidos).has(ev.id),
                 possivelNc: ultima?.situacao === "Possível não conformidade",

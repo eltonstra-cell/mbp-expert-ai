@@ -207,6 +207,13 @@ export async function processarFila(contexto: ContextoDoEnvio, opcoes: { forcar?
           contexto.aoMudar?.();
           break;
         }
+        // Falha por falta de conexão (a conexão caiu no meio do envio) não gasta tentativa: o item continua na fila e recomeça quando o sinal voltar.
+        if (causa === "rede" && !contexto.online()) {
+          await armazem.salvar({ ...base, estado: "aguardando", causaDaFalha: "rede", progresso: undefined });
+          contexto.aoMudar?.();
+          resultado.semConexao = true;
+          break;
+        }
         const tentativas = base.tentativas + 1;
         const desistiu = causa === "invalido" || tentativas >= MAX_TENTATIVAS_AUTOMATICAS;
         const proxima = contexto.agora() + esperaDaTentativa(tentativas);
@@ -261,6 +268,21 @@ export async function recuperarInterrompidos(armazem: ArmazemDaFila, usuarioId: 
   return n;
 }
 
+/**
+ * Item que "falhou" só por conexão ou servidor (nunca por arquivo inválido, permissão ou sessão) volta para a fila ao abrir o app:
+ * quem ficou muito tempo sem sinal não precisa saber que existe um botão para tentar de novo. Não apaga nada.
+ */
+export async function reabrirFalhasDeConexao(armazem: ArmazemDaFila, usuarioId: string): Promise<number> {
+  let n = 0;
+  for (const item of itensDoUsuario(await armazem.listar(), usuarioId)) {
+    if (item.estado === "falhou" && (item.causaDaFalha === "rede" || item.causaDaFalha === "servidor")) {
+      await armazem.salvar({ ...item, estado: "aguardando", tentativas: 0, proximaTentativaEm: undefined });
+      n += 1;
+    }
+  }
+  return n;
+}
+
 /** Descarta UM item (com confirmação na tela): apaga o arquivo do aparelho. Só do usuário atual. */
 export async function descartarItem(armazem: ArmazemDaFila, usuarioId: string, id: string): Promise<boolean> {
   const item = await armazem.ler(id);
@@ -276,6 +298,15 @@ export async function tentarDeNovo(armazem: ArmazemDaFila, usuarioId: string, id
   await armazem.salvar({ ...item, estado: "aguardando", tentativas: 0, causaDaFalha: undefined, proximaTentativaEm: undefined });
   return true;
 }
+
+/** Motivo curto para o cartão da foto ("Erro: …"). */
+export const MOTIVO_CURTO_DA_CAUSA: Record<CausaDaFalha, string> = {
+  rede: "Sem conexão estável",
+  servidor: "Servidor não respondeu",
+  sessao: "Sessão expirada",
+  permissao: "Sem permissão ou visita ainda não enviada",
+  invalido: "Arquivo não aceito",
+};
 
 export const TEXTO_DA_CAUSA: Record<CausaDaFalha, string> = {
   rede: "Sem conexão estável. Vai tentar de novo.",

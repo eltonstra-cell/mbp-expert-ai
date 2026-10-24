@@ -11,6 +11,7 @@ import { avisar } from "@/lib/dialogos";
 import { dependenciasDoNavegador, validarFotoEscolhida } from "@/lib/fotoCompressao";
 import { formatarTempo, restanteDoLimite, useCapturaAudio, useCapturaCamera } from "@/components/useCapturaMidia";
 import { MENSAGEM_IA_DESLIGADA } from "@/lib/privacidadeEmpresa";
+import type { EstadoVisivel } from "@/lib/filaReconciliacao";
 import { useAvisoAntesDeFotografar } from "@/components/AvisoAntesDeFotografar";
 
 export type AnaliseEvidencia = {
@@ -41,6 +42,12 @@ export type CartaoEvidencia = {
   possivelNc: boolean;
   /** Evidência feita sem sinal: "Aguardando envio" até o arquivo subir, depois "Enviada". */
   envio?: "aguardando" | "enviada";
+  /** O que a fila diz agora: Na fila, Enviando, Enviada ou Erro (com motivo). Foto enviada direto, sem fila, não tem etiqueta. */
+  estadoEnvio?: EstadoVisivel | null;
+  /** Tenta enviar este arquivo agora. */
+  onEnviarAgora?: () => void;
+  /** Nome completo do ambiente, para o title do título curto. */
+  tituloCompleto?: string;
   /** Quem registrou (carimbo gravado pelo app, não editável). */
   registradoPor?: string;
   /** Foto citada em relatório emitido: não pode ser removida. */
@@ -164,10 +171,9 @@ function CaixaIA({ ev, vazia = false }: { ev: CartaoEvidencia; vazia?: boolean }
         <p className="ev7-ia-texto">Ainda não analisada. A IA só sugere; nada vira NC sem a sua confirmação.</p>
         {ev.podeAnalisar && (
           <div className="ev7-ia-acoes">
-            <button type="button" className={`ev7-btn-ia${ev.iaDesligada || !online ? " is-desligada" : ""}`} disabled={ev.analisando || ev.bloqueioIA || ev.iaDesligada || !online} onClick={ev.onAnalisar}>
-              {ev.analisando ? "Analisando..." : !online ? "Precisa de internet" : "✦ Analisar com IA"}
+            <button type="button" className={`ev7-btn-ia${ev.iaDesligada || !online ? " is-desligada" : ""}`} disabled={ev.analisando || ev.bloqueioIA || ev.iaDesligada || !online} onClick={ev.onAnalisar} title={ev.iaDesligada ? MENSAGEM_IA_DESLIGADA : !online ? "Sem sinal: a IA volta com a conexão" : undefined}>
+              {ev.analisando ? "Analisando..." : ev.iaDesligada || !online ? "🔒 Analisar com IA" : "✦ Analisar com IA"}
             </button>
-            {ev.iaDesligada && <span className="ev7-ia-aviso">{MENSAGEM_IA_DESLIGADA}</span>}
           </div>
         )}
       </div>
@@ -271,10 +277,11 @@ function Cartao({ ev, onAmpliar }: { ev: CartaoEvidencia; onAmpliar: (id: string
         )}
         <div className="ev7-card-conteudo">
       <div className="ev7-card-topo">
-        <h3 className="ev7-card-titulo">{ev.titulo}</h3>
+        <h3 className="ev7-card-titulo" title={ev.tituloCompleto || ev.titulo}>{ev.titulo}</h3>
         {ev.podeExcluir && (
           <RowMenu
             itens={[
+              ...(ev.estadoEnvio?.podeEnviarAgora && ev.onEnviarAgora ? [{ rotulo: "Enviar agora", onClick: ev.onEnviarAgora }] : []),
               ev.tipo === "Foto" && ev.url
                 ? { rotulo: "Ampliar foto", onClick: () => onAmpliar(ev.id) }
                 : { rotulo: "Abrir arquivo", onClick: () => window.open(ev.url, "_blank", "noopener"), desabilitado: !ev.url },
@@ -298,19 +305,27 @@ function Cartao({ ev, onAmpliar }: { ev: CartaoEvidencia; onAmpliar: (id: string
         <span className="ev7-chip">{ev.dataCurta}</span>
         {ev.emRelatorio && <span className="ev7-chip ev7-chip--fila">em relatório emitido</span>}
         {ev.registradoPor && <span className="ev7-chip" title="Quem registrou (gravado pelo app)">{ev.registradoPor}</span>}
-        {ev.envio === "aguardando" && <span className="ev7-chip ev7-chip--fila">Aguardando envio</span>}
-        {ev.envio === "enviada" && <span className="ev7-chip ev7-chip--enviada">Enviada</span>}
+        {ev.estadoEnvio && (
+          <span className={`ev7-chip ${ev.estadoEnvio.rotulo === "Erro" ? "ev7-chip--erro" : ev.estadoEnvio.rotulo === "Enviada" ? "ev7-chip--enviada" : "ev7-chip--fila"}`} title={ev.estadoEnvio.motivo}>
+            {ev.estadoEnvio.rotulo}
+            {ev.estadoEnvio.motivo ? ` · ${ev.estadoEnvio.motivo}` : ""}
+          </span>
+        )}
+        {ev.estadoEnvio?.podeEnviarAgora && ev.onEnviarAgora && (
+          <button type="button" className="ev7-chip ev7-chip--botao ev7-chip--agora" onClick={ev.onEnviarAgora}>
+            Enviar agora
+          </button>
+        )}
         {aguardando && <span className="ev7-chip ev7-chip--ia">IA aguardando revisão</span>}
         {ev.possivelNc && <Pill tom="nc">Possível NC</Pill>}
         {mostrarAnalisar && (
-          <button type="button" className={`ev7-btn-ia ev7-chips-fim${ev.iaDesligada || !online ? " is-desligada" : ""}`} disabled={ev.analisando || ev.bloqueioIA || ev.iaDesligada || !online} onClick={ev.onAnalisar}>
-            {ev.analisando ? "Analisando..." : !online ? "Precisa de internet" : ev.analise ? "✦ Analisar novamente" : "✦ Analisar com IA"}
+          <button type="button" className={`ev7-btn-ia ev7-chips-fim${ev.iaDesligada || !online ? " is-desligada" : ""}`} disabled={ev.analisando || ev.bloqueioIA || ev.iaDesligada || !online} onClick={ev.onAnalisar} title={ev.iaDesligada ? MENSAGEM_IA_DESLIGADA : !online ? "Sem sinal: a IA volta com a conexão" : undefined}>
+            {ev.analisando ? "Analisando..." : ev.iaDesligada || !online ? "🔒 Analisar com IA" : ev.analise ? "✦ Analisar novamente" : "✦ Analisar com IA"}
           </button>
         )}
       </div>
         </div>
       </div>
-      {mostrarAnalisar && ev.iaDesligada && <div className="ev7-nota ev7-nota--ia">{MENSAGEM_IA_DESLIGADA}</div>}
       {ev.mensagemIA && <div className="ev7-nota">{ev.mensagemIA}</div>}
       <CaixaIA ev={ev} />
     </article>
@@ -1026,6 +1041,9 @@ export default function PcEvidencias({
             <button type="button" className="ui-btn ui-btn--primary ev7-nova-campo" onClick={() => setFormAberto(true)}>
               + Nova evidência
             </button>
+          )}
+          {evidencias.some((cartao) => cartao.tipo === "Foto" && cartao.podeAnalisar && cartao.iaDesligada) && (
+            <p className="ev7-aviso-ia" role="note">{MENSAGEM_IA_DESLIGADA}</p>
           )}
           <div className="ev7-lista-topo">
             <SegmentedTabs<Aba>

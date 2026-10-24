@@ -14,8 +14,9 @@ test("modo automático acompanha a largura: celular Campo, tablet Equilibrado, P
   assert.equal(modoAutomatico(390), "campo");
   assert.equal(modoAutomatico(767), "campo");
   assert.equal(modoAutomatico(768), "equilibrado");
-  assert.equal(modoAutomatico(1023), "equilibrado");
-  assert.equal(modoAutomatico(1024), "completo");
+  assert.equal(modoAutomatico(1099), "equilibrado");
+  assert.equal(modoAutomatico(1024), "equilibrado");
+  assert.equal(modoAutomatico(1100), "completo");
   assert.equal(modoAutomatico(1440), "completo");
 });
 

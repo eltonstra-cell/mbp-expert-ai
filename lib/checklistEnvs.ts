@@ -49,6 +49,12 @@ export function nomeDeExibicaoDoAmbiente(nome: string): string {
   return nome;
 }
 
+/** Nome curto para títulos apertados ("Recebimento de matérias-primas, ingredientes e embalagens" -> "Recebimento"); o nome completo vai no title. */
+export function nomeCurtoDoAmbiente(nome: string): string {
+  const curto = nome.split(/\s*[,(/]\s*|\s+de\s+|\s+e\s+/)[0].trim();
+  return curto && curto.length >= 3 ? curto : nome;
+}
+
 export function resumoAmbientes(
   ordem: string[],
   itens: ItemParaResumo[],

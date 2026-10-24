@@ -20,7 +20,7 @@ import {
 } from "@/lib/navigation";
 
 export type AcaoUtilitaria = {
-  id: "texto" | "sincronizar" | "sobre" | "sair" | "modo";
+  id: "texto" | "sincronizar" | "enviar-agora" | "sobre" | "sair" | "modo";
   rotulo: string;
   onClick: () => void;
   desabilitado?: boolean;
@@ -53,7 +53,7 @@ type Props = {
   onAbrirMais: () => void;
   onFecharMais: () => void;
   utilitarias: AcaoUtilitaria[];
-  sincronizacao: { estado: "ok" | "erro" | "pendente"; rotulo: string; onClick: () => void };
+  sincronizacao: { estado: "ok" | "erro" | "pendente" | "sem-sinal"; rotulo: string; onClick: () => void };
   onSair: () => void;
   saindo: boolean;
   /** Pessoa conectada (cartão do rodapé do menu do PC); null no modo local. */
@@ -247,6 +247,7 @@ export default function AppNavigation({
       <button
         key={item.key}
         type="button"
+        data-chave={item.key}
         className={`pc-link${sub ? " pc-link--sub" : ""}${ehAtivo ? " is-active" : ""}`}
         aria-current={ehAtivo ? "page" : undefined}
         onClick={() => onSelecionar(item.key)}
@@ -303,6 +304,7 @@ export default function AppNavigation({
               <button
                 key={item.key}
                 type="button"
+                data-chave={item.key}
                 className={`pc-rail-item${ehAtivo ? " is-active" : ""}`}
                 aria-current={ehAtivo ? "page" : undefined}
                 aria-label={rotuloAcessivel(item, contador)}
@@ -515,7 +517,7 @@ export default function AppNavigation({
                   disabled={acao.desabilitado}
                   onClick={acao.onClick}
                 >
-                  <Tile tom="ardosia" icone={acao.id} tamanho={56} />
+                  <Tile tom="ardosia" icone={acao.id === "enviar-agora" ? "sincronizar" : acao.id} tamanho={56} />
                   <span className="pc-label">{acao.rotulo}</span>
                 </button>
               ))}

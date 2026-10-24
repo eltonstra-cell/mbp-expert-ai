@@ -5304,3 +5304,80 @@ html[data-modo] .chk-resp{font-size:.84rem;gap:4px;padding:0 4px}
 .campo-tela .chk-foco-count{display:block;font-size:.78rem;line-height:1.2}
 .campo-tela .chk-foco-count .pc-link-btn{font-size:.78rem}
 .chk-obs-area{min-height:52px;max-height:40vh;overflow-y:auto}
+
+/* ===== Rodada 2 dos testes do pacote 2 ===== */
+/* Checklist (celular): nome do ambiente em até 2 linhas e "N/M respondidos" como texto simples */
+.chk-foco-amb-nome{display:-webkit-box;min-width:0;overflow:hidden;white-space:normal;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.2;text-overflow:clip;overflow-wrap:anywhere}
+.chk-foco-amb-pos{flex:none;padding:0;border:0;border-radius:0;background:transparent;font-size:.85rem;color:#3D5160}
+.chk-foco-amb-top{align-items:center}
+.chk-foto-mini-ao-lado{flex:none}
+.chk-foto-mini-ao-lado .chk-foto-mini{width:36px;height:36px}
+/* Evidências (celular): título grande some (fica só a barra), botão baixo do tamanho do texto, aviso de IA uma vez */
+html[data-modo="campo"] .ui-screen[aria-label="Evidências da visita"] .ui-head .ui-title{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0)}
+html[data-modo="campo"] .ev7-nova-campo{width:auto;height:40px;min-height:40px;align-self:flex-start;padding:0 18px}
+.ev7-aviso-ia{margin:0 0 8px;padding:8px 12px;border:1.5px solid #E8B04B;border-radius:12px;background:#FEF6E6;font-size:.85rem;color:#12202B}
+.ev7-btn-ia.is-desligada{opacity:.55}
+.ev7-card-titulo{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ev7-chip--erro{background:#D93A3A;color:#fff}
+.ev7-chip--agora{height:32px;background:#FFF1B8;color:#12202B;cursor:pointer}
+/* PC: o título "Checklist" não se repete (já está na barra do topo) */
+.ui-screen[aria-label="Checklist"] .ui-head .ui-title{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+/* Ações do ambiente no checklist: botões baixos lado a lado, com cor com função (voz = azul claro, conforme = verde claro) */
+.chk-acoes-ambiente{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px}
+.chk-acao{display:inline-flex;align-items:center;justify-content:center;height:40px;padding:0 16px;border:1.5px solid transparent;border-radius:12px;font-size:.92rem;font-weight:400;color:#12202B;white-space:nowrap;cursor:pointer}
+.chk-acao--voz{background:#DCEFF9;border-color:#9CCBE6}
+.chk-acao--conforme{background:#DCF3E3;border-color:#9AD3AD}
+.chk-acao:focus-visible{outline:3px solid #E8B04B;outline-offset:2px}
+
+/* ===== Barra lateral leve: fundo claro, seleção em creme claro, cor só nos ícones e em "Registrar agora"; sem contadores repetidos ===== */
+.pc-side,.pc-rail{--side-from:#F7F9FC;--side-to:#F7F9FC;--side-border:#DDE3EA;--side-active-bg:#FEF6E6;--side-card:#FFFFFF;--side-sep:#E3E8EF;background:#F7F9FC!important;color:#12202B}
+.pc-side .pc-link,.pc-side .pc-link-label,.pc-side .pc-vgroup-label,.pc-side .pc-vgroup-title,.pc-side .pc-vgroup-head,.pc-side .pc-agroup-head,.pc-side .pc-user-name,.pc-side .pc-user-role,.pc-side .pc-user-card,.pc-side .pc-side-sep-label,.pc-side .pc-side-titulo,.pc-side [class*="rotulo"]{color:#12202B}
+.pc-side .pc-link:hover,.pc-side .pc-vgroup-head:hover,.pc-side .pc-agroup-head:hover{background:#EEF2F7}
+.pc-side .pc-link.is-active{background:#FEF6E6}
+.pc-side .pc-link.is-active::before{background:#E8B04B}
+.pc-side .pc-link.is-active .pc-link-icon{background:#FFE2B0;color:#12202B}
+.pc-side .pc-link--sub .pc-link-count{display:none}
+.pc-side .pc-user-card{background:#fff;border:1px solid #DDE3EA}
+.pc-side .pc-register-line{background:#E8760A;color:#fff;border-radius:14px}
+.pc-side .pc-register-label{color:#fff}
+.pc-side .pc-side-nav::-webkit-scrollbar-thumb{background:#C9D3DD}
+.pc-side .pc-side-nav{scrollbar-color:#C9D3DD transparent}
+.pc-side .pc-link:focus-visible,.pc-side .pc-register-line:focus-visible,.pc-side .pc-vgroup-head:focus-visible,.pc-side .pc-agroup-head:focus-visible,.pc-side .pc-logout:focus-visible{outline:3px solid #E8B04B}
+.pc-rail .pc-rail-item,.pc-rail .pc-rail-label{color:#12202B}
+.pc-rail .pc-rail-item:hover{background:#EEF2F7}
+.pc-rail .pc-rail-item.is-active{background:#FEF6E6;box-shadow:inset 3px 0 0 #E8B04B}
+.pc-rail .pc-rail-item.is-active .pc-rail-icon{background:#FFE2B0;color:#12202B}
+.pc-rail .pc-rail-logo{background:#fff;border:1px solid #DDE3EA}
+.pc-rail .pc-rail-avatar{border:1px solid #DDE3EA}
+.pc-rail .pc-rail-item:focus-visible,.pc-rail .pc-rail-register:focus-visible,.pc-rail .pc-rail-avatar:focus-visible{outline:3px solid #E8B04B}
+
+/* Seletor da empresa ativa sem corte: largura própria; a busca é quem encolhe */
+html .pc-topbar .emp-ativa{flex:0 0 auto;width:auto;min-width:240px;max-width:360px}
+html .pc-topbar .emp-ativa-caixa{min-width:0}
+html .pc-topbar .pc-busca{flex:1 1 180px;min-width:120px;max-width:380px}
+
+/* Barra lateral leve (continuação): texto escuro em tudo, cor só nos ícones (por etapa) e em "Registrar agora" */
+.pc-side :is(button,span,div,p,a,h2,h3,small):not(.pc-register-line):not(.pc-register-line *):not(.pc-link-icon):not(.pc-link-icon *):not(.pc-link-count){color:#12202B!important}
+.pc-side .pc-link-count{background:#E8760A;color:#fff}
+.pc-link-icon,.pc-rail-icon{color:#2A6BD1}
+[data-chave="ambientes"] .pc-link-icon,[data-chave="empresas"] .pc-link-icon,[data-chave="ambientes"] .pc-rail-icon,[data-chave="empresas"] .pc-rail-icon,.pc-link[data-chave="ambientes"] .pc-link-icon,.pc-rail-item[data-chave="ambientes"] .pc-rail-icon{color:#0E9AA7}
+.pc-link[data-chave="checklist"] .pc-link-icon,.pc-rail-item[data-chave="checklist"] .pc-rail-icon{color:#15803D}
+.pc-link[data-chave="evidencias"] .pc-link-icon,.pc-rail-item[data-chave="evidencias"] .pc-rail-icon{color:#1E7FB8}
+.pc-link[data-chave="ncs"] .pc-link-icon,.pc-rail-item[data-chave="ncs"] .pc-rail-icon,.pc-link[data-chave="correcoes"] .pc-link-icon{color:#D93A3A}
+.pc-link[data-chave="plano"] .pc-link-icon,.pc-rail-item[data-chave="plano"] .pc-rail-icon{color:#D97706}
+.pc-link[data-chave="acompanhamento"] .pc-link-icon,.pc-link[data-chave="relatorio"] .pc-link-icon,.pc-rail-item[data-chave="relatorio"] .pc-rail-icon,.pc-rail-item[data-chave="acompanhamento"] .pc-rail-icon{color:#5B6B80}
+.pc-side .pc-link.is-active .pc-link-icon,.pc-rail .pc-rail-item.is-active .pc-rail-icon{color:#12202B}
+.pc-side-foot button,.pc-side .pc-side-foot [class*="util"]{background:#fff;border:1px solid #DDE3EA}
+.pc-side .pc-side-nav :is(.pc-vgroup,.pc-side-visita){background:#fff;border:1px solid #DDE3EA;border-radius:14px}
+
+/* Ícones da barra lateral: cor por etapa (var --cor-icone), acima de qualquer regra branca anterior */
+.pc-side .pc-link .pc-link-icon,.pc-rail .pc-rail-item .pc-rail-icon{color:var(--cor-icone,#2A6BD1)!important}
+[data-chave="ambientes"],[data-chave="empresas"]{--cor-icone:#0E9AA7}
+[data-chave="checklist"]{--cor-icone:#15803D}
+[data-chave="evidencias"]{--cor-icone:#1E7FB8}
+[data-chave="ncs"],[data-chave="correcoes"]{--cor-icone:#D93A3A}
+[data-chave="plano"]{--cor-icone:#D97706}
+[data-chave="acompanhamento"],[data-chave="relatorio"],[data-chave="relatorios"]{--cor-icone:#5B6B80}
+.pc-side .pc-link.is-active .pc-link-icon,.pc-rail .pc-rail-item.is-active .pc-rail-icon{color:#12202B!important}
+.pc-side .pc-step-count{display:none}
