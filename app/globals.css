@@ -5435,3 +5435,27 @@ html .pc-topbar .pc-busca{flex:1 1 180px;min-width:120px;max-width:380px}
 .cad-sugestao-marca{padding:0 8px;border-radius:999px;background:#FFE2B0;font-size:.72rem}
 .cad-sugestao-botao{height:32px;padding:0 12px;border:1.5px solid #2A6BD1;border-radius:10px;background:#fff;font-size:.85rem;color:#12202B;cursor:pointer}
 .cad-sugestao-fonte{flex-basis:100%;font-size:.75rem;color:#51606c}
+
+.cnpj-uf-aviso{display:block;margin-top:4px;font-size:.85rem;color:#B45309}
+.cnpj-prop-fonte{margin:8px 0 0;font-size:.85rem;color:#51606c}
+.cnpj-prop-cnaes{margin-top:8px;font-size:.9rem}
+.cnpj-prop-cnaes summary{cursor:pointer;color:#12202B}
+.cnpj-prop-cnaes ul{margin:6px 0 0;padding-left:18px;max-height:140px;overflow-y:auto}
+
+/* Pacote do tipo: botão e títulos maiores e em NEGRITO (exceção pedida pelo dono), janela com a mesma base da escolha de setores */
+.pacote-tipo .pacote-tipo-ver{font-size:1rem;font-weight:700;height:44px}
+.pacote-janela{width:min(760px,94%)}
+.pacote-janela .esc-titulo{font-size:1.1rem}
+.pacote-abas{display:flex;gap:22px;margin-top:8px;border-bottom:1px solid #EEF1F5}
+.pacote-aba{height:40px;padding:0 2px;border:0;border-bottom:3px solid transparent;background:none;color:#12202B;font:inherit;font-size:1rem;font-weight:700;cursor:pointer}
+.pacote-aba.is-on{border-bottom-color:#F28C28}
+.pacote-aba-conta{margin-left:4px;font-size:.85rem;font-weight:400;color:#51606c}
+.pacote-grupo-topo{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px;margin-bottom:8px}
+.pacote-grupo-titulo{margin:0;font-size:1.125rem;font-weight:700;color:#12202B}
+.pacote-grupo-conta{font-size:1rem;font-weight:700;color:#12202B}
+.pacote-marcar-todos{margin-left:auto;height:40px;padding:0 10px;border:0;background:none;color:#12202B;font:inherit;font-size:.95rem;font-weight:700;text-decoration:underline;cursor:pointer}
+.pacote-aviso{margin:0 0 8px;padding:6px 10px;border-radius:8px;background:#FFF4E0;color:#12202B;font-size:.9rem}
+.pacote-eq-grupo{margin-bottom:10px}
+.pacote-eq-ambiente{margin:6px 0 4px;font-size:1rem;font-weight:700;color:#12202B}
+.esc-opcao.is-bloqueada{opacity:.55;cursor:not-allowed}
+.pacote-tipo .pacote-agora-nao,.pacote-janela .pacote-agora-nao{color:#12202B;border-color:#51606c;background:#fff}

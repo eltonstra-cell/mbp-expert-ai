@@ -1227,6 +1227,8 @@ export default function Home() {
   const [consultaMsg, setConsultaMsg] = useState("");
   const [camposDaConsulta, setCamposDaConsulta] = useState<string[]>([]);
   const [tipoSugerido, setTipoSugerido] = useState(false);
+  // UF que não veio da consulta (deduzida pelo CEP ou vazia): o campo avisa, sem bloquear.
+  const [avisoUf, setAvisoUf] = useState("");
   const [cnaesSecundariosForm, setCnaesSecundariosForm] = useState<{ codigo: string; descricao: string }[]>([]);
   const [consultaEmForm, setConsultaEmForm] = useState("");
   const cnpjConsultadoRef = useRef("");
@@ -3797,12 +3799,14 @@ export default function Home() {
     setCamposDaConsulta(trocaTipo ? [...campos, "tipo"] : campos);
     setTipoSugerido(trocaTipo);
     setCnaesSecundariosForm(propostaCnpj.cnaesSecundarios);
+    setAvisoUf(propostaCnpj.ufAviso);
     setConsultaEmForm(new Date().toISOString());
     setConsultaMsg(propostaCnpj.titularPessoaFisica ? "Dados aplicados. Informe o nome do estabelecimento: o nome do titular não é guardado." : "Dados aplicados. O que veio da consulta está marcado; edite ou confirme.");
     setPropostaCnpj(null);
   }
 
   function mudarCampoDaEmpresa(campo: string, valor: string) {
+    if (campo === "uf") setAvisoUf("");
     setForm((atual) => ({ ...atual, [campo]: valor }));
     setCamposDaConsulta((atual) => (atual.includes(campo) ? atual.filter((item) => item !== campo) : atual));
   }
@@ -4029,6 +4033,7 @@ export default function Home() {
     setCamposDaConsulta([]);
     setTipoSugerido(false);
     setCnaesSecundariosForm(empresa.cnaesSecundarios || []);
+    setAvisoUf("");
     setConsultaEmForm(empresa.consultaCnpjEm || "");
     setPacoteDesfazer(null);
     cnpjConsultadoRef.current = form.cnpj.replace(/\D/g, "");
@@ -4922,6 +4927,7 @@ export default function Home() {
     setCamposDaConsulta([]);
     setTipoSugerido(false);
     setCnaesSecundariosForm([]);
+    setAvisoUf("");
     setConsultaEmForm("");
     setPacoteDesfazer(null);
     cnpjConsultadoRef.current = "";
@@ -8225,6 +8231,7 @@ export default function Home() {
                         onChange={(e) => mudarCampoDaEmpresa(k, e.target.value)}
                       />
                     )}
+                    {k === "uf" && avisoUf && <span className="cnpj-uf-aviso" role="status">{avisoUf}</span>}
                     {k === "nomeFantasia" && (tocouNomeEmpresa || tentouSalvarEmpresa) && erroDoNomeDaEmpresa(form.nomeFantasia, form.razaoSocial) && <span className="ui-field-error" role="alert">{erroDoNomeDaEmpresa(form.nomeFantasia, form.razaoSocial)}</span>}
                   </label>
                     ))}

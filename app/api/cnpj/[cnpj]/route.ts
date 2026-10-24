@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { semCpf, titularEPessoaFisica } from "@/lib/cnpjConsulta";
+import { normalizarUf } from "@/lib/ufBrasil";
+import { consultarComReserva } from "@/lib/consultaCnpjFontes";
 
 type NormalizedCompany = {
   source: "BrasilAPI" | "CNPJ.ws";
@@ -42,7 +44,7 @@ function normalizeBrasilApi(data: any, cnpj: string): NormalizedCompany {
     bairro: data?.bairro || "",
     cep: data?.cep || "",
     municipio: data?.municipio || "",
-    uf: data?.uf || "",
+    uf: normalizarUf(data?.uf),
     ddd_telefone_1: data?.ddd_telefone_1 || "",
     ddd_telefone_2: data?.ddd_telefone_2 || "",
     email: data?.email || "",
@@ -57,7 +59,8 @@ function normalizeCnpjWs(data: any, cnpj: string): NormalizedCompany {
   const est = data?.estabelecimento || {};
   const principal = est?.atividade_principal || est?.atividade_principal?.[0] || {};
   const cidade = est?.cidade?.nome || est?.municipio?.nome || "";
-  const estado = est?.estado?.sigla || est?.uf || "";
+  // O "estado" da CNPJ.ws às vezes vem como Exterior ("EX") para empresa brasileira: só entra UF brasileira válida.
+  const estado = normalizarUf(est?.uf) || normalizarUf(est?.estado?.sigla);
 
   const fone1 =
     est?.ddd1 && est?.telefone1
@@ -102,9 +105,11 @@ function protegerDadosDePessoa(dados: NormalizedCompany): NormalizedCompany {
 }
 
 async function tryBrasilApi(cnpj: string) {
+  // A BrasilAPI responde 403 (Forbidden) a pedido SEM User-Agent; sem ele a consulta sempre caía na CNPJ.ws.
   const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`, {
     cache: "no-store",
-    headers: { Accept: "application/json" },
+    signal: AbortSignal.timeout(9000),
+    headers: { Accept: "application/json", "User-Agent": "PontoCerto/2.0" },
   });
 
   if (!res.ok) {
@@ -118,6 +123,7 @@ async function tryBrasilApi(cnpj: string) {
 async function tryCnpjWs(cnpj: string) {
   const res = await fetch(`https://publica.cnpj.ws/cnpj/${cnpj}`, {
     cache: "no-store",
+    signal: AbortSignal.timeout(9000),
     headers: {
       Accept: "application/json",
       "User-Agent": "PontoCerto/2.0",
@@ -152,28 +158,21 @@ export async function GET(
     );
   }
 
-  const errors: string[] = [];
+  // A BrasilAPI é a primeira; a CNPJ.ws é a reserva. A fonte exibida é a realmente usada.
+  const resultado = await consultarComReserva([
+    { nome: "BrasilAPI", consultar: () => tryBrasilApi(normalized) },
+    { nome: "CNPJ.ws", consultar: () => tryCnpjWs(normalized) },
+  ]);
+  for (const tentativa of resultado.tentativas) if (!tentativa.ok) console.warn(`Consulta de CNPJ: ${tentativa.fonte} falhou (${tentativa.motivo})`);
 
-  try {
-    const data = await tryBrasilApi(normalized);
-    return NextResponse.json(protegerDadosDePessoa(data));
-  } catch (error) {
-    errors.push(error instanceof Error ? error.message : "Falha na BrasilAPI");
+  if (!resultado.dados) {
+    return NextResponse.json(
+      {
+        error: "Não foi possível consultar o CNPJ agora. Tente novamente em alguns instantes.",
+        detail: resultado.tentativas.map((tentativa) => `${tentativa.fonte}: ${tentativa.motivo}`),
+      },
+      { status: 502 }
+    );
   }
-
-  try {
-    const data = await tryCnpjWs(normalized);
-    return NextResponse.json(protegerDadosDePessoa(data));
-  } catch (error) {
-    errors.push(error instanceof Error ? error.message : "Falha na CNPJ.ws");
-  }
-
-  return NextResponse.json(
-    {
-      error:
-        "Não foi possível consultar o CNPJ agora. Tente novamente em alguns instantes.",
-      detail: errors,
-    },
-    { status: 502 }
-  );
+  return NextResponse.json({ ...protegerDadosDePessoa(resultado.dados), uf_da_outra_fonte: resultado.ufDaOutraFonte || "", tentativas: resultado.tentativas });
 }

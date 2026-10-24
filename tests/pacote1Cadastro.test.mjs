@@ -158,6 +158,6 @@ test("perguntas sempre as padrão: nenhum código de checklist ou questionário 
 test("o servidor não devolve nome do titular nem CPF de MEI (a rota aplica a proteção antes de responder)", async () => {
   const { readFileSync } = await import("node:fs");
   const rota = readFileSync(new URL("../app/api/cnpj/[cnpj]/route.ts", import.meta.url), "utf8");
-  assert.ok(rota.includes("protegerDadosDePessoa(data)") && rota.includes("titularEPessoaFisica") && rota.includes("semCpf"));
-  assert.equal((rota.match(/protegerDadosDePessoa\(data\)/g) || []).length, 2, "vale para as duas fontes (BrasilAPI e CNPJ.ws)");
+  assert.ok(rota.includes("protegerDadosDePessoa(resultado.dados)") && rota.includes("titularEPessoaFisica") && rota.includes("semCpf"));
+  assert.ok(rota.indexOf("protegerDadosDePessoa(resultado.dados)") > rota.indexOf("consultarComReserva(["), "a proteção vale para a fonte que respondeu (BrasilAPI ou CNPJ.ws), antes de responder");
 });

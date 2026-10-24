@@ -1,6 +1,6 @@
 "use client";
 
-import type { PropostaDeCnpj } from "@/lib/cnpjConsulta";
+import { formatarCnae, type PropostaDeCnpj } from "@/lib/cnpjConsulta";
 
 type Props = {
   proposta: PropostaDeCnpj;
@@ -26,8 +26,13 @@ export default function PropostaDeCnpjPainel({ proposta, vaiTrocar = [], onUsar,
     <section className="cnpj-proposta md:col-span-2" aria-label="Dados encontrados para este CNPJ">
       <div className="cnpj-prop-topo">
         <strong className="cnpj-prop-titulo">Dados encontrados para este CNPJ</strong>
-        <span className="cnpj-prop-selo">sugerido · {proposta.fonte}</span>
+        <span className="cnpj-prop-selo">sugerido · fonte: {proposta.fonte}</span>
       </div>
+      {proposta.tentativas.some((tentativa) => !tentativa.ok) && (
+        <p className="cnpj-prop-fonte">
+          {proposta.tentativas.filter((tentativa) => !tentativa.ok).map((tentativa) => tentativa.fonte).join(", ")} não respondeu; os dados vieram de {proposta.fonte}.
+        </p>
+      )}
       {proposta.avisos.map((aviso) => (
         <p key={aviso} className="cnpj-prop-aviso" role="status">{aviso}</p>
       ))}
@@ -36,9 +41,18 @@ export default function PropostaDeCnpjPainel({ proposta, vaiTrocar = [], onUsar,
         {linha("Nome fantasia", proposta.nomeFantasia)}
         {linha("Situação", proposta.situacao)}
         {linha("Endereço", [endereco, proposta.cep, cidade].filter(Boolean).join(" · "))}
-        {linha("CNAE principal", [proposta.cnaePrincipal.codigo, proposta.cnaePrincipal.descricao].filter(Boolean).join(" · "))}
-        {proposta.cnaesSecundarios.length > 0 && linha("CNAEs secundários", `${proposta.cnaesSecundarios.length} · ${proposta.cnaesSecundarios.slice(0, 3).map((c) => c.codigo).join(", ")}${proposta.cnaesSecundarios.length > 3 ? "…" : ""}`)}
+        {linha("CNAE principal", [formatarCnae(proposta.cnaePrincipal.codigo), proposta.cnaePrincipal.descricao].filter(Boolean).join(" · "))}
       </div>
+      {proposta.cnaesSecundarios.length > 0 && (
+        <details className="cnpj-prop-cnaes">
+          <summary>CNAEs secundários ({proposta.cnaesSecundarios.length})</summary>
+          <ul>
+            {proposta.cnaesSecundarios.map((cnae) => (
+              <li key={cnae.codigo}>{formatarCnae(cnae.codigo)}{cnae.descricao ? ` · ${cnae.descricao}` : ""}</li>
+            ))}
+          </ul>
+        </details>
+      )}
       {vaiTrocar.length > 0 && <p className="cnpj-prop-troca">Vai trocar o que já está preenchido em: {vaiTrocar.join(", ")}.</p>}
       <div className="cnpj-prop-acoes">
         <button type="button" className="ui-btn ui-btn--primary" onClick={onUsar}>Usar estes dados</button>

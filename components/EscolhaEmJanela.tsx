@@ -71,7 +71,7 @@ export default function EscolhaEmJanela({ titulo, apoio, opcoes, marcadas, palav
       {marcadosAgora.length === 0 ? (
         <p className="esc-vazio">{vazio}</p>
       ) : (
-        <ChipsRecolhiveis titulo={titulo} ids={marcadosAgora} tituloDe={tituloDe} salvas={salvas} />
+        <ChipsRecolhiveis titulo={titulo} ids={marcadosAgora} tituloDe={tituloDe} completoDe={(id) => opcoes.find((opcao) => opcao.id === id)?.descricao} salvas={salvas} />
       )}
       {janela}
     </section>
@@ -79,7 +79,7 @@ export default function EscolhaEmJanela({ titulo, apoio, opcoes, marcadas, palav
 }
 
 // Fechado (padrão): uma linha com os primeiros chips que cabem e o chip "+N ▾". Aberto: todos, com "Recolher ▴"; passando de 4 linhas, rola por dentro.
-function ChipsRecolhiveis({ titulo, ids, tituloDe, salvas }: { titulo: string; ids: string[]; tituloDe: (id: string) => string; salvas?: string[] }) {
+function ChipsRecolhiveis({ titulo, ids, tituloDe, completoDe, salvas }: { titulo: string; ids: string[]; tituloDe: (id: string) => string; completoDe?: (id: string) => string | undefined; salvas?: string[] }) {
   const [aberto, setAberto] = useState(false);
   const [cabem, setCabem] = useState(ids.length);
   const caixaRef = useRef<HTMLDivElement | null>(null);
@@ -103,7 +103,7 @@ function ChipsRecolhiveis({ titulo, ids, tituloDe, salvas }: { titulo: string; i
   }, [chave]);
 
   const chip = (id: string) => (
-    <li key={id} className={`esc-chip ${chipPendente(id, salvas) ? "is-falta" : "is-salvo"}`}>
+    <li key={id} className={`esc-chip ${chipPendente(id, salvas) ? "is-falta" : "is-salvo"}`} title={completoDe?.(id)}>
       <span aria-hidden="true">✓</span> {tituloDe(id)}
       {chipPendente(id, salvas) && <span className="esc-selo">{ROTULO_DO_SELO}</span>}
     </li>

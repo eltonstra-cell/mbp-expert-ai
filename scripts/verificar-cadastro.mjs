@@ -35,7 +35,7 @@ const servidorFalso = `
       if (flag("__falha")) return json({ error: "indisponível" }, 502);
       const c = url.split("/").pop();
       if (c === "${CNPJ_MEI}") return json({ source: "BrasilAPI", cnpj: c, razao_social: "", nome_fantasia: "Marmitas da Casa", descricao_situacao_cadastral: "ATIVA", cnae_fiscal: "5620104", cnae_fiscal_descricao: "Fornecimento de alimentos preparados preponderantemente para consumo domiciliar", cnaes_secundarios: [], natureza_juridica: "Empresário (Individual)", codigo_natureza_juridica: "2135", opcao_pelo_mei: true, logradouro: "RUA DOS TESTES", numero: "5", complemento: "", bairro: "CENTRO", cep: "90000000", municipio: "PORTO ALEGRE", uf: "RS", ddd_telefone_1: "", email: "" });
-      return json({ source: "BrasilAPI", cnpj: c, razao_social: "RESTAURANTE SABOR DE TESTE LTDA", nome_fantasia: "Sabor de Teste", descricao_situacao_cadastral: "ATIVA", cnae_fiscal: "5611201", cnae_fiscal_descricao: "Restaurantes e similares", cnaes_secundarios: [{ codigo: "5611203", descricao: "Lanchonetes, casas de chá, de sucos e similares" }], natureza_juridica: "Sociedade Empresária Limitada", codigo_natureza_juridica: "2062", opcao_pelo_mei: false, logradouro: "AVENIDA DO TESTE", numero: "100", complemento: "SALA 1", bairro: "CENTRO", cep: "90010000", municipio: "PORTO ALEGRE", uf: "RS", ddd_telefone_1: "5133333333", email: "contato@teste.example" });
+      return json({ source: "BrasilAPI", cnpj: c, razao_social: "RESTAURANTE SABOR DE TESTE LTDA", nome_fantasia: "Sabor de Teste", descricao_situacao_cadastral: "ATIVA", cnae_fiscal: "5611201", cnae_fiscal_descricao: "Restaurantes e similares", cnaes_secundarios: [{ codigo: "5611203", descricao: "Lanchonetes, casas de chá, de sucos e similares" }], natureza_juridica: "Sociedade Empresária Limitada", codigo_natureza_juridica: "2062", opcao_pelo_mei: false, logradouro: "AVENIDA DO TESTE", numero: "100", complemento: "SALA 1", bairro: "CENTRO", cep: "90010000", municipio: "PORTO ALEGRE", uf: "EX", ddd_telefone_1: "5133333333", email: "contato@teste.example" });
     }
     if (url.startsWith("/api/access/session")) return flag("__off") ? Promise.reject(new TypeError("x")) : json({ authenticated: true, user: { id: "u1", email: ${JSON.stringify(EMAIL)}, name: "Elton Volmir Strapazon" } });
     if (url.startsWith("/api/state")) { if (flag("__off")) throw new TypeError("Failed to fetch"); const s = JSON.parse(localStorage.getItem("__srv")); if (url.includes("meta=1")) return json({ configured: true, updatedAt: s.updatedAt }); if ((opcoes.method || "GET") === "PUT") { const c = JSON.parse(opcoes.body); if (c.expectedUpdatedAt !== s.updatedAt) return json({ ok: false, conflict: true, configured: true, data: s.data, updatedAt: s.updatedAt }, 409); const n = { data: c.data, updatedAt: new Date().toISOString() }; localStorage.setItem("__srv", JSON.stringify(n)); return json({ ok: true, configured: true, updatedAt: n.updatedAt }); } return json({ configured: true, data: s.data, updatedAt: s.updatedAt }); }
@@ -95,13 +95,15 @@ try {
   registrar("2a. CNPJ válido: a consulta chega como proposta com botão 'Usar estes dados'", veioProposta && /Usar estes dados/.test(await texto()));
   const antes = await js(`[...document.querySelectorAll("section[aria-label='Nova empresa'] label")].map(l=>({r:l.querySelector("span")?.innerText||"",v:l.querySelector("input,textarea")?.value||""})).filter(x=>x.r.includes("Razão social")||x.r.includes("Nome fantasia")).map(x=>x.v).join("|")`);
   registrar("2b. nada foi preenchido antes de o RT confirmar", antes === "|" || antes === "", JSON.stringify(antes));
-  registrar("2c. a proposta traz CNAE principal e secundários", /5611201/.test(await texto()) && /CNAEs secundários/.test(await texto()));
+  registrar("2c. a proposta traz CNAE principal e secundários (recolhíveis, com código e descrição)", (await texto()).includes("5611-2/01") && (await texto()).includes("CNAEs secundários (1)") && (await js(`(()=>{const d=document.querySelector(".cnpj-prop-cnaes");return !!d&&!d.open&&d.textContent.includes("5611-2/03 · Lanchonetes")})()`)));
+  registrar("2c2. a proposta mostra a fonte usada e a UF 'EX' da consulta não aparece (vira RS pelo CEP)", /fonte: BrasilAPI/.test(await texto()) && !/ EX/.test(await js(`document.querySelector(".cnpj-proposta").innerText`)) && /Porto Alegre|PORTO ALEGRE/.test(await js(`document.querySelector(".cnpj-proposta").innerText`)));
   await foto("1-proposta");
   await clicar("Usar estes dados");
   await n.esperar(500);
   const depois = await js(`[...document.querySelectorAll("section[aria-label='Nova empresa'] label")].map(l=>({r:l.querySelector("span")?.innerText||"",v:l.querySelector("input,textarea")?.value||""})).filter(x=>x.r.includes("Razão social")||x.r.includes("Nome fantasia")).map(x=>x.v).join("|")`);
   registrar("2d. 'Usar estes dados' preenche razão social e fantasia", depois.includes("RESTAURANTE SABOR DE TESTE LTDA") && depois.includes("Sabor de Teste"), depois);
   registrar("2e. campos da consulta ficam marcados 'da consulta'", /da consulta/.test(await texto()));
+  registrar("2e2. UF vem RS (deduzida pelo CEP) com aviso 'UF não veio da consulta, confirme' e telefone formatado", /UF não veio da consulta, confirme/.test(await texto()) && (await js(`JSON.stringify([...document.querySelectorAll("section[aria-label='Nova empresa'] input")].map(i=>i.value))`)).includes("(51) 3333-3333") && (await js(`JSON.stringify([...document.querySelectorAll("section[aria-label='Nova empresa'] input")].map(i=>i.value))`)).includes("RS"));
   registrar("2f. o CNAE sugere o tipo 'Restaurante', marcado 'sugerido pelo CNAE', com opção de trocar", /sugerido pelo CNAE/.test(await texto()) && (await js(`[...document.querySelectorAll("button")].some(b=>b.innerText.includes("Confirmar tipo"))`)));
   await js(`(()=>{const el=[...document.querySelectorAll("section[aria-label='Nova empresa'] label")].find(l=>(l.querySelector("span")?.innerText||"").includes("Nome fantasia")).querySelector("input");el.focus();const d=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value");d.set.call(el,"Sabor de Teste Centro");el.dispatchEvent(new Event("input",{bubbles:true}))})()`);
   await n.esperar(300);
@@ -112,8 +114,21 @@ try {
   registrar("3a. o tipo propõe ambientes, equipamentos e fluxos, sem criar nada ainda", /o app propõe \d+ ambientes?, \d+ equipamentos? e \d+ fluxos?/.test(await texto()) && /Nada é criado sem a sua confirmação/.test(await texto()));
   await clicar("Ver e escolher");
   await n.esperar(300);
+  registrar("3a2. 'Ver e escolher' abre uma JANELA (mo\dal) com título 'Pacote \de Restaurante · N ambientes, N equipamentos, N fluxos' e ro\dapé fixo", await js(`(()=>{const j=\document.querySelector(".esc-janela.pacote-janela");if(!j)return false;const t=j.querySelector("h2").innerText;const r=j.querySelector(".esc-ro\dape");return /^Pacote \de Restaurante · \\d+ ambientes, \\d+ equipamentos, \\d+ fluxos$/.test(t)&&!!r&&[...r.querySelectorAll("button")].map(b=>b.innerText).join("|")==="Agora não|Aplicar o que está marca\do"&&j.getBoun\dingClientRect().bottom<=innerHeight})()`));
+  registrar("3a3. títulos \do grupo em negrito e 16px ou mais, com '13 \de 13 marca\dos'; nomes curtos nos ambientes", await js(`(()=>{const t=\document.querySelector(".pacote-grupo-titulo");const cs=getCompute\dStyle(t);const conta=\document.querySelector(".pacote-grupo-conta").innerText;const itens=[...\document.querySelectorAll(".esc-opcao-titulo")].map(x=>x.innerText);return Number(cs.fontWeight)>=700&&parseFloat(cs.fontSize)>=16&&/^\\d+ \de \\d+ marca\dos$/.test(conta)&&itens.inclu\des("Cozinha")&&itens.inclu\des("Central \de gás")&&itens.inclu\des("Refeitório")})()`));
   await foto("2-pacote");
-  await js(`(()=>{const l=[...document.querySelectorAll(".pacote-tipo-item")].find(x=>x.innerText.includes("Fritadeira"));l.querySelector("input").click()})()`);
+  await js(`[...document.querySelectorAll(".pacote-aba")].find(b=>b.innerText.startsWith("Equipamentos")).click()`);
+  await n.esperar(200);
+  registrar("3a4. equipamentos agrupados sob o nome do ambiente, sem repetir o ambiente em cada item", await js(`(()=>{const g=[...document.querySelectorAll(".pacote-eq-ambiente")].map(x=>x.innerText);const itens=[...document.querySelectorAll(".esc-opcao-titulo")].map(x=>x.innerText);return g.includes("Cozinha")&&itens.includes("Fritadeira")&&!itens.some(x=>x.includes("·"))})()`));
+  await js(`[...document.querySelectorAll(".pacote-aba")].find(b=>b.innerText.startsWith("Ambientes")).click()`);
+  await js(`(()=>{const l=[...document.querySelectorAll(".esc-opcao")].find(x=>x.innerText.includes("Cozinha"));l.querySelector("input").click()})()`);
+  await n.esperar(200);
+  registrar("3a5. desmarcar o ambiente Cozinha avisa que os equipamentos também saíram", /equipamentos também saíram/.test(await texto()));
+  await js(`(()=>{const l=[...document.querySelectorAll(".esc-opcao")].find(x=>x.innerText.includes("Cozinha"));l.querySelector("input").click()})()`);
+  await n.esperar(200);
+  registrar("3a6. marcar a Cozinha de novo devolve os equipamentos", /equipamentos voltaram/.test(await texto()));
+  await js(`[...document.querySelectorAll(".pacote-aba")].find(b=>b.innerText.startsWith("Equipamentos")).click()`);
+  await js(`(()=>{const l=[...document.querySelectorAll(".esc-opcao")].find(x=>x.innerText.includes("Fritadeira"));l.querySelector("input").click()})()`);
   await clicar("Aplicar o que está marcado");
   await n.esperar(500);
   registrar("3b. aplicado: aparece 'Pacote de Restaurante aplicado' com Desfazer", /Pacote de Restaurante aplicado/.test(await texto()) && (await js(`[...document.querySelectorAll("button")].some(b=>b.innerText.trim()==="Desfazer")`)));
@@ -191,11 +206,11 @@ try {
   await clicar("Copiar");
   await n.esperar(500);
   registrar("8c. copiar para outro ambiente: confirma e avisa quantos foram copiados, com Desfazer", /equipamentos? copiados?/.test(await texto()) && (await js(`[...document.querySelectorAll(".cad-copia-aviso button")].some(b=>b.innerText.trim()==="Desfazer")`)));
-  const noEstoque = await js(`(()=>{const g=[...document.querySelectorAll(".cad-grupo")].find(x=>x.innerText.includes("Estoque de matérias-primas"));return g?g.innerText:""})()`);
+  const noEstoque = await js(`(()=>{const g=[...document.querySelectorAll(".cad-grupo")].find(x=>x.querySelector(".cad-grupo-titulo span").title.startsWith("Estoque de matérias-primas"));return g?g.innerText:""})()`);
   registrar("8d. o equipamento copiado aparece no ambiente de destino", /Refrigerador/.test(noEstoque) && /Fogão/.test(noEstoque), noEstoque.replace(/\n+/g, " ").slice(0, 80));
   await js(`[...document.querySelectorAll(".cad-copia-aviso button")].find(b=>b.innerText.trim()==="Desfazer").click()`);
   await n.esperar(500);
-  const depoisDesfazer = await js(`(()=>{const g=[...document.querySelectorAll(".cad-grupo")].find(x=>x.innerText.includes("Estoque de matérias-primas"));return g?g.innerText:""})()`);
+  const depoisDesfazer = await js(`(()=>{const g=[...document.querySelectorAll(".cad-grupo")].find(x=>x.querySelector(".cad-grupo-titulo span").title.startsWith("Estoque de matérias-primas"));return g?g.innerText:""})()`);
   registrar("8e. Desfazer tira só o que a cópia criou", !/Refrigerador/.test(depoisDesfazer) && /Refrigerador ×2/.test(await texto()));
   await clicarContendo("+ Câmara fria");
   await n.esperar(400);

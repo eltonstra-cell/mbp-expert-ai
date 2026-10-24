@@ -2,7 +2,24 @@
 // LGPD: empresário individual / MEI tem o NOME DO TITULAR (e o CPF) na razão social. Esses dados NÃO são propostos, guardados nem exibidos:
 // a proposta traz só o nome fantasia (se houver) e o endereço do estabelecimento, e o campo avisa.
 
+import { resolverUf, type UfResolvida } from "./ufBrasil.ts";
+
 export type CnaeDaConsulta = { codigo: string; descricao: string };
+
+/** "1138186800" -> "(11) 3818-6800"; "11987654321" -> "(11) 98765-4321". Outro formato aparece como veio. */
+export function formatarTelefone(valor: string | undefined | null): string {
+  const texto = (valor || "").trim();
+  const d = texto.replace(/\D/g, "");
+  if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+  return texto;
+}
+
+/** Subclasse CNAE de 7 dígitos como se escreve: "5611203" -> "5611-2/03". */
+export function formatarCnae(codigo: string | undefined | null): string {
+  const d = String(codigo || "").replace(/\D/g, "");
+  return d.length === 7 ? `${d.slice(0, 4)}-${d.slice(4, 5)}/${d.slice(5)}` : d;
+}
 
 export type PropostaDeCnpj = {
   fonte: string;
@@ -22,11 +39,16 @@ export type PropostaDeCnpj = {
   cep: string;
   municipio: string;
   uf: string;
+  /** De onde veio a UF e o aviso para o campo (vazio quando veio da consulta). */
+  ufOrigem: UfResolvida["origem"];
+  ufAviso: string;
   telefone: string;
   email: string;
   /** O titular é pessoa física: nome e CPF foram descartados. */
   titularPessoaFisica: boolean;
   avisos: string[];
+  /** Quais fontes foram tentadas e por que alguma falhou (para o painel mostrar a fonte realmente usada). */
+  tentativas: { fonte: string; ok: boolean; motivo?: string }[];
 };
 
 const semAcento = (t: string) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLocaleLowerCase("pt-BR");
@@ -71,6 +93,9 @@ export type ConsultaBruta = {
   uf?: string;
   ddd_telefone_1?: string;
   email?: string;
+  /** UF que a outra fonte trouxe, quando a da fonte usada veio inválida. */
+  uf_da_outra_fonte?: string;
+  tentativas?: { fonte: string; ok: boolean; motivo?: string }[];
 };
 
 export function propostaDaConsulta(bruta: ConsultaBruta): PropostaDeCnpj {
@@ -80,6 +105,8 @@ export function propostaDaConsulta(bruta: ConsultaBruta): PropostaDeCnpj {
   if (pessoaFisica) avisos.push("Empresário individual ou MEI: o nome do titular e o CPF não são guardados nem exibidos. Informe o nome do estabelecimento.");
   if (!situacaoEstaAtiva(situacao)) avisos.push(`Situação cadastral: ${situacao}. Confira com o cliente; o cadastro segue normal.`);
   const fantasia = semCpf(bruta.nome_fantasia || "");
+  const uf = resolverUf({ uf: bruta.uf, outraFonte: bruta.uf_da_outra_fonte, cep: bruta.cep, municipio: bruta.municipio });
+  if (uf.aviso) avisos.push(uf.aviso);
   return {
     fonte: bruta.source || "Consulta pública de CNPJ",
     cnpj: (bruta.cnpj || "").replace(/\D/g, ""),
@@ -97,11 +124,14 @@ export function propostaDaConsulta(bruta: ConsultaBruta): PropostaDeCnpj {
     bairro: bruta.bairro || "",
     cep: bruta.cep || "",
     municipio: bruta.municipio || "",
-    uf: bruta.uf || "",
-    telefone: bruta.ddd_telefone_1 || "",
+    uf: uf.uf,
+    ufOrigem: uf.origem,
+    ufAviso: uf.aviso,
+    telefone: formatarTelefone(bruta.ddd_telefone_1),
     email: bruta.email || "",
     titularPessoaFisica: pessoaFisica,
     avisos,
+    tentativas: bruta.tentativas || [],
   };
 }
 

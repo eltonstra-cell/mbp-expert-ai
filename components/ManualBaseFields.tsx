@@ -17,6 +17,7 @@ import { limiteSugeridoParaEquipamento, pacoteDoTipo } from "@/lib/tiposDeEstabe
 import { sugerirSetorOficial } from "@/lib/setorOficialSugerido";
 import { textoCurtoDaResponsabilidade, textoDosAtivos } from "@/lib/manualIdentificacao";
 import EscolhaEmJanela from "@/components/EscolhaEmJanela";
+import { nomeCurtoDoSetor } from "@/lib/tiposDeEstabelecimento";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
 import VozEquipamentosConferencia, { type ItemParaConferir } from "@/components/VozEquipamentosConferencia";
 import { nomeJaExistente } from "@/lib/ambientesVisita";
@@ -312,7 +313,7 @@ export default function ManualBaseFields({
                 modo="botao"
                 titulo="Setores do estabelecimento"
                 apoio="Marque somente os setores que realmente existem nesta empresa."
-                opcoes={SETORES_OFICIAIS_MANUAL.map((setor) => ({ id: setor, titulo: setor }))}
+                opcoes={SETORES_OFICIAIS_MANUAL.map((setor) => ({ id: setor, titulo: nomeCurtoDoSetor(setor), descricao: nomeCurtoDoSetor(setor) === setor ? undefined : setor }))}
                 marcadas={oficiaisMarcados}
                 palavra="setores marcados"
                 rotuloDoBotao="Escolher setores"
@@ -635,7 +636,7 @@ export default function ManualBaseFields({
               return (
                 <div key={grupo.setor} className="cad-grupo">
                   <div className="cad-grupo-titulo">
-                    <span>{grupo.setor}</span>
+                    <span title={grupo.setor}>{nomeCurtoDoSetor(grupo.setor)}</span>
                     <span className="cad-conta" aria-label={`${grupo.itens.length} itens`}>{grupo.itens.length}</span>
                     {setoresParaEquipamentos.length > 1 && grupo.itens.length > 0 && (
                       <button type="button" className="cad-copiar" onClick={() => setCopiando({ origem: grupo.setor, destinos: [] })}>Copiar para outros ambientes</button>

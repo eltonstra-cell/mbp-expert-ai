@@ -66,6 +66,29 @@ const [RECEBIMENTO, ESTOQUE, DML, GAS, COZINHA, HIGIENIZACAO, SALAO, VEST_F, BAN
 const COLABORADORES = [VEST_F, BAN_F, VEST_M, BAN_M];
 const CLIENTES = [CLI_F, CLI_M];
 
+/** Nome curto do setor oficial para chips e listas apertadas; o nome oficial completo vai no title. */
+const NOME_CURTO_DO_SETOR: Record<string, string> = {
+  [RECEBIMENTO]: "Recebimento",
+  [ESTOQUE]: "Estoque",
+  [DML]: "DML",
+  [GAS]: "Central de gás",
+  [COZINHA]: "Cozinha",
+  [HIGIENIZACAO]: "Higienização",
+  [SALAO]: "Refeitório",
+  [VEST_F]: "Vestiário fem.",
+  [BAN_F]: "Banheiro fem.",
+  [VEST_M]: "Vestiário masc.",
+  [BAN_M]: "Banheiro masc.",
+  [CLI_F]: "Clientes fem.",
+  [CLI_M]: "Clientes masc.",
+};
+export const nomeCurtoDoSetor = (nome: string): string => NOME_CURTO_DO_SETOR[nome] || nome;
+
+// Critérios dos ambientes por tipo (só os 13 setores oficiais; o RT desmarca o que não existe):
+// Central de gás: restaurante, UAN e bufê (cozinha de produção com fogão industrial); Refeitório/salão: onde se consome no local
+// (não em açougue, bufê, delivery, ambulante); banheiros de clientes: onde o público entra; o restante (recebimento, estoque,
+// DML, higienização, vestiários e banheiros de colaboradores) fica igual por falta de critério melhor.
+
 export type EquipamentoSugerido = { nome: string; ambiente: string; quantidade: number };
 export type PacoteDoTipo = { ambientes: string[]; equipamentos: EquipamentoSugerido[]; fluxos: TipoFluxoOperacional[] };
 
@@ -79,12 +102,12 @@ const PACOTES: Record<IdDoTipo, PacoteDoTipo> = {
     fluxos: TODOS_OS_FLUXOS,
   },
   lanchonete: {
-    ambientes: [RECEBIMENTO, ESTOQUE, DML, COZINHA, HIGIENIZACAO, SALAO, ...COLABORADORES.slice(0, 2), ...CLIENTES],
+    ambientes: [RECEBIMENTO, ESTOQUE, DML, COZINHA, HIGIENIZACAO, SALAO, ...COLABORADORES, ...CLIENTES],
     equipamentos: [eq("Refrigerador", COZINHA), eq("Freezer", ESTOQUE), eq("Chapa", COZINHA), eq("Fritadeira", COZINHA), eq("Estufa / balcão térmico", SALAO), eq("Balcão refrigerado", SALAO), eq("Pia de higienização", HIGIENIZACAO)],
     fluxos: ["Recebimento", "Armazenamento", "Manipulação e produção", "Pré-preparo e preparo", "Porcionamento e fracionamento", "Distribuição", "Manejo de resíduos", "Entrada e saída de colaboradores"],
   },
   bar: {
-    ambientes: [RECEBIMENTO, ESTOQUE, DML, COZINHA, HIGIENIZACAO, SALAO, ...COLABORADORES.slice(0, 2), ...CLIENTES],
+    ambientes: [RECEBIMENTO, ESTOQUE, DML, COZINHA, HIGIENIZACAO, SALAO, ...COLABORADORES, ...CLIENTES],
     equipamentos: [eq("Refrigerador", COZINHA), eq("Freezer", ESTOQUE), eq("Balcão refrigerado", SALAO), eq("Máquina de gelo", COZINHA), eq("Pia de higienização", HIGIENIZACAO)],
     fluxos: ["Recebimento", "Armazenamento", "Porcionamento e fracionamento", "Distribuição", "Manejo de resíduos", "Entrada e saída de colaboradores"],
   },
@@ -94,12 +117,12 @@ const PACOTES: Record<IdDoTipo, PacoteDoTipo> = {
     fluxos: ["Recebimento", "Armazenamento", "Manipulação e produção", "Pré-preparo e preparo", "Porcionamento e fracionamento", "Congelamento", "Distribuição", "Manejo de resíduos", "Entrada e saída de colaboradores"],
   },
   acougue: {
-    ambientes: [RECEBIMENTO, ESTOQUE, DML, COZINHA, HIGIENIZACAO, ...COLABORADORES.slice(0, 2), ...CLIENTES],
+    ambientes: [RECEBIMENTO, ESTOQUE, DML, COZINHA, HIGIENIZACAO, ...COLABORADORES, ...CLIENTES],
     equipamentos: [eq("Câmara fria", ESTOQUE), eq("Balcão refrigerado", COZINHA), eq("Freezer", ESTOQUE), eq("Serra de fita", COZINHA), eq("Moedor", COZINHA), eq("Balança", COZINHA), eq("Pia de higienização", HIGIENIZACAO)],
     fluxos: ["Recebimento", "Armazenamento", "Manipulação e produção", "Porcionamento e fracionamento", "Congelamento", "Descongelamento", "Distribuição", "Manejo de resíduos", "Entrada e saída de colaboradores"],
   },
   conveniencia: {
-    ambientes: [RECEBIMENTO, ESTOQUE, DML, COZINHA, HIGIENIZACAO, SALAO, ...COLABORADORES.slice(0, 2), ...CLIENTES],
+    ambientes: [RECEBIMENTO, ESTOQUE, DML, COZINHA, HIGIENIZACAO, SALAO, ...COLABORADORES, ...CLIENTES],
     equipamentos: [eq("Refrigerador", COZINHA), eq("Freezer", ESTOQUE), eq("Estufa / balcão térmico", SALAO), eq("Forno micro-ondas", COZINHA), eq("Balcão refrigerado", SALAO)],
     fluxos: ["Recebimento", "Armazenamento", "Porcionamento e fracionamento", "Descongelamento", "Distribuição", "Manejo de resíduos", "Entrada e saída de colaboradores"],
   },
@@ -109,12 +132,12 @@ const PACOTES: Record<IdDoTipo, PacoteDoTipo> = {
     fluxos: TODOS_OS_FLUXOS,
   },
   bufe: {
-    ambientes: [RECEBIMENTO, ESTOQUE, DML, COZINHA, HIGIENIZACAO, ...COLABORADORES],
+    ambientes: [RECEBIMENTO, ESTOQUE, DML, GAS, COZINHA, HIGIENIZACAO, ...COLABORADORES],
     equipamentos: [eq("Câmara fria", ESTOQUE), eq("Refrigerador", COZINHA), eq("Freezer", ESTOQUE), eq("Caixa térmica", COZINHA), eq("Estufa / balcão térmico", COZINHA), eq("Pia de higienização", HIGIENIZACAO)],
     fluxos: ["Recebimento", "Armazenamento", "Manipulação e produção", "Pré-preparo e preparo", "Porcionamento e fracionamento", "Distribuição", "Manejo de resíduos", "Entrada e saída de colaboradores"],
   },
   delivery: {
-    ambientes: [RECEBIMENTO, ESTOQUE, DML, COZINHA, HIGIENIZACAO, ...COLABORADORES.slice(0, 2)],
+    ambientes: [RECEBIMENTO, ESTOQUE, DML, COZINHA, HIGIENIZACAO, ...COLABORADORES],
     equipamentos: [eq("Refrigerador", COZINHA), eq("Freezer", ESTOQUE), eq("Forno", COZINHA), eq("Estufa / balcão térmico", COZINHA), eq("Caixa térmica", COZINHA), eq("Pia de higienização", HIGIENIZACAO)],
     fluxos: ["Recebimento", "Armazenamento", "Manipulação e produção", "Pré-preparo e preparo", "Porcionamento e fracionamento", "Distribuição", "Manejo de resíduos", "Entrada e saída de colaboradores"],
   },
@@ -124,7 +147,7 @@ const PACOTES: Record<IdDoTipo, PacoteDoTipo> = {
     fluxos: ["Recebimento", "Armazenamento", "Pré-preparo e preparo", "Distribuição", "Manejo de resíduos"],
   },
   outro: {
-    ambientes: [RECEBIMENTO, ESTOQUE, DML, COZINHA, HIGIENIZACAO, ...COLABORADORES.slice(0, 2)],
+    ambientes: [RECEBIMENTO, ESTOQUE, DML, COZINHA, HIGIENIZACAO, ...COLABORADORES],
     equipamentos: [eq("Refrigerador", COZINHA), eq("Freezer", ESTOQUE), eq("Pia de higienização", HIGIENIZACAO)],
     fluxos: ["Recebimento", "Armazenamento", "Manipulação e produção", "Distribuição", "Manejo de resíduos", "Entrada e saída de colaboradores"],
   },
