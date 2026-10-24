@@ -5234,3 +5234,73 @@ html[data-modo] .pc-offset:has(.ini2){height:auto;min-height:100vh;overflow:visi
 .voz-ambiente-linha{display:grid;gap:8px;padding:12px;border:1px solid #D5DDE5;border-radius:12px}
 .voz-ambiente-marca{display:flex;gap:10px;align-items:center;font-size:.95rem}
 .voz-ambiente-campos{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+/* Selo de sincronização: texto curto + cor com função (azul/verde claro = sincronizado, amarelo = pendente, laranja = sem sinal, vermelho = erro real) */
+.pc-sync-chip.is-sem-sinal{background:#FFD8A8}.pc-sync-chip.is-sem-sinal .pc-sync-dot{background:#E8760A}
+.pc-sync-chip.is-erro{background:#D93A3A;color:#fff}.pc-sync-chip.is-erro .pc-sync-dot{background:#fff}
+.pc-sync-chip.is-ok{background:#DCEFF9}.pc-sync-chip.is-ok .pc-sync-dot{background:#15803D}
+.pc-sync-chip.is-pendente{background:#FFF1B8}
+.pc-avatar-dot.is-sem-sinal,.pc-user-avatar .pc-avatar-dot.is-sem-sinal{background:#E8760A}
+.campo-sync{display:inline-flex;flex:none;align-items:center;gap:6px;width:auto;height:32px;padding:0 12px;border-radius:999px;background:#DCEFF9;font-size:.82rem;line-height:1;color:#12202B;white-space:nowrap}
+.campo-sync span:first-child{flex:none;width:9px;height:9px}
+.campo-sync.is-pendente{background:#FFF1B8}.campo-sync.is-sem-sinal{background:#FFD8A8}.campo-sync.is-sem-sinal span:first-child{background:#E8760A}
+.campo-sync.is-erro{background:#D93A3A;color:#fff}.campo-sync.is-erro span:first-child{background:#fff}
+
+/* Topo do modo Campo: página atual em destaque, empresa ativa logo abaixo, selo com texto */
+.campo-head-pagina{order:1;flex:1 1 auto;min-width:0;margin:0;overflow:hidden;font-family:var(--font-display),"Outfit",sans-serif;font-size:1.3rem;font-weight:500;line-height:1.1;color:#12202B;text-overflow:ellipsis;white-space:nowrap}
+
+/* ===== Ajustes dos testes do pacote 2: tela do item com topo e rodapé fixos, corpo que rola por dentro ===== */
+.chk-foco{display:flex;flex:1;min-height:0;flex-direction:column;gap:8px}
+.chk-foco-topo{display:flex;flex:none;flex-direction:column;gap:8px}
+.chk-foco-corpo{display:flex;flex:1 1 auto;min-height:0;flex-direction:column;gap:10px;padding:2px 2px 8px;overflow-y:auto;overscroll-behavior:contain}
+.chk-foco-rodape{flex:none;padding-top:8px}
+.campo-tela--fixa .chk-foco-obs{overflow:visible}
+.chk-obs-area{flex:none;min-height:56px;resize:none}
+/* "O que verificar": abre empurrando o conteúdo, nunca por cima do campo que está sendo preenchido */
+.chk-foco-apoio{position:static;flex:none}
+.chk-apoio-linha.is-aberta .chk-apoio-corpo{position:static;right:auto;bottom:auto;left:auto;z-index:auto;margin:0;padding:8px 12px 10px;border:0;border-top:1px solid #D5DDE5;border-radius:0;background:transparent;box-shadow:none}
+/* Cabeçalho do ambiente em uma linha */
+.chk-foco-amb-nome{min-width:0;overflow:hidden;font-size:1.05rem;font-weight:500;text-overflow:ellipsis;white-space:nowrap}
+.chk-foco-amb-top{flex-wrap:nowrap;gap:8px}
+.chk-foco-count{font-size:.8rem;color:#3D5160}
+.chk-foco-title{font-size:1.1rem;font-weight:500;line-height:1.25}
+.campo-tela .chk-foco-title{font-size:1.05rem;font-weight:500}
+.campo-tela .chk-foco-card{padding:10px 12px}
+.campo-tela .chk-foco-card .chk-foco-title{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+/* Botões de resposta: 40 px, uma linha */
+html[data-modo] .chk-resp{height:40px;min-height:40px;padding:0 6px;font-size:.9rem;white-space:nowrap}
+/* Gravidade: contorno, preenchimento só na opção escolhida */
+.chk-grav{min-height:40px;padding:0 14px;border:2px solid #B4C2CE;background:#fff;color:#12202B;font-size:.9rem;opacity:1}
+.chk-grav--leve{border-color:#1E7FB8}.chk-grav--amber{border-color:#D97706}.chk-grav--nc{border-color:#D93A3A}
+.chk-grav--leve.is-on{background:#1E7FB8;color:#fff}.chk-grav--amber.is-on{background:#D97706;color:#fff}.chk-grav--nc.is-on{background:#D93A3A;color:#fff}
+.chk-grav.is-on{box-shadow:none}
+.chk-grav-sug{margin-left:6px;font-size:.72rem;opacity:.85}
+.chk-grav-titulo{font-size:.9rem;font-weight:400}
+/* Segmento atual da barra de progresso: azul, nada escuro */
+.chk-seg.is-atual{outline:3px solid #2A6BD1;outline-offset:1px;box-shadow:none;border-color:#2A6BD1}
+.chk-pc-num.is-atual{outline:3px solid #2A6BD1;outline-offset:1px}
+/* Falar e IA sem sinal: esmaecidos com cadeado, sem texto comprido */
+.voz-btn.is-sem-sinal,.voz-ia.is-sem-sinal{opacity:.55}
+.voz-semsinal{font-size:.75rem;line-height:1}
+/* Faixas finas do topo */
+.faixa-fina{padding:4px 12px;overflow:hidden;font-size:.8rem;line-height:1.3;color:#12202B;text-overflow:ellipsis;white-space:nowrap}
+.faixas-do-topo{flex:none}
+/* Altura das telas fixas do celular: desconta as faixas do topo e reserva espaço para o botão Registrar */
+html[data-modo="campo"] .campo-tela--fixa{height:calc(100dvh - 176px - 26px - var(--faixas-h,0px) - var(--faixa-h,0px))}
+html[data-modo="campo"] .campo-tela:not(.campo-tela--fixa),html[data-modo="campo"] .ui-screen{height:calc(100dvh - 176px - 26px - var(--faixas-h,0px) - var(--faixa-h,0px))}
+
+.campo-head{flex-direction:column;align-items:stretch;gap:6px}
+.campo-head-linha{display:flex;align-items:center;gap:10px;min-width:0}
+.campo-head .emp-ativa{flex:none;width:100%;max-width:none;order:0}
+.campo-head-pagina{order:0}
+.campo-sync span.campo-sync-texto{width:auto;height:auto;border-radius:0;background:transparent}
+html[data-modo] .chk-resp{font-size:.84rem;gap:4px;padding:0 4px}
+.campo-head-espaco{display:none}.campo-head-linha .campo-sync{margin-left:auto}
+
+.chk-grav-linha .chk-grav{min-height:40px;padding:0 14px;border:2px solid var(--grav);background:#fff;color:#12202B;font-size:.9rem;opacity:1;box-shadow:none}
+.chk-grav-linha .chk-grav--leve{--grav:#1E7FB8}.chk-grav-linha .chk-grav--amber{--grav:#D97706}.chk-grav-linha .chk-grav--nc{--grav:#D93A3A}
+.chk-grav-linha .chk-grav:not(.is-on){background:#fff;color:#12202B}
+.chk-grav-linha .chk-grav.is-on,.chk-grav-linha .chk-grav.is-on.chk-grav--leve,.chk-grav-linha .chk-grav.is-on.chk-grav--amber,.chk-grav-linha .chk-grav.is-on.chk-grav--nc{background:var(--grav);border-color:var(--grav);color:#fff}
+.campo-tela .chk-foco-count{display:block;font-size:.78rem;line-height:1.2}
+.campo-tela .chk-foco-count .pc-link-btn{font-size:.78rem}
+.chk-obs-area{min-height:52px;max-height:40vh;overflow-y:auto}

@@ -9,6 +9,7 @@ import AmbientesCortina from "@/components/AmbientesCortina";
 import { cameraAutomaticaLigada } from "@/lib/preferenciasDeCampo";
 import CampoDeTemperatura, { ehItemDeTemperatura } from "@/components/CampoDeTemperatura";
 import type { ResultadoDaTemperatura } from "@/lib/limitesDeTemperatura";
+import { progressoDaCaminhada, textoDaCaminhada } from "@/lib/caminhada";
 import { NavIcon } from "@/components/NavIcons";
 import type { InfoAmbiente } from "@/lib/checklistEnvs";
 import { COR_DO_SEGMENTO, rotuloDoSegmento } from "@/lib/checklistSegmentos";
@@ -129,6 +130,14 @@ export default function ChecklistFocoItem({
     setTexto(item.observacao || "");
   }, [item.id, item.observacao]);
 
+  // A observação começa com 2 linhas e cresce enquanto a pessoa digita.
+  useEffect(() => {
+    const area = areaRef.current;
+    if (!area) return;
+    area.style.height = "auto";
+    area.style.height = `${area.scrollHeight + 2}px`;
+  }, [texto, item.id]);
+
   // Foto do item: a câmera abre por cima, a foto vira evidência deste item e dá para desfazer por 6 s.
   const [salvandoFoto, setSalvandoFoto] = useState(false);
   const [recente, setRecente] = useState<{ id: string; url: string } | null>(null);
@@ -232,8 +241,12 @@ export default function ChecklistFocoItem({
   const sugerida = gravidadeSugerida(item);
   const estados = estadosDosBotoes(item.status);
 
+  const caminhada = ambientes ? progressoDaCaminhada(ambientes, item.ambiente) : null;
+  const textoCaminhada = caminhada ? textoDaCaminhada(caminhada) : "";
+
   return (
     <div className="chk-foco">
+      <div className="chk-foco-topo">
       {!semCabecalhoDeAmbiente && (() => {
         const posicaoNoAmbiente = (
           <span className="chk-foco-amb-pos" aria-label={`${respondidosAmbiente} de ${totalAmbiente} respondidos neste ambiente`}>
@@ -274,7 +287,15 @@ export default function ChecklistFocoItem({
               </div>
             )}
             <span className="chk-foco-count">
-              Item {posicao} de {total} na visita
+              {textoCaminhada || `Item ${posicao} de ${total} na visita`}
+              {caminhada?.nomeDoProximo && onAmbiente && (
+                <>
+                  {" · "}
+                  <button type="button" className="pc-link-btn" onClick={() => onAmbiente(caminhada.nomeDoProximo as string)}>
+                    Pular ambiente
+                  </button>
+                </>
+              )}
             </span>
           </div>
         );
@@ -287,13 +308,15 @@ export default function ChecklistFocoItem({
       <div className={`chk-foco-card${destaque ? " is-destaque" : ""}`}>
         <h2 className="chk-foco-title">{item.titulo}</h2>
       </div>
+      </div>
 
+      <div className="chk-foco-corpo">
       <div className="chk-foco-botoes" role="group" aria-label="Resposta do item">
         {(
           [
             ["Conforme", "ok", "Conforme", "✓"],
             ["Não Conforme", "nc", "Não conforme", "×"],
-            ["Não se aplica", "na", "Não se aplica", "—"],
+            ["Não se aplica", "na", "Não se aplica", ""],
           ] as [ChecklistStatus, string, string, string][]
         ).map(([resposta, tom, rotulo, simbolo]) => {
           const estado = estados[resposta as "Conforme" | "Não Conforme" | "Não se aplica"];
@@ -311,7 +334,7 @@ export default function ChecklistFocoItem({
                 if (resposta === "Não Conforme" && podeFotografar && fotosNoItem < maxFotos && cameraAutomaticaLigada()) pedirAvisoDeFoto(() => void camera.abrir());
               }}
             >
-              <span aria-hidden="true">{estado === "marcado" ? "✓" : simbolo}</span>
+              {(estado === "marcado" || simbolo) && <span aria-hidden="true">{estado === "marcado" ? "✓" : simbolo}</span>}
               <span>{rotulo}</span>
             </button>
           );
@@ -435,7 +458,8 @@ export default function ChecklistFocoItem({
             className="ui-input chk-obs-area"
             value={texto}
             disabled={!podeEditar}
-            placeholder={estadoVoz === "gravando" ? "Ouvindo… fale a observação" : "Ex.: termômetro a 9 °C"}
+            placeholder={estadoVoz === "gravando" ? "Ouvindo… fale a observação" : ehItemDeTemperatura(item.titulo) ? "Ex.: termômetro a 9 °C" : "Observação (opcional)"}
+            rows={2}
             aria-label="Observação do item"
             onChange={(evento) => setTexto(evento.target.value)}
             onBlur={salvarTexto}
@@ -468,6 +492,8 @@ export default function ChecklistFocoItem({
           </button>
         </div>
       )}
+
+      </div>
 
       <div className="chk-foco-rodape">
         <button

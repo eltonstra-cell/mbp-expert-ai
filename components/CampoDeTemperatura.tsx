@@ -69,6 +69,7 @@ export default function CampoDeTemperatura({ itemId, titulo, equipamentos, atual
           ? `${resultado === "Conforme" ? "Conforme" : "Não conforme"}: ${String(valor).replace(".", ",")} °C, limite ${textoDoLimite(limite)} (${limite.norma}, item ${limite.itens}). Você pode corrigir a resposta.`
           : `Limite: ${textoDoLimite(limite)} (${limite.norma}, item ${limite.itens}).`}
       </p>
+      {limite?.observacaoDaFonte && <p className="chk-temp-msg">{limite.observacaoDaFonte}</p>}
     </div>
   );
 }

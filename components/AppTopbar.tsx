@@ -7,7 +7,7 @@ import { RowMenu, type ItemMenu } from "@/components/ui/RowMenu";
 import SeletorDeSecao, { type OpcaoDeSecao } from "@/components/SeletorDeSecao";
 import { ROTULO_DE_USO, type ModoTela } from "@/lib/screenMode";
 
-const ROTULO_SYNC = { ok: "Sincronizado", pendente: "Sincronizando…", erro: "Sem conexão" } as const;
+const ROTULO_SYNC = { ok: "Sincronizado", pendente: "Sincronizando…", "sem-sinal": "Sem sinal", erro: "Erro ao enviar" } as const;
 
 type Props = {
   /** Texto pequeno ao lado do caminho (ex.: data e situação da visita). */
@@ -37,7 +37,7 @@ type Props = {
   /** Modo de tela em uso e ações da troca rápida (menu ⋯ do topo). */
   modo?: ModoTela;
   /** Situação da sincronização: chip discreto no topo. */
-  sincronizacao?: { estado: "ok" | "pendente" | "erro"; /** Texto do chip (sempre visível). */ rotulo?: string; /** Frase do tooltip. */ dica?: string; onClick: () => void };
+  sincronizacao?: { estado: "ok" | "pendente" | "sem-sinal" | "erro"; /** Texto do chip (sempre visível). */ rotulo?: string; /** Frase do tooltip. */ dica?: string; onClick: () => void };
   automatico?: boolean;
   onEscolherModo?: (modo: ModoTela) => void;
   onVoltarAoAutomatico?: () => void;

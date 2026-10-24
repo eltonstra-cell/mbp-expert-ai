@@ -231,6 +231,8 @@ import { historicoDaReincidencia, memoriaDoPlano, seloDaReincidencia } from "@/l
 import { ordemAdaptativa, VISITAS_RECENTES } from "@/lib/checklistAdaptativo";
 import { aplicarLote, contarEmLote, desfazerLote, planoDoLote, textoDaConfirmacaoDoLote } from "@/lib/loteConforme";
 import DitadoDoAmbiente from "@/components/DitadoDoAmbiente";
+import ReservaDeAltura from "@/components/ReservaDeAltura";
+import { linhasDeTemperaturaDoRelatorio } from "@/lib/limitesDeTemperatura";
 import type { PropostaDeVoz } from "@/lib/vozDoAmbiente";
 import ConflitosDeEdicao from "@/components/ConflitosDeEdicao";
 import { contarAlteracoesPendentes, iguais as estadosIguais, mesclarTresVias, usarVersaoDaNuvem, type Conflito } from "@/lib/mesclaTresVias";
@@ -727,6 +729,9 @@ function AvisoFotoPonte({ alvo }: { alvo: { current: (acao: () => void) => void 
 function quantidadeComNome(quantidade: number, singular: string, plural: string) {
   return `${quantidade} ${quantidade === 1 ? singular : plural}`;
 }
+
+// Nome da página atual no topo do modo Campo (perto da empresa ativa; o nome da empresa não se repete no título).
+const TITULO_DA_TELA_NO_CAMPO: Partial<Record<View, string>> = { inicio: "Início", checklist: "Checklist", correcoes: "Correções", evidencias: "Evidências", campomais: "Mais", empresas: "Empresas", visitas: "Visitas", visita: "Visita", ambientes: "Ambientes", relatorio: "Relatório", fila: "Fila de envio", ajuda: "Ajuda" };
 
 const SUBABA_DO_ITEM_DE_PREPARACAO: Record<string, SubAbaCentral> = { responsavel: "dados", horario: "dados", setores: "ambientes", equipamentos: "equipamentos", programas: "programas", pops: "pops" };
 
@@ -7401,6 +7406,7 @@ export default function Home() {
         </div>
       )}
 
+      <ReservaDeAltura>
       {sessaoDoEstadoExpirou && (
         <div className="border-b border-amber-300 bg-[var(--pend-bg)] pc-offset">
           <div className="mx-auto max-w-7xl px-4 py-3 text-amber-950">
@@ -7413,13 +7419,19 @@ export default function Home() {
 
       {armazenamentoNaoGarantido && (
         <div className="border-b border-amber-300 bg-[var(--pend-bg)] pc-offset">
-          <div className="mx-auto max-w-7xl px-4 py-2 text-sm text-amber-950">
-            O navegador não garantiu o armazenamento deste aparelho: ele pode apagar o que está guardado se faltar espaço. Envie o que está pendente assim que tiver sinal.
+          <div className="faixa-fina" title="O navegador não garantiu o armazenamento deste aparelho: ele pode apagar o que está guardado se faltar espaço. Envie o que está pendente assim que tiver sinal.">
+            Armazenamento não garantido pelo navegador · envie os pendentes quando tiver sinal
           </div>
         </div>
       )}
 
-      {protecaoLocalAtiva && !recuperacaoPendente && (
+      {protecaoLocalAtiva && !recuperacaoPendente && !estaOnline && (
+        <div className="border-b border-orange-200 bg-[#FFEBD2] pc-offset">
+          <div className="faixa-fina" role="status">Sem sinal · alterações guardadas neste aparelho</div>
+        </div>
+      )}
+
+      {protecaoLocalAtiva && !recuperacaoPendente && estaOnline && (
         <div className={`border-b pc-offset ${estaOnline ? "border-red-200 bg-[var(--nc-bg)]" : "border-blue-200 bg-[var(--brand-soft)]"}`}>
           <div className={`mx-auto max-w-7xl px-4 py-3 ${estaOnline ? "text-red-950" : "text-blue-950"}`}>
             <div className="font-extrabold">
@@ -7451,6 +7463,7 @@ export default function Home() {
           </div>
         </div>
       )}
+      </ReservaDeAltura>
 
       <div className="mx-auto min-w-0 max-w-[1500px] overflow-x-hidden px-3 py-4 pb-28 sm:p-5 pc-offset pc-content-pad md:overflow-visible md:pb-6 lg:p-7">
         {ehFiscal && usuarioDaSessao?.validoAte && (
@@ -7521,6 +7534,7 @@ export default function Home() {
               empresa={nomeEmFormatoNatural(atual?.nomeFantasia) || ""}
               empresaCor={atual ? corDaEmpresa(atual) : undefined}
               empresaIniciais={atual ? iniciaisDaEmpresa(atual.nomeFantasia || "") : ""}
+              titulo={TITULO_DA_TELA_NO_CAMPO[view] || ""}
               sincronizacao={{ ...seloDeSincronizacao({ online: estaOnline, syncStatus, pendentes: fila.resumo.pendentes + pendentesDoEstado }), onClick: () => void atualizarNuvemManualmente() }}
               menuModo={itensMenuModo}
               onTrocarEmpresa={() => setTrocarEmpresaAberto(true)}
@@ -9278,6 +9292,16 @@ export default function Home() {
                   <p className="mt-1 text-sm text-slate-500">
                     Revisão consolidada dos registros realizados em campo.
                   </p>
+                  {linhasDeTemperaturaDoRelatorio(visitaAtual.checklist || []).length > 0 && (
+                    <div className="mt-2 text-sm text-slate-600" data-testid="temperaturas-do-relatorio">
+                      <div className="font-medium">Temperaturas medidas e classificadas pelo app</div>
+                      <ul className="mt-1 list-disc pl-5">
+                        {linhasDeTemperaturaDoRelatorio(visitaAtual.checklist || []).map((linha) => (
+                          <li key={linha}>{linha}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                   {(visitaAtual.checklist || []).some((item) => item.porVoz) && (
                     <p className="mt-1 text-sm text-slate-500">
                       {(visitaAtual.checklist || []).filter((item) => item.porVoz).length} {(visitaAtual.checklist || []).filter((item) => item.porVoz).length === 1 ? "resposta foi registrada" : "respostas foram registradas"} por voz (conferidas pelo responsável técnico antes de gravar).

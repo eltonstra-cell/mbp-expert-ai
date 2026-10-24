@@ -67,12 +67,12 @@ test("58/65. UM cálculo de configuração: 7 passos na ordem e o faltam (usado 
   assert.ok(ler("../components/pc/PcAjuda.tsx").includes("primeirosPassos"), "o guia usa o cálculo");
 });
 
-test("64. chip de sincronização sempre com texto: Sincronizado, Sem sinal, N pendentes de envio", () => {
+test("64. chip de sincronização sempre com texto: Sincronizado, Sem sinal, N pendentes", () => {
   assert.deepEqual(seloDeSincronizacao({ online: true, syncStatus: "sincronizado", pendentes: 0 }).rotulo, "Sincronizado");
   assert.equal(seloDeSincronizacao({ online: false, syncStatus: "sincronizado", pendentes: 0 }).rotulo, "Sem sinal");
-  assert.equal(seloDeSincronizacao({ online: true, syncStatus: "sincronizado", pendentes: 1 }).rotulo, "1 pendente de envio");
-  assert.equal(seloDeSincronizacao({ online: true, syncStatus: "sincronizado", pendentes: 4 }).rotulo, "4 pendentes de envio");
-  assert.equal(seloDeSincronizacao({ online: true, syncStatus: "erro", pendentes: 0 }).rotulo, "Não sincronizou");
+  assert.equal(seloDeSincronizacao({ online: true, syncStatus: "sincronizado", pendentes: 1 }).rotulo, "1 pendente");
+  assert.equal(seloDeSincronizacao({ online: true, syncStatus: "sincronizado", pendentes: 4 }).rotulo, "4 pendentes");
+  assert.equal(seloDeSincronizacao({ online: true, syncStatus: "erro", pendentes: 0 }).rotulo, "Erro ao enviar");
   assert.equal(seloDeSincronizacao({ online: true, syncStatus: "conectando", pendentes: 0 }).rotulo, "Sincronizando…");
   assert.ok(seloDeSincronizacao({ online: true, syncStatus: "sincronizado", pendentes: 0 }).dica.length > 10, "tem tooltip");
   const css = ler("../app/globals.css");

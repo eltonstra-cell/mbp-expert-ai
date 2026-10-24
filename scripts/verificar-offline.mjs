@@ -36,7 +36,7 @@ const servidorFalso = `
       if (url.includes("meta=1")) return json({ configured: true, updatedAt: s.updatedAt });
       if ((opcoes.method || "GET") === "PUT") {
         const corpo = JSON.parse(opcoes.body);
-        if (corpo.expectedUpdatedAt !== s.updatedAt) return json({ ok: false, conflict: true, configured: true, data: s.data, updatedAt: s.updatedAt }, 409);
+        if (corpo.expectedUpdatedAt !== s.updatedAt) { localStorage.setItem("__n409", String(Number(localStorage.getItem("__n409") || 0) + 1)); return json({ ok: false, conflict: true, configured: true, data: s.data, updatedAt: s.updatedAt }, 409); }
         const novo = { data: corpo.data, updatedAt: new Date().toISOString(), puts: (s.puts || 0) + 1 };
         localStorage.setItem("__srv", JSON.stringify(novo));
         if (flag("__perderResposta")) { localStorage.setItem("__perderResposta", "0"); throw new TypeError("Failed to fetch"); }
@@ -178,6 +178,48 @@ try {
   await flag("__401", false);
   await evento("online");
   registrar("6c. com a sessão de volta, o que estava guardado é enviado", await esperar(async () => (await servidor()).itens.includes(`${I2}:Não Conforme`), 20000), JSON.stringify(await servidor()));
+
+  // 7. F5 sem sinal (o aplicativo reabre pelo cache) e volta do sinal: o que foi respondido continua lá, no máximo um 409 e nenhum laço de reenvio.
+  await flag("__off", true);
+  await evento("offline");
+  await clicarNumero(3);
+  await n.esperar(300);
+  await clicarResposta("Não se aplica");
+  await n.esperar(2000);
+  await js(`localStorage.setItem("__n409","0")`);
+  await n.ir(app.base);
+  await esperar(async () => js('document.querySelectorAll(".chk-pc-num,.chk-seg").length>2'), 15000);
+  await n.esperar(1500);
+  registrar("7a. F5 sem sinal: o app abre e a resposta continua guardada", (await status()).includes(`${I3}:Não se aplica`), await status());
+  registrar("7b. F5 sem sinal: o selo diz 'Sem sinal' com a contagem", /Sem sinal/.test(await texto()));
+  await foto("7-f5-sem-sinal");
+  const putsAntes7 = (await servidor()).puts;
+  await flag("__off", false);
+  await evento("online");
+  registrar("7c. volta do sinal: a resposta guardada chega ao servidor", await esperar(async () => (await servidor()).itens.includes(`${I3}:Não se aplica`), 20000), JSON.stringify(await servidor()));
+  await n.esperar(5000);
+  const n409 = Number(await js(`localStorage.getItem("__n409")||"0"`));
+  const puts7 = (await servidor()).puts;
+  registrar("7d. no máximo um 409 e sem laço de reenvio", n409 <= 1 && puts7 - putsAntes7 <= 2, `409: ${n409}; envios: ${puts7 - putsAntes7}`);
+  registrar("7e. o selo volta a 'Sincronizado'", await esperar(async () => /Sincronizado/.test(await texto()), 8000));
+
+  // 8. Tela do celular (390x844 e 360x640), sem sinal e com "Não conforme" aberto: Anterior e Salvar e próximo sempre à vista,
+  // acima da barra de baixo e sem o botão Registrar por cima; o conteúdo rola por dentro.
+  await flag("__off", true);
+  await evento("offline");
+  for (const [w, h] of [[390, 844], [360, 640]]) {
+    await n.enviar("Emulation.setDeviceMetricsOverride", { width: w, height: h, deviceScaleFactor: 2, mobile: true });
+    await n.ir(app.base);
+    await esperar(async () => js('!!document.querySelector(".chk-foco-rodape")'), 15000);
+    await n.esperar(1200);
+    await clicarResposta("Não conforme");
+    await n.esperar(700);
+    const m = JSON.parse(await js(`JSON.stringify((()=>{const r=(q)=>{const e=document.querySelector(q);return e?e.getBoundingClientRect():null};const f=r(".chk-foco-rodape"),b=r(".campo-bar"),o=r(".campo-register-orb"),c=document.querySelector(".chk-foco-corpo"),topo=r(".chk-foco-topo");return {f:f&&{t:f.top,b:f.bottom},bar:b&&b.top,orb:o&&o.top,rolaPorDentro:c?getComputedStyle(c).overflowY:"",docRola:document.documentElement.scrollHeight>innerHeight+2,topoB:topo&&topo.bottom,vh:innerHeight}})())`));
+    const ok = m.f && m.f.t > 0 && m.f.b <= m.bar + 0.5 && m.f.b <= m.orb + 0.5 && m.f.t > m.topoB && /auto|scroll/.test(m.rolaPorDentro);
+    registrar(`8. celular ${w}x${h}: rodapé fixo à vista acima da barra e do botão Registrar, conteúdo rola por dentro`, Boolean(ok), JSON.stringify(m));
+    await foto(`8-celular-${w}`);
+  }
+  await n.enviar("Emulation.clearDeviceMetricsOverride");
 } catch (erro) {
   registrar(`erro na verificação: ${erro.message}`, false);
 } finally {

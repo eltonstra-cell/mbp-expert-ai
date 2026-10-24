@@ -17,6 +17,8 @@ export type LimiteDeTemperatura = {
   link: string;
   /** Data (AAAA-MM-DD) em que o texto foi conferido na fonte oficial. */
   conferidoEm: string;
+  /** Ressalva da própria fonte (divergência entre itens, exceção), mostrada na conferência. */
+  observacaoDaFonte?: string;
 };
 
 const NORMA = "Portaria SES/RS nº 799/2023";
@@ -26,8 +28,8 @@ const CONFERIDO_EM = "2026-10-23";
 export const LIMITES_DE_TEMPERATURA: LimiteDeTemperatura[] = [
   { id: "refrigerado", rotulo: "Refrigerado", operador: "<=", valor: 5, norma: NORMA, itens: "10.09, 10.8, 11.2 b, 12.2 a", link: LINK, conferidoEm: CONFERIDO_EM },
   { id: "congelado", rotulo: "Congelado", operador: "<=", valor: -18, norma: NORMA, itens: "10.10, 11.2 c", link: LINK, conferidoEm: CONFERIDO_EM },
-  { id: "quente", rotulo: "Mantido a quente", operador: ">=", valor: 60, norma: NORMA, itens: "10.7 (superior a 60 °C), 11.2 a, 12.2 b", link: LINK, conferidoEm: CONFERIDO_EM },
-  { id: "tratamento-termico", rotulo: "Tratamento térmico (todas as partes)", operador: ">=", valor: 70, norma: NORMA, itens: "10.3", link: LINK, conferidoEm: CONFERIDO_EM },
+  { id: "quente", rotulo: "Mantido a quente", operador: ">=", valor: 60, norma: NORMA, itens: "10.7 (superior a 60 °C), 11.2 a, 12.2 b", link: LINK, conferidoEm: CONFERIDO_EM, observacaoDaFonte: "Divergência da própria norma: os itens 11.2 a e 12.2 b dizem “maior ou igual a 60 °C”; o item 10.7 diz “superior a 60 °C”. O app usa 60 °C ou mais (≥ 60 °C); com exatamente 60 °C, confira o item 10.7." },
+  { id: "tratamento-termico", rotulo: "Tratamento térmico (todas as partes)", operador: ">=", valor: 70, norma: NORMA, itens: "10.3", link: LINK, conferidoEm: CONFERIDO_EM, observacaoDaFonte: "O item 10.3 aceita temperaturas inferiores a 70 °C se a combinação de tempo e temperatura garantir a qualidade higiênico-sanitária. O app não avalia a combinação." },
   { id: "reaquecimento", rotulo: "Reaquecimento (todas as partes)", operador: ">=", valor: 75, norma: NORMA, itens: "10.5", link: LINK, conferidoEm: CONFERIDO_EM },
   { id: "fritura", rotulo: "Óleo de fritura", operador: "<=", valor: 180, norma: NORMA, itens: "10.6", link: LINK, conferidoEm: CONFERIDO_EM },
 ];
@@ -69,4 +71,31 @@ export function limiteSugerido(nomes: string[]): LimiteDeTemperatura | undefined
     if (/camara fria|camara frigorifica|geladeira|refrigerador|balcao refrigerado|refrigerad|resfriad/.test(t)) return limiteDoTipo("refrigerado");
   }
   return undefined;
+}
+
+type ItemComTemperatura = { ambiente: string; titulo: string; status: string; temperatura?: { valor: number; limiteId: string } };
+
+/**
+ * Linhas do relatório da visita para as temperaturas classificadas pelo app: valor, limite aplicado e a marca "classificado pelo app, confirmado pelo RT".
+ * Se o RT trocou a resposta, o texto diz o que o app indicou e o que o RT respondeu.
+ */
+export function linhasDeTemperaturaDoRelatorio(checklist: ItemComTemperatura[]): string[] {
+  const linhas: string[] = [];
+  for (const item of checklist) {
+    if (!item.temperatura) continue;
+    const limite = limiteDoTipo(item.temperatura.limiteId);
+    const valor = String(item.temperatura.valor).replace(".", ",");
+    if (!limite) {
+      linhas.push(`${item.ambiente} · ${item.titulo}: ${valor} °C · sem limite aplicado (resposta do RT: ${item.status}).`);
+      continue;
+    }
+    const indicado = classificarTemperatura(item.temperatura.valor, limite);
+    const base = `${item.ambiente} · ${item.titulo}: ${valor} °C · limite ${textoDoLimite(limite)} (${limite.norma}, item ${limite.itens})`;
+    linhas.push(
+      indicado === item.status
+        ? `${base} · classificado pelo app, confirmado pelo RT.`
+        : `${base} · o app indicou ${indicado === "Conforme" ? "Conforme" : "Não conforme"}; o RT respondeu ${item.status === "Não Conforme" ? "Não conforme" : item.status}.`
+    );
+  }
+  return linhas;
 }

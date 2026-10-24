@@ -23,7 +23,7 @@ export const ABAS_PADRAO: AbaDaBarra[] = ["inicio", "checklist", "registrar", "c
 type Chrome = {
   tela: TelaCampo | null;
   empresa: string;
-  sincronizacao: { estado: "ok" | "pendente" | "erro"; rotulo: string; onClick: () => void };
+  sincronizacao: { estado: "ok" | "pendente" | "sem-sinal" | "erro"; rotulo: string; onClick: () => void };
   menuModo: ItemMenu[];
   correcoesAbertas: number;
   podeRegistrar: boolean;
@@ -40,15 +40,25 @@ export function CampoCabecalho({
   menuModo,
   onTrocarEmpresa,
   onVoltar,
-}: Pick<Chrome, "empresa" | "sincronizacao" | "menuModo"> & { empresaCor?: string; empresaIniciais?: string; onTrocarEmpresa?: () => void; onVoltar?: () => void }) {
+  titulo = "",
+}: Pick<Chrome, "empresa" | "sincronizacao" | "menuModo"> & { empresaCor?: string; empresaIniciais?: string; onTrocarEmpresa?: () => void; onVoltar?: () => void; /** Nome da página atual, em destaque no topo. */ titulo?: string }) {
   return (
     <header className="campo-head">
+      <div className="campo-head-linha">
       {onVoltar && (
         // Mesma pilha de telas do PC; no celular a área de toque é de 44 px.
         <button type="button" className="pc-voltar campo-voltar-pilha" aria-label="Voltar" title="Voltar" onClick={onVoltar}>
           <span aria-hidden="true">←</span>
         </button>
       )}
+      {titulo && <h1 className="campo-head-pagina">{titulo}</h1>}
+      <div className="campo-head-espaco" />
+      <button type="button" className={`campo-sync is-${sincronizacao.estado}`} aria-label={sincronizacao.rotulo} title={sincronizacao.rotulo} onClick={sincronizacao.onClick}>
+        <span aria-hidden="true" />
+        <span className="campo-sync-texto">{sincronizacao.rotulo}</span>
+      </button>
+      {menuModo.length > 0 && <RowMenu itens={menuModo} rotulo="Modo de tela" />}
+      </div>
       <div className="emp-ativa" style={{ "--emp-cor": empresaCor } as CSSProperties}>
         <span className="emp-ativa-avatar" aria-hidden="true">
           {empresaIniciais}
@@ -59,10 +69,6 @@ export function CampoCabecalho({
           <span className="emp-ativa-seta" aria-hidden="true">▾</span>
         </button>
       </div>
-      <button type="button" className={`campo-sync is-${sincronizacao.estado}`} aria-label={sincronizacao.rotulo} title={sincronizacao.rotulo} onClick={sincronizacao.onClick}>
-        <span aria-hidden="true" />
-      </button>
-      {menuModo.length > 0 && <RowMenu itens={menuModo} rotulo="Modo de tela" />}
     </header>
   );
 }

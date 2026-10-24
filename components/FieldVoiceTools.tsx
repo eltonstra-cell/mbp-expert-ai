@@ -112,7 +112,7 @@ export default function FieldVoiceTools({
 
   async function iniciarOuParar() {
     if (!online && !gravando) {
-      avisarErro("O ditado por voz precisa de internet para transformar a fala em texto. Digite no campo.");
+      avisarErro(variante === "linha" ? "Sem sinal: digite a observação." : "O ditado por voz precisa de internet para transformar a fala em texto. Digite no campo.");
       return;
     }
     if (gravando && recorderRef.current) {
@@ -221,7 +221,8 @@ export default function FieldVoiceTools({
       return;
     }
     if (!navigator.onLine) {
-      void avisar("A melhoria de texto com IA precisa de internet.");
+      if (variante === "linha" && onAviso) onAviso("Sem sinal: a IA volta com a conexão.");
+      else void avisar("A melhoria de texto com IA precisa de internet.");
       return;
     }
 
@@ -291,19 +292,21 @@ export default function FieldVoiceTools({
               </button>
             </div>
           ) : (
-            <button type="button" className="voz-falar voz-btn" onClick={iniciarOuParar} disabled={estado.falar.desativado} title="Falar a observação">
+            <button type="button" className={`voz-falar voz-btn${!online ? " is-sem-sinal" : ""}`} onClick={iniciarOuParar} disabled={estado.falar.desativado} title={!online ? "Sem sinal: digite a observação" : "Falar a observação"}>
               <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="9" y="3" width="6" height="11" rx="3" />
                 <path d="M6 10a6 6 0 0 0 12 0" />
                 <path d="M12 16v5M9 21h6" />
               </svg>
-              <span>{transcrevendo ? "Transcrevendo" : !online ? SEM_INTERNET : rotuloVoz}</span>
+              <span>{transcrevendo ? "Transcrevendo" : rotuloVoz}</span>
+              {!online && <span className="voz-semsinal" aria-hidden="true">🔒</span>}
             </button>
           )}
           {!somenteVoz && (
-            <button type="button" className={`voz-ia${estado.ia.apagado || !online ? " is-apagado" : ""}`} onClick={melhorar} disabled={estado.ia.desativado} title="Melhorar texto com IA">
+            <button type="button" className={`voz-ia${estado.ia.apagado || !online ? " is-apagado is-sem-sinal" : ""}`} onClick={melhorar} disabled={estado.ia.desativado} title={!online ? "Sem sinal: a IA volta com a conexão" : "Melhorar texto com IA"}>
               <span aria-hidden="true">✦</span>
-              <span>{melhorando ? "Ajustando" : !online ? SEM_INTERNET : rotuloIa}</span>
+              <span>{melhorando ? "Ajustando" : rotuloIa}</span>
+              {!online && <span className="voz-semsinal" aria-hidden="true">🔒</span>}
             </button>
           )}
         </div>
