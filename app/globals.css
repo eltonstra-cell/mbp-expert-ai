@@ -5381,3 +5381,57 @@ html .pc-topbar .pc-busca{flex:1 1 180px;min-width:120px;max-width:380px}
 [data-chave="acompanhamento"],[data-chave="relatorio"],[data-chave="relatorios"]{--cor-icone:#5B6B80}
 .pc-side .pc-link.is-active .pc-link-icon,.pc-rail .pc-rail-item.is-active .pc-rail-icon{color:#12202B!important}
 .pc-side .pc-step-count{display:none}
+
+/* ===== Pacote 1: cadastro que se preenche ===== */
+.cnpj-consulta-msg{display:block;margin-top:6px;font-size:.85rem;color:#3D5160}
+.cnpj-proposta{padding:14px 16px;border:1.5px solid #E8B04B;border-radius:14px;background:#FEF6E6;color:#12202B}
+.cnpj-prop-topo{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
+.cnpj-prop-titulo{font-weight:500}
+.cnpj-prop-selo,.chip-consulta{display:inline-flex;align-items:center;height:24px;margin-left:8px;padding:0 10px;border-radius:999px;background:#FFE2B0;font-size:.72rem;font-weight:400;color:#12202B}
+.cnpj-prop-aviso{margin:8px 0 0;padding:8px 12px;border-radius:10px;background:#fff;border:1px solid #E8B04B;font-size:.88rem}
+.cnpj-prop-grade{display:grid;gap:4px;margin-top:10px}
+.cnpj-prop-linha{display:grid;grid-template-columns:150px 1fr;gap:8px;font-size:.9rem}
+.cnpj-prop-rotulo{color:#51606c}
+.cnpj-prop-troca{margin:8px 0 0;font-size:.85rem;color:#B45309}
+.cnpj-prop-acoes{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+.cnpj-prop-acoes .ui-btn{height:40px}
+.tipo-estab{display:flex;align-items:center;gap:10px}
+.pacote-tipo{padding:12px 16px;border:1.5px solid #9CCBE6;border-radius:14px;background:#EAF5FB;color:#12202B}
+.pacote-tipo-topo{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;font-size:.92rem}
+.pacote-tipo .ui-btn{height:40px}
+.pacote-tipo-corpo{display:grid;gap:10px;margin-top:10px}
+.pacote-tipo-grupo{margin:0;padding:8px 12px;border:1px solid #C9DCE8;border-radius:12px;background:#fff}
+.pacote-tipo-grupo legend{padding:0 6px;font-size:.8rem;color:#51606c}
+.pacote-tipo-itens{display:flex;flex-wrap:wrap;gap:6px 14px;max-height:160px;overflow-y:auto}
+.pacote-tipo-item{display:inline-flex;align-items:center;gap:6px;font-size:.88rem}
+.pacote-tipo-acoes{display:flex;flex-wrap:wrap;gap:10px}
+
+/* Equipamentos em chips, copiar para outros ambientes e setor oficial sugerido */
+.cad-chips{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+.cad-chip{display:inline-flex;align-items:center;gap:2px;height:40px;padding:0 4px 0 12px;border:1.5px solid #B4C2CE;border-radius:999px;background:#fff;font-size:.9rem;color:#12202B}
+.cad-chip.is-sugerido{background:#EAF5FB;border-color:#9CCBE6}
+.cad-chip.is-aberto{background:#FEF6E6;border-color:#E8B04B}
+.cad-chip-nome{height:100%;padding:0 6px 0 0;border:0;background:transparent;font-size:.9rem;color:#12202B;cursor:pointer}
+.cad-chip-marca{font-size:.78rem;color:#51606c}
+.cad-chip-x{display:grid;place-items:center;width:30px;height:30px;border:0;border-radius:50%;background:transparent;font-size:1.1rem;color:#51606c;cursor:pointer}
+.cad-chip-x:hover{background:#EEF2F7}
+.cad-chip--mais{padding:0 14px;border-style:dashed;color:#2A6BD1;cursor:pointer}
+.cad-chip--novo{padding:0 6px 0 10px;border-style:solid}
+.cad-chip-input{width:170px;height:30px;border:0;background:transparent;font-size:.9rem;outline:none}
+.cad-chip-ok{height:30px;padding:0 12px;border:0;border-radius:999px;background:#FFE2B0;font-size:.85rem;color:#12202B;cursor:pointer}
+.cad-copiar{margin-left:auto;height:32px;padding:0 12px;border:1.5px solid #B4C2CE;border-radius:10px;background:#fff;font-size:.82rem;color:#12202B;cursor:pointer}
+.cad-grupo-titulo{display:flex;align-items:center;gap:8px}
+.cad-copiar-painel{display:grid;gap:8px;margin:6px 0;padding:12px;border:1.5px solid #E8B04B;border-radius:12px;background:#FEF6E6}
+.cad-copiar-titulo{font-size:.9rem}
+.cad-copiar-destinos{display:flex;flex-wrap:wrap;gap:6px 14px;max-height:140px;overflow-y:auto}
+.cad-copiar-destino{display:inline-flex;align-items:center;gap:6px;font-size:.88rem}
+.cad-copiar-acoes{display:flex;gap:10px}
+.cad-copiar-acoes .ui-btn{height:40px}
+.cad-copia-aviso{display:flex;align-items:center;gap:12px;margin:8px 0;padding:8px 12px;border:1.5px solid #9AD3AD;border-radius:12px;background:#DCF3E3;font-size:.9rem;color:#12202B}
+.cad-equip-linha-detalhe{display:grid;grid-template-columns:minmax(160px,1fr) 90px minmax(200px,1fr);gap:10px}
+.cad-limite-fonte{margin:6px 0;font-size:.85rem;color:#3D5160}
+.cad-limite-obs{color:#B45309}
+.cad-sugestao{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:6px 10px;border:1.5px solid #9CCBE6;border-radius:12px;background:#EAF5FB;font-size:.85rem;color:#12202B}
+.cad-sugestao-marca{padding:0 8px;border-radius:999px;background:#FFE2B0;font-size:.72rem}
+.cad-sugestao-botao{height:32px;padding:0 12px;border:1.5px solid #2A6BD1;border-radius:10px;background:#fff;font-size:.85rem;color:#12202B;cursor:pointer}
+.cad-sugestao-fonte{flex-basis:100%;font-size:.75rem;color:#51606c}

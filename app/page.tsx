@@ -234,6 +234,11 @@ import { ordemAdaptativa, VISITAS_RECENTES } from "@/lib/checklistAdaptativo";
 import { aplicarLote, contarEmLote, desfazerLote, planoDoLote, textoDaConfirmacaoDoLote } from "@/lib/loteConforme";
 import DitadoDoAmbiente from "@/components/DitadoDoAmbiente";
 import ReservaDeAltura from "@/components/ReservaDeAltura";
+import PropostaDeCnpjPainel from "@/components/PropostaDeCnpj";
+import PacoteDoTipoPainel, { type EscolhaDoPacote } from "@/components/PacoteDoTipo";
+import { camposDaProposta, mensagemDeFalhaDaConsulta, propostaDaConsulta, type PropostaDeCnpj } from "@/lib/cnpjConsulta";
+import { TIPOS_DE_ESTABELECIMENTO, limiteSugeridoParaEquipamento, tipoSugeridoPorCnae } from "@/lib/tiposDeEstabelecimento";
+import { equipamentosDoPacote } from "@/lib/equipamentosCadastro";
 import { linhasDeTemperaturaDoRelatorio } from "@/lib/limitesDeTemperatura";
 import type { PropostaDeVoz } from "@/lib/vozDoAmbiente";
 import ConflitosDeEdicao from "@/components/ConflitosDeEdicao";
@@ -1217,6 +1222,16 @@ export default function Home() {
   // Avisos na hora, no campo: nome e CNPJ da empresa.
   const [tocouNomeEmpresa, setTocouNomeEmpresa] = useState(false);
   const [tocouCnpjEmpresa, setTocouCnpjEmpresa] = useState(false);
+  // Consulta de CNPJ: chega como PROPOSTA (o RT usa ou ignora); o que veio dela fica marcado "da consulta" até ser editado.
+  const [propostaCnpj, setPropostaCnpj] = useState<PropostaDeCnpj | null>(null);
+  const [consultaMsg, setConsultaMsg] = useState("");
+  const [camposDaConsulta, setCamposDaConsulta] = useState<string[]>([]);
+  const [tipoSugerido, setTipoSugerido] = useState(false);
+  const [cnaesSecundariosForm, setCnaesSecundariosForm] = useState<{ codigo: string; descricao: string }[]>([]);
+  const [consultaEmForm, setConsultaEmForm] = useState("");
+  const cnpjConsultadoRef = useRef("");
+  // Foto do cadastro antes do pacote do tipo, para o "Desfazer".
+  const [pacoteDesfazer, setPacoteDesfazer] = useState<{ setores: string[]; equipamentos: EquipamentoSetor[]; fluxos: FluxoOperacional[] } | null>(null);
   const [tentouSalvarEmpresa, setTentouSalvarEmpresa] = useState(false);
   // Campos do Manual que vieram do perfil do RT e ainda não foram editados (selo "do perfil do RT").
   const [camposDoPerfilRt, setCamposDoPerfilRt] = useState<CampoDaIdentificacao[]>([]);
@@ -3742,44 +3757,84 @@ export default function Home() {
     await salvarEstadoImediato(novo);
   }
 
+  // Consulta o CNPJ e devolve uma PROPOSTA: nada entra no cadastro até o RT tocar em "Usar estes dados".
+  // Sem sinal ou com a consulta falhando, o cadastro manual segue normal e a consulta pode ser refeita depois.
   async function buscar() {
     if (!exigirPermissao("empresas.editar")) return;
     const c = form.cnpj.replace(/\D/g, "");
-    if (c.length !== 14) {
-      setMsg("Informe um CNPJ com 14 dígitos.");
+    const erro = erroDoCnpj(form.cnpj);
+    if (c.length !== 14 || erro) {
+      setConsultaMsg(erro || "Informe um CNPJ com 14 dígitos.");
+      return;
+    }
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      setConsultaMsg(mensagemDeFalhaDaConsulta(false));
       return;
     }
     setLoading(true);
-    setMsg("Buscando...");
+    setConsultaMsg("Consultando…");
     try {
       const r = await fetch(`/api/cnpj/${c}`);
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error || "Não encontrado");
-      setForm((f) => ({
-        ...f,
-        cnpj: d.cnpj || c,
-        nomeFantasia: d.nome_fantasia || "",
-        razaoSocial: d.razao_social || "",
-        situacao: d.descricao_situacao_cadastral || "",
-        cnae: String(d.cnae_fiscal || ""),
-        cnaeDescricao: d.cnae_fiscal_descricao || "",
-        logradouro: d.logradouro || "",
-        numero: d.numero || "",
-        complemento: d.complemento || "",
-        bairro: d.bairro || "",
-        cep: d.cep || "",
-        municipio: d.municipio || "",
-        uf: d.uf || "",
-        telefone: d.ddd_telefone_1 || "",
-        email: d.email || "",
-      }));
-      setMsg("Empresa encontrada. Confira os dados.");
-    } catch (e) {
-      setMsg(e instanceof Error ? e.message : "Falha na consulta");
+      const d = await r.json().catch(() => null);
+      if (!r.ok || !d) throw new Error("falha");
+      setPropostaCnpj(propostaDaConsulta(d));
+      setConsultaMsg("Encontrei dados para este CNPJ. Confira e toque em “Usar estes dados”.");
+    } catch {
+      setPropostaCnpj(null);
+      setConsultaMsg(mensagemDeFalhaDaConsulta(typeof navigator === "undefined" ? true : navigator.onLine));
     } finally {
       setLoading(false);
     }
   }
+
+  function usarPropostaDoCnpj() {
+    if (!propostaCnpj) return;
+    const { valores, campos } = camposDaProposta(propostaCnpj);
+    const tipo = tipoSugeridoPorCnae(propostaCnpj.cnaePrincipal.codigo, propostaCnpj.cnaesSecundarios);
+    const trocaTipo = tipo.correspondencia || !form.tipo || form.tipo === "Outro";
+    // MEI/empresário individual: a razão social é o nome da pessoa e NÃO é guardada; também não deixa a de uma consulta anterior misturada.
+    setForm((atual) => ({ ...atual, ...valores, ...(propostaCnpj.titularPessoaFisica ? { razaoSocial: "" } : {}), ...(trocaTipo ? { tipo: tipo.rotulo } : {}) }));
+    setCamposDaConsulta(trocaTipo ? [...campos, "tipo"] : campos);
+    setTipoSugerido(trocaTipo);
+    setCnaesSecundariosForm(propostaCnpj.cnaesSecundarios);
+    setConsultaEmForm(new Date().toISOString());
+    setConsultaMsg(propostaCnpj.titularPessoaFisica ? "Dados aplicados. Informe o nome do estabelecimento: o nome do titular não é guardado." : "Dados aplicados. O que veio da consulta está marcado; edite ou confirme.");
+    setPropostaCnpj(null);
+  }
+
+  function mudarCampoDaEmpresa(campo: string, valor: string) {
+    setForm((atual) => ({ ...atual, [campo]: valor }));
+    setCamposDaConsulta((atual) => (atual.includes(campo) ? atual.filter((item) => item !== campo) : atual));
+  }
+
+  // Pacote do tipo de estabelecimento: ambientes, equipamentos e fluxos propostos; só entra o que o RT deixou marcado.
+  function aplicarPacoteDoTipo(escolha: EscolhaDoPacote) {
+    setPacoteDesfazer({ setores: setoresEmpresa, equipamentos: equipamentosEmpresa, fluxos: fluxosEmpresa });
+    const setoresNovos = [...setoresEmpresa, ...escolha.ambientes.filter((ambiente) => !setoresEmpresa.includes(ambiente))];
+    setSetoresEmpresa(setoresNovos);
+    const novos = equipamentosDoPacote(escolha.equipamentos, setoresNovos, equipamentosEmpresa, () => crypto.randomUUID(), (nome) => limiteSugeridoParaEquipamento(nome)?.id);
+    if (novos.length) setEquipamentosEmpresa([...equipamentosEmpresa, ...novos]);
+    setFluxosEmpresa(fluxosEmpresa.map((fluxo) => (escolha.fluxos.includes(fluxo.tipo) ? { ...fluxo, aplicavel: true } : fluxo)));
+  }
+
+  function desfazerPacoteDoTipo() {
+    if (!pacoteDesfazer) return;
+    setSetoresEmpresa(pacoteDesfazer.setores);
+    setEquipamentosEmpresa(pacoteDesfazer.equipamentos);
+    setFluxosEmpresa(pacoteDesfazer.fluxos);
+    setPacoteDesfazer(null);
+  }
+
+  // Digitou os 14 dígitos (válidos) de um CNPJ novo: consulta sozinho, uma vez por número, e só se houver sinal.
+  useEffect(() => {
+    if (editingEmpresaId || !showEmpresaForm) return;
+    const c = form.cnpj.replace(/\D/g, "");
+    if (c.length !== 14 || erroDoCnpj(form.cnpj) || cnpjConsultadoRef.current === c) return;
+    if (typeof navigator !== "undefined" && !navigator.onLine) return;
+    cnpjConsultadoRef.current = c;
+    void buscar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.cnpj, editingEmpresaId, showEmpresaForm]);
 
   function salvarEmpresa() {
     if (!exigirPermissao("empresas.editar")) return;
@@ -3815,6 +3870,8 @@ export default function Home() {
         { ...(anterior?.modelosQuestionarioAmbientes || {}), ...modelosEmpresa }
       ),
       ...(Object.keys(limparVinculos(vinculosEmpresa, setoresEmpresa)).length ? { setorOficialDoAmbiente: limparVinculos(vinculosEmpresa, setoresEmpresa) } : {}),
+      ...(cnaesSecundariosForm.length ? { cnaesSecundarios: cnaesSecundariosForm } : {}),
+      ...(consultaEmForm ? { consultaCnpjEm: consultaEmForm } : {}),
       equipamentosSetores: normalizarEquipamentos(equipamentosEmpresa),
       fluxosOperacionais: adequarFluxosAosSetores(fluxosEmpresa, setoresEmpresa),
       programasControleQualidade: normalizarProgramasControle(programasEmpresa),
@@ -3967,6 +4024,14 @@ export default function Home() {
     setTocouNomeEmpresa(false);
     setTocouCnpjEmpresa(false);
     setTentouSalvarEmpresa(false);
+    setPropostaCnpj(null);
+    setConsultaMsg("");
+    setCamposDaConsulta([]);
+    setTipoSugerido(false);
+    setCnaesSecundariosForm(empresa.cnaesSecundarios || []);
+    setConsultaEmForm(empresa.consultaCnpjEm || "");
+    setPacoteDesfazer(null);
+    cnpjConsultadoRef.current = form.cnpj.replace(/\D/g, "");
     setEquipamentosEmpresa(equipamentosCarregados);
     setFluxosEmpresa(fluxosCarregados);
     setProgramasEmpresa(programasCarregados);
@@ -4852,6 +4917,14 @@ export default function Home() {
     setTocouNomeEmpresa(false);
     setTocouCnpjEmpresa(false);
     setTentouSalvarEmpresa(false);
+    setPropostaCnpj(null);
+    setConsultaMsg("");
+    setCamposDaConsulta([]);
+    setTipoSugerido(false);
+    setCnaesSecundariosForm([]);
+    setConsultaEmForm("");
+    setPacoteDesfazer(null);
+    cnpjConsultadoRef.current = "";
     setCamposDoPerfilRt([]);
     setEquipamentosEmpresa([]);
     setFluxosEmpresa(fluxosIniciais);
@@ -4958,6 +5031,7 @@ export default function Home() {
   function dadosDeTemperaturaDoItem(foco: ChecklistItem) {
     return {
       equipamentosDoAmbiente: (empresaVisita?.equipamentosSetores || []).filter((equipamento) => equipamento.setor === foco.ambiente).map((equipamento) => equipamento.nome),
+      limitesDosEquipamentos: (empresaVisita?.equipamentosSetores || []).filter((equipamento) => equipamento.setor === foco.ambiente && equipamento.limiteTemperaturaId && equipamento.limiteConfirmado).map((equipamento) => equipamento.limiteTemperaturaId as string),
       onTemperatura: (medida: { valor: number; limiteId: string } | null, resultado: "Conforme" | "Não Conforme" | null) => {
         setItemFocoId(foco.id);
         atualizarChecklistItem(foco.id, { temperatura: medida || undefined, ...(resultado ? { status: resultado, ...(resultado !== "Não Conforme" ? { observacao: "" } : {}) } : {}) });
@@ -8102,26 +8176,43 @@ export default function Home() {
                           onBlur={() => setTocouCnpjEmpresa(true)}
                           onChange={(e) => setForm({ ...form, cnpj: e.target.value })}
                         />
-                        {!editingEmpresaId && (
-                          <button type="button" onClick={buscar} className="ui-btn ui-btn--criar">
-                            {loading ? "..." : "Buscar"}
-                          </button>
-                        )}
+                        <button type="button" onClick={buscar} className="ui-btn ui-btn--criar" disabled={loading}>
+                          {loading ? "..." : editingEmpresaId ? "Consultar de novo" : "Buscar"}
+                        </button>
                       </div>
+                      {consultaMsg && <span className="cnpj-consulta-msg" role="status">{consultaMsg}</span>}
                       {!editingEmpresaId && (tocouCnpjEmpresa || tentouSalvarEmpresa || form.cnpj.replace(/D/g, "").length >= 14) && erroDoCnpj(form.cnpj) && <span className="ui-field-error" role="alert">{erroDoCnpj(form.cnpj)}</span>}
                     </label>
+
+                    {propostaCnpj && (
+                      <PropostaDeCnpjPainel
+                        proposta={propostaCnpj}
+                        vaiTrocar={camposDaProposta(propostaCnpj).campos.filter((campo) => String((form as Record<string, unknown>)[campo] || "").trim() && String((form as Record<string, unknown>)[campo]) !== camposDaProposta(propostaCnpj).valores[campo]).map((campo) => labels[campo as keyof typeof labels] || campo)}
+                        onUsar={usarPropostaDoCnpj}
+                        onIgnorar={() => { setPropostaCnpj(null); setConsultaMsg("Consulta ignorada. Preencha à mão ou consulte de novo."); }}
+                      />
+                    )}
 
                     {camposEmpresaPrincipais.filter((k) => k !== "responsavel" && k !== "cargoResponsavel").map((k) => (
                   <label key={k} className={k === "cnaeDescricao" ? "md:col-span-2" : undefined}>
                     <span className="mb-1 block text-xs font-bold text-slate-500">
                       {labels[k] || k}
+                      {camposDaConsulta.includes(k) && <span className="chip-consulta">{k === "tipo" ? "sugerido pelo CNAE" : "da consulta"}</span>}
                     </span>
-                    {k === "cnaeDescricao" ? (
+                    {k === "tipo" ? (
+                      <span className="tipo-estab">
+                        <Select className="w-full rounded-xl border p-3" value={form.tipo || "Outro"} onChange={(e) => { mudarCampoDaEmpresa("tipo", e.target.value); setTipoSugerido(false); }} aria-label="Tipo de estabelecimento">
+                          {TIPOS_DE_ESTABELECIMENTO.map((tipo) => <option key={tipo.id} value={tipo.rotulo}>{tipo.rotulo}</option>)}
+                          {form.tipo && !TIPOS_DE_ESTABELECIMENTO.some((tipo) => tipo.rotulo === form.tipo) && <option value={form.tipo}>{form.tipo}</option>}
+                        </Select>
+                        {tipoSugerido && <button type="button" className="pc-link-btn" onClick={() => { setTipoSugerido(false); setCamposDaConsulta((atual) => atual.filter((item) => item !== "tipo")); }}>Confirmar tipo</button>}
+                      </span>
+                    ) : k === "cnaeDescricao" ? (
                       <textarea
                         className="w-full resize-none rounded-xl border p-3"
                         rows={2}
                         value={form[k]}
-                        onChange={(e) => setForm({ ...form, [k]: e.target.value })}
+                        onChange={(e) => mudarCampoDaEmpresa(k, e.target.value)}
                       />
                     ) : (
                       <input
@@ -8131,14 +8222,24 @@ export default function Home() {
                         placeholder={k === "horarioFuncionamento" ? "Ex.: Seg a sáb, 11h às 23h" : undefined}
                         aria-invalid={k === "nomeFantasia" && (tocouNomeEmpresa || tentouSalvarEmpresa) && Boolean(erroDoNomeDaEmpresa(form.nomeFantasia, form.razaoSocial))}
                         onBlur={k === "nomeFantasia" ? () => setTocouNomeEmpresa(true) : undefined}
-                        onChange={(e) =>
-                          setForm({ ...form, [k]: e.target.value })
-                        }
+                        onChange={(e) => mudarCampoDaEmpresa(k, e.target.value)}
                       />
                     )}
                     {k === "nomeFantasia" && (tocouNomeEmpresa || tentouSalvarEmpresa) && erroDoNomeDaEmpresa(form.nomeFantasia, form.razaoSocial) && <span className="ui-field-error" role="alert">{erroDoNomeDaEmpresa(form.nomeFantasia, form.razaoSocial)}</span>}
                   </label>
                     ))}
+                    {cnaesSecundariosForm.length > 0 && (
+                      <p className="md:col-span-2 text-xs text-slate-500">CNAEs secundários da consulta: {cnaesSecundariosForm.map((c) => c.codigo).join(", ")}.</p>
+                    )}
+                    <PacoteDoTipoPainel
+                      tipo={form.tipo || "Outro"}
+                      ambientesDaEmpresa={setoresEmpresa}
+                      equipamentosDaEmpresa={equipamentosEmpresa.map((item) => `${item.setor}|${item.nome.toLocaleLowerCase("pt-BR")}`)}
+                      fluxosAplicaveis={fluxosEmpresa.filter((fluxo) => fluxo.aplicavel).map((fluxo) => fluxo.tipo)}
+                      onAplicar={aplicarPacoteDoTipo}
+                      onDesfazer={desfazerPacoteDoTipo}
+                      aplicadoAgora={Boolean(pacoteDesfazer)}
+                    />
                     {(() => {
                       // Responsável do estabelecimento: escolhe-se primeiro o acesso vinculado; nome e cargo vêm desse usuário (em leitura).
                       const vinculado = db.usuarios.find((pessoa) => pessoa.id === usuarioResponsavelForm);
@@ -8265,7 +8366,7 @@ export default function Home() {
                         return `${resultado.preenchidos.length === 1 ? "1 campo preenchido" : `${resultado.preenchidos.length} campos preenchidos`}.${faltam ? ` ${faltam === 1 ? "1 campo continua vazio" : `${faltam} campos continuam vazios`}: não há esse dado no cadastro.` : ""} Salve para guardar.`;
                       }}
                     />
-                    <ManualBaseFields responsabilidades={responsabilidadesEmpresa} onResponsabilidadesChange={setResponsabilidadesEmpresa} setores={setoresEmpresa} onSetoresChange={setSetoresEmpresa} equipamentos={equipamentosEmpresa} onEquipamentosChange={setEquipamentosEmpresa} modo="responsabilidades" />
+                    <ManualBaseFields tipoDoEstabelecimento={form.tipo} responsabilidades={responsabilidadesEmpresa} onResponsabilidadesChange={setResponsabilidadesEmpresa} setores={setoresEmpresa} onSetoresChange={setSetoresEmpresa} equipamentos={equipamentosEmpresa} onEquipamentosChange={setEquipamentosEmpresa} modo="responsabilidades" />
                   </div>
                 )}
 
@@ -8286,7 +8387,7 @@ export default function Home() {
 
                 {editingEmpresaId && (secaoEmpresa === "ambientes" || secaoEmpresa === "equipamentos") && (
                   <div className="cen-cadastro">
-                    <ManualBaseFields responsabilidades={responsabilidadesEmpresa} onResponsabilidadesChange={setResponsabilidadesEmpresa} setores={setoresEmpresa} onSetoresChange={setSetoresEmpresa} vinculos={vinculosEmpresa} onVinculosChange={setVinculosEmpresa} modelos={modelosEmpresa} onModelosChange={setModelosEmpresa} onRenomearAmbiente={renomearAmbienteDaEmpresa} equipamentos={equipamentosEmpresa} onEquipamentosChange={setEquipamentosEmpresa} setoresSalvos={marcadosSalvos.setores} modo="estrutura" />
+                    <ManualBaseFields tipoDoEstabelecimento={form.tipo} responsabilidades={responsabilidadesEmpresa} onResponsabilidadesChange={setResponsabilidadesEmpresa} setores={setoresEmpresa} onSetoresChange={setSetoresEmpresa} vinculos={vinculosEmpresa} onVinculosChange={setVinculosEmpresa} modelos={modelosEmpresa} onModelosChange={setModelosEmpresa} onRenomearAmbiente={renomearAmbienteDaEmpresa} equipamentos={equipamentosEmpresa} onEquipamentosChange={setEquipamentosEmpresa} setoresSalvos={marcadosSalvos.setores} modo="estrutura" />
                   </div>
                 )}
 

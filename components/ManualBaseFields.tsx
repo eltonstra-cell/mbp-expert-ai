@@ -11,7 +11,10 @@ import { OPCOES_MODELO_QUESTIONARIO, SETORES_OFICIAIS_MANUAL, agruparEquipamento
 import { MODELO_GENERICO, ambientesSemQuestionario, bloqueioDeExcluirAmbiente, vincularQuestionarioEmLote } from "@/lib/regrasDoPacote3";
 import { erroDoNovoNome } from "@/lib/renomearAmbiente";
 import { aplicarEscolhaDeSetores } from "@/lib/escolhaEmJanela";
-import { ambientesParaMover, moverEquipamento } from "@/lib/equipamentosCadastro";
+import { ambientesParaMover, confirmarSugestao, copiarEquipamentos, definirLimite, desfazerCopia, moverEquipamento } from "@/lib/equipamentosCadastro";
+import { LIMITES_DE_TEMPERATURA, limiteDoTipo, textoDoLimite } from "@/lib/limitesDeTemperatura";
+import { limiteSugeridoParaEquipamento, pacoteDoTipo } from "@/lib/tiposDeEstabelecimento";
+import { sugerirSetorOficial } from "@/lib/setorOficialSugerido";
 import { textoCurtoDaResponsabilidade, textoDosAtivos } from "@/lib/manualIdentificacao";
 import EscolhaEmJanela from "@/components/EscolhaEmJanela";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
@@ -37,6 +40,8 @@ type Props = {
   /** Opcional: renomear ambiente próprio com cascata (quem chama pede a confirmação e aplica). Devolve true se renomeou. */
   onRenomearAmbiente?: (de: string, para: string) => Promise<boolean>;
   modo?: "completo" | "responsabilidades" | "ambientes" | "equipamentos" | "estrutura";
+  /** Tipo de estabelecimento da empresa: alimenta as sugestões de equipamento de cada ambiente. */
+  tipoDoEstabelecimento?: string;
 };
 
 function SectionTitle({ title, description }: { title: string; description: string }) {
@@ -62,6 +67,7 @@ export default function ManualBaseFields({
   onModelosChange,
   onRenomearAmbiente,
   modo = "completo",
+  tipoDoEstabelecimento,
 }: Props) {
   const [setorEquipamento, setSetorEquipamento] = useState(setores[0] || SETORES_OFICIAIS_MANUAL[0]);
   const [nomeEquipamento, setNomeEquipamento] = useState("");
@@ -79,6 +85,12 @@ export default function ManualBaseFields({
   const [falados, setFalados] = useState<ItemParaConferir[]>([]);
   const [respEmEdicao, setRespEmEdicao] = useState<string | null>(null);
   const [gruposRecolhidos, setGruposRecolhidos] = useState<PapelResponsabilidadeManual[]>([]);
+  // Equipamentos em chips: copiar para outros ambientes (com desfazer) e adicionar com um toque.
+  const [copiando, setCopiando] = useState<{ origem: string; destinos: string[] } | null>(null);
+  const [copiaFeita, setCopiaFeita] = useState<{ criados: string[]; texto: string } | null>(null);
+  const [adicionandoEm, setAdicionandoEm] = useState<string | null>(null);
+  const [nomeNoGrupo, setNomeNoGrupo] = useState("");
+  const pacoteSugerido = pacoteDoTipo(tipoDoEstabelecimento);
 
   const setoresParaEquipamentos = setores.length ? setores : [...SETORES_OFICIAIS_MANUAL];
   const mostrarAmbientes = modo === "completo" || modo === "ambientes" || modo === "estrutura";
@@ -87,6 +99,10 @@ export default function ManualBaseFields({
   const proprios = setores.filter((setor) => !SETORES_OFICIAIS_MANUAL.includes(setor as (typeof SETORES_OFICIAIS_MANUAL)[number]));
   const oficiaisMarcados = setores.filter((setor) => SETORES_OFICIAIS_MANUAL.includes(setor as (typeof SETORES_OFICIAIS_MANUAL)[number]));
   const gruposDeEquipamentos = agruparEquipamentosPorAmbiente(equipamentos, setoresParaEquipamentos);
+  // Todo ambiente marcado ganha seu grupo (mesmo vazio), para receber equipamentos por chip e pelas sugestões do tipo.
+  const gruposComVazios = setores.length
+    ? [...setores.map((setor) => gruposDeEquipamentos.find((grupo) => grupo.setor === setor) || { setor, itens: [] as EquipamentoSetor[] }), ...gruposDeEquipamentos.filter((grupo) => !setores.includes(grupo.setor))]
+    : gruposDeEquipamentos;
   const semQuestionario = ambientesSemQuestionario(setores, SETORES_OFICIAIS_MANUAL, modelos, vinculos);
   const destinosParaMover = bloqueio ? setores.filter((setor) => setor !== bloqueio.ambiente) : [];
   const erroDoNovoAmbiente = (() => {
@@ -223,6 +239,36 @@ export default function ManualBaseFields({
     setFalados((atuais) => atuais.filter((atual) => atual.id !== id));
   }
 
+  function adicionarNoGrupo(setor: string, nome: string) {
+    const limpo = nome.trim();
+    if (!limpo) return;
+    const limite = limiteSugeridoParaEquipamento(limpo)?.id;
+    onEquipamentosChange([...equipamentos, { id: crypto.randomUUID(), setor, nome: limpo, quantidade: 1, estado: "Não avaliado", observacao: "", ...(limite ? { limiteTemperaturaId: limite } : {}) }]);
+    setNomeNoGrupo("");
+    setAdicionandoEm(null);
+  }
+
+  function confirmarCopia() {
+    if (!copiando || copiando.destinos.length === 0) return;
+    const ids = equipamentos.filter((item) => item.setor === copiando.origem).map((item) => item.id);
+    const resultado = copiarEquipamentos(equipamentos, ids, copiando.destinos, () => crypto.randomUUID());
+    if (resultado.criados.length) onEquipamentosChange(resultado.equipamentos);
+    setCopiaFeita({
+      criados: resultado.criados,
+      texto: resultado.criados.length
+        ? `${resultado.criados.length} ${resultado.criados.length === 1 ? "equipamento copiado" : "equipamentos copiados"}${resultado.ignorados ? ` · ${resultado.ignorados} já existia${resultado.ignorados === 1 ? "" : "m"}` : ""}.`
+        : "Nada a copiar: os destinos já têm esses equipamentos.",
+    });
+    setCopiando(null);
+    window.setTimeout(() => setCopiaFeita(null), 12000);
+  }
+
+  function desfazerACopia() {
+    if (!copiaFeita) return;
+    onEquipamentosChange(desfazerCopia(equipamentos, copiaFeita.criados));
+    setCopiaFeita(null);
+  }
+
   function mudarEquipamento(id: string, mudanca: Partial<EquipamentoSetor>) {
     onEquipamentosChange(equipamentos.map((item) => (item.id === id ? { ...item, ...mudanca } : item)));
   }
@@ -322,6 +368,29 @@ export default function ManualBaseFields({
                       )}
                     </div>
                     <div className="cadamb-meio">
+                      {proprio && onVinculosChange && !vinculos[setor] && (() => {
+                        const sugestao = sugerirSetorOficial(setor);
+                        if (!sugestao) return null;
+                        const marcado = oficiaisMarcados.includes(sugestao.oficial);
+                        const textoFonte = sugestao.fonte ? `${sugestao.fonte.norma}, item ${sugestao.fonte.item} · conferido em ${sugestao.fonte.conferidoEm.split("-").reverse().join("/")}` : "sem texto da norma encontrado para este setor";
+                        return (
+                          <span className="cad-sugestao" role="status" title={sugestao.fonte ? `“${sugestao.fonte.trecho}” ${sugestao.fonte.link}` : textoFonte}>
+                            <span className="cad-sugestao-marca">sugerido</span>
+                            <span>Setor oficial: {sugestao.oficial}</span>
+                            <button
+                              type="button"
+                              className="cad-sugestao-botao"
+                              onClick={() => {
+                                if (!marcado) onSetoresChange([...setores, sugestao.oficial]);
+                                onVinculosChange({ ...vinculos, [setor]: sugestao.oficial });
+                              }}
+                            >
+                              {marcado ? "Vincular" : "Vincular e marcar o setor"}
+                            </button>
+                            <span className="cad-sugestao-fonte">{textoFonte}</span>
+                          </span>
+                        );
+                      })()}
                       {proprio && onVinculosChange && oficiaisMarcados.length > 0 && (
                         <label className="cad-vinculo">
                           <span>Setor oficial</span>
@@ -552,59 +621,118 @@ export default function ManualBaseFields({
             onCorrigir={corrigirFalado}
           />
 
+          {copiaFeita && (
+            <div className="cad-copia-aviso" role="status">
+              <span>{copiaFeita.texto}</span>
+              {copiaFeita.criados.length > 0 && <button type="button" className="pc-link-btn" onClick={desfazerACopia}>Desfazer</button>}
+            </div>
+          )}
+
           <div className="cad-grupos">
-            {gruposDeEquipamentos.map((grupo) => (
-              <div key={grupo.setor} className="cad-grupo">
-                <div className="cad-grupo-titulo">
-                  <span>{grupo.setor}</span>
-                  <span className="cad-conta" aria-label={`${grupo.itens.length} itens`}>{grupo.itens.length}</span>
+            {gruposComVazios.map((grupo) => {
+              const sugestoesDoAmbiente = pacoteSugerido.equipamentos.filter((item) => item.ambiente === grupo.setor && !grupo.itens.some((existente) => existente.nome.toLocaleLowerCase("pt-BR") === item.nome.toLocaleLowerCase("pt-BR")));
+              const aberto = grupo.itens.find((item) => detalhesAbertos.includes(item.id));
+              return (
+                <div key={grupo.setor} className="cad-grupo">
+                  <div className="cad-grupo-titulo">
+                    <span>{grupo.setor}</span>
+                    <span className="cad-conta" aria-label={`${grupo.itens.length} itens`}>{grupo.itens.length}</span>
+                    {setoresParaEquipamentos.length > 1 && grupo.itens.length > 0 && (
+                      <button type="button" className="cad-copiar" onClick={() => setCopiando({ origem: grupo.setor, destinos: [] })}>Copiar para outros ambientes</button>
+                    )}
+                  </div>
+                  <div className="cad-chips" role="list">
+                    {grupo.itens.map((equipamento) => (
+                      <span key={equipamento.id} role="listitem" className={`cad-chip${equipamento.sugerido ? " is-sugerido" : ""}${detalhesAbertos.includes(equipamento.id) ? " is-aberto" : ""}`}>
+                        <button type="button" className="cad-chip-nome" aria-expanded={detalhesAbertos.includes(equipamento.id)} onClick={() => setDetalhesAbertos((atuais) => (atuais.includes(equipamento.id) ? atuais.filter((id) => id !== equipamento.id) : [equipamento.id]))}>
+                          {equipamento.nome}{equipamento.quantidade > 1 ? ` ×${equipamento.quantidade}` : ""}
+                          {equipamento.sugerido && <span className="cad-chip-marca"> · sugerido</span>}
+                          {equipamento.limiteTemperaturaId && <span className="cad-chip-marca" title="Limite de temperatura"> · {textoDoLimite(limiteDoTipo(equipamento.limiteTemperaturaId)!)}{equipamento.limiteConfirmado ? "" : "?"}</span>}
+                        </button>
+                        <button type="button" className="cad-chip-x" aria-label={`Remover ${equipamento.nome}`} onClick={() => onEquipamentosChange(equipamentos.filter((item) => item.id !== equipamento.id))}>×</button>
+                      </span>
+                    ))}
+                    {sugestoesDoAmbiente.map((sugestao) => (
+                      <button key={sugestao.nome} type="button" className="cad-chip cad-chip--mais" onClick={() => adicionarNoGrupo(grupo.setor, sugestao.nome)} title="Sugestão para este tipo de estabelecimento">+ {sugestao.nome}</button>
+                    ))}
+                    {adicionandoEm === grupo.setor ? (
+                      <span className="cad-chip cad-chip--novo">
+                        <input autoFocus className="cad-chip-input" value={nomeNoGrupo} placeholder="Nome do equipamento" aria-label={`Novo equipamento em ${grupo.setor}`} onChange={(event) => setNomeNoGrupo(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); adicionarNoGrupo(grupo.setor, nomeNoGrupo); } else if (event.key === "Escape") setAdicionandoEm(null); }} />
+                        <button type="button" className="cad-chip-ok" onClick={() => adicionarNoGrupo(grupo.setor, nomeNoGrupo)}>Adicionar</button>
+                      </span>
+                    ) : (
+                      <button type="button" className="cad-chip cad-chip--mais" onClick={() => { setAdicionandoEm(grupo.setor); setNomeNoGrupo(""); }}>+ Outro</button>
+                    )}
+                  </div>
+                  {copiando && copiando.origem === grupo.setor && (
+                    <div className="cad-copiar-painel" role="group" aria-label="Copiar equipamentos para outros ambientes">
+                      <div className="cad-copiar-titulo">Copiar os {grupo.itens.length} equipamentos de {grupo.setor} para:</div>
+                      <div className="cad-copiar-destinos">
+                        {setoresParaEquipamentos.filter((setor) => setor !== grupo.setor).map((setor) => (
+                          <label key={setor} className="cad-copiar-destino">
+                            <input type="checkbox" checked={copiando.destinos.includes(setor)} onChange={(event) => setCopiando({ origem: copiando.origem, destinos: event.target.checked ? [...copiando.destinos, setor] : copiando.destinos.filter((item) => item !== setor) })} />
+                            <span>{setor}</span>
+                          </label>
+                        ))}
+                      </div>
+                      <div className="cad-copiar-acoes">
+                        <button type="button" className="ui-btn ui-btn--primary" disabled={copiando.destinos.length === 0} onClick={confirmarCopia}>Copiar</button>
+                        <button type="button" className="ui-btn ui-btn--secondary" onClick={() => setCopiando(null)}>Cancelar</button>
+                      </div>
+                    </div>
+                  )}
+                  {aberto && (
+                    <div className="cad-equip-detalhes">
+                      <div className="cad-equip-linha-detalhe">
+                        <label className="cad-rotulado">
+                          <span>Nome</span>
+                          <input value={aberto.nome} onChange={(event) => mudarEquipamento(aberto.id, { nome: event.target.value })} className="ui-input cad-input" aria-label="Nome do equipamento" />
+                        </label>
+                        <label className="cad-rotulado cad-rotulado--qtd">
+                          <span>Qtd</span>
+                          <input type="number" min="1" value={aberto.quantidade} onChange={(event) => mudarEquipamento(aberto.id, { quantidade: Math.max(1, Number(event.target.value) || 1) })} className="ui-input cad-input" aria-label="Quantidade" />
+                        </label>
+                        <label className="cad-rotulado">
+                          <span>Limite de temperatura (opcional)</span>
+                          <Select value={aberto.limiteTemperaturaId || ""} onChange={(event) => onEquipamentosChange(definirLimite(equipamentos, aberto.id, event.target.value))} className="cad-input" aria-label="Limite de temperatura">
+                            <option value="">Sem limite</option>
+                            {LIMITES_DE_TEMPERATURA.map((limite) => <option key={limite.id} value={limite.id}>{limite.rotulo} ({textoDoLimite(limite)})</option>)}
+                          </Select>
+                        </label>
+                      </div>
+                      {aberto.limiteTemperaturaId && (() => {
+                        const limite = limiteDoTipo(aberto.limiteTemperaturaId);
+                        return limite ? (
+                          <p className="cad-limite-fonte">
+                            {aberto.limiteConfirmado ? "Limite confirmado" : "Limite sugerido pelo tipo do equipamento"}: {textoDoLimite(limite)} · {limite.norma}, item {limite.itens} · conferido em {limite.conferidoEm.split("-").reverse().join("/")}.
+                            {!aberto.limiteConfirmado && <> <button type="button" className="pc-link-btn" onClick={() => onEquipamentosChange(confirmarSugestao(equipamentos, aberto.id))}>Confirmar limite</button></>}
+                            {limite.observacaoDaFonte && <span className="cad-limite-obs"> {limite.observacaoDaFonte}</span>}
+                          </p>
+                        ) : null;
+                      })()}
+                      {!aberto.limiteTemperaturaId && <p className="cad-limite-fonte">Sem limite: no checklist, a temperatura é anotada e nada é classificado.</p>}
+                      {aberto.sugerido && (
+                        <p className="cad-limite-fonte">
+                          Veio da sugestão do tipo de estabelecimento. <button type="button" className="pc-link-btn" onClick={() => onEquipamentosChange(confirmarSugestao(equipamentos, aberto.id))}>Confirmar equipamento</button>
+                        </p>
+                      )}
+                      <label className="cad-rotulado cad-rotulado--mover">
+                        <span>Mover para outro ambiente</span>
+                        <Select value="" onChange={(event) => onEquipamentosChange(moverEquipamento(equipamentos, aberto.id, event.target.value))} className="cad-input">
+                          <option value="">Escolher o ambiente…</option>
+                          {ambientesParaMover(setoresParaEquipamentos, aberto.setor).map((setor) => <option key={setor} value={setor}>{setor}</option>)}
+                        </Select>
+                      </label>
+                      <label className="cad-rotulado">
+                        <span>Observações do equipamento</span>
+                        <textarea rows={2} value={aberto.observacao || ""} onChange={(event) => mudarEquipamento(aberto.id, { observacao: event.target.value })} placeholder="Ex.: borracha danificada, excesso de gelo, manutenção necessária..." className="ui-input cad-obs-texto" />
+                      </label>
+                      <FieldVoiceTools fieldKey={`equipamento-${aberto.id}`} value={aberto.observacao || ""} onChange={(texto) => mudarEquipamento(aberto.id, { observacao: texto })} contexto={`Observação técnica sobre o equipamento "${aberto.nome}" no setor "${aberto.setor}". Seja claro, objetivo e não invente fatos.`} />
+                    </div>
+                  )}
                 </div>
-                <ul className="cad-lista">
-                  {grupo.itens.map((equipamento) => {
-                    const aberto = detalhesAbertos.includes(equipamento.id);
-                    return (
-                      <li key={equipamento.id} className="cad-equip">
-                        <div className="cad-equip-linha">
-                          <input value={equipamento.nome} onChange={(event) => mudarEquipamento(equipamento.id, { nome: event.target.value })} className="ui-input cad-input cad-equip-nome" aria-label="Nome do equipamento" />
-                          <input type="number" min="1" value={equipamento.quantidade} onChange={(event) => mudarEquipamento(equipamento.id, { quantidade: Math.max(1, Number(event.target.value) || 1) })} className="ui-input cad-input cad-equip-qtd" aria-label="Quantidade" />
-                          <button type="button" className="cad-detalhes" aria-expanded={aberto} onClick={() => setDetalhesAbertos((atuais) => (aberto ? atuais.filter((id) => id !== equipamento.id) : [...atuais, equipamento.id]))}>
-                            Detalhes {aberto ? "▾" : "▸"}{!aberto && (equipamento.observacao || "").trim() ? <span className="cad-detalhes-marca" title="Tem observação"> ●</span> : null}
-                          </button>
-                          <button type="button" onClick={() => onEquipamentosChange(equipamentos.filter((item) => item.id !== equipamento.id))} className="cad-remover">Remover</button>
-                        </div>
-                        {aberto && (
-                          <div className="cad-equip-detalhes">
-                            <label className="cad-rotulado cad-rotulado--mover">
-                              <span>Mover para outro ambiente</span>
-                              <Select value="" onChange={(event) => onEquipamentosChange(moverEquipamento(equipamentos, equipamento.id, event.target.value))} className="cad-input">
-                                <option value="">Escolher o ambiente…</option>
-                                {ambientesParaMover(setoresParaEquipamentos, equipamento.setor).map((setor) => <option key={setor} value={setor}>{setor}</option>)}
-                              </Select>
-                            </label>
-                            <label className="cad-rotulado">
-                              <span>Observações do equipamento</span>
-                              <textarea
-                                rows={2}
-                                value={equipamento.observacao || ""}
-                                onChange={(event) => mudarEquipamento(equipamento.id, { observacao: event.target.value })}
-                                placeholder="Ex.: borracha danificada, excesso de gelo, manutenção necessária..."
-                                className="ui-input cad-obs-texto"
-                              />
-                            </label>
-                            <FieldVoiceTools
-                              fieldKey={`equipamento-${equipamento.id}`}
-                              value={equipamento.observacao || ""}
-                              onChange={(texto) => mudarEquipamento(equipamento.id, { observacao: texto })}
-                              contexto={`Observação técnica sobre o equipamento "${equipamento.nome}" no setor "${equipamento.setor}". Seja claro, objetivo e não invente fatos.`}
-                            />
-                          </div>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            ))}
+              );
+            })}
             {equipamentos.length === 0 && <div className="cad-vazio">Nenhum equipamento ou móvel cadastrado.</div>}
           </div>
         </section>

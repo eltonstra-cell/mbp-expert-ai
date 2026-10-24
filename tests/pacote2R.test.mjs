@@ -64,7 +64,9 @@ test("abas de Cadastros: Ambientes | Equipamentos | Fluxos; contagem no título 
 
 test("formato dos dados de ambientes e equipamentos inalterado (só reorganizou os cartões)", () => {
   const tipos = ler("../types/index.ts");
-  assert.match(tipos, /export type EquipamentoSetor = \{\s*id: string;\s*setor: string;\s*nome: string;\s*quantidade: number;\s*estado: EstadoEquipamento;\s*observacao: string;\s*\};/);
+  // Pacote 1 só ACRESCENTOU campos opcionais (sugerido, limiteTemperaturaId, limiteConfirmado); os obrigatórios são os mesmos.
+  assert.match(tipos, /export type EquipamentoSetor = \{\s*id: string;\s*setor: string;\s*nome: string;\s*quantidade: number;\s*estado: EstadoEquipamento;\s*observacao: string;/);
+  assert.match(tipos, /sugerido\?: boolean;[\s\S]*limiteTemperaturaId\?: string;[\s\S]*limiteConfirmado\?: boolean;\s*\};/);
   const campos = ler("../components/ManualBaseFields.tsx");
   assert.match(campos, /id: crypto\.randomUUID\(\),\s*setor: setorEquipamento,\s*nome,\s*quantidade: Math\.max\(1, Number\(quantidadeEquipamento\) \|\| 1\),\s*estado: "Não avaliado",\s*observacao: "",/);
   assert.ok(campos.includes("onSetoresChange([...setores, nome])"), "ambiente próprio continua indo para a mesma lista de setores");

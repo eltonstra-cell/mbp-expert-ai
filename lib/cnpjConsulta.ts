@@ -1,0 +1,136 @@
+// Consulta de CNPJ que vira PROPOSTA de cadastro. Lógica pura (sem rede, sem tela): a rota /api/cnpj e o formulário usam as mesmas regras.
+// LGPD: empresário individual / MEI tem o NOME DO TITULAR (e o CPF) na razão social. Esses dados NÃO são propostos, guardados nem exibidos:
+// a proposta traz só o nome fantasia (se houver) e o endereço do estabelecimento, e o campo avisa.
+
+export type CnaeDaConsulta = { codigo: string; descricao: string };
+
+export type PropostaDeCnpj = {
+  fonte: string;
+  cnpj: string;
+  /** Vazia para MEI/empresário individual (a razão social é o nome da pessoa). */
+  razaoSocial: string;
+  nomeFantasia: string;
+  situacao: string;
+  /** Situação cadastral diferente de "ativa": o campo avisa, sem bloquear. */
+  situacaoAtiva: boolean;
+  cnaePrincipal: CnaeDaConsulta;
+  cnaesSecundarios: CnaeDaConsulta[];
+  logradouro: string;
+  numero: string;
+  complemento: string;
+  bairro: string;
+  cep: string;
+  municipio: string;
+  uf: string;
+  telefone: string;
+  email: string;
+  /** O titular é pessoa física: nome e CPF foram descartados. */
+  titularPessoaFisica: boolean;
+  avisos: string[];
+};
+
+const semAcento = (t: string) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLocaleLowerCase("pt-BR");
+
+/** Natureza jurídica de empresário individual (código 213-5) ou opção pelo MEI. */
+export function titularEPessoaFisica(entrada: { naturezaJuridica?: string; codigoNaturezaJuridica?: string | number; opcaoPeloMei?: boolean }): boolean {
+  if (entrada.opcaoPeloMei) return true;
+  const codigo = String(entrada.codigoNaturezaJuridica ?? "").replace(/\D/g, "");
+  if (codigo === "2135") return true;
+  const natureza = semAcento(entrada.naturezaJuridica || "");
+  return natureza.includes("empresario (individual)") || natureza.includes("empresario individual");
+}
+
+/** Tira sequências de 11 dígitos (CPF) coladas ao nome, que o cadastro de MEI costuma ter ("NOME 12345678900"). */
+export function semCpf(texto: string): string {
+  return texto.replace(/\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/g, "").replace(/\s{2,}/g, " ").trim();
+}
+
+export function situacaoEstaAtiva(situacao: string): boolean {
+  const s = semAcento(situacao).trim();
+  return !s || s === "ativa" || s === "02" || s === "2";
+}
+
+export type ConsultaBruta = {
+  source?: string;
+  cnpj?: string;
+  razao_social?: string;
+  nome_fantasia?: string;
+  descricao_situacao_cadastral?: string;
+  cnae_fiscal?: string | number;
+  cnae_fiscal_descricao?: string;
+  cnaes_secundarios?: { codigo?: string | number; descricao?: string }[];
+  natureza_juridica?: string;
+  codigo_natureza_juridica?: string | number;
+  opcao_pelo_mei?: boolean;
+  logradouro?: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
+  cep?: string;
+  municipio?: string;
+  uf?: string;
+  ddd_telefone_1?: string;
+  email?: string;
+};
+
+export function propostaDaConsulta(bruta: ConsultaBruta): PropostaDeCnpj {
+  const pessoaFisica = titularEPessoaFisica({ naturezaJuridica: bruta.natureza_juridica, codigoNaturezaJuridica: bruta.codigo_natureza_juridica, opcaoPeloMei: bruta.opcao_pelo_mei });
+  const situacao = (bruta.descricao_situacao_cadastral || "").trim();
+  const avisos: string[] = [];
+  if (pessoaFisica) avisos.push("Empresário individual ou MEI: o nome do titular e o CPF não são guardados nem exibidos. Informe o nome do estabelecimento.");
+  if (!situacaoEstaAtiva(situacao)) avisos.push(`Situação cadastral: ${situacao}. Confira com o cliente; o cadastro segue normal.`);
+  const fantasia = semCpf(bruta.nome_fantasia || "");
+  return {
+    fonte: bruta.source || "Consulta pública de CNPJ",
+    cnpj: (bruta.cnpj || "").replace(/\D/g, ""),
+    razaoSocial: pessoaFisica ? "" : semCpf(bruta.razao_social || ""),
+    nomeFantasia: fantasia,
+    situacao,
+    situacaoAtiva: situacaoEstaAtiva(situacao),
+    cnaePrincipal: { codigo: String(bruta.cnae_fiscal ?? "").replace(/\D/g, ""), descricao: (bruta.cnae_fiscal_descricao || "").trim() },
+    cnaesSecundarios: (bruta.cnaes_secundarios || [])
+      .map((c) => ({ codigo: String(c.codigo ?? "").replace(/\D/g, ""), descricao: (c.descricao || "").trim() }))
+      .filter((c) => c.codigo && c.codigo !== "0"),
+    logradouro: bruta.logradouro || "",
+    numero: bruta.numero || "",
+    complemento: bruta.complemento || "",
+    bairro: bruta.bairro || "",
+    cep: bruta.cep || "",
+    municipio: bruta.municipio || "",
+    uf: bruta.uf || "",
+    telefone: bruta.ddd_telefone_1 || "",
+    email: bruta.email || "",
+    titularPessoaFisica: pessoaFisica,
+    avisos,
+  };
+}
+
+/** Campos do formulário de empresa preenchidos pela proposta (só os que a consulta trouxe) e a lista deles, para a marca "da consulta". */
+export function camposDaProposta(proposta: PropostaDeCnpj): { valores: Record<string, string>; campos: string[] } {
+  const valores: Record<string, string> = {};
+  const poe = (campo: string, valor: string) => {
+    if ((valor || "").trim()) valores[campo] = valor;
+  };
+  poe("razaoSocial", proposta.razaoSocial);
+  poe("nomeFantasia", proposta.nomeFantasia);
+  poe("situacao", proposta.situacao);
+  poe("cnae", proposta.cnaePrincipal.codigo);
+  poe("cnaeDescricao", proposta.cnaePrincipal.descricao);
+  poe("logradouro", proposta.logradouro);
+  poe("numero", proposta.numero);
+  poe("complemento", proposta.complemento);
+  poe("bairro", proposta.bairro);
+  poe("cep", proposta.cep);
+  poe("municipio", proposta.municipio);
+  poe("uf", proposta.uf);
+  poe("telefone", proposta.telefone);
+  poe("email", proposta.email);
+  return { valores, campos: Object.keys(valores) };
+}
+
+/** Mensagem curta para a falha da consulta: o cadastro manual segue normal e a consulta pode ser refeita depois. */
+export function mensagemDeFalhaDaConsulta(online: boolean): string {
+  return online
+    ? "Não consegui consultar o CNPJ agora. Preencha à mão; você pode consultar de novo depois."
+    : "Sem sinal: preencha à mão. Quando o sinal voltar, consulte o CNPJ de novo; os dados chegam como proposta para você aceitar ou ignorar.";
+}

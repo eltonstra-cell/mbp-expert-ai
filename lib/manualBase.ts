@@ -346,6 +346,9 @@ export function normalizarEquipamentos(equipamentos?: EquipamentoSetor[]) {
       quantidade: Math.max(1, Number(item.quantidade) || 1),
       estado: item.estado || "Não avaliado",
       observacao: item.observacao || "",
+      ...(item.sugerido ? { sugerido: true } : {}),
+      ...(item.limiteTemperaturaId ? { limiteTemperaturaId: item.limiteTemperaturaId } : {}),
+      ...(item.limiteConfirmado ? { limiteConfirmado: true } : {}),
     }));
 }
 

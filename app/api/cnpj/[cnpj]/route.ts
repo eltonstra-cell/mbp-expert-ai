@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { semCpf, titularEPessoaFisica } from "@/lib/cnpjConsulta";
 
 type NormalizedCompany = {
   source: "BrasilAPI" | "CNPJ.ws";
@@ -19,6 +20,10 @@ type NormalizedCompany = {
   ddd_telefone_1: string;
   ddd_telefone_2: string;
   email: string;
+  cnaes_secundarios: { codigo: string; descricao: string }[];
+  natureza_juridica: string;
+  codigo_natureza_juridica: string;
+  opcao_pelo_mei: boolean;
 };
 
 function normalizeBrasilApi(data: any, cnpj: string): NormalizedCompany {
@@ -41,6 +46,10 @@ function normalizeBrasilApi(data: any, cnpj: string): NormalizedCompany {
     ddd_telefone_1: data?.ddd_telefone_1 || "",
     ddd_telefone_2: data?.ddd_telefone_2 || "",
     email: data?.email || "",
+    cnaes_secundarios: (Array.isArray(data?.cnaes_secundarios) ? data.cnaes_secundarios : []).map((c: any) => ({ codigo: String(c?.codigo ?? ""), descricao: String(c?.descricao ?? "") })),
+    natureza_juridica: String(data?.natureza_juridica || ""),
+    codigo_natureza_juridica: String(data?.codigo_natureza_juridica ?? ""),
+    opcao_pelo_mei: Boolean(data?.opcao_pelo_mei),
   };
 }
 
@@ -79,7 +88,17 @@ function normalizeCnpjWs(data: any, cnpj: string): NormalizedCompany {
     ddd_telefone_1: fone1,
     ddd_telefone_2: fone2,
     email: est?.email || "",
+    cnaes_secundarios: (Array.isArray(est?.atividades_secundarias) ? est.atividades_secundarias : []).map((c: any) => ({ codigo: String(c?.id ?? ""), descricao: String(c?.descricao ?? "") })),
+    natureza_juridica: String(data?.natureza_juridica?.descricao || ""),
+    codigo_natureza_juridica: String(data?.natureza_juridica?.id ?? ""),
+    opcao_pelo_mei: Boolean(data?.simples?.mei === "Sim" || data?.simples?.mei === true),
   };
+}
+
+// LGPD: empresário individual / MEI tem o nome do titular (e o CPF) na razão social. Isso nem sai do servidor para o navegador.
+function protegerDadosDePessoa(dados: NormalizedCompany): NormalizedCompany {
+  const pessoaFisica = titularEPessoaFisica({ naturezaJuridica: dados.natureza_juridica, codigoNaturezaJuridica: dados.codigo_natureza_juridica, opcaoPeloMei: dados.opcao_pelo_mei });
+  return { ...dados, razao_social: pessoaFisica ? "" : semCpf(dados.razao_social), nome_fantasia: semCpf(dados.nome_fantasia), email: pessoaFisica ? "" : dados.email };
 }
 
 async function tryBrasilApi(cnpj: string) {
@@ -137,14 +156,14 @@ export async function GET(
 
   try {
     const data = await tryBrasilApi(normalized);
-    return NextResponse.json(data);
+    return NextResponse.json(protegerDadosDePessoa(data));
   } catch (error) {
     errors.push(error instanceof Error ? error.message : "Falha na BrasilAPI");
   }
 
   try {
     const data = await tryCnpjWs(normalized);
-    return NextResponse.json(data);
+    return NextResponse.json(protegerDadosDePessoa(data));
   } catch (error) {
     errors.push(error instanceof Error ? error.message : "Falha na CNPJ.ws");
   }

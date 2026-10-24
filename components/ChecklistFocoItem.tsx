@@ -66,6 +66,8 @@ type Props = {
   maxFotos?: number;
   /** Equipamentos do ambiente (nomes), para sugerir o limite de temperatura. */
   equipamentosDoAmbiente?: string[];
+  /** Limites de temperatura confirmados nos equipamentos do ambiente (Cadastro). */
+  limitesDosEquipamentos?: string[];
   /** Grava a temperatura medida; o resultado indicado pelo limite vira a resposta do item (corrigível). */
   onTemperatura?: (medida: { valor: number; limiteId: string } | null, resultado: ResultadoDaTemperatura | null) => void;
 };
@@ -120,6 +122,7 @@ export default function ChecklistFocoItem({
   fotosNoItem = 0,
   maxFotos = 5,
   equipamentosDoAmbiente = [],
+  limitesDosEquipamentos = [],
   onTemperatura,
 }: Props) {
   const [texto, setTexto] = useState(item.observacao || "");
@@ -351,7 +354,7 @@ export default function ChecklistFocoItem({
       </div>
 
       {podeEditar && onTemperatura && ehItemDeTemperatura(item.titulo) && (
-        <CampoDeTemperatura itemId={item.id} titulo={item.titulo} equipamentos={equipamentosDoAmbiente} atual={item.temperatura} onTemperatura={onTemperatura} />
+        <CampoDeTemperatura itemId={item.id} titulo={item.titulo} equipamentos={equipamentosDoAmbiente} limitesConfirmados={limitesDosEquipamentos} atual={item.temperatura} onTemperatura={onTemperatura} />
       )}
 
       {naoConforme && (

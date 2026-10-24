@@ -8,6 +8,8 @@ type Props = {
   itemId: string;
   titulo: string;
   equipamentos: string[];
+  /** Limites que o RT confirmou nos equipamentos deste ambiente (o primeiro vale como tipo inicial). */
+  limitesConfirmados?: string[];
   atual?: { valor: number; limiteId: string };
   /** `medida` é null quando o campo foi esvaziado. `resultado` é o que o limite indica (o RT ainda pode trocar a resposta). */
   onTemperatura: (medida: { valor: number; limiteId: string } | null, resultado: ResultadoDaTemperatura | null) => void;
@@ -17,13 +19,13 @@ type Props = {
 export const ehItemDeTemperatura = (titulo: string) => /temperatura|refriger|congel|resfri|fritur|reaquec/i.test(titulo);
 
 // Digitou a temperatura: marca Conforme ou Não conforme pelo limite da norma, na hora, e mostra qual limite usou. Sem limite, avisa e não classifica.
-export default function CampoDeTemperatura({ itemId, titulo, equipamentos, atual, onTemperatura }: Props) {
-  const sugerido = limiteSugerido([...equipamentos, titulo]);
+export default function CampoDeTemperatura({ itemId, titulo, equipamentos, limitesConfirmados = [], atual, onTemperatura }: Props) {
+  const sugerido = (limitesConfirmados[0] ? limiteDoTipo(limitesConfirmados[0]) : undefined) || limiteSugerido([...equipamentos, titulo]);
   const [texto, setTexto] = useState(atual ? String(atual.valor).replace(".", ",") : "");
   const [limiteId, setLimiteId] = useState(atual?.limiteId || sugerido?.id || "");
   useEffect(() => {
     setTexto(atual ? String(atual.valor).replace(".", ",") : "");
-    setLimiteId(atual?.limiteId || limiteSugerido([...equipamentos, titulo])?.id || "");
+    setLimiteId(atual?.limiteId || (limitesConfirmados[0] ? limitesConfirmados[0] : limiteSugerido([...equipamentos, titulo])?.id) || "");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [itemId]);
 

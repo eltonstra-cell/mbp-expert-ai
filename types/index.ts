@@ -7,6 +7,10 @@ export type Empresa = {
   situacao: string;
   cnae: string;
   cnaeDescricao: string;
+  /** CNAEs secundários vindos da consulta de CNPJ (opcional). */
+  cnaesSecundarios?: { codigo: string; descricao: string }[];
+  /** Data (ISO) da última consulta de CNPJ aceita pelo RT (opcional). */
+  consultaCnpjEm?: string;
   tipo: string;
   logradouro: string;
   numero: string;
@@ -124,6 +128,12 @@ export type EquipamentoSetor = {
   quantidade: number;
   estado: EstadoEquipamento;
   observacao: string;
+  /** Veio da sugestão do tipo de estabelecimento e o RT ainda não confirmou (opcional). */
+  sugerido?: boolean;
+  /** Limite de temperatura (id em lib/limitesDeTemperatura) proposto pelo tipo do equipamento (opcional). */
+  limiteTemperaturaId?: string;
+  /** O RT confirmou o limite proposto (opcional). */
+  limiteConfirmado?: boolean;
 };
 
 export type AvaliacaoEquipamentoVisita = {

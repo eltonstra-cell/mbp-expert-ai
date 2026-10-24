@@ -28,7 +28,8 @@ test("2.1 equipamento: mover para outro ambiente muda só o item escolhido", () 
 
 test("2.1 linha de equipamento recolhida por padrão, sem o campo Ambiente repetido; título do grupo com selo", () => {
   const c = ler("../components/ManualBaseFields.tsx");
-  assert.ok(c.includes("Detalhes ") && c.includes("detalhesAbertos") && c.includes("useState<string[]>([])"));
+  // Pacote 1: o equipamento virou chip dentro do ambiente; os detalhes abrem só ao tocar no chip (recolhidos por padrão).
+  assert.ok(c.includes('className="cad-chip-nome"') && c.includes("detalhesAbertos") && c.includes("useState<string[]>([])"));
   assert.ok(c.includes("Mover para outro ambiente") && c.includes("moverEquipamento"));
   assert.equal(c.includes("Observação e ambiente"), false);
   assert.ok(c.includes('className="cad-conta"'));
