@@ -3,7 +3,17 @@
 import type { ItemDoPainel } from "@/lib/painelHoje";
 import { contadorDoPainel, subDaLinhaDoPainel, LIMITE_DE_LINHAS_DO_PAINEL, quadradoDoVencimento, textoDoPrazoEm, type ItemDaEsquerda, type ItemDeVencimento } from "@/lib/inicio";
 
-export type CaixaDoInicio = { chave: string; titulo: string; subtitulo: string; tipo: "visita" | "pop" | "comprovantes"; onAbrir: () => void };
+export type CaixaDoInicio = {
+  chave: string;
+  titulo: string;
+  subtitulo: string;
+  tipo: "visita" | "pop" | "comprovantes";
+  onAbrir: () => void;
+  /** Só visita: título curto ("Visita 3"), data e % do checklist (anel de progresso). */
+  rotulo?: string;
+  data?: string;
+  percentual?: number;
+};
 
 type Props = {
   nome: string;
@@ -15,6 +25,8 @@ type Props = {
   onNovaVisita?: (() => void) | null;
   /** "Configuração da empresa: X de Y · faltam …": só enquanto estiver incompleta. */
   configuracao: { feitos: number; total: number; faltam: { id: string; titulo: string; onAbrir: () => void }[]; onGuia: () => void } | null;
+  /** Links do rodapé (só gestor): Resumo de uma página, Evolução, Relatórios emitidos, Dossiê. */
+  atalhos?: { onResumo?: () => void; onEvolucao?: () => void; onEmitidos?: () => void; onDossie?: () => void } | null;
   /** Só gestor (quem vê o painel Hoje); sem ele, só o cartão. */
   colunas: {
     precisa: ItemDaEsquerda[];
@@ -34,50 +46,78 @@ type Props = {
 
 const TIPO: Record<ItemDoPainel["origem"], string> = { correcao: "Correção", comprovante: "Comprovante", capacitacao: "Capacitação", pop: "Aprovação" };
 
+const LINHAS_DE_CORRECAO = 5;
+const maiuscula = (texto: string) => texto.charAt(0).toLocaleUpperCase("pt-BR") + texto.slice(1);
+
 const IconeVisita = () => (
-  <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M9 4h6a1 1 0 0 1 1 1v1H8V5a1 1 0 0 1 1-1z" /><rect x="5" y="6" width="14" height="15" rx="2" /><path d="M9 12l2 2 4-4" />
   </svg>
 );
 const IconePop = () => (
-  <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M6 3h9l4 4v14H6z" /><path d="M15 3v5h4M9 13h6M9 17h6" />
   </svg>
 );
 const IconeComprovante = () => (
-  <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z" /><path d="M9 12l2 2 4-4" />
   </svg>
 );
 
-// Início (PC), desenho aprovado: cartão "Continuar de onde parei" (até 3 caixas azuis + linha de configuração) e duas colunas de mesma altura:
-// "Hoje precisa de você" (vencidos e aprovações) e "Vencendo em 30 dias". A barra do topo é a do app (AppTopbar, variante "inicio").
-export default function PcInicio({ nome, avisoPops = null, caixas, onNovaVisita = null, configuracao, colunas }: Props) {
+/** Anel de progresso de 60 px (traço 6): laranja sobre trilho claro; sem porcentagem (outras telas) mostra o ícone da tela. */
+function Anel({ percentual, tipo }: { percentual?: number; tipo: CaixaDoInicio["tipo"] }) {
+  const raio = 27;
+  const volta = 2 * Math.PI * raio;
+  const valor = Math.max(0, Math.min(100, percentual ?? 0));
+  return (
+    <span className="ini3-anel" role={percentual === undefined ? undefined : "img"} aria-label={percentual === undefined ? undefined : `${valor}% do checklist respondido`}>
+      <svg width="60" height="60" viewBox="0 0 60 60" aria-hidden="true">
+        <circle cx="30" cy="30" r={raio} fill="none" stroke="var(--rd-trilho)" strokeWidth="6" />
+        {percentual !== undefined && <circle cx="30" cy="30" r={raio} fill="none" stroke="var(--rd-laranja)" strokeWidth="6" strokeLinecap="round" strokeDasharray={`${(valor / 100) * volta} ${volta}`} transform="rotate(-90 30 30)" />}
+      </svg>
+      <span className="ini3-anel-centro">{percentual !== undefined ? `${valor}%` : tipo === "pop" ? <IconePop /> : tipo === "comprovantes" ? <IconeComprovante /> : <IconeVisita />}</span>
+    </span>
+  );
+}
+
+// Início (PC): "Olá", cartões do "Continuar de onde parei" com anel de progresso, correções que pedem ação e os links de sempre.
+// Visual do redesign (azul de ação, laranja só no anel); conteúdo e lógica são os de antes. A barra do topo é a do app (AppTopbar).
+export default function PcInicio({ nome, avisoPops = null, caixas, onNovaVisita = null, configuracao, atalhos = null, colunas }: Props) {
   const linhas = colunas ? colunas.precisa : [];
-  const mostrar = linhas.slice(0, LIMITE_DE_LINHAS_DO_PAINEL);
+  const mostrar = linhas.slice(0, LINHAS_DE_CORRECAO);
   const faltaMostrar = linhas.length > mostrar.length;
   const temVisita = caixas.some((caixa) => caixa.tipo === "visita");
   const mostrarCartao = temVisita || caixas.length > 0 || Boolean(onNovaVisita);
   const semPendencias = linhas.length === 0;
   const contador = colunas ? contadorDoPainel(colunas) : "";
   const semVencimentos = colunas ? colunas.vencendo.length === 0 : true;
+  const limiteDeVencendo = Math.min(LIMITE_DE_LINHAS_DO_PAINEL, LINHAS_DE_CORRECAO);
 
   const linhaDeConfiguracao = configuracao && (
-    <p className="ini2-config" role="status">
+    <p className="ini3-config" role="status">
       Configuração da empresa: {configuracao.feitos} de {configuracao.total} · faltam{" "}
       {configuracao.faltam.map((item, indice) => (
         <span key={item.id}>
           {indice > 0 ? (indice === configuracao.faltam.length - 1 ? " e " : ", ") : ""}
           <button type="button" className="ini2-link" onClick={item.onAbrir}>{item.titulo}</button>
         </span>
-      ))}{" "}
-      · <button type="button" className="ini2-link" onClick={configuracao.onGuia}>Guia de uso em Ajuda e guias</button>
+      ))}
     </p>
   );
 
+  const links: { rotulo: string; onClick: () => void }[] = [
+    ...(atalhos?.onResumo ? [{ rotulo: "Resumo de uma página", onClick: atalhos.onResumo }] : []),
+    ...(atalhos?.onEvolucao ? [{ rotulo: "Evolução", onClick: atalhos.onEvolucao }] : []),
+    ...(atalhos?.onEmitidos ? [{ rotulo: "Relatórios emitidos", onClick: atalhos.onEmitidos }] : []),
+    ...(atalhos?.onDossie ? [{ rotulo: "Dossiê", onClick: atalhos.onDossie }] : []),
+    ...(colunas?.onLembrete ? [{ rotulo: "Lembrete ao responsável", onClick: colunas.onLembrete }] : []),
+    ...(configuracao ? [{ rotulo: "Guia de uso em Ajuda e guias", onClick: configuracao.onGuia }] : []),
+  ];
+
   return (
-    <section className="ui-screen ini2" aria-label="Início">
-      <h1 className="sr-only">Início · olá, {nome}</h1>
+    <section className="ui-screen ini2 ini3" aria-label="Início">
+      <h1 className="ini3-ola">Olá, {nome}</h1>
 
       {avisoPops && (
         <p className="ini2-aviso" role="status">
@@ -85,38 +125,39 @@ export default function PcInicio({ nome, avisoPops = null, caixas, onNovaVisita 
         </p>
       )}
 
-      {mostrarCartao ? (
-        <div className="ini2-cartao">
-          <div className="ini2-cartao-topo">
-            <h2 className="ini2-titulo">{temVisita ? "Continuar de onde parei" : "Comece por aqui"}</h2>
-            {linhaDeConfiguracao}
-          </div>
+      {mostrarCartao && (
+        <section className="ini3-secao" aria-label="Continuar de onde parei">
+          <h2 className="ini3-rotulo">{temVisita ? "CONTINUAR DE ONDE PARAREI" : "COMECE POR AQUI"}</h2>
           {!temVisita && (
             <div className="ini2-sem-visita">
               <p className="ini2-sem-visita-texto">Nenhuma visita em andamento.</p>
               {onNovaVisita && (
-                <button type="button" className="ini2-nova" onClick={onNovaVisita}>
+                <button type="button" className="ini3-botao" onClick={onNovaVisita}>
                   Nova visita
                 </button>
               )}
             </div>
           )}
           {caixas.length > 0 && (
-            <div className="ini2-caixas">
-              {caixas.map((caixa) => (
-                <button key={caixa.chave} type="button" className="ini2-caixa" title={caixa.subtitulo ? `${caixa.titulo} · ${caixa.subtitulo}` : caixa.titulo} onClick={caixa.onAbrir}>
-                  {caixa.tipo === "visita" ? <IconeVisita /> : caixa.tipo === "pop" ? <IconePop /> : <IconeComprovante />}
-                  <span className="ini2-caixa-textos">
-                    <span className="ini2-caixa-titulo">{caixa.titulo}</span>
-                    {caixa.subtitulo && <span className="ini2-caixa-sub">{caixa.subtitulo}</span>}
-                  </span>
-                </button>
+            <div className="ini3-cartoes">
+              {caixas.map((caixa, indice) => (
+                <article key={caixa.chave} className={`ini3-cartao${indice === 0 ? " is-primeiro" : ""}`}>
+                  <div className="ini3-cartao-topo">
+                    <Anel percentual={caixa.tipo === "visita" ? caixa.percentual : undefined} tipo={caixa.tipo} />
+                    <div className="ini3-cartao-textos">
+                      <h3 className="ini3-cartao-titulo" title={caixa.titulo}>{caixa.rotulo || caixa.titulo}</h3>
+                      {caixa.data && <span className="ini3-cartao-data">{caixa.data}</span>}
+                      {caixa.subtitulo && <span className="ini3-cartao-sub">{caixa.subtitulo}</span>}
+                    </div>
+                  </div>
+                  <button type="button" className="ini3-botao ini3-botao--cheio" onClick={caixa.onAbrir}>
+                    Continuar →
+                  </button>
+                </article>
               ))}
             </div>
           )}
-        </div>
-      ) : (
-        linhaDeConfiguracao && <div className="ini2-cartao-topo ini2-so-config">{linhaDeConfiguracao}</div>
+        </section>
       )}
 
       {colunas && semPendencias && semVencimentos && (
@@ -127,68 +168,80 @@ export default function PcInicio({ nome, avisoPops = null, caixas, onNovaVisita 
       )}
 
       {colunas && !(semPendencias && semVencimentos) && (
-        <div className={`ini2-colunas${semPendencias || semVencimentos ? " is-uma" : ""}`}>
+        <div className={`ini3-colunas${semPendencias || semVencimentos ? " is-uma" : ""}`}>
           {!semPendencias && (
-            <section className="ini2-painel ini2-painel--precisa" aria-label="Hoje precisa de você">
-              <div className="ini2-painel-topo">
-                <h2 className="ini2-titulo">Hoje precisa de você</h2>
-                {contador && <span className="ini2-resumo">{contador}</span>}
-                {colunas.semResponsavel > 0 && <span className="ini2-sem-resp">{colunas.semResponsavel} sem responsável</span>}
+            <section className="ini3-secao ini3-correcoes" aria-label="Hoje precisa de você">
+              <h2 className="ini3-rotulo">CORREÇÕES</h2>
+              <h3 className="ini3-titulo">Hoje precisa de você</h3>
+              <div className="ini3-resumo">
+                <span>{contador}</span>
+                {colunas.semResponsavel > 0 && <span className="ini3-semresp">{colunas.semResponsavel} sem responsável</span>}
               </div>
-              <div className="ini2-lista">
+              <div className="ini3-lista">
                 {mostrar.map((item) => (
-                  <button key={item.id} type="button" className={`ini2-linha ini2-linha--${item.origem}`} onClick={() => colunas.onAbrirPendencia(item)}>
-                    <span className="ini2-barra" aria-hidden="true" />
-                    <span className="ini2-linha-textos">
-                      <span className="ini2-linha-titulo">{item.titulo}</span>
-                      <span className="ini2-linha-sub">{subDaLinhaDoPainel(item, TIPO[item.origem])}</span>
+                  <button key={item.id} type="button" className={`ini3-linha ini3-linha--${item.situacao === "vencido" ? "vencida" : "aberta"}`} onClick={() => colunas.onAbrirPendencia(item)}>
+                    <span className="ini3-faixa" aria-hidden="true" />
+                    <span className="ini3-linha-textos">
+                      <span className="ini3-linha-titulo">{item.titulo}</span>
+                      <span className="ini3-linha-sub">{subDaLinhaDoPainel(item, TIPO[item.origem])}</span>
                     </span>
-                    <span className="ini2-seta" aria-hidden="true">›</span>
+                    <span className={`ini3-tag ini3-tag--${item.situacao === "vencido" ? "venceu" : item.situacao === "aguardando" ? "aguardando" : "aberta"}`}>
+                      {item.situacao === "vencido" ? maiuscula(item.prazo) : item.situacao === "aguardando" ? "Aguardando" : "Aberta"}
+                    </span>
                   </button>
                 ))}
               </div>
-              <div className="ini2-rodape">
-                {faltaMostrar ? (
+              {faltaMostrar && (
+                <div className="ini3-rodape-lista">
                   <button type="button" className="ini2-link" onClick={colunas.onVerTodasCorrecoes}>Ver todas ({linhas.length})</button>
-                ) : (
-                  <span />
-                )}
-                {colunas.onLembrete && <button type="button" className="ini2-link" onClick={colunas.onLembrete}>Lembrete ao responsável</button>}
-              </div>
+                </div>
+              )}
             </section>
           )}
 
           {!semVencimentos && (
-            <section className="ini2-painel ini2-painel--vencendo" aria-label="Vencendo em 30 dias">
-              <div className="ini2-painel-topo">
-                <h2 className="ini2-titulo">Vencendo em 30 dias</h2>
-                <span className="ini2-resumo">{colunas.vencendo.length} {colunas.vencendo.length === 1 ? "item" : "itens"}</span>
+            <section className="ini3-secao ini3-vencendo" aria-label="Vencendo em 30 dias">
+              <h2 className="ini3-rotulo">VENCENDO</h2>
+              <h3 className="ini3-titulo">Em 30 dias</h3>
+              <div className="ini3-resumo">
+                <span>{colunas.vencendo.length} {colunas.vencendo.length === 1 ? "item" : "itens"}</span>
               </div>
-              <div className="ini2-lista">
-                {colunas.vencendo.slice(0, LIMITE_DE_LINHAS_DO_PAINEL).map((item) => {
+              <div className="ini3-lista">
+                {colunas.vencendo.slice(0, limiteDeVencendo).map((item) => {
                   const quadrado = quadradoDoVencimento(item.validade, item.dias);
                   return (
-                    <button key={item.id} type="button" className="ini2-linha ini2-linha--vence" onClick={() => colunas.onAbrirVencimento(item)}>
+                    <button key={item.id} type="button" className="ini3-linha ini3-linha--vence" onClick={() => colunas.onAbrirVencimento(item)}>
                       <span className={`ini2-data ini2-data--${quadrado.tom}`} aria-hidden="true">
                         <span className="ini2-data-dia">{quadrado.dia}</span>
                         <span className="ini2-data-mes">{quadrado.mes}</span>
                       </span>
-                      <span className="ini2-linha-textos">
-                        <span className="ini2-linha-titulo">{item.titulo}</span>
-                        <span className="ini2-linha-sub ini2-sub-vence"><span className="ini2-sub-quem">{item.quem}</span><span className="ini2-sub-dias"> · {textoDoPrazoEm(item.dias)}</span></span>
+                      <span className="ini3-linha-textos">
+                        <span className="ini3-linha-titulo">{item.titulo}</span>
+                        <span className="ini3-linha-sub">{item.quem} · {textoDoPrazoEm(item.dias)}</span>
                       </span>
-                      <span className="ini2-seta" aria-hidden="true">›</span>
                     </button>
                   );
                 })}
               </div>
-              <div className="ini2-rodape">
-                <span />
+              <div className="ini3-rodape-lista">
                 <button type="button" className="ini2-link" onClick={colunas.onTodosVencimentos}>Ver todos os vencimentos →</button>
               </div>
             </section>
           )}
         </div>
+      )}
+
+      {(links.length > 0 || linhaDeConfiguracao) && (
+        <footer className="ini3-rodape">
+          {links.length > 0 && (
+            <nav className="ini3-links" aria-label="Atalhos">
+              {links.map((link) => (
+                <button key={link.rotulo} type="button" className="ini2-link" onClick={link.onClick}>{link.rotulo}</button>
+              ))}
+            </nav>
+          )}
+          {linhaDeConfiguracao}
+        </footer>
       )}
     </section>
   );

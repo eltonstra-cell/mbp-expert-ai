@@ -403,6 +403,35 @@ try {
   registrar("15f. Toque no ambiente abre o painel de correções com 'Abrir correções' (nada decidido sozinho)", await js('!!document.querySelector(".mr-detalhe")&&[...document.querySelectorAll(".mr-detalhe button")].some((b)=>b.innerText.trim()==="Abrir correções")'));
   await flag("__off", false);
   await evento("online");
+
+  // 16. Redesign do Início e das Visitas (PC): menu azul de 168 px, cartões com anel, sem rolagem de página, nenhuma caixa laranja de ação em Visitas.
+  await n.enviar("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+  await n.ir(app.base);
+  await esperar(async () => js('!!document.querySelector(".pc-side")'), 20000);
+  await n.esperar(1200);
+  await js('[...document.querySelectorAll(".pc-side .pc-link")].find((b) => b.innerText.trim().startsWith("Início"))?.click()');
+  await esperar(async () => js('!!document.querySelector(".ini3")'), 15000);
+  await n.esperar(500);
+  await foto("16-inicio");
+  const ehLaranja = `(cor)=>{const m=cor.match(/\\d+/g);if(!m)return false;const [r,g,b]=m.map(Number);return r>200&&g>90&&g<175&&b<90}`;
+  registrar("16a. Menu lateral azul de 168 px, item selecionado com ladrilho laranja e texto branco", await js(`(()=>{const m=document.querySelector(".pc-side");const a=document.querySelector(".pc-side .pc-link.is-active");if(!m||!a)return false;const cs=getComputedStyle(m);const ca=getComputedStyle(a);return Math.round(m.getBoundingClientRect().width)===168&&cs.backgroundColor==="rgb(46, 91, 214)"&&ca.backgroundColor==="rgb(219, 116, 16)"&&ca.color==="rgb(255, 255, 255)"})()`));
+  registrar("16b. Menu: 'Mais' guarda Cadastros, POPs e documentos, Ajuda e guias e Administração", await js(`(()=>{const b=[...document.querySelectorAll(".pc-side .pc-link")].find((x)=>x.innerText.trim().startsWith("Mais"));if(!b)return false;b.click();return true})()`) && await js(`(()=>{const t=document.querySelector(".pc-mais-pop")?.innerText||"";return ["Cadastros","POPs e documentos","Ajuda e guias","Administração"].every((x)=>t.includes(x))})()`));
+  await js('[...document.querySelectorAll(".pc-side .pc-link")].find((b) => b.innerText.trim().startsWith("Mais"))?.click()');
+  registrar("16c. Início: 'Olá', cartões do 'Continuar de onde parei' com anel de progresso e 'Continuar →' azul, correções com faixa e etiqueta", await js(`(()=>{const t=document.querySelector(".ini3").innerText;const c=document.querySelector(".ini3-cartao");const botao=c&&c.querySelector(".ini3-botao");const anel=c&&c.querySelector(".ini3-anel circle:nth-child(2)");return t.includes("Olá,")&&t.includes("CONTINUAR DE ONDE PARAREI")&&!!c&&!!anel&&getComputedStyle(botao).backgroundColor==="rgb(43, 84, 207)"&&getComputedStyle(anel).stroke==="rgb(219, 116, 16)"&&getComputedStyle(c).backgroundColor==="rgb(255, 248, 234)"&&document.querySelectorAll(".ini3-linha").length>=1&&!!document.querySelector(".ini3-tag")})()`));
+  registrar("16d. Início sem rolagem de página (a lista rola por dentro)", await js('document.scrollingElement.scrollHeight<=innerHeight+2&&document.querySelector(".pc-offset").scrollHeight<=innerHeight+2'));
+  await js('[...document.querySelectorAll(".pc-side .pc-link")].find((b) => b.innerText.trim().startsWith("Visitas"))?.click()');
+  await esperar(async () => js('!!document.querySelector(".vis-linha")'), 15000);
+  await n.esperar(500);
+  await foto("16-visitas");
+  registrar("16e. Visitas: nenhuma caixa laranja de ação; ações em azul #2B54CF com texto branco", await js(`(()=>{const laranja=${ehLaranja};const botoes=[...document.querySelectorAll('.ui-screen[aria-label="Visitas técnicas"] button')];const bg=botoes.map((b)=>getComputedStyle(b).backgroundColor);const nenhumaLaranja=bg.every((c)=>!laranja(c));const continuar=[...botoes].find((b)=>b.innerText.includes("Continuar"));const nova=[...botoes].find((b)=>b.innerText.includes("Nova visita"));return nenhumaLaranja&&!!continuar&&getComputedStyle(continuar).backgroundColor==="rgb(43, 84, 207)"&&getComputedStyle(nova).backgroundColor==="rgb(43, 84, 207)"&&getComputedStyle(nova).color==="rgb(255, 255, 255)"&&getComputedStyle(nova).height==="40px"})()`));
+  registrar("16f. Visitas: chip 'Aberta há N dias' azul claro com texto preto; NC em vermelho; barra azul", await js(`(()=>{const chip=document.querySelector(".vis-aviso-terra");const nc=document.querySelector(".vis-conta--nc");const fill=document.querySelector(".ui-progress-fill");if(!chip||!nc||!fill)return false;return getComputedStyle(chip).backgroundColor==="rgb(220, 235, 251)"&&getComputedStyle(chip).color==="rgb(27, 36, 51)"&&getComputedStyle(chip).fontWeight==="400"&&getComputedStyle(fill).backgroundColor==="rgb(43, 84, 207)"&&(nc.classList.contains("is-zero")||getComputedStyle(nc).color==="rgb(201, 71, 63)")})()`));
+  registrar("16g. Visitas: página sem rolagem; abas, busca e botões continuam no alto", await js('document.scrollingElement.scrollHeight<=innerHeight+2&&!!document.querySelector(".vis-toolbar")'));
+  await n.enviar("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+  await n.ir(app.base);
+  await esperar(async () => js('!!document.querySelector(".campo-bar")'), 20000);
+  await n.esperar(1200);
+  await foto("16-inicio-celular");
+  registrar("16h. Celular: sem rolagem horizontal no Início", await js("document.documentElement.scrollWidth<=innerWidth+1"));
   await n.enviar("Emulation.clearDeviceMetricsOverride");
 } catch (erro) {
   registrar(`erro na verificação: ${erro.message}`, false);

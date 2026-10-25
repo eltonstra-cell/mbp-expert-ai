@@ -108,11 +108,12 @@ test("evidências no celular: aviso de IA uma vez no topo, título curto com nom
   assert.ok(page.includes("nomeCurtoDoAmbiente(ev.ambiente)") && page.includes("estadoVisivelDaEvidencia("));
 });
 
-test("PC: ações do ambiente são botões de 40 px, barra lateral clara com seleção em creme e recolhida abaixo de 1100 px", () => {
+test("PC: ações do ambiente são botões de 40 px, menu lateral azul com seleção laranja, trilho do tablet claro e recolhida abaixo de 1100 px", () => {
   const css = ler("../app/globals.css");
   assert.ok(css.includes('.chk-acao{display:inline-flex;align-items:center;justify-content:center;height:40px'));
-  assert.ok(css.includes('.pc-side,.pc-rail{--side-from:#F7F9FC;') && css.includes('background:#F7F9FC!important'));
-  assert.ok(css.includes('.pc-side .pc-link.is-active{background:#FEF6E6}'));
+  assert.ok(css.includes('.pc-rail{--side-from:#F7F9FC;') && css.includes('background:#F7F9FC!important'), "o trilho do tablet segue claro");
+  assert.ok(css.includes('html[data-modo="completo"] .pc-side{width:168px;') && css.includes('background:var(--rd-menu)'), "o menu lateral do PC é azul de 168 px");
+  assert.ok(css.includes('html[data-modo="completo"] .pc-side .pc-link.is-active,') && css.includes('background:var(--rd-laranja);color:#fff'), "item selecionado: ladrilho laranja com texto branco");
   assert.ok(css.includes('.pc-side .pc-step-count{display:none}'));
   assert.ok(css.includes('html .pc-topbar .emp-ativa{flex:0 0 auto;width:auto;min-width:240px'));
   assert.ok(ler("../lib/screenMode.ts").includes('if (larguraDaTela < 1100) return "equilibrado"'));

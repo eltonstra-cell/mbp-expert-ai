@@ -63,6 +63,8 @@ async function abrirCartaz(n, base, db, codigo) {
   await n.esperarCondicao(`document.body.innerText.includes("Início")`, { descricao: "app carregado" });
   await n.esperar(1200);
   await n.enviar("Page.removeScriptToEvaluateOnNewDocument", { identifier });
+  // "Cadastros" e "POPs e documentos" ficam dentro de "Mais" no menu lateral
+  await n.avaliar(`(()=>{const el=[...document.querySelectorAll(".pc-side .pc-link")].find(b=>b.innerText.trim().startsWith("Mais"));if(!el)return false;el.click();return true})()`);
   await n.avaliar(clicar("button,a", "POPs e documentos"));
   await n.esperarCondicao(`document.querySelector(".pgl-linha")`, { descricao: "lista de POPs" });
   await n.avaliar(`(()=>{const linha=[...document.querySelectorAll(".pgl-linha")].find(l=>l.innerText.includes(${JSON.stringify(codigo)}));linha.click();return true})()`);

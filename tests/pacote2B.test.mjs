@@ -76,7 +76,7 @@ test("B3: Relatórios é item do menu e ativa nas quatro telas", () => {
 test("B5: Início com um só número de correções, preparação com itens clicáveis e painel Hoje com 3 + Ver todos", () => {
   const inicio = ler("../components/pc/PcInicio.tsx");
   assert.ok(!inicio.includes("Correções abertas na empresa") && inicio.includes("Vencendo em 30 dias"));
-  assert.ok(inicio.includes("ini2-config") && inicio.includes("item.onAbrir"));
+  assert.ok(inicio.includes("ini3-config") && inicio.includes("item.onAbrir"));
   assert.ok(!inicio.includes("useCabem"), "Visitas recentes inteiro, rolando por dentro");
   const painel = ler("../components/PainelHoje.tsx");
   assert.ok(painel.includes("ITENS_INICIAIS = 3") && painel.includes("Ver todos ("));

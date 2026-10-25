@@ -188,6 +188,7 @@ try {
   await n.ir(app.base);
   await esperar(async () => /Cadastros/.test(await texto()), 20000);
   await n.esperar(1200);
+  await js('[...document.querySelectorAll(".pc-side .pc-link")].find((b) => b.innerText.trim().startsWith("Mais"))?.click()');
   await clicar("Cadastros");
   await esperar(async () => /Ambientes/.test(await texto()), 15000);
   await clicarContendo("Ambientes");

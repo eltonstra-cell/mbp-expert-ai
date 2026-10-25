@@ -71,7 +71,8 @@ test("cabeçalho: título grande que repete o topo sai (só para leitores de tel
   for (const arquivo of ["PcVisitas", "PcEmpresas", "PcInicio", "PcAcessos", "PcResumo", "PcDossie", "PcEvolucao", "PcRelatoriosEmitidos", "PcRelatorio"]) {
     const tela = ler(`../components/pc/${arquivo}.tsx`);
     assert.ok(!/<h1 className="ui-title[^"]*">(Visitas|Empresas|Acessos|Relatório|Emitidos|Evolução|Olá)/.test(tela), arquivo);
-    assert.ok(tela.includes('className="sr-only"'), arquivo);
+    // o Início tem o "Olá, nome" visível (não repete o topo), então não precisa do título só para leitores de tela
+    if (arquivo !== "PcInicio") assert.ok(tela.includes('className="sr-only"'), arquivo);
   }
   const abas = ler("../components/pc/RelatoriosAbas.tsx");
   assert.ok(abas.includes("rel-abas-apoio") && abas.includes("Cada versão fica guardada e não muda"));

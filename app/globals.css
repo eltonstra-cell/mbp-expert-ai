@@ -5331,19 +5331,7 @@ html[data-modo="campo"] .ev7-nova-campo{width:auto;height:40px;min-height:40px;a
 .chk-acao:focus-visible{outline:3px solid #E8B04B;outline-offset:2px}
 
 /* ===== Barra lateral leve: fundo claro, seleção em creme claro, cor só nos ícones e em "Registrar agora"; sem contadores repetidos ===== */
-.pc-side,.pc-rail{--side-from:#F7F9FC;--side-to:#F7F9FC;--side-border:#DDE3EA;--side-active-bg:#FEF6E6;--side-card:#FFFFFF;--side-sep:#E3E8EF;background:#F7F9FC!important;color:#12202B}
-.pc-side .pc-link,.pc-side .pc-link-label,.pc-side .pc-vgroup-label,.pc-side .pc-vgroup-title,.pc-side .pc-vgroup-head,.pc-side .pc-agroup-head,.pc-side .pc-user-name,.pc-side .pc-user-role,.pc-side .pc-user-card,.pc-side .pc-side-sep-label,.pc-side .pc-side-titulo,.pc-side [class*="rotulo"]{color:#12202B}
-.pc-side .pc-link:hover,.pc-side .pc-vgroup-head:hover,.pc-side .pc-agroup-head:hover{background:#EEF2F7}
-.pc-side .pc-link.is-active{background:#FEF6E6}
-.pc-side .pc-link.is-active::before{background:#E8B04B}
-.pc-side .pc-link.is-active .pc-link-icon{background:#FFE2B0;color:#12202B}
-.pc-side .pc-link--sub .pc-link-count{display:none}
-.pc-side .pc-user-card{background:#fff;border:1px solid #DDE3EA}
-.pc-side .pc-register-line{background:#E8760A;color:#fff;border-radius:14px}
-.pc-side .pc-register-label{color:#fff}
-.pc-side .pc-side-nav::-webkit-scrollbar-thumb{background:#C9D3DD}
-.pc-side .pc-side-nav{scrollbar-color:#C9D3DD transparent}
-.pc-side .pc-link:focus-visible,.pc-side .pc-register-line:focus-visible,.pc-side .pc-vgroup-head:focus-visible,.pc-side .pc-agroup-head:focus-visible,.pc-side .pc-logout:focus-visible{outline:3px solid #E8B04B}
+.pc-rail{--side-from:#F7F9FC;--side-to:#F7F9FC;--side-border:#DDE3EA;--side-active-bg:#FEF6E6;--side-card:#FFFFFF;--side-sep:#E3E8EF;background:#F7F9FC!important;color:#12202B}
 .pc-rail .pc-rail-item,.pc-rail .pc-rail-label{color:#12202B}
 .pc-rail .pc-rail-item:hover{background:#EEF2F7}
 .pc-rail .pc-rail-item.is-active{background:#FEF6E6;box-shadow:inset 3px 0 0 #E8B04B}
@@ -5358,8 +5346,6 @@ html .pc-topbar .emp-ativa-caixa{min-width:0}
 html .pc-topbar .pc-busca{flex:1 1 180px;min-width:120px;max-width:380px}
 
 /* Barra lateral leve (continuação): texto escuro em tudo, cor só nos ícones (por etapa) e em "Registrar agora" */
-.pc-side :is(button,span,div,p,a,h2,h3,small):not(.pc-register-line):not(.pc-register-line *):not(.pc-link-icon):not(.pc-link-icon *):not(.pc-link-count){color:#12202B!important}
-.pc-side .pc-link-count{background:#E8760A;color:#fff}
 .pc-link-icon,.pc-rail-icon{color:#2A6BD1}
 [data-chave="ambientes"] .pc-link-icon,[data-chave="empresas"] .pc-link-icon,[data-chave="ambientes"] .pc-rail-icon,[data-chave="empresas"] .pc-rail-icon,.pc-link[data-chave="ambientes"] .pc-link-icon,.pc-rail-item[data-chave="ambientes"] .pc-rail-icon{color:#0E9AA7}
 .pc-link[data-chave="checklist"] .pc-link-icon,.pc-rail-item[data-chave="checklist"] .pc-rail-icon{color:#15803D}
@@ -5367,19 +5353,17 @@ html .pc-topbar .pc-busca{flex:1 1 180px;min-width:120px;max-width:380px}
 .pc-link[data-chave="ncs"] .pc-link-icon,.pc-rail-item[data-chave="ncs"] .pc-rail-icon,.pc-link[data-chave="correcoes"] .pc-link-icon{color:#D93A3A}
 .pc-link[data-chave="plano"] .pc-link-icon,.pc-rail-item[data-chave="plano"] .pc-rail-icon{color:#D97706}
 .pc-link[data-chave="acompanhamento"] .pc-link-icon,.pc-link[data-chave="relatorio"] .pc-link-icon,.pc-rail-item[data-chave="relatorio"] .pc-rail-icon,.pc-rail-item[data-chave="acompanhamento"] .pc-rail-icon{color:#5B6B80}
-.pc-side .pc-link.is-active .pc-link-icon,.pc-rail .pc-rail-item.is-active .pc-rail-icon{color:#12202B}
-.pc-side-foot button,.pc-side .pc-side-foot [class*="util"]{background:#fff;border:1px solid #DDE3EA}
-.pc-side .pc-side-nav :is(.pc-vgroup,.pc-side-visita){background:#fff;border:1px solid #DDE3EA;border-radius:14px}
+.pc-rail .pc-rail-item.is-active .pc-rail-icon{color:#12202B}
 
 /* Ícones da barra lateral: cor por etapa (var --cor-icone), acima de qualquer regra branca anterior */
-.pc-side .pc-link .pc-link-icon,.pc-rail .pc-rail-item .pc-rail-icon{color:var(--cor-icone,#2A6BD1)!important}
+.pc-rail .pc-rail-item .pc-rail-icon{color:var(--cor-icone,#2A6BD1)!important}
 [data-chave="ambientes"],[data-chave="empresas"]{--cor-icone:#0E9AA7}
 [data-chave="checklist"]{--cor-icone:#15803D}
 [data-chave="evidencias"]{--cor-icone:#1E7FB8}
 [data-chave="ncs"],[data-chave="correcoes"]{--cor-icone:#D93A3A}
 [data-chave="plano"]{--cor-icone:#D97706}
 [data-chave="acompanhamento"],[data-chave="relatorio"],[data-chave="relatorios"]{--cor-icone:#5B6B80}
-.pc-side .pc-link.is-active .pc-link-icon,.pc-rail .pc-rail-item.is-active .pc-rail-icon{color:#12202B!important}
+.pc-rail .pc-rail-item.is-active .pc-rail-icon{color:#12202B!important}
 .pc-side .pc-step-count{display:none}
 
 /* ===== Pacote 1: cadastro que se preenche ===== */
@@ -5585,3 +5569,171 @@ button.mr-cartao.is-aberto{outline:3px solid #E8B04B;outline-offset:1px}
 .rev-faixa{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:0 0 8px;font-size:.92rem;color:#12202B}
 .rev-botao{height:40px}
 @media print{.mr-cartao{break-inside:avoid}.mr-parecer-vazio{min-height:5cm}}
+
+/* =====================================================================================================================
+   REDESIGN VISUAL · Início + Visitas (menu lateral, topo e as duas telas). TOKENS EM UM LUGAR SÓ.
+   Azul = ação (#2B54CF, texto branco simples, 40 px). Laranja SÓ em ícone, anel de progresso e ladrilho do item selecionado do menu.
+   Texto preto #1B2433 ou branco; nunca texto e fundo da mesma cor; sem roxo (seleção suave em creme); Outfit 500 nos títulos, Nunito no corpo.
+   ===================================================================================================================== */
+:root{
+  --rd-menu:#2E5BD6;
+  --rd-acao:#2B54CF;
+  --rd-acao-hover:#2549B6;
+  --rd-laranja:#DB7410;
+  --rd-laranja-texto:#B85E08;
+  --rd-ink:#1B2433;
+  --rd-trilho:#E8EBF2;
+  --rd-creme:#FFF3DC;
+  --rd-creme-2:#FFF8EA;
+  --rd-sync:#DDF1E3;
+  --rd-verde:#2E7D4F;
+  --rd-azul-claro:#DCEBFB;
+  --rd-faixa-aberta:#E0A12E;
+  --rd-venceu:#C9473F;
+  --rd-venceu-fundo:#FBE3E0;
+  --rd-neutro:#EEF0F5;
+  --rd-contagem:#E3E8F2;
+  --rd-mic:#1F8DD6;
+  --rd-cinza:#5B6676;
+}
+
+/* ----- Menu lateral (PC): azul, 168 px, item selecionado com ladrilho laranja e texto branco simples ----- */
+html[data-modo="completo"] .pc-side{width:168px;gap:8px;padding:12px 10px 10px;border-right:0;background:var(--rd-menu)}
+html[data-modo="completo"] .pc-offset{margin-left:168px}
+html[data-modo="completo"] .pc-side .pc-side-brand{padding:8px 10px;border-radius:12px;background:#fff}
+html[data-modo="completo"] .pc-side .pc-register-line{gap:8px;min-height:40px;padding:4px 8px;border-radius:12px;background:rgba(255,255,255,.14);font-size:14px;color:#fff}
+html[data-modo="completo"] .pc-side .pc-register-orb{width:28px;height:28px;background:var(--rd-laranja);box-shadow:none;color:#fff}
+html[data-modo="completo"] .pc-side .pc-link{gap:10px;min-height:40px;padding:0 10px;border-radius:12px;font-family:var(--font-body),"Nunito Sans",sans-serif;font-size:15px;font-weight:400;color:#fff}
+html[data-modo="completo"] .pc-side .pc-link:hover{background:rgba(255,255,255,.14)}
+html[data-modo="completo"] .pc-side .pc-link.is-active,
+html[data-modo="completo"] .pc-side .pc-vcard-head.is-active,
+html[data-modo="completo"] .pc-side .pc-step.is-active{background:var(--rd-laranja);color:#fff}
+html[data-modo="completo"] .pc-side .pc-link.is-active::before{display:none}
+html[data-modo="completo"] .pc-side .pc-link-icon{width:24px;height:24px;background:transparent;color:#fff}
+html[data-modo="completo"] .pc-side .pc-chev{flex:none;color:#fff}
+html[data-modo="completo"] .pc-side .pc-vcard-corpo{padding:6px;background:rgba(255,255,255,.14)}
+html[data-modo="completo"] .pc-side .pc-step{min-height:34px;padding:0 8px 0 10px;font-size:14px;color:#fff}
+html[data-modo="completo"] .pc-side .pc-step:hover{background:rgba(255,255,255,.14)}
+html[data-modo="completo"] .pc-side .pc-vcard-company{font-size:.95rem}
+html[data-modo="completo"] .pc-side .pc-user-card{padding:8px;background:rgba(255,255,255,.14)}
+html[data-modo="completo"] .pc-side .pc-user-name{font-size:.85rem;color:#fff}
+html[data-modo="completo"] .pc-side .pc-user-role{font-size:.72rem;color:#fff}
+html[data-modo="completo"] .pc-side .pc-user-wrap,html[data-modo="completo"] .pc-side .pc-user-card{width:100%;max-width:100%;min-width:0;box-sizing:border-box}
+html[data-modo="completo"] .pc-side .pc-user-card{gap:8px;padding:8px}
+html[data-modo="completo"] .pc-side .pc-user-card>*{min-width:0}
+html[data-modo="completo"] .pc-side .pc-user-name,html[data-modo="completo"] .pc-side .pc-user-role{display:block;white-space:normal;overflow-wrap:anywhere;line-height:1.2}
+html[data-modo="completo"] .pc-side .pc-user-avatar{width:30px;height:30px;flex:none}
+/* "Mais": os destinos que o desenho não mostra (Cadastros, POPs e documentos, Ajuda e guias, Administração), abertos logo abaixo, no mesmo estilo */
+.pc-mais-wrap{display:flex;flex-direction:column;gap:2px}
+.pc-mais-pop{display:flex;flex-direction:column;gap:2px;margin:0 0 4px 8px}
+.pc-mais-item{display:flex;align-items:center;gap:10px;width:100%;min-height:38px;padding:0 10px;border:0;border-radius:10px;background:transparent;font-family:var(--font-body),"Nunito Sans",sans-serif;font-size:14px;font-weight:400;color:#fff;text-align:left;cursor:pointer}
+.pc-mais-item:hover{background:rgba(255,255,255,.14)}
+.pc-mais-item.is-active{background:var(--rd-laranja);color:#fff}
+.pc-mais-item:focus-visible{outline:3px solid #fff;outline-offset:2px}
+
+/* ----- Topo (igual nas duas telas) ----- */
+.pc-topbar .pc-crumb-current,.pc-topbar .pc-crumb,.pc-topbar .pc-crumb-link,.pc-topbar .pc-crumb-sep{font-family:var(--font-display),"Outfit",sans-serif;font-size:26px;font-weight:500;color:var(--rd-ink)}
+.pc-topbar .pc-bolt{background:#E6ECFB;color:var(--rd-acao)}
+.pc-topbar .pc-mic{width:34px;height:34px;background:var(--rd-mic);color:#fff}
+.pc-topbar .pc-go{min-height:40px;padding:0 18px;border-radius:12px;background:var(--rd-acao);font-weight:400;color:#fff}
+.pc-topbar .pc-go:hover{background:var(--rd-acao-hover)}
+.pc-topbar .pc-sync-chip.is-ok{background:var(--rd-sync);color:var(--rd-ink)}
+.pc-topbar .emp-ativa-caixa{border:1.5px solid var(--rd-verde);background:#fff}
+.pc-topbar .emp-ativa-selo{background:#fff;color:var(--rd-verde)}
+.pc-topbar .emp-ativa-nome{color:var(--rd-ink)}
+.pc-topbar--inicio .emp-ativa-avatar{display:grid}
+.pc-topbar--inicio .emp-ativa-caixa{border-color:var(--rd-verde)}
+.pc-topbar--inicio .emp-ativa-selo{color:var(--rd-verde)}
+.pc-topbar--inicio .pc-mic{background:var(--rd-mic);color:#fff}
+.pc-topbar--inicio .pc-mode-chip,.pc-topbar .pc-mode-chip{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:999px;background:var(--rd-creme);color:var(--rd-ink)}
+@media (max-width:1499px){.pc-topbar .pc-mode-chip{width:36px;padding:0;justify-content:center}.pc-topbar .pc-mode-chip .pc-mode-icone{display:block;width:18px;height:18px;color:var(--rd-ink)}}
+
+/* ----- Início ----- */
+html[data-modo="completo"] .pc-offset:has(.ini3){display:flex;flex-direction:column;height:100dvh;min-height:0;overflow:hidden;padding-bottom:0}
+html[data-modo="completo"] .pc-offset:has(.ini3)>.ini3{flex:1 1 auto;min-height:0}
+.ini3{display:flex;flex-direction:column;gap:20px;min-height:0;overflow:hidden;padding:0 0 18px;background:transparent}
+.ini3-ola{margin:0;font-family:var(--font-display),"Outfit",sans-serif;font-size:30px;font-weight:500;line-height:1.1;color:var(--rd-ink)}
+.ini3-secao{display:flex;flex-direction:column;gap:10px;min-height:0}
+.ini3-rotulo{margin:0;font-size:12px;font-weight:400;letter-spacing:.12em;color:var(--rd-cinza)}
+.ini3-titulo{margin:0;font-family:var(--font-display),"Outfit",sans-serif;font-size:20px;font-weight:500;color:var(--rd-ink)}
+.ini3-cartoes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.ini3-cartao{display:flex;flex-direction:column;gap:14px;padding:18px 20px;border:1px solid #E3E8EE;border-radius:18px;background:#fff}
+.ini3-cartao.is-primeiro{background:var(--rd-creme-2);border-color:#F1E3C6}
+.ini3-cartao-topo{display:flex;align-items:center;gap:16px;min-width:0}
+.ini3-anel{position:relative;display:grid;flex:none;place-items:center;width:60px;height:60px}
+.ini3-anel svg{position:absolute;inset:0}
+.ini3-anel-centro{position:relative;display:grid;place-items:center;font-size:14px;font-weight:400;color:var(--rd-ink)}
+.ini3-anel-centro svg{position:static;color:var(--rd-laranja)}
+.ini3-cartao-textos{display:flex;flex-direction:column;gap:2px;min-width:0}
+.ini3-cartao-titulo{margin:0;overflow:hidden;font-family:var(--font-display),"Outfit",sans-serif;font-size:20px;font-weight:500;line-height:1.15;text-overflow:ellipsis;white-space:nowrap;color:var(--rd-ink)}
+.ini3-cartao-data{font-size:15px;color:var(--rd-cinza)}
+.ini3-cartao-sub{overflow:hidden;font-size:14px;text-overflow:ellipsis;white-space:nowrap;color:var(--rd-ink)}
+.ini3-botao{display:inline-flex;align-items:center;justify-content:center;height:40px;padding:0 20px;border:0;border-radius:12px;background:var(--rd-acao);font-family:var(--font-body),"Nunito Sans",sans-serif;font-size:15px;font-weight:400;color:#fff;cursor:pointer}
+.ini3-botao:hover{background:var(--rd-acao-hover)}
+.ini3-botao:focus-visible{outline:3px solid #E8B04B;outline-offset:2px}
+.ini3-botao--cheio{width:100%}
+.ini3-colunas{display:grid;flex:1 1 auto;min-height:0;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:24px;margin-top:2px}
+.ini3-colunas.is-uma{grid-template-columns:minmax(0,1fr)}
+.ini3-colunas .ini3-secao{min-height:0}
+.ini3-resumo{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 16px;font-size:14px;color:var(--rd-cinza)}
+.ini3-semresp{color:var(--rd-laranja-texto)}
+.ini3-lista{display:flex;flex-direction:column;gap:8px;min-height:0;overflow-y:auto;padding-right:4px;scrollbar-width:thin;scrollbar-color:#B4C2CE transparent}
+.ini3-linha{display:flex;align-items:center;gap:14px;width:100%;min-height:56px;padding:6px 14px 6px 0;border:1px solid #E3E8EE;border-radius:12px;background:#fff;color:var(--rd-ink);text-align:left;cursor:pointer;overflow:hidden}
+.ini3-linha:hover{background:#FAFBFD}
+.ini3-linha:focus-visible{outline:3px solid #E8B04B;outline-offset:2px}
+.ini3-faixa{flex:none;align-self:stretch;width:5px;background:var(--rd-faixa-aberta)}
+.ini3-linha--vencida .ini3-faixa{background:var(--rd-venceu)}
+.ini3-linha--vence{padding-left:10px}
+.ini3-linha-textos{display:flex;flex:1;flex-direction:column;gap:1px;min-width:0}
+.ini3-linha-titulo{overflow:hidden;font-size:15px;text-overflow:ellipsis;white-space:nowrap;color:var(--rd-ink)}
+.ini3-linha-sub{overflow:hidden;font-size:13px;text-overflow:ellipsis;white-space:nowrap;color:var(--rd-cinza)}
+.ini3-tag{flex:none;display:inline-flex;align-items:center;height:26px;padding:0 12px;border-radius:14px;font-size:13px;font-weight:400;color:var(--rd-ink)}
+.ini3-tag--venceu{background:var(--rd-venceu-fundo)}
+.ini3-tag--aberta{background:var(--rd-creme)}
+.ini3-tag--aguardando{background:var(--rd-azul-claro)}
+.ini3-rodape-lista{display:flex;justify-content:flex-end;font-size:14px}
+.ini3-rodape{display:flex;flex-direction:column;gap:8px;flex:none;padding-top:12px;border-top:1px solid #E3E8EE}
+.ini3-links{display:flex;flex-wrap:wrap;gap:6px 22px;font-size:15px}
+.ini3-config{margin:0;font-size:14px;color:var(--rd-cinza)}
+.ini3 .ini2-link{color:var(--rd-acao)}
+@media (max-width:1200px){
+  html[data-modo] .pc-offset:has(.ini3){height:auto;min-height:100dvh;overflow:visible}
+  .ini3{overflow:visible}
+  .ini3-cartoes{grid-template-columns:minmax(0,1fr)}
+  .ini3-colunas{grid-template-columns:minmax(0,1fr)}
+  .ini3-lista{overflow:visible}
+}
+
+/* ----- Visitas: o layout é o de sempre; só as cores mudam (nenhuma caixa laranja de ação) ----- */
+.ui-screen[aria-label="Visitas técnicas"] .ui-btn--criar,
+.ui-screen[aria-label="Visitas técnicas"] .ui-btn--primary{height:40px;min-height:40px;border:0;background:var(--rd-acao);font-weight:400;color:#fff}
+.ui-screen[aria-label="Visitas técnicas"] .ui-btn--criar:hover,
+.ui-screen[aria-label="Visitas técnicas"] .ui-btn--primary:hover{background:var(--rd-acao-hover)}
+.ui-screen[aria-label="Visitas técnicas"] .ui-btn--criar:disabled{background:#AEBAE0;color:#fff}
+.ui-screen[aria-label="Visitas técnicas"] .vis-toolbar-fim .ui-btn--secondary{height:40px;border:0;background:var(--rd-neutro);color:var(--rd-ink)}
+.ui-screen[aria-label="Visitas técnicas"] .ui-progress{background:var(--rd-trilho)}
+.ui-screen[aria-label="Visitas técnicas"] .ui-progress-fill{background:var(--rd-acao)}
+.ui-screen[aria-label="Visitas técnicas"] .vis-aviso-terra{display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:14px;background:var(--rd-azul-claro);font-size:.82rem;font-weight:400;color:var(--rd-ink)}
+.ui-screen[aria-label="Visitas técnicas"] .vis-faixa--pend{background:var(--rd-faixa-aberta)}
+.ui-screen[aria-label="Visitas técnicas"] .vis-conta--nc{color:var(--rd-venceu)}
+.ui-screen[aria-label="Visitas técnicas"] .vis-conta--nc.is-zero{color:var(--rd-ink)}
+.ui-screen[aria-label="Visitas técnicas"] .ui-tabs{background:var(--rd-neutro)}
+.ui-screen[aria-label="Visitas técnicas"] .ui-tab{color:var(--rd-ink)}
+.ui-screen[aria-label="Visitas técnicas"] .ui-tab.is-active{background:#fff;box-shadow:0 1px 4px rgba(27,36,51,.16);color:var(--rd-ink)}
+.ui-screen[aria-label="Visitas técnicas"] .ui-tab-count{background:var(--rd-contagem);color:var(--rd-ink)}
+.ui-screen[aria-label="Visitas técnicas"] .vis-chip-ativa{border:0;background:var(--rd-creme);color:var(--rd-ink)}
+.ui-screen[aria-label="Visitas técnicas"] .vis-linha{font-size:15px}
+.ui-screen[aria-label="Visitas técnicas"] .vis-grupo-nome{font-weight:500}
+
+/* ----- Celular / janela estreita: Início em 1 coluna, Visitas empilhada, alvos de toque de 44 px, sem rolagem horizontal ----- */
+.campo-btn--brand{background:var(--rd-acao);color:#fff}
+@media (max-width:767px){
+  .ini3-botao,.ui-screen[aria-label="Visitas técnicas"] .ui-btn{min-height:44px}
+  .ui-screen[aria-label="Visitas técnicas"] .vis-linha{grid-template-columns:6px minmax(0,1fr);row-gap:8px}
+  .ui-screen[aria-label="Visitas técnicas"] .vis-col-barra,
+  .ui-screen[aria-label="Visitas técnicas"] .vis-col-contagem,
+  .ui-screen[aria-label="Visitas técnicas"] .vis-col-acao{grid-column:2}
+  .ui-screen[aria-label="Visitas técnicas"] .vis-col-acao{justify-content:flex-start}
+  .ui-screen[aria-label="Visitas técnicas"] .vis-col-menu{grid-column:2;justify-content:flex-start}
+  .ui-screen[aria-label="Visitas técnicas"] .vis-toolbar-fim .pc-search{width:100%;min-width:0}
+}

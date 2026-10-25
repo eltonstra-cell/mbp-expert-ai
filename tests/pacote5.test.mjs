@@ -58,7 +58,7 @@ test("configuração: some quando está completa (7 de 7)", () => {
   assert.ok(pagina.includes("atual && !resumoDoGuia.completo"), "a linha só existe enquanto incompleta");
   const inicio = ler("../components/pc/PcInicio.tsx");
   assert.ok(inicio.includes("Configuração da empresa: {configuracao.feitos} de {configuracao.total} · faltam") && inicio.includes("Guia de uso em Ajuda e guias"));
-  assert.ok(inicio.includes("ini2-so-config"), "sem caixas, fica só a configuração (se incompleta)");
+  assert.ok(inicio.includes("ini3-config"), "sem caixas, fica só a configuração (se incompleta)");
 });
 
 const painelItem = (id, origem, situacao, dias, validade, extra = {}) => ({ id, origem, titulo: id, prazo: "p", validade, situacao, dias, quem: "Maria", acao: "abrir", rotuloDaAcao: "Abrir", ...extra });
@@ -95,29 +95,18 @@ test("vencimentos: janela de 30 dias, ordem por data, POP com data 'Revisar até
 
 test("linha inteira clicável, sem botão Abrir; barras e quadradinhos nas cores do desenho", () => {
   const inicio = ler("../components/pc/PcInicio.tsx");
-  assert.ok(inicio.includes('<button key={item.id} type="button" className={`ini2-linha ini2-linha--${item.origem}`} onClick={() => colunas.onAbrirPendencia(item)}>'));
-  assert.ok(inicio.includes('className="ini2-linha ini2-linha--vence" onClick={() => colunas.onAbrirVencimento(item)}'));
+  assert.ok(inicio.includes('<button key={item.id} type="button" className={`ini3-linha ini3-linha--${item.situacao === \"vencido\" ? \"vencida\" : \"aberta\"}`} onClick={() => colunas.onAbrirPendencia(item)}>'));
+  assert.ok(inicio.includes('className="ini3-linha ini3-linha--vence" onClick={() => colunas.onAbrirVencimento(item)}'));
   assert.equal(/>\s*Abrir\s*</.test(inicio), false, "nenhum botão Abrir");
   assert.ok(inicio.includes("Ver todas ({linhas.length})") && inicio.includes("colunas.onVerTodasCorrecoes") && inicio.includes("LIMITE_DE_LINHAS_DO_PAINEL") && inicio.includes("Ver todos os vencimentos →") && inicio.includes("Lembrete ao responsável"));
   const css = ler("../app/globals.css");
-  const bloco = css.slice(css.indexOf("/* ===== Pacote 5 · Início"));
-  assert.match(bloco, /\.ini2-linha--correcao \.ini2-barra\{background:#B4532A\}/);
-  assert.match(bloco, /\.ini2-linha--capacitacao \.ini2-barra\{background:#0F766E\}/);
-  assert.match(bloco, /\.ini2-linha--pop \.ini2-barra\{background:#0E7FB8\}/);
-  assert.match(bloco, /\.ini2-data--ambar\{background:#FFE3A8\}/);
-  assert.match(bloco, /\.ini2-data--azul\{background:#D6E7F8\}/);
-  assert.match(bloco, /\.ini2-painel--precisa\{background:#FFF8EC\}/);
-  assert.match(bloco, /\.ini2-painel--vencendo\{background:#EEF6FC\}/);
-  assert.match(bloco, /\.ini2-caixa\{[^}]*height:64px;[^}]*border-radius:14px;background:#2A6BD1;font-size:18px;font-weight:400;[^}]*color:#fff/);
-  assert.match(bloco, /\.ini2-caixas\{display:grid;grid-template-columns:repeat\(3,minmax\(0,1fr\)\);gap:14px\}/);
-  assert.match(bloco, /\.ini2-cartao\{[^}]*padding:22px 28px 24px;border:1px solid #E3E9EF;border-radius:20px/);
-  assert.match(bloco, /\.ini2-colunas\{grid-template-columns:minmax\(0,2fr\) minmax\(0,1fr\)\}/);
-  assert.match(css, /\.ini2-colunas\{display:grid;flex:1;min-height:0;grid-template-columns:2fr 1fr;gap:28px;align-items:stretch\}/, "base");
-  assert.match(bloco, /\.ini2-colunas\{align-items:flex-start;flex:none\}/, "ccada bloco tem a altura do próprio conteúdo");
+  const bloco = css.slice(css.indexOf("/* ----- Início ----- */"));
+  assert.match(bloco, /\.ini3-linha--vencida \.ini3-faixa\{background:var\(--rd-venceu\)\}/);
+  assert.match(bloco, /\.ini3-faixa\{[^}]*background:var\(--rd-faixa-aberta\)\}/);
+  assert.match(bloco, /\.ini3-tag--venceu\{background:var\(--rd-venceu-fundo\)\}/);
+  assert.match(bloco, /\.ini3-colunas\{display:grid;[^}]*grid-template-columns:minmax\(0,2fr\) minmax\(0,1fr\)/);
   assert.equal(inicio.includes("useLinhasQueCabem") || inicio.includes("ResizeObserver"), false, "sem altura calculada em runtime");
-  assert.match(bloco, /html\[data-modo\] \.pc-offset:has\(\.ini2\)\{height:auto;min-height:100vh;overflow:visible\}/);
-  assert.match(bloco, /\.ini2\{gap:28px;/);
-  assert.match(bloco, /@media \(max-width:1200px\)\{[^}]*\.ini2\{overflow-y:auto\}/);
+  assert.match(bloco, /html\[data-modo="completo"\] \.pc-offset:has\(\.ini3\)\{display:flex;flex-direction:column;height:100dvh;/);
 });
 
 test("barra do topo do Início: título 30 px, busca sem Ctrl K nem Ir, microfone azul, sincronização sem pílula, seletor sem borda", () => {
@@ -171,18 +160,15 @@ test("estados vazios: Tudo em dia, só um bloco e contadores/lembrete só com it
   assert.ok(inicio.includes("colunas && semPendencias && semVencimentos") && inicio.includes("Tudo em dia") && inicio.includes("Nada vencido e nada vencendo nos próximos 30 dias."));
   assert.ok(inicio.includes("{!semPendencias && (") && inicio.includes("{!semVencimentos && (") && inicio.includes('semPendencias || semVencimentos ? " is-uma" : ""'), "um bloco vazio não aparece e o outro ocupa a largura toda");
   assert.equal(inicio.includes("Nada vence nos próximos 30 dias."), false);
-  assert.ok(inicio.includes("temVisita ? \"Continuar de onde parei\" : \"Comece por aqui\"") && inicio.includes("Nenhuma visita em andamento.") && inicio.includes("Nova visita"));
+  assert.ok(inicio.includes("temVisita ? \"CONTINUAR DE ONDE PARAREI\" : \"COMECE POR AQUI\"") && inicio.includes("Nenhuma visita em andamento.") && inicio.includes("Nova visita"));
   // contador e lembrete ficam dentro do bloco que só existe com itens
   const bloco = inicio.slice(inicio.indexOf("{!semPendencias && ("), inicio.indexOf("{!semVencimentos && ("));
-  assert.ok(inicio.includes("contadorDoPainel(colunas)") && bloco.includes("{contador &&") && bloco.includes("Lembrete ao responsável"));
+  assert.ok(inicio.includes("contadorDoPainel(colunas)") && bloco.includes("<span>{contador}</span>") && inicio.includes('rotulo: "Lembrete ao responsável"'), "o lembrete virou link do rodapé");
   const css = ler("../app/globals.css");
-  assert.match(css, /\.ini2-tudo-em-dia\{padding:22px 26px;border-radius:20px;background:#F0FAF3\}/);
-  assert.match(css, /\.ini2-tudo-titulo\{[^}]*color:#15803D\}/);
-  assert.match(css, /\.ini2-nova\{height:48px;[^}]*background:#E8760A;font-size:16px;font-weight:400;color:#fff/);
-  assert.match(css, /\.ini2-caixas\{display:flex;flex-wrap:wrap;gap:14px\}/);
-  assert.match(css, /\.ini2-caixa\{flex:0 1 360px;min-width:0;max-width:360px\}/);
-  assert.match(css, /@media \(min-width:1201px\)\{\.ini2-caixas\{flex-wrap:nowrap\}\}/);
-  assert.match(css, /\.ini2-colunas\.is-uma\{grid-template-columns:minmax\(0,1fr\)\}/);
+  assert.match(css, /.ini2-tudo-em-dia{padding:22px 26px;border-radius:20px;background:#F0FAF3}/);
+  assert.match(css, /\.ini3-botao\{[^}]*height:40px;[^}]*background:var\(--rd-acao\)[^}]*color:#fff/);
+  assert.match(css, /\.ini3-cartoes\{display:grid;grid-template-columns:repeat\(3,minmax\(0,1fr\)\);gap:16px\}/);
+  assert.match(css, /\.ini3-colunas\.is-uma\{grid-template-columns:minmax\(0,1fr\)\}/);
 });
 
 test("dados de teste do Início: só Beyond Nutri, 4 itens, remoção limpa e Chico recusado", async () => {
@@ -236,6 +222,6 @@ test("segunda rodada: linha da correção com ambiente e sem repetir o responsá
   assert.equal(subDaLinhaDoPainel(base, "Correção"), "Correção · aberta");
   assert.equal(subDaLinhaDoPainel({ ...com, quem: "Maria" }, "Correção"), "Cozinha / Produção · Correção · aberta · Maria");
   const inicio = ler("../components/pc/PcInicio.tsx");
-  assert.ok(inicio.includes("sem responsável") && inicio.includes("ini2-sem-resp"));
+  assert.ok(inicio.includes("sem responsável") && inicio.includes("ini3-semresp"));
   assert.equal(inicio.includes("verTodas"), false, "Ver todas leva às correções, não expande a lista");
 });

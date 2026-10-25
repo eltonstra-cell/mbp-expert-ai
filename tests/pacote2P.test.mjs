@@ -149,7 +149,7 @@ test("continuar de onde parei: cartão no Início com botões cinza (sem laranja
   const inicio = ler("../components/pc/PcInicio.tsx");
   assert.ok(inicio.includes("Continuar de onde parei"));
   const cartao = inicio.slice(inicio.indexOf('aria-label="Continuar de onde parei"'), inicio.indexOf("{painel}"));
-  assert.ok(inicio.includes("ini2-caixa") && !inicio.includes("ui-btn--criar"), "caixas azuis no cartão, sem botão laranja");
+  assert.ok(inicio.includes("ini3-botao") && !inicio.includes("ui-btn--criar"), "botão azul no cartão, sem botão laranja");
   const pagina = ler("../app/page.tsx");
   assert.ok(pagina.includes("limparContinuar();") && pagina.indexOf("limparContinuar();") < pagina.indexOf("authClient.signOut()"));
   const pops = ler("../components/pc/PcPops.tsx");

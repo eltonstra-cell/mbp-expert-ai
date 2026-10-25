@@ -6942,17 +6942,31 @@ export default function Home() {
   // Guia "Primeiros passos" (Ajuda e guias): o mesmo cálculo de `passosDeConfiguracao`.
   const passosDoGuia = passosDeConfiguracao({ usuario: usuarioDaSessao, empresa: atual, visitas: db.visitas, relatoriosEmitidos: db.relatoriosEmitidos });
   // Início (PC): caixas do "Continuar de onde parei", linha de configuração (some em 7 de 7) e as duas colunas.
+  const proximaEtapaDaVisitaNoInicio = (id: string) => {
+    const visita = db.visitas.find((item) => item.id === id);
+    return (visita?.checklist || []).find((item) => item.status === "Pendente")?.ambiente || ((visita?.ambientes || []).length ? "Revisar a inspeção" : "Definir os ambientes da visita");
+  };
   const caixasDoInicio = caixasDoContinuar({
     telas: telasRecentes,
     visitas: visitasSemArquivadas.filter((visita) => visita.empresaId === atual?.id),
     pops: atual?.pops || [],
     numeroDaVisita: (id) => numeroVisitaPorId.get(id),
     formatarData: fdata,
-    proximaEtapa: (id) => {
-      const visita = db.visitas.find((item) => item.id === id);
-      return (visita?.checklist || []).find((item) => item.status === "Pendente")?.ambiente || ((visita?.ambientes || []).length ? "Revisar a inspeção" : "Definir os ambientes da visita");
-    },
-  }).map((caixa) => ({ chave: caixa.chave, titulo: caixa.titulo, subtitulo: caixa.subtitulo, tipo: caixa.tela.tipo, onAbrir: () => abrirTelaRecente(caixa.tela) }));
+    proximaEtapa: proximaEtapaDaVisitaNoInicio,
+  }).map((caixa) => {
+    // Cartão de visita: título curto, data, subtítulo (próxima etapa) e anel com o % do checklist; as outras telas seguem como antes.
+    const visitaDaCaixa = caixa.tela.tipo === "visita" ? db.visitas.find((item) => item.id === caixa.tela.id) : undefined;
+    return {
+      chave: caixa.chave,
+      titulo: caixa.titulo,
+      subtitulo: visitaDaCaixa ? `próxima etapa: ${proximaEtapaDaVisitaNoInicio(visitaDaCaixa.id)}` : caixa.subtitulo,
+      tipo: caixa.tela.tipo,
+      onAbrir: () => abrirTelaRecente(caixa.tela),
+      ...(visitaDaCaixa
+        ? { rotulo: `Visita ${numeroVisitaPorId.get(visitaDaCaixa.id) ?? ""}`.trim(), data: fdata(visitaDaCaixa.data), percentual: progressoDoChecklist(visitaDaCaixa.checklist).percentual }
+        : {}),
+    };
+  });
   const abrirPassoDoGuia = (chave: string) => {
     if (chave === "perfil") setPerfilAberto(true);
     else if (chave === "empresa") void abrirSecaoEmpresaPeloMenu("dados");
@@ -10283,6 +10297,7 @@ export default function Home() {
               caixas={caixasDoInicio}
               onNovaVisita={atual && permitido("visitas.criar", atual.id) && !ehExecutor ? novaVisita : null}
               configuracao={configuracaoDoInicio}
+              atalhos={colunasDoInicioPc ? { onResumo: () => setView("resumo"), onEvolucao: () => setView("evolucao"), onEmitidos: () => setView("relatoriosemitidos"), onDossie: podeGerarDossie(usuarioDaSessao) ? () => setView("dossie") : undefined } : null}
               colunas={colunasDoInicioPc}
             />
           ) : (

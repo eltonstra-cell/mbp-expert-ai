@@ -153,9 +153,9 @@ export default function AppNavigation({
   }, [perfilPopAberto]);
   // Escolha do usuário (recolher/expandir) guardada na sessão; sem escolha, abre só nas telas da visita.
   const [escolhaGrupoVisita, setEscolhaGrupoVisita] = useState<boolean | null>(null);
+  // "Mais": os destinos que não são principais (Cadastros, POPs e documentos, Ajuda e guias, Administração). Todos continuam existindo.
   const [adminPopAberto, setAdminPopAberto] = useState(false);
   const adminRef = useRef<HTMLDivElement | null>(null);
-  const [grupoAdminAberto, setGrupoAdminAberto] = useState(true);
   useEffect(() => {
     try {
       const salvo = window.sessionStorage.getItem(CHAVE_GRUPO_VISITA);
@@ -197,6 +197,9 @@ export default function AppNavigation({
   const visiveisDoTrilho = itensVisiveis(contexto);
   const itensDoTrilho = ORDEM_TRILHO.map((chave) => visiveisDoTrilho.find((item) => item.key === chave)).filter((item): item is NavItem => Boolean(item));
   const lateral = menuLateralPC(contexto);
+  const PRINCIPAIS: NavKey[] = ["inicio", "visitas", "empresas", "relatorios"];
+  const principais = lateral.topo.filter((item) => PRINCIPAIS.includes(item.key));
+  const extras = [...lateral.topo.filter((item) => !PRINCIPAIS.includes(item.key)), ...lateral.apoio, ...lateral.admin];
   const temRegistrar = registrarDisponivel(contexto);
   const badgeDe = (item: NavItem) => (item.key === "ncs" ? ncsAbertas : 0);
 
@@ -344,7 +347,7 @@ export default function AppNavigation({
       {/* PC: menu lateral azul */}
       <aside className={`pc-side${visitaMenu ? " pc-side--visita" : ""}`} aria-label="Menu lateral">
         <div className="pc-side-brand">
-          <LogoHorizontal size={38} showSubtitle={false} textClassName="text-xl" />
+          <LogoHorizontal size={30} showSubtitle={false} textClassName="text-base" />
         </div>
 
         {temRegistrar && (
@@ -357,7 +360,44 @@ export default function AppNavigation({
         )}
 
         <nav className="pc-side-nav" aria-label="Navegação principal">
-          {lateral.topo.map((item) => linkLateral(item, false))}
+          {principais.map((item) => linkLateral(item, false))}
+
+          {extras.length > 0 && (
+            <div className="pc-mais-wrap" ref={adminRef}>
+              <button
+                type="button"
+                className={`pc-link${extras.some((item) => item.key === ativa) ? " is-active" : ""}`}
+                aria-haspopup="menu"
+                aria-expanded={adminPopAberto}
+                onClick={() => setAdminPopAberto((aberto) => !aberto)}
+              >
+                <span className="pc-link-icon">
+                  <NavIcon name="mais" size={18} strokeWidth={1.9} />
+                </span>
+                <span className="pc-link-label">Mais</span>
+                <span className="pc-chev" aria-hidden="true">›</span>
+              </button>
+              {adminPopAberto && (
+                <div className="pc-mais-pop" role="menu">
+                  {extras.map((item) => (
+                    <button
+                      key={item.key}
+                      type="button"
+                      role="menuitem"
+                      className={`pc-mais-item${ativa === item.key ? " is-active" : ""}`}
+                      onClick={() => {
+                        setAdminPopAberto(false);
+                        onSelecionar(item.key);
+                      }}
+                    >
+                      <NavIcon name={item.key} size={16} strokeWidth={1.9} />
+                      {item.key === "ajuda" ? "Ajuda e guias" : item.key === "acessos" ? "Administração" : item.rotulo}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {visitaMenu && (
             <section className="pc-vcard" aria-label="Visita atual">
@@ -399,54 +439,6 @@ export default function AppNavigation({
         </nav>
 
         <div className="pc-side-foot">
-          {(lateral.apoio.length > 0 || lateral.admin.length > 0) && (
-            <div className="pc-mini-row">
-              {lateral.apoio.map((item) => (
-                <button
-                  key={item.key}
-                  type="button"
-                  className={`pc-mini${ativa === item.key ? " is-active" : ""}`}
-                  aria-current={ativa === item.key ? "page" : undefined}
-                  onClick={() => onSelecionar(item.key)}
-                >
-                  <NavIcon name={item.key} size={16} strokeWidth={1.9} />
-                  Ajuda e guias
-                </button>
-              ))}
-              {lateral.admin.length > 0 && (
-                <div className="pc-mini-wrap" ref={adminRef}>
-                  <button
-                    type="button"
-                    className={`pc-mini${lateral.admin.some((item) => item.key === ativa) ? " is-active" : ""}`}
-                    aria-haspopup="menu"
-                    aria-expanded={adminPopAberto}
-                    onClick={() => setAdminPopAberto((aberto) => !aberto)}
-                  >
-                    <NavIcon name="escudo" size={16} strokeWidth={1.9} />
-                    Administração
-                  </button>
-                  {adminPopAberto && (
-                    <div className="pc-admin-pop" role="menu">
-                      {lateral.admin.map((item) => (
-                        <button
-                          key={item.key}
-                          type="button"
-                          role="menuitem"
-                          className="pc-admin-item"
-                          onClick={() => {
-                            setAdminPopAberto(false);
-                            onSelecionar(item.key);
-                          }}
-                        >
-                          {item.rotulo}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
           {usuario && (
             <div className="pc-user-wrap" ref={perfilRef}>
               {perfilPopAberto && (
