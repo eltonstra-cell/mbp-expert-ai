@@ -26,7 +26,7 @@ test("fluxo que o Manual não liga a um setor oficial NÃO é adivinhado: fica s
   assert.equal(corrigidos.find((fluxo) => fluxo.tipo === "Congelamento").setorVinculado, "");
 });
 
-test("sugere os ambientes reais corretos para os fluxos do restaurante", () => {
+test("só o setor padrão do Manual é sugerido, e só se existir na empresa; nome parecido ou primeiro setor da lista NÃO valem", () => {
   const setores = [
     "Recebimento de Mercadorias",
     "Cozinha",
@@ -35,8 +35,11 @@ test("sugere os ambientes reais corretos para os fluxos do restaurante", () => {
     "Armazenamento Temporário de Resíduos",
     "Sanitários/Vestiários de Funcionários",
   ];
-  assert.equal(obterSetorSugeridoParaFluxo("Recebimento", setores), "Recebimento de Mercadorias");
-  assert.equal(obterSetorSugeridoParaFluxo("Higienização de FLV", setores), "Higienização de Hortifrutigranjeiros");
+  // Nomes antigos/parecidos não são adivinhados: o setor padrão (nome oficial) não está nesta lista, então o fluxo fica sem setor.
+  assert.equal(obterSetorSugeridoParaFluxo("Recebimento", setores), "");
+  assert.equal(obterSetorSugeridoParaFluxo("Higienização de FLV", setores), "");
+  assert.equal(obterSetorSugeridoParaFluxo("Recebimento", [...setores, "Recebimento de matérias-primas, ingredientes, embalagens e materiais de limpeza"]), "Recebimento de matérias-primas, ingredientes, embalagens e materiais de limpeza");
+  assert.equal(obterSetorSugeridoParaFluxo("Distribuição", setores, "Cozinha"), "Cozinha", "vínculo já salvo e existente vale");
   // Congelamento, Manejo de resíduos e Entrada e saída não têm setor padrão no Manual: nada é sugerido.
   assert.equal(obterSetorSugeridoParaFluxo("Congelamento", setores), "");
   assert.equal(obterSetorSugeridoParaFluxo("Manejo de resíduos", setores), "");

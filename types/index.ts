@@ -1,4 +1,5 @@
 import type { NivelTela, TelaKey } from "../lib/screenAccess.ts";
+import type { RelatorioMontado } from "../lib/relatorioDaVisita.ts";
 export type Empresa = {
   id: string;
   cnpj: string;
@@ -350,6 +351,8 @@ export type ChecklistItem = {
   lote?: { em: string };
   /** Resposta que veio de ditado por voz (conferida pelo RT antes de gravar): fica marcada no relatório; some quando o RT responde o item de outra forma. */
   porVoz?: boolean;
+  /** A tela avançou sozinha depois desta resposta (avanço automático). A resposta foi do RT, individual; a marca só registra o fato no relatório. */
+  avancouSozinho?: boolean;
   /** Texto oficial da norma para o critério. Só existe quando foi salvo e conferido; sem ele o bloco "Base legal" não aparece. */
   baseLegal?: string;
   orientacao?: string;
@@ -687,10 +690,12 @@ export type InstantaneoDoRelatorio = {
   visita: { id: string; data: string; responsavel: string; observacoes: string; conclusao: string };
   conformidade: { conformes: number; naoConformes: number; respondidos: number; percentual: number | null };
   itens: { id: string; ambiente: string; titulo: string; categoria: string; status: string; observacao: string; criticidade?: string }[];
-  ncs: { id: string; titulo: string; ambiente: string; criticidade: string; status: string; observacao: string; acaoCorretiva?: string; responsavelAcao?: string; prazo?: string; resolvidaEm?: string; semComprovacao: boolean }[];
+  ncs: { id: string; titulo: string; ambiente: string; criticidade: string; referencia?: string; status: string; observacao: string; acaoCorretiva?: string; responsavelAcao?: string; prazo?: string; resolvidaEm?: string; semComprovacao: boolean }[];
   evidencias: { id: string; tipo: string; ambiente: string; descricao: string; criadoEm: string; registradoPorNome?: string; blobPathname?: string; papel?: string; ncId?: string; checklistItemId?: string }[];
   /** Seções marcadas em "Conteúdo do relatório" na hora da emissão. Sem o campo (relatórios antigos): todas. */
   secoes?: { resumo: boolean; ambientes: boolean; ncs: boolean; evidencias: boolean; pops: boolean };
+  /** Relatório montado só com dados registrados (resumo, pontuação por setor, comparação, reincidências, marcas, mapa), com as fórmulas escritas. Relatórios antigos não têm. */
+  montado?: RelatorioMontado;
   /** POPs da empresa no dia da emissão (só código, título, versão, situação e quem aprovou). */
   pops?: { codigo: string; titulo: string; versao: string; situacao: string; aprovadoPor?: string; aprovadoEm?: string }[];
 };

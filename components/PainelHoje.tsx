@@ -17,6 +17,8 @@ type Props = {
 };
 
 type PropsAtalhos = {
+  /** Mapa de risco por ambiente (critério do app). */
+  onMapa?: () => void;
   /** Só RT e Administrador: abre a prévia do lembrete ao responsável do estabelecimento. */
   onLembrete?: () => void;
   onResumo: () => void;
@@ -74,7 +76,7 @@ export default function PainelHoje({ painel, onAcao }: Props) {
 }
 
 // Atalhos de relatório e o lembrete: bloco próprio, fora de "Hoje precisa de você".
-export function AtalhosDeRelatorios({ onLembrete, onResumo, onEvolucao, onDossie, onEmitidos }: PropsAtalhos) {
+export function AtalhosDeRelatorios({ onLembrete, onResumo, onEvolucao, onDossie, onEmitidos, onMapa }: PropsAtalhos) {
   return (
     <section className="ui-card hoje-atalhos" aria-label="Relatórios e avisos">
       <h2 className="ui-card-title">Relatórios e avisos</h2>
@@ -86,6 +88,11 @@ export function AtalhosDeRelatorios({ onLembrete, onResumo, onEvolucao, onDossie
           {onEvolucao && (
             <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={onEvolucao}>
               Evolução
+            </button>
+          )}
+          {onMapa && (
+            <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={onMapa}>
+              Mapa de risco
             </button>
           )}
           {onEmitidos && (

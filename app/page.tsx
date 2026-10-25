@@ -36,6 +36,13 @@ import { podeGerarDossie } from "@/lib/dossie";
 import { CAPACIDADE_VAZIA, TEXTO_DA_CAPACIDADE, capacidadeDoFormulario, capacidadeParaFormulario, validarCapacidade, type CapacidadeEmTexto } from "@/lib/capacidadeEmpresa";
 import PainelHojeCard, { AtalhosDeRelatorios } from "@/components/PainelHoje";
 import { fonteParaExibir } from "@/lib/fonteDaPergunta";
+import RelatorioMontadoVista from "@/components/RelatorioMontadoVista";
+import PcRevisaoDoRelatorio from "@/components/pc/PcRevisaoDoRelatorio";
+import PcMapaDeRisco from "@/components/pc/PcMapaDeRisco";
+import { estadoDoRelatorio, montarRelatorio } from "@/lib/relatorioDaVisita";
+import { cartaoParaRelatorio, mapaDeRisco, ordenarPorUrgencia } from "@/lib/mapaDeRisco";
+import { modelosChecklist } from "@/lib/checklistModelosAntigos";
+import { itensDoAmbiente, perguntasDoAmbiente } from "@/lib/perguntasDoAmbiente";
 import PcLembrete from "@/components/pc/PcLembrete";
 import PcResumo from "@/components/pc/PcResumo";
 import { montarLembrete, montarPainelHoje, montarResumo, podeEnviarLembrete, podeVerPainel, type ItemDoPainel } from "@/lib/painelHoje";
@@ -274,7 +281,7 @@ import {
 } from "@/lib/userManagement";
 import { resumoConfiguracaoEmpresa } from "@/lib/companyReadiness";
 
-type View = "inicio" | "pops" | "ajuda" | "empresas" | "visitas" | "visita" | "ambientes" | "checklist" | "ncs" | "plano" | "acompanhamento" | "historico" | "evidencias" | "relatorio" | "acessos" | "correcoes" | "popsvisita" | "modotela" | "campomais" | "fila" | "comprovantes" | "pessoas" | "resumo" | "relatoriosemitidos" | "dossie" | "evolucao";
+type View = "inicio" | "pops" | "ajuda" | "empresas" | "visitas" | "visita" | "ambientes" | "checklist" | "ncs" | "plano" | "acompanhamento" | "historico" | "evidencias" | "relatorio" | "acessos" | "correcoes" | "popsvisita" | "modotela" | "campomais" | "fila" | "comprovantes" | "pessoas" | "resumo" | "relatoriosemitidos" | "dossie" | "evolucao" | "mapa";
 type EmpresaSecao = SubAbaCentral;
 type FiltroChecklistRapido = "Todos" | "Pendentes" | "Não conformes";
 
@@ -385,181 +392,6 @@ const gruposAmbientesCentral = [
   },
 ];
 
-const modelosChecklist: Record<
-  string,
-  {
-    categoria: string;
-    titulo: string;
-    criticidade?: ChecklistCriticidade;
-    referencia?: string;
-    orientacao?: string;
-  }[]
-> = {
-  Recebimento: [
-    {
-      categoria: "Área de recepção",
-      titulo: "Recebimento realizado em área protegida, limpa e organizada",
-      criticidade: "Importante",
-      referencia: "RDC 216/2004 — item 4.7.2",
-      orientacao: "Verifique proteção contra poeira, chuva, sujidades e risco de contaminação durante a descarga.",
-    },
-    {
-      categoria: "Fornecedor",
-      titulo: "Matérias-primas, ingredientes e embalagens são inspecionados e aprovados no recebimento",
-      criticidade: "Crítica",
-      referencia: "RDC 216/2004 — item 4.7.3",
-      orientacao: "A aprovação deve considerar condições do produto, embalagem, conservação e critérios definidos pelo serviço.",
-    },
-    {
-      categoria: "Integridade",
-      titulo: "Embalagens primárias estão íntegras, sem violação, vazamento, estufamento ou dano relevante",
-      criticidade: "Crítica",
-      referencia: "RDC 216/2004 — item 4.7.3",
-      orientacao: "Produtos com embalagem comprometida não devem ser aceitos quando houver risco à segurança ou integridade.",
-    },
-    {
-      categoria: "Temperatura",
-      titulo: "Temperatura dos produtos que exigem conservação especial é verificada no recebimento",
-      criticidade: "Crítica",
-      referencia: "RDC 216/2004 — item 4.7.3",
-      orientacao: "Compare com a condição de conservação indicada para o produto e com os critérios internos/legislação específica aplicável.",
-    },
-    {
-      categoria: "Validade",
-      titulo: "Prazo de validade é conferido antes da aceitação dos produtos",
-      criticidade: "Crítica",
-      referencia: "RDC 216/2004 — item 4.7.4",
-      orientacao: "Produtos vencidos devem ser rejeitados e devolvidos ou segregados até sua destinação adequada.",
-    },
-    {
-      categoria: "Reprovação",
-      titulo: "Produtos ou lotes reprovados são devolvidos ou segregados e identificados até destinação final",
-      criticidade: "Crítica",
-      referencia: "RDC 216/2004 — item 4.7.4",
-      orientacao: "Evite que produtos reprovados permaneçam misturados aos produtos liberados para uso.",
-    },
-    {
-      categoria: "Identificação",
-      titulo: "Produto recebido possui identificação e informações suficientes para controle e rastreabilidade",
-      criticidade: "Importante",
-      referencia: "Boas Práticas — controle de recebimento e rastreabilidade",
-      orientacao: "Observe identificação do produto, fabricante/fornecedor, lote quando aplicável e demais informações necessárias ao controle interno.",
-    },
-    {
-      categoria: "Condições do transporte",
-      titulo: "Veículo e condições de transporte não apresentam riscos evidentes de contaminação ao alimento",
-      criticidade: "Crítica",
-      referencia: "RDC 216/2004 — princípios de prevenção da contaminação no recebimento",
-      orientacao: "Observe limpeza, organização, proteção da carga, odores, pragas, cargas incompatíveis e condição geral.",
-    },
-    {
-      categoria: "Características do produto",
-      titulo: "Produtos não apresentam alterações sensoriais ou sinais visíveis incompatíveis com sua condição normal",
-      criticidade: "Importante",
-      referencia: "Boas Práticas — inspeção e aprovação no recebimento",
-      orientacao: "Quando aplicável, observe cor, odor, textura, presença de líquido anormal, descongelamento ou deterioração.",
-    },
-    {
-      categoria: "Registro",
-      titulo: "O estabelecimento mantém controle do recebimento compatível com os riscos e procedimentos adotados",
-      criticidade: "Importante",
-      referencia: "RDC 216/2004 — controle operacional de Boas Práticas",
-      orientacao: "O registro pode incluir data, fornecedor, produto, temperatura quando aplicável, condição e decisão de aceitar ou rejeitar.",
-    },
-    {
-      categoria: "Fluxo",
-      titulo: "Produtos aprovados são encaminhados ao armazenamento sem permanência desnecessária em temperatura ambiente",
-      criticidade: "Crítica",
-      referencia: "RDC 216/2004 — itens 4.7.5 e 4.8.5",
-      orientacao: "Priorize perecíveis e reduza o tempo fora das condições adequadas de conservação.",
-    },
-    {
-      categoria: "Armazenamento imediato",
-      titulo: "Produtos recebidos são armazenados em local limpo, organizado e protegido contra contaminantes",
-      criticidade: "Importante",
-      referencia: "RDC 216/2004 — item 4.7.5",
-      orientacao: "Após a aprovação, o produto deve seguir para armazenamento adequado sem contato com fontes de contaminação.",
-    },
-  ],
-  "Armazenamento seco / Estoque": [
-    { categoria: "Organização", titulo: "Produtos organizados por categoria e afastados do piso" },
-    { categoria: "Validade", titulo: "Controle PEPS/PVPS aplicado" },
-    { categoria: "Identificação", titulo: "Produtos abertos identificados e datados" },
-    { categoria: "Integridade", titulo: "Sem presença de embalagens danificadas ou infestação" },
-    { categoria: "Higiene", titulo: "Prateleiras e ambiente em boas condições de limpeza" },
-  ],
-  "Câmara refrigerada": [
-    { categoria: "Temperatura", titulo: "Temperatura da câmara dentro do padrão definido", referencia: "Parcial: tema do Manual, cap. 3, item 10.1; o texto da pergunta difere" },
-    { categoria: "Organização", titulo: "Alimentos organizados evitando contaminação cruzada", referencia: "Derivada do Manual, cap. 2, item 2.1" },
-    { categoria: "Identificação", titulo: "Preparações e produtos identificados e datados", referencia: "Parcial: tema do Manual, cap. 2, item 2.1; o texto da pergunta difere" },
-    { categoria: "Integridade", titulo: "Equipamento em bom estado e sem excesso de gelo", referencia: "Fonte não registrada" },
-    { categoria: "Higiene", titulo: "Câmara limpa e sem acúmulo de resíduos", referencia: "Parcial: tema do Manual, cap. 3, item 9.1; o texto da pergunta difere" },
-  ],
-  "Câmara de congelamento": [
-    { categoria: "Temperatura", titulo: "Temperatura de congelamento adequada", referencia: "Derivada do Manual, cap. 2, item 2.1; cap. 3, item 10.1" },
-    { categoria: "Organização", titulo: "Produtos organizados e separados por categoria", referencia: "Derivada do Manual, cap. 2, item 2" },
-    { categoria: "Identificação", titulo: "Produtos identificados e dentro do prazo", referencia: "Parcial: tema do Manual, cap. 2, item 3.4; o texto da pergunta difere" },
-    { categoria: "Integridade", titulo: "Ausência de queimadura por frio ou embalagens rompidas", referencia: "Parcial: tema do Manual, cap. 2, item 3.4; o texto da pergunta difere" },
-    { categoria: "Higiene", titulo: "Equipamento limpo e em bom estado", referencia: "Parcial: tema do Manual, cap. 3, item 9; o texto da pergunta difere" },
-  ],
-  "Pré-preparo": [
-    { categoria: "Higiene", titulo: "Bancadas e utensílios higienizados adequadamente" },
-    { categoria: "Contaminação cruzada", titulo: "Fluxo evita contato entre alimentos crus e prontos" },
-    { categoria: "Manipuladores", titulo: "Manipuladores seguem boas práticas de higiene" },
-    { categoria: "Tempo/temperatura", titulo: "Exposição dos alimentos fora de refrigeração é controlada" },
-    { categoria: "Identificação", titulo: "Alimentos em preparo identificados quando necessário" },
-  ],
-  "Preparo / Cocção": [
-    { categoria: "Temperatura", titulo: "Cocção atinge parâmetros seguros definidos" },
-    { categoria: "Higiene", titulo: "Equipamentos e utensílios em boas condições de higiene" },
-    { categoria: "Manipuladores", titulo: "Conduta dos manipuladores adequada durante o preparo" },
-    { categoria: "Contaminação cruzada", titulo: "Utensílios e superfícies evitam contaminação cruzada" },
-    { categoria: "Manutenção", titulo: "Equipamentos estão íntegros e em funcionamento adequado" },
-  ],
-  "Distribuição / Exposição": [
-    { categoria: "Temperatura", titulo: "Temperatura de exposição é monitorada" },
-    { categoria: "Proteção", titulo: "Alimentos expostos estão protegidos contra contaminação" },
-    { categoria: "Tempo", titulo: "Tempo de exposição é controlado" },
-    { categoria: "Utensílios", titulo: "Utensílios de serviço estão limpos e adequados" },
-    { categoria: "Higiene", titulo: "Área de distribuição permanece limpa e organizada" },
-  ],
-  "Higienização de utensílios": [
-    { categoria: "Fluxo", titulo: "Fluxo de higienização evita cruzamento entre sujo e limpo" },
-    { categoria: "Produto químico", titulo: "Produtos saneantes estão regularizados e identificados" },
-    { categoria: "Diluição", titulo: "Diluição e tempo de contato seguem orientação definida" },
-    { categoria: "Secagem", titulo: "Utensílios secam de forma higiênica" },
-    { categoria: "Armazenamento", titulo: "Utensílios limpos são armazenados protegidos" },
-  ],
-  "DML / Material de limpeza": [
-    { categoria: "Armazenamento", titulo: "Produtos químicos armazenados separados de alimentos" },
-    { categoria: "Identificação", titulo: "Frascos e recipientes estão identificados" },
-    { categoria: "Segurança", titulo: "Acesso e uso dos produtos são controlados" },
-    { categoria: "Organização", titulo: "Materiais de limpeza estão organizados" },
-    { categoria: "Higiene", titulo: "DML está limpo e sem acúmulo de resíduos" },
-  ],
-  "Sanitários / Vestiários": [
-    { categoria: "Higiene", titulo: "Instalações estão limpas e conservadas", referencia: "Derivada do Manual, cap. 1, itens 2.8 a 2.13; cap. 3, item 9.3" },
-    { categoria: "Lavatório", titulo: "Há sabonete líquido, papel e meio adequado de secagem", referencia: "Derivada do Manual, cap. 1, item 2.9; cap. 3, item 3.4" },
-    { categoria: "Acesso", titulo: "Sanitários não se comunicam diretamente com áreas de preparo", referencia: "Fonte não registrada" },
-    { categoria: "Organização", titulo: "Pertences pessoais estão armazenados adequadamente", referencia: "Derivada do Manual, cap. 2, item 6" },
-    { categoria: "Conservação", titulo: "Portas, ralos e instalações estão em bom estado", referencia: "Derivada do Manual, cap. 1, itens 2.9 e 2.11 a 2.13" },
-  ],
-  "Área de resíduos": [
-    { categoria: "Acondicionamento", titulo: "Resíduos estão acondicionados em recipientes adequados", referencia: "Derivada do Manual, cap. 2, item 5" },
-    { categoria: "Tampa", titulo: "Lixeiras possuem tampa e acionamento adequado quando aplicável", referencia: "Derivada do Manual, cap. 3, item 8" },
-    { categoria: "Fluxo", titulo: "Retirada de resíduos não contamina áreas de produção", referencia: "Derivada do Manual, cap. 3, item 9.7" },
-    { categoria: "Higiene", titulo: "Área de resíduos está limpa e organizada", referencia: "Parcial: tema do Manual, cap. 3, item 9.7; o texto da pergunta difere" },
-    { categoria: "Controle de pragas", titulo: "Não há sinais de atração ou abrigo de pragas", referencia: "Derivada do Manual, cap. 3, item 6" },
-  ],
-  "Área externa": [
-    { categoria: "Conservação", titulo: "Área externa está conservada e sem acúmulo de materiais", referencia: "Derivada do Manual, cap. 1, item 2 (introdução); cap. 3, item 6" },
-    { categoria: "Pragas", titulo: "Não há condições favoráveis à proliferação de pragas", referencia: "Derivada do Manual, cap. 3, item 6" },
-    { categoria: "Drenagem", titulo: "Não há água parada ou problemas de drenagem", referencia: "Fonte não registrada" },
-    { categoria: "Acesso", titulo: "Acessos estão protegidos e organizados", referencia: "Parcial: tema do Manual, cap. 1, item 2 (introdução); o texto da pergunta difere" },
-    { categoria: "Higiene", titulo: "Entorno do estabelecimento está limpo", referencia: "Derivada do Manual, cap. 1, item 2 (introdução)" },
-  ],
-};
-
 function hojeISO() {
   return hojeLocalISO();
 }
@@ -576,23 +408,8 @@ function criarChecklist(
   questionarios?: Record<string, ConfigQuestionario>
 ): ChecklistItem[] {
   const itensAmbientes = ambientes.flatMap((ambiente, ambienteIndex) => {
-    const modeloReferencia = modelosQuestionario?.[ambiente] ||
-      obterModeloQuestionarioParaAmbiente(ambiente);
-    const setorNormalizado = normalizarSetorManual(modeloReferencia);
-    const setorDoManual = SETORES_OFICIAIS_MANUAL.includes(
-      setorNormalizado as (typeof SETORES_OFICIAIS_MANUAL)[number]
-    );
-    // Questionário personalizado pelo RT (perguntas ativas, na ordem escolhida); sem ele, vale o modelo do app.
-    // As perguntas que o modelo ganhou depois da edição entram também nos ambientes já editados (ativas, sem apagar nada da empresa).
-    const modeloDoAmbiente = (setorDoManual ? obterModeloChecklistManual(ambiente, modeloReferencia) : modelosChecklist[ambiente] || obterModeloChecklistManual(ambiente, modeloReferencia)).filter((item) => item.categoria !== "Equipamentos e móveis");
-    const personalizado = itensDoQuestionario(questionarios?.[ambiente], modeloDoAmbiente);
-    const itensEstrutura = personalizado ? personalizado : setorDoManual
-      ? obterModeloChecklistManual(ambiente, modeloReferencia)
-      : modelosChecklist[ambiente] || obterModeloChecklistManual(ambiente, modeloReferencia);
-    const itens = [
-      ...itensEstrutura.filter((item) => item.categoria !== "Equipamentos e móveis"),
-      ...obterCriteriosOperacionaisParaSetor(fluxosOperacionais, setorNormalizado, ambiente),
-    ];
+    // A MESMA função monta as perguntas aqui e conta no Cadastro (lib/perguntasDoAmbiente.ts).
+    const itens = itensDoAmbiente(ambiente, { modelosQuestionario, questionarios, fluxos: fluxosOperacionais });
 
     return itens.map((item, itemIndex) => ({
       id: `${ambienteIndex}-${itemIndex}-${crypto.randomUUID()}`,
@@ -1947,6 +1764,7 @@ export default function Home() {
   // ===== Registros por POP e comprovantes de terceiros =====
   // Emissão do relatório assinado (RT e Administrador): o servidor atribui o número e guarda o instantâneo.
   const [emitirAberto, setEmitirAberto] = useState(false);
+  const [revisaoAberta, setRevisaoAberta] = useState(false);
   const [emitindoRelatorio, setEmitindoRelatorio] = useState(false);
   const [erroDeEmissao, setErroDeEmissao] = useState("");
 
@@ -2897,7 +2715,7 @@ export default function Home() {
     painelHoje && atual ? (
       <>
         <PainelHojeCard painel={painelHoje} onAcao={acaoDoPainel} />
-        <AtalhosDeRelatorios onEvolucao={() => setView("evolucao")} onDossie={podeGerarDossie(usuarioDaSessao) ? () => setView("dossie") : undefined} onEmitidos={() => setView("relatoriosemitidos")} onLembrete={podeEnviarLembrete(usuarioDaSessao) ? () => setLembreteAberto(true) : undefined} onResumo={() => setView("resumo")} />
+        <AtalhosDeRelatorios onMapa={() => setView("mapa")} onEvolucao={() => setView("evolucao")} onDossie={podeGerarDossie(usuarioDaSessao) ? () => setView("dossie") : undefined} onEmitidos={() => setView("relatoriosemitidos")} onLembrete={podeEnviarLembrete(usuarioDaSessao) ? () => setLembreteAberto(true) : undefined} onResumo={() => setView("resumo")} />
       </>
     ) : null;
 
@@ -3457,52 +3275,6 @@ export default function Home() {
     ncsSemResponsavel === 0 &&
     ncsSemPrazo === 0;
 
-  function gerarConclusaoAutomatica() {
-    const partes: string[] = [];
-
-    partes.push(
-      `A inspeção avaliou ${qtd(itensAvaliadosVisita, "item", "itens")}, com ${qtd(conformesVisita, "conforme", "conformes")} e ${qtd(naoConformesVisita, "não conforme", "não conformes")}, resultando em ${percentualConformidade}% de conformidade entre os itens avaliados.`
-    );
-
-    if (ncsVisita.length === 0) {
-      partes.push("Não foram registradas não conformidades nesta visita.");
-    } else {
-      partes.push(
-        `${pal(ncsVisita.length, "Foi registrada", "Foram registradas")} ${qtd(ncsVisita.length, "não conformidade", "não conformidades")}: ${qtd(ncsResolvidas, "resolvida", "resolvidas")}, ${ncsEmTratamento} em tratamento e ${qtd(ncsSomenteAbertas, "aberta", "abertas")}.`
-      );
-
-      if (ncsCriticasVisita > 0 || ncsImportantesVisita > 0 || ncsLevesVisita > 0) {
-        partes.push(
-          `Entre os achados, ${ncsCriticasVisita} foram classificados como críticos, ${ncsImportantesVisita} como importantes e ${ncsLevesVisita} como leves.`
-        );
-      }
-
-      if (acoesDefinidas === ncsVisita.length) {
-        partes.push("Todas as não conformidades possuem ação corretiva definida.");
-      } else {
-        partes.push(
-          `${qtd(ncsVisita.length - acoesDefinidas, "não conformidade", "não conformidades")} ainda ${pal(ncsVisita.length - acoesDefinidas, "necessita", "necessitam")} de definição de ação corretiva.`
-        );
-      }
-    }
-
-    if (evidenciasVisita.length > 0) {
-      partes.push(
-        `${pal(contagemEvidencias.total, "Foi vinculada", "Foram vinculadas")} ${qtd(contagemEvidencias.total, "evidência", "evidências")} (${contagemEvidencias.texto}) aos registros da inspeção para fins de rastreabilidade.`
-      );
-    }
-
-    if (pendentesVisita > 0) {
-      partes.push(
-        `A inspeção permanece parcial, com ${qtd(pendentesVisita, "item pendente", "itens pendentes")} no checklist.`
-      );
-    } else {
-      partes.push("O checklist foi integralmente respondido.");
-    }
-
-    return partes.join(" ");
-  }
-
   function atualizarConclusaoRelatorio(valor: string) {
     if (!visitaAtual) return;
     if (!exigirPermissao("relatorios.aprovar", visitaAtual.empresaId)) return;
@@ -3707,7 +3479,7 @@ export default function Home() {
     if (ncsSomenteAbertas > 0) alertas.push(`${qtd(ncsSomenteAbertas, "não conformidade", "não conformidades")} ${pal(ncsSomenteAbertas, "seguirá", "seguirão")} ${pal(ncsSomenteAbertas, "aberta", "abertas")} para acompanhamento`);
     if (ncsSemAcao > 0) alertas.push(`${qtd(ncsSemAcao, "não conformidade", "não conformidades")} ainda ${pal(ncsSemAcao, "está", "estão")} sem ação corretiva definida`);
     if (analisesIAPendentes > 0) alertas.push(`${qtd(analisesIAPendentes, "sugestão", "sugestões")} de análise fotográfica por IA ainda ${pal(analisesIAPendentes, "aguarda", "aguardam")} confirmação ou descarte`);
-    if (!(visitaAtual.conclusao || "").trim()) alertas.push("conclusão / observação final não preenchida — será gerada uma sugestão automática");
+    if (!(visitaAtual.conclusao || "").trim()) alertas.push("o parecer do RT ainda está em branco (o app não escreve parecer)");
 
     const ressalvas = alertas.length
       ? `\n\nAtenção:\n• ${alertas.join("\n• ")}\n\nEssas pendências não impedem o encerramento da inspeção e continuarão disponíveis no pós-visita.`
@@ -3727,15 +3499,14 @@ export default function Home() {
                 "Relatório",
                 agora
               ),
-              conclusao: (visita.conclusao || "").trim() || gerarConclusaoAutomatica(),
             } as any)
           : visita
       ),
     };
 
     await salvarEstadoImediato(novo);
-    setVisitaAtualId(null);
-    setView("visitas");
+    // O relatório já está montado como RASCUNHO: fica na tela do relatório e abre a revisão (o RT confirma e emite).
+    setRevisaoAberta(true);
   }
 
   async function reabrirInspecao() {
@@ -4737,7 +4508,7 @@ export default function Home() {
 
   function atualizarChecklistItem(
     itemId: string,
-    patch: Partial<Pick<ChecklistItem, "status" | "observacao" | "criticidade" | "criticidadeSugerida" | "temperatura" | "porVoz">>
+    patch: Partial<Pick<ChecklistItem, "status" | "observacao" | "criticidade" | "criticidadeSugerida" | "temperatura" | "porVoz" | "avancouSozinho">>
   ) {
     if (!visitaAtual) return;
     if (!exigirPermissao("visitas.executar", visitaAtual.empresaId)) return;
@@ -4758,6 +4529,8 @@ export default function Home() {
           // Responder o item (de qualquer forma) tira a marca de "resposta em lote".
           if (patch.status !== undefined && item.lote) patchNormalizado.lote = undefined;
           if (patch.status !== undefined && item.porVoz && patch.porVoz === undefined) patchNormalizado.porVoz = undefined;
+          // A marca do avanço automático também some quando o RT responde o item de novo.
+          if (patch.status !== undefined && item.avancouSozinho && patch.avancouSozinho === undefined) patchNormalizado.avancouSozinho = undefined;
 
           // Ao sair de "Não Conforme", limpa a observação visível,
           // mas guarda internamente a última constatação para possível retorno.
@@ -5109,6 +4882,8 @@ export default function Home() {
       textoDoAvanco({ posNoAmbiente: doAmbiente.findIndex((registro) => registro.id === item.id) + 1, status, proximoAmbiente, fimDaLista: !alvo }),
       { duracaoMs: DURACAO_DO_AVISO_DO_AVANCO_MS, acao: { rotulo: "Desfazer", aoClicar: desfazer } }
     );
+    // Registro honesto: o relatório mostra quantas respostas foram seguidas do avanço automático.
+    atualizarChecklistItem(item.id, { avancouSozinho: true });
     if (!alvo) return;
     setItemFocoId(alvo.id);
     setAmbienteChecklistAtivo(alvo.ambiente);
@@ -5700,6 +5475,7 @@ export default function Home() {
     if (painelHoje) disponiveis.push("resumo");
     if (podeGerarDossie(usuarioDaSessao)) disponiveis.push("dossie");
     if (painelHoje) disponiveis.push("evolucao");
+    if (painelHoje) disponiveis.push("mapa");
     return disponiveis;
   }
 
@@ -7221,6 +6997,33 @@ export default function Home() {
     popsPendentes: resumoPopsVisita.pendentes,
   };
   const destinoDoCrn = destinoDoPreencherCrn({ perfil: usuarioDaSessao?.perfil, podeGerenciarAcessos: permitido("usuarios.gerenciar") });
+  // Relatório montado SÓ com dados registrados (contas, comparações, mapa); nada de parecer. Vale igual sem sinal.
+  const montadoDoRascunho = view === "relatorio" && visitaAtual
+    ? {
+        ...montarRelatorio({ visita: visitaAtual, visitas: db.visitas, ncs: db.ncs || [], hoje: hojeLocalISO() }),
+        mapa: ordenarPorUrgencia(mapaDeRisco({ empresaId: visitaAtual.empresaId, visitas: db.visitas, ncs: db.ncs || [], hoje: hojeLocalISO(), ambientesCadastrados: empresaVisita?.setoresManual })).map(cartaoParaRelatorio),
+      }
+    : null;
+  const estadoDoRascunho = visitaAtual ? estadoDoRelatorio(db.relatoriosEmitidos, visitaAtual.id) : ({ estado: "Rascunho" } as const);
+  const parecerDoRt = visitaAtual ? (
+    <>
+      {permitido("relatorios.aprovar", visitaAtual.empresaId) && (
+        <label className="no-print block">
+          <span className="sr-only">Parecer do RT</span>
+          <textarea
+            value={visitaAtual.conclusao || ""}
+            onChange={(e) => atualizarConclusaoRelatorio(e.target.value)}
+            placeholder="Escreva aqui o parecer do responsável técnico. O app não escreve parecer nem conclusão."
+            className="min-h-32 w-full rounded-xl border border-slate-300 bg-white p-4 text-sm outline-none focus:border-[var(--brand)]"
+          />
+          <span className="mt-1 block text-xs text-slate-500">O parecer é seu e sai no PDF como você escreveu. Fica salvo junto da visita.</span>
+        </label>
+      )}
+      <div className={permitido("relatorios.aprovar", visitaAtual.empresaId) ? "print-only" : "block"}>
+        {visitaAtual.conclusao?.trim() ? <p className="resumo-texto mr-parecer-texto">{visitaAtual.conclusao.trim()}</p> : <div className="mr-parecer-vazio" role="note">Parecer do RT: a preencher.</div>}
+      </div>
+    </>
+  ) : null;
   const linhasConferenciaRel = conferenciaDoRelatorio({
                   respondidos,
                   totalChecklist,
@@ -7252,6 +7055,8 @@ export default function Home() {
       ? "Relatórios emitidos"
       : view === "dossie"
         ? "Dossiê"
+        : view === "mapa"
+          ? "Mapa de risco"
         : view === "evolucao"
           ? "Evolução"
           : view === "resumo"
@@ -8132,6 +7937,17 @@ export default function Home() {
             onVoltar={() => setView("inicio")}
           />
           </>
+        ) : view === "mapa" && atual && painelHoje ? (
+          <>
+          {abasDeRelatorios("mapa")}
+          <PcMapaDeRisco
+            visitas={db.visitas.filter((visita) => visita.empresaId === atual.id)}
+            ncs={(db.ncs || []).filter((nc) => nc.empresaId === atual.id)}
+            hoje={hojeISO()}
+            ambientesCadastrados={atual.setoresManual}
+            onAbrirCorrecoes={abrirCorrecoesDaEmpresa}
+          />
+          </>
         ) : view === "evolucao" && atual && painelHoje ? (
           <>
           {abasDeRelatorios("evolucao")}
@@ -8469,7 +8285,7 @@ export default function Home() {
 
                 {editingEmpresaId && (secaoEmpresa === "ambientes" || secaoEmpresa === "equipamentos") && (
                   <div className="cen-cadastro">
-                    <ManualBaseFields tipoDoEstabelecimento={form.tipo} responsabilidades={responsabilidadesEmpresa} onResponsabilidadesChange={setResponsabilidadesEmpresa} setores={setoresEmpresa} onSetoresChange={setSetoresEmpresa} vinculos={vinculosEmpresa} onVinculosChange={setVinculosEmpresa} modelos={modelosEmpresa} onModelosChange={setModelosEmpresa} onRenomearAmbiente={renomearAmbienteDaEmpresa} equipamentos={equipamentosEmpresa} onEquipamentosChange={setEquipamentosEmpresa} setoresSalvos={marcadosSalvos.setores} modo="estrutura" />
+                    <ManualBaseFields tipoDoEstabelecimento={form.tipo} responsabilidades={responsabilidadesEmpresa} onResponsabilidadesChange={setResponsabilidadesEmpresa} setores={setoresEmpresa} onSetoresChange={setSetoresEmpresa} vinculos={vinculosEmpresa} onVinculosChange={setVinculosEmpresa} modelos={modelosEmpresa} onModelosChange={setModelosEmpresa} onRenomearAmbiente={renomearAmbienteDaEmpresa} equipamentos={equipamentosEmpresa} onEquipamentosChange={setEquipamentosEmpresa} setoresSalvos={marcadosSalvos.setores} fluxos={fluxosEmpresa} questionarios={db.empresas[editingEmpresaId]?.questionarios} modo="estrutura" />
                   </div>
                 )}
 
@@ -9614,6 +9430,8 @@ export default function Home() {
                   const ultimo = ultimaVersao(db.relatoriosEmitidos || [], visitaAtual.id);
                   return ultimo ? { numero: ultimo.numero, versao: ultimo.versao } : undefined;
                 })()}
+                estado={estadoDoRascunho}
+                onRevisar={() => setRevisaoAberta(true)}
                 onEmitir={() => { if (avisoParaEmitir(visitaAtual.status, itensRespondidos(checklistAtual))) return; setErroDeEmissao(""); setEmitirAberto(true); }}
                 onVerEmitidos={() => setView("relatoriosemitidos")}
               />
@@ -9776,6 +9594,30 @@ export default function Home() {
                 </div>
               )}
             </article>
+
+            {montadoDoRascunho && (
+              <article data-rep="resumo" className="print-card rounded-2xl bg-white p-5 shadow-sm rm-artigo">
+                <div className="text-xs font-extrabold uppercase text-[color:var(--brand)]">
+                  {estadoDoRascunho.estado === "Emitido" ? `Emitido · ${estadoDoRascunho.numero} versão ${estadoDoRascunho.versao}` : "Rascunho para revisão"}
+                </div>
+                <RelatorioMontadoVista dados={montadoDoRascunho} parecer={parecerDoRt} />
+              </article>
+            )}
+
+            {revisaoAberta && montadoDoRascunho && (
+              <PcRevisaoDoRelatorio
+                dados={montadoDoRascunho}
+                estado={estadoDoRascunho}
+                empresa={nomeParaExibir(empresaVisita)}
+                dataDaVisita={fdata(visitaAtual.data)}
+                parecer={parecerDoRt}
+                podeEmitir={podeEmitirRelatorio(usuarioDaSessao) || (!usuarioDaSessao && true)}
+                rotuloDeEmitir={estadoDoRascunho.estado === "Emitido" ? `Confirmar e emitir versão ${estadoDoRascunho.versao + 1}` : "Confirmar e emitir"}
+                avisoParaEmitir={avisoParaEmitir(visitaAtual.status, itensRespondidos(checklistAtual))}
+                onEmitir={() => { setRevisaoAberta(false); setErroDeEmissao(""); setEmitirAberto(true); }}
+                onFechar={() => setRevisaoAberta(false)}
+              />
+            )}
 
             <div className="print-block grid gap-4 lg:grid-cols-3">
               <article className="rounded-2xl bg-white p-5 shadow-sm lg:col-span-2">
@@ -10331,52 +10173,6 @@ export default function Home() {
               </div>
               )}
 
-              <div className="mt-5">
-                {permitido("relatorios.aprovar", visitaAtual.empresaId) && (
-                <label className="no-print block">
-                  <span className="mb-2 block text-sm font-extrabold text-slate-700">
-                    Conclusão / observações do consultor
-                  </span>
-                  <div className="mbp-voice-wrap">
-                    <textarea
-                      value={visitaAtual.conclusao || ""}
-                      onChange={(e) =>
-                        atualizarConclusaoRelatorio(e.target.value)
-                      }
-                      placeholder="Registre aqui a conclusão técnica, orientações gerais, pontos prioritários ou observações finais da visita."
-                      className="min-h-32 w-full rounded-xl border border-slate-300 bg-white p-4 text-sm outline-none focus:border-[var(--brand)]"
-                    />
-                    <VoiceDictationButton
-                      ativo={campoVozAtivo === `relatorio-${visitaAtual.id}`}
-                      melhorando={campoIaAtivo === `relatorio-${visitaAtual.id}`}
-                      onIniciar={() => iniciarDitado(`relatorio-${visitaAtual.id}`, (texto) => atualizarConclusaoRelatorio(juntarTextoDitado(visitaAtual.conclusao || "", texto)))}
-                      onMelhorar={() => melhorarTextoComIa(`relatorio-${visitaAtual.id}`, visitaAtual.conclusao || "", atualizarConclusaoRelatorio, "Conclusão técnica de uma visita de Boas Práticas. Mantenha linguagem profissional, clara e objetiva.")}
-                    />
-                  </div>
-                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-                    <span className="block text-xs text-slate-500">
-                      O conteúdo é salvo junto da visita e incluído no PDF.
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => atualizarConclusaoRelatorio(gerarConclusaoAutomatica())}
-                      className="rounded-lg bg-[var(--brand-soft)] px-3 py-2 text-xs font-extrabold text-[color:var(--ink)]"
-                    >
-                      ✨ Gerar sugestão automática
-                    </button>
-                  </div>
-                </label>
-                )}
-
-                <div className={permitido("relatorios.aprovar", visitaAtual.empresaId) ? "print-only" : "block"}>
-                  <div className="mb-2 text-sm font-extrabold text-slate-700">
-                    Conclusão / observações do consultor
-                  </div>
-                  <div className="min-h-20 whitespace-pre-wrap rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-                    {visitaAtual.conclusao?.trim() || gerarConclusaoAutomatica()}
-                  </div>
-                </div>
-              </div>
 
               <div className="mt-5 rounded-xl border border-slate-200 bg-white p-4 text-xs text-slate-600">
                 <div className="font-extrabold uppercase text-slate-700">Rastreabilidade do relatório</div>

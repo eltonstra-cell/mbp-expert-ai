@@ -352,6 +352,7 @@ export function chaveAtiva(view: string): NavKey | null {
     case "dossie":
     case "resumo":
     case "evolucao":
+    case "mapa":
       return "relatorios";
     default:
       return null;

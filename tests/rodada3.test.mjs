@@ -109,8 +109,9 @@ test("a tela não usa mais o texto genérico como se fosse fonte; mapa antigo e 
   let parcial = 0;
   let sem = 0;
   for (const chave of ["Câmara refrigerada", "Câmara de congelamento", "Sanitários / Vestiários", "Área de resíduos", "Área externa"]) {
-    const inicio = pagina.indexOf(`  "${chave}": [`);
-    const bloco = pagina.slice(inicio, pagina.indexOf("\n  ],", inicio));
+    const antigos = ler("../lib/checklistModelosAntigos.ts");
+    const inicio = antigos.indexOf(`  "${chave}": [`);
+    const bloco = antigos.slice(inicio, antigos.indexOf("\n  ],", inicio));
     const referencias = [...bloco.matchAll(/referencia: "([^"]*)"/g)].map((m) => m[1]);
     assert.equal(referencias.length, 5, chave);
     for (const referencia of referencias) {
@@ -172,7 +173,7 @@ test("quantas perguntas cada setor oficial tem na visita, e o questionário bás
   assert.deepEqual(SETORES_OFICIAIS_MANUAL.map(perguntasDoSetor), [11, 11, 12, 8, 13, 12, 11, 12, 13, 12, 13, 13, 13]);
   assert.equal(PERGUNTAS_DO_QUESTIONARIO_BASICO_VISITA, 3);
   const campos = ler("../components/ManualBaseFields.tsx");
-  assert.ok(campos.includes("Questionário básico · {PERGUNTAS_DO_QUESTIONARIO_BASICO_VISITA} perguntas") && campos.includes("Vincular a um setor oficial"));
+  assert.ok(campos.includes("Questionário básico · {textoDaConta(setor)}") && campos.includes("Vincular a um setor oficial"));
   assert.ok(campos.includes("perde as ") && campos.includes("mantém as "), "avisos ao desmarcar o setor e ao tirar o vínculo");
 });
 

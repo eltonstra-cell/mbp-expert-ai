@@ -109,9 +109,9 @@ test("fluxos: mesma janela; descrição de cada fluxo na opção; título sem 'C
   assert.equal(desmarcado[0].descricao, "Conferimos tudo");
   // sem mudança: o mesmo array (não suja)
   assert.equal(aplicarEscolhaDeFluxos(marcados, [...oficiais], [lista[3].id, lista[0].id]), marcados);
-  // ao marcar um fluxo cujo setor não existe na empresa, o setor vai para o sugerido
+  // ao marcar um fluxo cujo setor padrão não existe na empresa, ele fica SEM setor (o RT escolhe; nada é adivinhado)
   const semSetor = aplicarEscolhaDeFluxos(lista, ["Cozinha / Produção"], [lista[0].id]);
-  assert.equal(semSetor[0].setorVinculado, "Cozinha / Produção");
+  assert.equal(semSetor[0].setorVinculado, "");
   const campos = ler("../components/OperationalFlowsFields.tsx");
   assert.ok(campos.includes('titulo="Fluxos operacionais"') && campos.includes('apoio="Marque os fluxos que existem na sua empresa."'));
   assert.equal(campos.includes("Capítulo 2"), false);

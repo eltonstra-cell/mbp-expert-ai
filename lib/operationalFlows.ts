@@ -40,49 +40,22 @@ export const DEFINICOES_FLUXOS_OPERACIONAIS: DefinicaoFluxoOperacional[] = [
   { tipo: "Entrada e saída de colaboradores", setorPadrao: "", orientacao: "Acesso, uniforme, mãos e objetos pessoais." },
 ];
 
-function chaveAmbiente(valor: string) {
-  return valor
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
-}
-
-const preferenciasAmbientePorFluxo: Record<TipoFluxoOperacional, string[]> = {
-  Recebimento: ["recebimento de mercadorias", "recebimento"],
-  Armazenamento: ["estoque seco", "estoque de materias primas", "estoque"],
-  "Manipulação e produção": ["cozinha", "producao"],
-  "Higienização de FLV": ["higienizacao de hortifrutigranjeiros", "hortifrut"],
-  "Pré-preparo e preparo": ["cozinha", "producao"],
-  "Porcionamento e fracionamento": ["cozinha", "producao"],
-  Congelamento: ["armazenamento congelado", "freezer", "camara fria"],
-  Descongelamento: ["cozinha", "producao"],
-  Distribuição: ["salao de atendimento", "refeitorio", "salao de consumacao"],
-  "Manejo de resíduos": ["armazenamento temporario de residuos", "residuos"],
-  "Entrada e saída de colaboradores": ["sanitarios vestiarios de funcionarios", "vestiario"],
-};
-
 /** Fluxos que o Manual não liga a um setor oficial: ficam sem setor até o RT escolher (nada é inventado). */
 export const FLUXOS_SEM_SETOR_PADRAO: TipoFluxoOperacional[] = DEFINICOES_FLUXOS_OPERACIONAIS.filter((definicao) => !definicao.setorPadrao).map((definicao) => definicao.tipo);
 
+/**
+ * Setor do fluxo na empresa. O vínculo já salvo e existente vale; senão só o setor padrão do Manual, e só se ele existir na empresa.
+ * Sem setor padrão (os 4 fluxos que o Manual não liga a um setor) ou com o setor padrão fora da empresa: "" (o RT escolhe).
+ * Nada é adivinhado por nome parecido nem pelo primeiro setor da lista.
+ */
 export function obterSetorSugeridoParaFluxo(
   tipo: TipoFluxoOperacional,
   setores: string[],
   setorAtual?: string
 ) {
   if (setorAtual && setores.includes(setorAtual)) return setorAtual;
-  if (FLUXOS_SEM_SETOR_PADRAO.includes(tipo)) return "";
-  const setoresComChave = setores.map((setor) => ({ setor, chave: chaveAmbiente(setor) }));
-  for (const preferencia of preferenciasAmbientePorFluxo[tipo]) {
-    const chavePreferencia = chaveAmbiente(preferencia);
-    const encontrado = setoresComChave.find(
-      (item) => item.chave === chavePreferencia || item.chave.includes(chavePreferencia)
-    );
-    if (encontrado) return encontrado.setor;
-  }
-  const padrao = DEFINICOES_FLUXOS_OPERACIONAIS.find((item) => item.tipo === tipo)?.setorPadrao;
-  return setores.find((setor) => setor === padrao) || setores[0] || padrao || "";
+  const padrao = DEFINICOES_FLUXOS_OPERACIONAIS.find((item) => item.tipo === tipo)?.setorPadrao || "";
+  return padrao && setores.includes(padrao) ? padrao : "";
 }
 
 const derivada = (item: string) => `Derivada do Manual, cap. 2, item ${item}`;

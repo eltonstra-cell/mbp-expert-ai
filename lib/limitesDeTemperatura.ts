@@ -90,7 +90,7 @@ export function linhasDeTemperaturaDoRelatorio(checklist: ItemComTemperatura[]):
       continue;
     }
     const indicado = classificarTemperatura(item.temperatura.valor, limite);
-    const base = `${item.ambiente} · ${item.titulo}: ${valor} °C · limite ${textoDoLimite(limite)} (${limite.norma}, item ${limite.itens})`;
+    const base = `${item.ambiente} · ${item.titulo}: ${valor} °C · limite ${textoDoLimite(limite)} (${limite.norma}, item ${limite.itens}, conferido em ${limite.conferidoEm.split("-").reverse().join("/")})`;
     linhas.push(
       indicado === item.status
         ? `${base} · classificado pelo app, confirmado pelo RT.`

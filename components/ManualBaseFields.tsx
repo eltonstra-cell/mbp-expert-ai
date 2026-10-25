@@ -3,11 +3,13 @@
 import Select from "@/components/Select";
 import { useState } from "react";
 import type {
+  ConfigQuestionario,
   EquipamentoSetor,
+  FluxoOperacional,
   PapelResponsabilidadeManual,
   ResponsabilidadeManual,
 } from "@/types";
-import { OPCOES_MODELO_QUESTIONARIO, SETORES_OFICIAIS_MANUAL, agruparEquipamentosPorAmbiente, resumoDosSetoresMarcados } from "@/lib/manualBase";
+import { OPCOES_MODELO_QUESTIONARIO, SETORES_OFICIAIS_MANUAL, agruparEquipamentosPorAmbiente, criarModelosQuestionarioAmbientes, resumoDosSetoresMarcados } from "@/lib/manualBase";
 import { MODELO_GENERICO, ambientesSemQuestionario, bloqueioDeExcluirAmbiente, vincularQuestionarioEmLote } from "@/lib/regrasDoPacote3";
 import { erroDoNovoNome } from "@/lib/renomearAmbiente";
 import { aplicarEscolhaDeSetores } from "@/lib/escolhaEmJanela";
@@ -18,7 +20,7 @@ import { sugerirSetorOficial } from "@/lib/setorOficialSugerido";
 import { textoCurtoDaResponsabilidade, textoDosAtivos } from "@/lib/manualIdentificacao";
 import EscolhaEmJanela from "@/components/EscolhaEmJanela";
 import { nomeCurtoDoSetor } from "@/lib/tiposDeEstabelecimento";
-import { perguntasDoSetor, PERGUNTAS_DO_QUESTIONARIO_BASICO_VISITA } from "@/lib/perguntasDoAmbiente";
+import { perguntasDoAmbiente, perguntasDoSetor } from "@/lib/perguntasDoAmbiente";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
 import VozEquipamentosConferencia, { type ItemParaConferir } from "@/components/VozEquipamentosConferencia";
 import { nomeJaExistente } from "@/lib/ambientesVisita";
@@ -44,6 +46,9 @@ type Props = {
   modo?: "completo" | "responsabilidades" | "ambientes" | "equipamentos" | "estrutura";
   /** Tipo de estabelecimento da empresa: alimenta as sugestões de equipamento de cada ambiente. */
   tipoDoEstabelecimento?: string;
+  /** Fluxos e questionários personalizados da empresa: entram na conta das perguntas que a visita traz (o número mostrado é o real). */
+  fluxos?: FluxoOperacional[];
+  questionarios?: Record<string, ConfigQuestionario>;
 };
 
 function SectionTitle({ title, description }: { title: string; description: string }) {
@@ -70,6 +75,8 @@ export default function ManualBaseFields({
   onRenomearAmbiente,
   modo = "completo",
   tipoDoEstabelecimento,
+  fluxos,
+  questionarios,
 }: Props) {
   const [setorEquipamento, setSetorEquipamento] = useState(setores[0] || SETORES_OFICIAIS_MANUAL[0]);
   const [nomeEquipamento, setNomeEquipamento] = useState("");
@@ -95,6 +102,9 @@ export default function ManualBaseFields({
   const [adicionandoEm, setAdicionandoEm] = useState<string | null>(null);
   const [nomeNoGrupo, setNomeNoGrupo] = useState("");
   const pacoteSugerido = pacoteDoTipo(tipoDoEstabelecimento);
+  // Quantas perguntas a visita vai trazer para este ambiente: a MESMA conta da criação da visita (questionário vinculado, mapa antigo, fluxos).
+  const contaDe = (nome: string) => perguntasDoAmbiente(nome, { modelosQuestionario: criarModelosQuestionarioAmbientes([nome], modelos, vinculos), questionarios, fluxos });
+  const textoDaConta = (nome: string) => { const n = contaDe(nome); return `${n} ${n === 1 ? "pergunta" : "perguntas"}`; };
 
   const setoresParaEquipamentos = setores.length ? setores : [...SETORES_OFICIAIS_MANUAL];
   const mostrarAmbientes = modo === "completo" || modo === "ambientes" || modo === "estrutura";
@@ -168,7 +178,7 @@ export default function ManualBaseFields({
     const vinculadosAosRetirados = Object.entries(vinculos).filter(([nome, oficial]) => retirados.includes(oficial) && setores.includes(nome));
     setAvisoDePerguntas(
       vinculadosAosRetirados
-        .map(([nome, oficial]) => `“${nome}” está vinculado a “${nomeCurtoDoSetor(oficial)}” e mantém as ${perguntasDoSetor(oficial)} perguntas desse setor; o setor oficial sai da lista. Para o ambiente passar ao questionário básico (${PERGUNTAS_DO_QUESTIONARIO_BASICO_VISITA} perguntas), tire o vínculo.`)
+        .map(([nome, oficial]) => `“${nome}” está vinculado a “${nomeCurtoDoSetor(oficial)}” e mantém as ${perguntasDoSetor(oficial)} perguntas desse setor; o setor oficial sai da lista. Para o ambiente passar ao questionário básico, tire o vínculo.`)
         .join(" ")
     );
     const comEquipamentos = retirados.find((setor) => bloqueioDeExcluirAmbiente(setor, equipamentos).bloqueado);
@@ -376,6 +386,7 @@ export default function ManualBaseFields({
                         <>
                           <span className="cad-item-nome">{setor}</span>
                           <span className="cadamb-tipo">{proprio ? "Nome próprio" : "Setor oficial"}</span>
+                          <span className="cadamb-conta" title="Perguntas que a visita traz para este ambiente">{textoDaConta(setor)}</span>
                         </>
                       )}
                     </div>
@@ -410,7 +421,7 @@ export default function ManualBaseFields({
                             value={vinculos[setor] || ""}
                             onChange={(event) => {
                               const { [setor]: _removido, ...resto } = vinculos;
-                              if (vinculos[setor] && !event.target.value) setAvisoDePerguntas(`“${setor}” sem vínculo: perde as ${perguntasDoSetor(vinculos[setor])} perguntas de “${nomeCurtoDoSetor(vinculos[setor])}” e fica com o questionário básico (${PERGUNTAS_DO_QUESTIONARIO_BASICO_VISITA} perguntas).`);
+                              if (vinculos[setor] && !event.target.value) setAvisoDePerguntas(`“${setor}” sem vínculo: perde as ${perguntasDoSetor(vinculos[setor])} perguntas de “${nomeCurtoDoSetor(vinculos[setor])}” e fica com o questionário básico (${textoDaConta(setor)}).`);
                               else setAvisoDePerguntas("");
                               onVinculosChange(event.target.value ? { ...resto, [setor]: event.target.value } : resto);
                             }}
@@ -424,7 +435,7 @@ export default function ManualBaseFields({
                       )}
                       {proprio && semModelo && (
                         <span className="cadamb-aviso" role="status">
-                          Questionário básico · {PERGUNTAS_DO_QUESTIONARIO_BASICO_VISITA} perguntas
+                          Questionário básico · {textoDaConta(setor)}
                           {onModelosChange && <button type="button" className="cadamb-aviso-acao" onClick={() => abrirLote([setor])}>Vincular a um setor oficial</button>}
                         </span>
                       )}
@@ -471,7 +482,7 @@ export default function ManualBaseFields({
                     <label className="cadamb-lote-item">
                       <input type="checkbox" checked={loteSelecionados.includes(setor)} onChange={() => setLoteSelecionados((atual) => (atual.includes(setor) ? atual.filter((item) => item !== setor) : [...atual, setor]))} />
                       <span>{setor}</span>
-                      {semQuestionario.includes(setor) && <span className="cadamb-aviso">Questionário básico · {PERGUNTAS_DO_QUESTIONARIO_BASICO_VISITA} perguntas</span>}
+                      {semQuestionario.includes(setor) && <span className="cadamb-aviso">Questionário básico · {textoDaConta(setor)}</span>}
                     </label>
                   </li>
                 ))}
@@ -524,7 +535,7 @@ export default function ManualBaseFields({
           </div>
           {erroDoNovoAmbiente && <span className="ui-field-error" role="alert">{erroDoNovoAmbiente}</span>}
           {novoAmbiente.trim() && !erroDoNovoAmbiente && (
-            <span className="cadamb-dica" role="status">Nome próprio começa com o questionário básico ({PERGUNTAS_DO_QUESTIONARIO_BASICO_VISITA} perguntas). Depois, vincule a um setor oficial para ter as perguntas dele.</span>
+            <span className="cadamb-dica" role="status">Nome próprio começa com o questionário básico ({textoDaConta(novoAmbiente.trim())}). Depois, vincule a um setor oficial para ter as perguntas dele.</span>
           )}
         </section>
       )}

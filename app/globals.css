@@ -5539,3 +5539,49 @@ html .pc-topbar .pc-busca{flex:1 1 180px;min-width:120px;max-width:380px}
 .nova-form>.nova-campo--cnaeDescricao,.nova-form>.nova-campo--telefone,.nova-form>.nova-campo--horarioFuncionamento{grid-column:span 2}
 @media (max-width:1199px){.nova-form>.nova-campo--cnaeDescricao,.nova-form>.nova-campo--telefone,.nova-form>.nova-campo--horarioFuncionamento{grid-column:span 2}}
 .chk-apoio-fonte{margin:0;padding:0 2px;font-size:.82rem;line-height:1.35;color:#51606c}
+
+/* ===== Pacote 3: fonte da pergunta no celular, número de perguntas no Cadastro ===== */
+.chk-foco-card{position:relative}
+.chk-fonte-i{position:absolute;top:2px;right:2px;display:grid;place-items:center;width:40px;height:40px;border:0;border-radius:50%;background:transparent;font-family:Georgia,serif;font-size:1rem;font-style:italic;color:#51606c;cursor:pointer}
+.chk-fonte-i::before{content:"";position:absolute;width:22px;height:22px;border:1.5px solid #B4C2CE;border-radius:50%}
+.chk-fonte-i[aria-expanded="true"]{color:#12202B}
+.chk-fonte-linha{margin:6px 40px 0 0;font-size:.82rem;line-height:1.35;color:#51606c}
+.cadamb-conta{margin-left:8px;padding:2px 10px;border-radius:999px;background:#EEF1F5;font-size:.82rem;color:#12202B}
+
+/* ===== Pacote 3 (itens 17 e 18): relatório montado e mapa de risco ===== */
+.rm-doc .doc-secao{margin-bottom:14px}
+.rm-doc .resumo-sub{font-size:1.05rem}
+.mr-formula{font-size:.88rem;color:#51606c}
+.mr-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
+.mr-cartao{display:flex;flex-direction:column;gap:4px;width:100%;padding:10px 12px;border:1.5px solid rgba(18,32,43,.2);border-radius:12px;text-align:left;color:#12202B;font:inherit;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+button.mr-cartao{cursor:pointer}
+button.mr-cartao.is-aberto{outline:3px solid #E8B04B;outline-offset:1px}
+.mr-cartao--vermelho{background:#F8D3D3}
+.mr-cartao--laranja{background:#FBDDB8}
+.mr-cartao--amarelo{background:#FAEDB0}
+.mr-cartao--azul{background:#D8EAF8}
+.mr-cartao--cinza{background:#E8ECF0}
+.mr-topo{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.mr-nome{font-weight:700;font-size:1rem}
+.mr-cor{font-size:.8rem}
+.mr-motivo{font-size:.95rem}
+.mr-linha{font-size:.85rem}
+.mr-serie{color:#12202B}
+.mr-amostra{display:inline-block;width:12px;height:12px;margin-right:4px;border:1px solid rgba(18,32,43,.35);border-radius:3px;vertical-align:-1px}
+.mr-amostra--vermelho{background:#F8D3D3}.mr-amostra--laranja{background:#FBDDB8}.mr-amostra--amarelo{background:#FAEDB0}.mr-amostra--azul{background:#D8EAF8}.mr-amostra--cinza{background:#E8ECF0}
+.mr-parecer-vazio{min-height:130px;padding:8px 12px;border:1.5px solid #B4C2CE;border-radius:10px;color:#51606c;font-size:.9rem}
+.mr-parecer-texto{white-space:pre-wrap}
+.mr-tela{display:flex;flex-direction:column;gap:10px;min-height:0}
+.mr-intro{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px}
+.mr-corpo{display:flex;gap:12px;min-height:0;flex:1 1 auto}
+.mr-lista{flex:1 1 auto;min-width:0;max-height:calc(100dvh - 300px);overflow-y:auto;padding-right:4px}
+.mr-detalhe{flex:0 0 380px;max-height:calc(100dvh - 300px);overflow-y:auto}
+@media (max-width:1099px){.mr-corpo{flex-direction:column}.mr-detalhe{flex-basis:auto}.mr-lista{max-height:none}}
+.rev-janela{width:min(1040px,96%)}
+.rev-corpo{padding-top:8px}
+.rev-estado{display:inline-flex;align-items:center;height:28px;padding:0 12px;border-radius:999px;font-size:.85rem;font-weight:600;color:#12202B}
+.rev-estado--rascunho{background:#FEF6E6;border:1.5px solid #E8B04B}
+.rev-estado--emitido{background:#DCEBFA;border:1.5px solid #7FB2E5}
+.rev-faixa{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:0 0 8px;font-size:.92rem;color:#12202B}
+.rev-botao{height:40px}
+@media print{.mr-cartao{break-inside:avoid}.mr-parecer-vazio{min-height:5cm}}

@@ -17,6 +17,7 @@ import { COR_DO_SEGMENTO, rotuloDoSegmento } from "@/lib/checklistSegmentos";
 import { useCapturaCamera } from "@/components/useCapturaMidia";
 import { estadosDosBotoes, gravidadeSugerida } from "@/lib/checklistUi";
 import { textoDeBaseLegal } from "@/lib/conteudoValidado";
+import { fonteParaExibir } from "@/lib/fonteDaPergunta";
 import type { EstadoVoz } from "@/lib/vozLinha";
 import { dependenciasDoNavegador, validarFotoEscolhida } from "@/lib/fotoCompressao";
 import type { ChecklistCriticidade, ChecklistItem, ChecklistStatus } from "@/types";
@@ -130,6 +131,9 @@ export default function ChecklistFocoItem({
   onTemperatura,
 }: Props) {
   const [texto, setTexto] = useState(item.observacao || "");
+  // Celular e tablet: a fonte da pergunta fica atrás de um "i" discreto (no PC ela já aparece no painel de apoio).
+  const [fonteAberta, setFonteAberta] = useState(false);
+  useEffect(() => setFonteAberta(false), [item.id]);
   const areaRef = useRef<HTMLTextAreaElement | null>(null);
   const caixaRef = useRef<HTMLDivElement | null>(null);
   const timerAvanco = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -330,6 +334,12 @@ export default function ChecklistFocoItem({
       })()}
       <div className={`chk-foco-card${destaque ? " is-destaque" : ""}`}>
         <h2 className="chk-foco-title">{item.titulo}</h2>
+        {mostrarApoio && (
+          <button type="button" className="chk-fonte-i" aria-expanded={fonteAberta} aria-label="De onde vem esta pergunta" title="De onde vem esta pergunta" onClick={() => setFonteAberta((valor) => !valor)}>
+            i
+          </button>
+        )}
+        {mostrarApoio && fonteAberta && <p className="chk-fonte-linha" role="note">Fonte: {fonteParaExibir(item.referencia)}</p>}
       </div>
       </div>
 

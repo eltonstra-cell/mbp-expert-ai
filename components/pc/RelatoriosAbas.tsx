@@ -1,8 +1,8 @@
 "use client";
 
-export type AbaDeRelatorios = "emitidos" | "resumo" | "dossie" | "evolucao";
+export type AbaDeRelatorios = "emitidos" | "resumo" | "dossie" | "evolucao" | "mapa";
 
-const ROTULO: Record<AbaDeRelatorios, string> = { emitidos: "Emitidos", resumo: "Resumo", dossie: "Dossiê", evolucao: "Evolução" };
+const ROTULO: Record<AbaDeRelatorios, string> = { emitidos: "Emitidos", resumo: "Resumo", dossie: "Dossiê", evolucao: "Evolução", mapa: "Mapa de risco" };
 
 // O subtítulo de cada tela fica na linha das abas, à direita.
 export const SUBTITULO: Record<AbaDeRelatorios, string> = {
@@ -10,6 +10,7 @@ export const SUBTITULO: Record<AbaDeRelatorios, string> = {
   resumo: "Para imprimir, salvar em PDF ou mandar por WhatsApp",
   dossie: "Um PDF com índice, só desta empresa",
   evolucao: "Conformidade, reincidentes e tempo para resolver",
+  mapa: "Uma cor por ambiente; critério do app, o RT decide",
 };
 
 type Props = {

@@ -6,6 +6,8 @@ import { comprovacaoDaCorrecao } from "./fotosDoItem.ts";
 import { hojeISO, popVigente, situacaoDoPop } from "./popsNorma.ts";
 import { hojeLocalISO } from "./dataLocal.ts";
 import { acessoVigente } from "./validadeDeAcesso.ts";
+import { montarRelatorio } from "./relatorioDaVisita.ts";
+import { cartaoParaRelatorio, mapaDeRisco, ordenarPorUrgencia } from "./mapaDeRisco.ts";
 
 export const AVISO_SEM_ICP = "Não é assinatura digital com certificado ICP-Brasil.";
 export const TEXTO_CRN_PENDENTE = "CRN a preencher";
@@ -92,9 +94,13 @@ export function montarInstantaneo(data: AppDB, visitaId: string, secoes: SecoesD
         ...(vigente?.aprovacao ? { aprovadoPor: vigente.aprovacao.nome, aprovadoEm: vigente.aprovacao.em } : {}),
       };
     });
+  // Relatório montado só com dados registrados (contas e comparações; sem parecer): vai no instantâneo e nunca muda depois de emitido.
+  const montado = montarRelatorio({ visita, visitas: data.visitas, ncs: data.ncs || [], hoje: hojeLocalISO() });
+  montado.mapa = ordenarPorUrgencia(mapaDeRisco({ empresaId: visita.empresaId, visitas: data.visitas, ncs: data.ncs || [], hoje: hojeLocalISO(), ambientesCadastrados: empresa.setoresManual })).map(cartaoParaRelatorio);
   return {
     secoes,
     pops,
+    montado,
     empresa: { nome: empresa.nomeFantasia || empresa.razaoSocial, cnpj: empresa.cnpj, municipio: empresa.municipio, uf: empresa.uf },
     visita: { id: visita.id, data: visita.data, responsavel: visita.responsavel, observacoes: visita.observacoes || "", conclusao: visita.conclusao || "" },
     conformidade: { conformes, naoConformes, respondidos, percentual: respondidos ? Math.round((conformes / respondidos) * 100) : null },
@@ -104,6 +110,7 @@ export function montarInstantaneo(data: AppDB, visitaId: string, secoes: SecoesD
       titulo: nc.titulo,
       ambiente: nc.ambiente,
       criticidade: nc.criticidade,
+      referencia: nc.referencia,
       status: nc.status,
       observacao: nc.observacao || "",
       acaoCorretiva: nc.acaoCorretiva,

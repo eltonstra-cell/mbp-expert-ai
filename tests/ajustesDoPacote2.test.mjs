@@ -69,7 +69,7 @@ test("relatório: temperatura classificada pelo app imprime valor, limite e a ma
   ];
   const linhas = linhasDeTemperaturaDoRelatorio(checklist);
   assert.equal(linhas.length, 2);
-  assert.match(linhas[0], /7 °C · limite até 5 °C \(Portaria SES\/RS nº 799\/2023, item 10\.09, 10\.8, 11\.2 b, 12\.2 a\) · classificado pelo app, confirmado pelo RT\./);
+  assert.match(linhas[0], /7 °C · limite até 5 °C \(Portaria SES\/RS nº 799\/2023, item 10\.09, 10\.8, 11\.2 b, 12\.2 a, conferido em \d{2}\/\d{2}\/\d{4}\) · classificado pelo app, confirmado pelo RT\./);
   assert.match(linhas[1], /o app indicou Não conforme; o RT respondeu Conforme\./);
   const page = ler("../app/page.tsx");
   assert.ok(page.includes("temperaturas-do-relatorio") && page.includes("linhasDeTemperaturaDoRelatorio(visitaAtual.checklist"));

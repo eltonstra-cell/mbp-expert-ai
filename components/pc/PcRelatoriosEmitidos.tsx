@@ -9,6 +9,8 @@ import { quantidade } from "@/lib/plural";
 import { formatarData, formatarDataHora } from "@/lib/dataLocal";
 import { ETIQUETA_SUBSTITUIDA, ETIQUETA_VIGENTE, TODAS_AS_SECOES, agruparEmitidosPorVisita } from "@/lib/relatorioEmitido";
 import type { CabecalhoDeImpressao } from "@/lib/printFooter";
+import RelatorioMontadoVista from "@/components/RelatorioMontadoVista";
+import { fonteParaExibir } from "@/lib/fonteDaPergunta";
 
 const dataHoraBr = (iso: string) => formatarDataHora(iso) || iso;
 const dataBr = (iso: string) => formatarData(iso);
@@ -94,8 +96,15 @@ export default function PcRelatoriosEmitidos({ empresa, relatorios, urlDaFoto, o
                 {textoDoPercentualConforme(cobertura)}. {textoRespondidos(cobertura)}: {textoDasRespostas(cobertura)}.
               </p>
               {inst.visita.observacoes && <p className="resumo-texto">Observações: {inst.visita.observacoes}</p>}
-              {inst.visita.conclusao && <p className="resumo-texto">Conclusão: {inst.visita.conclusao}</p>}
+              {!inst.montado && inst.visita.conclusao && <p className="resumo-texto">Conclusão: {inst.visita.conclusao}</p>}
             </section>
+          )}
+
+          {secoes.resumo && inst.montado && (
+            <RelatorioMontadoVista
+              dados={inst.montado}
+              parecer={inst.visita.conclusao ? <p className="resumo-texto mr-parecer-texto">{inst.visita.conclusao}</p> : <div className="mr-parecer-vazio" role="note">Sem parecer escrito neste relatório.</div>}
+            />
           )}
 
           {secoes.ambientes && (
@@ -146,6 +155,7 @@ export default function PcRelatoriosEmitidos({ empresa, relatorios, urlDaFoto, o
                         <span className="doc-linha">
                           {nc.ambiente} · {nc.criticidade} · {nc.status}
                         </span>
+                        <span className="doc-linha">Fonte: {fonteParaExibir(nc.referencia)}</span>
                         <span className="doc-linha">
                           Ação: {nc.acaoCorretiva || "não definida"} · Responsável: {nc.responsavelAcao || "não definido"} · Prazo: {nc.prazo ? dataBr(nc.prazo) : "não definido"}
                           {nc.resolvidaEm ? ` · Resolvida em ${dataBr(nc.resolvidaEm)}` : ""}

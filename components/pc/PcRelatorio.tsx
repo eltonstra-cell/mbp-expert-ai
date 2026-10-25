@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { mensagemDoRelatorio, pendenciasDoRelatorio, type DestinoConferencia, type LinhaConferencia } from "@/lib/reportCheck";
+import { TEXTO_DO_RASCUNHO, type EstadoDoRelatorio } from "@/lib/relatorioDaVisita";
 
 export type SecaoRelatorio = "resumo" | "ambientes" | "ncs" | "evidencias" | "pops";
 
@@ -36,6 +37,10 @@ type Props = {
   /** RT e Administrador emitem o relatório assinado (número e data atribuídos pelo servidor). */
   podeEmitir?: boolean;
   emitido?: { numero: string; versao: number };
+  /** Rascunho até o RT emitir; depois Emitido. */
+  estado?: EstadoDoRelatorio;
+  /** Abre a janela "Revisar" (relatório já montado, parecer do RT, "Confirmar e emitir"). */
+  onRevisar?: () => void;
   onEmitir?: () => void;
   onVerEmitidos?: () => void;
 };
@@ -59,6 +64,8 @@ export default function PcRelatorio({
   onVoltar,
   podeEmitir = false,
   emitido,
+  estado,
+  onRevisar,
   onEmitir,
   onVerEmitidos,
 }: Props) {
@@ -104,6 +111,11 @@ export default function PcRelatorio({
               )}
             </div>
           )}
+          {onRevisar && (
+            <button type="button" className="ui-btn ui-btn--secondary rev-botao" onClick={onRevisar}>
+              Revisar
+            </button>
+          )}
           {onVerEmitidos && (
             <button type="button" className="ui-btn ui-btn--secondary" onClick={onVerEmitidos}>
               Relatórios emitidos
@@ -112,7 +124,7 @@ export default function PcRelatorio({
           {podeEmitir && onEmitir && (
             <span className="rel-acao-com-aviso">
               <button type="button" className={`ui-btn ui-btn--primary${avisoEmitir ? " is-apagado" : ""}`} aria-disabled={Boolean(avisoEmitir)} aria-describedby={avisoEmitir ? "aviso-emitir" : undefined} onClick={avisoEmitir ? undefined : onEmitir}>
-                {emitido ? `Emitir versão ${emitido.versao + 1}` : "Emitir assinado"}
+                {emitido ? `Confirmar e emitir versão ${emitido.versao + 1}` : "Confirmar e emitir"}
               </button>
               {avisoEmitir && <span id="aviso-emitir" className="ui-field-error" role="status">{avisoEmitir}</span>}
             </span>
@@ -136,6 +148,12 @@ export default function PcRelatorio({
         </div>
       </div>
 
+      {estado && (
+        <div className="rev-faixa" role="status">
+          <span className={`rev-estado rev-estado--${estado.estado === "Emitido" ? "emitido" : "rascunho"}`}>{estado.estado === "Emitido" ? `Emitido · ${estado.numero} versão ${estado.versao}` : "Rascunho"}</span>
+          <span>{estado.estado === "Emitido" ? "Alterar o parecer gera uma nova versão; a anterior fica guardada." : TEXTO_DO_RASCUNHO}</span>
+        </div>
+      )}
       <div className={`pc-rep-banner ${mensagem.pronto ? "is-ok" : "is-warn"}`} role="status">
         {mensagem.texto}
       </div>

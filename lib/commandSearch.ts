@@ -5,7 +5,7 @@ import { GRUPOS_DA_CENTRAL, ROTULO_DA_SUBABA, grupoDaSubaba, type SubAbaCentral 
 // O índice é montado só com o que o perfil já pode ver (itens do menu filtrados por
 // permissão, empresas/visitas/ambientes/itens que a tela já carregou). Nada é registrado em log.
 
-export type AbaDeRelatorios = "emitidos" | "resumo" | "dossie" | "evolucao";
+export type AbaDeRelatorios = "emitidos" | "resumo" | "dossie" | "evolucao" | "mapa";
 
 export type GrupoBusca = "ir" | "agir" | "itens" | "empresas";
 
@@ -184,7 +184,7 @@ const SINONIMOS_NAV: Partial<Record<NavKey, string[]>> = {
   acompanhamento: ["acompanhar", "correcao"],
   relatorio: ["pdf", "imprimir", "exportar"],
   pops: ["procedimentos", "documentos"],
-  relatorios: ["relatorios emitidos", "dossie", "resumo", "evolucao"],
+  relatorios: ["relatorios emitidos", "dossie", "resumo", "evolucao", "mapa de risco"],
   acessos: ["usuarios", "permissoes", "pessoas"],
   ajuda: ["guias", "duvidas", "manual"],
 };
@@ -224,6 +224,7 @@ const ROTULO_DA_ABA_DE_RELATORIOS: Record<AbaDeRelatorios, { titulo: string; rot
   resumo: { titulo: "Resumo de uma página", rotulo: "Resumo", sinonimos: ["resumo", "uma pagina", "enviar resumo"] },
   dossie: { titulo: "Dossiê da empresa", rotulo: "Dossiê", sinonimos: ["dossie", "fiscalizacao", "documentos reunidos"] },
   evolucao: { titulo: "Evolução da empresa", rotulo: "Evolução", sinonimos: ["evolucao", "historico de notas", "melhora"] },
+  mapa: { titulo: "Mapa de risco por ambiente", rotulo: "Mapa de risco", sinonimos: ["mapa de risco", "risco", "cor por ambiente", "semaforo"] },
 };
 
 const SINONIMOS_SUBABA: Record<SubAbaCentral, string[]> = {

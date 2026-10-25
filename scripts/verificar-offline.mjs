@@ -373,6 +373,36 @@ try {
   await foto("14-mais-celular");
   registrar("14b. Mais em seções com uma linha de apoio por item e sem a etiqueta 'novo'", await js(`(()=>{const t=document.querySelector(".campo-tela--mais")?.innerText||"";const secoes=["Da visita atual","Cadastro e documentos","Conta e app","Ações"].every((x)=>t.includes(x));const apoio=document.querySelectorAll(".campo-mais-sub").length;return secoes&&apoio>=8&&!/novo/i.test(t.replace(/novos?/gi,"x"))&&t.includes("Meu perfil")&&t.includes("Trocar empresa")&&t.includes("Sair")&&t.includes("Usar versão completa agora")})()`));
   registrar("14c. Mais: atalho '+ Nova empresa' em Empresas; o resto rola por dentro e a página não rola", await js(`(()=>{const t=document.querySelector(".campo-tela--mais")?.innerText||"";const r=document.querySelector(".campo-mais-rolagem");return t.includes("+ Nova empresa")&&!!r&&getComputedStyle(r).overflowY==="auto"&&document.documentElement.scrollHeight<=innerHeight+2})()`));
+
+  // 15. Relatório montado como RASCUNHO (Revisar) e Mapa de risco, no PC, sem sinal.
+  await n.enviar("Emulation.clearDeviceMetricsOverride");
+  await flag("__off", true);
+  await evento("offline");
+  await n.ir(app.base);
+  await esperar(async () => js('!!document.querySelector(".pc-side")'), 20000);
+  await n.esperar(1500);
+  await js('[...document.querySelectorAll("button")].find((b) => b.innerText.trim().startsWith("Relatório"))?.click()');
+  const abriuRelatorio = await esperar(async () => js('!!document.querySelector(".rev-faixa")'), 15000);
+  registrar("15a. Relatório da visita mostra o estado 'Rascunho' e o botão Revisar (sem sinal)", abriuRelatorio && /Rascunho/.test(await texto()) && (await js('[...document.querySelectorAll("button")].some((b) => b.innerText.trim() === "Revisar")')));
+  await js('[...document.querySelectorAll("button")].find((b) => b.innerText.trim() === "Revisar")?.click()');
+  await n.esperar(500);
+  await foto("15-revisar");
+  registrar("15b. Revisar: resumo, pontuação com a fórmula visível, comparação, marcas, mapa e Parecer do RT VAZIO", await js(`(()=>{const t=document.querySelector(".rev-janela")?.innerText||"";const parecer=document.querySelector(".rev-janela textarea");return ["Resumo da visita","Pontuação por setor","Como se calcula","Comparação com a visita anterior","Como as respostas foram registradas","Mapa de risco por ambiente","Parecer do RT"].every((x)=>t.includes(x))&&t.includes("critério do app, não exigência de norma")&&!!parecer&&parecer.value===""&&!t.includes("aprovado")&&!t.includes("reprovado")})()`));
+  registrar("15c. Revisar tem 'Confirmar e emitir' e o aviso de que o parecer é do RT (o app não escreve parecer)", await js(`(()=>{const t=document.querySelector(".rev-janela")?.innerText||"";return t.includes("Confirmar e emitir")&&t.includes("O parecer é do RT")||t.includes("o app não escreve parecer")})()`));
+  await js('[...document.querySelectorAll(".rev-janela button")].find((b) => b.innerText.trim() === "Fechar")?.click()');
+  await n.esperar(300);
+  await js('[...document.querySelectorAll("button")].find((b) => b.innerText.trim().startsWith("Relatórios"))?.click()');
+  await n.esperar(800);
+  const abriuAba = await js('(()=>{const a=[...document.querySelectorAll(".rel-aba")].find((b)=>b.innerText.trim()==="Mapa de risco");if(!a)return false;a.click();return true})()');
+  await n.esperar(700);
+  await foto("15-mapa");
+  registrar("15d. Aba 'Mapa de risco': um cartão por ambiente com cor, motivo em uma linha e tendência; 'Ver a regra' abre a regra", abriuAba && await js(`(()=>{const c=[...document.querySelectorAll(".mr-cartao")];if(c.length<1)return false;const t=document.querySelector(".mr-tela").innerText;const b=[...document.querySelectorAll("button")].find((x)=>x.innerText.trim()==="Ver a regra");if(!b)return false;b.click();return c.every((x)=>/mr-cartao--(vermelho|laranja|amarelo|azul|cinza)/.test(x.className))&&t.includes("critério do app")&&/(vermelho|laranja|amarelo|azul|cinza|sem dados)/i.test(t)})()`));
+  await n.esperar(300);
+  registrar("15e. A regra aparece escrita (critério do app) e o toque no ambiente mostra as correções dele", await js(`(()=>{const t=document.querySelector(".mr-tela").innerText;const regra=t.includes("Regra da cor")&&t.includes("Cinza (sem dados)");const c=document.querySelector("button.mr-cartao");if(c)c.click();return regra&&!!c})()`));
+  await n.esperar(300);
+  registrar("15f. Toque no ambiente abre o painel de correções com 'Abrir correções' (nada decidido sozinho)", await js('!!document.querySelector(".mr-detalhe")&&[...document.querySelectorAll(".mr-detalhe button")].some((b)=>b.innerText.trim()==="Abrir correções")'));
+  await flag("__off", false);
+  await evento("online");
   await n.enviar("Emulation.clearDeviceMetricsOverride");
 } catch (erro) {
   registrar(`erro na verificação: ${erro.message}`, false);
