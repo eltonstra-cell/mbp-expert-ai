@@ -53,7 +53,7 @@ import { estadoVisivelDaEvidencia, reconciliarComEvidencias } from "@/lib/filaRe
 import { armazemDoAparelho } from "@/lib/filaEvidenciasIdb";
 import { MENSAGEM_SEM_NORMA_APLICADA, acaoCorretivaDoPopVigente, popVigente, avisoDePopsComNormaAlterada, conjuntoDaEmpresa, criarPopsFaltantesDoConjunto, CONJUNTO_DA_NORMA, criarPopDoTextoBase } from "@/lib/popsNorma";
 import AccessPreparationPanel from "@/components/AccessPreparationPanel";
-import AppNavigation, { type CartaoVisita, type ContagemEtapa } from "@/components/AppNavigation";
+import AppNavigation from "@/components/AppNavigation";
 import AppTopbar from "@/components/AppTopbar";
 import PcInicio from "@/components/pc/PcInicio";
 import RegistrarAgoraModal from "@/components/pc/RegistrarAgoraModal";
@@ -5511,6 +5511,9 @@ export default function Home() {
         else abrirAtalhoDaVisita("evidencias");
         return;
       case "ncs":
+        if (ehPC && !modoVisitaNoMenu) abrirCorrecoesDaEmpresa();
+        else abrirAtalhoDaVisita(key);
+        return;
       case "plano":
       case "relatorio":
         abrirAtalhoDaVisita(key);
@@ -6820,28 +6823,6 @@ export default function Home() {
       )
     : [];
   // Mesmos números que a Central da visita já usa; nenhuma consulta nova.
-  const contagensMenu: Partial<Record<NavKey, ContagemEtapa>> = dentroDaVisita
-    ? {
-        ambientes: { texto: String(quantidadeDeAmbientes(infosAmbientes)) },
-        checklist: { texto: progressoChecklist.curto },
-        evidencias: { texto: contagemEvidencias.texto },
-        ncs: { texto: `${ncsAbertas} abertas`, tom: "nc" },
-        plano: { texto: `${ncsAbertas} abertas`, tom: "pend" },
-      }
-    : {};
-  const cartaoVisita: CartaoVisita | null =
-    dentroDaVisita && visitaAtual
-      ? {
-          rotulo: visitaAtual.status === "Concluída" ? "Visita concluída" : "Visita em andamento",
-          empresa: nomeEmFormatoNatural(empresaVisita?.nomeFantasia) || "Empresa",
-          data: fdata(visitaAtual.data),
-          percentual: percentualChecklist,
-          conformes: conformesChecklist,
-          naoConformes: naoConformesChecklist,
-          naoSeAplica: naoSeAplicaChecklist,
-          pendentes: pendentesChecklist,
-        }
-      : null;
   const podeUsarChecklistNaBusca = permitido("visitas.executar", visitaAtual?.empresaId ?? atual?.id);
   const entradaDeDestinos: EntradaDeDestinos | null = caixaAberta || buscaNaBarraAtiva
     ? {
@@ -7089,8 +7070,10 @@ export default function Home() {
             ? "Central"
             : itemDaTela?.rotulo || "";
   // No PC o menu não lista as etapas da visita: dentro dela, o item ativo é "Visitas".
-  const chaveMenuAtivo: NavKey | null = ehPC && VISIT_VIEWS.includes(view) ? null : chaveDaTela;
-  const visitaAbertaNoMenu = !!visitaAtual && (VISIT_VIEWS.includes(view) || visitaAtual.status !== "Concluída");
+  // Modo visita do menu: só dentro das telas da visita (a lista de Correções da empresa toda é do menu geral).
+  const modoVisitaNoMenu = !!visitaAtual && VISIT_VIEWS.includes(view) && !(view === "correcoes" && correcoesDaEmpresa);
+  const chaveMenuAtivo: NavKey | null = ehPC && modoVisitaNoMenu ? null : view === "correcoes" ? "ncs" : chaveDaTela;
+  const ncsVencidasDaEmpresa = (db.ncs || []).filter((nc) => nc.empresaId === atual?.id && !nc.inativaNoChecklist && nc.status !== "Resolvida" && !!nc.prazo && nc.prazo < hojeISO()).length;
   // Central da Empresa: "← Central da Empresa › Documentos ▾". O menu troca de seção e substitui os três botões que ficavam numa linha própria.
   const naCentralComMenu =
     !dentroDaVisita && !!atual && ((view === "pops" && (telaVisivel("pops") || ehFiscal)) || (view === "empresas" && showEmpresaForm && !!editingEmpresaId && permitido("empresas.editar")));
@@ -7109,8 +7092,9 @@ export default function Home() {
           },
         }
       : undefined;
-  const caminhoTopo = dentroDaVisita
-    ? ["Visitas", `Visita ${numeroVisitaPorId.get(visitaAtual?.id || "") || "—"}`, rotuloDaTela || "Central"]
+  // A lista de Correções da empresa toda não é uma tela de uma visita: o caminho mostra só "Correções".
+  const caminhoTopo = dentroDaVisita && !(view === "correcoes" && correcoesDaEmpresa)
+    ? [`Visita ${numeroVisitaPorId.get(visitaAtual?.id || "") || "—"}`, rotuloDaTela || "Central"]
     : secaoDoTopo
       ? ["Central da Empresa"]
       : [rotuloDaTela || "Início"];
@@ -7236,26 +7220,16 @@ export default function Home() {
         ativa={chaveMenuAtivo}
         onSelecionar={irParaMenu}
         ncsAbertas={ncsAbertas}
-        maisAberto={menuMaisAberto}
-        onAbrirMais={() => setMenuMaisAberto(true)}
-        onFecharMais={() => setMenuMaisAberto(false)}
-        utilitarias={[
-          { id: "texto", rotulo: "Texto", onClick: () => { setTamanhoTextoRascunho(tamanhoTexto); setPainelTamanhoTextoAberto(true); } },
-          { id: "sincronizar", rotulo: fila.resumo.pendentes + pendentesDoEstado ? `Sincronizar · ${fila.resumo.pendentes + pendentesDoEstado} ${fila.resumo.pendentes + pendentesDoEstado === 1 ? "pendente" : "pendentes"}` : "Sincronizar", onClick: () => { setMenuMaisAberto(false); void atualizarNuvemManualmente(); setView("fila"); } },
-          ...(fila.resumo.pendentes > 0 ? [{ id: "enviar-agora" as const, rotulo: "Enviar agora", onClick: () => { setMenuMaisAberto(false); void enviarTudoAgora(); } }] : []),
-          { id: "modo", rotulo: "Modo de tela", onClick: () => { setMenuMaisAberto(false); setView("modotela"); } },
-          { id: "sobre", rotulo: "Sobre", onClick: () => void avisar(`${BRAND.name}\n${BRAND.subtitle}`, { titulo: "Sobre" }) },
-          { id: "sair", rotulo: "Sair", desabilitado: saindo, onClick: () => { setMenuMaisAberto(false); void sairDoSistema(); } },
-        ]}
+        vencidas={ncsVencidasDaEmpresa}
         sincronizacao={{ estado: seloAtual.estado, rotulo: seloAtual.rotulo, onClick: tocarNoSelo }}
-        contagens={contagensMenu}
-        visita={cartaoVisita}
         onSair={() => void sairDoSistema()}
-        visitaMenu={ehPC && visitaAbertaNoMenu ? { numero: visitaAtual ? numeroVisitaPorId.get(visitaAtual.id) : undefined, empresa: nomeSemNumerosNoInicio(nomeParaExibir(empresaVisita)), cor: empresaVisita ? corDaEmpresa(empresaVisita) : undefined, data: `${visitaAtual ? fdata(visitaAtual.data).slice(0, 5) : ""} · ${visitaAtual?.status === "Concluída" ? "concluída" : "em andamento"}`, passos: passosDaTrilha(dadosTrilha).filter((passo) => telaVisivel(passo.chave === "pops" ? "popsVisita" : (passo.chave as TelaKey))), atual: passoAtualDaTrilha, emTelaDaVisita: VISIT_VIEWS.includes(view) } : null}
+        visitaMenu={ehPC && modoVisitaNoMenu && visitaAtual ? { numero: numeroVisitaPorId.get(visitaAtual.id), dataCurta: fdata(visitaAtual.data).slice(0, 5), percentual: percentualChecklist, passos: passosDaTrilha(dadosTrilha).filter((passo) => telaVisivel(passo.chave === "pops" ? "popsVisita" : (passo.chave as TelaKey))), atual: passoAtualDaTrilha } : null}
         onIrPasso={irParaPasso}
+        onFinalizar={() => void finalizarInspecao()}
+        podeFinalizar={!!visitaAtual && visitaAtual.status !== "Concluída" && permitido("visitas.concluir", visitaAtual.empresaId)}
+        onSairDaVisita={() => void navegarPrincipal("inicio")}
         onMeuPerfil={() => setPerfilAberto(true)}
         usuario={usuarioDaSessao ? { nome: usuarioDaSessao.nome, perfil: usuarioDaSessao.perfil, iniciais: iniciaisUsuario || "" } : null}
-        versao={pacote.version.split(".").slice(0, 2).join(".")}
         saindo={saindo}
       />
 
@@ -7652,7 +7626,7 @@ export default function Home() {
           variante={view === "inicio" && ehPC && !ehFiscal ? "inicio" : undefined}
           caminho={caminhoTopo}
           subtituloDoCaminho={view === "relatorio" && visitaAtual ? `${fdata(visitaAtual.data)} · ${visitaAtual.status === "Concluída" ? "inspeção concluída" : "inspeção em andamento"}` : undefined}
-          onPrimeiro={() => navegarPrincipal("visitas")}
+          onPrimeiro={() => (dentroDaVisita ? setView("visita") : navegarPrincipal("visitas"))}
           empresaAtiva={atual ? nomeDeExibicaoDaEmpresa(atual) : null}
           empresaCor={atual ? corDaEmpresa(atual) : undefined}
           empresaIniciais={atual ? iniciaisDaEmpresa(atual.nomeFantasia || "") : ""}
@@ -8624,7 +8598,6 @@ export default function Home() {
                 )
               )}
               onVerNoChecklist={(itemId) => verItemNoChecklist(itemId)}
-              responsavelPadrao={usuarioDaSessao?.nome || ""}
             />
         ) : view === "popsvisita" && visitaAtual ? (
             <PcPopsVisita

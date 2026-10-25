@@ -92,7 +92,6 @@ export default function PcInicio({ nome, avisoPops = null, caixas, onNovaVisita 
   const semPendencias = linhas.length === 0;
   const contador = colunas ? contadorDoPainel(colunas) : "";
   const semVencimentos = colunas ? colunas.vencendo.length === 0 : true;
-  const limiteDeVencendo = Math.min(LIMITE_DE_LINHAS_DO_PAINEL, LINHAS_DE_CORRECAO);
 
   const linhaDeConfiguracao = configuracao && (
     <p className="ini3-config" role="status">
@@ -111,6 +110,7 @@ export default function PcInicio({ nome, avisoPops = null, caixas, onNovaVisita 
     ...(atalhos?.onEvolucao ? [{ rotulo: "Evolução", onClick: atalhos.onEvolucao }] : []),
     ...(atalhos?.onEmitidos ? [{ rotulo: "Relatórios emitidos", onClick: atalhos.onEmitidos }] : []),
     ...(atalhos?.onDossie ? [{ rotulo: "Dossiê", onClick: atalhos.onDossie }] : []),
+    ...(colunas && !semVencimentos ? [{ rotulo: `Vencimentos em 30 dias (${colunas.vencendo.length})`, onClick: colunas.onTodosVencimentos }] : []),
     ...(colunas?.onLembrete ? [{ rotulo: "Lembrete ao responsável", onClick: colunas.onLembrete }] : []),
     ...(configuracao ? [{ rotulo: "Guia de uso em Ajuda e guias", onClick: configuracao.onGuia }] : []),
   ];
@@ -160,15 +160,15 @@ export default function PcInicio({ nome, avisoPops = null, caixas, onNovaVisita 
         </section>
       )}
 
-      {colunas && semPendencias && semVencimentos && (
+      {colunas && semPendencias && (
         <section className="ini2-tudo-em-dia" aria-label="Tudo em dia">
           <h2 className="ini2-tudo-titulo">Tudo em dia</h2>
-          <p className="ini2-tudo-sub">Nada vencido e nada vencendo nos próximos 30 dias.</p>
+          <p className="ini2-tudo-sub">{semVencimentos ? "Nada vencido e nada vencendo nos próximos 30 dias." : "Nada vencido."}</p>
         </section>
       )}
 
-      {colunas && !(semPendencias && semVencimentos) && (
-        <div className={`ini3-colunas${semPendencias || semVencimentos ? " is-uma" : ""}`}>
+      {colunas && !semPendencias && (
+        <div className="ini3-colunas is-uma">
           {!semPendencias && (
             <section className="ini3-secao ini3-correcoes" aria-label="Hoje precisa de você">
               <h2 className="ini3-rotulo">CORREÇÕES</h2>
@@ -196,36 +196,6 @@ export default function PcInicio({ nome, avisoPops = null, caixas, onNovaVisita 
                   <button type="button" className="ini2-link" onClick={colunas.onVerTodasCorrecoes}>Ver todas ({linhas.length})</button>
                 </div>
               )}
-            </section>
-          )}
-
-          {!semVencimentos && (
-            <section className="ini3-secao ini3-vencendo" aria-label="Vencendo em 30 dias">
-              <h2 className="ini3-rotulo">VENCENDO</h2>
-              <h3 className="ini3-titulo">Em 30 dias</h3>
-              <div className="ini3-resumo">
-                <span>{colunas.vencendo.length} {colunas.vencendo.length === 1 ? "item" : "itens"}</span>
-              </div>
-              <div className="ini3-lista">
-                {colunas.vencendo.slice(0, limiteDeVencendo).map((item) => {
-                  const quadrado = quadradoDoVencimento(item.validade, item.dias);
-                  return (
-                    <button key={item.id} type="button" className="ini3-linha ini3-linha--vence" onClick={() => colunas.onAbrirVencimento(item)}>
-                      <span className={`ini2-data ini2-data--${quadrado.tom}`} aria-hidden="true">
-                        <span className="ini2-data-dia">{quadrado.dia}</span>
-                        <span className="ini2-data-mes">{quadrado.mes}</span>
-                      </span>
-                      <span className="ini3-linha-textos">
-                        <span className="ini3-linha-titulo">{item.titulo}</span>
-                        <span className="ini3-linha-sub">{item.quem} · {textoDoPrazoEm(item.dias)}</span>
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="ini3-rodape-lista">
-                <button type="button" className="ini2-link" onClick={colunas.onTodosVencimentos}>Ver todos os vencimentos →</button>
-              </div>
             </section>
           )}
         </div>

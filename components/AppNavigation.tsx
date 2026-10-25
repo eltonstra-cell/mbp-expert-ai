@@ -1,69 +1,34 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { LogoHorizontal, LogoSymbol } from "@/components/BrandLogo";
+import { LogoSymbol } from "@/components/BrandLogo";
 import { NavIcon, type NavIconName } from "@/components/NavIcons";
 import type { PassoTrilha, PassoVisita } from "@/lib/visitTrail";
-import {
-  barraInferior,
-  itensDaBarra,
-  itensDaFolhaMais,
-  iniciaisDaEmpresa,
-  itensVisiveis,
-  menuLateralPC,
-  registrarDisponivel,
-  trilhoDoTablet,
-  type NavContexto,
-  type NavItem,
-  type NavKey,
-  type NavTom,
-} from "@/lib/navigation";
-
-export type AcaoUtilitaria = {
-  id: "texto" | "sincronizar" | "enviar-agora" | "sobre" | "sair" | "modo";
-  rotulo: string;
-  onClick: () => void;
-  desabilitado?: boolean;
-};
-
-export type ContagemEtapa = { texto: string; tom?: "nc" | "pend" };
-
-export type CartaoVisita = {
-  rotulo: string;
-  empresa: string;
-  data: string;
-  percentual: number;
-  conformes: number;
-  naoConformes: number;
-  naoSeAplica: number;
-  pendentes: number;
-};
+import { itensVisiveis, registrarDisponivel, type NavContexto, type NavItem, type NavKey } from "@/lib/navigation";
 
 type Props = {
   contexto: NavContexto;
   ativa: NavKey | null;
   onSelecionar: (key: NavKey) => void;
-  /** Quantidade de não conformidades abertas da visita (badge do item). */
+  /** Correções abertas da visita (modo visita). */
   ncsAbertas: number;
-  /** Contagens exibidas ao lado das etapas (mesmos dados da Central da visita). */
-  contagens: Partial<Record<NavKey, ContagemEtapa>>;
-  /** Dados do cartão "Visita em andamento" (só existe dentro de uma visita). */
-  visita: CartaoVisita | null;
-  maisAberto: boolean;
-  onAbrirMais: () => void;
-  onFecharMais: () => void;
-  utilitarias: AcaoUtilitaria[];
+  /** Correções vencidas da empresa ativa (modo geral). */
+  vencidas: number;
   sincronizacao: { estado: "ok" | "erro" | "pendente" | "sem-sinal"; rotulo: string; onClick: () => void };
   onSair: () => void;
   saindo: boolean;
-  /** Pessoa conectada (cartão do rodapé do menu do PC); null no modo local. */
+  /** Pessoa conectada (avatar do rodapé do trilho); null no modo local. */
   usuario: { nome: string; perfil: string; iniciais: string } | null;
-  versao: string;
-  /** Grupo "Visita atual" do menu do PC; null quando não há visita aberta. */
-  visitaMenu?: { numero?: number; empresa: string; cor?: string; data: string; passos: PassoTrilha[]; atual: PassoVisita | null; emTelaDaVisita: boolean } | null;
-  /** Abre a janela "Meu perfil" (menu do cartão do usuário). */
-  onMeuPerfil?: () => void;
+  /** Modo visita: visita aberta e o usuário dentro dela; null no modo geral. */
+  visitaMenu?: { numero?: number; dataCurta: string; percentual: number; passos: PassoTrilha[]; atual: PassoVisita | null } | null;
   onIrPasso?: (passo: PassoVisita) => void;
+  /** "Finalizar" abre a revisão que já existe (sem mudar o fluxo de emissão). */
+  onFinalizar?: () => void;
+  podeFinalizar?: boolean;
+  /** "Sair" da visita: volta ao modo geral; a visita continua em andamento. */
+  onSairDaVisita?: () => void;
+  /** Abre a janela "Meu perfil" (menu do avatar). */
+  onMeuPerfil?: () => void;
 };
 
 const ICONE_DO_PASSO: Record<PassoVisita, NavIconName> = {
@@ -75,34 +40,38 @@ const ICONE_DO_PASSO: Record<PassoVisita, NavIconName> = {
   relatorio: "relatorio",
 };
 
-const CHAVE_GRUPO_VISITA = "mbp-menu-visita-atual";
+const PRINCIPAIS: NavKey[] = ["inicio", "visitas", "ncs", "pops", "relatorios"];
+const EXTRAS: NavKey[] = ["empresas", "cadastros", "ajuda", "acessos"];
+const ROTULO_DO_ITEM: Partial<Record<NavKey, string>> = { ncs: "Correções", pops: "POPs", relatorios: "Relatórios", ajuda: "Ajuda e guias", acessos: "Administração" };
+const ROTULO_DO_PASSO: Record<PassoVisita, string> = { central: "Visita", checklist: "Checklist", evidencias: "Evidências", correcoes: "Correções", pops: "POPs", relatorio: "Relatório" };
+const CIRCUNFERENCIA = 2 * Math.PI * 15;
 
-function Tile({
-  tom,
-  icone,
-  tamanho,
-  ativo = false,
-  badge = 0,
-}: {
-  tom: NavTom;
-  icone: NavIconName;
-  tamanho: number;
-  ativo?: boolean;
-  badge?: number;
-}) {
-  // "indigo" (Visitas) é o tom neutro: fundo cinza claro e ícone #3D5160.
-  const neutro = tom === "indigo";
-  const estilo = {
-    width: tamanho,
-    height: tamanho,
-    background: `linear-gradient(160deg, var(--tile-${tom}-from), var(--tile-${tom}-to))`,
-    ...(neutro ? { color: "#3D5160", border: "1.5px solid #C9D3DB" } : {}),
-  } as CSSProperties;
+/** Fecha com Esc e ao tocar fora (o "Mais" e o menu do avatar). */
+function useFechar(aberto: boolean, fechar: () => void, dentro: Array<{ current: HTMLElement | null }>) {
+  useEffect(() => {
+    if (!aberto) return;
+    const aoTeclar = (evento: KeyboardEvent) => {
+      if (evento.key === "Escape") fechar();
+    };
+    const aoClicar = (evento: MouseEvent) => {
+      if (dentro.some((ref) => ref.current?.contains(evento.target as Node))) return;
+      fechar();
+    };
+    window.addEventListener("keydown", aoTeclar);
+    window.addEventListener("mousedown", aoClicar);
+    return () => {
+      window.removeEventListener("keydown", aoTeclar);
+      window.removeEventListener("mousedown", aoClicar);
+    };
+  }, [aberto, fechar, dentro]);
+}
+
+function Ladrilho({ ativo, badge, children }: { ativo: boolean; badge?: number; children: React.ReactNode }) {
   return (
-    <span className={`pc-tile${ativo ? " is-active" : ""}`} style={estilo}>
-      <NavIcon name={icone} size={Math.round(tamanho * 0.5)} />
-      {badge > 0 && (
-        <span className="pc-badge" aria-hidden="true">
+    <span className={`tr-ladrilho${ativo ? " is-ativo" : ""}`}>
+      {children}
+      {!!badge && badge > 0 && (
+        <span className="tr-badge" aria-hidden="true">
           {badge > 99 ? "99+" : badge}
         </span>
       )}
@@ -110,411 +79,235 @@ function Tile({
   );
 }
 
-function rotuloAcessivel(item: NavItem, badge: number) {
-  return badge > 0 ? `${item.rotulo}, ${badge} em aberto` : undefined;
-}
-
 export default function AppNavigation({
   contexto,
   ativa,
   onSelecionar,
   ncsAbertas,
-  contagens,
-  visita,
-  maisAberto,
-  onAbrirMais,
-  onFecharMais,
-  utilitarias,
+  vencidas,
   sincronizacao,
   onSair,
   saindo,
   usuario,
-  versao,
   visitaMenu = null,
   onIrPasso,
+  onFinalizar,
+  podeFinalizar = false,
+  onSairDaVisita,
   onMeuPerfil,
 }: Props) {
-  const [perfilPopAberto, setPerfilPopAberto] = useState(false);
-  const perfilRef = useRef<HTMLDivElement | null>(null);
-  useEffect(() => {
-    if (!perfilPopAberto) return;
-    const aoTeclar = (evento: KeyboardEvent) => {
-      if (evento.key === "Escape") setPerfilPopAberto(false);
-    };
-    const aoClicarFora = (evento: MouseEvent) => {
-      if (perfilRef.current && !perfilRef.current.contains(evento.target as Node)) setPerfilPopAberto(false);
-    };
-    window.addEventListener("keydown", aoTeclar);
-    window.addEventListener("mousedown", aoClicarFora);
-    return () => {
-      window.removeEventListener("keydown", aoTeclar);
-      window.removeEventListener("mousedown", aoClicarFora);
-    };
-  }, [perfilPopAberto]);
-  // Escolha do usuário (recolher/expandir) guardada na sessão; sem escolha, abre só nas telas da visita.
-  const [escolhaGrupoVisita, setEscolhaGrupoVisita] = useState<boolean | null>(null);
-  // "Mais": os destinos que não são principais (Cadastros, POPs e documentos, Ajuda e guias, Administração). Todos continuam existindo.
-  const [adminPopAberto, setAdminPopAberto] = useState(false);
-  const adminRef = useRef<HTMLDivElement | null>(null);
-  useEffect(() => {
-    try {
-      const salvo = window.sessionStorage.getItem(CHAVE_GRUPO_VISITA);
-      if (salvo === "1" || salvo === "0") setEscolhaGrupoVisita(salvo === "1");
-    } catch {
-      // sessão sem armazenamento: segue o padrão
-    }
-  }, []);
-  useEffect(() => {
-    if (!adminPopAberto) return;
-    const aoTeclar = (evento: KeyboardEvent) => {
-      if (evento.key === "Escape") setAdminPopAberto(false);
-    };
-    const aoClicarFora = (evento: MouseEvent) => {
-      if (adminRef.current && !adminRef.current.contains(evento.target as Node)) setAdminPopAberto(false);
-    };
-    window.addEventListener("keydown", aoTeclar);
-    window.addEventListener("mousedown", aoClicarFora);
-    return () => {
-      window.removeEventListener("keydown", aoTeclar);
-      window.removeEventListener("mousedown", aoClicarFora);
-    };
-  }, [adminPopAberto]);
-  const grupoVisitaAberto = escolhaGrupoVisita ?? Boolean(visitaMenu?.emTelaDaVisita);
-  const alternarGrupoVisita = () => {
-    const proximo = !grupoVisitaAberto;
-    setEscolhaGrupoVisita(proximo);
-    try {
-      window.sessionStorage.setItem(CHAVE_GRUPO_VISITA, proximo ? "1" : "0");
-    } catch {
-      // sem armazenamento da sessão
-    }
-  };
-  const slots = barraInferior(contexto);
-  const itensBarra = itensDaBarra(slots);
-  const trilho = trilhoDoTablet(contexto);
-  // Equilibrado: Início, Visitas e as etapas da visita (Registrar fica embaixo; o resto vai em "Mais").
-  const ORDEM_TRILHO: NavKey[] = ["inicio", "visitas", "central", "checklist", "evidencias", "ncs", "pops", "relatorio"];
-  const visiveisDoTrilho = itensVisiveis(contexto);
-  const itensDoTrilho = ORDEM_TRILHO.map((chave) => visiveisDoTrilho.find((item) => item.key === chave)).filter((item): item is NavItem => Boolean(item));
-  const lateral = menuLateralPC(contexto);
-  const PRINCIPAIS: NavKey[] = ["inicio", "visitas", "empresas", "relatorios"];
-  const principais = lateral.topo.filter((item) => PRINCIPAIS.includes(item.key));
-  const extras = [...lateral.topo.filter((item) => !PRINCIPAIS.includes(item.key)), ...lateral.apoio, ...lateral.admin];
+  const [maisAberto, setMaisAberto] = useState(false);
+  const [perfilAberto, setPerfilAberto] = useState(false);
+  const [topoDoQuadro, setTopoDoQuadro] = useState<number | undefined>(undefined);
+  const maisBotaoRef = useRef<HTMLButtonElement | null>(null);
+  const maisQuadroRef = useRef<HTMLDivElement | null>(null);
+  const perfilBotaoRef = useRef<HTMLButtonElement | null>(null);
+  const perfilQuadroRef = useRef<HTMLDivElement | null>(null);
+  const fecharMais = () => setMaisAberto(false);
+  const fecharPerfil = () => setPerfilAberto(false);
+  useFechar(maisAberto, fecharMais, [maisBotaoRef, maisQuadroRef]);
+  useFechar(perfilAberto, fecharPerfil, [perfilBotaoRef, perfilQuadroRef]);
+
+  const visiveis = itensVisiveis(contexto);
+  const pegar = (chaves: NavKey[]) => chaves.map((chave) => visiveis.find((item) => item.key === chave)).filter((item): item is NavItem => Boolean(item));
+  const principais = pegar(PRINCIPAIS);
+  const extras = pegar(EXTRAS);
   const temRegistrar = registrarDisponivel(contexto);
-  const badgeDe = (item: NavItem) => (item.key === "ncs" ? ncsAbertas : 0);
+  const maisAtivo = extras.some((item) => item.key === ativa);
 
-  // A folha "Mais" serve o celular (o que não coube na barra) e o tablet (o que não coube no trilho).
-  const larguraCelular = typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches;
-  const naFolha = itensDaFolhaMais(contexto, larguraCelular ? itensBarra : trilho);
-
-  const primeiroBotaoRef = useRef<HTMLButtonElement | null>(null);
-  useEffect(() => {
-    if (maisAberto) primeiroBotaoRef.current?.focus();
-  }, [maisAberto]);
-
-  const botaoItem = (item: NavItem, variante: "capsule" | "rail" | "side", tamanho: number) => {
-    const ehAtivo = ativa === item.key;
-    const badge = badgeDe(item);
-    return (
-      <button
-        key={item.key}
-        type="button"
-        className={`pc-item pc-item--${variante}${ehAtivo ? " is-active" : ""}`}
-        aria-current={ehAtivo ? "page" : undefined}
-        aria-label={rotuloAcessivel(item, badge)}
-        onClick={() => onSelecionar(item.key)}
-      >
-        <Tile tom={item.tom} icone={item.key} tamanho={tamanho} ativo={ehAtivo} badge={badge} />
-        <span className="pc-label">{variante === "side" ? item.rotulo : item.curto}</span>
-      </button>
-    );
+  const alternarMais = () => {
+    setPerfilAberto(false);
+    // Trilho de lado: o quadro abre ao lado do botão. Barra de baixo (janela estreita): o CSS posiciona acima da barra.
+    if (!maisAberto) setTopoDoQuadro(window.matchMedia("(max-width: 767px)").matches ? undefined : Math.max(8, Math.round((maisBotaoRef.current?.getBoundingClientRect().top ?? 0) - 40)));
+    setMaisAberto((aberto) => !aberto);
+  };
+  const alternarPerfil = () => {
+    setMaisAberto(false);
+    setPerfilAberto((aberto) => !aberto);
   };
 
-  const botaoMais = (variante: "capsule" | "rail") => (
-    <button
-      type="button"
-      className={`pc-item pc-item--${variante}${maisAberto ? " is-active" : ""}`}
-      aria-haspopup="dialog"
-      aria-expanded={maisAberto}
-      onClick={maisAberto ? onFecharMais : onAbrirMais}
-    >
-      <Tile tom="roxo" icone="mais" tamanho={variante === "capsule" ? 40 : 48} ativo={maisAberto} />
-      <span className="pc-label">Mais</span>
-    </button>
-  );
-
-  const linkLateral = (item: NavItem, sub: boolean) => {
+  const botaoGeral = (item: NavItem) => {
     const ehAtivo = ativa === item.key;
-    const contagem = contagens[item.key];
+    const badge = item.key === "ncs" ? vencidas : 0;
+    const rotulo = ROTULO_DO_ITEM[item.key] ?? item.rotulo;
     return (
       <button
         key={item.key}
         type="button"
         data-chave={item.key}
-        className={`pc-link${sub ? " pc-link--sub" : ""}${ehAtivo ? " is-active" : ""}`}
+        className={`tr-item${ehAtivo ? " is-atual" : ""}`}
         aria-current={ehAtivo ? "page" : undefined}
-        onClick={() => onSelecionar(item.key)}
+        aria-label={badge > 0 ? `${rotulo}, ${badge} ${badge === 1 ? "vencida" : "vencidas"}` : undefined}
+        onClick={() => {
+          setMaisAberto(false);
+          onSelecionar(item.key);
+        }}
       >
-        <span className="pc-link-icon">
-          <NavIcon name={item.key} size={sub ? 16 : 18} strokeWidth={1.9} />
-        </span>
-        <span className="pc-link-label">{item.rotulo}</span>
-        {sub && contagem && <span className="pc-link-count">{contagem.texto}</span>}
+        <Ladrilho ativo={ehAtivo} badge={badge}>
+          <NavIcon name={item.key} size={24} strokeWidth={1.7} />
+        </Ladrilho>
+        <span className="tr-rotulo">{rotulo}</span>
       </button>
     );
   };
 
-  const total = visita
-    ? Math.max(1, visita.conformes + visita.naoConformes + visita.naoSeAplica + visita.pendentes)
-    : 1;
+  const passosDaVisita = visitaMenu ? visitaMenu.passos.filter((passo) => passo.chave !== "central") : [];
+  const dashoffset = visitaMenu ? CIRCUNFERENCIA * (1 - Math.min(100, Math.max(0, visitaMenu.percentual)) / 100) : CIRCUNFERENCIA;
 
   return (
     <>
-      {/* Celular: cápsula flutuante */}
-      <nav className="pc-capsule" aria-label="Navegação principal">
-        {slots.map((slot) => {
-          if (slot.tipo === "mais") return <span key="mais" className="pc-slot">{botaoMais("capsule")}</span>;
-          if (slot.item.key === "registrar") {
-            const ehAtivo = ativa === "registrar";
-            return (
-              <span key="registrar" className="pc-slot pc-slot--fab">
-                <button
-                  type="button"
-                  className={`pc-item pc-item--fab${ehAtivo ? " is-active" : ""}`}
-                  aria-current={ehAtivo ? "page" : undefined}
-                  onClick={() => onSelecionar("registrar")}
-                >
-                  <Tile tom="laranja" icone="registrar" tamanho={62} ativo={ehAtivo} />
-                  <span className="pc-label">Registrar</span>
-                </button>
-              </span>
-            );
-          }
-          return <span key={slot.item.key} className="pc-slot">{botaoItem(slot.item, "capsule", 40)}</span>;
-        })}
-      </nav>
-
-      {/* Equilibrado (tablet): trilho de 108 px com ícone e nome */}
-      <nav className="pc-rail" aria-label="Navegação principal">
-        <span className="pc-rail-logo" aria-hidden="true">
-          <LogoSymbol size={38} />
+      <nav className="tr" data-menu={visitaMenu ? "visita" : "geral"} aria-label={visitaMenu ? "Visita aberta" : "Navegação principal"}>
+        <span className="tr-logo" aria-hidden="true">
+          <LogoSymbol size={36} />
         </span>
-        <div className="pc-rail-list">
-          {itensDoTrilho.map((item) => {
-            const ehAtivo = ativa === item.key || (item.key === "ncs" && (ativa === "plano" || ativa === "acompanhamento"));
-            const contador = item.key === "ncs" ? ncsAbertas : 0;
-            return (
-              <button
-                key={item.key}
-                type="button"
-                data-chave={item.key}
-                className={`pc-rail-item${ehAtivo ? " is-active" : ""}`}
-                aria-current={ehAtivo ? "page" : undefined}
-                aria-label={rotuloAcessivel(item, contador)}
-                onClick={() => onSelecionar(item.key)}
-              >
-                <span className="pc-rail-icon">
-                  <NavIcon name={item.key} size={22} strokeWidth={1.9} />
-                  {contador > 0 && <span className="pc-rail-count">{contador > 99 ? "99+" : contador}</span>}
-                </span>
-                <span className="pc-rail-label">{item.key === "ncs" ? "Correções" : item.key === "pops" ? "POPs" : item.curto}</span>
-              </button>
-            );
-          })}
-        </div>
+
         {temRegistrar && (
-          <button type="button" className="pc-rail-register" onClick={() => onSelecionar("registrar")}>
-            <span className="pc-rail-register-orb">
-              <NavIcon name="registrar" size={24} strokeWidth={2.1} />
+          <button type="button" className="tr-registrar" onClick={() => onSelecionar("registrar")}>
+            <span className="tr-registrar-disco">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
             </span>
-            <span className="pc-rail-label">Registrar</span>
+            <span className="tr-rotulo">Registrar</span>
           </button>
         )}
-        <button type="button" className="pc-rail-item" aria-haspopup="dialog" aria-expanded={maisAberto} onClick={maisAberto ? onFecharMais : onAbrirMais}>
-          <span className="pc-rail-icon">
-            <NavIcon name="mais" size={22} strokeWidth={1.9} />
-          </span>
-          <span className="pc-rail-label">Mais</span>
-        </button>
+
+        {visitaMenu ? (
+          <>
+            <button
+              type="button"
+              className={`tr-visita${visitaMenu.atual === "central" ? " is-atual" : ""}`}
+              aria-label={`Resumo da visita ${visitaMenu.numero ?? ""}`.trim()}
+              onClick={() => onIrPasso?.("central")}
+            >
+              <svg width="38" height="38" viewBox="0 0 38 38" aria-hidden="true">
+                <circle cx="19" cy="19" r="15" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="4" />
+                <circle cx="19" cy="19" r="15" fill="none" stroke="#FFFFFF" strokeWidth="4" strokeLinecap="round" strokeDasharray={CIRCUNFERENCIA} strokeDashoffset={dashoffset} transform="rotate(-90 19 19)" />
+              </svg>
+              <span>Visita {visitaMenu.numero ?? ""}</span>
+              <span className="tr-visita-data">{visitaMenu.dataCurta}</span>
+            </button>
+            <div className="tr-lista">
+              {passosDaVisita.map((passo) => {
+                const ehAtivo = visitaMenu.atual === passo.chave;
+                const badge = passo.chave === "correcoes" ? ncsAbertas : 0;
+                const rotulo = ROTULO_DO_PASSO[passo.chave];
+                return (
+                  <button
+                    key={passo.chave}
+                    type="button"
+                    data-chave={passo.chave}
+                    className={`tr-item${ehAtivo ? " is-atual" : ""}`}
+                    aria-current={ehAtivo ? "page" : undefined}
+                    aria-label={badge > 0 ? `${rotulo}, ${badge} em aberto` : undefined}
+                    onClick={() => onIrPasso?.(passo.chave)}
+                  >
+                    <Ladrilho ativo={ehAtivo} badge={badge}>
+                      <NavIcon name={ICONE_DO_PASSO[passo.chave]} size={24} strokeWidth={1.7} />
+                    </Ladrilho>
+                    <span className="tr-rotulo">{rotulo}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="tr-fim">
+              {podeFinalizar && (
+                <button type="button" className="tr-item tr-item--finalizar" onClick={onFinalizar}>
+                  <span className="tr-ladrilho tr-ladrilho--verde">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M5 12.5l4.5 4.5L19 7.5" />
+                    </svg>
+                  </span>
+                  <span className="tr-rotulo">Finalizar</span>
+                </button>
+              )}
+              <button type="button" className="tr-item" onClick={onSairDaVisita}>
+                <Ladrilho ativo={false}>
+                  <NavIcon name="sair" size={24} strokeWidth={1.7} />
+                </Ladrilho>
+                <span className="tr-rotulo">Sair</span>
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="tr-lista">
+              {principais.map((item) => botaoGeral(item))}
+              {extras.length > 0 && (
+                <button
+                  ref={maisBotaoRef}
+                  type="button"
+                  className={`tr-item${maisAberto || maisAtivo ? " is-mais" : ""}`}
+                  aria-haspopup="menu"
+                  aria-expanded={maisAberto}
+                  onClick={alternarMais}
+                >
+                  <Ladrilho ativo={false}>
+                    <NavIcon name="mais" size={24} strokeWidth={1.7} />
+                  </Ladrilho>
+                  <span className="tr-rotulo">Mais</span>
+                </button>
+              )}
+            </div>
+            <div className="tr-fim" />
+          </>
+        )}
+
         {usuario && (
-          <button type="button" className="pc-rail-avatar" title={`${usuario.nome} · ${sincronizacao.rotulo}`} aria-label={`${usuario.nome}. ${sincronizacao.rotulo}`} onClick={sincronizacao.onClick}>
+          <button
+            ref={perfilBotaoRef}
+            type="button"
+            className="tr-avatar"
+            aria-haspopup="menu"
+            aria-expanded={perfilAberto}
+            aria-label={`${usuario.nome}. ${sincronizacao.rotulo}`}
+            title={`${usuario.nome} · ${usuario.perfil} · ${sincronizacao.rotulo}`}
+            onClick={alternarPerfil}
+          >
             {usuario.iniciais}
             <span className={`pc-avatar-dot is-${sincronizacao.estado}`} aria-hidden="true" />
           </button>
         )}
       </nav>
 
-      {/* PC: menu lateral azul */}
-      <aside className={`pc-side${visitaMenu ? " pc-side--visita" : ""}`} aria-label="Menu lateral">
-        <div className="pc-side-brand">
-          <LogoHorizontal size={30} showSubtitle={false} textClassName="text-base" />
-        </div>
-
-        {temRegistrar && (
-          <button type="button" className="pc-register-line" onClick={() => onSelecionar("registrar")}>
-            <span className="pc-register-orb">
-              <span className="pc-register-mais" aria-hidden="true">+</span>
-            </span>
-            <span className="pc-register-label">Registrar agora</span>
-          </button>
-        )}
-
-        <nav className="pc-side-nav" aria-label="Navegação principal">
-          {principais.map((item) => linkLateral(item, false))}
-
-          {extras.length > 0 && (
-            <div className="pc-mais-wrap" ref={adminRef}>
-              <button
-                type="button"
-                className={`pc-link${extras.some((item) => item.key === ativa) ? " is-active" : ""}`}
-                aria-haspopup="menu"
-                aria-expanded={adminPopAberto}
-                onClick={() => setAdminPopAberto((aberto) => !aberto)}
-              >
-                <span className="pc-link-icon">
-                  <NavIcon name="mais" size={18} strokeWidth={1.9} />
-                </span>
-                <span className="pc-link-label">Mais</span>
-                <span className="pc-chev" aria-hidden="true">›</span>
-              </button>
-              {adminPopAberto && (
-                <div className="pc-mais-pop" role="menu">
-                  {extras.map((item) => (
-                    <button
-                      key={item.key}
-                      type="button"
-                      role="menuitem"
-                      className={`pc-mais-item${ativa === item.key ? " is-active" : ""}`}
-                      onClick={() => {
-                        setAdminPopAberto(false);
-                        onSelecionar(item.key);
-                      }}
-                    >
-                      <NavIcon name={item.key} size={16} strokeWidth={1.9} />
-                      {item.key === "ajuda" ? "Ajuda e guias" : item.key === "acessos" ? "Administração" : item.rotulo}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {visitaMenu && (
-            <section className="pc-vcard" aria-label="Visita atual">
-              <div className="pc-vcard-rotulo">VISITA ATUAL</div>
-              <div className="pc-vcard-corpo">
-                <button
-                  type="button"
-                  className={`pc-vcard-head${visitaMenu.atual === "central" ? " is-active" : ""}`}
-                  aria-label={`Central da visita ${visitaMenu.numero ?? ""}`.trim()}
-                  onClick={() => onIrPasso?.("central")}
-                >
-                  <span className="pc-vgroup-text">
-                    <span className="pc-vcard-company">Visita {visitaMenu.numero ?? ""}</span>
-                    <span className="pc-vcard-sub">{visitaMenu.data}</span>
-                  </span>
-                </button>
-                <div className="pc-vcard-steps">
-                  {visitaMenu.passos
-                    .filter((passo) => passo.chave !== "central")
-                    .map((passo) => {
-                      const ehAtivo = visitaMenu.atual === passo.chave;
-                      return (
-                        <button
-                          key={passo.chave}
-                          type="button"
-                          className={`pc-step${ehAtivo ? " is-active" : ""}`}
-                          aria-current={ehAtivo ? "page" : undefined}
-                          onClick={() => onIrPasso?.(passo.chave)}
-                        >
-                          <span className="pc-step-label">{passo.chave === "pops" ? "POPs desta visita" : passo.rotulo}</span>
-                          {passo.contador && <span className={`pc-step-count${passo.chave === "correcoes" ? " is-badge" : ""}`}>{passo.contador}</span>}
-                        </button>
-                      );
-                    })}
-                </div>
-              </div>
-            </section>
-          )}
-        </nav>
-
-        <div className="pc-side-foot">
-          {usuario && (
-            <div className="pc-user-wrap" ref={perfilRef}>
-              {perfilPopAberto && (
-                <div className="pc-user-pop" role="menu">
-                  <button
-                    type="button"
-                    role="menuitem"
-                    className="pc-user-pop-item"
-                    onClick={() => {
-                      setPerfilPopAberto(false);
-                      onMeuPerfil?.();
-                    }}
-                  >
-                    <NavIcon name="acessos" size={16} strokeWidth={1.9} />
-                    Meu perfil
-                  </button>
-                  <button type="button" role="menuitem" className="pc-user-pop-item is-sair" onClick={onSair} disabled={saindo}>
-                    <NavIcon name="sair" size={16} strokeWidth={2} />
-                    Sair
-                  </button>
-                </div>
-              )}
-              <button type="button" className="pc-user-card" aria-haspopup="menu" aria-expanded={perfilPopAberto} onClick={() => setPerfilPopAberto((aberto) => !aberto)}>
-                <span className="pc-user-avatar">
-                  {usuario.iniciais}
-                  <span className={`pc-avatar-dot is-${sincronizacao.estado}`} title={sincronizacao.rotulo} aria-hidden="true" />
-                </span>
-                <span className="pc-user-text">
-                  <span className="pc-user-name">{usuario.nome}</span>
-                  <span className="pc-user-role">{usuario.perfil}</span>
-                </span>
-                <span className="pc-chev" aria-hidden="true">{perfilPopAberto ? "⌄" : "⌃"}</span>
-              </button>
-            </div>
-          )}
-        </div>
-      </aside>
-
-      {/* Folha "Mais" (celular e tablet) */}
       {maisAberto && (
-        <div className="pc-sheet-layer" role="presentation">
-          <button type="button" className="pc-sheet-backdrop" aria-label="Fechar" onClick={onFecharMais} />
-          <section className="pc-sheet" role="dialog" aria-modal="true" aria-label="Mais opções">
-            <div className="pc-sheet-handle" aria-hidden="true" />
-            <div className="pc-sheet-grid">
-              {naFolha.map((item, indice) => {
-                const badge = badgeDe(item);
-                return (
-                  <button
-                    key={item.key}
-                    ref={indice === 0 ? primeiroBotaoRef : undefined}
-                    type="button"
-                    className="pc-item pc-item--sheet"
-                    aria-label={rotuloAcessivel(item, badge)}
-                    onClick={() => onSelecionar(item.key)}
-                  >
-                    <Tile tom={item.tom} icone={item.key} tamanho={56} badge={badge} />
-                    <span className="pc-label">{item.curto}</span>
-                  </button>
-                );
-              })}
-              {utilitarias.map((acao, indice) => (
-                <button
-                  key={acao.id}
-                  ref={naFolha.length === 0 && indice === 0 ? primeiroBotaoRef : undefined}
-                  type="button"
-                  className="pc-item pc-item--sheet"
-                  disabled={acao.desabilitado}
-                  onClick={acao.onClick}
-                >
-                  <Tile tom="ardosia" icone={acao.id === "enviar-agora" ? "sincronizar" : acao.id} tamanho={56} />
-                  <span className="pc-label">{acao.rotulo}</span>
-                </button>
-              ))}
-            </div>
-          </section>
+        <div ref={maisQuadroRef} className="tr-quadro" role="menu" style={{ top: topoDoQuadro } as CSSProperties}>
+          {extras.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              role="menuitem"
+              className={`tr-quadro-item${ativa === item.key ? " is-atual" : ""}`}
+              onClick={() => {
+                setMaisAberto(false);
+                onSelecionar(item.key);
+              }}
+            >
+              <NavIcon name={item.key} size={22} strokeWidth={1.7} />
+              {ROTULO_DO_ITEM[item.key] ?? item.rotulo}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {perfilAberto && usuario && (
+        <div ref={perfilQuadroRef} className="tr-quadro tr-quadro--perfil" role="menu">
+          <button
+            type="button"
+            role="menuitem"
+            className="tr-quadro-item"
+            onClick={() => {
+              setPerfilAberto(false);
+              onMeuPerfil?.();
+            }}
+          >
+            <NavIcon name="acessos" size={22} strokeWidth={1.7} />
+            Meu perfil
+          </button>
+          <button type="button" role="menuitem" className="tr-quadro-item" onClick={onSair} disabled={saindo}>
+            <NavIcon name="sair" size={22} strokeWidth={1.7} />
+            Sair do sistema
+          </button>
         </div>
       )}
     </>

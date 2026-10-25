@@ -63,6 +63,9 @@ const estadoInicial = async () => {
   const e = await montarEstado();
   const item = (n) => ({ id: `i${n}`, ambiente: "Cozinha", titulo: `Piso limpo ${n}`, categoria: "Higiene", status: "Pendente", observacao: "" });
   e.db.visitas = [{ id: "vt1", empresaId: "beyond-nutri", data: "2026-10-22", status: "Em andamento", responsavel: "Elton Volmir Strapazon", observacoes: "", progresso: 0, criadoEm: "2026-10-22T10:00:00.000Z", ambientes: ["Cozinha"], checklistVersao: 1, checklist: [item(1), item(2), item(3)] }];
+  // Segunda empresa de teste (visual do redesign): "Elton Volmir Strapazon", com uma visita em andamento.
+  e.db.empresas["elton-volmir"] = { ...e.db.empresas["beyond-nutri"], id: "elton-volmir", nomeFantasia: "Elton Volmir Strapazon", razaoSocial: "Elton Volmir Strapazon" };
+  e.db.visitas.push({ ...e.db.visitas[0], id: "vt9", empresaId: "elton-volmir", data: "2026-10-18", checklist: [item(31), item(32)] });
   return e.db;
 };
 
@@ -85,6 +88,12 @@ const esperar = async (cond, ms = 15000) => {
   return false;
 };
 const clicarBotao = (rotulo) => js(`(()=>{const b=[...document.querySelectorAll("button")].find(x=>x.innerText.trim()===${JSON.stringify(rotulo)});if(!b)return false;b.click();return true})()`);
+// No celular (modo Campo) as Evidências ficam em "Mais" (a barra de baixo não tem mais um botão escondido).
+const abrirEvidenciasNoCelular = async () => {
+  await js('[...document.querySelectorAll(".campo-bar .campo-tab")].find((b) => b.innerText.trim().endsWith("Mais"))?.click()');
+  await n.esperar(400);
+  return js('(()=>{const b=[...document.querySelectorAll("button")].find((x)=>x.innerText.trim().startsWith("Evidências"));if(!b)return false;b.click();return true})()');
+};
 const clicarResposta = (rotulo) => js(`(()=>{const b=[...document.querySelectorAll("button")].find(x=>x.innerText.trim().split(String.fromCharCode(10)).pop().trim()===${JSON.stringify(rotulo)});if(!b)return false;b.click();return true})()`);
 const clicarNumero = (num) => js(`(()=>{const b=[...document.querySelectorAll(".chk-pc-num")][${num - 1}];if(!b)return false;b.click();return true})()`);
 const foto = async (nome) => {
@@ -253,7 +262,7 @@ try {
   await clicarBotao("Ok");
   await n.esperar(800);
   registrar("9b. com foto pendente o selo não diz 'Sincronizado'", !/Sincronizado/.test(await texto()) && /Sem sinal/.test(await texto()));
-  await clicarBotao("Evidências");
+  await abrirEvidenciasNoCelular();
   await esperar(async () => /Na fila/.test(await texto()), 10000);
   registrar("9c. Evidências: a foto mostra 'Na fila' e a ação 'Enviar agora'", /Na fila/.test(await texto()) && /Enviar agora/.test(await texto()));
   await foto("9-evidencias-na-fila");
@@ -269,7 +278,7 @@ try {
   registrar("9e. volta do sinal: a foto sobe uma única vez", subiu && ups.length === 1, JSON.stringify(ups));
   const noServidor = await esperar(async () => (await js(`JSON.stringify(((JSON.parse(localStorage.getItem("__srv")).data.evidencias)||[]).map(e=>({envio:e.envio,url:!!e.blobUrl})))`)).includes('"envio":"enviada","url":true'), 20000);
   registrar("9f. outra sessão (servidor) recebe a evidência já enviada, com o arquivo", noServidor, await js(`JSON.stringify(((JSON.parse(localStorage.getItem("__srv")).data.evidencias)||[]).map(e=>({envio:e.envio,url:!!e.blobUrl})))`));
-  await clicarBotao("Evidências");
+  await abrirEvidenciasNoCelular();
   registrar("9g. Evidências: a etiqueta muda para 'Enviada' e o selo volta a 'Sincronizado'", (await esperar(async () => /Enviada/.test(await texto()), 10000)) && (await esperar(async () => /Sincronizado/.test(await texto()), 10000)));
   await foto("9-evidencias-enviada");
 
@@ -287,7 +296,7 @@ try {
   await js(`localStorage.setItem("__ups","[]")`);
   await n.ir(app.base);
   await esperar(async () => js('!!document.querySelector(".campo-bar")'), 15000);
-  await clicarBotao("Evidências");
+  await abrirEvidenciasNoCelular();
   await esperar(async () => js('!![...document.querySelectorAll("button")].find(b=>b.innerText.includes("Nova evidência"))'), 10000);
   await js(`[...document.querySelectorAll("button")].find(b=>b.innerText.includes("Nova evidência")).click()`);
   await esperar(async () => js('!!document.querySelector(".ev7-cap--arquivo")'), 10000);
@@ -309,7 +318,7 @@ try {
   await js(`localStorage.setItem("__ups","[]")`);
   await n.ir(app.base);
   await esperar(async () => js('!!document.querySelector(".campo-bar")'), 15000);
-  await clicarBotao("Evidências");
+  await abrirEvidenciasNoCelular();
   const semArquivoMostrado = await esperar(async () => /Arquivo não enviado/.test(await texto()), 15000);
   registrar("12a. registro sem arquivo e sem item na fila mostra 'Arquivo não enviado' e 'Anexar de novo'", semArquivoMostrado && /Anexar de novo/.test(await texto()));
   registrar("12b. esse registro conta no selo como 'Erro ao enviar'", await esperar(async () => /Erro ao enviar/.test(await texto()), 8000));
@@ -329,7 +338,7 @@ try {
   // 13. Avanço automático: Conforme grava e abre o próximo item (aviso com Desfazer); Não conforme e observação já digitada NÃO avançam.
   await n.enviar("Emulation.clearDeviceMetricsOverride");
   await n.ir(app.base);
-  await esperar(async () => js('!!document.querySelector(".pc-side")'), 20000);
+  await esperar(async () => js('!!document.querySelector(".tr")'), 20000);
   await n.esperar(1500);
   await js('[...document.querySelectorAll("button")].find((b) => b.innerText.trim().startsWith("Checklist"))?.click()');
   await esperar(async () => js('document.querySelectorAll(".chk-pc-num").length>2'), 20000);
@@ -379,9 +388,13 @@ try {
   await flag("__off", true);
   await evento("offline");
   await n.ir(app.base);
-  await esperar(async () => js('!!document.querySelector(".pc-side")'), 20000);
+  await esperar(async () => js('!!document.querySelector(".tr")'), 20000);
   await n.esperar(1500);
-  await js('[...document.querySelectorAll("button")].find((b) => b.innerText.trim().startsWith("Relatório"))?.click()');
+  await js('[...document.querySelectorAll(".tr .tr-item")].find((b) => b.innerText.trim().endsWith("Visitas"))?.click()');
+  await esperar(async () => js('!!document.querySelector(".vis-linha")'), 15000);
+  await js('[...document.querySelectorAll(".vis-linha button")].find((b) => b.innerText.includes("Continuar"))?.click()');
+  await esperar(async () => js('!!document.querySelector(\'.tr[data-menu="visita"]\')'), 15000);
+  await js('[...document.querySelectorAll(".tr .tr-item")].find((b) => b.querySelector(".tr-rotulo")?.textContent.trim() === "Relatório")?.click()');
   const abriuRelatorio = await esperar(async () => js('!!document.querySelector(".rev-faixa")'), 15000);
   registrar("15a. Relatório da visita mostra o estado 'Rascunho' e o botão Revisar (sem sinal)", abriuRelatorio && /Rascunho/.test(await texto()) && (await js('[...document.querySelectorAll("button")].some((b) => b.innerText.trim() === "Revisar")')));
   await js('[...document.querySelectorAll("button")].find((b) => b.innerText.trim() === "Revisar")?.click()');
@@ -407,19 +420,19 @@ try {
   // 16. Redesign do Início e das Visitas (PC): menu azul de 168 px, cartões com anel, sem rolagem de página, nenhuma caixa laranja de ação em Visitas.
   await n.enviar("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
   await n.ir(app.base);
-  await esperar(async () => js('!!document.querySelector(".pc-side")'), 20000);
+  await esperar(async () => js('!!document.querySelector(".tr")'), 20000);
   await n.esperar(1200);
-  await js('[...document.querySelectorAll(".pc-side .pc-link")].find((b) => b.innerText.trim().startsWith("Início"))?.click()');
+  await js('[...document.querySelectorAll(".tr .tr-item")].find((b) => b.innerText.trim().endsWith("Início"))?.click()');
   await esperar(async () => js('!!document.querySelector(".ini3")'), 15000);
   await n.esperar(500);
   await foto("16-inicio");
   const ehLaranja = `(cor)=>{const m=cor.match(/\\d+/g);if(!m)return false;const [r,g,b]=m.map(Number);return r>200&&g>90&&g<175&&b<90}`;
-  registrar("16a. Menu lateral azul de 168 px, item selecionado com ladrilho laranja e texto branco", await js(`(()=>{const m=document.querySelector(".pc-side");const a=document.querySelector(".pc-side .pc-link.is-active");if(!m||!a)return false;const cs=getComputedStyle(m);const ca=getComputedStyle(a);return Math.round(m.getBoundingClientRect().width)===168&&cs.backgroundColor==="rgb(46, 91, 214)"&&ca.backgroundColor==="rgb(219, 116, 16)"&&ca.color==="rgb(255, 255, 255)"})()`));
-  registrar("16b. Menu: 'Mais' guarda Cadastros, POPs e documentos, Ajuda e guias e Administração", await js(`(()=>{const b=[...document.querySelectorAll(".pc-side .pc-link")].find((x)=>x.innerText.trim().startsWith("Mais"));if(!b)return false;b.click();return true})()`) && await js(`(()=>{const t=document.querySelector(".pc-mais-pop")?.innerText||"";return ["Cadastros","POPs e documentos","Ajuda e guias","Administração"].every((x)=>t.includes(x))})()`));
-  await js('[...document.querySelectorAll(".pc-side .pc-link")].find((b) => b.innerText.trim().startsWith("Mais"))?.click()');
+  registrar("16a. Trilho azul de 104 px, página atual em âmbar", await js(`(()=>{const m=document.querySelector(".tr");const a=document.querySelector(".tr .tr-ladrilho.is-ativo");if(!m||!a)return false;return Math.round(m.getBoundingClientRect().width)===104&&getComputedStyle(m).backgroundColor==="rgb(46, 91, 214)"&&getComputedStyle(a).backgroundColor==="rgb(217, 137, 11)"})()`));
+  registrar("16b. Menu: 'Mais' guarda Empresas, Cadastros, Ajuda e guias e Administração", await js(`(()=>{const b=[...document.querySelectorAll(".tr .tr-item")].find((x)=>x.innerText.trim().endsWith("Mais"));if(!b)return false;b.click();return true})()`) && await js(`(()=>{const t=document.querySelector(".tr-quadro")?.innerText||"";return ["Empresas","Cadastros","Ajuda e guias","Administração"].every((x)=>t.includes(x))})()`));
+  await js('window.dispatchEvent(new KeyboardEvent("keydown",{key:"Escape"}))');
   registrar("16c. Início: 'Olá', cartões do 'Continuar de onde parei' com anel de progresso e 'Continuar →' azul, correções com faixa e etiqueta", await js(`(()=>{const t=document.querySelector(".ini3").innerText;const c=document.querySelector(".ini3-cartao");const botao=c&&c.querySelector(".ini3-botao");const anel=c&&c.querySelector(".ini3-anel circle:nth-child(2)");return t.includes("Olá,")&&t.includes("CONTINUAR DE ONDE PARAREI")&&!!c&&!!anel&&getComputedStyle(botao).backgroundColor==="rgb(43, 84, 207)"&&getComputedStyle(anel).stroke==="rgb(219, 116, 16)"&&getComputedStyle(c).backgroundColor==="rgb(255, 248, 234)"&&document.querySelectorAll(".ini3-linha").length>=1&&!!document.querySelector(".ini3-tag")})()`));
   registrar("16d. Início sem rolagem de página (a lista rola por dentro)", await js('document.scrollingElement.scrollHeight<=innerHeight+2&&document.querySelector(".pc-offset").scrollHeight<=innerHeight+2'));
-  await js('[...document.querySelectorAll(".pc-side .pc-link")].find((b) => b.innerText.trim().startsWith("Visitas"))?.click()');
+  await js('[...document.querySelectorAll(".tr .tr-item")].find((b) => b.innerText.trim().endsWith("Visitas"))?.click()');
   await esperar(async () => js('!!document.querySelector(".vis-linha")'), 15000);
   await n.esperar(500);
   await foto("16-visitas");
@@ -432,6 +445,83 @@ try {
   await n.esperar(1200);
   await foto("16-inicio-celular");
   registrar("16h. Celular: sem rolagem horizontal no Início", await js("document.documentElement.scrollWidth<=innerWidth+1"));
+
+  // 17. Trilho de navegação (modo geral e modo visita) e tela Correções da visita.
+  await n.enviar("Emulation.setDeviceMetricsOverride", { width: 1440, height: 800, deviceScaleFactor: 1, mobile: false });
+  await n.ir(app.base);
+  await esperar(async () => js('!!document.querySelector(".tr")'), 20000);
+  await n.esperar(1200);
+  const itemDoTrilho = (rotulo, acao) => js(`(()=>{const b=[...document.querySelectorAll(".tr .tr-item")].find((x)=>x.querySelector(".tr-rotulo")?.textContent.trim()===${JSON.stringify(rotulo)});if(!b)return false;${acao ? "b.click();" : ""}return true})()`);
+  registrar("17a. Trilho geral: Início, Visitas, Correções, POPs, Relatórios e Mais, sem rolagem em 800 px de altura", await js(`(()=>{const t=document.querySelector('.tr[data-menu="geral"]');if(!t)return false;const rot=[...t.querySelectorAll(".tr-item .tr-rotulo")].map((x)=>x.textContent.trim());return ["Início","Visitas","Correções","POPs","Relatórios","Mais"].every((x)=>rot.includes(x))&&t.scrollHeight<=t.clientHeight+1})()`));
+  await itemDoTrilho("Mais", true);
+  await n.esperar(300);
+  registrar("17b. 'Mais' abre um quadro ao lado (290 px), sem empurrar o conteúdo, e fecha com Esc e ao tocar fora", await js(`(()=>{const q=document.querySelector(".tr-quadro");return !!q&&Math.round(q.getBoundingClientRect().width)===290&&q.getBoundingClientRect().left>=104&&parseInt(getComputedStyle(document.querySelector(".pc-offset")).marginLeft)===104})()`) && (await js('window.dispatchEvent(new KeyboardEvent("keydown",{key:"Escape"}))'), await n.esperar(200), await js('!document.querySelector(".tr-quadro")')) && (await itemDoTrilho("Mais", true), await n.esperar(200), await js('document.body.dispatchEvent(new MouseEvent("mousedown",{bubbles:true}))'), await n.esperar(200), await js('!document.querySelector(".tr-quadro")')));
+  await itemDoTrilho("Visitas", true);
+  await esperar(async () => js('!!document.querySelector(".vis-linha")'), 15000);
+  await js('[...document.querySelectorAll(".vis-linha button")].find((b)=>b.innerText.includes("Continuar"))?.click()');
+  await esperar(async () => js('!!document.querySelector(\'.tr[data-menu="visita"]\')'), 15000);
+  await n.esperar(500);
+  await foto("17-modo-visita");
+  registrar("17c. Modo visita: cabeçalho Visita N com anel, Checklist, Evidências, Correções, POPs, Relatório, Finalizar e Sair, sem rolagem em 800 px", await js(`(()=>{const t=document.querySelector('.tr[data-menu="visita"]');if(!t)return false;const rot=[...t.querySelectorAll(".tr-item .tr-rotulo")].map((x)=>x.textContent.trim());return ["Checklist","Evidências","Correções","POPs","Relatório","Finalizar","Sair"].every((x)=>rot.includes(x))&&/Visita \\d/.test(t.querySelector(".tr-visita")?.innerText||"")&&!!t.querySelector(".tr-visita svg circle:nth-child(2)")&&t.scrollHeight<=t.clientHeight+1&&getComputedStyle(t.querySelector(".tr-ladrilho--verde")).backgroundColor==="rgb(46, 139, 87)"})()`));
+  await itemDoTrilho("Correções", true);
+  await esperar(async () => js('!!document.querySelector(".pc-cor .pc-detail--corr")'), 15000);
+  await n.esperar(500);
+  await foto("17-correcoes");
+  registrar("17d. Correções: etapas em texto com contagem, sem título repetido e lista de cartões com rodapé fixo", await js(`(()=>{const e=[...document.querySelectorAll(".pc-cor .pc-etapa")].map((x)=>x.innerText.replace(/\\s+/g," ").trim());const visivel=[...document.querySelectorAll(".pc-cor h1")].every((h)=>getComputedStyle(h).position==="absolute");return e.length===4&&/^Identificadas \\d+$/.test(e[0])&&visivel&&!!document.querySelector(".pc-cor .pc-cor-card")&&!!document.querySelector(".pc-cor .pc-cor-rodape")&&document.scrollingElement.scrollHeight<=innerHeight+2})()`));
+  registrar("17e. Correções: responsável começa vazio, com contorno vermelho e aviso na hora; 'Salvar plano' desabilitado", await js(`(()=>{const r=document.querySelector('.pc-cor .pc-plan-resp input');const salvar=[...document.querySelectorAll(".pc-cor .pc-detail-foot button")].find((b)=>b.innerText.includes("Salvar plano"));return !!r&&r.value===""&&r.placeholder==="Escolher responsável"&&getComputedStyle(r).borderTopColor==="rgb(201, 71, 63)"&&document.querySelector(".pc-cor").innerText.includes("Escolha o responsável")&&!!salvar&&salvar.disabled})()`));
+  await js(`(()=>{const set=(el,v)=>{Object.getOwnPropertyDescriptor(Object.getPrototypeOf(el),"value").set.call(el,v);el.dispatchEvent(new Event("input",{bubbles:true}))};set(document.querySelector(".pc-cor .pc-acao-area"),"Providenciar a correção");set(document.querySelector(".pc-cor .pc-plan-resp input"),"Elton");return true})()`);
+  await n.esperar(300);
+  registrar("17f. Correções: 'Salvar plano' habilita com ação e responsável", await js(`(()=>{const salvar=[...document.querySelectorAll(".pc-cor .pc-detail-foot button")].find((b)=>b.innerText.includes("Salvar plano"));return !!salvar&&!salvar.disabled&&getComputedStyle(salvar).backgroundColor==="rgb(46, 139, 87)"})()`));
+  await itemDoTrilho("Sair", true);
+  await esperar(async () => js('!!document.querySelector(\'.tr[data-menu="geral"]\')'), 15000);
+  registrar("17g. 'Sair' volta ao modo geral (a visita continua em andamento)", await js('!!document.querySelector(\'.tr[data-menu="geral"]\')&&!document.querySelector(\'.tr[data-menu="visita"]\')'));
+  await itemDoTrilho("Visitas", true);
+  await esperar(async () => js('!!document.querySelector(".vis-linha")'), 15000);
+  await js('[...document.querySelectorAll(".vis-linha button")].find((b)=>b.innerText.includes("Continuar"))?.click()');
+  await esperar(async () => js('!!document.querySelector(\'.tr[data-menu="visita"]\')'), 15000);
+  await itemDoTrilho("Finalizar", true);
+  await n.esperar(800);
+  registrar("17h. 'Finalizar' segue o fluxo de hoje (aviso dos itens pendentes ou a janela Revisar)", await js('/Não é possível finalizar|Revisar/.test(document.body.innerText)'));
+  await foto("17-finalizar");
+
+  // 18. Segunda empresa de teste ("Elton Volmir Strapazon"): Início e Visitas com o mesmo visual (chip "Aberta há N dias" azul claro, "Continuar →" azul).
+  await flag("__off", false);
+  await evento("online");
+  await clicarBotao("Entendi");
+  await n.esperar(300);
+  await itemDoTrilho("Sair", true);
+  await esperar(async () => js('!!document.querySelector(\x27.tr[data-menu="geral"]\x27)'), 15000);
+  await js('[...document.querySelectorAll(".emp-ativa-caixa")][0]?.click()');
+  await n.esperar(500);
+  await js('[...document.querySelectorAll("button")].find((b) => b.innerText.includes("Elton Volmir Strapazon") && !b.classList.contains("emp-ativa-caixa"))?.click()');
+  await n.esperar(1000);
+  await n.enviar("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+  await js('[...document.querySelectorAll(".tr .tr-item")].find((b) => b.innerText.trim().endsWith("Início"))?.click()');
+  await esperar(async () => js('!!document.querySelector(".ini3")'), 15000);
+  await n.esperar(800);
+  await foto("18-elton-inicio");
+  registrar("18a. Elton Volmir Strapazon: Início com 'Olá', cartão de visita com anel e 'Continuar →' azul", await js(`(()=>{const sel=document.querySelector(".emp-ativa-nome")?.textContent||"";const c=document.querySelector(".ini3-cartao");return /Elton Volmir/.test(sel)&&!!c&&getComputedStyle(c.querySelector(".ini3-botao")).backgroundColor==="rgb(43, 84, 207)"&&!!c.querySelector(".ini3-anel")})()`));
+  await js('[...document.querySelectorAll(".tr .tr-item")].find((b) => b.innerText.trim().endsWith("Visitas"))?.click()');
+  await esperar(async () => js('!!document.querySelector(".vis-linha")'), 15000);
+  await n.esperar(500);
+  await foto("18-elton-visitas");
+  registrar("18b. Elton Volmir Strapazon: Visitas com chip 'Aberta há N dias' azul claro e texto preto, 'Continuar →' e '+ Nova visita' azuis", await js(`(()=>{const chip=document.querySelector(".vis-aviso-terra");const cont=[...document.querySelectorAll(".vis-linha button")].find((b)=>b.innerText.includes("Continuar"));const nova=[...document.querySelectorAll("button")].find((b)=>b.innerText.includes("Nova visita"));return !!chip&&getComputedStyle(chip).backgroundColor==="rgb(220, 235, 251)"&&getComputedStyle(chip).color==="rgb(27, 36, 51)"&&!!cont&&getComputedStyle(cont).backgroundColor==="rgb(43, 84, 207)"&&!!nova&&getComputedStyle(nova).backgroundColor==="rgb(43, 84, 207)"})()`));
+
+  // 19. Tablet (mesmo trilho, 104 px) e Correções em 1280 x 940.
+  await n.enviar("Emulation.setDeviceMetricsOverride", { width: 820, height: 1100, deviceScaleFactor: 1, mobile: false });
+  await n.ir(app.base);
+  await esperar(async () => js('!!document.querySelector(".tr")'), 20000);
+  await n.esperar(1200);
+  await foto("19-tablet");
+  registrar("19a. Tablet: o mesmo trilho de 104 px, sem rolagem horizontal", await js(`(()=>{const t=document.querySelector(".tr");return !!t&&Math.round(t.getBoundingClientRect().width)===104&&getComputedStyle(t).backgroundColor==="rgb(46, 91, 214)"&&document.documentElement.scrollWidth<=innerWidth+1})()`));
+  await n.enviar("Emulation.setDeviceMetricsOverride", { width: 1280, height: 940, deviceScaleFactor: 1, mobile: false });
+  await n.ir(app.base);
+  await esperar(async () => js('!!document.querySelector(".tr")'), 20000);
+  await n.esperar(1200);
+  await itemDoTrilho("Correções", true);
+  await esperar(async () => js('!!document.querySelector(".pc-cor .pc-detail--corr")||!!document.querySelector(".ui-empty")'), 15000);
+  await n.esperar(600);
+  await foto("19-correcoes-1280");
   await n.enviar("Emulation.clearDeviceMetricsOverride");
 } catch (erro) {
   registrar(`erro na verificação: ${erro.message}`, false);

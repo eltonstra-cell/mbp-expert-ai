@@ -88,7 +88,7 @@ test("59. um só avatar do usuário (menu) e Visita N na lateral; o Início volt
 });
 
 test("Lembrete ao responsável também em Correções; painel Hoje do Início voltou ao estado anterior", () => {
-  assert.ok(ler("../components/pc/PcCorrecoes.tsx").includes("Lembrete ao responsável"), "o lembrete também fica em Correções");
+  assert.ok(ler("../components/pc/PcCorrecoes.tsx").includes("Enviar lembrete"), "o lembrete também fica em Correções (link ao lado de Responsável)");
   const painel = ler("../components/PainelHoje.tsx");
   assert.ok(painel.includes("Ver todos (") && painel.includes("ITENS_INICIAIS = 3"));
   const css = ler("../app/globals.css");
@@ -97,7 +97,7 @@ test("Lembrete ao responsável também em Correções; painel Hoje do Início vo
 
 test("Início no desenho aprovado: cartão, duas colunas e nada de contadores, preparação ou visitas recentes", () => {
   const inicio = ler("../components/pc/PcInicio.tsx");
-  assert.ok(inicio.includes("Continuar de onde parei") && inicio.includes("Hoje precisa de você") && inicio.includes("Vencendo em 30 dias"));
+  assert.ok(inicio.includes("Continuar de onde parei") && inicio.includes("Hoje precisa de você") && inicio.includes("Vencimentos em 30 dias"));
   for (const velho of ["Visitas em andamento", "Preparação da empresa", "Visitas recentes", "Primeiros passos", "Pendências técnicas"]) assert.equal(inicio.includes(velho), false, velho);
   const pagina = ler("../app/page.tsx");
   assert.equal(pagina.includes("mbp-primeiros-passos-dispensado"), false);

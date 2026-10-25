@@ -96,9 +96,8 @@ test("vencimentos: janela de 30 dias, ordem por data, POP com data 'Revisar até
 test("linha inteira clicável, sem botão Abrir; barras e quadradinhos nas cores do desenho", () => {
   const inicio = ler("../components/pc/PcInicio.tsx");
   assert.ok(inicio.includes('<button key={item.id} type="button" className={`ini3-linha ini3-linha--${item.situacao === \"vencido\" ? \"vencida\" : \"aberta\"}`} onClick={() => colunas.onAbrirPendencia(item)}>'));
-  assert.ok(inicio.includes('className="ini3-linha ini3-linha--vence" onClick={() => colunas.onAbrirVencimento(item)}'));
-  assert.equal(/>\s*Abrir\s*</.test(inicio), false, "nenhum botão Abrir");
-  assert.ok(inicio.includes("Ver todas ({linhas.length})") && inicio.includes("colunas.onVerTodasCorrecoes") && inicio.includes("LIMITE_DE_LINHAS_DO_PAINEL") && inicio.includes("Ver todos os vencimentos →") && inicio.includes("Lembrete ao responsável"));
+    assert.equal(/>\s*Abrir\s*</.test(inicio), false, "nenhum botão Abrir");
+  assert.ok(inicio.includes("Ver todas ({linhas.length})") && inicio.includes("colunas.onVerTodasCorrecoes") && inicio.includes("colunas.onTodosVencimentos") && inicio.includes("Lembrete ao responsável"));
   const css = ler("../app/globals.css");
   const bloco = css.slice(css.indexOf("/* ----- Início ----- */"));
   assert.match(bloco, /\.ini3-linha--vencida \.ini3-faixa\{background:var\(--rd-venceu\)\}/);
@@ -157,8 +156,8 @@ test("correções abertas sem prazo entram em Hoje precisa de você, depois das 
 
 test("estados vazios: Tudo em dia, só um bloco e contadores/lembrete só com itens; sem visita, Comece por aqui com Nova visita", () => {
   const inicio = ler("../components/pc/PcInicio.tsx");
-  assert.ok(inicio.includes("colunas && semPendencias && semVencimentos") && inicio.includes("Tudo em dia") && inicio.includes("Nada vencido e nada vencendo nos próximos 30 dias."));
-  assert.ok(inicio.includes("{!semPendencias && (") && inicio.includes("{!semVencimentos && (") && inicio.includes('semPendencias || semVencimentos ? " is-uma" : ""'), "um bloco vazio não aparece e o outro ocupa a largura toda");
+  assert.ok(inicio.includes("colunas && semPendencias") && inicio.includes("Tudo em dia") && inicio.includes("Nada vencido e nada vencendo nos próximos 30 dias."));
+  assert.ok(inicio.includes("{!semPendencias && (") && inicio.includes('className="ini3-colunas is-uma"'), "sem correções o bloco não aparece; sobra uma só coluna (o bloco Vencendo saiu)");
   assert.equal(inicio.includes("Nada vence nos próximos 30 dias."), false);
   assert.ok(inicio.includes("temVisita ? \"CONTINUAR DE ONDE PARAREI\" : \"COMECE POR AQUI\"") && inicio.includes("Nenhuma visita em andamento.") && inicio.includes("Nova visita"));
   // contador e lembrete ficam dentro do bloco que só existe com itens

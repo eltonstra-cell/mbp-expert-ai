@@ -118,9 +118,8 @@ async function abrirPagina(n, base, estado) {
 }
 
 async function abrirJanelaDaCapa(n, codigo) {
-  // "Cadastros" e "POPs e documentos" ficam dentro de "Mais" no menu lateral
-  await n.avaliar(clicar(".pc-side .pc-link", "Mais"));
-  await n.avaliar(clicar("button,a", "POPs e documentos"));
+  // "POPs" é um item do trilho de navegação (abre Documentos › POPs)
+  await n.avaliar(`(()=>{const el=[...document.querySelectorAll(".tr .tr-item")].find(b=>b.querySelector(".tr-rotulo")?.textContent.trim()==="POPs");if(!el)return false;el.click();return true})()`);
   await n.esperarCondicao(`document.querySelector(".pgl-linha")`, { descricao: "lista de POPs" });
   await n.avaliar(`(()=>{const linha=[...document.querySelectorAll(".pgl-linha")].find(l=>l.innerText.includes(${JSON.stringify(codigo)}));linha.click();return true})()`);
   await n.esperarCondicao(`document.querySelector(".ficha")`, { descricao: "ficha do POP" });
