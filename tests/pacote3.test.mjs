@@ -157,7 +157,7 @@ test("22. ambiente sem questionário: aviso no ambiente e vínculo em lote", () 
   assert.deepEqual(lote, { Estufa: oficial, Churrasqueira: oficial, Varanda: oficial });
   assert.deepEqual(ambientesSemQuestionario(setores, SETORES_OFICIAIS_MANUAL, lote, {}), []);
   const campos = ler("../components/ManualBaseFields.tsx");
-  assert.ok(campos.includes("Sem questionário") && campos.includes("Vincular questionário") && campos.includes("Vincular questionário a vários ambientes"));
+  assert.ok(campos.includes("Questionário básico") && campos.includes("Vincular a um setor oficial") && campos.includes("Vincular questionário a vários ambientes") && !campos.includes(">Sem questionário<"));
 });
 
 test("19/20. ambientes numa lista única; fluxos em janela de duas colunas (Escolher fluxos)", () => {

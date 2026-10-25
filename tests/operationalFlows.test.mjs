@@ -14,7 +14,7 @@ test("cria os 11 fluxos do Capítulo 2 sem presumir que se aplicam", () => {
   assert.equal(fluxos.every((fluxo) => fluxo.aplicavel === false), true);
 });
 
-test("corrige vínculo antigo de fluxo ativo ao carregar a lista detalhada", () => {
+test("fluxo que o Manual não liga a um setor oficial NÃO é adivinhado: fica sem setor até o RT escolher", () => {
   const fluxos = criarFluxosOperacionaisPadrao();
   const congelamento = fluxos.find((fluxo) => fluxo.tipo === "Congelamento");
   congelamento.aplicavel = true;
@@ -23,10 +23,7 @@ test("corrige vínculo antigo de fluxo ativo ao carregar a lista detalhada", () 
     "Cozinha",
     "Armazenamento Congelado (Freezers)",
   ]);
-  assert.equal(
-    corrigidos.find((fluxo) => fluxo.tipo === "Congelamento").setorVinculado,
-    "Armazenamento Congelado (Freezers)"
-  );
+  assert.equal(corrigidos.find((fluxo) => fluxo.tipo === "Congelamento").setorVinculado, "");
 });
 
 test("sugere os ambientes reais corretos para os fluxos do restaurante", () => {
@@ -40,9 +37,10 @@ test("sugere os ambientes reais corretos para os fluxos do restaurante", () => {
   ];
   assert.equal(obterSetorSugeridoParaFluxo("Recebimento", setores), "Recebimento de Mercadorias");
   assert.equal(obterSetorSugeridoParaFluxo("Higienização de FLV", setores), "Higienização de Hortifrutigranjeiros");
-  assert.equal(obterSetorSugeridoParaFluxo("Congelamento", setores), "Armazenamento Congelado (Freezers)");
-  assert.equal(obterSetorSugeridoParaFluxo("Manejo de resíduos", setores), "Armazenamento Temporário de Resíduos");
-  assert.equal(obterSetorSugeridoParaFluxo("Entrada e saída de colaboradores", setores), "Sanitários/Vestiários de Funcionários");
+  // Congelamento, Manejo de resíduos e Entrada e saída não têm setor padrão no Manual: nada é sugerido.
+  assert.equal(obterSetorSugeridoParaFluxo("Congelamento", setores), "");
+  assert.equal(obterSetorSugeridoParaFluxo("Manejo de resíduos", setores), "");
+  assert.equal(obterSetorSugeridoParaFluxo("Entrada e saída de colaboradores", setores), "");
 });
 
 test("preserva os dados confirmados ao normalizar os fluxos", () => {
@@ -72,6 +70,6 @@ test("gera critérios somente para fluxo ativo e setor vinculado", () => {
   const cozinha = obterCriteriosOperacionaisParaSetor(fluxos, "Cozinha / Produção");
 
   assert.equal(recebimento.length, 3);
-  assert.equal(recebimento.every((item) => item.referencia.includes("Capítulo 2")), true);
+  assert.equal(recebimento.every((item) => /cap\. 2, item 1/.test(item.referencia)), true);
   assert.equal(cozinha.length, 0);
 });

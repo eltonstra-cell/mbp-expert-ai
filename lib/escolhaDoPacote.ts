@@ -85,3 +85,22 @@ export function agruparPorAmbiente<T extends ItemDeEquipamento>(itens: T[]): { a
   }
   return grupos;
 }
+
+/** Público de cada setor oficial na janela do pacote (agrupa os ambientes sem nome ambíguo). */
+export type GrupoDeAmbiente = "Produção e apoio" | "Colaboradores" | "Clientes";
+export function agruparAmbientesPorPublico(ambientes: string[], publicoDe: (ambiente: string) => GrupoDeAmbiente): { grupo: GrupoDeAmbiente; ambientes: string[] }[] {
+  const ordem: GrupoDeAmbiente[] = ["Produção e apoio", "Colaboradores", "Clientes"];
+  return ordem.map((grupo) => ({ grupo, ambientes: ambientes.filter((ambiente) => publicoDe(ambiente) === grupo) })).filter((item) => item.ambientes.length > 0);
+}
+
+/** Perguntas que cada fluxo marcado acrescenta ao setor dele (3 por fluxo); fluxo sem setor não soma. */
+export function resumoDeFluxosPorSetor(fluxos: { setor: string }[], perguntasPorFluxo: number): { setor: string; fluxos: number; perguntas: number }[] {
+  const mapa = new Map<string, number>();
+  for (const fluxo of fluxos) if (fluxo.setor) mapa.set(fluxo.setor, (mapa.get(fluxo.setor) || 0) + 1);
+  return [...mapa.entries()].map(([setor, quantidade]) => ({ setor, fluxos: quantidade, perguntas: quantidade * perguntasPorFluxo }));
+}
+
+/** "7 fluxos = 21 perguntas na Cozinha / Produção". */
+export function linhaDoResumoDeFluxos(item: { setor: string; fluxos: number; perguntas: number }): string {
+  return `${item.fluxos} ${item.fluxos === 1 ? "fluxo" : "fluxos"} = ${item.perguntas} perguntas ${item.setor ? `na ${item.setor}` : ""}`.trim();
+}

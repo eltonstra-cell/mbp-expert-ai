@@ -7,7 +7,7 @@ const css = ler("../app/globals.css");
 
 test("E: Mais mostra Empresas com etiqueta novo e a tela do celular tem busca, + Nova e cartões", () => {
   const pagina = ler("../app/page.tsx");
-  assert.ok(pagina.includes('rotulo: "Empresas"') && pagina.includes('detalhe: "Cadastro, cor e seleção"') && pagina.includes('etiqueta: "novo"'));
+  assert.ok(pagina.includes('rotulo: "Empresas"') && pagina.includes('detalhe: "Cadastro, cor e seleção"') && !pagina.includes('etiqueta: "novo"'));
   assert.ok(pagina.includes("ehPC ? PcEmpresas : CampoEmpresas"));
   const tela = ler("../components/campo/CampoEmpresas.tsx");
   assert.ok(tela.includes("Buscar por nome, CNPJ ou município") && tela.includes("+ Nova"));

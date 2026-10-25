@@ -11,6 +11,8 @@ import type { ChecklistStatus } from "@/types";
 export type ItemDaFila = { id: string; status: ChecklistStatus; /** Reprovou nas últimas visitas. */ reprovou?: boolean; /** Não se aplica em todas as visitas recentes: fica no bloco recolhido. */ recolhido?: boolean };
 
 export type ApoioDoItem = {
+  /** De onde vem a pergunta ("Derivada do Manual, cap. 1, item 2.5", "Parcial: …" ou "Fonte não registrada"). */
+  fonte?: string;
   /** Orientação do item ("O que verificar"). */
   orientacao?: string;
   /** Referência e, se existir nos dados, o trecho da norma. */
@@ -108,6 +110,7 @@ function PainelDeApoio({ apoio }: { apoio: ApoioDoItem }) {
   const vazio = !apoio.reincidencia && !apoio.orientacao && !apoio.baseLegal && !apoio.pop && !apoio.ultimaVisita && apoio.evidencias.length === 0;
   return (
     <aside className="chk-apoio" aria-label="Apoio ao item">
+      {apoio.fonte && <p className="chk-apoio-fonte">Fonte: {apoio.fonte}</p>}
       {apoio.reincidencia && (
         <CartaoDeApoio titulo="Reincidência" tom="ambar">
           <p className="chk-apoio-texto">{apoio.reincidencia}</p>

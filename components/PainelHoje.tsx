@@ -14,6 +14,9 @@ const TIPO: Record<OrigemDoItem, string> = { correcao: "Correção", comprovante
 type Props = {
   painel: Painel;
   onAcao: (item: ItemDoPainel) => void;
+};
+
+type PropsAtalhos = {
   /** Só RT e Administrador: abre a prévia do lembrete ao responsável do estabelecimento. */
   onLembrete?: () => void;
   onResumo: () => void;
@@ -23,8 +26,8 @@ type Props = {
   onEmitidos?: () => void;
 };
 
-// "Hoje precisa de você": contadores e lista por urgência, com a ação ao lado de cada item.
-export default function PainelHoje({ painel, onAcao, onLembrete, onResumo, onEvolucao, onDossie, onEmitidos }: Props) {
+// "Hoje precisa de você": só o que exige ação (vencidos, vencendo, correções), com a ação ao lado de cada item.
+export default function PainelHoje({ painel, onAcao }: Props) {
   const [verTodos, setVerTodos] = useState(false);
   const visiveis = verTodos ? painel.itens : painel.itens.slice(0, ITENS_INICIAIS);
   return (
@@ -66,6 +69,15 @@ export default function PainelHoje({ painel, onAcao, onLembrete, onResumo, onEvo
           {verTodos ? "Mostrar só os 3 primeiros" : `Ver todos (${painel.itens.length})`}
         </button>
       )}
+    </section>
+  );
+}
+
+// Atalhos de relatório e o lembrete: bloco próprio, fora de "Hoje precisa de você".
+export function AtalhosDeRelatorios({ onLembrete, onResumo, onEvolucao, onDossie, onEmitidos }: PropsAtalhos) {
+  return (
+    <section className="ui-card hoje-atalhos" aria-label="Relatórios e avisos">
+      <h2 className="ui-card-title">Relatórios e avisos</h2>
       <div className="hoje-rodape">
         <span className="hoje-botoes">
           <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={onResumo}>

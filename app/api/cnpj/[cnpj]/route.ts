@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { semCpf, titularEPessoaFisica } from "@/lib/cnpjConsulta";
 import { normalizarUf } from "@/lib/ufBrasil";
 import { consultarComReserva } from "@/lib/consultaCnpjFontes";
+import { acharMunicipio, municipiosDaUf } from "@/lib/municipiosIbge";
+import { resolverUf } from "@/lib/ufBrasil";
 
 type NormalizedCompany = {
   source: "BrasilAPI" | "CNPJ.ws";
@@ -174,5 +176,9 @@ export async function GET(
       { status: 502 }
     );
   }
-  return NextResponse.json({ ...protegerDadosDePessoa(resultado.dados), uf_da_outra_fonte: resultado.ufDaOutraFonte || "", tentativas: resultado.tentativas });
+  const protegido = protegerDadosDePessoa(resultado.dados);
+  // Município com acento pela lista oficial do IBGE (a consulta manda "SAO PAULO"); sem lista ou sem casamento, fica como veio.
+  const ufDoMunicipio = resolverUf({ uf: protegido.uf, outraFonte: resultado.ufDaOutraFonte, cep: protegido.cep, municipio: protegido.municipio }).uf;
+  const municipioOficial = ufDoMunicipio ? acharMunicipio(protegido.municipio, await municipiosDaUf(ufDoMunicipio)) : "";
+  return NextResponse.json({ ...protegido, ...(municipioOficial ? { municipio: municipioOficial } : {}), uf_da_outra_fonte: resultado.ufDaOutraFonte || "", tentativas: resultado.tentativas });
 }

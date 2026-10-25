@@ -1,7 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { assinarToast, toastAtual } from "@/lib/toast";
+import { assinarToast, fecharToast, toastAtual } from "@/lib/toast";
 
 const SEM_TOAST = () => null;
 
@@ -12,6 +12,18 @@ export default function ToastHost() {
   return (
     <div key={toast.id} className={`pc-toast toast-salvo${toast.tipo === "ok" ? " pc-toast--ok" : " toast-aviso"}`} role="status" aria-live="polite">
       <span aria-hidden="true">{toast.tipo === "ok" ? "✓" : "!"}</span> {toast.texto}
+      {toast.acao && (
+        <button
+          type="button"
+          className="toast-acao"
+          onClick={() => {
+            toast.acao?.aoClicar();
+            fecharToast();
+          }}
+        >
+          {toast.acao.rotulo}
+        </button>
+      )}
     </div>
   );
 }

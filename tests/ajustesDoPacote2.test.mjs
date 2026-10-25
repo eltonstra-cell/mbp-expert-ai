@@ -98,7 +98,7 @@ test("selo: 'Sincronizado' só com as duas filas vazias; falha de foto vira 'Err
 
 test("evidências no celular: aviso de IA uma vez no topo, título curto com nome completo no title, botão baixo e 'Enviar agora'", () => {
   const ev = ler("../components/pc/PcEvidencias.tsx");
-  assert.ok(ev.includes('className="ev7-aviso-ia"') && ev.includes("🔒 Analisar com IA"));
+  assert.ok(ev.includes('className="ev7-aviso-fino"') && ev.includes("🔒 Analisar com IA"));
   assert.equal(ev.includes('className="ev7-nota ev7-nota--ia"'), false, "o aviso não se repete em cada cartão");
   assert.ok(ev.includes("title={ev.tituloCompleto || ev.titulo}") && ev.includes("Enviar agora"));
   const css = ler("../app/globals.css");

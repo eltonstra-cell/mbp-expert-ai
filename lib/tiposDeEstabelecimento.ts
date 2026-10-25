@@ -76,13 +76,17 @@ const NOME_CURTO_DO_SETOR: Record<string, string> = {
   [HIGIENIZACAO]: "Higienização",
   [SALAO]: "Refeitório",
   [VEST_F]: "Vestiário fem.",
-  [BAN_F]: "Banheiro fem.",
+  [BAN_F]: "Banheiro colab. fem.",
   [VEST_M]: "Vestiário masc.",
-  [BAN_M]: "Banheiro masc.",
-  [CLI_F]: "Clientes fem.",
-  [CLI_M]: "Clientes masc.",
+  [BAN_M]: "Banheiro colab. masc.",
+  [CLI_F]: "Banheiro clientes fem.",
+  [CLI_M]: "Banheiro clientes masc.",
 };
 export const nomeCurtoDoSetor = (nome: string): string => NOME_CURTO_DO_SETOR[nome] || nome;
+
+/** Quem usa o setor: agrupa a lista do pacote (colaboradores, depois clientes). */
+export const publicoDoSetor = (nome: string): "Produção e apoio" | "Colaboradores" | "Clientes" =>
+  COLABORADORES.includes(nome as never) ? "Colaboradores" : CLIENTES.includes(nome as never) ? "Clientes" : "Produção e apoio";
 
 // Critérios dos ambientes por tipo (só os 13 setores oficiais; o RT desmarca o que não existe):
 // Central de gás: restaurante, UAN e bufê (cozinha de produção com fogão industrial); Refeitório/salão: onde se consome no local

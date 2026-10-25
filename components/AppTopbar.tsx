@@ -5,7 +5,7 @@ import BuscaNaBarra, { type ContextoDaVoz } from "@/components/BuscaNaBarra";
 import type { Destino } from "@/lib/commandSearch";
 import { RowMenu, type ItemMenu } from "@/components/ui/RowMenu";
 import SeletorDeSecao, { type OpcaoDeSecao } from "@/components/SeletorDeSecao";
-import { ROTULO_DE_USO, type ModoTela } from "@/lib/screenMode";
+import { ROTULO_DE_USO, ROTULO_DO_MODO, type ModoTela } from "@/lib/screenMode";
 
 const ROTULO_SYNC = { ok: "Sincronizado", pendente: "Sincronizando…", "sem-sinal": "Sem sinal", erro: "Erro ao enviar" } as const;
 
@@ -167,7 +167,7 @@ export default function AppTopbar({
         )}
         {modo && onAbrirConfigModo && !secao && !ocultarChipDeModo && (
           <button type="button" className="pc-mode-chip" onClick={onAbrirConfigModo} title={`${ROTULO_DE_USO[modo]}. Configurar o modo de tela`} aria-label={`${ROTULO_DE_USO[modo]}. Configurar o modo de tela`}>
-            <span className="pc-mode-texto">{ROTULO_DE_USO[modo]}</span>
+            <span className="pc-mode-texto">Modo de tela: {ROTULO_DO_MODO[modo]}</span>
             <svg className="pc-mode-icone" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
               <rect x="3" y="4" width="18" height="12" rx="2" />
               <path d="M8 20h8M12 16v4" />

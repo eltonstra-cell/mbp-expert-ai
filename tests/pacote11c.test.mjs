@@ -43,7 +43,8 @@ test("C: cartão escondido enquanto há itens sem resposta e texto no botão Con
 test("C: Continuar checklist e o cartão abrem o item de destino, sem usar o último guardado", () => {
   const pagina = ler("../app/page.tsx");
   assert.ok(pagina.includes("continuar(alvo.id, true, proximoItem)"));
-  assert.ok(pagina.includes("continuarDetalhe={textoDoContinuar(etapaDoAlvo)}"));
+  // Rodada 3: a contagem não se repete no botão (fica só no cartão da visita).
+  assert.equal(pagina.includes("continuarDetalhe={textoDoContinuar(etapaDoAlvo)}"), false);
   assert.ok(pagina.includes("mostrarCartaoProximaEtapa(etapaDoAlvo)"));
   assert.ok(pagina.includes("if (itemEscolhido) setItemFocoId(itemEscolhido.id);"));
   assert.ok(ler("../components/campo/CampoTelas.tsx").includes("campo-btn-detalhe"));

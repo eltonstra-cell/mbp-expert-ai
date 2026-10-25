@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { camposDoPerfilProprio, type DadosDoPerfilProprio } from "@/lib/userManagement";
-import { cameraAutomaticaLigada, definirCameraAutomatica } from "@/lib/preferenciasDeCampo";
+import { avancarAoResponderLigado, cameraAutomaticaLigada, definirAvancarAoResponder, definirCameraAutomatica } from "@/lib/preferenciasDeCampo";
 
 type Props = {
   nome: string;
@@ -23,6 +23,8 @@ export default function MeuPerfilModal({ nome, email, perfil, empresas, versao, 
   const [telefone, setTelefone] = useState(editavel?.telefone || "");
   const [cameraAutomatica, setCameraAutomatica] = useState(false);
   useEffect(() => setCameraAutomatica(cameraAutomaticaLigada()), []);
+  const [avancarAoResponder, setAvancarAoResponder] = useState(true);
+  useEffect(() => setAvancarAoResponder(avancarAoResponderLigado()), []);
   useEffect(() => {
     const aoTeclar = (evento: KeyboardEvent) => {
       if (evento.key === "Escape") onFechar();
@@ -68,6 +70,17 @@ export default function MeuPerfilModal({ nome, email, perfil, empresas, versao, 
             }}
           />
           <span>Abrir a câmera automaticamente ao marcar Não conforme (só neste aparelho)</span>
+        </label>
+        <label className="perfil-preferencia">
+          <input
+            type="checkbox"
+            checked={avancarAoResponder}
+            onChange={(evento) => {
+              setAvancarAoResponder(evento.target.checked);
+              definirAvancarAoResponder(evento.target.checked);
+            }}
+          />
+          <span>Avançar ao responder Conforme ou Não se aplica (só neste aparelho)</span>
         </label>
         {editavel && onSalvar && (
           <div className="perfil-edicao">

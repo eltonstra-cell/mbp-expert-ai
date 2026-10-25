@@ -3,6 +3,7 @@
 // a proposta traz só o nome fantasia (se houver) e o endereço do estabelecimento, e o campo avisa.
 
 import { resolverUf, type UfResolvida } from "./ufBrasil.ts";
+import { textoDeEndereco } from "./textoDeEndereco.ts";
 
 export type CnaeDaConsulta = { codigo: string; descricao: string };
 
@@ -118,12 +119,12 @@ export function propostaDaConsulta(bruta: ConsultaBruta): PropostaDeCnpj {
     cnaesSecundarios: (bruta.cnaes_secundarios || [])
       .map((c) => ({ codigo: String(c.codigo ?? "").replace(/\D/g, ""), descricao: (c.descricao || "").trim() }))
       .filter((c) => c.codigo && c.codigo !== "0"),
-    logradouro: bruta.logradouro || "",
+    logradouro: textoDeEndereco(bruta.logradouro),
     numero: bruta.numero || "",
-    complemento: bruta.complemento || "",
-    bairro: bruta.bairro || "",
+    complemento: textoDeEndereco(bruta.complemento),
+    bairro: textoDeEndereco(bruta.bairro),
     cep: bruta.cep || "",
-    municipio: bruta.municipio || "",
+    municipio: textoDeEndereco(bruta.municipio),
     uf: uf.uf,
     ufOrigem: uf.origem,
     ufAviso: uf.aviso,

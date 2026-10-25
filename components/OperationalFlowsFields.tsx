@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import type { FluxoOperacional } from "@/types";
 import {
   DEFINICOES_FLUXOS_OPERACIONAIS,
+  PERGUNTAS_POR_FLUXO,
   obterSetorSugeridoParaFluxo,
 } from "@/lib/operationalFlows";
 import { aplicarEscolhaDeFluxos } from "@/lib/escolhaEmJanela";
@@ -26,7 +27,8 @@ export default function OperationalFlowsFields({ fluxos, setores, onChange, flux
     const corrigidos = fluxos.map((fluxo) => {
       if (!fluxo.aplicavel || setores.includes(fluxo.setorVinculado)) return fluxo;
       const setorSugerido = obterSetorSugeridoParaFluxo(fluxo.tipo, setores, fluxo.setorVinculado);
-      if (!setorSugerido || setorSugerido === fluxo.setorVinculado) return fluxo;
+      // Fluxo que o Manual não liga a um setor oficial volta a "sem setor" (o RT escolhe); nada é adivinhado.
+      if (setorSugerido === fluxo.setorVinculado) return fluxo;
       alterou = true;
       return { ...fluxo, setorVinculado: setorSugerido };
     });
@@ -62,10 +64,13 @@ export default function OperationalFlowsFields({ fluxos, setores, onChange, flux
             <div className="grid min-w-0 gap-2 md:grid-cols-2">
               <label className="cad-rotulado">
                 <span>Setor onde ocorre</span>
-                <Select value={fluxo.setorVinculado} onChange={(event) => atualizar(indice, { setorVinculado: event.target.value })} className="cad-input">
-                  {setores.length === 0 && <option value={fluxo.setorVinculado}>{fluxo.setorVinculado}</option>}
+                <Select value={fluxo.setorVinculado} onChange={(event) => atualizar(indice, { setorVinculado: event.target.value })} className="cad-input" aria-invalid={!fluxo.setorVinculado}>
+                  {!fluxo.setorVinculado && <option value="">Escolha o setor deste fluxo</option>}
+                  {setores.length === 0 && fluxo.setorVinculado && <option value={fluxo.setorVinculado}>{fluxo.setorVinculado}</option>}
                   {setores.map((setor) => <option key={setor} value={setor}>{setor}</option>)}
                 </Select>
+                {!fluxo.setorVinculado && <span className="ui-field-error" role="status">Escolha o setor deste fluxo. Sem setor, ele não soma perguntas na visita.</span>}
+                {fluxo.setorVinculado && <span className="cad-dica">Adiciona {PERGUNTAS_POR_FLUXO} perguntas à visita deste setor.</span>}
               </label>
 
               <label className="cad-rotulado">

@@ -128,6 +128,15 @@ try {
   await n.esperar(200);
   registrar("3a6. marcar a Cozinha de novo devolve os equipamentos", /equipamentos voltaram/.test(await texto()));
   await js(`[...document.querySelectorAll(".pacote-aba")].find(b=>b.innerText.startsWith("Equipamentos")).click()`);
+  await n.esperar(150);
+  await foto("2b-equipamentos");
+  await js(`[...document.querySelectorAll(".pacote-aba")].find(b=>b.innerText.startsWith("Fluxos")).click()`);
+  await n.esperar(200);
+  registrar("3a7. Fluxos: 'cada fluxo marcado adiciona 3 perguntas', resumo por setor e escolha de setor em cada fluxo; os 4 sem setor padrão pedem a escolha", await js(`(()=>{const t=document.querySelector(".pacote-janela").innerText;const resumo=document.querySelector(".pacote-fluxo-resumo")?.innerText||"";const linhas=document.querySelectorAll(".pacote-fluxo-linha").length;return /Cada fluxo marcado adiciona 3 perguntas ao setor dele/.test(t)&&/\\d+ fluxos? = \\d+ perguntas na /.test(resumo)&&/fluxos sem setor não somam perguntas/.test(resumo)&&linhas===11&&t.includes("Escolha o setor deste fluxo")})()`));
+  await foto("2c-fluxos");
+  await js(`[...document.querySelectorAll(".pacote-aba")].find(b=>b.innerText.startsWith("Ambientes")).click()`);
+  await n.esperar(100);
+  await js(`[...document.querySelectorAll(".pacote-aba")].find(b=>b.innerText.startsWith("Equipamentos")).click()`);
   await js(`(()=>{const l=[...document.querySelectorAll(".esc-opcao")].find(x=>x.innerText.includes("Fritadeira"));l.querySelector("input").click()})()`);
   await clicar("Aplicar o que está marcado");
   await n.esperar(500);

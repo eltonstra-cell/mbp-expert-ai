@@ -18,6 +18,7 @@ import { sugerirSetorOficial } from "@/lib/setorOficialSugerido";
 import { textoCurtoDaResponsabilidade, textoDosAtivos } from "@/lib/manualIdentificacao";
 import EscolhaEmJanela from "@/components/EscolhaEmJanela";
 import { nomeCurtoDoSetor } from "@/lib/tiposDeEstabelecimento";
+import { perguntasDoSetor, PERGUNTAS_DO_QUESTIONARIO_BASICO_VISITA } from "@/lib/perguntasDoAmbiente";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
 import VozEquipamentosConferencia, { type ItemParaConferir } from "@/components/VozEquipamentosConferencia";
 import { nomeJaExistente } from "@/lib/ambientesVisita";
@@ -75,6 +76,8 @@ export default function ManualBaseFields({
   const [quantidadeEquipamento, setQuantidadeEquipamento] = useState("1");
   const [papelAdicional, setPapelAdicional] = useState<PapelResponsabilidadeManual>("Proprietário");
   const [novoAmbiente, setNovoAmbiente] = useState("");
+  // Aviso na hora (no campo) quando uma mudança de setor oficial ou de vínculo muda as perguntas de um ambiente de nome próprio.
+  const [avisoDePerguntas, setAvisoDePerguntas] = useState("");
   const [renomeando, setRenomeando] = useState<{ de: string; texto: string } | null>(null);
   const [bloqueio, setBloqueio] = useState<{ ambiente: string; mensagem: string } | null>(null);
   const [destinoDoMover, setDestinoDoMover] = useState("");
@@ -162,6 +165,12 @@ export default function ManualBaseFields({
   // "Concluir" na janela de setores: aplica no estado da tela (quem grava é o Salvar da barra de baixo).
   function aplicarSetores(escolhidos: string[]) {
     const retirados = setores.filter((setor) => SETORES_OFICIAIS_MANUAL.includes(setor as (typeof SETORES_OFICIAIS_MANUAL)[number]) && !escolhidos.includes(setor));
+    const vinculadosAosRetirados = Object.entries(vinculos).filter(([nome, oficial]) => retirados.includes(oficial) && setores.includes(nome));
+    setAvisoDePerguntas(
+      vinculadosAosRetirados
+        .map(([nome, oficial]) => `“${nome}” está vinculado a “${nomeCurtoDoSetor(oficial)}” e mantém as ${perguntasDoSetor(oficial)} perguntas desse setor; o setor oficial sai da lista. Para o ambiente passar ao questionário básico (${PERGUNTAS_DO_QUESTIONARIO_BASICO_VISITA} perguntas), tire o vínculo.`)
+        .join(" ")
+    );
     const comEquipamentos = retirados.find((setor) => bloqueioDeExcluirAmbiente(setor, equipamentos).bloqueado);
     if (comEquipamentos) {
       const resultado = bloqueioDeExcluirAmbiente(comEquipamentos, equipamentos);
@@ -323,11 +332,13 @@ export default function ManualBaseFields({
               />
               {onModelosChange && semQuestionario.length > 0 && (
                 <button type="button" className="ui-btn ui-btn--secondary" aria-expanded={loteAberto} onClick={() => abrirLote(semQuestionario)}>
-                  Vincular questionário
+                  Vincular a um setor oficial
                 </button>
               )}
             </div>
           </div>
+
+          {avisoDePerguntas && <p className="cadamb-aviso-linha" role="status">{avisoDePerguntas}</p>}
 
           {setores.length === 0 ? (
             <p className="esc-vazio">Nenhum ambiente ainda. Escolha os setores ou adicione um ambiente com nome próprio abaixo.</p>
@@ -396,22 +407,25 @@ export default function ManualBaseFields({
                         <label className="cad-vinculo">
                           <span>Setor oficial</span>
                           <Select
-                            value={vinculos[setor] && oficiaisMarcados.includes(vinculos[setor]) ? vinculos[setor] : ""}
+                            value={vinculos[setor] || ""}
                             onChange={(event) => {
                               const { [setor]: _removido, ...resto } = vinculos;
+                              if (vinculos[setor] && !event.target.value) setAvisoDePerguntas(`“${setor}” sem vínculo: perde as ${perguntasDoSetor(vinculos[setor])} perguntas de “${nomeCurtoDoSetor(vinculos[setor])}” e fica com o questionário básico (${PERGUNTAS_DO_QUESTIONARIO_BASICO_VISITA} perguntas).`);
+                              else setAvisoDePerguntas("");
                               onVinculosChange(event.target.value ? { ...resto, [setor]: event.target.value } : resto);
                             }}
                             aria-label={`Setor oficial de ${setor}`}
                           >
                             <option value="">Nenhum (opcional)</option>
                             {oficiaisMarcados.map((oficial) => <option key={oficial} value={oficial}>{oficial}</option>)}
+                            {vinculos[setor] && !oficiaisMarcados.includes(vinculos[setor]) && <option value={vinculos[setor]}>{vinculos[setor]} (setor não marcado)</option>}
                           </Select>
                         </label>
                       )}
                       {proprio && semModelo && (
                         <span className="cadamb-aviso" role="status">
-                          Sem questionário
-                          {onModelosChange && <button type="button" className="cadamb-aviso-acao" onClick={() => abrirLote([setor])}>Vincular</button>}
+                          Questionário básico · {PERGUNTAS_DO_QUESTIONARIO_BASICO_VISITA} perguntas
+                          {onModelosChange && <button type="button" className="cadamb-aviso-acao" onClick={() => abrirLote([setor])}>Vincular a um setor oficial</button>}
                         </span>
                       )}
                       {proprio && !semModelo && modelos[setor] && <span className="cadamb-modelo">Questionário: {modelos[setor]}</span>}
@@ -457,7 +471,7 @@ export default function ManualBaseFields({
                     <label className="cadamb-lote-item">
                       <input type="checkbox" checked={loteSelecionados.includes(setor)} onChange={() => setLoteSelecionados((atual) => (atual.includes(setor) ? atual.filter((item) => item !== setor) : [...atual, setor]))} />
                       <span>{setor}</span>
-                      {semQuestionario.includes(setor) && <span className="cadamb-aviso">Sem questionário</span>}
+                      {semQuestionario.includes(setor) && <span className="cadamb-aviso">Questionário básico · {PERGUNTAS_DO_QUESTIONARIO_BASICO_VISITA} perguntas</span>}
                     </label>
                   </li>
                 ))}
@@ -509,6 +523,9 @@ export default function ManualBaseFields({
             <button type="button" onClick={adicionarAmbienteReal} disabled={Boolean(erroDoNovoAmbiente)} className="ui-btn ui-btn--criar cad-adicionar">Adicionar</button>
           </div>
           {erroDoNovoAmbiente && <span className="ui-field-error" role="alert">{erroDoNovoAmbiente}</span>}
+          {novoAmbiente.trim() && !erroDoNovoAmbiente && (
+            <span className="cadamb-dica" role="status">Nome próprio começa com o questionário básico ({PERGUNTAS_DO_QUESTIONARIO_BASICO_VISITA} perguntas). Depois, vincule a um setor oficial para ter as perguntas dele.</span>
+          )}
         </section>
       )}
 

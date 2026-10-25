@@ -34,7 +34,8 @@ import PcEvolucao from "@/components/pc/PcEvolucao";
 import { evidenciasEmRelatorioEmitido, podeEmitirRelatorio, ultimaVersao } from "@/lib/relatorioEmitido";
 import { podeGerarDossie } from "@/lib/dossie";
 import { CAPACIDADE_VAZIA, TEXTO_DA_CAPACIDADE, capacidadeDoFormulario, capacidadeParaFormulario, validarCapacidade, type CapacidadeEmTexto } from "@/lib/capacidadeEmpresa";
-import PainelHojeCard from "@/components/PainelHoje";
+import PainelHojeCard, { AtalhosDeRelatorios } from "@/components/PainelHoje";
+import { fonteParaExibir } from "@/lib/fonteDaPergunta";
 import PcLembrete from "@/components/pc/PcLembrete";
 import PcResumo from "@/components/pc/PcResumo";
 import { montarLembrete, montarPainelHoje, montarResumo, podeEnviarLembrete, podeVerPainel, type ItemDoPainel } from "@/lib/painelHoje";
@@ -57,6 +58,7 @@ import { passoDaView, passosDaTrilha, percentualDaVisita, type PassoVisita } fro
 import { conferenciaDoRelatorio, destinoDoPreencherCrn } from "@/lib/reportCheck";
 import { ocultarAmbiente, mostrarAmbiente, excluirAmbienteOculto, resumoOcultos } from "@/lib/hiddenEnvs";
 import { reincidenciaDaNc } from "@/lib/actionPlan";
+import { DURACAO_DO_AVISO_DO_AVANCO_MS, textoDoAvanco } from "@/lib/avancoAutomatico";
 import { acharItemDeDestino, mostrarCartaoProximaEtapa, primeiroItemSemResposta, proximaEtapaDaVisita, textoDoContinuar, type ItemDeDestino } from "@/lib/proximaEtapa";
 import { corDaEmpresa, proximaCorLivre } from "@/lib/empresaCor";
 import { BolinhasDeCor } from "@/components/CorDaEmpresa";
@@ -236,6 +238,7 @@ import DitadoDoAmbiente from "@/components/DitadoDoAmbiente";
 import ReservaDeAltura from "@/components/ReservaDeAltura";
 import PropostaDeCnpjPainel from "@/components/PropostaDeCnpj";
 import PacoteDoTipoPainel, { type EscolhaDoPacote } from "@/components/PacoteDoTipo";
+import CaixaQueCresce from "@/components/CaixaQueCresce";
 import { camposDaProposta, mensagemDeFalhaDaConsulta, propostaDaConsulta, type PropostaDeCnpj } from "@/lib/cnpjConsulta";
 import { TIPOS_DE_ESTABELECIMENTO, limiteSugeridoParaEquipamento, tipoSugeridoPorCnae } from "@/lib/tiposDeEstabelecimento";
 import { equipamentosDoPacote } from "@/lib/equipamentosCadastro";
@@ -486,18 +489,18 @@ const modelosChecklist: Record<
     { categoria: "Higiene", titulo: "Prateleiras e ambiente em boas condições de limpeza" },
   ],
   "Câmara refrigerada": [
-    { categoria: "Temperatura", titulo: "Temperatura da câmara dentro do padrão definido" },
-    { categoria: "Organização", titulo: "Alimentos organizados evitando contaminação cruzada" },
-    { categoria: "Identificação", titulo: "Preparações e produtos identificados e datados" },
-    { categoria: "Integridade", titulo: "Equipamento em bom estado e sem excesso de gelo" },
-    { categoria: "Higiene", titulo: "Câmara limpa e sem acúmulo de resíduos" },
+    { categoria: "Temperatura", titulo: "Temperatura da câmara dentro do padrão definido", referencia: "Parcial: tema do Manual, cap. 3, item 10.1; o texto da pergunta difere" },
+    { categoria: "Organização", titulo: "Alimentos organizados evitando contaminação cruzada", referencia: "Derivada do Manual, cap. 2, item 2.1" },
+    { categoria: "Identificação", titulo: "Preparações e produtos identificados e datados", referencia: "Parcial: tema do Manual, cap. 2, item 2.1; o texto da pergunta difere" },
+    { categoria: "Integridade", titulo: "Equipamento em bom estado e sem excesso de gelo", referencia: "Fonte não registrada" },
+    { categoria: "Higiene", titulo: "Câmara limpa e sem acúmulo de resíduos", referencia: "Parcial: tema do Manual, cap. 3, item 9.1; o texto da pergunta difere" },
   ],
   "Câmara de congelamento": [
-    { categoria: "Temperatura", titulo: "Temperatura de congelamento adequada" },
-    { categoria: "Organização", titulo: "Produtos organizados e separados por categoria" },
-    { categoria: "Identificação", titulo: "Produtos identificados e dentro do prazo" },
-    { categoria: "Integridade", titulo: "Ausência de queimadura por frio ou embalagens rompidas" },
-    { categoria: "Higiene", titulo: "Equipamento limpo e em bom estado" },
+    { categoria: "Temperatura", titulo: "Temperatura de congelamento adequada", referencia: "Derivada do Manual, cap. 2, item 2.1; cap. 3, item 10.1" },
+    { categoria: "Organização", titulo: "Produtos organizados e separados por categoria", referencia: "Derivada do Manual, cap. 2, item 2" },
+    { categoria: "Identificação", titulo: "Produtos identificados e dentro do prazo", referencia: "Parcial: tema do Manual, cap. 2, item 3.4; o texto da pergunta difere" },
+    { categoria: "Integridade", titulo: "Ausência de queimadura por frio ou embalagens rompidas", referencia: "Parcial: tema do Manual, cap. 2, item 3.4; o texto da pergunta difere" },
+    { categoria: "Higiene", titulo: "Equipamento limpo e em bom estado", referencia: "Parcial: tema do Manual, cap. 3, item 9; o texto da pergunta difere" },
   ],
   "Pré-preparo": [
     { categoria: "Higiene", titulo: "Bancadas e utensílios higienizados adequadamente" },
@@ -535,25 +538,25 @@ const modelosChecklist: Record<
     { categoria: "Higiene", titulo: "DML está limpo e sem acúmulo de resíduos" },
   ],
   "Sanitários / Vestiários": [
-    { categoria: "Higiene", titulo: "Instalações estão limpas e conservadas" },
-    { categoria: "Lavatório", titulo: "Há sabonete líquido, papel e meio adequado de secagem" },
-    { categoria: "Acesso", titulo: "Sanitários não se comunicam diretamente com áreas de preparo" },
-    { categoria: "Organização", titulo: "Pertences pessoais estão armazenados adequadamente" },
-    { categoria: "Conservação", titulo: "Portas, ralos e instalações estão em bom estado" },
+    { categoria: "Higiene", titulo: "Instalações estão limpas e conservadas", referencia: "Derivada do Manual, cap. 1, itens 2.8 a 2.13; cap. 3, item 9.3" },
+    { categoria: "Lavatório", titulo: "Há sabonete líquido, papel e meio adequado de secagem", referencia: "Derivada do Manual, cap. 1, item 2.9; cap. 3, item 3.4" },
+    { categoria: "Acesso", titulo: "Sanitários não se comunicam diretamente com áreas de preparo", referencia: "Fonte não registrada" },
+    { categoria: "Organização", titulo: "Pertences pessoais estão armazenados adequadamente", referencia: "Derivada do Manual, cap. 2, item 6" },
+    { categoria: "Conservação", titulo: "Portas, ralos e instalações estão em bom estado", referencia: "Derivada do Manual, cap. 1, itens 2.9 e 2.11 a 2.13" },
   ],
   "Área de resíduos": [
-    { categoria: "Acondicionamento", titulo: "Resíduos estão acondicionados em recipientes adequados" },
-    { categoria: "Tampa", titulo: "Lixeiras possuem tampa e acionamento adequado quando aplicável" },
-    { categoria: "Fluxo", titulo: "Retirada de resíduos não contamina áreas de produção" },
-    { categoria: "Higiene", titulo: "Área de resíduos está limpa e organizada" },
-    { categoria: "Controle de pragas", titulo: "Não há sinais de atração ou abrigo de pragas" },
+    { categoria: "Acondicionamento", titulo: "Resíduos estão acondicionados em recipientes adequados", referencia: "Derivada do Manual, cap. 2, item 5" },
+    { categoria: "Tampa", titulo: "Lixeiras possuem tampa e acionamento adequado quando aplicável", referencia: "Derivada do Manual, cap. 3, item 8" },
+    { categoria: "Fluxo", titulo: "Retirada de resíduos não contamina áreas de produção", referencia: "Derivada do Manual, cap. 3, item 9.7" },
+    { categoria: "Higiene", titulo: "Área de resíduos está limpa e organizada", referencia: "Parcial: tema do Manual, cap. 3, item 9.7; o texto da pergunta difere" },
+    { categoria: "Controle de pragas", titulo: "Não há sinais de atração ou abrigo de pragas", referencia: "Derivada do Manual, cap. 3, item 6" },
   ],
   "Área externa": [
-    { categoria: "Conservação", titulo: "Área externa está conservada e sem acúmulo de materiais" },
-    { categoria: "Pragas", titulo: "Não há condições favoráveis à proliferação de pragas" },
-    { categoria: "Drenagem", titulo: "Não há água parada ou problemas de drenagem" },
-    { categoria: "Acesso", titulo: "Acessos estão protegidos e organizados" },
-    { categoria: "Higiene", titulo: "Entorno do estabelecimento está limpo" },
+    { categoria: "Conservação", titulo: "Área externa está conservada e sem acúmulo de materiais", referencia: "Derivada do Manual, cap. 1, item 2 (introdução); cap. 3, item 6" },
+    { categoria: "Pragas", titulo: "Não há condições favoráveis à proliferação de pragas", referencia: "Derivada do Manual, cap. 3, item 6" },
+    { categoria: "Drenagem", titulo: "Não há água parada ou problemas de drenagem", referencia: "Fonte não registrada" },
+    { categoria: "Acesso", titulo: "Acessos estão protegidos e organizados", referencia: "Parcial: tema do Manual, cap. 1, item 2 (introdução); o texto da pergunta difere" },
+    { categoria: "Higiene", titulo: "Entorno do estabelecimento está limpo", referencia: "Derivada do Manual, cap. 1, item 2 (introdução)" },
   ],
 };
 
@@ -599,7 +602,7 @@ function criarChecklist(
       status: "Pendente" as ChecklistStatus,
       observacao: "",
       criticidade: item.criticidade || "Rotina",
-      referencia: item.referencia || "Boas Práticas — critério operacional",
+      referencia: item.referencia || "Fonte não registrada",
       orientacao: item.orientacao || "",
     }));
   });
@@ -1229,6 +1232,10 @@ export default function Home() {
   const [tipoSugerido, setTipoSugerido] = useState(false);
   // UF que não veio da consulta (deduzida pelo CEP ou vazia): o campo avisa, sem bloquear.
   const [avisoUf, setAvisoUf] = useState("");
+  // Consulta sem nome fantasia / sem e-mail: o campo diz isso (nada é inventado) e oferece o atalho quando cabe.
+  const [semFantasiaNaReceita, setSemFantasiaNaReceita] = useState(false);
+  const [semEmailNaConsulta, setSemEmailNaConsulta] = useState(false);
+  const [respNovaAberta, setRespNovaAberta] = useState(false);
   const [cnaesSecundariosForm, setCnaesSecundariosForm] = useState<{ codigo: string; descricao: string }[]>([]);
   const [consultaEmForm, setConsultaEmForm] = useState("");
   const cnpjConsultadoRef = useRef("");
@@ -2888,7 +2895,10 @@ export default function Home() {
 
   const painelNode =
     painelHoje && atual ? (
-      <PainelHojeCard painel={painelHoje} onEvolucao={() => setView("evolucao")} onDossie={podeGerarDossie(usuarioDaSessao) ? () => setView("dossie") : undefined} onEmitidos={() => setView("relatoriosemitidos")} onAcao={acaoDoPainel} onLembrete={podeEnviarLembrete(usuarioDaSessao) ? () => setLembreteAberto(true) : undefined} onResumo={() => setView("resumo")} />
+      <>
+        <PainelHojeCard painel={painelHoje} onAcao={acaoDoPainel} />
+        <AtalhosDeRelatorios onEvolucao={() => setView("evolucao")} onDossie={podeGerarDossie(usuarioDaSessao) ? () => setView("dossie") : undefined} onEmitidos={() => setView("relatoriosemitidos")} onLembrete={podeEnviarLembrete(usuarioDaSessao) ? () => setLembreteAberto(true) : undefined} onResumo={() => setView("resumo")} />
+      </>
     ) : null;
 
 
@@ -3800,13 +3810,16 @@ export default function Home() {
     setTipoSugerido(trocaTipo);
     setCnaesSecundariosForm(propostaCnpj.cnaesSecundarios);
     setAvisoUf(propostaCnpj.ufAviso);
+    setSemFantasiaNaReceita(!propostaCnpj.nomeFantasia && !propostaCnpj.titularPessoaFisica);
+    setSemEmailNaConsulta(!propostaCnpj.email);
     setConsultaEmForm(new Date().toISOString());
-    setConsultaMsg(propostaCnpj.titularPessoaFisica ? "Dados aplicados. Informe o nome do estabelecimento: o nome do titular não é guardado." : "Dados aplicados. O que veio da consulta está marcado; edite ou confirme.");
+    setConsultaMsg(propostaCnpj.titularPessoaFisica ? "Dados aplicados. Informe o nome do estabelecimento: o nome do titular não é guardado." : "Dados aplicados. Confira e edite o que precisar.");
     setPropostaCnpj(null);
   }
 
   function mudarCampoDaEmpresa(campo: string, valor: string) {
     if (campo === "uf") setAvisoUf("");
+    if (campo === "nomeFantasia" && valor.trim()) setSemFantasiaNaReceita(false);
     setForm((atual) => ({ ...atual, [campo]: valor }));
     setCamposDaConsulta((atual) => (atual.includes(campo) ? atual.filter((item) => item !== campo) : atual));
   }
@@ -3818,7 +3831,8 @@ export default function Home() {
     setSetoresEmpresa(setoresNovos);
     const novos = equipamentosDoPacote(escolha.equipamentos, setoresNovos, equipamentosEmpresa, () => crypto.randomUUID(), (nome) => limiteSugeridoParaEquipamento(nome)?.id);
     if (novos.length) setEquipamentosEmpresa([...equipamentosEmpresa, ...novos]);
-    setFluxosEmpresa(fluxosEmpresa.map((fluxo) => (escolha.fluxos.includes(fluxo.tipo) ? { ...fluxo, aplicavel: true } : fluxo)));
+    // O setor de cada fluxo é o que o RT deixou na janela; fluxo sem setor ("") não soma perguntas até ele escolher.
+    setFluxosEmpresa(fluxosEmpresa.map((fluxo) => (escolha.fluxos.includes(fluxo.tipo) ? { ...fluxo, aplicavel: true, ...(escolha.setorDosFluxos && fluxo.tipo in escolha.setorDosFluxos ? { setorVinculado: escolha.setorDosFluxos[fluxo.tipo] || "" } : {}) } : fluxo)));
   }
 
   function desfazerPacoteDoTipo() {
@@ -4906,6 +4920,14 @@ export default function Home() {
   }
 
   // abrirCamera=false (caixa inteligente): só leva à tela de captura, sem tentar abrir a câmera.
+  // Atalho do celular (Mais e seletor de empresa): vai direto ao formulário de empresa nova.
+  function abrirNovaEmpresaPeloMenu() {
+    setMenuMaisAberto(false);
+    if (!exigirPermissao("empresas.editar")) return;
+    setView("empresas");
+    iniciarNovaEmpresa();
+  }
+
   function iniciarNovaEmpresa() {
     const responsabilidadesIniciais = criarResponsabilidadesPadrao();
     const fluxosIniciais = criarFluxosOperacionaisPadrao();
@@ -4928,6 +4950,8 @@ export default function Home() {
     setTipoSugerido(false);
     setCnaesSecundariosForm([]);
     setAvisoUf("");
+    setSemFantasiaNaReceita(false);
+    setSemEmailNaConsulta(false);
     setConsultaEmForm("");
     setPacoteDesfazer(null);
     cnpjConsultadoRef.current = "";
@@ -5064,6 +5088,28 @@ export default function Home() {
     if (!alvo) return;
     // Modo caminhada: ao passar para outro ambiente, diz qual é.
     if (passo === 1 && alvo.ambiente !== atual.ambiente) mostrarToast(`Próximo ambiente: ${nomeDeExibicaoDoAmbiente(alvo.ambiente)}`);
+    setItemFocoId(alvo.id);
+    setAmbienteChecklistAtivo(alvo.ambiente);
+    setUltimoItemChecklistId(alvo.id);
+  }
+
+  // Avanço automático: a resposta ("Conforme" ou "Não se aplica") já foi gravada; abre o próximo item e avisa com "Desfazer".
+  function avancarAposResponder(item: ChecklistItem, status: ChecklistStatus) {
+    const lista = itensEmOrdem();
+    const alvo = lista[lista.findIndex((registro) => registro.id === item.id) + 1];
+    const doAmbiente = lista.filter((registro) => registro.ambiente === item.ambiente);
+    const proximoAmbiente = alvo && alvo.ambiente !== item.ambiente ? nomeDeExibicaoDoAmbiente(alvo.ambiente) : "";
+    const desfazer = () => {
+      setItemFocoId(item.id);
+      setAmbienteChecklistAtivo(item.ambiente);
+      setUltimoItemChecklistId(item.id);
+      atualizarChecklistItem(item.id, { status: "Pendente" });
+    };
+    mostrarToast(
+      textoDoAvanco({ posNoAmbiente: doAmbiente.findIndex((registro) => registro.id === item.id) + 1, status, proximoAmbiente, fimDaLista: !alvo }),
+      { duracaoMs: DURACAO_DO_AVISO_DO_AVANCO_MS, acao: { rotulo: "Desfazer", aoClicar: desfazer } }
+    );
+    if (!alvo) return;
     setItemFocoId(alvo.id);
     setAmbienteChecklistAtivo(alvo.ambiente);
     setUltimoItemChecklistId(alvo.id);
@@ -7871,6 +7917,7 @@ export default function Home() {
             opcoes={opcoesTrocaDeEmpresa.map((opcao) => ({ ...opcao, nome: nomeParaExibir(db.empresas[opcao.id]) }))}
             corDe={(id) => (db.empresas[id] ? corDaEmpresa(db.empresas[id]) : "#4A5D73")}
             onFechar={() => setTrocarEmpresaAberto(false)}
+            onNovaEmpresa={permitido("empresas.editar") ? () => { setTrocarEmpresaAberto(false); abrirNovaEmpresaPeloMenu(); } : undefined}
             onEscolher={async (id) => {
               setTrocarEmpresaAberto(false);
               if (id === db.empresaAtualId) return;
@@ -7883,34 +7930,51 @@ export default function Home() {
         )}
         {modo === "campo" && view === "campomais" ? (
           <CampoMais
-            daVisita={
-              visitaAtual
-                ? [
-                    { id: "central", rotulo: "Central da visita", icone: "central", tom: "azul", onClick: () => irParaMenu("central") },
-                    { id: "ambientes", rotulo: "Ambientes", icone: "ambientes", tom: "turquesa", onClick: () => irParaMenu("ambientes") },
-                    { id: "evidencias", rotulo: "Evidências", icone: "evidencias", tom: "ceu", onClick: () => irParaMenu("evidencias") },
-                    ...(telaVisivel("popsVisita") ? [{ id: "popsvisita", rotulo: "POPs da visita", icone: "pops" as const, tom: "violeta", onClick: () => { setMenuMaisAberto(false); setView("popsvisita"); } }] : []),
-                    ...(telaVisivel("relatorio") ? [{ id: "relatorio", rotulo: "Relatório", icone: "relatorio" as const, tom: "ardosia", onClick: () => irParaMenu("relatorio") }] : []),
-                  ]
-                : []
-            }
-            gerais={[
-              { id: "visitas", rotulo: "Visitas", icone: "visitas", tom: "indigo", onClick: () => irParaMenu("visitas") },
-              { id: "trocar-empresa", rotulo: "Trocar empresa", icone: "empresas", tom: "turquesa", onClick: () => setTrocarEmpresaAberto(true) },
-              { id: "ajuda", rotulo: "Ajuda", icone: "ajuda", tom: "laranja", onClick: () => irParaMenu("ajuda") },
-              { id: "modo", rotulo: "Modo de tela", icone: "modo", tom: "roxo", onClick: () => setView("modotela") },
-              { id: "sincronizar", rotulo: fila.resumo.pendentes + pendentesDoEstado ? `Sincronizar · ${fila.resumo.pendentes + pendentesDoEstado} ${fila.resumo.pendentes + pendentesDoEstado === 1 ? "pendente" : "pendentes"}` : "Sincronizar", icone: "sincronizar", tom: "verde", onClick: () => { void atualizarNuvemManualmente(); setView("fila"); } },
-              ...(fila.resumo.pendentes > 0 ? [{ id: "enviar-agora", rotulo: "Enviar agora", icone: "sincronizar" as const, tom: "verde" as const, onClick: () => { void enviarTudoAgora(); } }] : []),
-              { id: "sair", rotulo: "Sair", icone: "sair", tom: "vermelho", onClick: () => void sairDoSistema() },
-            ]}
-            destaque={{
-              rotulo: "Empresas",
-              detalhe: "Cadastro, cor e seleção",
-              icone: "empresas",
-              tom: "turquesa",
-              etiqueta: "novo",
-              onClick: () => irParaMenu("empresas"),
-            }}
+            secoes={(() => {
+              const visiveis = new Set(itensVisiveis(contextoMenu).map((item) => item.key));
+              const pendentesTotal = fila.resumo.pendentes + pendentesDoEstado;
+              return [
+                {
+                  titulo: "Da visita atual",
+                  itens: visitaAtual
+                    ? [
+                        ...(visiveis.has("central") ? [{ id: "central", rotulo: "Central da visita", detalhe: "Resumo e etapas desta visita", icone: "central" as const, tom: "azul", onClick: () => irParaMenu("central") }] : []),
+                        ...(visiveis.has("ambientes") ? [{ id: "ambientes", rotulo: "Ambientes", detalhe: "Escolher por onde a visita passa", icone: "ambientes" as const, tom: "turquesa", onClick: () => irParaMenu("ambientes") }] : []),
+                        ...(visiveis.has("evidencias") ? [{ id: "evidencias", rotulo: "Evidências", detalhe: "Fotos e áudios desta visita", icone: "evidencias" as const, tom: "ceu", onClick: () => irParaMenu("evidencias") }] : []),
+                        ...(telaVisivel("popsVisita") ? [{ id: "popsvisita", rotulo: "POPs desta visita", detalhe: "Procedimentos ligados aos itens", icone: "pops" as const, tom: "violeta", onClick: () => { setMenuMaisAberto(false); setView("popsvisita"); } }] : []),
+                        ...(visiveis.has("relatorio") ? [{ id: "relatorio", rotulo: "Relatório da visita", detalhe: "Conferir e gerar o relatório", icone: "relatorio" as const, tom: "ardosia", onClick: () => irParaMenu("relatorio") }] : []),
+                      ]
+                    : [],
+                },
+                {
+                  titulo: "Cadastro e documentos",
+                  itens: [
+                    ...(visiveis.has("cadastros") ? [{ id: "cadastros", rotulo: "Cadastros", detalhe: "Ambientes, equipamentos e fluxos", icone: "cadastros" as const, tom: "turquesa", onClick: () => irParaMenu("cadastros") }] : []),
+                    ...(visiveis.has("empresas") ? [{ id: "empresas", rotulo: "Empresas", detalhe: "Cadastro, cor e seleção", icone: "empresas" as const, tom: "turquesa", onClick: () => irParaMenu("empresas"), ...(permitido("empresas.editar") ? { atalho: { rotulo: "+ Nova empresa", onClick: abrirNovaEmpresaPeloMenu } } : {}) }] : []),
+                    ...(visiveis.has("pops") ? [{ id: "pops", rotulo: "POPs e documentos", detalhe: "POPs, comprovantes e pessoas", icone: "pops" as const, tom: "ceu", onClick: () => irParaMenu("pops") }] : []),
+                    ...(visiveis.has("relatorios") ? [{ id: "relatorios", rotulo: "Relatórios", detalhe: "Emitidos, resumo, dossiê e evolução", icone: "relatorios" as const, tom: "ardosia", onClick: () => irParaMenu("relatorios") }] : []),
+                  ],
+                },
+                {
+                  titulo: "Conta e app",
+                  itens: [
+                    ...(usuarioDaSessao ? [{ id: "perfil", rotulo: "Meu perfil", detalhe: "Seus dados e preferências neste aparelho", icone: "acessos" as const, tom: "indigo", onClick: () => { setMenuMaisAberto(false); setPerfilAberto(true); } }] : []),
+                    { id: "ajuda", rotulo: "Ajuda e guias", detalhe: "Primeiros passos e guia rápido", icone: "ajuda" as const, tom: "laranja", onClick: () => irParaMenu("ajuda") },
+                    ...(visiveis.has("acessos") ? [{ id: "acessos", rotulo: "Administração", detalhe: "Acessos e permissões", icone: "escudo" as const, tom: "ardosia", onClick: () => irParaMenu("acessos") }] : []),
+                    { id: "modo", rotulo: "Modo de tela", detalhe: "Celular, tablet ou computador", icone: "modo" as const, tom: "roxo", onClick: () => setView("modotela") },
+                  ],
+                },
+                {
+                  titulo: "Ações",
+                  itens: [
+                    { id: "trocar-empresa", rotulo: "Trocar empresa", detalhe: "Escolher a empresa ativa", icone: "empresas" as const, tom: "turquesa", onClick: () => setTrocarEmpresaAberto(true) },
+                    { id: "sincronizar", rotulo: "Sincronizar", detalhe: pendentesTotal ? "Enviar e atualizar agora" : "Tudo enviado", icone: "sincronizar" as const, tom: "verde", ...(pendentesTotal ? { contador: `${pendentesTotal} ${pendentesTotal === 1 ? "pendente" : "pendentes"}` } : {}), onClick: () => { void atualizarNuvemManualmente(); setView("fila"); } },
+                    ...(fila.resumo.pendentes > 0 ? [{ id: "enviar-agora", rotulo: "Enviar agora", detalhe: "Mandar as fotos e áudios guardados", icone: "sincronizar" as const, tom: "verde", onClick: () => { void enviarTudoAgora(); } }] : []),
+                    { id: "sair", rotulo: "Sair", detalhe: "Encerrar a sessão neste aparelho", icone: "sair" as const, tom: "vermelho", onClick: () => void sairDoSistema() },
+                  ],
+                },
+              ];
+            })()}
             onVersaoCompleta={() => telaModo.escolherModo("completo")}
           />
         ) : modo === "campo" && view === "inicio" && !ehFiscal ? (
@@ -7945,7 +8009,6 @@ export default function Home() {
                   .map((visita) => ({ id: visita.id, rotulo: `${nomeParaExibir(db.empresas[visita.empresaId])} · ${fdata(visita.data)}` }))}
                 podeRegistrar={permitido("evidencias.adicionar", alvo?.empresaId) || permitido("visitas.executar", alvo?.empresaId)}
                 onContinuar={() => alvo && continuar(alvo.id, true, proximoItem)}
-                continuarDetalhe={textoDoContinuar(etapaDoAlvo)}
                 onRegistrar={() => setRegistrarAberto(true)}
                 onCorrecoes={abrirCorrecoesDaEmpresa}
                 onAbrirVisita={(id) => continuar(id, true)}
@@ -8016,6 +8079,7 @@ export default function Home() {
                     onLimpar={() => void limparRespostaDoItem(foco.id)}
                       onAnterior={() => moverItemFoco(-1)}
                     onProximo={() => moverItemFoco(1)}
+                    onAvancar={(status) => avancarAposResponder(foco, status)}
                   />
                 ) : (
                   <p className="campo-sub" role="status">{(visitaAtual.ambientes || []).length === 0 ? "Peça ao responsável para definir os ambientes." : "Esta visita não tem itens de checklist."}</p>
@@ -8132,7 +8196,7 @@ export default function Home() {
             <div className="cen-conteudo">{conteudoDeDocumentos(subabaDosDocumentos, atual, false)}</div>
           </section>
         ) : view === "empresas" && showEmpresaForm && permitido("empresas.editar") ? (
-          <section className="central-empresa" aria-label={editingEmpresaId ? "Central da Empresa" : "Nova empresa"}>
+          <section className={`central-empresa${editingEmpresaId ? "" : " central-empresa--nova"}`} aria-label={editingEmpresaId ? "Central da Empresa" : "Nova empresa"}>
             {editingEmpresaId && <h1 className="sr-only">{ROTULO_DA_SUBABA[(secaoEmpresa as SubAbaCentral) || "dados"] || "Central da Empresa"}</h1>}
             {!editingEmpresaId && (
             <div className="ui-head cen-cabeca">
@@ -8170,8 +8234,8 @@ export default function Home() {
             <div className="cen-conteudo">
               <>
                 {(!editingEmpresaId || secaoEmpresa === "dados") && (
-                  <div className="mt-4 grid gap-3 md:grid-cols-2">
-                    <label>
+                  <div className={editingEmpresaId ? "mt-4 grid gap-3 md:grid-cols-2" : "nova-form"}>
+                    <label className={editingEmpresaId ? undefined : "nova-campo nova-campo--cnpj"}>
                       <span className="mb-1 block text-xs font-bold text-slate-500">CNPJ</span>
                       <div className="flex gap-2">
                         <input
@@ -8199,11 +8263,17 @@ export default function Home() {
                       />
                     )}
 
+                    {camposDaConsulta.some((campo) => campo !== "tipo") && (
+                      <p className="nova-consulta-aviso md:col-span-2" role="status">
+                        <span>Preenchido pela consulta. Confira e edite o que precisar.</span>
+                        <button type="button" className="ui-btn ui-btn--secondary" onClick={() => setCamposDaConsulta((atual) => atual.filter((campo) => campo === "tipo"))}>Confirmei tudo</button>
+                      </p>
+                    )}
                     {camposEmpresaPrincipais.filter((k) => k !== "responsavel" && k !== "cargoResponsavel").map((k) => (
-                  <label key={k} className={k === "cnaeDescricao" ? "md:col-span-2" : undefined}>
+                  <label key={k} className={editingEmpresaId ? (k === "cnaeDescricao" ? "md:col-span-2" : undefined) : `nova-campo nova-campo--${k}`}>
                     <span className="mb-1 block text-xs font-bold text-slate-500">
                       {labels[k] || k}
-                      {camposDaConsulta.includes(k) && <span className="chip-consulta">{k === "tipo" ? "sugerido pelo CNAE" : "da consulta"}</span>}
+                      {k === "tipo" && camposDaConsulta.includes(k) && <span className="chip-consulta">sugerido pelo CNAE</span>}
                     </span>
                     {k === "tipo" ? (
                       <span className="tipo-estab">
@@ -8211,33 +8281,33 @@ export default function Home() {
                           {TIPOS_DE_ESTABELECIMENTO.map((tipo) => <option key={tipo.id} value={tipo.rotulo}>{tipo.rotulo}</option>)}
                           {form.tipo && !TIPOS_DE_ESTABELECIMENTO.some((tipo) => tipo.rotulo === form.tipo) && <option value={form.tipo}>{form.tipo}</option>}
                         </Select>
-                        {tipoSugerido && <button type="button" className="pc-link-btn" onClick={() => { setTipoSugerido(false); setCamposDaConsulta((atual) => atual.filter((item) => item !== "tipo")); }}>Confirmar tipo</button>}
+                        {tipoSugerido && <button type="button" className="ui-btn ui-btn--secondary pacote-confirmar-tipo" onClick={() => { setTipoSugerido(false); setCamposDaConsulta((atual) => atual.filter((item) => item !== "tipo")); }}>Confirmar tipo</button>}
                       </span>
                     ) : k === "cnaeDescricao" ? (
-                      <textarea
-                        className="w-full resize-none rounded-xl border p-3"
-                        rows={2}
+                      <CaixaQueCresce
+                        className="w-full resize-none rounded-xl border p-3 nova-descricao"
                         value={form[k]}
                         onChange={(e) => mudarCampoDaEmpresa(k, e.target.value)}
                       />
                     ) : (
                       <input
                         type="text"
-                        className="w-full rounded-xl border p-3"
+                        className={`w-full rounded-xl border p-3${camposDaConsulta.includes(k) ? " is-da-consulta" : ""}`}
                         value={form[k]}
-                        placeholder={k === "horarioFuncionamento" ? "Ex.: Seg a sáb, 11h às 23h" : undefined}
+                        placeholder={k === "horarioFuncionamento" ? "Ex.: Seg a sáb, 11h às 23h" : k === "nomeFantasia" && semFantasiaNaReceita ? "Sem nome fantasia na Receita" : undefined}
                         aria-invalid={k === "nomeFantasia" && (tocouNomeEmpresa || tentouSalvarEmpresa) && Boolean(erroDoNomeDaEmpresa(form.nomeFantasia, form.razaoSocial))}
                         onBlur={k === "nomeFantasia" ? () => setTocouNomeEmpresa(true) : undefined}
                         onChange={(e) => mudarCampoDaEmpresa(k, e.target.value)}
                       />
                     )}
                     {k === "uf" && avisoUf && <span className="cnpj-uf-aviso" role="status">{avisoUf}</span>}
+                    {k === "nomeFantasia" && semFantasiaNaReceita && !form.nomeFantasia.trim() && form.razaoSocial.trim() && (
+                      <button type="button" className="ui-btn ui-btn--secondary nova-usar-razao" onClick={() => mudarCampoDaEmpresa("nomeFantasia", form.razaoSocial)}>Usar a razão social</button>
+                    )}
+                    {k === "email" && semEmailNaConsulta && !form.email.trim() && <span className="cad-dica">A consulta não traz e-mail (a BrasilAPI não informa). Preencha à mão.</span>}
                     {k === "nomeFantasia" && (tocouNomeEmpresa || tentouSalvarEmpresa) && erroDoNomeDaEmpresa(form.nomeFantasia, form.razaoSocial) && <span className="ui-field-error" role="alert">{erroDoNomeDaEmpresa(form.nomeFantasia, form.razaoSocial)}</span>}
                   </label>
                     ))}
-                    {cnaesSecundariosForm.length > 0 && (
-                      <p className="md:col-span-2 text-xs text-slate-500">CNAEs secundários da consulta: {cnaesSecundariosForm.map((c) => c.codigo).join(", ")}.</p>
-                    )}
                     <PacoteDoTipoPainel
                       tipo={form.tipo || "Outro"}
                       ambientesDaEmpresa={setoresEmpresa}
@@ -8253,9 +8323,14 @@ export default function Home() {
                       const cargoDoUsuario = limparTextoDePessoa(vinculado?.cargo);
                       const podeVincular = !usuarioDaSessao || usuarioDaSessao.perfil === "Administrador";
                       return (
-                        <fieldset className="md:col-span-2 rounded-xl border border-slate-200 p-3">
+                        <fieldset className={editingEmpresaId ? "md:col-span-2 rounded-xl border border-slate-200 p-3" : "nova-resp md:col-span-2 rounded-xl border border-slate-200 p-3"}>
                           <legend className="px-1 text-xs font-bold text-slate-500">Responsável do estabelecimento</legend>
-                          <div className="grid gap-3 md:grid-cols-3">
+                          {!editingEmpresaId && !vinculado && (
+                            <button type="button" className="ui-btn ui-btn--secondary nova-resp-botao" aria-expanded={respNovaAberta} onClick={() => setRespNovaAberta((aberta) => !aberta)}>
+                              {respNovaAberta ? "Recolher responsável" : "Informar responsável (opcional)"}
+                            </button>
+                          )}
+                          <div className={`grid gap-3 md:grid-cols-3${!editingEmpresaId && !vinculado && !respNovaAberta ? " hidden" : ""}`}>
                             {editingEmpresaId && (
                               <label>
                                 <span className="mb-1 block text-xs font-bold text-slate-500">Acesso vinculado (quem aprova os POPs)</span>
@@ -8297,7 +8372,7 @@ export default function Home() {
                               {vinculado && !cargoDoUsuario && <span className="mt-1 block text-xs text-slate-500">Sem cargo em Acessos: informe aqui ou cadastre em Acessos.</span>}
                             </label>
                           </div>
-                          {!editingEmpresaId && <p className="mt-2 text-xs text-slate-500">Depois de salvar a empresa, escolha o acesso vinculado: nome e cargo passam a vir dele.</p>}
+                          {!editingEmpresaId && (respNovaAberta || vinculado) && <p className="mt-2 text-xs text-slate-500">Depois de salvar a empresa, escolha o acesso vinculado: nome e cargo passam a vir dele.</p>}
                         </fieldset>
                       );
                     })()}
@@ -8775,6 +8850,7 @@ export default function Home() {
                 : null;
               const seloDoItem = historicoDoItem ? seloDaReincidencia(historicoDoItem.vezes) : "";
               apoio = {
+                fonte: fonteParaExibir(foco.referencia),
                 reincidencia: seloDoItem ? `${seloDoItem} neste critério. Informe a causa raiz no plano de ação.` : undefined,
                 orientacao: foco.orientacao || undefined,
                 baseLegal: textoDeBaseLegal(foco) ? { referencia: textoDeBaseLegal(foco) } : undefined,
@@ -8843,6 +8919,7 @@ export default function Home() {
                       onLimpar={() => void limparRespostaDoItem(foco.id)}
                       onAnterior={() => moverItemFoco(-1)}
                       onProximo={() => moverItemFoco(1)}
+                    onAvancar={(status) => avancarAposResponder(foco, status)}
                     />
                   ) : (
                     <p className="ui-row-sub">Esta visita não tem itens de checklist.</p>
@@ -8912,6 +8989,7 @@ export default function Home() {
                       onLimpar={() => void limparRespostaDoItem(foco.id)}
                       onAnterior={() => moverItemFoco(-1)}
                       onProximo={() => moverItemFoco(1)}
+                    onAvancar={(status) => avancarAposResponder(foco, status)}
                     />
                   ) : (
                     <p className="ui-row-sub">Esta visita não tem itens de checklist.</p>
@@ -9063,7 +9141,7 @@ export default function Home() {
                     const idx = itensAmbienteChecklistAtivo.findIndex(
                       (itemOriginal) => itemOriginal.id === item.id
                     );
-                    const criterioCapitulo2 = item.referencia?.includes("Capítulo 2");
+                    const criterioCapitulo2 = /cap(?:ítulo|\.)\s*2\b/i.test(item.referencia || "") && Boolean(item.categoria?.startsWith("Operação"));
                     const criterioCapitulo3 = item.referencia?.includes("Capítulo 3");
                     const ncDoItem = (db.ncs || []).find(
                       (nc) =>
@@ -9097,7 +9175,7 @@ export default function Home() {
                           </h3>
                           {(item.criticidade || item.referencia) && (
                             <p className="pc-item-meta">
-                              {[item.criticidade, item.referencia ? item.referencia.replace(" — ", " · ").replace("Capítulo", "Cap.") : ""]
+                              {[item.criticidade, item.referencia ? fonteParaExibir(item.referencia).replace(" — ", " · ").replace("Capítulo", "Cap.") : ""]
                                 .filter(Boolean)
                                 .join(" · ")}
                             </p>

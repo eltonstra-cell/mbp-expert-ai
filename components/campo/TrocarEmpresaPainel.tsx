@@ -11,12 +11,15 @@ export default function TrocarEmpresaPainel({
   corDe,
   onEscolher,
   onFechar,
+  onNovaEmpresa,
 }: {
   opcoes: OpcaoDeEmpresa[];
   /** Cor da empresa (a mesma do avatar da lista de Empresas). */
   corDe?: (id: string) => string;
   onEscolher: (id: string) => void;
   onFechar: () => void;
+  /** Atalho "+ Nova empresa" (só quem pode cadastrar empresa). */
+  onNovaEmpresa?: () => void;
 }) {
   useEffect(() => {
     const aoTeclar = (evento: KeyboardEvent) => {
@@ -59,6 +62,11 @@ export default function TrocarEmpresaPainel({
           )}
         </div>
         <div className="campo-sheet-foot">
+          {onNovaEmpresa && (
+            <button type="button" className="campo-btn campo-btn--outline" onClick={onNovaEmpresa}>
+              + Nova empresa
+            </button>
+          )}
           <button type="button" className="campo-btn campo-btn--cinza" onClick={onFechar}>
             Fechar
           </button>

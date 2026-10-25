@@ -2,9 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { nomeCurtoDoSetor, pacoteDoTipo, rotuloDoTipo } from "@/lib/tiposDeEstabelecimento";
+import Select from "@/components/Select";
+import { nomeCurtoDoSetor, pacoteDoTipo, publicoDoSetor, rotuloDoTipo } from "@/lib/tiposDeEstabelecimento";
+import { DEFINICOES_FLUXOS_OPERACIONAIS, PERGUNTAS_POR_FLUXO } from "@/lib/operationalFlows";
 import {
   ESTADO_INICIAL_DO_PACOTE,
+  agruparAmbientesPorPublico,
   agruparPorAmbiente,
   alternarAmbiente,
   alternarItem,
@@ -15,9 +18,11 @@ import {
   contagemDoGrupo,
   equipamentoBloqueado,
   estaMarcado,
+  linhaDoResumoDeFluxos,
   marcarTodosOsAmbientes,
   marcarTodosOsItens,
   quantosMarcados,
+  resumoDeFluxosPorSetor,
   type EstadoDoPacote,
 } from "@/lib/escolhaDoPacote";
 import type { TipoFluxoOperacional } from "@/types";
@@ -26,6 +31,8 @@ export type EscolhaDoPacote = {
   ambientes: string[];
   equipamentos: { nome: string; ambiente: string; quantidade: number }[];
   fluxos: TipoFluxoOperacional[];
+  /** Setor escolhido para cada fluxo marcado ("" = sem setor: o fluxo não soma perguntas até o RT escolher). */
+  setorDosFluxos?: Partial<Record<TipoFluxoOperacional, string>>;
 };
 
 type Props = {
@@ -43,6 +50,7 @@ type Props = {
 type Aba = "ambientes" | "equipamentos" | "fluxos";
 
 const contar = (n: number, singular: string, plural: string) => `${n} ${n === 1 ? singular : plural}`;
+const SEGUNDOS_DO_AVISO = 6;
 
 // "Para este tipo, o app propõe": ambientes, equipamentos e fluxos já marcados; o RT desmarca o que não existe e confirma. As perguntas não mudam.
 export default function PacoteDoTipoPainel({ tipo, ambientesDaEmpresa, equipamentosDaEmpresa, fluxosAplicaveis, onAplicar, onDesfazer, aplicadoAgora }: Props) {
@@ -51,14 +59,17 @@ export default function PacoteDoTipoPainel({ tipo, ambientesDaEmpresa, equipamen
   const equipamentosNovos = pacote.equipamentos.filter((item) => !equipamentosDaEmpresa.includes(`${item.ambiente}|${item.nome.toLocaleLowerCase("pt-BR")}`));
   const fluxosNovos = pacote.fluxos.filter((fluxo) => !fluxosAplicaveis.includes(fluxo));
   const [aberta, setAberta] = useState(false);
+  const [aplicado, setAplicado] = useState("");
   const total = ambientesNovos.length + equipamentosNovos.length + fluxosNovos.length;
   const resumo = `${contar(ambientesNovos.length, "ambiente", "ambientes")}, ${contar(equipamentosNovos.length, "equipamento", "equipamentos")} e ${contar(fluxosNovos.length, "fluxo", "fluxos")}`;
 
   if (aplicadoAgora) {
     return (
-      <section className="pacote-tipo md:col-span-2" role="status">
-        <span>Pacote de {rotuloDoTipo(tipo)} aplicado. Confira nas abas Ambientes, Equipamentos e Fluxos; o que veio da sugestão fica marcado como “sugerido”.</span>
-        <button type="button" className="ui-btn ui-btn--secondary" onClick={onDesfazer}>Desfazer</button>
+      <section className="pacote-tipo pacote-tipo--feito md:col-span-2" role="status">
+        <span>
+          <strong>Pacote de {rotuloDoTipo(tipo)} aplicado ao rascunho{aplicado ? `: ${aplicado} adicionados` : ""}.</strong> Depois de salvar a empresa, confira em Cadastros. O que veio do pacote fica marcado “sugerido”.
+        </span>
+        <button type="button" className="ui-btn ui-btn--secondary pacote-desfazer" onClick={onDesfazer}>Desfazer</button>
       </section>
     );
   }
@@ -73,12 +84,14 @@ export default function PacoteDoTipoPainel({ tipo, ambientesDaEmpresa, equipamen
       {aberta && (
         <JanelaDoPacote
           tipo={tipo}
+          ambientesDaEmpresa={ambientesDaEmpresa}
           ambientes={ambientesNovos}
           equipamentos={equipamentosNovos}
           fluxos={fluxosNovos}
           onAgoraNao={() => setAberta(false)}
           onAplicar={(escolha) => {
             setAberta(false);
+            setAplicado(`${contar(escolha.ambientes.length, "ambiente", "ambientes")}, ${contar(escolha.equipamentos.length, "equipamento", "equipamentos")}, ${contar(escolha.fluxos.length, "fluxo", "fluxos")}`);
             onAplicar(escolha);
           }}
         />
@@ -89,6 +102,7 @@ export default function PacoteDoTipoPainel({ tipo, ambientesDaEmpresa, equipamen
 
 type PropsJanela = {
   tipo: string;
+  ambientesDaEmpresa: string[];
   ambientes: string[];
   equipamentos: { nome: string; ambiente: string; quantidade: number }[];
   fluxos: TipoFluxoOperacional[];
@@ -97,10 +111,13 @@ type PropsJanela = {
 };
 
 // Mesma janela da escolha de setores (classes esc-*): portal, rolagem da página travada, Esc = "Agora não", Tab preso dentro; só a lista rola.
-function JanelaDoPacote({ tipo, ambientes, equipamentos, fluxos, onAgoraNao, onAplicar }: PropsJanela) {
+function JanelaDoPacote({ tipo, ambientesDaEmpresa, ambientes, equipamentos, fluxos, onAgoraNao, onAplicar }: PropsJanela) {
   const [estado, setEstado] = useState<EstadoDoPacote>(ESTADO_INICIAL_DO_PACOTE);
   const [aba, setAba] = useState<Aba>("ambientes");
   const [aviso, setAviso] = useState("");
+  const [setorEscolhido, setSetorEscolhido] = useState<Partial<Record<TipoFluxoOperacional, string>>>(
+    () => Object.fromEntries(DEFINICOES_FLUXOS_OPERACIONAIS.map((definicao) => [definicao.tipo, definicao.setorPadrao]))
+  );
   const [montado, setMontado] = useState(false);
   const janelaRef = useRef<HTMLElement | null>(null);
   const fecharRef = useRef(onAgoraNao);
@@ -124,6 +141,13 @@ function JanelaDoPacote({ tipo, ambientes, equipamentos, fluxos, onAgoraNao, onA
   useEffect(() => {
     if (montado) janelaRef.current?.querySelector<HTMLElement>("input[type='checkbox']")?.focus();
   }, [montado]);
+
+  // O aviso da cascata some sozinho depois de alguns segundos.
+  useEffect(() => {
+    if (!aviso) return;
+    const espera = window.setTimeout(() => setAviso(""), SEGUNDOS_DO_AVISO * 1000);
+    return () => window.clearTimeout(espera);
+  }, [aviso]);
 
   useEffect(() => {
     if (!montado) return;
@@ -157,6 +181,16 @@ function JanelaDoPacote({ tipo, ambientes, equipamentos, fluxos, onAgoraNao, onA
   const marcadosEquipamentos = quantosMarcados(estado, chavesEquipamentos);
   const marcadosFluxos = quantosMarcados(estado, chavesFluxos);
 
+  // Setores onde um fluxo pode ocorrer: os da empresa e os ambientes novos que continuam marcados.
+  const opcoesDeSetor = [...ambientesDaEmpresa, ...ambientes.filter((ambiente) => estaMarcado(estado, chaveDeAmbiente(ambiente)))];
+  const setorDoFluxo = (fluxo: TipoFluxoOperacional) => {
+    const escolhido = setorEscolhido[fluxo] || "";
+    return opcoesDeSetor.includes(escolhido) ? escolhido : "";
+  };
+  const fluxosMarcados = fluxos.filter((fluxo) => estaMarcado(estado, chaveDeFluxo(fluxo)));
+  const resumoDosFluxos = resumoDeFluxosPorSetor(fluxosMarcados.map((fluxo) => ({ setor: setorDoFluxo(fluxo) })), PERGUNTAS_POR_FLUXO);
+  const fluxosSemSetor = fluxosMarcados.filter((fluxo) => !setorDoFluxo(fluxo)).length;
+
   function mudarAmbiente(ambiente: string) {
     const r = alternarAmbiente(estado, ambiente, equipamentos);
     setEstado(r.estado);
@@ -180,10 +214,12 @@ function JanelaDoPacote({ tipo, ambientes, equipamentos, fluxos, onAgoraNao, onA
   }
 
   function aplicar() {
+    const marcados = fluxos.filter((f) => estaMarcado(estado, chaveDeFluxo(f)));
     onAplicar({
       ambientes: ambientes.filter((a) => estaMarcado(estado, chaveDeAmbiente(a))),
       equipamentos: equipamentos.filter((e) => estaMarcado(estado, chaveDeEquipamento(e))),
-      fluxos: fluxos.filter((f) => estaMarcado(estado, chaveDeFluxo(f))),
+      fluxos: marcados,
+      setorDosFluxos: Object.fromEntries(marcados.map((fluxo) => [fluxo, setorDoFluxo(fluxo)])),
     });
   }
 
@@ -195,10 +231,10 @@ function JanelaDoPacote({ tipo, ambientes, equipamentos, fluxos, onAgoraNao, onA
   const atual = abas.find((item) => item.id === aba) || abas[0];
   const tudoMarcado = atual.marcados === atual.total;
 
-  const checkbox = (chave: string, texto: string, completo: string | undefined, marcado: boolean, aoMudar: () => void, desabilitado = false) => (
+  const opcao = (chave: string, texto: string, completo: string | undefined, marcado: boolean, aoMudar: () => void) => (
     <li key={chave}>
-      <label className={`esc-opcao${marcado ? " is-on" : ""}${desabilitado ? " is-bloqueada" : ""}`} title={completo}>
-        <input type="checkbox" className="esc-caixa" checked={marcado} disabled={desabilitado} onChange={aoMudar} />
+      <label className={`esc-opcao${marcado ? " is-on" : ""}`} title={completo}>
+        <input type="checkbox" className="esc-caixa" checked={marcado} onChange={aoMudar} />
         <span className="esc-opcao-textos">
           <span className="esc-opcao-titulo">{texto}</span>
         </span>
@@ -211,9 +247,12 @@ function JanelaDoPacote({ tipo, ambientes, equipamentos, fluxos, onAgoraNao, onA
       <div className="esc-fundo" onClick={onAgoraNao} />
       <section ref={janelaRef} className="esc-janela pacote-janela" role="dialog" aria-modal="true" aria-labelledby="pacote-titulo">
         <header className="esc-cabeca">
-          <h2 id="pacote-titulo" className="esc-titulo">
-            Pacote de {rotuloDoTipo(tipo)} · {contar(ambientes.length, "ambiente", "ambientes")}, {contar(equipamentos.length, "equipamento", "equipamentos")}, {contar(fluxos.length, "fluxo", "fluxos")}
-          </h2>
+          <div className="pacote-titulo-linha">
+            <h2 id="pacote-titulo" className="esc-titulo">
+              Pacote de {rotuloDoTipo(tipo)} · {contar(ambientes.length, "ambiente", "ambientes")}, {contar(equipamentos.length, "equipamento", "equipamentos")}, {contar(fluxos.length, "fluxo", "fluxos")}
+            </h2>
+            {aviso && <p className="pacote-aviso" role="status">{aviso}</p>}
+          </div>
           <p className="esc-apoio">Tudo vem marcado. Desmarque o que este estabelecimento não tem; nada é criado antes de “Aplicar”.</p>
           <div className="pacote-abas" role="tablist" aria-label="Grupos do pacote">
             {abas.map((item) => (
@@ -228,33 +267,80 @@ function JanelaDoPacote({ tipo, ambientes, equipamentos, fluxos, onAgoraNao, onA
             <h3 className="pacote-grupo-titulo">{atual.titulo}</h3>
             <span className="pacote-grupo-conta">{contagemDoGrupo(atual.marcados, atual.total)}</span>
             {atual.total > 0 && (
-              <button type="button" className="pacote-marcar-todos" onClick={() => marcarTodos(aba, !tudoMarcado)}>
+              <button type="button" className="ui-btn ui-btn--secondary pacote-marcar-todos" onClick={() => marcarTodos(aba, !tudoMarcado)}>
                 {tudoMarcado ? "Desmarcar todos" : "Marcar todos"}
               </button>
             )}
           </div>
-          {aviso && <p className="pacote-aviso" role="status">{aviso}</p>}
           {atual.total === 0 && <p className="esc-vazio">Nada novo a propor.</p>}
-          {aba === "ambientes" && (
-            <ul className="esc-opcoes">
-              {ambientes.map((ambiente) => checkbox(chaveDeAmbiente(ambiente), nomeCurtoDoSetor(ambiente), ambiente, estaMarcado(estado, chaveDeAmbiente(ambiente)), () => mudarAmbiente(ambiente)))}
-            </ul>
-          )}
-          {aba === "equipamentos" &&
-            agruparPorAmbiente(equipamentos).map((grupo) => (
-              <div key={grupo.ambiente} className="pacote-eq-grupo">
-                <h4 className="pacote-eq-ambiente" title={grupo.ambiente}>{nomeCurtoDoSetor(grupo.ambiente)}</h4>
+
+          {aba === "ambientes" &&
+            agruparAmbientesPorPublico(ambientes, publicoDoSetor).map((grupo) => (
+              <div key={grupo.grupo} className="pacote-sub-grupo">
+                <h4 className="pacote-subtitulo">{grupo.grupo}</h4>
                 <ul className="esc-opcoes">
-                  {grupo.itens.map((item) => {
-                    const bloqueado = equipamentoBloqueado(estado, item, ambientes);
-                    const chave = chaveDeEquipamento(item);
-                    return checkbox(chave, item.nome, bloqueado ? `${grupo.ambiente}: desmarcado, então este equipamento também não entra.` : undefined, estaMarcado(estado, chave), () => setEstado(alternarItem(estado, chave)), bloqueado);
-                  })}
+                  {grupo.ambientes.map((ambiente) => opcao(chaveDeAmbiente(ambiente), nomeCurtoDoSetor(ambiente), ambiente, estaMarcado(estado, chaveDeAmbiente(ambiente)), () => mudarAmbiente(ambiente)))}
                 </ul>
               </div>
             ))}
+
+          {aba === "equipamentos" &&
+            agruparPorAmbiente(equipamentos).map((grupo) => {
+              const recolhido = ambientes.includes(grupo.ambiente) && !estaMarcado(estado, chaveDeAmbiente(grupo.ambiente));
+              return (
+                <div key={grupo.ambiente} className="pacote-eq-grupo">
+                  {recolhido ? (
+                    <div className="pacote-eq-recolhido">
+                      <span title={grupo.ambiente}>{nomeCurtoDoSetor(grupo.ambiente)} · ambiente desmarcado</span>
+                      <button type="button" className="ui-btn ui-btn--secondary" onClick={() => mudarAmbiente(grupo.ambiente)}>Marcar {nomeCurtoDoSetor(grupo.ambiente)}</button>
+                    </div>
+                  ) : (
+                    <>
+                      <h4 className="pacote-eq-ambiente" title={grupo.ambiente}>{nomeCurtoDoSetor(grupo.ambiente)}</h4>
+                      <ul className="esc-opcoes">
+                        {grupo.itens.map((item) => opcao(chaveDeEquipamento(item), item.nome, undefined, estaMarcado(estado, chaveDeEquipamento(item)), () => setEstado(alternarItem(estado, chaveDeEquipamento(item)))))}
+                      </ul>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+
           {aba === "fluxos" && (
-            <ul className="esc-opcoes">{fluxos.map((fluxo) => checkbox(chaveDeFluxo(fluxo), fluxo, undefined, estaMarcado(estado, chaveDeFluxo(fluxo)), () => setEstado(alternarItem(estado, chaveDeFluxo(fluxo)))))}</ul>
+            <>
+              <p className="pacote-fluxo-regra">Cada fluxo marcado adiciona {PERGUNTAS_POR_FLUXO} perguntas ao setor dele. Escolha o setor de cada fluxo.</p>
+              {(resumoDosFluxos.length > 0 || fluxosSemSetor > 0) && (
+                <ul className="pacote-fluxo-resumo" aria-label="Perguntas que os fluxos acrescentam">
+                  {resumoDosFluxos.map((item) => <li key={item.setor}>{linhaDoResumoDeFluxos(item)}</li>)}
+                  {fluxosSemSetor > 0 && <li className="is-sem-setor">{contar(fluxosSemSetor, "fluxo sem setor não soma", "fluxos sem setor não somam")} perguntas até você escolher o setor.</li>}
+                </ul>
+              )}
+              <ul className="pacote-fluxos">
+                {fluxos.map((fluxo) => {
+                  const marcado = estaMarcado(estado, chaveDeFluxo(fluxo));
+                  const setor = setorDoFluxo(fluxo);
+                  return (
+                    <li key={fluxo} className="pacote-fluxo-linha">
+                      <label className={`esc-opcao${marcado ? " is-on" : ""}`}>
+                        <input type="checkbox" className="esc-caixa" checked={marcado} onChange={() => setEstado(alternarItem(estado, chaveDeFluxo(fluxo)))} />
+                        <span className="esc-opcao-textos"><span className="esc-opcao-titulo">{fluxo}</span></span>
+                      </label>
+                      <Select
+                        className="pacote-fluxo-setor"
+                        value={setor}
+                        disabled={!marcado}
+                        aria-label={`Setor do fluxo ${fluxo}`}
+                        aria-invalid={marcado && !setor}
+                        onChange={(evento) => setSetorEscolhido((atualEscolha) => ({ ...atualEscolha, [fluxo]: evento.target.value }))}
+                      >
+                        <option value="">Escolha o setor deste fluxo</option>
+                        {opcoesDeSetor.map((opcaoDeSetor) => <option key={opcaoDeSetor} value={opcaoDeSetor}>{nomeCurtoDoSetor(opcaoDeSetor)}</option>)}
+                      </Select>
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
           )}
         </div>
         <footer className="esc-rodape">

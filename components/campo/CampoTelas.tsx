@@ -179,8 +179,9 @@ export function CampoInicio({
 
       {visitaAtiva ? (
         <div className="campo-card campo-card--visita">
-          <div className="campo-card-title">{visitaAtiva.empresa}</div>
-          <div className="campo-sub">Visita de {visitaAtiva.data}</div>
+          {/* O nome da empresa já está no topo: só aparece aqui quando a visita é de outra empresa. */}
+          <div className="campo-card-title">{visitaAtiva.empresa && visitaAtiva.empresa !== empresa ? visitaAtiva.empresa : `Visita de ${visitaAtiva.data}`}</div>
+          {visitaAtiva.empresa && visitaAtiva.empresa !== empresa && <div className="campo-sub">Visita de {visitaAtiva.data}</div>}
           <div className="campo-progress" role="img" aria-label={`${percentual}% do checklist respondido`}>
             <span style={{ width: `${percentual}%` }} />
           </div>
@@ -758,46 +759,45 @@ function quandoCurtoCampo(iso: string) {
   return dataISOLocal(iso) === hojeLocalISO() ? `hoje ${hora}` : `${formatarDataCurta(iso)} ${hora}`;
 }
 
-export type CartaoMais = { id: string; rotulo: string; icone: NavIconName; tom: string; onClick: () => void };
+/** Item do "Mais": ícone colorido, nome e uma linha de apoio (mesmo padrão do cartão "Empresas · Cadastro, cor e seleção"). */
+export type LinhaMais = { id: string; rotulo: string; detalhe: string; icone: NavIconName; tom: string; onClick: () => void; desabilitado?: boolean; /** Só quando ajuda (ex.: "3 pendentes"); sem repetir o que a linha já diz. */ contador?: string; /** Atalho dentro da linha (ex.: "+ Nova empresa"). */ atalho?: { rotulo: string; onClick: () => void } };
+export type SecaoMais = { titulo: string; itens: LinhaMais[] };
 
-/** Linha de destaque do Mais (ex.: Empresas), com etiqueta "novo". */
-export type LinhaMais = { rotulo: string; detalhe: string; icone: NavIconName; tom: string; etiqueta?: string; onClick: () => void };
-
-export function CampoMais({ daVisita, gerais, destaque, onVersaoCompleta }: { daVisita: CartaoMais[]; gerais: CartaoMais[]; destaque?: LinhaMais; onVersaoCompleta: () => void }) {
-  const cartao = (item: CartaoMais) => (
-    <button key={item.id} type="button" className="campo-mais-card" onClick={item.onClick}>
-      <span className="campo-mais-tile" style={{ background: `linear-gradient(160deg, var(--tile-${item.tom}-from), var(--tile-${item.tom}-to))` }}>
-        <NavIcon name={item.icone} size={22} strokeWidth={1.9} />
-      </span>
-      <span className="campo-mais-label">{item.rotulo}</span>
-    </button>
-  );
+export function CampoMais({ secoes, onVersaoCompleta }: { secoes: SecaoMais[]; onVersaoCompleta: () => void }) {
   return (
     <section className="campo-tela campo-tela--mais" aria-label="Mais">
       <h1 className="campo-h1">Mais</h1>
-      {daVisita.length > 0 && (
-        <>
-          <div className="ui-eyebrow">Desta visita</div>
-          <div className="campo-mais-grid">{daVisita.map(cartao)}</div>
-        </>
-      )}
-      {destaque && (
-        <button type="button" className="campo-mais-destaque" onClick={destaque.onClick}>
-          <span className="campo-mais-tile" style={{ background: `linear-gradient(160deg, var(--tile-${destaque.tom}-from), var(--tile-${destaque.tom}-to))` }}>
-            <NavIcon name={destaque.icone} size={22} strokeWidth={1.9} />
-          </span>
-          <span className="campo-mais-destaque-textos">
-            <span className="campo-mais-destaque-titulo">
-              {destaque.rotulo}
-              {destaque.etiqueta && <span className="campo-mais-etiqueta">{destaque.etiqueta}</span>}
-            </span>
-            <span className="campo-mais-destaque-sub">{destaque.detalhe}</span>
-          </span>
-          <span aria-hidden="true">›</span>
-        </button>
-      )}
-      <div className="ui-eyebrow">Geral</div>
-      <div className="campo-mais-grid">{gerais.map(cartao)}</div>
+      <div className="campo-mais-rolagem">
+        {secoes
+          .filter((secao) => secao.itens.length > 0)
+          .map((secao) => (
+            <div key={secao.titulo} className="campo-mais-secao">
+              <div className="ui-eyebrow">{secao.titulo}</div>
+              <ul className="campo-mais-lista">
+                {secao.itens.map((linha) => (
+                  <li key={linha.id} className="campo-mais-item">
+                    <button type="button" className="campo-mais-linha" onClick={linha.onClick} disabled={linha.desabilitado}>
+                      <span className="campo-mais-tile" style={{ background: `linear-gradient(160deg, var(--tile-${linha.tom}-from), var(--tile-${linha.tom}-to))` }}>
+                        <NavIcon name={linha.icone} size={22} strokeWidth={1.9} />
+                      </span>
+                      <span className="campo-mais-textos">
+                        <span className="campo-mais-titulo">{linha.rotulo}</span>
+                        <span className="campo-mais-sub">{linha.detalhe}</span>
+                      </span>
+                      {linha.contador && <span className="campo-mais-contador">{linha.contador}</span>}
+                      <span className="campo-mais-seta" aria-hidden="true">›</span>
+                    </button>
+                    {linha.atalho && (
+                      <button type="button" className="ui-btn ui-btn--secondary campo-mais-atalho" onClick={linha.atalho.onClick}>
+                        {linha.atalho.rotulo}
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+      </div>
       <button type="button" className="campo-btn campo-btn--brand" onClick={onVersaoCompleta}>
         Usar versão completa agora
       </button>

@@ -11,6 +11,9 @@ import { avisar } from "@/lib/dialogos";
 import { dependenciasDoNavegador, validarFotoEscolhida } from "@/lib/fotoCompressao";
 import { formatarTempo, restanteDoLimite, useCapturaAudio, useCapturaCamera } from "@/components/useCapturaMidia";
 import { MENSAGEM_IA_DESLIGADA } from "@/lib/privacidadeEmpresa";
+// Texto curto único da tela (as frases soltas antigas foram juntadas aqui).
+const AVISO_FINO_IA_LIGADA = "A IA só sugere; nada vira NC sem a sua confirmação. Evite enquadrar rostos, crachás e documentos pessoais.";
+const AVISO_FINO_IA_DESLIGADA = "IA desligada nesta empresa: peça ao Consultor/RT para liberar em Empresas › Privacidade. Evite enquadrar rostos, crachás e documentos pessoais.";
 import type { EstadoVisivel } from "@/lib/filaReconciliacao";
 import { useAvisoAntesDeFotografar } from "@/components/AvisoAntesDeFotografar";
 
@@ -981,7 +984,6 @@ export default function PcEvidencias({
                 {campoDescricao}
               </label>
 
-              <p className="ev7-privacidade">Antes de usar a IA, evite enquadrar rostos, crachás e documentos pessoais.</p>
             </div>
 
             {camera.ativa && (
@@ -1072,9 +1074,10 @@ export default function PcEvidencias({
               + Nova evidência
             </button>
           )}
-          {evidencias.some((cartao) => cartao.tipo === "Foto" && cartao.podeAnalisar && cartao.iaDesligada) && (
-            <p className="ev7-aviso-ia" role="note">{MENSAGEM_IA_DESLIGADA}</p>
-          )}
+          {/* UM aviso fino, uma vez no topo: o que a IA faz (ou que está desligada) e o cuidado com a foto. */}
+          <p className="ev7-aviso-fino" role="note">
+            {evidencias.some((cartao) => cartao.tipo === "Foto" && cartao.podeAnalisar && cartao.iaDesligada) ? AVISO_FINO_IA_DESLIGADA : AVISO_FINO_IA_LIGADA}
+          </p>
           <div className="ev7-lista-topo">
             <SegmentedTabs<Aba>
               rotulo="Filtrar evidências"
@@ -1107,7 +1110,6 @@ export default function PcEvidencias({
                 </button>
               )}
             </div>
-            <p className="ev7-aviso-ia">A IA só sugere. Nada vira NC sem a sua confirmação.</p>
           </div>
           <div className="ui-scroll ev7-scroll">
             {visiveis.length === 0 ? (

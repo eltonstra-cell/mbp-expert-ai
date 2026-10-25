@@ -6,7 +6,8 @@ import FieldVoiceTools from "@/components/FieldVoiceTools";
 import { useAvisoAntesDeFotografar } from "@/components/AvisoAntesDeFotografar";
 import FotoAmpliada from "@/components/FotoAmpliada";
 import AmbientesCortina from "@/components/AmbientesCortina";
-import { cameraAutomaticaLigada } from "@/lib/preferenciasDeCampo";
+import { avancarAoResponderLigado, cameraAutomaticaLigada } from "@/lib/preferenciasDeCampo";
+import { ESPERA_DO_AVANCO_MS, deveAvancarSozinho } from "@/lib/avancoAutomatico";
 import CampoDeTemperatura, { ehItemDeTemperatura } from "@/components/CampoDeTemperatura";
 import type { ResultadoDaTemperatura } from "@/lib/limitesDeTemperatura";
 import { progressoDaCaminhada, textoDaCaminhada } from "@/lib/caminhada";
@@ -59,6 +60,8 @@ type Props = {
   onLimpar?: () => void;
   onAnterior: () => void;
   onProximo: () => void;
+  /** Avanço automático: chamado ~0,5 s depois de "Conforme" ou "Não se aplica" (a resposta já foi gravada). Ausente = não avança. */
+  onAvancar?: (status: ChecklistStatus) => void;
   /** Item ligado a um POP com versão aprovada: abre a leitura do POP sem sair do checklist. */
   verPop?: { rotulo: string; onAbrir: () => void };
   /** Fotos já registradas neste item (até o máximo); no máximo, o botão Foto fica desligado. */
@@ -118,6 +121,7 @@ export default function ChecklistFocoItem({
   onLimpar,
   onAnterior,
   onProximo,
+  onAvancar,
   verPop,
   fotosNoItem = 0,
   maxFotos = 5,
@@ -128,6 +132,13 @@ export default function ChecklistFocoItem({
   const [texto, setTexto] = useState(item.observacao || "");
   const areaRef = useRef<HTMLTextAreaElement | null>(null);
   const caixaRef = useRef<HTMLDivElement | null>(null);
+  const timerAvanco = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelarAvanco = useCallback(() => {
+    if (timerAvanco.current) clearTimeout(timerAvanco.current);
+    timerAvanco.current = null;
+  }, []);
+  // Trocar de item (por qualquer caminho) ou sair cancela um avanço que ainda esperava.
+  useEffect(() => cancelarAvanco, [item.id, cancelarAvanco]);
 
   useEffect(() => {
     setTexto(item.observacao || "");
@@ -341,7 +352,11 @@ export default function ChecklistFocoItem({
               className={`chk-resp chk-resp--${tom} is-${estado}`}
               onClick={() => {
                 if (estado === "marcado") return;
+                cancelarAvanco();
+                // Decide ANTES de gravar: observação já digitada = o RT ainda está no item, então não avança sozinho.
+                const avancaSozinho = Boolean(onAvancar) && deveAvancarSozinho({ status: resposta, avancarLigado: avancarAoResponderLigado(), observacaoDigitada: texto.trim().length > 0 || (item.observacao || "").trim().length > 0, podeEditar });
                 onStatus(resposta);
+                if (avancaSozinho) timerAvanco.current = setTimeout(() => { timerAvanco.current = null; onAvancar?.(resposta); }, ESPERA_DO_AVANCO_MS);
                 // Opção do aparelho (desligada por padrão): ao marcar Não conforme, abre a câmera no mesmo toque.
                 if (resposta === "Não Conforme" && podeFotografar && fotosNoItem < maxFotos && cameraAutomaticaLigada()) pedirAvisoDeFoto(() => void camera.abrir());
               }}
@@ -467,7 +482,10 @@ export default function ChecklistFocoItem({
             placeholder={estadoVoz === "gravando" ? "Ouvindo… fale a observação" : ehItemDeTemperatura(item.titulo) ? "Ex.: termômetro a 9 °C" : ""}
             rows={2}
             aria-label="Observação do item"
-            onChange={(evento) => setTexto(evento.target.value)}
+            onChange={(evento) => {
+              cancelarAvanco();
+              setTexto(evento.target.value);
+            }}
             onBlur={salvarTexto}
           />
           {estadoVoz !== "ocioso" && (
