@@ -74,7 +74,7 @@ function Anel({ percentual, tipo }: { percentual?: number; tipo: CaixaDoInicio["
     <span className="ini3-anel" role={percentual === undefined ? undefined : "img"} aria-label={percentual === undefined ? undefined : `${valor}% do checklist respondido`}>
       <svg width="60" height="60" viewBox="0 0 60 60" aria-hidden="true">
         <circle cx="30" cy="30" r={raio} fill="none" stroke="var(--rd-trilho)" strokeWidth="6" />
-        {percentual !== undefined && <circle cx="30" cy="30" r={raio} fill="none" stroke="var(--rd-laranja)" strokeWidth="6" strokeLinecap="round" strokeDasharray={`${(valor / 100) * volta} ${volta}`} transform="rotate(-90 30 30)" />}
+        {percentual !== undefined && <circle cx="30" cy="30" r={raio} fill="none" stroke="var(--rd-ambar)" strokeWidth="6" strokeLinecap="round" strokeDasharray={`${(valor / 100) * volta} ${volta}`} transform="rotate(-90 30 30)" />}
       </svg>
       <span className="ini3-anel-centro">{percentual !== undefined ? `${valor}%` : tipo === "pop" ? <IconePop /> : tipo === "comprovantes" ? <IconeComprovante /> : <IconeVisita />}</span>
     </span>

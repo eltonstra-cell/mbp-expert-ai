@@ -69,11 +69,11 @@ test("Pacote 15: Ver POP no checklist, ação corretiva do POP na Correção, tr
   assert.ok(page.includes("verPop={verPopDoItem(foco)}"));
   assert.equal((page.match(/verPop=\{verPopDoItem\(foco\)\}/g) || []).length, 3);
   assert.ok(page.includes("abrirCorrecoesDaEmpresa"));
-  for (const arquivo of ["components/pc/PcCorrecoes.tsx", "components/campo/CampoTelas.tsx"]) {
-    const texto = ler(arquivo);
-    assert.ok(texto.includes("Ação corretiva do POP"), arquivo);
-    assert.ok(texto.includes("Usar este texto"), arquivo);
-  }
+  // Campo: bloco "Ação corretiva do POP" com "Usar este texto"; PC: a ação do POP entra no "+N sugestões" (rótulo "Ação do POP COD")
+  const campo = ler("components/campo/CampoTelas.tsx");
+  assert.ok(campo.includes("Ação corretiva do POP") && campo.includes("Usar este texto"));
+  const pcCorrecoes = ler("components/pc/PcCorrecoes.tsx");
+  assert.ok(pcCorrecoes.includes("Ação do POP") && pcCorrecoes.includes("nc.acaoDoPop"));
   assert.ok(ler("components/pc/PcPopsVisita.tsx").includes("Trocar vínculo"));
   assert.ok(page.includes("Peça ao responsável para definir os ambientes."));
 });

@@ -2,6 +2,7 @@
 
 import { dataISOLocal, formatarDataCurta, formatarDataHora, formatarHora, hojeLocalISO } from "@/lib/dataLocal";
 import AntesDepois, { type FotoDoPar } from "@/components/AntesDepois";
+import { sugestoesDeResponsavel } from "@/lib/pessoas";
 import { confirmar } from "@/lib/dialogos";
 import { useEffect, useMemo, useRef, useState } from "react";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
@@ -43,6 +44,8 @@ export type CorrecaoItem = {
   vezes?: number;
   /** Ação da correção anterior do mesmo critério que foi resolvida. */
   acaoQueFuncionou?: string;
+  /** Número da visita que trouxe a ação que funcionou (para o chip "Ação que funcionou antes · Visita N"). */
+  acaoQueFuncionouVisita?: number;
   /** Último responsável das correções deste ambiente (proposta, o RT confirma). */
   responsavelSugerido?: string;
   /** Chips de memória: últimos responsáveis e últimas ações da empresa. */
@@ -129,6 +132,13 @@ function dataMes(iso: string) {
   return mes && dia ? `${dia}/${mes}` : iso;
 }
 
+/** A aba aberta ao entrar: a da correção escolhida; senão a primeira etapa que tem itens. A lista sempre mostra só a etapa da aba. */
+function etapaInicial(itens: CorrecaoItem[], escolhidaId: string): EtapaCorrecao {
+  const escolhida = itens.find((nc) => nc.id === escolhidaId);
+  if (escolhida) return etapaDaCorrecao(escolhida);
+  return ETAPAS.map((passo) => passo.chave).find((chave) => itens.some((nc) => etapaDaCorrecao(nc) === chave)) ?? "identificadas";
+}
+
 export default function PcCorrecoes({
   empresa,
   data,
@@ -151,7 +161,7 @@ export default function PcCorrecoes({
   pessoas,
   onVerNoChecklist,
 }: Props) {
-  const [etapa, setEtapa] = useState<EtapaCorrecao | null>(null);
+  const [etapa, setEtapa] = useState<EtapaCorrecao>(() => etapaInicial(itens, selecionadaInicial));
   const [agrupar, setAgrupar] = useState<Agrupar>("gravidade");
   const [rapidos, setRapidos] = useState<{ recorrentes: boolean; semResp: boolean; atrasadas: boolean }>({ recorrentes: false, semResp: false, atrasadas: false });
   const [escolhidaId, setEscolhidaId] = useState(selecionadaInicial);
@@ -167,7 +177,7 @@ export default function PcCorrecoes({
   const filtrados = useMemo(
     () =>
       itens.filter((nc) => {
-        if (etapa && etapaDaCorrecao(nc) !== etapa) return false;
+        if (etapaDaCorrecao(nc) !== etapa) return false;
         if (rapidos.recorrentes && !nc.reincidente) return false;
         if (rapidos.semResp && (nc.status === "Resolvida" || nc.responsavelAcao.trim())) return false;
         if (rapidos.atrasadas && !ncAtrasada(nc, hoje)) return false;
@@ -186,6 +196,7 @@ export default function PcCorrecoes({
 
   const salvarPlano: Props["onSalvarPlano"] = (id, dados) => {
     onSalvarPlano(id, dados);
+    setEtapa(dados.etapa);
     setAviso("Plano salvo");
   };
 
@@ -205,7 +216,7 @@ export default function PcCorrecoes({
   const subtitulo = `${abertas} não conformidade${abertas === 1 ? "" : "s"} aberta${abertas === 1 ? "" : "s"} · ${
     abertas === 0 ? "nada pendente" : contagem.plano === 0 ? "nenhuma com plano ainda" : `${contagem.plano} com plano`
   }`;
-  const etapaAtiva = etapa ?? (selecionada ? etapaDaCorrecao(selecionada) : null);
+  const etapaAtiva = etapa;
   const filtrosAtivos = Number(rapidos.recorrentes) + Number(rapidos.semResp) + Number(rapidos.atrasadas);
 
   // "Próxima correção": a seguinte sem plano; se não houver, a seguinte da lista.
@@ -229,7 +240,7 @@ export default function PcCorrecoes({
             type="button"
             className={`pc-etapa ${passo.classe}${etapaAtiva === passo.chave ? " is-ativa" : ""}${contagem[passo.chave] === 0 ? " is-zero" : ""}${etapa === passo.chave ? " is-on" : ""}`}
             aria-pressed={etapa === passo.chave}
-            onClick={() => setEtapa((atual) => (atual === passo.chave ? null : passo.chave))}
+            onClick={() => setEtapa(passo.chave)}
           >
             <span className="pc-etapa-label">{passo.rotulo}</span>
             <span className="pc-etapa-num">{contagem[passo.chave]}</span>
@@ -482,13 +493,19 @@ function Detalhe({
 
   const vazio = (valor: string) => !valor.trim();
 
-  const outrasMemorias = (nc.memoriaResponsaveis || []).filter((nome) => nome !== responsavel.trim());
-  const nomesSugeridos = Array.from(new Set([...(nc.responsavelSugerido ? [nc.responsavelSugerido] : []), ...outrasMemorias])).filter((nome) => nome !== responsavel.trim());
+  // Chips: só pessoas cadastradas na empresa (e o usuário atual), no máximo 3; nome digitado à mão em outra correção nunca vira sugestão.
+  const nomesSugeridos = sugestoesDeResponsavel({ cadastradas: pessoas, ultimoDoAmbiente: nc.responsavelSugerido, escolhido: responsavel, limite: 3 });
   const responsavelVazio = vazio(responsavel);
   const faltaParaSalvar = [vazio(acao) ? "a ação" : "", responsavelVazio ? "o responsável" : "", erros.prazo ? "o prazo" : "", erroCausa ? "a causa raiz" : ""].filter(Boolean);
   const [registrando, setRegistrando] = useState(false);
   const contextoDaLinha = linhaDaCorrecao(nc);
-  const memoriaDeAcoes = (nc.memoriaAcoes || []).filter((texto) => texto !== acao.trim());
+  const funcionouVisivel = nc.reincidente && Boolean(nc.acaoQueFuncionou) && acao.trim() !== nc.acaoQueFuncionou;
+  const [sugestoesAbertas, setSugestoesAbertas] = useState(false);
+  const sugestoes: { rotulo: string; texto: string }[] = [
+    ...(acaoPadraoVisivel(nc) ? [{ rotulo: "Ação padrão do critério", texto: acaoPadraoVisivel(nc) }] : []),
+    ...(nc.acaoDoPop ? [{ rotulo: `Ação do POP ${nc.acaoDoPop.codigo}`, texto: nc.acaoDoPop.texto }] : []),
+    ...(nc.memoriaAcoes || []).map((texto) => ({ rotulo: "Usada antes", texto })),
+  ].filter((item, indice, todos) => item.texto && item.texto !== acao.trim() && item.texto !== nc.acaoQueFuncionou && todos.findIndex((outro) => outro.texto === item.texto) === indice);
 
   return (
     <>
@@ -606,54 +623,40 @@ function Detalhe({
             <span className="ui-eyebrow">
               O que será feito <span className="pc-obrig">· obrigatório</span>
             </span>
-            <span className="ui-field-wrap ui-field-wrap--area">
-              <textarea
-                ref={acaoRef}
-                className={`ui-input pc-input-tools pc-acao-area${mostrarErro("acao") ? " is-invalid" : ""}`}
-                value={acao}
-                disabled={bloqueado}
-                onChange={(evento) => setAcao(evento.target.value)}
-                onBlur={() => marcarTocado("acao")}
-                placeholder="Descreva a ação corretiva"
-                aria-label="O que será feito (ação corretiva)"
-                aria-invalid={Boolean(mostrarErro("acao"))}
-              />
-              {!bloqueado && (
+            <textarea
+              ref={acaoRef}
+              className={`ui-input pc-acao-area${mostrarErro("acao") ? " is-invalid" : ""}`}
+              value={acao}
+              disabled={bloqueado}
+              onChange={(evento) => setAcao(evento.target.value)}
+              onBlur={() => marcarTocado("acao")}
+              placeholder="Descreva a ação corretiva"
+              aria-label="O que será feito (ação corretiva)"
+              aria-invalid={Boolean(mostrarErro("acao"))}
+            />
+            {!bloqueado && (
+              <div className="pc-acao-linha">
                 <span className="ui-field-tools">
                   <FieldVoiceTools fieldKey={`acao-${nc.id}`} value={acao} onChange={setAcao} rotuloIa="Sugerir com IA" contexto="Ação corretiva para uma não conformidade em segurança dos alimentos." />
                 </span>
-              )}
-            </span>
-            {!bloqueado && nc.reincidente && nc.acaoQueFuncionou && acao.trim() !== nc.acaoQueFuncionou && (
-              <div className="pc-memoria">
-                <button type="button" className="pc-chip-btn pc-chip-btn--soft pc-chip-funcionou" title={nc.acaoQueFuncionou} onClick={() => setAcao(nc.acaoQueFuncionou as string)}>
-                  ↺ Usar a ação que funcionou antes{nc.dataAnterior ? ` · visita de ${dataMes(nc.dataAnterior)}` : ""}
-                </button>
+                {funcionouVisivel && (
+                  <button type="button" className="pc-chip-btn pc-chip-btn--soft pc-chip-funcionou" title={nc.acaoQueFuncionou} onClick={() => setAcao(nc.acaoQueFuncionou as string)}>
+                    ↺ Ação que funcionou antes{nc.acaoQueFuncionouVisita ? ` · Visita ${nc.acaoQueFuncionouVisita}` : nc.dataAnterior ? ` · visita de ${dataMes(nc.dataAnterior)}` : ""}
+                  </button>
+                )}
+                {sugestoes.length > 0 && (
+                  <button type="button" className="pc-acao-mais" aria-expanded={sugestoesAbertas} onClick={() => setSugestoesAbertas((aberto) => !aberto)}>
+                    {sugestoesAbertas ? "Recolher sugestões" : `+${sugestoes.length} ${sugestoes.length === 1 ? "sugestão" : "sugestões"}`}
+                  </button>
+                )}
               </div>
             )}
-            {!bloqueado && acaoPadraoVisivel(nc) && acao.trim() !== acaoPadraoVisivel(nc) && (
-              <div className="pc-acao-padrao">
-                <span className="ui-row-sub">Ação padrão do critério: “{acaoPadraoVisivel(nc)}”</span>
-                <button type="button" className="pc-chip-btn pc-chip-btn--soft" onClick={() => setAcao(acaoPadraoVisivel(nc))}>
-                  Usar
-                </button>
-              </div>
-            )}
-            {!bloqueado && nc.acaoDoPop && acao.trim() !== nc.acaoDoPop.texto && (
-              <div className="pc-acao-padrao pop-acao-bloco">
-                <span className="ui-row-sub">
-                  <span className="ui-eyebrow">Ação corretiva do POP · {nc.acaoDoPop.codigo}</span> “{nc.acaoDoPop.texto}”
-                </span>
-                <button type="button" className="pc-chip-btn pc-chip-btn--soft" onClick={() => setAcao(nc.acaoDoPop!.texto)}>
-                  Usar este texto
-                </button>
-              </div>
-            )}
-            {!bloqueado && memoriaDeAcoes.length > 0 && (
-              <div className="pc-memoria" role="group" aria-label="Ações usadas antes">
-                {memoriaDeAcoes.map((texto) => (
-                  <button key={texto} type="button" className="pc-chip-btn pc-chip-btn--soft" title={texto} onClick={() => setAcao(texto)}>
-                    {texto.length > 46 ? `${texto.slice(0, 46)}…` : texto}
+            {!bloqueado && sugestoesAbertas && sugestoes.length > 0 && (
+              <div className="pc-acao-sugestoes" role="group" aria-label="Outras sugestões de ação">
+                {sugestoes.map((sugestao) => (
+                  <button key={`${sugestao.rotulo}:${sugestao.texto}`} type="button" className="pc-acao-sugestao" title={sugestao.texto} onClick={() => setAcao(sugestao.texto)}>
+                    <span className="pc-acao-sugestao-rotulo">{sugestao.rotulo}</span>
+                    <span className="pc-acao-sugestao-texto">{sugestao.texto}</span>
                   </button>
                 ))}
               </div>
@@ -680,7 +683,7 @@ function Detalhe({
                 disabled={bloqueado}
                 onChange={(evento) => setResponsavel(evento.target.value)}
                 onBlur={() => marcarTocado("responsavel")}
-                placeholder="Escolher responsável"
+                placeholder={bloqueado ? "Sem responsável" : "Escolha o responsável"}
                 aria-invalid={!bloqueado && responsavelVazio}
               />
               <datalist id={`pessoas-${nc.id}`}>
@@ -697,7 +700,6 @@ function Detalhe({
                   ))}
                 </span>
               )}
-              {!bloqueado && responsavelVazio && <span className="ui-field-error">Escolha o responsável</span>}
             </div>
             <label className="pc-plan-block pc-plan-prazo">
               <span className="pc-plan-rotulo">Prazo</span>
@@ -712,13 +714,18 @@ function Detalhe({
                   onBlur={() => marcarTocado("prazo")}
                   aria-invalid={Boolean(mostrarErro("prazo"))}
                 />
-                {!bloqueado && (
+                {mostrarErro("prazo") ? (
+                  <span className="pc-prazo-erro" role="alert">
+                    {erros.prazo}
+                  </span>
+                ) : (
+                  !bloqueado && (
                   <button type="button" className="pc-prazo-sugerido" title={`Usar ${dataMes(sugestao.data)}`} onClick={() => setPrazo(sugestao.data)}>
                     {sugestao.dias} dias · {nc.gravidade === "Rotina" ? "leve" : nc.gravidade.toLocaleLowerCase("pt-BR")}
                   </button>
+                  )
                 )}
               </span>
-              {mostrarErro("prazo") && <span className="ui-field-error">{erros.prazo}</span>}
             </label>
           </div>
         </div>
@@ -765,7 +772,17 @@ function Detalhe({
               Atualizações <span>{nc.historico.length}</span>
             </div>
             {nc.historico.length === 0 ? (
-              <p className="ui-row-sub">Nenhuma atualização registrada ainda.</p>
+              <p className="pc-sem-atualizacoes">
+                <span>Sem atualizações</span>
+                {podeEditar && !registrando && (
+                  <>
+                    <span aria-hidden="true"> · </span>
+                    <button type="button" className="pc-detail-registrar" onClick={() => setRegistrando(true)}>
+                      + Registrar
+                    </button>
+                  </>
+                )}
+              </p>
             ) : (
               <div className="pc-history">
                 {nc.historico.map((item) => (
@@ -779,7 +796,7 @@ function Detalhe({
                 ))}
               </div>
             )}
-            {podeEditar && !registrando && (
+            {podeEditar && !registrando && nc.historico.length > 0 && (
               <button type="button" className="pc-detail-registrar" onClick={() => setRegistrando(true)}>
                 {resolvida ? "Registrar nova atualização / reabrir" : "+ Registrar atualização"}
               </button>

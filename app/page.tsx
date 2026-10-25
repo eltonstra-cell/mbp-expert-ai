@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import MetricCard from "@/components/MetricCard";
 import FaixaVisitaOutraEmpresa from "@/components/FaixaVisitaOutraEmpresa";
 import FaixaDaVisita from "@/components/FaixaDaVisita";
+import { pessoasUnicas } from "@/lib/pessoas";
 import { textoDeBaseLegal } from "@/lib/conteudoValidado";
 import {
   desligarIa,
@@ -5114,14 +5115,13 @@ export default function Home() {
   }
 
   function nomesDasPessoasDaEmpresa(empresaId: string): string[] {
-    return Array.from(
-      new Set(
-        db.usuarios
-          .filter((usuario) => usuario.status !== "Suspenso" && (usuario.perfil === "Administrador" || usuario.empresaIds.includes(empresaId)))
-          .map((usuario) => usuario.nome)
-          .filter(Boolean)
-      )
-    );
+    // Pessoas cadastradas na empresa + o usuário atual; "Elton", "Élton" e "ÉLTON " são a mesma pessoa (lib/pessoas.ts).
+    return pessoasUnicas([
+      ...db.usuarios
+        .filter((usuario) => usuario.status !== "Suspenso" && (usuario.perfil === "Administrador" || usuario.empresaIds.includes(empresaId)))
+        .map((usuario) => usuario.nome),
+      ...(usuarioDaSessao?.nome ? [usuarioDaSessao.nome] : []),
+    ]);
   }
 
   // Correções em tela cheia (celular e tablet em pé): lista -> plano com a barra "Pular | Salvar plano".
@@ -5205,6 +5205,7 @@ export default function Home() {
           numero: posicao + 1,
           vezes: historico.vezes,
           acaoQueFuncionou: historico.acaoQueFuncionou || undefined,
+          acaoQueFuncionouVisita: historico.visitaDaAcao ? numeroVisitaPorId.get(historico.visitaDaAcao) : undefined,
           responsavelSugerido: memoria.responsavelDoAmbiente || undefined,
           memoriaResponsaveis: memoria.responsaveis,
           memoriaAcoes: memoria.acoes,
@@ -7090,7 +7091,8 @@ export default function Home() {
         reservarAltura={reservarAltura}
       />
     ) : null;
-  const ncsVencidasDaEmpresa = (db.ncs || []).filter((nc) => nc.empresaId === atual?.id && !nc.inativaNoChecklist && nc.status !== "Resolvida" && !!nc.prazo && nc.prazo < hojeISO()).length;
+  // UMA regra: o número vermelho do trilho em Correções é o mesmo "N vencidos" do Início (vencidos do painel "Hoje precisa de você").
+  const ncsVencidasDaEmpresa = dadosDasColunas?.vencidos ?? 0;
   // Central da Empresa: "← Central da Empresa › Documentos ▾". O menu troca de seção e substitui os três botões que ficavam numa linha própria.
   const naCentralComMenu =
     !dentroDaVisita && !!atual && ((view === "pops" && (telaVisivel("pops") || ehFiscal)) || (view === "empresas" && showEmpresaForm && !!editingEmpresaId && permitido("empresas.editar")));
@@ -7111,7 +7113,7 @@ export default function Home() {
       : undefined;
   // A lista de Correções da empresa toda não é uma tela de uma visita: o caminho mostra só "Correções".
   const caminhoTopo = dentroDaVisita && !(view === "correcoes" && correcoesDaEmpresa)
-    ? [`Visita ${numeroVisitaPorId.get(visitaAtual?.id || "") || "—"}`, rotuloDaTela || "Central"]
+    ? [`Visita ${numeroVisitaPorId.get(visitaAtual?.id || "") || "—"}`]
     : secaoDoTopo
       ? ["Central da Empresa"]
       : [rotuloDaTela || "Início"];
@@ -7635,7 +7637,6 @@ export default function Home() {
           </>
         )}
         <AppTopbar
-          variante={view === "inicio" && ehPC && !ehFiscal ? "inicio" : undefined}
           caminho={caminhoTopo}
           subtituloDoCaminho={view === "relatorio" && visitaAtual ? `${fdata(visitaAtual.data)} · ${visitaAtual.status === "Concluída" ? "inspeção concluída" : "inspeção em andamento"}` : undefined}
           onPrimeiro={() => (dentroDaVisita ? setView("visita") : navegarPrincipal("visitas"))}
@@ -8602,14 +8603,7 @@ export default function Home() {
               onAbrirPop={abrirPopsPeloAtalho}
               onLote={(ids, valores) => alteracoesEmLote(ncsDaTelaDeCorrecoes(), ids, valores).forEach((alteracao) => atualizarNC(alteracao.id, alteracao.patch))}
               onVoltar={() => setView("visita")}
-              pessoas={Array.from(
-                new Set(
-                  db.usuarios
-                    .filter((usuario) => usuario.status !== "Suspenso" && (usuario.perfil === "Administrador" || usuario.empresaIds.includes(visitaAtual.empresaId)))
-                    .map((usuario) => usuario.nome)
-                    .filter(Boolean)
-                )
-              )}
+              pessoas={nomesDasPessoasDaEmpresa(visitaAtual.empresaId)}
               onVerNoChecklist={(itemId) => verItemNoChecklist(itemId)}
             />
         ) : view === "popsvisita" && visitaAtual ? (

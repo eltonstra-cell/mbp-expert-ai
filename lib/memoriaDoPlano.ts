@@ -58,6 +58,8 @@ export type HistoricoDaReincidencia = {
   vezes: number;
   /** Ação da correção anterior do mesmo critério que foi RESOLVIDA (a que funcionou); vazio se não houver. */
   acaoQueFuncionou: string;
+  /** Visita da correção anterior que trouxe essa ação (vazio se não houver). */
+  visitaDaAcao: string;
 };
 
 /** `dataDaVisita` devolve AAAA-MM-DD; só visitas mais antigas e distintas contam. */
@@ -71,7 +73,7 @@ export function historicoDaReincidencia(nc: NcDaMemoria, todas: NcDaMemoria[], d
     .sort((a, b) => b.data.localeCompare(a.data));
   const visitasAnteriores = new Set(anteriores.map((registro) => registro.outra.visitaId));
   const funcionou = anteriores.find((registro) => registro.outra.status === "Resolvida" && (registro.outra.acaoCorretiva || "").trim());
-  return { vezes: visitasAnteriores.size + 1, acaoQueFuncionou: funcionou?.outra.acaoCorretiva?.trim() || "" };
+  return { vezes: visitasAnteriores.size + 1, acaoQueFuncionou: funcionou?.outra.acaoCorretiva?.trim() || "", visitaDaAcao: funcionou?.outra.visitaId || "" };
 }
 
 export const ordinalDaVez = (vezes: number): string => `${vezes}ª vez`;

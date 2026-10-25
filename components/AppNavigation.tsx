@@ -162,7 +162,7 @@ export default function AppNavigation({ contexto, ativa, onSelecionar, vencidas,
             title={`${usuario.nome} · ${usuario.perfil} · ${sincronizacao.rotulo}`}
             onClick={alternarPerfil}
           >
-            {usuario.iniciais}
+            <NavIcon name="acessos" size={22} strokeWidth={1.8} />
             <span className={`pc-avatar-dot is-${sincronizacao.estado}`} aria-hidden="true" />
           </button>
         )}

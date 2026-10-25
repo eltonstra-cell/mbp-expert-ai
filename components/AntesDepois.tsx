@@ -12,7 +12,7 @@ type Props = {
   resolvida: boolean;
   online?: boolean;
   onFotoDepois: (arquivo: File) => void;
-  /** "pc": as duas colunas aparecem sempre, lado a lado, com todas as fotos numa fileira que rola na horizontal e o botão "+ Foto". */
+  /** "pc": com fotos, as duas colunas lado a lado (todas as fotos numa fileira que rola na horizontal); sem fotos, uma linha "Antes · 0 · Depois · 0"; sempre com o botão "+ Foto". */
   variante?: "padrao" | "pc";
 };
 
@@ -52,9 +52,9 @@ export default function AntesDepois({ antes, depois, podeAdicionar, resolvida, o
   const pc = variante === "pc";
   const vazio = antes.length + depois.length === 0;
   return (
-    <div className={`ad${vazio && !pc ? " ad--vazio" : ""}${pc ? " ad--pc" : ""}`} aria-label="Antes e depois da correção">
-      {vazio && !pc ? (
-        <span className="ui-row-sub ad-contagem">Antes 0 · Depois 0</span>
+    <div className={`ad${vazio ? " ad--vazio" : ""}${pc ? " ad--pc" : ""}`} aria-label="Antes e depois da correção">
+      {vazio ? (
+        <span className="ui-row-sub ad-contagem">{pc ? "Antes · 0 · Depois · 0" : "Antes 0 · Depois 0"}</span>
       ) : (
         <div className="ad-par">
           <Coluna titulo="Antes" fotos={antes} todas={pc} />

@@ -4985,7 +4985,6 @@ button.esc-chip--mais:focus-visible{outline:3px solid #E8B04B;outline-offset:1px
   .ini2-colunas{grid-template-columns:minmax(0,1fr);flex:none}
   .ini2-caixas{grid-template-columns:minmax(0,1fr)}
 }
-.pc-offset:has(.ini2){padding-left:36px!important;padding-right:36px!important}
 .ini2{padding:0 0 24px}
 .pc-topbar--inicio .pc-busca{flex:1 1 360px;max-width:520px}
 .ini2-colunas{grid-template-columns:minmax(0,2fr) minmax(0,1fr)}
@@ -5399,7 +5398,6 @@ button.mr-cartao.is-aberto{outline:3px solid #E8B04B;outline-offset:1px}
   --rd-menu:#2E5BD6;
   --rd-acao:#2B54CF;
   --rd-acao-hover:#2549B6;
-  --rd-laranja:#DB7410;
   --rd-laranja-texto:#B85E08;
   --rd-ink:#1B2433;
   --rd-trilho:#E8EBF2;
@@ -5502,7 +5500,7 @@ html[data-modo="completo"] .pc-offset:has(.ini3)>.ini3{flex:1 1 auto;min-height:
 .ini3-anel{position:relative;display:grid;flex:none;place-items:center;width:60px;height:60px}
 .ini3-anel svg{position:absolute;inset:0}
 .ini3-anel-centro{position:relative;display:grid;place-items:center;font-size:14px;font-weight:400;color:var(--rd-ink)}
-.ini3-anel-centro svg{position:static;color:var(--rd-laranja)}
+.ini3-anel-centro svg{position:static;color:var(--rd-ambar)}
 .ini3-cartao-textos{display:flex;flex-direction:column;gap:2px;min-width:0}
 .ini3-cartao-titulo{margin:0;overflow:hidden;font-family:var(--font-display),"Outfit",sans-serif;font-size:20px;font-weight:500;line-height:1.15;text-overflow:ellipsis;white-space:nowrap;color:var(--rd-ink)}
 .ini3-cartao-data{font-size:15px;color:var(--rd-cinza)}
@@ -5535,12 +5533,9 @@ html[data-modo="completo"] .pc-offset:has(.ini3)>.ini3{flex:1 1 auto;min-height:
 .ini3-links{display:flex;flex-wrap:wrap;gap:6px 22px;font-size:15px}
 .ini3-config{margin:0;font-size:14px;color:var(--rd-cinza)}
 .ini3 .ini2-link{color:var(--rd-acao)}
-@media (max-width:1200px){
-  html[data-modo] .pc-offset:has(.ini3){height:auto;min-height:100dvh;overflow:visible}
-  .ini3{overflow:visible}
+@media (max-width:1000px){
   .ini3-cartoes{grid-template-columns:minmax(0,1fr)}
   .ini3-colunas{grid-template-columns:minmax(0,1fr)}
-  .ini3-lista{overflow:visible}
 }
 
 /* ----- Visitas: o layout é o de sempre; só as cores mudam (nenhuma caixa laranja de ação) ----- */
@@ -5746,3 +5741,63 @@ html .ui-screen.pc-cor .pc-detail-head{gap:4px}
 html .ui-screen.pc-cor .pc-detail-scroll{gap:14px;padding-top:12px}
 html .ui-screen.pc-cor .pc-plan-stack{gap:12px}
 html .ui-screen.pc-cor .pc-cor-barra{margin-bottom:20px}
+
+/* =====================================================================================================================
+   PACOTE VISUAL 4 · Início sem sobreposição, respiro de 32 px nas telas, topo enxuto, Correções compactas, trilho e avatar
+   ===================================================================================================================== */
+/* Respiro: 32 px dos dois lados em todas as telas do PC/tablet (antes 28 px do Tailwind e 36 px no Início) */
+html:not([data-modo="campo"]) .pc-offset{padding-right:32px;padding-left:32px}
+html:not([data-modo="campo"]) .pc-offset .ini3{padding-right:0;padding-left:0}
+
+/* Início: nenhum bloco invade outro (blocos de altura natural; só a lista de correções rola por dentro; abaixo do mínimo rola o corpo do Início) */
+.ini3{overflow-y:auto;overflow-x:hidden}
+.ini3>*{flex:none}
+.ini3>.ini3-colunas{flex:1 1 auto;min-height:230px;margin-top:0}
+.ini3 .ini3-colunas>.ini3-secao{min-height:0}
+.ini3-correcoes{display:flex;flex-direction:column}
+.ini3-correcoes>.ini3-lista{flex:1 1 auto;min-height:120px}
+.ini3-correcoes>.ini3-rotulo,.ini3-correcoes>.ini3-titulo,.ini3-correcoes>.ini3-resumo,.ini3-correcoes>.ini3-rodape-lista{flex:none}
+.ini3-anel-centro svg{color:var(--rd-ambar)}
+
+/* Visitas: a linha de filtros encolhe a busca em vez de quebrar ou estourar */
+.ui-screen[aria-label="Visitas técnicas"] .vis-toolbar{flex-wrap:nowrap;gap:14px}
+.ui-screen[aria-label="Visitas técnicas"] .vis-toolbar>.ui-tabs{flex:none}
+.ui-screen[aria-label="Visitas técnicas"] .vis-toolbar-fim{flex:1 1 auto;min-width:0;flex-wrap:nowrap;justify-content:flex-end}
+.ui-screen[aria-label="Visitas técnicas"] .vis-toolbar-fim .pc-search{flex:1 1 160px;width:auto;min-width:96px;max-width:360px}
+.ui-screen[aria-label="Visitas técnicas"] .vis-toolbar-fim>.ui-btn{flex:none;white-space:nowrap}
+
+/* Topo: "Modo de tela" só o ícone (monitor); empresa ativa inteira; busca com UM contorno só (o foco troca a cor, sem segundo anel) */
+html .pc-topbar .pc-mode-chip{width:36px;height:36px;padding:0;justify-content:center}
+html .pc-topbar .pc-mode-chip .pc-mode-texto{display:none}
+html .pc-topbar .pc-mode-chip .pc-mode-icone{display:block;width:18px;height:18px;color:var(--rd-ink)}
+html[data-modo] .pc-topbar-end>.emp-ativa,html .pc-topbar .emp-ativa{flex:0 0 auto;width:auto;min-width:180px;max-width:none}
+html .pc-topbar .emp-ativa-nome{overflow:visible;text-overflow:clip;white-space:nowrap}
+html .pc-topbar .pc-smartbar{border:1px solid #C9CFDC;box-shadow:none;outline:0}
+html .pc-topbar .pc-smartbar:focus-within{border-color:var(--rd-acao);box-shadow:0 0 0 1px var(--rd-acao)}
+html .pc-topbar .pc-busca-input,html .pc-topbar .pc-busca-input:focus,html .pc-topbar .pc-busca-input:focus-visible{border:0!important;outline:0!important;box-shadow:none!important}
+
+/* Trilho: bolinha vermelha sobre o canto superior direito do ícone (sem encostar no destaque do item vizinho); avatar do usuário = ícone de pessoa */
+.tr-badge{top:-3px;right:auto;left:calc(50% + 2px)}
+.tr-avatar svg{display:block;color:var(--rd-ink)}
+
+/* Correções: caixa de 84 px; ferramentas e sugestões numa linha abaixo; aviso dentro do campo; chips de pessoas numa linha só */
+html .ui-screen.pc-cor .pc-acao-area{height:84px;min-height:84px;padding:10px 14px}
+html .ui-screen.pc-cor .pc-acao-linha{display:flex;flex-wrap:nowrap;align-items:center;gap:8px;min-width:0}
+html .ui-screen.pc-cor .pc-acao-linha .ui-field-tools{position:static;top:auto;right:auto;bottom:auto;display:flex;flex:none;transform:none}
+html .ui-screen.pc-cor .pc-acao-linha .ui-field-tools .field-assist-tools{margin:0;flex-wrap:nowrap}
+html .ui-screen.pc-cor .pc-acao-linha .pc-chip-funcionou{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html .ui-screen.pc-cor .pc-acao-mais{flex:none;padding:0;border:0;background:transparent;font-size:15px;color:var(--rd-acao);white-space:nowrap;cursor:pointer}
+html .ui-screen.pc-cor .pc-acao-sugestoes{display:flex;flex-direction:column;gap:4px;max-height:132px;overflow-y:auto}
+html .ui-screen.pc-cor .pc-acao-sugestao{display:flex;align-items:baseline;gap:8px;width:100%;padding:6px 10px;border:0;border-radius:10px;background:var(--rd-azul-cartao);font-size:15px;color:var(--rd-ink);text-align:left;cursor:pointer}
+html .ui-screen.pc-cor .pc-acao-sugestao-rotulo{flex:none;font-size:13px;color:var(--rd-texto-fraco)}
+html .ui-screen.pc-cor .pc-acao-sugestao-texto{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html .ui-screen.pc-cor .pc-plan-resp .pc-memoria{flex-wrap:nowrap;overflow:hidden;gap:6px}
+html .ui-screen.pc-cor .pc-plan-resp .pc-memoria .pc-chip-btn{flex:none;max-width:none;overflow:visible;text-overflow:clip;white-space:nowrap}
+html .ui-screen.pc-cor .pc-plan-campos .ui-input.is-invalid::placeholder{color:var(--rd-venceu);opacity:1}
+html .ui-screen.pc-cor .pc-prazo-erro{position:absolute;right:44px;font-size:14px;color:var(--rd-venceu);white-space:nowrap}
+/* Evidências e Atualizações vazias: uma linha cada */
+html .ui-screen.pc-cor .ad--vazio{flex-direction:row;align-items:center;gap:12px}
+html .ui-screen.pc-cor .ad--vazio .ad-foto-mais{margin-top:0}
+html .ui-screen.pc-cor .ad--vazio .ad-contagem{font-size:15px;color:var(--rd-texto-fraco)}
+html .ui-screen.pc-cor .pc-sem-atualizacoes{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin:0;font-size:15px;color:var(--rd-texto-fraco)}
+html:not([data-modo="campo"]) .ui-screen.ini3{gap:20px}
