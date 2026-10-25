@@ -729,33 +729,35 @@ function Detalhe({
             <div className="pc-detail-secao-titulo">
               Evidências <span>{nc.evidencias.length}</span>
             </div>
-            {nc.par && (nc.par.antes.length > 0 || nc.par.depois.length > 0 || resolvida) && (
+            {nc.par ? (
               <AntesDepois
+                variante="pc"
                 antes={nc.par.antes}
                 depois={nc.par.depois}
                 podeAdicionar={podeEvidenciar && Boolean(onFotoDepois)}
                 resolvida={resolvida}
                 onFotoDepois={(arquivo) => onFotoDepois?.(nc.id, arquivo)}
               />
+            ) : (
+              <div className="pc-detail-evs">
+                {nc.evidencias.map((ev) => (
+                  <a key={ev.id} href={ev.url || undefined} target="_blank" rel="noreferrer" className="pc-detail-ev">
+                    {ev.tipo === "Foto" && ev.url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={ev.url} alt={ev.nome} />
+                    ) : (
+                      <span className="pc-detail-ev-audio">{ev.tipo}</span>
+                    )}
+                    <span className="pc-detail-ev-data">{ev.quando}</span>
+                  </a>
+                ))}
+                {podeEvidenciar && (
+                  <button type="button" className="pc-detail-foto" onClick={() => onAdicionarEvidencia(nc.id)}>
+                    + Foto
+                  </button>
+                )}
+              </div>
             )}
-            <div className="pc-detail-evs">
-              {nc.evidencias.map((ev) => (
-                <a key={ev.id} href={ev.url || undefined} target="_blank" rel="noreferrer" className="pc-detail-ev">
-                  {ev.tipo === "Foto" && ev.url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={ev.url} alt={ev.nome} />
-                  ) : (
-                    <span className="pc-detail-ev-audio">{ev.tipo}</span>
-                  )}
-                  <span className="pc-detail-ev-data">{ev.quando}</span>
-                </a>
-              ))}
-              {podeEvidenciar && (
-                <button type="button" className="pc-detail-foto" onClick={() => onAdicionarEvidencia(nc.id)}>
-                  + Foto
-                </button>
-              )}
-            </div>
           </section>
 
           <section className="pc-detail-secao" aria-label="Atualizações">
