@@ -14,11 +14,11 @@ import { acaoPadraoVisivel } from "@/lib/conteudoValidado";
 import { contarEtapas, etapaDaCorrecao, ordenarCorrecoes, prazoSugerido, validarPlano, type EtapaCorrecao, type GravidadeNc } from "@/lib/actionPlan";
 import { NOME_DA_GRAVIDADE, linhaDaCorrecao, mensagemDeFaltas, primeiroCampoComProblema, type CampoDoPlano } from "@/lib/correcaoRotulos";
 
-export type TelaCampo = "inicio" | "checklist" | "correcoes" | "evidencias" | "mais";
+export type TelaCampo = "inicio" | "visitas" | "checklist" | "correcoes" | "evidencias" | "pops" | "relatorios" | "mais";
 
-/** Abas da barra de baixo, em ordem. O padrão é Início, Checklist, Registrar, Correções e Mais. */
-export type AbaDaBarra = "inicio" | "checklist" | "registrar" | "correcoes" | "evidencias" | "mais";
-export const ABAS_PADRAO: AbaDaBarra[] = ["inicio", "checklist", "registrar", "correcoes", "mais"];
+/** Abas da barra de baixo, em ordem. O padrão são os mesmos destinos do trilho (Início, Visitas, Correções, POPs, Relatórios e Mais), com o Registrar no centro. */
+export type AbaDaBarra = "inicio" | "visitas" | "checklist" | "registrar" | "correcoes" | "evidencias" | "pops" | "relatorios" | "mais";
+export const ABAS_PADRAO: AbaDaBarra[] = ["inicio", "visitas", "correcoes", "registrar", "pops", "relatorios", "mais"];
 
 type Chrome = {
   tela: TelaCampo | null;
@@ -89,8 +89,14 @@ export function CampoBarra({ tela, correcoesAbertas, podeRegistrar, onIr, onRegi
         switch (aba) {
           case "inicio":
             return botao("inicio", "Início", "inicio");
+          case "visitas":
+            return botao("visitas", "Visitas", "visitas");
           case "checklist":
             return botao("checklist", "Checklist", "checklist");
+          case "pops":
+            return botao("pops", "POPs", "pops");
+          case "relatorios":
+            return botao("relatorios", "Relatórios", "relatorios");
           case "registrar":
             return podeRegistrar ? (
               <button key="registrar" type="button" className="campo-register" onClick={onRegistrar}>

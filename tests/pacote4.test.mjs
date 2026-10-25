@@ -79,11 +79,12 @@ test("64. chip de sincronização sempre com texto: Sincronizado, Sem sinal, N p
   assert.equal(/\.pc-sync-texto\{display:none\}/.test(css), false, "o texto do chip nunca é escondido");
 });
 
-test("59. um só avatar do usuário (menu) e Visita N na lateral; o Início voltou ao estado anterior", () => {
+test("59. um só avatar do usuário (menu); a Visita N saiu do trilho e virou a faixa da visita; o Início voltou ao estado anterior", () => {
   const topo = ler("../components/AppTopbar.tsx");
   assert.equal(topo.includes('className="pc-avatar"'), false);
   const nav = ler("../components/AppNavigation.tsx");
-  assert.ok(nav.includes("Visita {visitaMenu.numero") && !nav.includes("{visitaMenu.empresa}</span>"));
+  assert.ok(!nav.includes("visitaMenu") && !nav.includes("Visita atual"), "o trilho é um só, sem cartão da visita");
+  assert.ok(ler("../components/FaixaDaVisita.tsx").includes("Finalizar visita"), "a faixa da visita traz o Finalizar visita");
   assert.equal(ler("../components/pc/PcInicio.tsx").includes("nomeFantasia"), false, "o Início não repete o nome da empresa (só o seletor)");
 });
 

@@ -12,9 +12,12 @@ type Props = {
   resolvida: boolean;
   online?: boolean;
   onFotoDepois: (arquivo: File) => void;
+  /** "pc": as duas colunas aparecem sempre, lado a lado, com todas as fotos numa fileira que rola na horizontal e o botão "+ Foto". */
+  variante?: "padrao" | "pc";
 };
 
-function Coluna({ titulo, fotos }: { titulo: string; fotos: FotoDoPar[] }) {
+function Coluna({ titulo, fotos, todas }: { titulo: string; fotos: FotoDoPar[]; todas: boolean }) {
+  const mostradas = todas ? fotos : fotos.slice(0, 1);
   return (
     <div className="ad-coluna">
       <span className="ui-eyebrow">
@@ -23,31 +26,39 @@ function Coluna({ titulo, fotos }: { titulo: string; fotos: FotoDoPar[] }) {
       {fotos.length === 0 ? (
         <span className="ad-vazio ui-row-sub">Sem foto</span>
       ) : (
-        <a href={fotos[0].url || undefined} target="_blank" rel="noreferrer" className="ad-foto" aria-label={`${titulo}: abrir a foto`}>
-          {fotos[0].url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={fotos[0].url} alt={`${titulo} da correção`} />
-          ) : (
-            <span className="ui-row-sub">Foto no aparelho</span>
-          )}
-        </a>
+        <div className="ad-fileira">
+          {mostradas.map((foto) => (
+            <span key={foto.id} className="ad-item">
+              <a href={foto.url || undefined} target="_blank" rel="noreferrer" className="ad-foto" aria-label={`${titulo}: abrir a foto`}>
+                {foto.url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={foto.url} alt={`${titulo} da correção`} />
+                ) : (
+                  <span className="ui-row-sub">Foto no aparelho</span>
+                )}
+              </a>
+              <span className="ui-row-sub">{foto.quando}</span>
+            </span>
+          ))}
+        </div>
       )}
-      {fotos[0] && <span className="ui-row-sub">{fotos[0].quando}</span>}
     </div>
   );
 }
 
 // Par antes/depois da correção: o antes é a evidência da não conformidade; o depois é anexado ao resolver.
-export default function AntesDepois({ antes, depois, podeAdicionar, resolvida, onFotoDepois }: Props) {
+export default function AntesDepois({ antes, depois, podeAdicionar, resolvida, onFotoDepois, variante = "padrao" }: Props) {
   const entrada = useRef<HTMLInputElement | null>(null);
+  const pc = variante === "pc";
+  const vazio = antes.length + depois.length === 0;
   return (
-    <div className={`ad${antes.length + depois.length === 0 ? " ad--vazio" : ""}`} aria-label="Antes e depois da correção">
-      {antes.length + depois.length === 0 ? (
+    <div className={`ad${vazio && !pc ? " ad--vazio" : ""}${pc ? " ad--pc" : ""}`} aria-label="Antes e depois da correção">
+      {vazio && !pc ? (
         <span className="ui-row-sub ad-contagem">Antes 0 · Depois 0</span>
       ) : (
         <div className="ad-par">
-          <Coluna titulo="Antes" fotos={antes} />
-          <Coluna titulo="Depois" fotos={depois} />
+          <Coluna titulo="Antes" fotos={antes} todas={pc} />
+          <Coluna titulo="Depois" fotos={depois} todas={pc} />
         </div>
       )}
       {resolvida && depois.length === 0 && <span className="ui-field-error ad-aviso">Resolvida sem foto do depois: o relatório mostra “sem comprovação”.</span>}
@@ -58,9 +69,15 @@ export default function AntesDepois({ antes, depois, podeAdicionar, resolvida, o
             evento.target.value = "";
             if (arquivo) onFotoDepois(arquivo);
           }} />
-          <button type="button" className="ui-btn ui-btn--secondary ui-btn--small ad-botao" onClick={() => entrada.current?.click()}>
-            Adicionar foto do depois
-          </button>
+          {pc ? (
+            <button type="button" className="ad-foto-mais" aria-label="Adicionar foto do depois" title="Adicionar foto do depois" onClick={() => entrada.current?.click()}>
+              + Foto
+            </button>
+          ) : (
+            <button type="button" className="ui-btn ui-btn--secondary ui-btn--small ad-botao" onClick={() => entrada.current?.click()}>
+              Adicionar foto do depois
+            </button>
+          )}
         </>
       )}
     </div>

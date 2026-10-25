@@ -240,6 +240,7 @@ try {
     const ok = m.f && m.f.t > 0 && m.f.b <= m.bar + 0.5 && m.f.b <= m.orb + 0.5 && m.f.t > m.topoB && /auto|scroll/.test(m.rolaPorDentro);
     registrar(`8. celular ${w}x${h}: rodapé fixo à vista acima da barra e do botão Registrar, conteúdo rola por dentro`, Boolean(ok), JSON.stringify(m));
     await foto(`8-celular-${w}`);
+    registrar(`8b. celular ${w}x${h}: faixa da visita (abas que rolam) e 'Finalizar visita' sempre à vista com 44 px; barra de baixo com os destinos do trilho, rótulo de 12 px e alvos de 44 px; sem rolagem horizontal`, await js(`(()=>{const fin=document.querySelector(".fv .fv-finalizar");const seg=document.querySelector(".fv-seg");const abas=[...document.querySelectorAll(".campo-bar .campo-tab, .campo-bar .campo-register")];const rot=[...document.querySelectorAll(".campo-bar .campo-tab-label")].map((x)=>x.textContent.trim());if(!fin||!seg)return false;const fr=fin.getBoundingClientRect();return fr.right<=innerWidth&&fr.left>=0&&fr.width>=44&&fr.height>=44&&getComputedStyle(seg).overflowX==="auto"&&abas.every((b)=>b.getBoundingClientRect().height>=44)&&["Início","Visitas","Correções","POPs","Relatórios","Mais"].every((x)=>rot.includes(x))&&getComputedStyle(document.querySelector(".campo-bar .campo-tab-label")).fontSize==="12px"&&document.documentElement.scrollWidth<=innerWidth+1})()`));
   }
 
   // 9. Foto tirada sem sinal (celular): não é "Sincronizado" enquanto a foto não subiu, aparece "Na fila" com "Enviar agora" em Evidências,
@@ -393,8 +394,8 @@ try {
   await js('[...document.querySelectorAll(".tr .tr-item")].find((b) => b.innerText.trim().endsWith("Visitas"))?.click()');
   await esperar(async () => js('!!document.querySelector(".vis-linha")'), 15000);
   await js('[...document.querySelectorAll(".vis-linha button")].find((b) => b.innerText.includes("Continuar"))?.click()');
-  await esperar(async () => js('!!document.querySelector(\'.tr[data-menu="visita"]\')'), 15000);
-  await js('[...document.querySelectorAll(".tr .tr-item")].find((b) => b.querySelector(".tr-rotulo")?.textContent.trim() === "Relatório")?.click()');
+  await esperar(async () => js('!!document.querySelector(".fv")'), 15000);
+  await js('document.querySelector(\'.fv .fv-item[data-chave="relatorio"]\')?.click()');
   const abriuRelatorio = await esperar(async () => js('!!document.querySelector(".rev-faixa")'), 15000);
   registrar("15a. Relatório da visita mostra o estado 'Rascunho' e o botão Revisar (sem sinal)", abriuRelatorio && /Rascunho/.test(await texto()) && (await js('[...document.querySelectorAll("button")].some((b) => b.innerText.trim() === "Revisar")')));
   await js('[...document.querySelectorAll("button")].find((b) => b.innerText.trim() === "Revisar")?.click()');
@@ -446,42 +447,68 @@ try {
   await foto("16-inicio-celular");
   registrar("16h. Celular: sem rolagem horizontal no Início", await js("document.documentElement.scrollWidth<=innerWidth+1"));
 
-  // 17. Trilho de navegação (modo geral e modo visita) e tela Correções da visita.
+  // 17. Trilho único (dentro e fora da visita), faixa da visita e tela Correções da visita.
   await n.enviar("Emulation.setDeviceMetricsOverride", { width: 1440, height: 800, deviceScaleFactor: 1, mobile: false });
   await n.ir(app.base);
   await esperar(async () => js('!!document.querySelector(".tr")'), 20000);
   await n.esperar(1200);
   const itemDoTrilho = (rotulo, acao) => js(`(()=>{const b=[...document.querySelectorAll(".tr .tr-item")].find((x)=>x.querySelector(".tr-rotulo")?.textContent.trim()===${JSON.stringify(rotulo)});if(!b)return false;${acao ? "b.click();" : ""}return true})()`);
-  registrar("17a. Trilho geral: Início, Visitas, Correções, POPs, Relatórios e Mais, sem rolagem em 800 px de altura", await js(`(()=>{const t=document.querySelector('.tr[data-menu="geral"]');if(!t)return false;const rot=[...t.querySelectorAll(".tr-item .tr-rotulo")].map((x)=>x.textContent.trim());return ["Início","Visitas","Correções","POPs","Relatórios","Mais"].every((x)=>rot.includes(x))&&t.scrollHeight<=t.clientHeight+1})()`));
+  const noFaixa = (chave) => js(`(()=>{const b=document.querySelector('.fv .fv-item[data-chave="${chave}"]');if(!b)return false;b.click();return true})()`);
+  const rotulosDoTrilho = 'JSON.stringify([...document.querySelectorAll(".tr .tr-item .tr-rotulo, .tr .tr-registrar .tr-rotulo")].map((x)=>x.textContent.trim()))';
+  registrar("17a. Trilho: Registrar, Início, Visitas, Correções, POPs, Relatórios e Mais; avatar dentro da janela; sem rolagem em 800 px", await js(`(()=>{const t=document.querySelector(".tr");if(!t)return false;const rot=${rotulosDoTrilho};const a=document.querySelector(".tr-avatar").getBoundingClientRect();return ["Registrar","Início","Visitas","Correções","POPs","Relatórios","Mais"].every((x)=>rot.includes(x))&&a.bottom<=innerHeight&&t.querySelector(".tr-lista").scrollHeight<=t.querySelector(".tr-lista").clientHeight+1&&!document.querySelector(".fv")})()`));
   await itemDoTrilho("Mais", true);
   await n.esperar(300);
   registrar("17b. 'Mais' abre um quadro ao lado (290 px), sem empurrar o conteúdo, e fecha com Esc e ao tocar fora", await js(`(()=>{const q=document.querySelector(".tr-quadro");return !!q&&Math.round(q.getBoundingClientRect().width)===290&&q.getBoundingClientRect().left>=104&&parseInt(getComputedStyle(document.querySelector(".pc-offset")).marginLeft)===104})()`) && (await js('window.dispatchEvent(new KeyboardEvent("keydown",{key:"Escape"}))'), await n.esperar(200), await js('!document.querySelector(".tr-quadro")')) && (await itemDoTrilho("Mais", true), await n.esperar(200), await js('document.body.dispatchEvent(new MouseEvent("mousedown",{bubbles:true}))'), await n.esperar(200), await js('!document.querySelector(".tr-quadro")')));
   await itemDoTrilho("Visitas", true);
   await esperar(async () => js('!!document.querySelector(".vis-linha")'), 15000);
   await js('[...document.querySelectorAll(".vis-linha button")].find((b)=>b.innerText.includes("Continuar"))?.click()');
-  await esperar(async () => js('!!document.querySelector(\'.tr[data-menu="visita"]\')'), 15000);
+  await esperar(async () => js('!!document.querySelector(".fv")'), 15000);
   await n.esperar(500);
-  await foto("17-modo-visita");
-  registrar("17c. Modo visita: cabeçalho Visita N com anel, Checklist, Evidências, Correções, POPs, Relatório, Finalizar e Sair, sem rolagem em 800 px", await js(`(()=>{const t=document.querySelector('.tr[data-menu="visita"]');if(!t)return false;const rot=[...t.querySelectorAll(".tr-item .tr-rotulo")].map((x)=>x.textContent.trim());return ["Checklist","Evidências","Correções","POPs","Relatório","Finalizar","Sair"].every((x)=>rot.includes(x))&&/Visita \\d/.test(t.querySelector(".tr-visita")?.innerText||"")&&!!t.querySelector(".tr-visita svg circle:nth-child(2)")&&t.scrollHeight<=t.clientHeight+1&&getComputedStyle(t.querySelector(".tr-ladrilho--verde")).backgroundColor==="rgb(46, 139, 87)"})()`));
-  await itemDoTrilho("Correções", true);
+  await foto("17-faixa-da-visita");
+  registrar("17c. Dentro da visita o trilho é o mesmo (sem cartão 'Visita atual', sem Finalizar/Sair) e 'Visitas' fica como página atual", await js(`(()=>{const t=document.querySelector(".tr");const rot=${rotulosDoTrilho};const atual=t.querySelector(".tr-item.is-atual .tr-rotulo")?.textContent.trim();return ["Registrar","Início","Visitas","Correções","POPs","Relatórios","Mais"].every((x)=>rot.includes(x))&&!rot.includes("Finalizar")&&!rot.includes("Sair")&&!t.querySelector(".tr-visita")&&atual==="Visitas"&&getComputedStyle(t.querySelector(".tr-ladrilho.is-ativo")).backgroundColor==="rgb(217, 137, 11)"&&t.scrollHeight<=t.clientHeight+1})()`));
+  registrar("17d. Faixa da visita: Checklist, Evidências, Correções (número), POPs, Relatório e 'Finalizar visita' verde de 40 px; 44 px de altura, 16 px abaixo do topo", await js(`(()=>{const f=document.querySelector(".fv");if(!f)return false;const rot=[...f.querySelectorAll(".fv-item")].map((x)=>x.childNodes[0].textContent.trim());const fin=f.querySelector(".fv-finalizar");const seg=f.querySelector(".fv-seg");return ["Checklist","Evidências","Correções","POPs","Relatório"].every((x)=>rot.includes(x))&&!!f.querySelector('.fv-item[data-chave="correcoes"] .fv-badge')&&!!fin&&getComputedStyle(fin).backgroundColor==="rgb(46, 139, 87)"&&Math.round(fin.getBoundingClientRect().height)===40&&getComputedStyle(seg).backgroundColor==="rgb(238, 241, 247)"&&Math.round(f.getBoundingClientRect().height)>=44})()`));
+  await noFaixa("correcoes");
   await esperar(async () => js('!!document.querySelector(".pc-cor .pc-detail--corr")'), 15000);
   await n.esperar(500);
   await foto("17-correcoes");
-  registrar("17d. Correções: etapas em texto com contagem, sem título repetido e lista de cartões com rodapé fixo", await js(`(()=>{const e=[...document.querySelectorAll(".pc-cor .pc-etapa")].map((x)=>x.innerText.replace(/\\s+/g," ").trim());const visivel=[...document.querySelectorAll(".pc-cor h1")].every((h)=>getComputedStyle(h).position==="absolute");return e.length===4&&/^Identificadas \\d+$/.test(e[0])&&visivel&&!!document.querySelector(".pc-cor .pc-cor-card")&&!!document.querySelector(".pc-cor .pc-cor-rodape")&&document.scrollingElement.scrollHeight<=innerHeight+2})()`));
-  registrar("17e. Correções: responsável começa vazio, com contorno vermelho e aviso na hora; 'Salvar plano' desabilitado", await js(`(()=>{const r=document.querySelector('.pc-cor .pc-plan-resp input');const salvar=[...document.querySelectorAll(".pc-cor .pc-detail-foot button")].find((b)=>b.innerText.includes("Salvar plano"));return !!r&&r.value===""&&r.placeholder==="Escolher responsável"&&getComputedStyle(r).borderTopColor==="rgb(201, 71, 63)"&&document.querySelector(".pc-cor").innerText.includes("Escolha o responsável")&&!!salvar&&salvar.disabled})()`));
+  registrar("17e. Troca de assunto pela faixa: Correções da visita abre, a faixa continua e o segmento atual fica branco", await js(`(()=>{const at=document.querySelector(".fv .fv-item.is-atual");return !!at&&at.getAttribute("data-chave")==="correcoes"&&getComputedStyle(at).backgroundColor==="rgb(255, 255, 255)"&&document.querySelector(".tr-item.is-atual .tr-rotulo")?.textContent.trim()==="Visitas"})()`));
+  registrar("17f. Correções: etapas em texto com contagem, sem título repetido, lista de cartões com rodapé fixo e página sem rolagem", await js(`(()=>{const e=[...document.querySelectorAll(".pc-cor .pc-etapa")].map((x)=>x.innerText.replace(/\\s+/g," ").trim());const visivel=[...document.querySelectorAll(".pc-cor h1")].every((h)=>getComputedStyle(h).position==="absolute");return e.length===4&&/^Identificadas \\d+$/.test(e[0])&&visivel&&!!document.querySelector(".pc-cor .pc-cor-card")&&!!document.querySelector(".pc-cor .pc-cor-rodape")&&document.scrollingElement.scrollHeight<=innerHeight+2})()`));
+  registrar("17g. Correções: responsável vazio com contorno vermelho e aviso inteiro na tela; 'Salvar plano' desabilitado", await js(`(()=>{const r=document.querySelector('.pc-cor .pc-plan-resp input');const salvar=[...document.querySelectorAll(".pc-cor .pc-detail-foot button")].find((b)=>b.innerText.includes("Salvar plano"));const av=[...document.querySelectorAll(".pc-cor .ui-field-error")].find((x)=>x.textContent.includes("Escolha o responsável"));const c=document.querySelector(".pc-detail--corr").getBoundingClientRect();const ar=av?av.getBoundingClientRect():null;return !!r&&r.value===""&&r.placeholder==="Escolher responsável"&&getComputedStyle(r).borderTopColor==="rgb(201, 71, 63)"&&!!ar&&ar.height>10&&ar.bottom<=c.bottom&&!!salvar&&salvar.disabled})()`));
+  const medirSobreposicao = `(()=>{try{const raiz=document.querySelector(".pc-detail--corr");const corpo=raiz.querySelector(".pc-detail-scroll");const blocos=[...raiz.querySelectorAll(".pc-detail-head, .pc-detail-scroll > *, .pc-detail-foot, .pc-plan-stack > *, .pc-plan-campos > *, .pc-detail-duas > *")];const cx=corpo.getBoundingClientRect();const recorta=(b,r)=>{if(!corpo.contains(b)||b===corpo)return r;return {left:Math.max(r.left,cx.left),right:Math.min(r.right,cx.right),top:Math.max(r.top,cx.top),bottom:Math.min(r.bottom,cx.bottom)}};const rs=blocos.map((b)=>({b,r:recorta(b,b.getBoundingClientRect())})).filter(({r})=>r.right-r.left>0&&r.bottom-r.top>0);let pares=0;const nomes=[];for(let i=0;i<rs.length;i++)for(let j=i+1;j<rs.length;j++){const a=rs[i],c=rs[j];if(a.b.contains(c.b)||c.b.contains(a.b))continue;if(!corpo.contains(a.b)&&a.b!==raiz.querySelector(".pc-detail-head")&&a.b!==raiz.querySelector(".pc-detail-foot"))continue;const x=Math.min(a.r.right,c.r.right)-Math.max(a.r.left,c.r.left);const y=Math.min(a.r.bottom,c.r.bottom)-Math.max(a.r.top,c.r.top);if(x>1&&y>1){pares++;nomes.push(a.b.className+" x "+c.b.className)}}const ar=document.querySelector(".tr-avatar").getBoundingClientRect();return JSON.stringify({pares,nomes,corpoRola:corpo.scrollHeight>corpo.clientHeight+1,avatarDentro:ar.bottom<=innerHeight&&ar.top>=0,trRola:document.querySelector(".tr-lista").scrollHeight>document.querySelector(".tr-lista").clientHeight+1})}catch(e){return JSON.stringify({erro:String(e.stack).slice(0,300)})}})()`;
+  for (const altura of [900, 800, 700]) {
+    await n.enviar("Emulation.setDeviceMetricsOverride", { width: 1440, height: altura, screenWidth: 1440, screenHeight: altura, deviceScaleFactor: 1, mobile: false });
+    await n.esperar(500);
+    await foto(`17-h${altura}`);
+    const r = JSON.parse(await js(medirSobreposicao));
+    registrar(`17h. ${altura} px de altura: nenhum bloco do painel interseciona outro, avatar do trilho dentro da janela (${altura >= 800 ? "corpo sem rolagem" : "só o corpo rola por dentro"})`, r.pares === 0 && r.avatarDentro && (altura < 800 || !r.corpoRola), JSON.stringify(r));
+  }
+  await n.enviar("Emulation.setDeviceMetricsOverride", { width: 1152, height: 640, screenWidth: 1440, screenHeight: 800, deviceScaleFactor: 1.25, mobile: false });
+  await n.esperar(500);
+  {
+    const r = JSON.parse(await js(medirSobreposicao));
+    registrar("17i. Zoom de 125% em janela larga (altura útil de 640 px): nada sobreposto, avatar dentro da janela", r.pares === 0 && r.avatarDentro, JSON.stringify(r));
+    await foto("17-zoom125");
+  }
+  const medirTrilho = `(()=>{const t=document.querySelector(".tr");const lista=t.querySelector(".tr-lista");const lr=lista.getBoundingClientRect();const itens=[t.querySelector(".tr-logo"),t.querySelector(".tr-registrar"),...lista.querySelectorAll(".tr-item"),t.querySelector(".tr-avatar")].filter(Boolean).map((e)=>{const r=e.getBoundingClientRect();return {e,r:lista.contains(e)?{left:r.left,right:r.right,top:Math.max(r.top,lr.top),bottom:Math.min(r.bottom,lr.bottom)}:r}}).filter(({r})=>r.right-r.left>0&&r.bottom-r.top>0);let pares=0;for(let i=0;i<itens.length;i++)for(let j=i+1;j<itens.length;j++){const a=itens[i].r,b=itens[j].r;if(Math.min(a.right,b.right)-Math.max(a.left,b.left)>1&&Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top)>1)pares++}const av=t.querySelector(".tr-avatar").getBoundingClientRect();return JSON.stringify({pares,avatarDentro:av.top>=0&&av.bottom<=innerHeight,listaRola:lista.scrollHeight>lista.clientHeight+1,h:innerHeight})})()`;
+  for (const [larguraJanela, alturaJanela, escala] of [[1440, 800, 1], [1440, 700, 1], [1152, 640, 1.25], [1440, 560, 1], [1440, 480, 1]]) {
+    await n.enviar("Emulation.setDeviceMetricsOverride", { width: larguraJanela, height: alturaJanela, screenWidth: 1440, screenHeight: 800, deviceScaleFactor: escala, mobile: false });
+    await n.esperar(400);
+    const r = JSON.parse(await js(medirTrilho));
+    registrar(`17m. Trilho em ${alturaJanela} px de altura${escala > 1 ? " (zoom de 125%)" : ""}: itens sem sobreposição, avatar dentro da janela${alturaJanela >= 560 ? ", sem rolagem no trilho" : ", a lista só rola por dentro"}`, r.pares === 0 && r.avatarDentro && (alturaJanela < 560 || !r.listaRola), JSON.stringify(r));
+  }
+  await n.enviar("Emulation.setDeviceMetricsOverride", { width: 1440, height: 800, screenWidth: 1440, screenHeight: 800, deviceScaleFactor: 1, mobile: false });
+  await n.esperar(500);
   await js(`(()=>{const set=(el,v)=>{Object.getOwnPropertyDescriptor(Object.getPrototypeOf(el),"value").set.call(el,v);el.dispatchEvent(new Event("input",{bubbles:true}))};set(document.querySelector(".pc-cor .pc-acao-area"),"Providenciar a correção");set(document.querySelector(".pc-cor .pc-plan-resp input"),"Elton");return true})()`);
   await n.esperar(300);
-  registrar("17f. Correções: 'Salvar plano' habilita com ação e responsável", await js(`(()=>{const salvar=[...document.querySelectorAll(".pc-cor .pc-detail-foot button")].find((b)=>b.innerText.includes("Salvar plano"));return !!salvar&&!salvar.disabled&&getComputedStyle(salvar).backgroundColor==="rgb(46, 139, 87)"})()`));
-  await itemDoTrilho("Sair", true);
-  await esperar(async () => js('!!document.querySelector(\'.tr[data-menu="geral"]\')'), 15000);
-  registrar("17g. 'Sair' volta ao modo geral (a visita continua em andamento)", await js('!!document.querySelector(\'.tr[data-menu="geral"]\')&&!document.querySelector(\'.tr[data-menu="visita"]\')'));
-  await itemDoTrilho("Visitas", true);
-  await esperar(async () => js('!!document.querySelector(".vis-linha")'), 15000);
-  await js('[...document.querySelectorAll(".vis-linha button")].find((b)=>b.innerText.includes("Continuar"))?.click()');
-  await esperar(async () => js('!!document.querySelector(\'.tr[data-menu="visita"]\')'), 15000);
-  await itemDoTrilho("Finalizar", true);
+  registrar("17j. Correções: 'Salvar plano' habilita com ação e responsável", await js(`(()=>{const salvar=[...document.querySelectorAll(".pc-cor .pc-detail-foot button")].find((b)=>b.innerText.includes("Salvar plano"));return !!salvar&&!salvar.disabled&&getComputedStyle(salvar).backgroundColor==="rgb(46, 139, 87)"})()`));
+  await itemDoTrilho("Início", true);
+  await esperar(async () => js('!!document.querySelector(".ini3")'), 15000);
+  registrar("17k. Tocar num item do trilho sai da visita: a faixa some e a visita continua em andamento (cartão no Início)", await js('!document.querySelector(".fv")&&!!document.querySelector(".ini3-cartao")'));
+  await js('[...document.querySelectorAll(".ini3-cartao button")].find((b)=>b.innerText.includes("Continuar"))?.click()');
+  await esperar(async () => js('!!document.querySelector(".fv")'), 15000);
+  await js('document.querySelector(".fv-finalizar")?.click()');
   await n.esperar(800);
-  registrar("17h. 'Finalizar' segue o fluxo de hoje (aviso dos itens pendentes ou a janela Revisar)", await js('/Não é possível finalizar|Revisar/.test(document.body.innerText)'));
+  registrar("17l. 'Finalizar visita' segue o fluxo de hoje (aviso dos itens pendentes ou a janela Revisar)", await js('/Não é possível finalizar|Revisar/.test(document.body.innerText)'));
   await foto("17-finalizar");
 
   // 18. Segunda empresa de teste ("Elton Volmir Strapazon"): Início e Visitas com o mesmo visual (chip "Aberta há N dias" azul claro, "Continuar →" azul).
@@ -489,8 +516,8 @@ try {
   await evento("online");
   await clicarBotao("Entendi");
   await n.esperar(300);
-  await itemDoTrilho("Sair", true);
-  await esperar(async () => js('!!document.querySelector(\x27.tr[data-menu="geral"]\x27)'), 15000);
+  await itemDoTrilho("Início", true);
+  await esperar(async () => js('!!document.querySelector(".ini3")'), 15000);
   await js('[...document.querySelectorAll(".emp-ativa-caixa")][0]?.click()');
   await n.esperar(500);
   await js('[...document.querySelectorAll("button")].find((b) => b.innerText.includes("Elton Volmir Strapazon") && !b.classList.contains("emp-ativa-caixa"))?.click()');

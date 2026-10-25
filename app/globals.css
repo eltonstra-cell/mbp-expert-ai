@@ -5124,8 +5124,8 @@ html[data-modo] .chk-resp{height:40px;min-height:40px;padding:0 6px;font-size:.9
 .faixa-fina{padding:4px 12px;overflow:hidden;font-size:.8rem;line-height:1.3;color:#12202B;text-overflow:ellipsis;white-space:nowrap}
 .faixas-do-topo{flex:none}
 /* Altura das telas fixas do celular: desconta as faixas do topo e reserva espaço para o botão Registrar */
-html[data-modo="campo"] .campo-tela--fixa{height:calc(100dvh - 176px - 26px - var(--faixas-h,0px) - var(--faixa-h,0px))}
-html[data-modo="campo"] .campo-tela:not(.campo-tela--fixa),html[data-modo="campo"] .ui-screen{height:calc(100dvh - 176px - 26px - var(--faixas-h,0px) - var(--faixa-h,0px))}
+html[data-modo="campo"] .campo-tela--fixa{height:calc(100dvh - 176px - 26px - var(--faixas-h,0px) - var(--faixa-h,0px) - var(--faixa-visita-h,0px))}
+html[data-modo="campo"] .campo-tela:not(.campo-tela--fixa),html[data-modo="campo"] .ui-screen{height:calc(100dvh - 176px - 26px - var(--faixas-h,0px) - var(--faixa-h,0px) - var(--faixa-visita-h,0px))}
 
 .campo-head{flex-direction:column;align-items:stretch;gap:6px}
 .campo-head-linha{display:flex;align-items:center;gap:10px;min-width:0}
@@ -5424,28 +5424,26 @@ button.mr-cartao.is-aberto{outline:3px solid #E8B04B;outline-offset:1px}
   --rd-amarelo:#E0A12E;
 }
 
-/* ----- Trilho de navegação (PC e tablet): 104 px, azul, página atual em âmbar; modo geral e modo visita ----- */
-.tr{display:none;position:fixed;z-index:50;top:0;bottom:0;left:0;width:104px;box-sizing:border-box;flex-direction:column;align-items:center;gap:4px;padding:clamp(10px,2.4vh,20px) 8px clamp(8px,1.8vh,16px);background:var(--rd-menu);color:#fff;font-family:var(--font-body),"Nunito Sans",sans-serif}
+/* ----- Trilho de navegação (PC e tablet): UM só, 104 px, azul, página atual em âmbar. Dentro da visita, "Visitas" é a página atual. ----- */
+/* Alturas proporcionais à janela (clamp/vh): em janela baixa o espaço aperta; só em janela baixíssima a lista rola por dentro. O avatar nunca é cortado. */
+.tr{--tr-logo:clamp(40px,6.2vh,56px);--tr-disco:clamp(38px,5.8vh,52px);--tr-ladrilho:clamp(30px,4.6vh,40px);--tr-pad:clamp(1px,.9vh,8px);--tr-avatar:clamp(36px,5.4vh,44px);display:none;position:fixed;z-index:50;top:0;bottom:0;left:0;width:104px;box-sizing:border-box;flex-direction:column;align-items:center;gap:clamp(0px,.5vh,4px);padding:clamp(8px,2vh,20px) 8px clamp(6px,1.6vh,16px);overflow:hidden;background:var(--rd-menu);color:#fff;font-family:var(--font-body),"Nunito Sans",sans-serif}
 html[data-modo="completo"] .tr,html[data-modo="equilibrado"] .tr{display:flex}
 html[data-modo="completo"] .pc-offset,html[data-modo="equilibrado"] .pc-offset{margin-left:104px}
 .tr button{font-family:inherit}
-.tr-logo{display:flex;flex:none;align-items:center;justify-content:center;width:56px;height:56px;margin-bottom:6px;border-radius:16px;background:#fff}
-.tr-registrar{display:flex;flex:none;flex-direction:column;align-items:center;gap:4px;margin-bottom:6px;padding:0;border:0;background:transparent;color:#fff;font-size:14px;cursor:pointer}
-.tr-registrar-disco{display:grid;place-items:center;width:52px;height:52px;border-radius:50%;background:var(--rd-ambar);color:#fff}
-.tr-lista{display:flex;flex:0 1 auto;flex-direction:column;align-items:stretch;width:100%;min-height:0}
-.tr-fim{display:flex;flex-direction:column;align-items:stretch;width:100%;margin-top:auto}
-.tr-item{display:flex;flex-direction:column;align-items:center;gap:2px;width:100%;padding:8px 0;border:0;border-radius:14px;background:transparent;color:#fff;font-size:14px;font-weight:400;line-height:1.2;cursor:pointer}
+.tr-logo{display:flex;flex:none;align-items:center;justify-content:center;width:var(--tr-logo);height:var(--tr-logo);margin-bottom:clamp(0px,.8vh,6px);border-radius:16px;background:#fff}
+.tr-logo svg{width:70%;height:70%}
+.tr-registrar{display:flex;flex:none;flex-direction:column;align-items:center;gap:clamp(1px,.5vh,4px);margin-bottom:clamp(0px,.8vh,6px);padding:0;border:0;background:transparent;color:#fff;font-size:14px;line-height:1.2;cursor:pointer}
+.tr-registrar-disco{display:grid;place-items:center;width:var(--tr-disco);height:var(--tr-disco);border-radius:50%;background:var(--rd-ambar);color:#fff}
+.tr-lista{display:flex;flex:1 1 auto;flex-direction:column;align-items:stretch;gap:0;width:100%;min-height:0;overflow-y:auto;scrollbar-width:none}
+.tr-lista::-webkit-scrollbar{display:none}
+.tr-item{display:flex;flex:none;flex-direction:column;align-items:center;gap:2px;width:100%;padding:var(--tr-pad) 0;border:0;border-radius:14px;background:transparent;color:#fff;font-size:14px;font-weight:400;line-height:1.2;cursor:pointer}
 .tr-item:hover{background:rgba(255,255,255,.1)}
 .tr-item.is-atual,.tr-item.is-mais{background:rgba(255,255,255,.18)}
-.tr-ladrilho{position:relative;display:flex;align-items:center;justify-content:center;width:50px;height:40px;border-radius:12px;color:#fff}
+.tr-ladrilho{position:relative;display:flex;align-items:center;justify-content:center;width:50px;height:var(--tr-ladrilho);border-radius:12px;color:#fff}
 .tr-ladrilho.is-ativo{background:var(--rd-ambar)}
-.tr-ladrilho--verde{background:var(--rd-verde-acao)}
 .tr-badge{position:absolute;top:-8px;right:-14px;display:flex;align-items:center;justify-content:center;box-sizing:content-box;min-width:20px;height:20px;border:2px solid var(--rd-menu);border-radius:12px;background:var(--rd-venceu);font-size:12px;line-height:1;color:#fff}
 .tr-rotulo{color:#fff}
-.tr-visita{display:flex;flex:none;flex-direction:column;align-items:center;gap:3px;width:80px;margin-bottom:6px;padding:8px 0;border:0;border-radius:14px;background:rgba(255,255,255,.18);color:#fff;font-size:13px;cursor:pointer}
-.tr-visita.is-atual{box-shadow:inset 0 0 0 2px rgba(255,255,255,.7)}
-.tr-visita-data{font-size:12.5px}
-.tr-avatar{position:relative;display:flex;flex:none;align-items:center;justify-content:center;width:44px;height:44px;margin-top:6px;border:0;border-radius:50%;background:#fff;font-size:15px;color:var(--rd-ink);cursor:pointer}
+.tr-avatar{position:relative;display:flex;flex:none;align-items:center;justify-content:center;width:var(--tr-avatar);height:var(--tr-avatar);margin-top:clamp(0px,.6vh,6px);border:0;border-radius:50%;background:#fff;font-size:15px;color:var(--rd-ink);cursor:pointer}
 .tr-avatar .pc-avatar-dot{position:absolute;right:-1px;bottom:-1px;width:12px;height:12px;border:2px solid var(--rd-menu);border-radius:50%;box-sizing:border-box;background:var(--rd-verde-acao)}
 .tr-avatar .pc-avatar-dot.is-erro{background:var(--rd-venceu)}
 .tr-avatar .pc-avatar-dot.is-pendente{background:var(--rd-amarelo)}
@@ -5459,9 +5457,18 @@ html[data-modo="completo"] .pc-offset,html[data-modo="equilibrado"] .pc-offset{m
 .tr-quadro-item.is-atual{background:var(--rd-creme)}
 .tr-quadro-item:disabled{color:var(--rd-texto-fraco);cursor:not-allowed}
 .tr-quadro-item:focus-visible{outline:3px solid var(--rd-acao);outline-offset:-3px}
-/* sem rolagem no trilho: em janelas baixas os itens apertam o espaço, nunca rolam */
-@media (max-height:900px){.tr-logo{width:48px;height:48px}.tr-registrar-disco{width:46px;height:46px}.tr-item{padding:3px 0;font-size:13.5px}.tr-ladrilho{height:36px}.tr-visita{padding:6px 0}}
-@media (max-height:780px){.tr{gap:2px}.tr-logo{width:42px;height:42px;margin-bottom:2px}.tr-registrar{margin-bottom:2px;font-size:13px}.tr-registrar-disco{width:40px;height:40px}.tr-item{padding:1px 0;font-size:13px}.tr-ladrilho{height:32px}.tr-visita{margin-bottom:2px;padding:4px 0}.tr-avatar{width:38px;height:38px;margin-top:2px}}
+
+/* ----- Faixa da visita: só dentro da visita, logo abaixo do topo ----- */
+.fv{display:flex;flex:none;align-items:center;gap:12px;min-height:44px;margin:16px 0 0}
+.fv-seg{display:flex;flex:0 1 auto;align-items:center;gap:4px;min-width:0;padding:4px;border-radius:14px;background:#EEF1F7;overflow-x:auto;scrollbar-width:none}
+.fv-seg::-webkit-scrollbar{display:none}
+.fv-item{display:inline-flex;flex:none;align-items:center;gap:8px;height:36px;padding:0 16px;border:0;border-radius:10px;background:transparent;font-family:var(--font-body),"Nunito Sans",sans-serif;font-size:16px;font-weight:400;color:var(--rd-ink);white-space:nowrap;cursor:pointer}
+.fv-item.is-atual{background:#fff;box-shadow:0 1px 4px rgba(27,36,51,.16)}
+.fv-item:hover:not(.is-atual){background:rgba(255,255,255,.6)}
+.fv-item:focus-visible,.fv-finalizar:focus-visible{outline:3px solid var(--rd-acao);outline-offset:2px}
+.fv-badge{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:var(--rd-venceu);font-size:12px;line-height:1;color:#fff}
+.fv-finalizar{display:inline-flex;flex:none;align-items:center;gap:8px;height:40px;margin-left:auto;padding:0 18px;border:0;border-radius:12px;background:var(--rd-verde-acao);font-family:var(--font-body),"Nunito Sans",sans-serif;font-size:16px;font-weight:400;color:#fff;white-space:nowrap;cursor:pointer}
+@media (max-width:760px){.fv{gap:8px}.fv-finalizar{width:44px;height:44px;padding:0;justify-content:center}.fv-finalizar span{display:none}}
 
 /* ----- Topo (igual nas duas telas) ----- */
 .pc-topbar .pc-crumb-current,.pc-topbar .pc-crumb,.pc-topbar .pc-crumb-link,.pc-topbar .pc-crumb-sep{font-family:var(--font-display),"Outfit",sans-serif;font-size:26px;font-weight:500;color:var(--rd-ink)}
@@ -5678,11 +5685,46 @@ html .campo-bar .campo-tab-label{font-size:12px;color:#fff}
 html .campo-bar .campo-tab-count{border:2px solid var(--rd-menu);box-sizing:content-box;background:var(--rd-venceu);color:#fff}
 html .campo-bar .campo-register-orb{background:var(--rd-ambar);box-shadow:none;color:#fff}
 
-/* ----- Janela estreita (< 768 px) fora do modo Campo: o mesmo menu vira a barra de baixo (sem logo, avatar, Finalizar e Sair) ----- */
+html .ui-screen.pc-cor .pc-plan-acao{flex:none;min-height:0}
+html .ui-screen.pc-cor .pc-plan-acao .ui-field-wrap--area{flex:none;min-height:112px}
+.pc-topbar .pc-crumb-link{font-size:22px;color:var(--rd-texto-fraco)}
+html:not([data-modo="campo"]) .ui-screen.pc-cor .pc-detail--corr :is(input,textarea).ui-input{border-color:var(--rd-borda-campo)}
+html:not([data-modo="campo"]) .ui-screen.pc-cor .pc-detail--corr :is(input,textarea).ui-input.is-invalid{border-color:var(--rd-venceu)}
+
+/* =====================================================================================================================
+   PACOTE VISUAL 3 · Correções sem sobreposição (todo bloco do corpo é flex:none; só o corpo rola) e barra de baixo na janela estreita
+   ===================================================================================================================== */
+html .ui-screen.pc-cor .pc-detail--corr>*{flex:none}
+html .ui-screen.pc-cor .pc-detail--corr>.pc-detail-scroll{flex:1 1 auto;min-height:0}
+html .ui-screen.pc-cor .pc-detail-scroll{display:flex;flex-direction:column;gap:16px;overflow-y:auto;padding:14px 4px 8px 0}
+html .ui-screen.pc-cor .pc-detail-scroll>*{flex:none;min-height:0}
+html .ui-screen.pc-cor .pc-plan-stack{display:flex;flex-direction:column;gap:14px}
+html .ui-screen.pc-cor .pc-plan-stack>*{flex:none;min-height:0}
+html .ui-screen.pc-cor .pc-plan-acao{flex:none;min-height:0}
+html .ui-screen.pc-cor .pc-plan-acao .ui-field-wrap--area{flex:none;height:auto;min-height:96px}
+html .ui-screen.pc-cor .pc-acao-area{height:96px;min-height:96px;padding:10px 14px 50px}
+html .ui-screen.pc-cor .pc-plan-campos{align-items:flex-start}
+html .ui-screen.pc-cor .pc-plan-stack>.pc-plan-block{flex:none}
+html .ui-screen.pc-cor .pc-detail-duas{align-items:flex-start;margin-top:0}
+html .ui-screen.pc-cor .pc-detail-secao{flex:none}
+/* Evidências: Antes e Depois lado a lado, com a data embaixo; várias fotos rolam na horizontal */
+html .ui-screen.pc-cor .ad--pc{display:flex;flex-direction:row;align-items:flex-end;gap:12px;max-width:100%;overflow-x:auto;padding-bottom:2px}
+html .ui-screen.pc-cor .ad--pc .ad-par{display:flex;flex:none;gap:16px}
+html .ui-screen.pc-cor .ad--pc .ad-coluna{flex:none;min-width:96px;gap:4px}
+html .ui-screen.pc-cor .ad--pc .ad-coluna .ui-eyebrow{font-size:14px}
+html .ui-screen.pc-cor .ad--pc .ad-fileira{display:flex;gap:10px}
+html .ui-screen.pc-cor .ad--pc .ad-item{display:flex;flex:none;flex-direction:column;gap:4px;width:96px}
+html .ui-screen.pc-cor .ad--pc .ad-foto{width:96px;height:68px;border:0;border-radius:10px}
+html .ui-screen.pc-cor .ad--pc .ad-vazio{width:96px;height:68px;border:2px dashed var(--rd-borda-campo);border-radius:10px;font-size:14px;color:var(--rd-texto-fraco)}
+html .ui-screen.pc-cor .ad--pc .ui-row-sub{font-size:14px;color:var(--rd-texto-fraco)}
+html .ui-screen.pc-cor .ad-foto-mais{flex:none;align-self:center;height:40px;margin-top:22px;padding:0 16px;border:0;border-radius:10px;background:var(--rd-acao);font-size:15px;font-weight:400;color:#fff;white-space:nowrap;cursor:pointer}
+html .ui-screen.pc-cor .ad--pc .ad-aviso{flex:none;max-width:240px;font-size:14px}
+
+/* ----- Janela estreita (< 768 px) fora do modo Campo: o mesmo trilho vira a barra de baixo (sem logo e avatar) ----- */
 @media (max-width:767px){
-  html[data-modo="equilibrado"] .tr{top:auto;right:0;left:0;bottom:0;width:auto;height:auto;flex-direction:row;align-items:center;justify-content:space-around;gap:0;padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px));border-radius:18px 18px 0 0}
-  html[data-modo="equilibrado"] .tr-logo,html[data-modo="equilibrado"] .tr-avatar,html[data-modo="equilibrado"] .tr-fim,html[data-modo="equilibrado"] .tr-visita{display:none}
-  html[data-modo="equilibrado"] .tr-lista{flex:1 1 auto;flex-direction:row;justify-content:space-around;gap:0}
+  html[data-modo="equilibrado"] .tr{top:auto;right:0;left:0;bottom:0;width:auto;height:auto;flex-direction:row;align-items:center;justify-content:space-around;gap:0;padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px));border-radius:18px 18px 0 0;overflow:visible}
+  html[data-modo="equilibrado"] .tr-logo,html[data-modo="equilibrado"] .tr-avatar{display:none}
+  html[data-modo="equilibrado"] .tr-lista{flex:1 1 auto;flex-direction:row;justify-content:space-around;overflow:visible}
   html[data-modo="equilibrado"] .tr-registrar{flex:0 0 auto;margin:0 4px 0 0;font-size:12px}
   html[data-modo="equilibrado"] .tr-registrar-disco{width:40px;height:40px}
   html[data-modo="equilibrado"] .tr-item{flex:1 1 0;min-width:44px;min-height:44px;padding:2px 0;font-size:12px}
@@ -5691,8 +5733,16 @@ html .campo-bar .campo-register-orb{background:var(--rd-ambar);box-shadow:none;c
   html[data-modo="equilibrado"] .pc-offset{margin-left:0}
   html[data-modo="equilibrado"] .tr-quadro{top:auto;right:12px;bottom:84px;left:12px;width:auto}
 }
-html .ui-screen.pc-cor .pc-plan-acao{flex:none;min-height:0}
-html .ui-screen.pc-cor .pc-plan-acao .ui-field-wrap--area{flex:none;min-height:112px}
-.pc-topbar .pc-crumb-link{font-size:22px;color:var(--rd-texto-fraco)}
-html:not([data-modo="campo"]) .ui-screen.pc-cor .pc-detail--corr :is(input,textarea).ui-input{border-color:var(--rd-borda-campo)}
-html:not([data-modo="campo"]) .ui-screen.pc-cor .pc-detail--corr :is(input,textarea).ui-input.is-invalid{border-color:var(--rd-venceu)}
+/* barra de baixo do celular: os rótulos dividem a largura pelo tamanho do texto (7 destinos com o Registrar no centro) */
+html .campo-bar{display:flex;justify-content:space-around;gap:0;padding-right:4px;padding-left:4px}
+html .campo-bar>*{flex:1 1 auto;min-width:44px}
+html .campo-bar .campo-tab-label{white-space:nowrap}
+html[data-modo="campo"] .fv{margin-top:10px}
+/* Correções da visita: aproveita a altura (menos folga embaixo) para o painel caber sem rolar em 800 px */
+html:not([data-modo="campo"]) .pc-offset:has(.pc-cor){padding-bottom:12px}
+html:not([data-modo="campo"]) .pc-offset:has(.pc-cor)::after{height:0}
+html .ui-screen.pc-cor{gap:12px}
+html .ui-screen.pc-cor .pc-detail-head{gap:4px}
+html .ui-screen.pc-cor .pc-detail-scroll{gap:14px;padding-top:12px}
+html .ui-screen.pc-cor .pc-plan-stack{gap:12px}
+html .ui-screen.pc-cor .pc-cor-barra{margin-bottom:20px}

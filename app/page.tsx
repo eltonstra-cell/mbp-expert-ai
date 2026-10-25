@@ -5,6 +5,7 @@ import { formatarCnpj } from "@/lib/cnpj";
 import { useEffect, useMemo, useRef, useState } from "react";
 import MetricCard from "@/components/MetricCard";
 import FaixaVisitaOutraEmpresa from "@/components/FaixaVisitaOutraEmpresa";
+import FaixaDaVisita from "@/components/FaixaDaVisita";
 import { textoDeBaseLegal } from "@/lib/conteudoValidado";
 import {
   desligarIa,
@@ -5511,7 +5512,7 @@ export default function Home() {
         else abrirAtalhoDaVisita("evidencias");
         return;
       case "ncs":
-        if (ehPC && !modoVisitaNoMenu) abrirCorrecoesDaEmpresa();
+        if (ehPC) abrirCorrecoesDaEmpresa();
         else abrirAtalhoDaVisita(key);
         return;
       case "plano":
@@ -5540,6 +5541,9 @@ export default function Home() {
   function irParaTelaCampo(tela: TelaCampo) {
     setMenuMaisAberto(false);
     if (tela === "inicio") navegarPrincipal("inicio");
+    else if (tela === "visitas") void navegarPrincipal("visitas");
+    else if (tela === "pops") irParaMenu("pops");
+    else if (tela === "relatorios") irParaMenu("relatorios");
     else if (tela === "checklist") irParaMenu("checklist");
     else if (tela === "evidencias") irParaMenu("evidencias");
     else if (tela === "correcoes") {
@@ -7072,7 +7076,20 @@ export default function Home() {
   // No PC o menu não lista as etapas da visita: dentro dela, o item ativo é "Visitas".
   // Modo visita do menu: só dentro das telas da visita (a lista de Correções da empresa toda é do menu geral).
   const modoVisitaNoMenu = !!visitaAtual && VISIT_VIEWS.includes(view) && !(view === "correcoes" && correcoesDaEmpresa);
-  const chaveMenuAtivo: NavKey | null = ehPC && modoVisitaNoMenu ? null : view === "correcoes" ? "ncs" : chaveDaTela;
+  const chaveMenuAtivo: NavKey | null = modoVisitaNoMenu ? "visitas" : view === "correcoes" ? "ncs" : chaveDaTela;
+  // Faixa da visita (só dentro da visita): troca de assunto e "Finalizar visita". No celular reserva a própria altura.
+  const faixaDaVisita = (reservarAltura: boolean) =>
+    modoVisitaNoMenu && visitaAtual ? (
+      <FaixaDaVisita
+        passos={passosDaTrilha(dadosTrilha).filter((passo) => telaVisivel(passo.chave === "pops" ? "popsVisita" : (passo.chave as TelaKey)))}
+        atual={passoAtualDaTrilha}
+        ncsAbertas={ncsAbertas}
+        onIrPasso={irParaPasso}
+        onFinalizar={() => void finalizarInspecao()}
+        podeFinalizar={visitaAtual.status !== "Concluída" && permitido("visitas.concluir", visitaAtual.empresaId)}
+        reservarAltura={reservarAltura}
+      />
+    ) : null;
   const ncsVencidasDaEmpresa = (db.ncs || []).filter((nc) => nc.empresaId === atual?.id && !nc.inativaNoChecklist && nc.status !== "Resolvida" && !!nc.prazo && nc.prazo < hojeISO()).length;
   // Central da Empresa: "← Central da Empresa › Documentos ▾". O menu troca de seção e substitui os três botões que ficavam numa linha própria.
   const naCentralComMenu =
@@ -7219,15 +7236,9 @@ export default function Home() {
         contexto={contextoMenu}
         ativa={chaveMenuAtivo}
         onSelecionar={irParaMenu}
-        ncsAbertas={ncsAbertas}
         vencidas={ncsVencidasDaEmpresa}
         sincronizacao={{ estado: seloAtual.estado, rotulo: seloAtual.rotulo, onClick: tocarNoSelo }}
         onSair={() => void sairDoSistema()}
-        visitaMenu={ehPC && modoVisitaNoMenu && visitaAtual ? { numero: numeroVisitaPorId.get(visitaAtual.id), dataCurta: fdata(visitaAtual.data).slice(0, 5), percentual: percentualChecklist, passos: passosDaTrilha(dadosTrilha).filter((passo) => telaVisivel(passo.chave === "pops" ? "popsVisita" : (passo.chave as TelaKey))), atual: passoAtualDaTrilha } : null}
-        onIrPasso={irParaPasso}
-        onFinalizar={() => void finalizarInspecao()}
-        podeFinalizar={!!visitaAtual && visitaAtual.status !== "Concluída" && permitido("visitas.concluir", visitaAtual.empresaId)}
-        onSairDaVisita={() => void navegarPrincipal("inicio")}
         onMeuPerfil={() => setPerfilAberto(true)}
         usuario={usuarioDaSessao ? { nome: usuarioDaSessao.nome, perfil: usuarioDaSessao.perfil, iniciais: iniciaisUsuario || "" } : null}
         saindo={saindo}
@@ -7612,12 +7623,13 @@ export default function Home() {
               onTrocarEmpresa={() => setTrocarEmpresaAberto(true)}
               onVoltar={mostrarVoltar(localDaTela) ? () => void voltarUmaTela() : undefined}
             />
+            {faixaDaVisita(true)}
             <CampoBarra
-              tela={view === "inicio" ? "inicio" : view === "checklist" ? "checklist" : view === "correcoes" ? "correcoes" : view === "evidencias" ? "evidencias" : view === "campomais" || view === "empresas" ? "mais" : null}
+              tela={view === "inicio" ? "inicio" : abasDoCampo.includes("visitas") && modoVisitaNoMenu ? "visitas" : view === "visitas" ? "visitas" : view === "pops" || view === "popsvisita" ? "pops" : ["relatoriosemitidos", "resumo", "dossie", "evolucao"].includes(view) ? "relatorios" : view === "checklist" ? "checklist" : view === "correcoes" ? "correcoes" : view === "evidencias" ? "evidencias" : view === "campomais" || view === "empresas" ? "mais" : null}
               correcoesAbertas={ncsAbertas}
               podeRegistrar={permitido("evidencias.adicionar") || permitido("visitas.executar")}
               onIr={irParaTelaCampo}
-              abas={abasDoCampo}
+              abas={abasDoCampo === ABAS_PADRAO ? ABAS_PADRAO.filter((aba) => { const chave = aba === "correcoes" ? "ncs" : aba; return !["visitas", "ncs", "pops", "relatorios"].includes(chave) || itensVisiveis(contextoMenu).some((item) => item.key === chave); }) : abasDoCampo}
               onRegistrar={() => setRegistrarAberto(true)}
             />
           </>
@@ -7651,6 +7663,7 @@ export default function Home() {
           onVoltar={mostrarVoltar(localDaTela) ? () => void voltarUmaTela() : undefined}
           ocultarChipDeModo={Boolean(secaoDoTopo)}
         />
+        {ehPC && faixaDaVisita(false)}
         <nav className="hidden">
           <button
             onClick={() => navegarPrincipal("inicio")}

@@ -2,49 +2,27 @@
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { LogoSymbol } from "@/components/BrandLogo";
-import { NavIcon, type NavIconName } from "@/components/NavIcons";
-import type { PassoTrilha, PassoVisita } from "@/lib/visitTrail";
+import { NavIcon } from "@/components/NavIcons";
 import { itensVisiveis, registrarDisponivel, type NavContexto, type NavItem, type NavKey } from "@/lib/navigation";
 
 type Props = {
   contexto: NavContexto;
   ativa: NavKey | null;
   onSelecionar: (key: NavKey) => void;
-  /** Correções abertas da visita (modo visita). */
-  ncsAbertas: number;
-  /** Correções vencidas da empresa ativa (modo geral). */
+  /** Correções vencidas da empresa ativa (número vermelho do item Correções). */
   vencidas: number;
   sincronizacao: { estado: "ok" | "erro" | "pendente" | "sem-sinal"; rotulo: string; onClick: () => void };
   onSair: () => void;
   saindo: boolean;
   /** Pessoa conectada (avatar do rodapé do trilho); null no modo local. */
   usuario: { nome: string; perfil: string; iniciais: string } | null;
-  /** Modo visita: visita aberta e o usuário dentro dela; null no modo geral. */
-  visitaMenu?: { numero?: number; dataCurta: string; percentual: number; passos: PassoTrilha[]; atual: PassoVisita | null } | null;
-  onIrPasso?: (passo: PassoVisita) => void;
-  /** "Finalizar" abre a revisão que já existe (sem mudar o fluxo de emissão). */
-  onFinalizar?: () => void;
-  podeFinalizar?: boolean;
-  /** "Sair" da visita: volta ao modo geral; a visita continua em andamento. */
-  onSairDaVisita?: () => void;
   /** Abre a janela "Meu perfil" (menu do avatar). */
   onMeuPerfil?: () => void;
-};
-
-const ICONE_DO_PASSO: Record<PassoVisita, NavIconName> = {
-  central: "central",
-  checklist: "checklist",
-  evidencias: "evidencias",
-  correcoes: "ncs",
-  pops: "pops",
-  relatorio: "relatorio",
 };
 
 const PRINCIPAIS: NavKey[] = ["inicio", "visitas", "ncs", "pops", "relatorios"];
 const EXTRAS: NavKey[] = ["empresas", "cadastros", "ajuda", "acessos"];
 const ROTULO_DO_ITEM: Partial<Record<NavKey, string>> = { ncs: "Correções", pops: "POPs", relatorios: "Relatórios", ajuda: "Ajuda e guias", acessos: "Administração" };
-const ROTULO_DO_PASSO: Record<PassoVisita, string> = { central: "Visita", checklist: "Checklist", evidencias: "Evidências", correcoes: "Correções", pops: "POPs", relatorio: "Relatório" };
-const CIRCUNFERENCIA = 2 * Math.PI * 15;
 
 /** Fecha com Esc e ao tocar fora (o "Mais" e o menu do avatar). */
 function useFechar(aberto: boolean, fechar: () => void, dentro: Array<{ current: HTMLElement | null }>) {
@@ -79,23 +57,8 @@ function Ladrilho({ ativo, badge, children }: { ativo: boolean; badge?: number; 
   );
 }
 
-export default function AppNavigation({
-  contexto,
-  ativa,
-  onSelecionar,
-  ncsAbertas,
-  vencidas,
-  sincronizacao,
-  onSair,
-  saindo,
-  usuario,
-  visitaMenu = null,
-  onIrPasso,
-  onFinalizar,
-  podeFinalizar = false,
-  onSairDaVisita,
-  onMeuPerfil,
-}: Props) {
+// UM trilho, sempre o mesmo (dentro e fora da visita). Os assuntos da visita ficam na faixa da visita (FaixaDaVisita), não aqui.
+export default function AppNavigation({ contexto, ativa, onSelecionar, vencidas, sincronizacao, onSair, saindo, usuario, onMeuPerfil }: Props) {
   const [maisAberto, setMaisAberto] = useState(false);
   const [perfilAberto, setPerfilAberto] = useState(false);
   const [topoDoQuadro, setTopoDoQuadro] = useState<number | undefined>(undefined);
@@ -126,7 +89,7 @@ export default function AppNavigation({
     setPerfilAberto((aberto) => !aberto);
   };
 
-  const botaoGeral = (item: NavItem) => {
+  const botao = (item: NavItem) => {
     const ehAtivo = ativa === item.key;
     const badge = item.key === "ncs" ? vencidas : 0;
     const rotulo = ROTULO_DO_ITEM[item.key] ?? item.rotulo;
@@ -151,12 +114,9 @@ export default function AppNavigation({
     );
   };
 
-  const passosDaVisita = visitaMenu ? visitaMenu.passos.filter((passo) => passo.chave !== "central") : [];
-  const dashoffset = visitaMenu ? CIRCUNFERENCIA * (1 - Math.min(100, Math.max(0, visitaMenu.percentual)) / 100) : CIRCUNFERENCIA;
-
   return (
     <>
-      <nav className="tr" data-menu={visitaMenu ? "visita" : "geral"} aria-label={visitaMenu ? "Visita aberta" : "Navegação principal"}>
+      <nav className="tr" aria-label="Navegação principal">
         <span className="tr-logo" aria-hidden="true">
           <LogoSymbol size={36} />
         </span>
@@ -172,86 +132,24 @@ export default function AppNavigation({
           </button>
         )}
 
-        {visitaMenu ? (
-          <>
+        <div className="tr-lista">
+          {principais.map((item) => botao(item))}
+          {extras.length > 0 && (
             <button
+              ref={maisBotaoRef}
               type="button"
-              className={`tr-visita${visitaMenu.atual === "central" ? " is-atual" : ""}`}
-              aria-label={`Resumo da visita ${visitaMenu.numero ?? ""}`.trim()}
-              onClick={() => onIrPasso?.("central")}
+              className={`tr-item${maisAberto || maisAtivo ? " is-mais" : ""}`}
+              aria-haspopup="menu"
+              aria-expanded={maisAberto}
+              onClick={alternarMais}
             >
-              <svg width="38" height="38" viewBox="0 0 38 38" aria-hidden="true">
-                <circle cx="19" cy="19" r="15" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="4" />
-                <circle cx="19" cy="19" r="15" fill="none" stroke="#FFFFFF" strokeWidth="4" strokeLinecap="round" strokeDasharray={CIRCUNFERENCIA} strokeDashoffset={dashoffset} transform="rotate(-90 19 19)" />
-              </svg>
-              <span>Visita {visitaMenu.numero ?? ""}</span>
-              <span className="tr-visita-data">{visitaMenu.dataCurta}</span>
+              <Ladrilho ativo={false}>
+                <NavIcon name="mais" size={24} strokeWidth={1.7} />
+              </Ladrilho>
+              <span className="tr-rotulo">Mais</span>
             </button>
-            <div className="tr-lista">
-              {passosDaVisita.map((passo) => {
-                const ehAtivo = visitaMenu.atual === passo.chave;
-                const badge = passo.chave === "correcoes" ? ncsAbertas : 0;
-                const rotulo = ROTULO_DO_PASSO[passo.chave];
-                return (
-                  <button
-                    key={passo.chave}
-                    type="button"
-                    data-chave={passo.chave}
-                    className={`tr-item${ehAtivo ? " is-atual" : ""}`}
-                    aria-current={ehAtivo ? "page" : undefined}
-                    aria-label={badge > 0 ? `${rotulo}, ${badge} em aberto` : undefined}
-                    onClick={() => onIrPasso?.(passo.chave)}
-                  >
-                    <Ladrilho ativo={ehAtivo} badge={badge}>
-                      <NavIcon name={ICONE_DO_PASSO[passo.chave]} size={24} strokeWidth={1.7} />
-                    </Ladrilho>
-                    <span className="tr-rotulo">{rotulo}</span>
-                  </button>
-                );
-              })}
-            </div>
-            <div className="tr-fim">
-              {podeFinalizar && (
-                <button type="button" className="tr-item tr-item--finalizar" onClick={onFinalizar}>
-                  <span className="tr-ladrilho tr-ladrilho--verde">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <path d="M5 12.5l4.5 4.5L19 7.5" />
-                    </svg>
-                  </span>
-                  <span className="tr-rotulo">Finalizar</span>
-                </button>
-              )}
-              <button type="button" className="tr-item" onClick={onSairDaVisita}>
-                <Ladrilho ativo={false}>
-                  <NavIcon name="sair" size={24} strokeWidth={1.7} />
-                </Ladrilho>
-                <span className="tr-rotulo">Sair</span>
-              </button>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="tr-lista">
-              {principais.map((item) => botaoGeral(item))}
-              {extras.length > 0 && (
-                <button
-                  ref={maisBotaoRef}
-                  type="button"
-                  className={`tr-item${maisAberto || maisAtivo ? " is-mais" : ""}`}
-                  aria-haspopup="menu"
-                  aria-expanded={maisAberto}
-                  onClick={alternarMais}
-                >
-                  <Ladrilho ativo={false}>
-                    <NavIcon name="mais" size={24} strokeWidth={1.7} />
-                  </Ladrilho>
-                  <span className="tr-rotulo">Mais</span>
-                </button>
-              )}
-            </div>
-            <div className="tr-fim" />
-          </>
-        )}
+          )}
+        </div>
 
         {usuario && (
           <button

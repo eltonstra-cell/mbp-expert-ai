@@ -111,7 +111,7 @@ test("evidências no celular: aviso de IA uma vez no topo, título curto com nom
 test("PC: ações do ambiente são botões de 40 px, trilho azul de 104 px com página atual em âmbar e recolhida abaixo de 1100 px", () => {
   const css = ler("../app/globals.css");
   assert.ok(css.includes('.chk-acao{display:inline-flex;align-items:center;justify-content:center;height:40px'));
-  assert.ok(css.includes('.tr{display:none;position:fixed;') && css.includes('width:104px') && css.includes('background:var(--rd-menu)'), "um só trilho azul de 104 px (PC e tablet)");
+  assert.ok(css.includes('display:none;position:fixed;z-index:50;top:0;bottom:0;left:0;width:104px') && css.includes('background:var(--rd-menu)') && css.includes('clamp('), "um só trilho azul de 104 px (PC e tablet)");
   assert.ok(css.includes('.tr-ladrilho.is-ativo{background:var(--rd-ambar)}'), "página atual: ladrilho âmbar");
   assert.equal(css.includes('.pc-rail') || css.includes('.pc-side'), false, "as regras do menu largo e do trilho claro foram removidas");
   assert.ok(css.includes('html .pc-topbar .emp-ativa{flex:0 0 auto;width:auto;min-width:240px'));
