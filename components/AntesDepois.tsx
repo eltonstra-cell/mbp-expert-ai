@@ -12,7 +12,7 @@ type Props = {
   resolvida: boolean;
   online?: boolean;
   onFotoDepois: (arquivo: File) => void;
-  /** "pc": com fotos, as duas colunas lado a lado (todas as fotos numa fileira que rola na horizontal); sem fotos, uma linha "Antes · 0 · Depois · 0"; sempre com o botão "+ Foto". */
+  /** "pc": com fotos, as duas colunas lado a lado (todas as fotos numa fileira que rola na horizontal); sem fotos, uma linha "Antes · 0 · Depois · 0" (a tela de Correções só mostra o bloco quando há conteúdo; o acréscimo vazio é um link no fim do detalhe); com fotos, o botão "+ Foto". */
   variante?: "padrao" | "pc";
 };
 

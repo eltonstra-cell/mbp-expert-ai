@@ -13,7 +13,8 @@ import { agruparCorrecoes, aposSalvarPlano, ordemVisual, primeiraSemPlano, proxi
 import { mostrarToast } from "@/lib/toast";
 import { acaoPadraoVisivel } from "@/lib/conteudoValidado";
 import { criarRascunhosDeCorrecao, planoAoAbrir, textoDoQueFalta, type RascunhosDeCorrecao } from "@/lib/rascunhoDeCorrecao";
-import { CAUSAS_RAIZ, seloDaReincidencia, validarCausaRaiz } from "@/lib/memoriaDoPlano";
+import { CAUSAS_RAIZ, validarCausaRaiz } from "@/lib/memoriaDoPlano";
+import { acrescimosVazios, conteudoDeAtualizacoes, conteudoDeEvidencias, contagemDeEvidencias, contextoDoDetalhe, evidenciasSemFoto, rotuloDeRegistrarAtualizacao, selosDoCartao } from "@/lib/layoutDeCorrecoes";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import {
   contarEtapas,
@@ -301,6 +302,7 @@ export default function PcCorrecoes({
                       </div>
                       {grupo.itens.map((nc) => {
                         const linha = linhaDaCorrecao(nc);
+                        const selos = selosDoCartao(nc, agrupar);
                         return (
                           <button
                             key={nc.id}
@@ -315,16 +317,16 @@ export default function PcCorrecoes({
                             }}
                           >
                             <span className="pc-cor-titulo">{linha.titulo}</span>
-                            <span className="pc-cor-topo">
-                              <span className="pc-cor-pino">
-                                <IconePino />
-                                <span className="pc-cor-ambiente">{linha.ambiente}</span>
-                                {nc.itemNumero > 0 && <span className="pc-cor-item">· item {nc.itemNumero}</span>}
+                            {selos.temLinha && (
+                              <span className="pc-cor-topo">
+                                {selos.ambiente && <span className="pc-cor-ambiente">{selos.ambiente}</span>}
+                                {selos.selos.map((selo) => (
+                                  <span key={selo} className="pc-cor-aviso">
+                                    {selo}
+                                  </span>
+                                ))}
                               </span>
-                              {nc.reincidente && <span className="pc-cor-aviso">Reincidente</span>}
-                              {nc.marcadaFeita && nc.status !== "Resolvida" && <span className="pc-cor-aviso">Feita, aguardando confirmação</span>}
-                            </span>
-                            <span className="pc-cor-seta" aria-hidden="true">›</span>
+                            )}
                           </button>
                         );
                       })}
@@ -415,15 +417,6 @@ export default function PcCorrecoes({
         />
       )}
     </section>
-  );
-}
-
-function IconePino() {
-  return (
-    <svg className="pc-cor-pino-icone" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M12 21s-6-5.2-6-10a6 6 0 0 1 12 0c0 4.8-6 10-6 10z" />
-      <circle cx="12" cy="11" r="2.2" />
-    </svg>
   );
 }
 
@@ -540,7 +533,62 @@ function Detalhe({
   const motivoDoBotao = textoDoQueFalta(faltaParaSalvar);
   const textoDoRodape = rodapeDoSalvar({ faltas: faltaParaSalvar, proximoTitulo: tituloDaProxima, etapa: etapaAberta, haOutraSemPlano });
   const [registrando, setRegistrando] = useState(false);
-  const contextoDaLinha = linhaDaCorrecao(nc);
+  const atualizacaoRef = useRef<HTMLTextAreaElement | null>(null);
+  // O botão clicado some ao ativar: leva o foco (e a vista) para o campo da atualização.
+  useEffect(() => {
+    if (!registrando) return;
+    atualizacaoRef.current?.focus();
+    atualizacaoRef.current?.scrollIntoView({ block: "nearest" });
+  }, [registrando]);
+  const escolherAcao = (texto: string) => {
+    setAcao(texto);
+    // O chip ou a sugestão clicada é desmontado: devolve o foco à caixa da ação.
+    acaoRef.current?.focus();
+  };
+  const contextoDaLinha = contextoDoDetalhe(nc, NOME_DA_GRAVIDADE[nc.gravidade]);
+  const entradaFoto = useRef<HTMLInputElement | null>(null);
+  // Com o par antes/depois a foto segue o fluxo do depois (precisa de onFotoDepois); sem par, o fluxo de evidências da visita.
+  const podeFoto = podeEvidenciar && (nc.par ? Boolean(onFotoDepois) : true);
+  const acrescimos = acrescimosVazios(nc, nc.evidencias, { podeEditar, podeEvidenciar: podeFoto });
+  const mostrarEvidencias = conteudoDeEvidencias(nc, nc.evidencias);
+  const totalEvidencias = contagemDeEvidencias(nc, nc.evidencias);
+  const evidenciasExtras = evidenciasSemFoto(nc.evidencias);
+  const fotosNoPar = (nc.par?.antes.length ?? 0) + (nc.par?.depois.length ?? 0);
+  const mostrarAtualizacoes = conteudoDeAtualizacoes(nc) || (podeEditar && registrando);
+  const pedirFoto = () => {
+    if (nc.par && onFotoDepois) entradaFoto.current?.click();
+    else onAdicionarEvidencia(nc.id);
+  };
+  const linhaDeAcrescimos = (acrescimos.foto || (acrescimos.atualizacao && !registrando)) && (
+    <div className="pc-acrescimos">
+      <span className="pc-acrescimos-rotulo">Acrescentar:</span>
+      {acrescimos.foto && (
+        <>
+          <input
+            ref={entradaFoto}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            hidden
+            onChange={(evento) => {
+              const arquivo = evento.target.files?.[0];
+              evento.target.value = "";
+              if (arquivo) onFotoDepois?.(nc.id, arquivo);
+            }}
+          />
+          <button type="button" className="pc-acrescimo" aria-label="Adicionar foto" onClick={pedirFoto}>
+            + Foto
+          </button>
+        </>
+      )}
+      {acrescimos.foto && acrescimos.atualizacao && !registrando && <span aria-hidden="true">·</span>}
+      {acrescimos.atualizacao && !registrando && (
+        <button type="button" className="pc-acrescimo" onClick={() => setRegistrando(true)}>
+          {rotuloDeRegistrarAtualizacao(resolvida)}
+        </button>
+      )}
+    </div>
+  );
   const funcionouVisivel = nc.reincidente && Boolean(nc.acaoQueFuncionou) && acao.trim() !== nc.acaoQueFuncionou;
   const [sugestoesAbertas, setSugestoesAbertas] = useState(false);
   const sugestoes: { rotulo: string; texto: string }[] = [
@@ -564,9 +612,8 @@ function Detalhe({
         </div>
         <div className="pc-detail-contexto">
           <span className="pc-detail-ponto" style={{ "--grav": COR_DA_GRAVIDADE[nc.gravidade] } as React.CSSProperties} aria-hidden="true" />
-          {NOME_DA_GRAVIDADE[nc.gravidade]} · {contextoDaLinha.codigo} · {contextoDaLinha.ambiente}
-          {nc.itemNumero > 0 ? ` · item ${nc.itemNumero}` : ""}
-          {nc.reincidente ? ` · ${seloDaReincidencia(nc.vezes || 0) || "Reincidente"}` : ""}
+          <span className="pc-detail-contexto-texto">{contextoDaLinha.texto}</span>
+          <span className="pc-detail-codigo">{contextoDaLinha.codigo}</span>
         </div>
         <div className="pc-detail-fonte">
           {nc.criterio ? `${nc.criterio} · ` : ""}
@@ -665,16 +712,18 @@ function Detalhe({
             <span className="ui-eyebrow">
               O que será feito <span className="pc-obrig">· obrigatório</span>
             </span>
+            <div className={`pc-acao-conjunto${mostrarErro("acao") ? " is-invalid" : ""}${bloqueado ? " is-bloqueado" : ""}`}>
             <textarea
               ref={acaoRef}
-              className={`ui-input pc-acao-area${mostrarErro("acao") ? " is-invalid" : ""}`}
+              className="ui-input pc-acao-area"
               value={acao}
               disabled={bloqueado}
               onChange={(evento) => setAcao(evento.target.value)}
               onBlur={() => marcarTocado("acao")}
-              placeholder="Descreva a ação corretiva"
+              placeholder={bloqueado ? "Sem ação registrada" : "Descreva a ação corretiva"}
               aria-label="O que será feito (ação corretiva)"
               aria-invalid={Boolean(mostrarErro("acao"))}
+              aria-describedby={mostrarErro("acao") ? `acao-erro-${nc.id}` : undefined}
             />
             {!bloqueado && (
               <div className="pc-acao-linha">
@@ -682,7 +731,7 @@ function Detalhe({
                   <FieldVoiceTools fieldKey={`acao-${nc.id}`} value={acao} onChange={setAcao} rotuloIa="Sugerir com IA" contexto="Ação corretiva para uma não conformidade em segurança dos alimentos." />
                 </span>
                 {funcionouVisivel && (
-                  <button type="button" className="pc-chip-btn pc-chip-btn--soft pc-chip-funcionou" title={nc.acaoQueFuncionou} onClick={() => setAcao(nc.acaoQueFuncionou as string)}>
+                  <button type="button" className="pc-chip-btn pc-chip-btn--soft pc-chip-funcionou" title={nc.acaoQueFuncionou} onClick={() => escolherAcao(nc.acaoQueFuncionou as string)}>
                     ↺ Ação que funcionou antes{nc.acaoQueFuncionouVisita ? ` · Visita ${nc.acaoQueFuncionouVisita}` : nc.dataAnterior ? ` · visita de ${dataMes(nc.dataAnterior)}` : ""}
                   </button>
                 )}
@@ -693,17 +742,22 @@ function Detalhe({
                 )}
               </div>
             )}
+            </div>
             {!bloqueado && sugestoesAbertas && sugestoes.length > 0 && (
               <div className="pc-acao-sugestoes" role="group" aria-label="Outras sugestões de ação">
                 {sugestoes.map((sugestao) => (
-                  <button key={`${sugestao.rotulo}:${sugestao.texto}`} type="button" className="pc-acao-sugestao" title={sugestao.texto} onClick={() => setAcao(sugestao.texto)}>
+                  <button key={`${sugestao.rotulo}:${sugestao.texto}`} type="button" className="pc-acao-sugestao" title={sugestao.texto} onClick={() => escolherAcao(sugestao.texto)}>
                     <span className="pc-acao-sugestao-rotulo">{sugestao.rotulo}</span>
                     <span className="pc-acao-sugestao-texto">{sugestao.texto}</span>
                   </button>
                 ))}
               </div>
             )}
-            {mostrarErro("acao") && <span className="ui-field-error">{erros.acao}</span>}
+            {mostrarErro("acao") && (
+              <span id={`acao-erro-${nc.id}`} className="ui-field-error">
+                {erros.acao}
+              </span>
+            )}
           </div>
 
           <div className="pc-plan-campos">
@@ -774,12 +828,14 @@ function Detalhe({
         </div>
         {resolvida && <div className="ui-note">Correção resolvida: o plano está protegido. Novas atualizações ou reabertura ficam em Atualizações.</div>}
 
-        <div className="pc-detail-duas">
+        {(mostrarEvidencias || mostrarAtualizacoes) && (
+        <div className={`pc-detail-duas${mostrarEvidencias && mostrarAtualizacoes ? "" : " pc-detail-duas--uma"}`}>
+          {mostrarEvidencias && (
           <section className="pc-detail-secao" aria-label="Evidências">
             <div className="pc-detail-secao-titulo">
-              Evidências <span>{nc.evidencias.length}</span>
+              Evidências {totalEvidencias > 0 && <span>{totalEvidencias}</span>}
             </div>
-            {nc.par ? (
+            {nc.par && fotosNoPar > 0 && (
               <AntesDepois
                 variante="pc"
                 antes={nc.par.antes}
@@ -788,45 +844,33 @@ function Detalhe({
                 resolvida={resolvida}
                 onFotoDepois={(arquivo) => onFotoDepois?.(nc.id, arquivo)}
               />
-            ) : (
-              <div className="pc-detail-evs">
-                {nc.evidencias.map((ev) => (
-                  <a key={ev.id} href={ev.url || undefined} target="_blank" rel="noreferrer" className="pc-detail-ev">
-                    {ev.tipo === "Foto" && ev.url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={ev.url} alt={ev.nome} />
+            )}
+            {evidenciasExtras.length > 0 && (
+              <ul className="pc-detail-extras" aria-label="Outras evidências">
+                {evidenciasExtras.map((ev) => (
+                  <li key={ev.id}>
+                    {ev.url ? (
+                      <a href={ev.url} target="_blank" rel="noreferrer">
+                        {ev.tipo} · {ev.quando}
+                      </a>
                     ) : (
-                      <span className="pc-detail-ev-audio">{ev.tipo}</span>
+                      <span>
+                        {ev.tipo} · {ev.quando}
+                      </span>
                     )}
-                    <span className="pc-detail-ev-data">{ev.quando}</span>
-                  </a>
+                  </li>
                 ))}
-                {podeEvidenciar && (
-                  <button type="button" className="pc-detail-foto" onClick={() => onAdicionarEvidencia(nc.id)}>
-                    + Foto
-                  </button>
-                )}
-              </div>
+              </ul>
             )}
           </section>
+          )}
 
+          {mostrarAtualizacoes && (
           <section className="pc-detail-secao" aria-label="Atualizações">
             <div className="pc-detail-secao-titulo">
-              Atualizações <span>{nc.historico.length}</span>
+              Atualizações {nc.historico.length > 0 && <span>{nc.historico.length}</span>}
             </div>
-            {nc.historico.length === 0 ? (
-              <p className="pc-sem-atualizacoes">
-                <span>Sem atualizações</span>
-                {podeEditar && !registrando && (
-                  <>
-                    <span aria-hidden="true"> · </span>
-                    <button type="button" className="pc-detail-registrar" onClick={() => setRegistrando(true)}>
-                      + Registrar
-                    </button>
-                  </>
-                )}
-              </p>
-            ) : (
+            {nc.historico.length > 0 && (
               <div className="pc-history">
                 {nc.historico.map((item) => (
                   <div key={item.id} className="pc-history-item">
@@ -841,13 +885,14 @@ function Detalhe({
             )}
             {podeEditar && !registrando && nc.historico.length > 0 && (
               <button type="button" className="pc-detail-registrar" onClick={() => setRegistrando(true)}>
-                {resolvida ? "Registrar nova atualização / reabrir" : "+ Registrar atualização"}
+                {rotuloDeRegistrarAtualizacao(resolvida)}
               </button>
             )}
             {podeEditar && registrando && (
               <div className="pc-update">
                 <span className="ui-field-wrap ui-field-wrap--area">
                   <textarea
+                    ref={atualizacaoRef}
                     className="ui-input pc-input-tools"
                     rows={3}
                     value={texto}
@@ -887,7 +932,10 @@ function Detalhe({
               </div>
             )}
           </section>
+          )}
         </div>
+        )}
+        {linhaDeAcrescimos}
       </div>
 
       <div className="pc-detail-foot pc-detail-foot--plano">

@@ -1474,10 +1474,6 @@ html[data-modo="equilibrado"] .pc-kbd{display:none}
 .pc-detail-field--wide{grid-column:1 / -1}
 .pc-detail-field.is-empty{border:1.5px dashed var(--pend);background:var(--dash-bg)}
 .pc-orange-btn{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border:0;border-radius:12px;background:var(--register-gradient);color:var(--ink);font-weight:600;cursor:pointer}
-.pc-detail-evs{display:flex;flex-wrap:wrap;gap:10px}
-.pc-detail-ev{display:flex;flex-direction:column;gap:4px;width:130px;color:var(--ink);text-decoration:none}
-.pc-detail-ev img{width:130px;height:90px;object-fit:cover;border-radius:10px;border:1px solid var(--border)}
-.pc-detail-ev-audio{display:grid;place-items:center;width:130px;height:90px;border-radius:10px;background:var(--brand-soft)}
 .pc-update{display:flex;flex-direction:column;gap:10px;padding:12px;border-radius:14px;background:var(--brand-soft)}
 .pc-status-buttons{display:flex;gap:8px}
 .pc-status-btn{flex:1;padding:9px 10px;border:1.5px solid var(--border);border-radius:10px;background:#fff;color:var(--ink);cursor:pointer}
@@ -5606,11 +5602,8 @@ html .ui-screen.pc-cor .pc-cor-card.is-selected::before{background:#fff}
 html .ui-screen.pc-cor .pc-cor-titulo{display:block;grid-column:1;overflow:hidden;font-size:16px;line-height:21px;white-space:nowrap;text-overflow:ellipsis;-webkit-line-clamp:unset}
 html .ui-screen.pc-cor .pc-cor-topo{grid-column:1;display:flex;flex-wrap:nowrap;align-items:center;gap:6px;min-width:0;font-size:14px;color:var(--rd-texto-fraco)}
 html .ui-screen.pc-cor .pc-cor-card.is-selected .pc-cor-topo{color:#fff}
-html .ui-screen.pc-cor .pc-cor-pino{display:flex;flex:1 1 auto;align-items:center;gap:6px;min-width:0;padding:0;border-radius:0;background:transparent;font-size:14px;color:inherit}
 html .ui-screen.pc-cor .pc-cor-ambiente{min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-html .ui-screen.pc-cor .pc-cor-item{flex:none;white-space:nowrap}
 html .ui-screen.pc-cor .pc-cor-aviso{flex:none;padding:1px 8px;border-radius:999px;background:#fff;color:var(--rd-ink);font-size:13px}
-html .ui-screen.pc-cor .pc-cor-seta{grid-column:2;grid-row:1 / span 2;font-size:18px;color:inherit}
 html .ui-screen.pc-cor .pc-cor-rodape{display:flex;flex:none;gap:10px;padding-top:12px;border-top:1px solid var(--rd-trilho)}
 html .ui-screen.pc-cor .pc-cor-botao{height:40px;padding:0 18px;border:0;border-radius:10px;background:var(--rd-neutro);font-size:15px;font-weight:400;color:var(--rd-ink);white-space:nowrap;cursor:pointer}
 html .ui-screen.pc-cor .pc-cor-botao.is-on{background:var(--rd-azul-claro)}
@@ -5653,11 +5646,6 @@ html .ui-screen.pc-cor .pc-detail-duas{display:grid;grid-template-columns:minmax
 html .ui-screen.pc-cor .pc-detail-secao{display:flex;flex-direction:column;gap:8px;min-width:0}
 html .ui-screen.pc-cor .pc-detail-secao-titulo{font-size:16px;color:var(--rd-texto-fraco)}
 html .ui-screen.pc-cor .pc-detail-secao-titulo span{color:var(--rd-ink)}
-html .ui-screen.pc-cor .pc-detail-evs{display:flex;flex-wrap:nowrap;align-items:flex-end;gap:12px;overflow-x:auto;padding-bottom:4px}
-html .ui-screen.pc-cor .pc-detail-ev{flex:none;gap:4px;width:96px}
-html .ui-screen.pc-cor .pc-detail-ev img,html .ui-screen.pc-cor .pc-detail-ev-audio{width:96px;height:68px;border:0;border-radius:10px;object-fit:cover}
-html .ui-screen.pc-cor .pc-detail-ev-data{font-size:14px;color:var(--rd-texto-fraco)}
-html .ui-screen.pc-cor .pc-detail-foto{flex:none;height:40px;margin-bottom:22px;padding:0 16px;border:0;border-radius:10px;background:var(--rd-acao);font-size:15px;font-weight:400;color:#fff;white-space:nowrap;cursor:pointer}
 html .ui-screen.pc-cor .pc-history{display:flex;flex-direction:column;gap:10px}
 html .ui-screen.pc-cor .pc-history-item{display:flex;flex-direction:row;align-items:baseline;gap:10px;padding:0;border-radius:0;background:transparent}
 html .ui-screen.pc-cor .pc-history-ponto{flex:none;width:9px;height:9px;border-radius:50%;background:var(--rd-venceu)}
@@ -5807,7 +5795,6 @@ html .ui-screen.pc-cor .pc-prazo-erro{position:absolute;right:44px;font-size:14p
 html .ui-screen.pc-cor .ad--vazio{flex-direction:row;align-items:center;gap:12px}
 html .ui-screen.pc-cor .ad--vazio .ad-foto-mais{margin-top:0}
 html .ui-screen.pc-cor .ad--vazio .ad-contagem{font-size:15px;color:var(--rd-texto-fraco)}
-html .ui-screen.pc-cor .pc-sem-atualizacoes{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin:0;font-size:15px;color:var(--rd-texto-fraco)}
 html:not([data-modo="campo"]) .ui-screen.ini3{gap:20px}
 
 /* =====================================================================================================================
@@ -5823,3 +5810,38 @@ html .ui-screen.pc-cor .pc-falta--motivo.is-proxima{overflow:hidden;text-overflo
 html .ui-screen.pc-cor .pc-detail-foot{flex-wrap:wrap;row-gap:6px}
 html .ui-screen.pc-cor .pc-falta--motivo{order:-1;flex:1 1 100%;text-align:left}
 }
+
+/* =====================================================================================================================
+   PACOTE VISUAL 6 · Correções: cartão enxuto, campo composto da ação, blocos vazios ocultos e linha de acréscimos
+   ===================================================================================================================== */
+/* Cartão: título inteiro em até 2 linhas; segunda linha só com ambiente (agrupado por Gravidade) e selos; sem pino, "item N" nem seta */
+html .ui-screen.pc-cor .pc-cor-card{grid-template-columns:minmax(0,1fr);align-items:start}
+html .ui-screen.pc-cor .pc-cor-titulo{display:-webkit-box;overflow:hidden;font-size:16px;line-height:21px;white-space:normal;text-overflow:clip;overflow-wrap:anywhere;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+html .ui-screen.pc-cor .pc-cor-ambiente{flex:0 1 auto}
+html .ui-screen.pc-cor .pc-cor-topo{flex-wrap:wrap;row-gap:3px}
+
+/* Metadados do detalhe: o código (NC01) vai ao fim da linha, em cor fraca */
+html .ui-screen.pc-cor .pc-detail-contexto{flex-wrap:wrap;gap:0 8px}
+html .ui-screen.pc-cor .pc-detail-contexto-texto{min-width:0}
+html .ui-screen.pc-cor .pc-detail-codigo{font-size:15px;color:var(--rd-texto-fraco)}
+
+/* Campo composto "O que será feito": UMA borda de 2 px no conjunto (textarea sem borda + barra interna); foco só troca a cor da borda */
+html .ui-screen.pc-cor .pc-acao-conjunto{display:flex;flex-direction:column;min-width:0;border:2px solid var(--rd-borda-campo);border-radius:12px;background:#fff}
+html .ui-screen.pc-cor .pc-acao-conjunto:focus-within{border-color:var(--rd-acao)}
+html .ui-screen.pc-cor .pc-acao-conjunto.is-invalid{border-color:var(--rd-venceu)}
+html .ui-screen.pc-cor .pc-acao-conjunto.is-bloqueado{background:var(--rd-neutro)}
+html:not([data-modo="campo"]) .ui-screen.pc-cor .pc-acao-conjunto .pc-acao-area,html:not([data-modo="campo"]) .ui-screen.pc-cor .pc-acao-conjunto .pc-acao-area:focus,html:not([data-modo="campo"]) .ui-screen.pc-cor .pc-acao-conjunto .pc-acao-area:focus-visible{height:84px;min-height:84px;border:0!important;border-radius:10px 10px 0 0;background:transparent;outline:0!important;box-shadow:none!important}
+html .ui-screen.pc-cor .pc-acao-conjunto.is-bloqueado .pc-acao-area{border-radius:10px}
+html .ui-screen.pc-cor .pc-acao-conjunto .pc-acao-linha{padding:0 8px 8px}
+html .ui-screen.pc-cor .pc-acao-linha .ui-field-tools .field-assist-tools button,html .ui-screen.pc-cor .pc-acao-linha .ui-field-tools button{height:40px;min-height:40px}
+html .ui-screen.pc-cor .pc-acao-linha .pc-chip-funcionou{height:32px;margin-left:auto}
+html .ui-screen.pc-cor .pc-acao-linha .pc-chip-funcionou+.pc-acao-mais{margin-left:0}
+html .ui-screen.pc-cor .pc-acao-linha .pc-acao-mais{margin-left:auto}
+
+/* Blocos vazios não aparecem; um bloco sozinho ocupa a linha inteira; "+ Foto" e "+ Registrar atualização" vazios ficam numa linha só no fim do corpo (altura natural, flex:none) */
+html .ui-screen.pc-cor .pc-detail-duas.pc-detail-duas--uma{grid-template-columns:minmax(0,1fr)}
+html .ui-screen.pc-cor .pc-detail-scroll>.pc-acrescimos{display:flex;flex:none;flex-wrap:wrap;align-items:center;gap:4px 10px;min-height:0;font-size:15px;color:var(--rd-texto-fraco)}
+html .ui-screen.pc-cor .pc-acrescimo{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:0 8px;border:0;background:transparent;font-size:15px;font-weight:400;color:var(--rd-acao);cursor:pointer}
+html .ui-screen.pc-cor .pc-acrescimos-rotulo{font-size:15px;font-weight:400;color:var(--rd-texto-fraco)}
+html .ui-screen.pc-cor .pc-detail-extras{display:flex;flex-direction:column;gap:4px;margin:0;padding:0;list-style:none;font-size:15px;color:var(--rd-texto-fraco)}
+html .ui-screen.pc-cor .pc-detail-extras a{color:var(--rd-acao)}
