@@ -29,3 +29,8 @@ test("avatar do trilho é um ícone de pessoa (não as iniciais)", () => {
   const nav = ler("../components/AppNavigation.tsx");
   assert.ok(nav.includes('<NavIcon name="acessos" size={22} strokeWidth={1.8} />') && !nav.includes("{usuario.iniciais}"));
 });
+
+test("barras do Campo do Executor e do Fiscal: mesmo visual do trilho, destinos limitados pela permissão", () => {
+  const pagina = ler("../app/page.tsx");
+  assert.ok(pagina.includes(`ehExecutor ? ["inicio", "checklist", "registrar", "evidencias"] : ehFiscal ? ["inicio", "pops"] : ABAS_PADRAO`));
+});

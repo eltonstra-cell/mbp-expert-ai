@@ -2233,8 +2233,8 @@ export default function Home() {
 
   const ehExecutor = usuarioDaSessao?.perfil === "Executor de campo";
   const ehFiscal = usuarioDaSessao?.perfil === "Fiscal";
-  // Barra de baixo do Campo: o Executor só tem Início, Checklist, Registrar e Evidências; o Fiscal, só o Início.
-  const abasDoCampo: AbaDaBarra[] = ehExecutor ? ["inicio", "checklist", "registrar", "evidencias"] : ehFiscal ? ["inicio"] : ABAS_PADRAO;
+  // Barra de baixo do Campo, no visual do trilho: o Executor tem Início, Checklist, Registrar e Evidências (o trilho não tem Checklist/Evidências fora da visita e ele não vê Visitas); o Fiscal, Início e POPs (só o que a permissão dele libera).
+  const abasDoCampo: AbaDaBarra[] = ehExecutor ? ["inicio", "checklist", "registrar", "evidencias"] : ehFiscal ? ["inicio", "pops"] : ABAS_PADRAO;
 
   function permitido(acao: AcaoPermissao, empresaId?: string): boolean {
     return podeExecutar(usuarioDaSessao, acao, empresaId);
