@@ -5732,6 +5732,9 @@ html .ui-screen.pc-cor .ad--pc .ad-aviso{flex:none;max-width:240px;font-size:14p
 html .campo-bar{display:flex;justify-content:space-around;gap:0;padding-right:4px;padding-left:4px}
 html .campo-bar>*{flex:1 1 auto;min-width:44px}
 html .campo-bar .campo-tab-label{white-space:nowrap}
+/* 5 abas ou menos: largura igual (com teto), para o destaque da aba atual não mudar de tamanho conforme o rótulo */
+html .campo-bar--iguais{justify-content:center}
+html .campo-bar--iguais>*{flex:1 1 0;max-width:96px}
 html[data-modo="campo"] .fv{margin-top:10px}
 /* Correções da visita: aproveita a altura (menos folga embaixo) para o painel caber sem rolar em 800 px */
 html:not([data-modo="campo"]) .pc-offset:has(.pc-cor){padding-bottom:12px}

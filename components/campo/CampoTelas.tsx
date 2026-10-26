@@ -10,15 +10,12 @@ import { LoteJanela, type CorrecaoItem } from "@/components/pc/PcCorrecoes";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import { NavIcon, type NavIconName } from "@/components/NavIcons";
 import { RowMenu, type ItemMenu } from "@/components/ui/RowMenu";
+import { ABAS_PADRAO, barraComLarguraIgual, type AbaDaBarra } from "@/lib/abasDoCampo";
 import { acaoPadraoVisivel } from "@/lib/conteudoValidado";
 import { contarEtapas, etapaDaCorrecao, ordenarCorrecoes, prazoSugerido, validarPlano, type EtapaCorrecao, type GravidadeNc } from "@/lib/actionPlan";
 import { NOME_DA_GRAVIDADE, linhaDaCorrecao, mensagemDeFaltas, primeiroCampoComProblema, type CampoDoPlano } from "@/lib/correcaoRotulos";
 
 export type TelaCampo = "inicio" | "visitas" | "checklist" | "correcoes" | "evidencias" | "pops" | "relatorios" | "mais";
-
-/** Abas da barra de baixo, em ordem. O padrão são os mesmos destinos do trilho (Início, Visitas, Correções, POPs, Relatórios e Mais), com o Registrar no centro. */
-export type AbaDaBarra = "inicio" | "visitas" | "checklist" | "registrar" | "correcoes" | "evidencias" | "pops" | "relatorios" | "mais";
-export const ABAS_PADRAO: AbaDaBarra[] = ["inicio", "visitas", "correcoes", "registrar", "pops", "relatorios", "mais"];
 
 type Chrome = {
   tela: TelaCampo | null;
@@ -84,7 +81,7 @@ export function CampoBarra({ tela, correcoesAbertas, podeRegistrar, onIr, onRegi
     </button>
   );
   return (
-    <nav className="campo-bar" aria-label="Navegação do modo Campo" style={abas.length === 5 ? undefined : { gridTemplateColumns: `repeat(${abas.length},1fr)` }}>
+    <nav className={`campo-bar${barraComLarguraIgual(abas.length) ? " campo-bar--iguais" : ""}`} aria-label="Navegação do modo Campo">
       {abas.map((aba) => {
         switch (aba) {
           case "inicio":

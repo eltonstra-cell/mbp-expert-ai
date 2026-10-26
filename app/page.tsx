@@ -110,7 +110,8 @@ import { cssDoDocumentoImpresso, cssDoRodapeDeImpressao, suportaCaixasDeMargem, 
 import { sincronizarNcDoItem } from "@/lib/checklistNcs";
 import { visitaDaEmpresaAtiva } from "@/lib/trocarEmpresa";
 import { dadosExtrasDoItem, desfazerLimpeza, limparResposta, listaEmTexto, type InstantaneoDaResposta } from "@/lib/limparResposta";
-import { ABAS_PADRAO, CampoBarra, CampoCabecalho, CampoCorrecoes, CampoInicio, CampoMais, type AbaDaBarra, type TelaCampo } from "@/components/campo/CampoTelas";
+import { ABAS_PADRAO, abasDoCampoDoPerfil, type AbaDaBarra } from "@/lib/abasDoCampo";
+import { CampoBarra, CampoCabecalho, CampoCorrecoes, CampoInicio, CampoMais, type TelaCampo } from "@/components/campo/CampoTelas";
 import FiscalInicio from "@/components/FiscalInicio";
 import { AvisoFotoProvider, useAvisoAntesDeFotografar } from "@/components/AvisoAntesDeFotografar";
 import type { ItemMenu } from "@/components/ui/RowMenu";
@@ -2233,8 +2234,6 @@ export default function Home() {
 
   const ehExecutor = usuarioDaSessao?.perfil === "Executor de campo";
   const ehFiscal = usuarioDaSessao?.perfil === "Fiscal";
-  // Barra de baixo do Campo, no visual do trilho: o Executor tem Início, Checklist, Registrar e Evidências (o trilho não tem Checklist/Evidências fora da visita e ele não vê Visitas); o Fiscal, Início e POPs (só o que a permissão dele libera).
-  const abasDoCampo: AbaDaBarra[] = ehExecutor ? ["inicio", "checklist", "registrar", "evidencias"] : ehFiscal ? ["inicio", "pops"] : ABAS_PADRAO;
 
   function permitido(acao: AcaoPermissao, empresaId?: string): boolean {
     return podeExecutar(usuarioDaSessao, acao, empresaId);
@@ -2255,6 +2254,8 @@ export default function Home() {
   function telaVisivel(tela: TelaKey): boolean {
     return nivelDe(tela) !== "oculta";
   }
+  // Barra de baixo do Campo, no visual do trilho: a aba some quando a tela dela está oculta por permissão (`lib/abasDoCampo.ts`).
+  const abasDoCampo: AbaDaBarra[] = abasDoCampoDoPerfil(usuarioDaSessao?.perfil, telaVisivel);
   function podeAbrirVisita(empresaId: string): boolean {
     return (
       permitido("visitas.executar", empresaId) ||
