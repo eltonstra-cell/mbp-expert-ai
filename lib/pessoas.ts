@@ -28,6 +28,12 @@ export function pessoasUnicas(nomes: string[]): string[] {
   return saida;
 }
 
+/** Nome pronto para gravar: se coincide com uma pessoa cadastrada usa a grafia do cadastro; senão, o texto sem espaços sobrando. */
+export function nomeNormalizado(nome: string, cadastradas: string[]): string {
+  const limpo = pessoasUnicas([nome])[0] ?? "";
+  return pessoasUnicas(cadastradas).find((pessoa) => mesmaPessoa(pessoa, limpo)) ?? limpo;
+}
+
 const ORDEM_DE_NOMES = new Intl.Collator("pt-BR", { sensitivity: "base" });
 
 /**

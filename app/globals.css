@@ -5587,7 +5587,14 @@ html .ui-screen.pc-cor .pc-etapa.is-zero:not(.is-ativa) .pc-etapa-num{color:#8A9
 html .ui-screen.pc-cor .pc-etapa.is-zero:not(.is-ativa) .pc-etapa-label{color:var(--rd-texto-fraco);opacity:1}
 html .ui-screen.pc-cor .pc-etapa:focus-visible{outline:3px solid var(--rd-acao);outline-offset:2px}
 html .ui-screen.pc-cor .pc-master--corr{display:grid;flex:1;min-height:0;grid-template-columns:340px minmax(0,1fr);grid-template-rows:none;gap:28px}
-@media (max-width:1000px){html .ui-screen.pc-cor .pc-master--corr{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(150px,36%) minmax(0,1fr);gap:14px}}
+/* Até 1000 px a lista fica em cima, compacta: "Agrupar por" e os botões na mesma linha e a lista rolando por dentro com ~2 cartões à vista */
+@media (max-width:1000px){
+  html .ui-screen.pc-cor .pc-master--corr{grid-template-columns:minmax(0,1fr);grid-template-rows:250px minmax(0,1fr);gap:14px}
+  html .ui-screen.pc-cor .pc-master--corr>.pc-master-list{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto minmax(0,1fr);gap:6px 12px}
+  html .ui-screen.pc-cor .pc-master-list>.pc-cor-barra{grid-column:1;grid-row:1}
+  html .ui-screen.pc-cor .pc-master-list>.pc-cor-rodape{grid-column:2;grid-row:1;padding-top:0;border-top:0}
+  html .ui-screen.pc-cor .pc-master-list>.ui-scroll{grid-column:1 / -1;grid-row:2;min-height:0;overflow-y:auto}
+}
 html .ui-screen.pc-cor .pc-master-list{display:flex;flex-direction:column;min-height:0;min-width:0;overflow:hidden}
 html .ui-screen.pc-cor .pc-cor-barra{display:flex;flex:none;flex-wrap:nowrap;align-items:center;gap:12px;margin-bottom:24px;padding:0}
 html .ui-screen.pc-cor .pc-cor-agrupar{font-size:15px;color:var(--rd-ink)}
@@ -5790,7 +5797,7 @@ html .ui-screen.pc-cor .pc-cor-topo{flex-wrap:wrap;row-gap:3px}
 /* Metadados do detalhe: o código (NC01) vai ao fim da linha, em cor fraca */
 html .ui-screen.pc-cor .pc-detail-contexto{flex-wrap:wrap;gap:0 8px}
 html .ui-screen.pc-cor .pc-detail-contexto-texto{min-width:0}
-html .ui-screen.pc-cor .pc-detail-codigo{font-size:15px;color:var(--rd-texto-fraco)}
+html .ui-screen.pc-cor .pc-detail-codigo{font-size:16px;color:var(--rd-texto-fraco)}
 
 /* Campo composto "O que será feito": UMA borda de 2 px no conjunto (textarea sem borda + barra interna); foco só troca a cor da borda */
 html .ui-screen.pc-cor .pc-acao-conjunto{display:flex;flex-direction:column;min-width:0;border:2px solid var(--rd-borda-campo);border-radius:12px;background:#fff}
@@ -5868,20 +5875,22 @@ html .ui-screen.pc-cor .pc-cor-card.is-selected,html .ui-screen.pc-cor .pc-cor-c
 
 /* Estrutura do detalhe */
 html .ui-screen.pc-cor .pc-detail--corr{--lateral:300px;display:flex;flex-direction:column;gap:0;min-height:0;min-width:0;padding:0}
-html .ui-screen.pc-cor .pc-detail--corr>.pc-detail-corpo{display:flex;flex:1 1 auto;min-height:0;min-width:0}
+/* Ordem do DOM = ordem do Tab = ordem visual no estreito: bloco 1 (.pc-detail-scroll), bloco 2 (lateral), bloco 3 (.pc-provas). No layout largo (grid) a lateral fica à direita (grid-area) e o corpo rola inteiro, com a lateral colada no topo (sticky) e com a altura da janela do corpo (100cqh). */
+html .ui-screen.pc-cor .pc-detail--corr>.pc-detail-corpo{display:grid;flex:1 1 auto;grid-template-columns:minmax(0,1fr) var(--lateral);grid-template-rows:max-content max-content 1fr;min-height:0;min-width:0;overflow-y:auto}
+@media (min-width:1150px){html .ui-screen.pc-cor .pc-detail--corr>.pc-detail-corpo{container-type:size}}
 html .ui-screen.pc-cor .pc-detail-head{gap:2px;padding:0 0 8px 28px;border-bottom:1px solid var(--rd-trilho)}
 html .ui-screen.pc-cor .pc-detail-title{display:-webkit-box;flex:none;overflow:hidden;margin:0;font-family:var(--font-display),"Outfit",sans-serif;font-size:23px;font-weight:500;line-height:28px;white-space:normal;-webkit-box-orient:vertical;-webkit-line-clamp:2}
 /* Metadados: SEMPRE uma linha. A fonte (e depois o texto do ambiente) encolhe com reticências; o texto inteiro está no title. Ponto, código, POP e "Ver no checklist" não encolhem. */
-html .ui-screen.pc-cor .pc-detail-contexto{display:flex;flex-wrap:nowrap;align-items:center;gap:0 8px;min-width:0;font-size:15px;line-height:22px;color:var(--rd-texto-fraco)}
+html .ui-screen.pc-cor .pc-detail-contexto{display:flex;flex-wrap:nowrap;align-items:center;gap:0 8px;min-width:0;font-size:16px;line-height:22px;color:var(--rd-texto-fraco)}
 html .ui-screen.pc-cor .pc-detail-contexto>*{flex:none}
 html .ui-screen.pc-cor .pc-detail-contexto>.pc-detail-contexto-texto{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-html .ui-screen.pc-cor .pc-detail-contexto>.pc-detail-fonte{flex:0 100 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:15px;color:var(--rd-texto-fraco)}
+html .ui-screen.pc-cor .pc-detail-contexto>.pc-detail-fonte{flex:0 100 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:16px;color:var(--rd-texto-fraco)}
 html .ui-screen.pc-cor .pc-detail-ver,html .ui-screen.pc-cor .pc-detail-pop{min-height:40px;margin:-9px 0}
 html .ui-screen.pc-cor .pc-detail-ver{padding:0 2px;border:0;background:transparent;font-size:15px;color:var(--rd-acao);text-decoration:underline;white-space:nowrap;cursor:pointer}
 html .ui-screen.pc-cor .pc-detail-ver:focus-visible,html .ui-screen.pc-cor .pc-detail-pop:focus-visible{outline:3px solid var(--rd-acao);outline-offset:2px}
 
 /* Coluna esquerda: rola sozinha só quando há muito conteúdo */
-html .ui-screen.pc-cor .pc-detail-scroll{display:flex;flex:1 1 0;flex-direction:column;gap:18px;min-width:0;overflow-y:auto;scrollbar-gutter:auto;padding:16px 24px 12px 28px}
+html .ui-screen.pc-cor .pc-detail-scroll{display:flex;grid-column:1;grid-row:1;flex-direction:column;gap:18px;min-width:0;overflow:visible;padding:16px 24px 12px 28px}
 html .ui-screen.pc-cor .pc-plan-stack{gap:14px}
 
 /* Títulos de bloco: número em círculo de 28 px (1 e 2 azuis com texto branco simples; 3, opcional, só contorno) */
@@ -5891,6 +5900,10 @@ html .ui-screen.pc-cor .pc-bloco-num.is-azul{border-color:#2B54CF;background:#2B
 html .ui-screen.pc-cor .pc-obrig,html .ui-screen.pc-cor .pc-bloco-opcional{font-size:16px;font-weight:400}
 html .ui-screen.pc-cor .pc-bloco-opcional{color:var(--rd-texto-fraco)}
 html .ui-screen.pc-cor .pc-plan-acao>.pc-bloco-titulo{margin-bottom:8px}
+/* Avisos informativos (Registrado no checklist, Como foi na última visita): UMA linha cada, com reticências; o texto inteiro está no title */
+html .ui-screen.pc-cor .pc-plan-info{display:flex;flex-direction:column;gap:2px}
+html .ui-screen.pc-cor .pc-info-linha{margin:0;overflow:hidden;font-size:16px;line-height:22px;color:var(--rd-texto-fraco);text-overflow:ellipsis;white-space:nowrap}
+html .ui-screen.pc-cor .pc-info-rotulo{color:var(--rd-ink)}
 
 /* 1 O que será feito: caixa composta de no mínimo 150 px (borda de 2 px), com a barra DENTRO da borda */
 html .ui-screen.pc-cor .pc-acao-conjunto{min-height:150px;box-sizing:border-box}
@@ -5899,7 +5912,7 @@ html .ui-screen.pc-cor .pc-acao-conjunto .pc-acao-linha{flex-wrap:wrap;row-gap:4
 html .ui-screen.pc-cor .pc-acao-conjunto.is-bloqueado{min-height:0}
 
 /* 3 Provas: botões baixos de borda fraca; o conteúdo que já existe vem depois */
-html .ui-screen.pc-cor .pc-provas{display:flex;flex:none;flex-direction:column;gap:10px}
+html .ui-screen.pc-cor .pc-provas{display:flex;grid-column:1;grid-row:2;flex-direction:column;gap:10px;min-width:0;padding:6px 24px 12px 28px}
 html .ui-screen.pc-cor .pc-provas>.pc-bloco-titulo{margin-bottom:0}
 html .ui-screen.pc-cor .pc-provas-botoes{display:flex;flex-wrap:wrap;gap:10px}
 html .ui-screen.pc-cor .pc-prova-botao{display:inline-flex;align-items:center;justify-content:center;height:40px;padding:0 16px;border:1px solid var(--rd-borda-fraca);border-radius:10px;background:#fff;font-size:16px;font-weight:400;color:var(--rd-ink);white-space:nowrap;cursor:pointer}
@@ -5909,25 +5922,29 @@ html .ui-screen.pc-cor .pc-provas .pc-detail-secao{gap:6px}
 html .ui-screen.pc-cor .pc-provas .ad--pc{align-items:center}
 
 /* Coluna direita: 2 Quem faz e até quando */
-html .ui-screen.pc-cor .pc-detail-lateral{display:flex;flex:0 0 var(--lateral);flex-direction:column;gap:10px;box-sizing:border-box;min-width:0;overflow-y:auto;padding:12px 20px 8px;border-left:1px solid var(--rd-trilho);background:var(--rd-lateral-fundo)}
+html .ui-screen.pc-cor .pc-detail-lateral{position:sticky;top:0;display:flex;grid-column:2;grid-row:1 / span 3;flex-direction:column;align-self:start;gap:10px;box-sizing:border-box;min-width:0;height:100cqh;overflow-y:auto;padding:12px 20px 8px;border-left:1px solid var(--rd-trilho);background:var(--rd-lateral-fundo)}
 html .ui-screen.pc-cor .pc-detail-lateral>*{flex:none}
+html .ui-screen.pc-cor :is(button,a,[role="radio"],.pc-cor-card):focus-visible{outline:3px solid var(--rd-acao);outline-offset:2px}
 html .ui-screen.pc-cor .pc-detail-lateral>.pc-bloco-titulo{margin:0}
 html .ui-screen.pc-cor .pc-plan-resp,html .ui-screen.pc-cor .pc-plan-prazo{display:flex;flex:none;flex-direction:column;gap:5px;min-width:0;width:auto}
 html .ui-screen.pc-cor .pc-plan-rotulo{display:block;font-size:16px;line-height:20px;color:var(--rd-texto-fraco)}
 html .ui-screen.pc-cor .pc-pessoas{display:flex;flex-direction:column;gap:4px;min-width:0}
-html .ui-screen.pc-cor .pc-pessoa{box-sizing:border-box;display:block;width:100%;height:42px;padding:0 14px;overflow:hidden;border:1px solid var(--rd-borda-fraca);border-radius:10px;background:#fff;font-size:16px;font-weight:400;line-height:40px;color:var(--rd-ink);text-align:left;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
+html .ui-screen.pc-cor .pc-pessoa{box-sizing:border-box;display:block;width:100%;height:42px;padding:0 14px;overflow:hidden;border:1px solid #7E8AA6;border-radius:10px;background:#fff;font-size:16px;font-weight:400;line-height:40px;color:var(--rd-ink);text-align:left;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
 html .ui-screen.pc-cor .pc-pessoa:hover{background:#F4F6FA}
-html .ui-screen.pc-cor .pc-pessoa.is-on{border:2px solid var(--rd-acao);background:var(--rd-azul-cartao);line-height:38px}
-html .ui-screen.pc-cor .pc-pessoa--outra{height:40px;margin:-1px 0;line-height:38px;border:1px dashed #8D99B3;background:transparent;color:var(--rd-texto-fraco)}
+html .ui-screen.pc-cor .pc-pessoa.is-on{border:2px solid var(--rd-ambar);background:var(--rd-creme-cartao);line-height:38px}
+html .ui-screen.pc-cor .pc-pessoa-check{color:var(--rd-ambar)}
+html .ui-screen.pc-cor .pc-pessoa--outra{height:40px;margin:-1px 0;line-height:38px;border:1px dashed #7E8AA6;background:transparent;color:var(--rd-texto-fraco)}
 html .ui-screen.pc-cor .pc-pessoa:focus-visible{outline:3px solid var(--rd-acao);outline-offset:2px}
 html .ui-screen.pc-cor .pc-pessoa-campo,html .ui-screen.pc-cor .pc-plan-resp input.ui-input,html .ui-screen.pc-cor .pc-prazo-campo .ui-input{box-sizing:border-box;width:100%;height:42px;padding:0 14px;border:2px solid var(--rd-borda-campo);border-radius:12px;font-size:16px;color:var(--rd-ink)}
-html .ui-screen.pc-cor .pc-resp-erro{font-size:15px;line-height:18px;color:var(--rd-venceu-lateral)}
-html .ui-screen.pc-cor .pc-resp-erro:empty{display:none}
-html .ui-screen.pc-cor .pc-prazo-aviso{font-size:15px;line-height:18px;color:var(--rd-venceu-lateral)}
-html .ui-screen.pc-cor .pc-plan-lembrete{align-self:flex-start;box-sizing:border-box;min-height:40px;margin:-9px 0 -9px;padding:0 2px;border:0;background:transparent;font-size:15px;color:var(--rd-acao);text-decoration:underline;white-space:nowrap;cursor:pointer}
+/* Um só vermelho nos erros da tela de Correções: #B83A33 passa de 4,5:1 sobre branco e sobre o cinza da lateral (o #C9473F do resto do app dá 4,36:1 no cinza) */
+html .ui-screen.pc-cor{--rd-venceu:#B83A33}
+html .ui-screen.pc-cor .pc-resp-erro{font-size:16px;line-height:20px;color:var(--rd-venceu)}
+html .ui-screen.pc-cor .pc-prazo-aviso{font-size:16px;line-height:20px;color:var(--rd-venceu)}
+html .ui-screen.pc-cor .pc-plan-lembrete{align-self:flex-start;box-sizing:border-box;min-height:40px;margin:-9px 0 -9px;padding:0 2px;border:0;background:transparent;font-size:16px;color:var(--rd-acao);text-decoration:underline;white-space:nowrap;cursor:pointer}
 html .ui-screen.pc-cor .pc-prazo-campo{position:relative;display:block}
-html .ui-screen.pc-cor .pc-prazo-erro{position:absolute;top:50%;right:38px;transform:translateY(-50%);font-size:14px;color:var(--rd-venceu-lateral);white-space:nowrap;pointer-events:none}
-html .ui-screen.pc-cor .pc-prazo-sugerido{position:static;align-self:flex-start;box-sizing:border-box;min-height:40px;margin:-10px 0;padding:0 2px;border:0;border-radius:0;background:transparent;font-size:15px;line-height:20px;color:var(--rd-texto-fraco);text-align:left;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px;cursor:pointer}
+html .ui-screen.pc-cor .pc-prazo-erro{position:absolute;top:50%;right:38px;transform:translateY(-50%);font-size:14px;color:var(--rd-venceu);white-space:nowrap;pointer-events:none}
+html .ui-screen.pc-cor .pc-prazo-sugerido{position:static;align-self:flex-start;box-sizing:border-box;min-height:40px;margin:-10px 0;padding:0 2px;border:0;border-radius:0;background:transparent;font-size:16px;line-height:20px;color:var(--rd-texto-fraco);text-align:left;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px;cursor:pointer}
+html .ui-screen.pc-cor .pc-prazo-texto{align-self:flex-start;font-size:16px;line-height:20px;color:var(--rd-texto-fraco)}
 html .ui-screen.pc-cor .pc-prazo-sugerido:hover{text-decoration-style:solid;color:var(--rd-ink)}
 html .ui-screen.pc-cor .pc-prazo-sugerido:focus-visible{outline:3px solid var(--rd-acao);outline-offset:2px}
 
@@ -5943,12 +5960,11 @@ html:not([data-modo="campo"]) .pc-offset:has(.pc-cor){padding-bottom:8px}
 @media (max-width:1199px){
   html .ui-screen.pc-cor .pc-detail-head,html .ui-screen.pc-cor .pc-detail-foot{padding-left:24px}
   html .ui-screen.pc-cor .pc-detail-scroll{padding:16px 16px 12px 24px}
+  html .ui-screen.pc-cor .pc-provas{padding:6px 16px 12px 24px}
 }
 @media (max-width:1149px){
-  html .ui-screen.pc-cor .pc-detail--corr>.pc-detail-corpo{flex-direction:column;gap:18px;overflow-y:auto;padding:16px 16px 12px 24px}
-  html .ui-screen.pc-cor .pc-detail-scroll{display:contents}
-  html .ui-screen.pc-cor .pc-detail-scroll>*{flex:none;order:1;min-width:0}
-  html .ui-screen.pc-cor .pc-detail-scroll>.pc-provas{order:3}
-  html .ui-screen.pc-cor .pc-detail-lateral{flex:none;order:2;overflow:visible;border:1px solid var(--rd-trilho);border-radius:12px}
+  html .ui-screen.pc-cor .pc-detail--corr>.pc-detail-corpo{display:flex;flex-direction:column;gap:0;padding:0}
+  html .ui-screen.pc-cor .pc-detail--corr>.pc-detail-corpo>*{flex:none}
+  html .ui-screen.pc-cor .pc-detail-lateral{position:static;align-self:stretch;height:auto;overflow:visible;margin:0 16px 6px 24px;border:1px solid var(--rd-trilho);border-radius:12px}
   html .ui-screen.pc-cor .pc-detail-lateral>*{max-width:360px}
 }

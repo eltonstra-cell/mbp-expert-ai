@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { chaveDaPessoa, mesmaPessoa, nomeCurtoDaPessoa, pessoasDaLista, pessoasUnicas, rotulosDeChipsDePessoas } from "../lib/pessoas.ts";
+import { chaveDaPessoa, mesmaPessoa, nomeCurtoDaPessoa, pessoasDaLista, pessoasUnicas, rotulosDeChipsDePessoas, nomeNormalizado } from "../lib/pessoas.ts";
 
 test("nomes iguais sem acento, sem maiúsculas e sem espaços sobrando são a mesma pessoa", () => {
   assert.equal(chaveDaPessoa("  Élton   Volmir "), "elton volmir");
@@ -43,4 +43,16 @@ test("nome do chip: primeiro nome + último sobrenome; duas pessoas com o mesmo 
   assert.deepEqual(rotulosDeChipsDePessoas(["Elton Volmir Strapazon", "Marivane Souza Lima", "Ana"]), ["Elton Strapazon", "Marivane Lima", "Ana"]);
   assert.deepEqual(rotulosDeChipsDePessoas(["Élton Volmir Strapazon", "Elton Carlos Strapazon", "Ana"]), ["Élton Volmir Strapazon", "Elton Carlos Strapazon", "Ana"]);
   assert.deepEqual(rotulosDeChipsDePessoas([]), []);
+});
+
+test("lista de responsáveis: limite 0 e usuário atual igual ao escolhido", () => {
+  assert.deepEqual(pessoasDaLista({ cadastradas: ["Ana", "Beto"], limite: 0 }), []);
+  assert.deepEqual(pessoasDaLista({ cadastradas: ["Ana", "Beto"], limite: 0, escolhido: "beto" }), ["Beto"]);
+  assert.deepEqual(pessoasDaLista({ cadastradas: ["Ana"], usuarioAtual: "Élton", escolhido: "elton" }), ["Ana", "Élton"]);
+});
+
+test("nome normalizado: usa a grafia do cadastro ou espaços únicos", () => {
+  assert.equal(nomeNormalizado("  marcos   souza ", ["Marcos Souza", "Isabel"]), "Marcos Souza");
+  assert.equal(nomeNormalizado("  Fulano   de  Tal ", ["Isabel"]), "Fulano de Tal");
+  assert.equal(nomeNormalizado("   ", ["Isabel"]), "");
 });

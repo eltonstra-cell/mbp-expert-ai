@@ -23,9 +23,8 @@ test("topo: dentro da visita o título é só 'Visita N'; o Início usa a mesma 
 
 test("Correções: aviso do responsável abaixo da lista de pessoas, abas sempre filtram a lista, lista só de pessoas cadastradas", () => {
   const tela = ler("../components/pc/PcCorrecoes.tsx");
-  assert.ok(tela.includes('className="pc-resp-erro"') && tela.includes("Escolha o responsável") && !tela.includes('<span className="ui-field-error">Escolha o responsável</span>'));
+  // o aviso do responsável e a lista de pessoas são medidos no navegador (verificar-offline 17g, 17o, 17ac)
   assert.ok(tela.includes("useState<EtapaCorrecao>(() => etapaInicial(itens, selecionadaInicial))") && tela.includes("if (etapaDaCorrecao(nc) !== etapa) return false;"));
-  assert.ok(tela.includes("pessoasDaLista({ cadastradas: pessoas") && !tela.includes("memoriaResponsaveis || []"));
   assert.ok(tela.includes("pc-acao-linha") && tela.includes("sugestões"), "ferramentas e sugestões numa linha abaixo da caixa");
 });
 

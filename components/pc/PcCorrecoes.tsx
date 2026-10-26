@@ -3,14 +3,14 @@
 import { dataISOLocal, formatarDataCurta, formatarDataHora, formatarHora, hojeLocalISO } from "@/lib/dataLocal";
 import AntesDepois, { type FotoDoPar } from "@/components/AntesDepois";
 import CaixaQueCresce from "@/components/CaixaQueCresce";
-import { mesmaPessoa, pessoasDaLista, rotulosDeChipsDePessoas } from "@/lib/pessoas";
+import { chaveDaPessoa, mesmaPessoa, nomeNormalizado, pessoasDaLista, pessoasUnicas, rotulosDeChipsDePessoas } from "@/lib/pessoas";
 import { confirmar } from "@/lib/dialogos";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
 import { NavIcon } from "@/components/NavIcons";
 import { Pill, type Tom } from "@/components/ui/Pill";
 import { RESERVA_DO_LINK_DE_SUGESTOES, chipDaAcaoCabeNaBarra } from "@/lib/layoutDeCorrecoes";
-import { NOME_DA_GRAVIDADE, linhaDaCorrecao, mensagemDeFaltas, primeiroCampoComProblema, rodapeDoSalvar, type CampoDoPlano } from "@/lib/correcaoRotulos";
+import { NOME_DA_GRAVIDADE, linhaDaCorrecao, rodapeDoSalvar, type CampoDoPlano } from "@/lib/correcaoRotulos";
 import { agruparCorrecoes, aposSalvarPlano, ordemVisual, primeiraSemPlano, proximaSemPlano, restantesSemPlano, type AgruparCorrecoes } from "@/lib/fluxoDeCorrecoes";
 import { mostrarToast } from "@/lib/toast";
 import { acaoPadraoVisivel } from "@/lib/conteudoValidado";
@@ -480,12 +480,10 @@ function Detalhe({
   useEffect(() => {
     rascunhos.guardar(nc.id, { acao, responsavel, prazo, causa }, baseRef.current);
   }, [rascunhos, nc.id, acao, responsavel, prazo, causa]);
-  const causaRef = useRef<HTMLInputElement | null>(null);
   // Salvar o plano leva a correção para "Com plano"; quem já está em acompanhamento continua lá.
   const etapaAlvo: EtapaCorrecao = etapaDaCorrecao(nc) === "acompanhamento" ? "acompanhamento" : "plano";
-  const [tentou, setTentou] = useState(false);
   const [tocado, setTocado] = useState<Record<CampoDoPlano, boolean>>({ acao: false, responsavel: false, prazo: false });
-  const [faltas, setFaltas] = useState("");
+  const [causaTocada, setCausaTocada] = useState(false);
   const acaoRef = useRef<HTMLTextAreaElement | null>(null);
   const responsavelRef = useRef<HTMLDivElement | null>(null);
   // "Outra pessoa": o campo substitui o botão tracejado; o texto ainda em digitação NÃO entra na lista de pessoas (só a pessoa escolhida).
@@ -495,6 +493,7 @@ function Detalhe({
   const outraRef = useRef<HTMLButtonElement | null>(null);
   const devolverFocoAoBotao = useRef(false);
   const valorAntesDeAbrir = useRef("");
+  const enterAdiado = useRef(false);
   const prazoRef = useRef<HTMLInputElement | null>(null);
   const [notaFeita, setNotaFeita] = useState("");
   const [texto, setTexto] = useState("");
@@ -504,38 +503,15 @@ function Detalhe({
   const sugestao = prazoSugerido(nc.gravidade, hoje);
   const erros = validarPlano({ acaoCorretiva: acao, responsavelAcao: responsavel, prazo }, hoje, true);
   const erroCausa = validarCausaRaiz(nc.reincidente, causa);
-  // Nenhum erro ao abrir: o campo só acusa depois de sair dele vazio (ou ao tentar salvar).
-  const mostrarErro = (campo: CampoDoPlano) => (tentou || tocado[campo] || Boolean(prazo && campo === "prazo")) && erros[campo];
+  // Nenhum erro ao abrir: o campo só acusa depois de sair dele (blur). O "Salvar plano" fica desabilitado com "Falta: …" no rodapé, então não há erro "ao tentar salvar".
+  const mostrarErro = (campo: CampoDoPlano) => tocado[campo] && erros[campo];
   const marcarTocado = (campo: CampoDoPlano) => setTocado((atual) => ({ ...atual, [campo]: true }));
-  const vazioNoPlano: Record<CampoDoPlano, boolean> = { acao: !acao.trim(), responsavel: !responsavel.trim(), prazo: !prazo };
 
   function salvar() {
-    setTentou(true);
-    if (erroCausa) {
-      setFaltas(erroCausa);
-      causaRef.current?.focus();
-      return;
-    }
-    const faltando = (Object.keys(vazioNoPlano) as CampoDoPlano[]).filter((campo) => vazioNoPlano[campo]);
-    const invalidos = (Object.keys(erros) as CampoDoPlano[]).filter((campo) => !vazioNoPlano[campo]);
-    if (faltando.length > 0 || invalidos.length > 0) {
-      setFaltas(mensagemDeFaltas(faltando, invalidos));
-      const primeiro = primeiroCampoComProblema(faltando, invalidos);
-      if (primeiro === "responsavel") {
-        // Campo aberto (ou lista vazia, que mantém o campo aberto): foco no campo; senão, na pessoa que recebe o Tab (a marcada ou a primeira).
-        (campoRef.current ?? responsavelRef.current?.querySelector<HTMLElement>('[role="radio"][tabindex="0"]'))?.focus();
-      } else (primeiro === "acao" ? acaoRef.current : prazoRef.current)?.focus();
-      return;
-    }
-    setFaltas("");
-    onSalvarPlano(nc.id, { acao, responsavel, prazo, etapa: etapaAlvo, ...(nc.reincidente ? { causaRaiz: causa.trim() } : {}) });
-    setTentou(false);
+    // O botão só habilita com ação, responsável, prazo e causa raiz válidos; o responsável é gravado sempre normalizado (grafia do cadastro ou espaços únicos).
+    if (faltaParaSalvar.length > 0) return;
+    onSalvarPlano(nc.id, { acao, responsavel: nomeNormalizado(responsavel, pessoas), prazo, etapa: etapaAlvo, ...(nc.reincidente ? { causaRaiz: causa.trim() } : {}) });
   }
-
-  // A mensagem do botão some assim que tudo é preenchido.
-  useEffect(() => {
-    if (faltas && Object.keys(erros).length === 0 && !erroCausa) setFaltas("");
-  }, [faltas, erros, erroCausa]);
 
   const vazio = (valor: string) => !valor.trim();
 
@@ -545,38 +521,52 @@ function Detalhe({
   const rotulosDaLista = rotulosDeChipsDePessoas(nomesDaLista);
   const indiceMarcado = nomesDaLista.findIndex((nome) => mesmaPessoa(nome, responsavel));
   const campoAberto = !bloqueado && (outraPessoa || nomesDaLista.length === 0);
+  // O campo "Outra pessoa" some (Enter, Esc, blur ou escolha): o texto em digitação deixa de existir junto com ele.
+  useEffect(() => {
+    if (!campoAberto) setDigitando(false);
+  }, [campoAberto]);
   const escolherPessoa = (nome: string) => {
     setResponsavel(nome);
     setDigitando(false);
   };
-  const fecharCampo = (devolverFoco: boolean) => {
+  const fecharCampo = (devolverFoco: boolean, novoValor: string) => {
     devolverFocoAoBotao.current = devolverFoco;
+    setResponsavel(novoValor);
     setDigitando(false);
     setOutraPessoa(false);
     marcarTocado("responsavel");
   };
-  // Depois de fechar o campo com Enter ou Esc, o foco volta ao botão "Outra pessoa".
+  // Confirmar (Enter ou sair do campo): texto vazio volta ao valor de antes; preenchido vira a grafia do cadastro ou o nome com espaços únicos (lido do próprio campo, que é sempre o valor mais novo, inclusive o da lista do navegador).
+  const confirmarCampo = (devolverFoco: boolean) => {
+    const bruto = campoRef.current?.value ?? responsavel;
+    fecharCampo(devolverFoco, bruto.trim() ? nomeNormalizado(bruto, pessoas) : valorAntesDeAbrir.current);
+  };
+  // Depois de fechar o campo com Enter ou Esc o foco volta ao botão "Outra pessoa"; sem botão (lista vazia), a marca é apenas zerada.
   useEffect(() => {
-    if (devolverFocoAoBotao.current && outraRef.current) {
-      outraRef.current.focus();
+    if (devolverFocoAoBotao.current) {
+      outraRef.current?.focus();
       devolverFocoAoBotao.current = false;
     }
   });
-  // Grupo de escolha única: Tab entra na pessoa marcada (ou na primeira) e as setas trocam a escolha.
+  // Grupo de escolha única: Tab entra na pessoa marcada (ou na primeira); as setas, Home e End trocam a escolha.
   const aoTeclarNasPessoas = (evento: React.KeyboardEvent<HTMLDivElement>) => {
-    const avanca = evento.key === "ArrowDown" || evento.key === "ArrowRight";
-    if (!avanca && evento.key !== "ArrowUp" && evento.key !== "ArrowLeft") return;
+    const teclas = ["ArrowDown", "ArrowRight", "ArrowUp", "ArrowLeft", "Home", "End"];
+    if (!teclas.includes(evento.key)) return;
     evento.preventDefault();
     const botoes = Array.from(evento.currentTarget.querySelectorAll<HTMLButtonElement>('[role="radio"]'));
-    const atual = botoes.indexOf(document.activeElement as HTMLButtonElement);
-    const proximo = (Math.max(atual, 0) + (avanca ? 1 : -1) + botoes.length) % botoes.length;
+    const atual = Math.max(botoes.indexOf(document.activeElement as HTMLButtonElement), 0);
+    const proximo = evento.key === "Home" ? 0 : evento.key === "End" ? botoes.length - 1 : (atual + (evento.key === "ArrowDown" || evento.key === "ArrowRight" ? 1 : -1) + botoes.length) % botoes.length;
     escolherPessoa(nomesDaLista[proximo]);
     botoes[proximo]?.focus();
   };
+  const erroDoResponsavel = !bloqueado && tocado.responsavel && vazio(responsavel);
   const responsavelVazio = vazio(responsavel);
   const erroDoPrazo = Boolean(mostrarErro("prazo"));
   const prazoNoPassado = erroDoPrazo && Boolean(prazo);
   const prazoVazioComErro = erroDoPrazo && !prazo;
+  const sugestaoDoPrazoVisivel = !bloqueado;
+  const sugestaoComoAcao = prazo !== sugestao.data;
+  const textoDaGravidade = `${sugestao.dias} dias · ${nc.gravidade === "Rotina" ? "leve" : nc.gravidade.toLocaleLowerCase("pt-BR")}`;
   const faltaParaSalvar = [vazio(acao) ? "a ação" : "", responsavelVazio ? "o responsável" : "", erros.prazo ? "o prazo" : "", erroCausa ? "a causa raiz" : ""].filter(Boolean);
   const motivoDoBotao = textoDoQueFalta(faltaParaSalvar);
   const textoDoRodape = rodapeDoSalvar({ faltas: faltaParaSalvar, proximoTitulo: tituloDaProxima, etapa: etapaAberta, haOutraSemPlano });
@@ -790,164 +780,37 @@ function Detalhe({
                 </span>
                 <div className="pc-memoria" role="group" aria-label="Causas comuns">
                   {CAUSAS_RAIZ.map((opcao) => (
-                    <button key={opcao} type="button" className={`pc-chip-btn pc-chip-btn--soft${causa === opcao ? " is-on" : ""}`} disabled={bloqueado} aria-pressed={causa === opcao} onClick={() => setCausa(opcao)}>
+                    <button key={opcao} type="button" className={`pc-chip-btn pc-chip-btn--soft${causa === opcao ? " is-on" : ""}`} disabled={bloqueado} aria-pressed={causa === opcao} onBlur={() => setCausaTocada(true)} onClick={() => setCausa(opcao)}>
                       {opcao}
                     </button>
                   ))}
                 </div>
-                <input ref={causaRef} className={`ui-input${tentou && erroCausa ? " is-invalid" : ""}`} value={causa} disabled={bloqueado} onChange={(evento) => setCausa(evento.target.value)} placeholder="Por que voltou a acontecer?" aria-label="Causa raiz" aria-invalid={Boolean(tentou && erroCausa)} />
-                {tentou && erroCausa && <span className="ui-field-error">{erroCausa}</span>}
+                <input id={`causa-${nc.id}`} className={`ui-input${causaTocada && erroCausa ? " is-invalid" : ""}`} value={causa} disabled={bloqueado} onChange={(evento) => setCausa(evento.target.value)} onBlur={() => setCausaTocada(true)} placeholder="Por que voltou a acontecer?" aria-label="Causa raiz" aria-invalid={Boolean(causaTocada && erroCausa)} aria-describedby={causaTocada && erroCausa ? `causa-erro-${nc.id}` : undefined} />
+                {causaTocada && erroCausa && (
+                  <span id={`causa-erro-${nc.id}`} className="ui-field-error">
+                    {erroCausa}
+                  </span>
+                )}
               </div>
             )}
             {(nc.observacao.trim() || nc.ultimaOcorrencia) && (
               <div className="pc-plan-info">
                 {nc.observacao.trim() && (
-                  <div className="pc-registrado">
-                    <span className="ui-eyebrow">Registrado no checklist · {quandoCurto(nc.registradoEm)}</span>
-                    <p className="pc-registrado-texto">“{nc.observacao.trim()}”</p>
-                  </div>
+                  <p className="pc-info-linha" title={`Registrado no checklist · ${quandoCurto(nc.registradoEm)}: ${nc.observacao.trim()}`}>
+                    <span className="pc-info-rotulo">Registrado no checklist · {quandoCurto(nc.registradoEm)}</span> “{nc.observacao.trim()}”
+                  </p>
                 )}
                 {nc.ultimaOcorrencia && (
-                  <div className="pc-ultima">
-                    <span className="ui-eyebrow">Como foi nesse critério na última visita</span>
-                    <p className="pc-registrado-texto">
-                      {nc.ultimaOcorrencia.data} · {nc.ultimaOcorrencia.situacao}
-                      {nc.ultimaOcorrencia.acao ? ` · ${nc.ultimaOcorrencia.acao}` : ""}
-                    </p>
-                  </div>
+                  <p className="pc-info-linha" title={`Como foi na última visita: ${nc.ultimaOcorrencia.data} · ${nc.ultimaOcorrencia.situacao}${nc.ultimaOcorrencia.acao ? ` · ${nc.ultimaOcorrencia.acao}` : ""}`}>
+                    <span className="pc-info-rotulo">Como foi na última visita</span> {nc.ultimaOcorrencia.data} · {nc.ultimaOcorrencia.situacao}
+                    {nc.ultimaOcorrencia.acao ? ` · ${nc.ultimaOcorrencia.acao}` : ""}
+                  </p>
                 )}
               </div>
             )}
-
           </div>
           {resolvida && <div className="ui-note">Correção resolvida: o plano está protegido. Novas atualizações ou reabertura ficam em Atualizações.</div>}
 
-          {mostrarProvas && (
-            <div className="pc-provas">
-              <h3 className="pc-bloco-titulo">
-                <span className="pc-bloco-num" aria-hidden="true">3</span>
-                <span>Provas</span> <span className="pc-bloco-opcional">· opcional</span>
-              </h3>
-              {(botoes.foto || botoes.atualizacao) && (
-                <div className="pc-provas-botoes">
-                  {botoes.foto && (
-                    <>
-                      <input
-                        ref={entradaFoto}
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        hidden
-                        onChange={(evento) => {
-                          const arquivo = evento.target.files?.[0];
-                          evento.target.value = "";
-                          if (arquivo) onFotoDepois?.(nc.id, arquivo);
-                        }}
-                      />
-                      <button type="button" className="pc-prova-botao" aria-label={nc.par ? "Adicionar foto do depois" : "Adicionar foto"} onClick={pedirFoto}>
-                        + Foto
-                      </button>
-                    </>
-                  )}
-                  {botoes.atualizacao && (
-                    <button type="button" className="pc-prova-botao" onClick={() => setRegistrando(true)}>
-                      {rotuloDeRegistrarAtualizacao(resolvida)}
-                    </button>
-                  )}
-                </div>
-              )}
-              {mostrarEvidencias && (
-                <section className="pc-detail-secao" aria-label="Evidências">
-                  <div className="pc-detail-secao-titulo">
-                    Evidências {totalEvidencias > 0 && <span>{totalEvidencias}</span>}
-                  </div>
-                  {nc.par && fotosNoPar > 0 && (
-                    <AntesDepois variante="pc" antes={nc.par.antes} depois={nc.par.depois} podeAdicionar={false} resolvida={resolvida} onFotoDepois={(arquivo) => onFotoDepois?.(nc.id, arquivo)} />
-                  )}
-                  {evidenciasExtras.length > 0 && (
-                    <ul className="pc-detail-extras" aria-label="Outras evidências">
-                      {evidenciasExtras.map((ev) => (
-                        <li key={ev.id}>
-                          {ev.url ? (
-                            <a href={ev.url} target="_blank" rel="noreferrer">
-                              {ev.tipo} · {ev.quando}
-                            </a>
-                          ) : (
-                            <span>
-                              {ev.tipo} · {ev.quando}
-                            </span>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </section>
-              )}
-              {(mostrarAtualizacoes || (podeEditar && registrando)) && (
-                <section className="pc-detail-secao" aria-label="Atualizações">
-                  <div className="pc-detail-secao-titulo">
-                    Atualizações {nc.historico.length > 0 && <span>{nc.historico.length}</span>}
-                  </div>
-                  {nc.historico.length > 0 && (
-                    <div className="pc-history">
-                      {nc.historico.map((item) => (
-                        <div key={item.id} className="pc-history-item">
-                          <span className={`pc-history-ponto is-${item.status === "Resolvida" ? "ok" : item.status === "Em tratamento" ? "pend" : "nc"}`} aria-hidden="true" />
-                          <span className="pc-history-corpo">
-                            <span className="pc-history-text">{item.observacao}</span>
-                            <span className="pc-history-quando">{item.quando}</span>
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {podeEditar && registrando && (
-                    <div className="pc-update">
-                      <span className="ui-field-wrap ui-field-wrap--area">
-                        <textarea
-                          ref={atualizacaoRef}
-                          className="ui-input pc-input-tools"
-                          rows={3}
-                          value={texto}
-                          onChange={(evento) => setTexto(evento.target.value)}
-                          placeholder="Ex.: piso comprado; aguardando instalação; correção concluída..."
-                          aria-label="Texto da atualização"
-                        />
-                        <span className="ui-field-tools">
-                          <FieldVoiceTools fieldKey={`atualizacao-${nc.id}`} value={texto} onChange={setTexto} contexto="Atualização de acompanhamento de uma não conformidade em segurança dos alimentos." />
-                        </span>
-                      </span>
-                      <div className="pc-status-buttons" role="group" aria-label="Situação após a atualização">
-                        {(["Aberta", "Em tratamento", "Resolvida"] as StatusNc[]).map((status) => (
-                          <button key={status} type="button" aria-pressed={statusNovo === status} className={`pc-status-btn${statusNovo === status ? " is-on" : ""}`} onClick={() => setStatusNovo(status)}>
-                            {status === "Aberta" ? "Aberta" : status === "Em tratamento" ? "Em acompanhamento" : "Resolvida"}
-                          </button>
-                        ))}
-                      </div>
-                      {statusNovo === "Resolvida" && !resolvida && <div className="ui-note">Para concluir, é necessário ter pelo menos uma evidência vinculada.</div>}
-                      <div className="pc-update-acoes">
-                        <button type="button" className="ui-btn ui-btn--secondary" onClick={() => setRegistrando(false)}>
-                          Cancelar
-                        </button>
-                        <button
-                          type="button"
-                          className="ui-btn ui-btn--save"
-                          disabled={!texto.trim()}
-                          onClick={() => {
-                            onRegistrar(nc.id, texto, statusNovo);
-                            setTexto("");
-                            setRegistrando(false);
-                          }}
-                        >
-                          {statusNovo === "Resolvida" && !resolvida ? "Concluir e registrar" : "Registrar atualização"}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </section>
-              )}
-            </div>
-          )}
         </div>
 
         <aside className="pc-detail-lateral" aria-label="Quem faz e até quando">
@@ -964,11 +827,12 @@ function Detalhe({
             ) : (
               <div ref={responsavelRef} className="pc-pessoas">
                 {nomesDaLista.length > 0 && (
-                  <div className="pc-pessoas-lista" role="radiogroup" aria-labelledby={`resp-rotulo-${nc.id}`} aria-describedby={responsavelVazio ? `resp-erro-${nc.id}` : undefined} onKeyDown={aoTeclarNasPessoas}>
+                  <div className="pc-pessoas-lista" role="radiogroup" aria-labelledby={`resp-rotulo-${nc.id}`} aria-describedby={erroDoResponsavel ? `resp-erro-${nc.id}` : undefined} onKeyDown={aoTeclarNasPessoas} onBlur={() => marcarTocado("responsavel")}>
                     {nomesDaLista.map((nome, indice) => {
                       const marcada = mesmaPessoa(nome, responsavel);
                       return (
                         <button key={nome} type="button" role="radio" aria-checked={marcada} tabIndex={indice === Math.max(indiceMarcado, 0) ? 0 : -1} className={`pc-pessoa${marcada ? " is-on" : ""}`} title={nome} aria-label={nome} onClick={() => escolherPessoa(nome)}>
+                          {marcada && <span className="pc-pessoa-check" aria-hidden="true">✓ </span>}
                           {rotulosDaLista[indice]}
                         </button>
                       );
@@ -984,32 +848,49 @@ function Detalhe({
                       value={responsavel}
                       list={`pessoas-${nc.id}`}
                       autoFocus
+                      onFocus={() => {
+                        valorAntesDeAbrir.current = responsavel;
+                      }}
                       onChange={(evento) => {
+                        enterAdiado.current = false;
                         setResponsavel(evento.target.value);
                         setDigitando(true);
+                        marcarTocado("responsavel");
                       }}
-                      onBlur={() => fecharCampo(false)}
+                      onBlur={() => confirmarCampo(false)}
                       onKeyDown={(evento) => {
-                        // Enter confirma o nome digitado; Esc cancela e volta ao que estava escolhido antes de abrir o campo.
-                        if (evento.key === "Enter" || evento.key === "Escape") {
+                        if (evento.key === "Escape") {
+                          // Esc cancela: volta ao que estava escolhido antes (sem fechar a tela de trás).
                           evento.preventDefault();
-                          if (evento.key === "Escape") setResponsavel(valorAntesDeAbrir.current);
-                          fecharCampo(true);
+                          evento.stopPropagation();
+                          fecharCampo(true, valorAntesDeAbrir.current);
+                        } else if (evento.key === "Enter") {
+                          // Enter confirma, mas não atropela a lista do navegador: com um nome parcial que ainda casa com opções, o primeiro Enter fica para a lista (escolher a opção) e o segundo confirma.
+                          const valor = campoRef.current?.value ?? "";
+                          const exato = pessoas.some((pessoa) => mesmaPessoa(pessoa, valor));
+                          const listaProvavel = Boolean(valor.trim()) && !exato && pessoas.some((pessoa) => chaveDaPessoa(pessoa).includes(chaveDaPessoa(valor)));
+                          if (listaProvavel && !enterAdiado.current) {
+                            enterAdiado.current = true;
+                            return;
+                          }
+                          enterAdiado.current = false;
+                          evento.preventDefault();
+                          confirmarCampo(true);
                         }
                       }}
                       placeholder="Escolha o responsável"
                       aria-label="Nome do responsável"
-                      aria-invalid={responsavelVazio}
-                      aria-describedby={responsavelVazio ? `resp-erro-${nc.id}` : undefined}
+                      aria-invalid={erroDoResponsavel}
+                      aria-describedby={erroDoResponsavel ? `resp-erro-${nc.id}` : undefined}
                     />
                     <datalist id={`pessoas-${nc.id}`}>
-                      {pessoas.map((pessoa) => (
-                        <option key={pessoa} value={pessoa} />
+                      {pessoasUnicas(pessoas).map((pessoa) => (
+                        <option key={chaveDaPessoa(pessoa)} value={pessoa} />
                       ))}
                     </datalist>
                   </>
                 ) : (
-                  <button ref={outraRef} type="button" className="pc-pessoa pc-pessoa--outra" onClick={() => {
+                  <button ref={outraRef} type="button" className="pc-pessoa pc-pessoa--outra" aria-expanded={false} onClick={() => {
                     valorAntesDeAbrir.current = responsavel;
                     setOutraPessoa(true);
                   }}>
@@ -1019,7 +900,7 @@ function Detalhe({
               </div>
             )}
             <span id={`resp-erro-${nc.id}`} className="pc-resp-erro" aria-live="polite">
-              {!bloqueado && responsavelVazio ? "Escolha o responsável" : ""}
+              {erroDoResponsavel ? "Escolha o responsável" : ""}
             </span>
             {onLembrete && (
               <button type="button" className="pc-plan-lembrete" onClick={onLembrete}>
@@ -1042,10 +923,10 @@ function Detalhe({
                 onChange={(evento) => setPrazo(evento.target.value)}
                 onBlur={() => marcarTocado("prazo")}
                 aria-invalid={erroDoPrazo}
-                aria-describedby={[erroDoPrazo ? `prazo-erro-${nc.id}` : "", !bloqueado ? `prazo-sug-${nc.id}` : ""].filter(Boolean).join(" ") || undefined}
+                aria-describedby={[erroDoPrazo ? `prazo-erro-${nc.id}` : "", sugestaoDoPrazoVisivel ? `prazo-sug-${nc.id}` : ""].filter(Boolean).join(" ") || undefined}
               />
               {prazoNoPassado && (
-                <span id={`prazo-erro-${nc.id}`} className="pc-prazo-erro" role="alert" title={erros.prazo}>
+                <span id={`prazo-erro-${nc.id}`} className="pc-prazo-erro" role="alert">
                   Já passou
                 </span>
               )}
@@ -1055,21 +936,147 @@ function Detalhe({
                 {erros.prazo}
               </span>
             )}
-            {!bloqueado && (
-              <button type="button" id={`prazo-sug-${nc.id}`} className="pc-prazo-sugerido" title={`Usar ${dataMes(sugestao.data)}`} onClick={() => setPrazo(sugestao.data)}>
-                {sugestao.dias} dias · {nc.gravidade === "Rotina" ? "leve" : nc.gravidade.toLocaleLowerCase("pt-BR")}
-              </button>
-            )}
+            {sugestaoDoPrazoVisivel &&
+              (sugestaoComoAcao ? (
+                <button type="button" id={`prazo-sug-${nc.id}`} className="pc-prazo-sugerido" onClick={() => setPrazo(sugestao.data)}>
+                  Usar {dataMes(sugestao.data)} · {textoDaGravidade}
+                </button>
+              ) : (
+                <span id={`prazo-sug-${nc.id}`} className="pc-prazo-texto">
+                  {textoDaGravidade}
+                </span>
+              ))}
           </div>
         </aside>
+        {mostrarProvas && (
+          <div className="pc-provas">
+            <h3 className="pc-bloco-titulo">
+              <span className="pc-bloco-num" aria-hidden="true">3</span>
+              <span>Provas</span> <span className="pc-bloco-opcional">· opcional</span>
+            </h3>
+            {(botoes.foto || botoes.atualizacao) && (
+              <div className="pc-provas-botoes">
+                {botoes.foto && (
+                  <>
+                    <input
+                      ref={entradaFoto}
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      hidden
+                      onChange={(evento) => {
+                        const arquivo = evento.target.files?.[0];
+                        evento.target.value = "";
+                        if (arquivo) onFotoDepois?.(nc.id, arquivo);
+                      }}
+                    />
+                    <button type="button" className="pc-prova-botao" aria-label={nc.par ? "Adicionar foto do depois" : "Adicionar foto"} onClick={pedirFoto}>
+                      + Foto
+                    </button>
+                  </>
+                )}
+                {botoes.atualizacao && (
+                  <button type="button" className="pc-prova-botao" onClick={() => setRegistrando(true)}>
+                    {rotuloDeRegistrarAtualizacao(resolvida)}
+                  </button>
+                )}
+              </div>
+            )}
+            {mostrarEvidencias && (
+              <section className="pc-detail-secao" aria-label="Evidências">
+                <div className="pc-detail-secao-titulo">
+                  Evidências {totalEvidencias > 0 && <span>{totalEvidencias}</span>}
+                </div>
+                {nc.par && fotosNoPar > 0 && (
+                  <AntesDepois variante="pc" antes={nc.par.antes} depois={nc.par.depois} podeAdicionar={false} resolvida={resolvida} onFotoDepois={(arquivo) => onFotoDepois?.(nc.id, arquivo)} />
+                )}
+                {evidenciasExtras.length > 0 && (
+                  <ul className="pc-detail-extras" aria-label="Outras evidências">
+                    {evidenciasExtras.map((ev) => (
+                      <li key={ev.id}>
+                        {ev.url ? (
+                          <a href={ev.url} target="_blank" rel="noreferrer">
+                            {ev.tipo} · {ev.quando}
+                          </a>
+                        ) : (
+                          <span>
+                            {ev.tipo} · {ev.quando}
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+            )}
+            {(mostrarAtualizacoes || (podeEditar && registrando)) && (
+              <section className="pc-detail-secao" aria-label="Atualizações">
+                <div className="pc-detail-secao-titulo">
+                  Atualizações {nc.historico.length > 0 && <span>{nc.historico.length}</span>}
+                </div>
+                {nc.historico.length > 0 && (
+                  <div className="pc-history">
+                    {nc.historico.map((item) => (
+                      <div key={item.id} className="pc-history-item">
+                        <span className={`pc-history-ponto is-${item.status === "Resolvida" ? "ok" : item.status === "Em tratamento" ? "pend" : "nc"}`} aria-hidden="true" />
+                        <span className="pc-history-corpo">
+                          <span className="pc-history-text">{item.observacao}</span>
+                          <span className="pc-history-quando">{item.quando}</span>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {podeEditar && registrando && (
+                  <div className="pc-update">
+                    <span className="ui-field-wrap ui-field-wrap--area">
+                      <textarea
+                        ref={atualizacaoRef}
+                        className="ui-input pc-input-tools"
+                        rows={3}
+                        value={texto}
+                        onChange={(evento) => setTexto(evento.target.value)}
+                        placeholder="Ex.: piso comprado; aguardando instalação; correção concluída..."
+                        aria-label="Texto da atualização"
+                      />
+                      <span className="ui-field-tools">
+                        <FieldVoiceTools fieldKey={`atualizacao-${nc.id}`} value={texto} onChange={setTexto} contexto="Atualização de acompanhamento de uma não conformidade em segurança dos alimentos." />
+                      </span>
+                    </span>
+                    <div className="pc-status-buttons" role="group" aria-label="Situação após a atualização">
+                      {(["Aberta", "Em tratamento", "Resolvida"] as StatusNc[]).map((status) => (
+                        <button key={status} type="button" aria-pressed={statusNovo === status} className={`pc-status-btn${statusNovo === status ? " is-on" : ""}`} onClick={() => setStatusNovo(status)}>
+                          {status === "Aberta" ? "Aberta" : status === "Em tratamento" ? "Em acompanhamento" : "Resolvida"}
+                        </button>
+                      ))}
+                    </div>
+                    {statusNovo === "Resolvida" && !resolvida && <div className="ui-note">Para concluir, é necessário ter pelo menos uma evidência vinculada.</div>}
+                    <div className="pc-update-acoes">
+                      <button type="button" className="ui-btn ui-btn--secondary" onClick={() => setRegistrando(false)}>
+                        Cancelar
+                      </button>
+                      <button
+                        type="button"
+                        className="ui-btn ui-btn--save"
+                        disabled={!texto.trim()}
+                        onClick={() => {
+                          onRegistrar(nc.id, texto, statusNovo);
+                          setTexto("");
+                          setRegistrando(false);
+                        }}
+                      >
+                        {statusNovo === "Resolvida" && !resolvida ? "Concluir e registrar" : "Registrar atualização"}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </section>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="pc-detail-foot pc-detail-foot--plano">
-        {faltas && !bloqueado && faltaParaSalvar.length === 0 && (
-          <span className="pc-falta" role="alert">
-            {faltas}
-          </span>
-        )}
         {!bloqueado && textoDoRodape && (
           <span id={`falta-${nc.id}`} className={`pc-falta pc-falta--motivo${motivoDoBotao ? "" : " is-proxima"}`} title={motivoDoBotao ? undefined : textoDoRodape}>
             {textoDoRodape}
