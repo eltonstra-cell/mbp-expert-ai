@@ -71,3 +71,18 @@ export function contextoDoDetalhe(nc: { titulo: string; ambiente: string; numero
   if (nc.reincidente) partes.push((seloDaReincidencia(nc.vezes || 0) || "Reincidente").toLocaleLowerCase("pt-BR"));
   return { texto: partes.join(" · "), codigo: linha.codigo };
 }
+
+/** Largura mínima (px) reservada ao link "+N sugestões" / "Recolher sugestões" (o mais largo dos dois). */
+export const RESERVA_DO_LINK_DE_SUGESTOES = 150;
+
+/**
+ * O chip "Ação que funcionou antes · Visita N" só fica na barra do campo da ação quando cabe INTEIRO, ao lado das ferramentas e (se houver
+ * outras sugestões) do link "+N sugestões". Se não cabe, ele entra na lista de "+N sugestões" (nunca é cortado nem perde o "Visita N").
+ * Larguras em px; `reservaDoMais` só vale quando há outras sugestões.
+ */
+export function chipDaAcaoCabeNaBarra(medidas: { larguraDaBarra: number; ferramentas: number; chip: number; reservaDoMais: number; espaco?: number }): boolean {
+  const espaco = medidas.espaco ?? 8;
+  const itens = medidas.reservaDoMais > 0 ? 3 : 2;
+  const necessario = medidas.ferramentas + medidas.chip + medidas.reservaDoMais + espaco * (itens - 1);
+  return medidas.larguraDaBarra >= necessario;
+}

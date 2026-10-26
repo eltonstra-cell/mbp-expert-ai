@@ -5867,3 +5867,49 @@ html .ui-screen.pc-cor .ad--pc .ad-sem-imagem{padding:0 6px;text-align:center;fo
 html .ui-screen.pc-cor .pc-detail-duas.pc-detail-duas--acrescimos{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px 28px}
 html .ui-screen.pc-cor .pc-detail-duas--acrescimos>.pc-detail-secao{flex:0 1 auto;max-width:100%}
 html .ui-screen.pc-cor .pc-detail-duas>.pc-acrescimos{display:flex;flex:1 0 auto;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:4px 10px;min-height:0;margin-bottom:14px;font-size:15px;color:var(--rd-texto-fraco)}
+
+/* =====================================================================================================================
+   AJUSTES v2.46 · Correções: chips de responsável legíveis, "Enviar lembrete" no grupo do rótulo, etapa de 1000 a 1300 px
+   ===================================================================================================================== */
+/* Responsável: rótulo, "Enviar lembrete" (logo depois do rótulo) e chips formam UM grupo encostado; os chips fluem depois e descem juntos. O chip só é cortado se NÃO couber na coluna.
+   Alvos de toque de 40 px sem aumentar a altura do grupo: o chip tem 32 px visuais + 4 px transparentes de cada lado (margem negativa devolve o espaço). */
+html .ui-screen.pc-cor .pc-plan-resp .pc-plan-rotulo{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-start;gap:2px 8px}
+html .ui-screen.pc-cor .pc-plan-resp .pc-plan-rotulo>label{flex:none;min-height:32px;margin-right:0}
+html .ui-screen.pc-cor .pc-plan-resp .pc-plan-rotulo .pc-plan-lembrete{flex:none;justify-self:auto;box-sizing:border-box;min-height:40px;margin:-4px 0;padding:0 4px;font-size:15px;color:var(--rd-acao);white-space:nowrap}
+html .ui-screen.pc-cor .pc-plan-resp .pc-plan-rotulo .pc-memoria{display:contents}
+html .ui-screen.pc-cor .pc-plan-resp .pc-plan-rotulo .pc-memoria .pc-chip-btn{flex:0 1 auto;box-sizing:border-box;min-width:0;max-width:100%;height:40px;margin:-4px 0;border:4px solid transparent;background-clip:padding-box;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Foco visível (teclado) nos chips, no lembrete, em "+N sugestões" e nos acréscimos; o corpo rolável tem 3 px à esquerda para o contorno não ser cortado */
+html .ui-screen.pc-cor :is(.pc-chip-btn,.pc-plan-lembrete,.pc-acao-mais,.pc-acrescimo,.pc-acao-sugestao,.pc-detail-registrar):focus-visible{outline:3px solid var(--rd-acao);outline-offset:2px}
+html .ui-screen.pc-cor .pc-plan-resp .pc-plan-rotulo .pc-memoria .pc-chip-btn:focus-visible{outline-offset:-2px}
+html .ui-screen.pc-cor .pc-acao-mais{min-height:40px}
+
+/* Responsável e Prazo lado a lado até 1100 px (o Prazo comporta a data e o chip "15 dias · importante"); abaixo disso empilham */
+html .ui-screen.pc-cor .pc-plan-resp{flex:1 1 0;min-width:0}
+html .ui-screen.pc-cor .pc-plan-prazo{flex:0 0 320px;min-width:320px}
+html .ui-screen.pc-cor .pc-prazo-sugerido{right:40px;padding:2px 8px}
+html .ui-screen.pc-cor .pc-prazo-erro{right:40px}
+@media (max-width:1099px){
+  html .ui-screen.pc-cor .pc-plan-campos{flex-direction:column;align-items:stretch;gap:12px}
+  html .ui-screen.pc-cor .pc-plan-resp,html .ui-screen.pc-cor .pc-plan-prazo{flex:none;min-width:0;width:100%}
+}
+
+/* Com nomes compostos longos o grupo do Responsável ocupa 2 linhas: espaços internos menores devolvem a altura (1440x800, 1 evidência, sem rolagem interna e com folga) */
+html .ui-screen.pc-cor .pc-detail-scroll{gap:10px;padding:8px 4px 8px 3px}
+html .ui-screen.pc-cor .pc-plan-stack{gap:10px}
+html .ui-screen.pc-cor .pc-acao-conjunto .pc-acao-linha{padding-bottom:6px}
+
+/* Chip "Ação que funcionou antes · Visita N": inteiro (sem reticências) ou, sem espaço, dentro de "+N sugestões" (o componente mede; oculto = só medição, preso ao canto para não gerar rolagem) */
+html .ui-screen.pc-cor .pc-acao-linha{position:relative}
+html .ui-screen.pc-cor .pc-acao-linha .pc-chip-funcionou{flex:none;max-width:none;overflow:visible;text-overflow:clip;white-space:nowrap}
+html .ui-screen.pc-cor .pc-acao-linha .pc-chip-funcionou.is-oculto{position:absolute;top:0;right:0;visibility:hidden;pointer-events:none}
+html .ui-screen.pc-cor .pc-acao-linha .pc-chip-funcionou.is-oculto+.pc-acao-mais{margin-left:auto}
+
+/* Etapa de 1000 a 1300 px: abaixo de 1200 px a lista encolhe para 300 px e "Falar" vira só o ícone (aria-label e title continuam) */
+@media (min-width:1001px) and (max-width:1199px){
+  html .ui-screen.pc-cor .pc-master--corr{grid-template-columns:300px minmax(0,1fr)}
+}
+@media (max-width:1199px){
+  html .ui-screen.pc-cor .pc-acao-linha .field-assist-voice{justify-content:center;width:40px;min-width:40px;padding:0}
+  html .ui-screen.pc-cor .pc-acao-linha .field-assist-voice>span{display:none}
+}

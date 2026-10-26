@@ -3,12 +3,13 @@
 import { dataISOLocal, formatarDataCurta, formatarDataHora, formatarHora, hojeLocalISO } from "@/lib/dataLocal";
 import AntesDepois, { type FotoDoPar } from "@/components/AntesDepois";
 import CaixaQueCresce from "@/components/CaixaQueCresce";
-import { sugestoesDeResponsavel } from "@/lib/pessoas";
+import { rotulosDeChipsDePessoas, sugestoesDeResponsavel } from "@/lib/pessoas";
 import { confirmar } from "@/lib/dialogos";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
 import { NavIcon } from "@/components/NavIcons";
 import { Pill, type Tom } from "@/components/ui/Pill";
+import { RESERVA_DO_LINK_DE_SUGESTOES, chipDaAcaoCabeNaBarra } from "@/lib/layoutDeCorrecoes";
 import { NOME_DA_GRAVIDADE, linhaDaCorrecao, mensagemDeFaltas, primeiroCampoComProblema, rodapeDoSalvar, type CampoDoPlano } from "@/lib/correcaoRotulos";
 import { agruparCorrecoes, aposSalvarPlano, ordemVisual, primeiraSemPlano, proximaSemPlano, restantesSemPlano, type AgruparCorrecoes } from "@/lib/fluxoDeCorrecoes";
 import { mostrarToast } from "@/lib/toast";
@@ -55,7 +56,6 @@ export type CorrecaoItem = {
   /** Número da visita que trouxe a ação que funcionou (para o chip "Ação que funcionou antes · Visita N"). */
   acaoQueFuncionouVisita?: number;
   /** Último responsável das correções deste ambiente (proposta, o RT confirma). */
-  responsavelSugerido?: string;
   /** Chips de memória: últimos responsáveis e últimas ações da empresa. */
   memoriaResponsaveis?: string[];
   memoriaAcoes?: string[];
@@ -530,8 +530,9 @@ function Detalhe({
 
   const vazio = (valor: string) => !valor.trim();
 
-  // Chips: só pessoas cadastradas na empresa (e o usuário atual), no máximo 3; nome digitado à mão em outra correção nunca vira sugestão.
-  const nomesSugeridos = sugestoesDeResponsavel({ cadastradas: pessoas, ultimoDoAmbiente: nc.responsavelSugerido, escolhido: responsavel, limite: 3 });
+  // Chips: só pessoas cadastradas na empresa (e o usuário atual), no máximo 3, sempre em ordem alfabética; rótulo = primeiro nome + último sobrenome (nome completo no title); nome digitado à mão em outra correção nunca vira sugestão.
+  const nomesSugeridos = sugestoesDeResponsavel({ cadastradas: pessoas, escolhido: responsavel, limite: 3 });
+  const rotulosDosChips = rotulosDeChipsDePessoas(nomesSugeridos);
   const responsavelVazio = vazio(responsavel);
   const faltaParaSalvar = [vazio(acao) ? "a ação" : "", responsavelVazio ? "o responsável" : "", erros.prazo ? "o prazo" : "", erroCausa ? "a causa raiz" : ""].filter(Boolean);
   const motivoDoBotao = textoDoQueFalta(faltaParaSalvar);
@@ -602,6 +603,38 @@ function Detalhe({
     ...(nc.acaoDoPop ? [{ rotulo: `Ação do POP ${nc.acaoDoPop.codigo}`, texto: nc.acaoDoPop.texto }] : []),
     ...(nc.memoriaAcoes || []).map((texto) => ({ rotulo: "Usada antes", texto })),
   ].filter((item, indice, todos) => item.texto && item.texto !== acao.trim() && item.texto !== nc.acaoQueFuncionou && todos.findIndex((outro) => outro.texto === item.texto) === indice);
+  // O chip "Ação que funcionou antes · Visita N" fica na barra só quando cabe inteiro; sem espaço ele entra em "+N sugestões" (nunca é cortado).
+  const rotuloDoFuncionou = `Ação que funcionou antes${nc.acaoQueFuncionouVisita ? ` · Visita ${nc.acaoQueFuncionouVisita}` : nc.dataAnterior ? ` · visita de ${dataMes(nc.dataAnterior)}` : ""}`;
+  const [chipNaBarra, setChipNaBarra] = useState(true);
+  const linhaDaAcaoRef = useRef<HTMLDivElement | null>(null);
+  const chipFuncionouRef = useRef<HTMLButtonElement | null>(null);
+  const outrasSugestoes = sugestoes.length;
+  useLayoutEffect(() => {
+    const linha = linhaDaAcaoRef.current;
+    const ferramentas = linha?.querySelector<HTMLElement>(".ui-field-tools");
+    if (!linha || !ferramentas || !funcionouVisivel) return;
+    const medir = () => {
+      const chip = chipFuncionouRef.current;
+      if (!chip) return;
+      const estilo = getComputedStyle(linha);
+      const larguraDaBarra = linha.clientWidth - parseFloat(estilo.paddingLeft) - parseFloat(estilo.paddingRight);
+      setChipNaBarra(chipDaAcaoCabeNaBarra({ larguraDaBarra, ferramentas: ferramentas.offsetWidth, chip: chip.offsetWidth, reservaDoMais: outrasSugestoes > 0 ? Math.max(RESERVA_DO_LINK_DE_SUGESTOES, linha.querySelector<HTMLElement>(".pc-acao-mais")?.offsetWidth ?? 0) : 0 }));
+    };
+    medir();
+    // A fonte do app pode chegar depois da primeira medida: mede de novo quando ela carrega e quando o chip muda de tamanho.
+    let ativo = true;
+    void document.fonts?.ready.then(() => ativo && medir());
+    const observador = new ResizeObserver(medir);
+    observador.observe(linha);
+    observador.observe(ferramentas);
+    if (chipFuncionouRef.current) observador.observe(chipFuncionouRef.current);
+    return () => {
+      ativo = false;
+      observador.disconnect();
+    };
+  }, [funcionouVisivel, rotuloDoFuncionou, outrasSugestoes, bloqueado]);
+  const chipNaLista = funcionouVisivel && !chipNaBarra;
+  const sugestoesDaLista = chipNaLista ? [{ rotulo: rotuloDoFuncionou, texto: nc.acaoQueFuncionou as string }, ...sugestoes] : sugestoes;
 
   return (
     <>
@@ -733,26 +766,26 @@ function Detalhe({
               aria-describedby={mostrarErro("acao") ? `acao-erro-${nc.id}` : undefined}
             />
             {!bloqueado && (
-              <div className="pc-acao-linha">
+              <div ref={linhaDaAcaoRef} className="pc-acao-linha">
                 <span className="ui-field-tools">
                   <FieldVoiceTools fieldKey={`acao-${nc.id}`} value={acao} onChange={setAcao} rotuloIa="Sugerir com IA" contexto="Ação corretiva para uma não conformidade em segurança dos alimentos." />
                 </span>
                 {funcionouVisivel && (
-                  <button type="button" className="pc-chip-btn pc-chip-btn--soft pc-chip-funcionou" title={nc.acaoQueFuncionou} onClick={() => escolherAcao(nc.acaoQueFuncionou as string)}>
-                    ↺ Ação que funcionou antes{nc.acaoQueFuncionouVisita ? ` · Visita ${nc.acaoQueFuncionouVisita}` : nc.dataAnterior ? ` · visita de ${dataMes(nc.dataAnterior)}` : ""}
+                  <button ref={chipFuncionouRef} type="button" className={`pc-chip-btn pc-chip-btn--soft pc-chip-funcionou${chipNaBarra ? "" : " is-oculto"}`} title={nc.acaoQueFuncionou} aria-hidden={chipNaBarra ? undefined : true} tabIndex={chipNaBarra ? undefined : -1} onClick={() => escolherAcao(nc.acaoQueFuncionou as string)}>
+                    ↺ {rotuloDoFuncionou}
                   </button>
                 )}
-                {sugestoes.length > 0 && (
+                {sugestoesDaLista.length > 0 && (
                   <button type="button" className="pc-acao-mais" aria-expanded={sugestoesAbertas} onClick={() => setSugestoesAbertas((aberto) => !aberto)}>
-                    {sugestoesAbertas ? "Recolher sugestões" : `+${sugestoes.length} ${sugestoes.length === 1 ? "sugestão" : "sugestões"}`}
+                    {sugestoesAbertas ? "Recolher sugestões" : `+${sugestoesDaLista.length} ${sugestoesDaLista.length === 1 ? "sugestão" : "sugestões"}`}
                   </button>
                 )}
               </div>
             )}
             </div>
-            {!bloqueado && sugestoesAbertas && sugestoes.length > 0 && (
+            {!bloqueado && sugestoesAbertas && sugestoesDaLista.length > 0 && (
               <div className="pc-acao-sugestoes" role="group" aria-label="Outras sugestões de ação">
-                {sugestoes.map((sugestao) => (
+                {sugestoesDaLista.map((sugestao) => (
                   <button key={`${sugestao.rotulo}:${sugestao.texto}`} type="button" className="pc-acao-sugestao" title={sugestao.texto} onClick={() => escolherAcao(sugestao.texto)}>
                     <span className="pc-acao-sugestao-rotulo">{sugestao.rotulo}</span>
                     <span className="pc-acao-sugestao-texto">{sugestao.texto}</span>
@@ -771,19 +804,19 @@ function Detalhe({
             <div className="pc-plan-block pc-plan-resp">
               <span className="pc-plan-rotulo">
                 <label htmlFor={`resp-${nc.id}`}>Responsável</label>
-                {!bloqueado && nomesSugeridos.length > 0 && (
-                  <span className="pc-memoria" role="group" aria-label="Responsáveis sugeridos">
-                    {nomesSugeridos.map((nome) => (
-                      <button key={nome} type="button" className="pc-chip-btn pc-chip-btn--soft" title={nome} onClick={() => setResponsavel(nome)}>
-                        {nome}
-                      </button>
-                    ))}
-                  </span>
-                )}
                 {onLembrete && (
                   <button type="button" className="pc-plan-lembrete" onClick={onLembrete}>
                     Enviar lembrete
                   </button>
+                )}
+                {!bloqueado && nomesSugeridos.length > 0 && (
+                  <span className="pc-memoria" role="group" aria-label="Responsáveis sugeridos">
+                    {nomesSugeridos.map((nome, indice) => (
+                      <button key={nome} type="button" className="pc-chip-btn pc-chip-btn--soft" title={nome} aria-label={`Usar ${nome} como responsável`} onClick={() => setResponsavel(nome)}>
+                        {rotulosDosChips[indice]}
+                      </button>
+                    ))}
+                  </span>
                 )}
               </span>
               <input
@@ -819,8 +852,9 @@ function Detalhe({
                   aria-describedby={mostrarErro("prazo") ? `prazo-erro-${nc.id}` : undefined}
                 />
                 {mostrarErro("prazo") ? (
-                  <span id={`prazo-erro-${nc.id}`} className="pc-prazo-erro" role="alert">
-                    {erros.prazo}
+                  <span id={`prazo-erro-${nc.id}`} className="pc-prazo-erro" role="alert" title={erros.prazo}>
+                    <span aria-hidden="true">{prazo ? "Data no passado" : erros.prazo}</span>
+                    <span className="sr-only">{erros.prazo}</span>
                   </span>
                 ) : (
                   !bloqueado && (

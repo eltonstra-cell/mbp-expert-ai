@@ -28,14 +28,43 @@ export function pessoasUnicas(nomes: string[]): string[] {
   return saida;
 }
 
+const ORDEM_DE_NOMES = new Intl.Collator("pt-BR", { sensitivity: "base" });
+
 /**
  * Chips de sugestão de responsável: só pessoas cadastradas na empresa e o usuário atual (nome digitado à mão em outra correção
- * nunca vira sugestão). O último responsável do ambiente, quando é uma dessas pessoas, vem primeiro. Máximo de `limite`, sem a pessoa já escolhida.
+ * nunca vira sugestão). A ordem é SEMPRE alfabética pelo nome completo (sem acento nem caixa), igual em todas as correções;
+ * a pessoa já escolhida não aparece. Máximo de `limite`.
  */
-export function sugestoesDeResponsavel(dados: { cadastradas: string[]; usuarioAtual?: string; ultimoDoAmbiente?: string; escolhido?: string; limite?: number }): string[] {
+export function sugestoesDeResponsavel(dados: { cadastradas: string[]; usuarioAtual?: string; escolhido?: string; limite?: number }): string[] {
   const limite = dados.limite ?? 3;
   const pessoas = pessoasUnicas([...dados.cadastradas, ...(dados.usuarioAtual ? [dados.usuarioAtual] : [])]);
-  const ultimo = dados.ultimoDoAmbiente ? pessoas.find((nome) => mesmaPessoa(nome, dados.ultimoDoAmbiente as string)) : undefined;
-  const ordenadas = ultimo ? [ultimo, ...pessoas.filter((nome) => !mesmaPessoa(nome, ultimo))] : pessoas;
-  return ordenadas.filter((nome) => !dados.escolhido || !mesmaPessoa(nome, dados.escolhido)).slice(0, limite);
+  return pessoas
+    .filter((nome) => !dados.escolhido || !mesmaPessoa(nome, dados.escolhido))
+    .sort((a, b) => ORDEM_DE_NOMES.compare(a, b))
+    .slice(0, limite);
+}
+
+const SUFIXOS_DE_NOME = new Set(["neto", "filho", "junior", "jr", "sobrinho"]);
+
+/**
+ * Nome curto para o chip: primeiro nome + último sobrenome ("Elton Volmir Strapazon" -> "Elton Strapazon"). Se o último termo é um sufixo
+ * (Neto, Filho, Júnior, Jr, Sobrinho) usa o sobrenome anterior ("Francisco Vasconcelos Neto" -> "Francisco Vasconcelos"). Nome de uma ou duas palavras fica como está.
+ */
+export function nomeCurtoDaPessoa(nome: string): string {
+  const partes = (nome || "").trim().split(/\s+/).filter(Boolean);
+  if (partes.length <= 2) return partes.join(" ");
+  const ultimo = partes[partes.length - 1];
+  const sobrenome = SUFIXOS_DE_NOME.has(chaveDaPessoa(ultimo).replace(/\.$/, "")) ? partes[partes.length - 2] : ultimo;
+  return `${partes[0]} ${sobrenome}`;
+}
+
+/**
+ * Rótulos dos chips, na mesma ordem dos nomes: o nome curto; se duas pessoas gerarem o mesmo nome curto (sem acento nem caixa),
+ * as duas usam o nome completo para desempatar.
+ */
+export function rotulosDeChipsDePessoas(nomes: string[]): string[] {
+  const curtos = nomes.map(nomeCurtoDaPessoa);
+  const contagem = new Map<string, number>();
+  for (const curto of curtos) contagem.set(chaveDaPessoa(curto), (contagem.get(chaveDaPessoa(curto)) || 0) + 1);
+  return nomes.map((nome, indice) => ((contagem.get(chaveDaPessoa(curtos[indice])) || 0) > 1 ? nome.trim().replace(/\s+/g, " ") : curtos[indice]));
 }

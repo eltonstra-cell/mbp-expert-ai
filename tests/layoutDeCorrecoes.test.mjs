@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { acrescimosNaLinhaDasEvidencias, acrescimosVazios, conteudoDeAtualizacoes, conteudoDeEvidencias, contagemDeEvidencias, contextoDoDetalhe, evidenciasSemFoto, rotuloDeRegistrarAtualizacao, selosDoCartao } from "../lib/layoutDeCorrecoes.ts";
+import { acrescimosNaLinhaDasEvidencias, chipDaAcaoCabeNaBarra, RESERVA_DO_LINK_DE_SUGESTOES, acrescimosVazios, conteudoDeAtualizacoes, conteudoDeEvidencias, contagemDeEvidencias, contextoDoDetalhe, evidenciasSemFoto, rotuloDeRegistrarAtualizacao, selosDoCartao } from "../lib/layoutDeCorrecoes.ts";
 
 const foto = { id: "f1" };
 const audio = { id: "a1", tipo: "Áudio" };
@@ -70,4 +70,22 @@ test("acrescimosNaLinhaDasEvidencias: só com evidências e sem bloco de atualiz
   assert.equal(acrescimosNaLinhaDasEvidencias(true, true), false, "com atualizações os acréscimos vão ao fim do corpo");
   assert.equal(acrescimosNaLinhaDasEvidencias(false, false), false, "sem evidências não há linha onde ancorar");
   assert.equal(acrescimosNaLinhaDasEvidencias(false, true), false);
+});
+
+test("chip 'Ação que funcionou antes' fica na barra só quando cabe inteiro; senão entra em '+N sugestões'", () => {
+  assert.equal(chipDaAcaoCabeNaBarra({ larguraDaBarra: 700, ferramentas: 190, chip: 290, reservaDoMais: 120 }), true);
+  assert.equal(chipDaAcaoCabeNaBarra({ larguraDaBarra: 590, ferramentas: 190, chip: 290, reservaDoMais: 120 }), false);
+  // sem outras sugestões não precisa reservar o link
+  assert.equal(chipDaAcaoCabeNaBarra({ larguraDaBarra: 500, ferramentas: 190, chip: 290, reservaDoMais: 0 }), true);
+  assert.equal(chipDaAcaoCabeNaBarra({ larguraDaBarra: 480, ferramentas: 190, chip: 290, reservaDoMais: 0 }), false);
+});
+
+test("chip da ação: limite exato da largura (cabe com folga zero, não cabe com 1 px a menos) e reserva do link '+N sugestões'", () => {
+  // ferramentas 190 + chip 290 + link 150 + 2 espaços de 8 = 646
+  assert.equal(RESERVA_DO_LINK_DE_SUGESTOES, 150);
+  assert.equal(chipDaAcaoCabeNaBarra({ larguraDaBarra: 646, ferramentas: 190, chip: 290, reservaDoMais: 150 }), true);
+  assert.equal(chipDaAcaoCabeNaBarra({ larguraDaBarra: 645, ferramentas: 190, chip: 290, reservaDoMais: 150 }), false);
+  // sem outras sugestões: 190 + 290 + 1 espaço de 8 = 488
+  assert.equal(chipDaAcaoCabeNaBarra({ larguraDaBarra: 488, ferramentas: 190, chip: 290, reservaDoMais: 0 }), true);
+  assert.equal(chipDaAcaoCabeNaBarra({ larguraDaBarra: 487, ferramentas: 190, chip: 290, reservaDoMais: 0 }), false);
 });

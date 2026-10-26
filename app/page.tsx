@@ -5208,7 +5208,6 @@ export default function Home() {
           vezes: historico.vezes,
           acaoQueFuncionou: historico.acaoQueFuncionou || undefined,
           acaoQueFuncionouVisita: historico.visitaDaAcao ? numeroVisitaPorId.get(historico.visitaDaAcao) : undefined,
-          responsavelSugerido: memoria.responsavelDoAmbiente || undefined,
           memoriaResponsaveis: memoria.responsaveis,
           memoriaAcoes: memoria.acoes,
           causaRaiz: nc.causaRaiz || "",

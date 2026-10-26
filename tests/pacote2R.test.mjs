@@ -105,7 +105,7 @@ test("microfone como ícone DENTRO do campo, na ponta direita; sem a linha 'Fala
   assert.equal(/Falar/.test(campos), false, "sem a linha 'Falar' embaixo do campo");
   const voz = ler("../components/FieldVoiceTools.tsx");
   assert.ok(voz.includes("soIcone?: boolean") && voz.includes("{!soIcone && <span>"), "o texto 'Falar' some, a funcionalidade fica");
-  assert.ok(voz.includes('aria-label={gravando ? "Parar e transcrever"'));
+  assert.ok(voz.includes('aria-label={rotuloDoBotaoDeVoz}') && voz.includes('title={rotuloDoBotaoDeVoz}') && voz.includes('const rotuloDoBotaoDeVoz = gravando ? "Parar e transcrever"'), "title e aria-label iguais em todos os estados");
   const css = ler("../app/globals.css");
   assert.match(css, /\.cad-adicionar\{flex:none;height:40px;min-height:40px/);
   assert.match(css, /\.cad-input--voz\{padding-right:46px\}/);

@@ -317,6 +317,9 @@ export default function FieldVoiceTools({
 
   if (!iaPermitida) return null;
 
+  // O mesmo texto no title e no aria-label em todos os estados (com só o ícone, é o único nome do botão).
+  const rotuloDoBotaoDeVoz = gravando ? "Parar e transcrever" : transcrevendo ? "Transcrevendo" : !online ? SEM_INTERNET : rotuloVoz;
+
   return (
     <>
     <div className="field-assist-tools">
@@ -337,14 +340,22 @@ export default function FieldVoiceTools({
         onClick={iniciarOuParar}
         disabled={melhorando || transcrevendo}
         className={`field-assist-voice ${gravando ? "is-recording" : ""}${soIcone ? " field-assist-voice--icone" : ""}`}
-        title={gravando ? "Parar e transcrever" : "Falar"}
-        aria-label={gravando ? "Parar e transcrever" : transcrevendo ? "Transcrevendo" : !online ? SEM_INTERNET : rotuloVoz}
+        title={rotuloDoBotaoDeVoz}
+        aria-label={rotuloDoBotaoDeVoz}
+        aria-pressed={gravando}
+        aria-busy={transcrevendo}
       >
-        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="9" y="3" width="6" height="11" rx="3" />
-          <path d="M6 10a6 6 0 0 0 12 0" />
-          <path d="M12 16v5M9 21h6" />
-        </svg>
+        {gravando ? (
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
+            <rect x="6" y="6" width="12" height="12" rx="2" />
+          </svg>
+        ) : (
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="9" y="3" width="6" height="11" rx="3" />
+            <path d="M6 10a6 6 0 0 0 12 0" />
+            <path d="M12 16v5M9 21h6" />
+          </svg>
+        )}
         {!soIcone && <span>{transcrevendo ? "Transcrevendo" : gravando ? "Parar" : !online ? SEM_INTERNET : rotuloVoz}</span>}
       </button>
     </div>
