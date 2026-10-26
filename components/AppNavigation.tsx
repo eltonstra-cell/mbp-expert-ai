@@ -100,7 +100,7 @@ export default function AppNavigation({ contexto, ativa, onSelecionar, vencidas,
         data-chave={item.key}
         className={`tr-item${ehAtivo ? " is-atual" : ""}`}
         aria-current={ehAtivo ? "page" : undefined}
-        aria-label={badge > 0 ? `${rotulo}, ${badge} ${badge === 1 ? "vencida" : "vencidas"}` : undefined}
+        aria-label={badge > 0 ? `${rotulo}, ${badge} ${badge === 1 ? "correção vencida" : "correções vencidas"}` : undefined}
         onClick={() => {
           setMaisAberto(false);
           onSelecionar(item.key);

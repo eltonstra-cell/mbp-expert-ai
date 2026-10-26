@@ -162,7 +162,7 @@ test("estados vazios: Tudo em dia, só um bloco e contadores/lembrete só com it
   assert.ok(inicio.includes("temVisita ? \"CONTINUAR DE ONDE PARAREI\" : \"COMECE POR AQUI\"") && inicio.includes("Nenhuma visita em andamento.") && inicio.includes("Nova visita"));
   // contador e lembrete ficam dentro do bloco que só existe com itens
   const bloco = inicio.slice(inicio.indexOf("{!semPendencias && ("), inicio.indexOf("{!semVencimentos && ("));
-  assert.ok(inicio.includes("contadorDoPainel(colunas)") && bloco.includes("<span>{contador}</span>") && inicio.includes('rotulo: "Lembrete ao responsável"'), "o lembrete virou link do rodapé");
+  assert.ok(inicio.includes("contadorDoPainel(colunas)") && bloco.includes("ini3-parte") && inicio.includes('rotulo: "Lembrete ao responsável"'), "o lembrete virou link do rodapé");
   const css = ler("../app/globals.css");
   assert.match(css, /.ini2-tudo-em-dia{padding:22px 26px;border-radius:20px;background:#F0FAF3}/);
   assert.match(css, /\.ini3-botao\{[^}]*height:40px;[^}]*background:var\(--rd-acao\)[^}]*color:#fff/);
@@ -197,10 +197,10 @@ test("dados de teste do Início: só Beyond Nutri, 4 itens, remoção limpa e Ch
 });
 
 test("segunda rodada: contador só com partes maiores que zero, sem prazo à parte de vencidos", () => {
-  assert.equal(contadorDoPainel({ vencidos: 0, aguardando: 0, semPrazo: 0 }), "");
-  assert.equal(contadorDoPainel({ vencidos: 1, aguardando: 0, semPrazo: 0 }), "1 vencido");
-  assert.equal(contadorDoPainel({ vencidos: 2, aguardando: 1, semPrazo: 3 }), "2 vencidos · 1 aguardando aprovação · 3 abertas sem prazo");
-  assert.equal(contadorDoPainel({ vencidos: 0, aguardando: 0, semPrazo: 1 }), "1 aberta sem prazo");
+  assert.equal(contadorDoPainel({ vencidosPorOrigem: { correcao: 0, comprovante: 0, capacitacao: 0, pop: 0 }, aguardando: 0, semPrazo: 0 }), "");
+  assert.equal(contadorDoPainel({ vencidosPorOrigem: { correcao: 1, comprovante: 0, capacitacao: 0, pop: 0 }, aguardando: 0, semPrazo: 0 }), "1 correção vencida");
+  assert.equal(contadorDoPainel({ vencidosPorOrigem: { correcao: 2, comprovante: 0, capacitacao: 0, pop: 0 }, aguardando: 1, semPrazo: 3 }), "2 correções vencidas · 1 aguardando aprovação · 3 abertas sem prazo");
+  assert.equal(contadorDoPainel({ vencidosPorOrigem: { correcao: 0, comprovante: 0, capacitacao: 0, pop: 0 }, aguardando: 0, semPrazo: 1 }), "1 aberta sem prazo");
   const extras = [{ id: "correcao:a", origem: "correcao", titulo: "A", prazo: "aberta", situacao: "sem-prazo", dias: null, quem: SEM_RESPONSAVEL, acao: "abrir", rotuloDaAcao: "Abrir" }];
   const c = colunasDoInicio([], [], "2026-10-23", extras);
   assert.deepEqual([c.vencidos, c.aguardando, c.semPrazo, c.semResponsavel], [0, 0, 1, 1]);

@@ -7,11 +7,12 @@ import { PADRAO_DO_PERFIL, podeVerTela } from "../lib/screenAccess.ts";
 
 const ler = (c) => readFileSync(new URL(c, import.meta.url), "utf8");
 
-test("UMA regra para o número vermelho: o trilho em Correções usa o mesmo 'vencidos' do Início", () => {
+test("número vermelho do trilho: só correções vencidas, pela função única da lista de Correções, com a permissão de acompanhar", () => {
   const pagina = ler("../app/page.tsx");
-  assert.ok(pagina.includes("const ncsVencidasDaEmpresa = dadosDasColunas?.vencidos ?? 0;"));
+  assert.match(pagina, /ncs\.acompanhar[^;]*correcoesVencidasDaEmpresa\(/);
+  assert.ok(pagina.includes("return correcoesAbertasDaEmpresa(db.ncs, visitaAtual.empresaId);"), "a lista da empresa usa a mesma função de base");
   assert.ok(pagina.includes("vencidas={ncsVencidasDaEmpresa}"));
-  assert.ok(ler("../components/pc/PcInicio.tsx").includes("contadorDoPainel(colunas)"), "o Início escreve o 'N vencidos' pela mesma contagem (colunas.vencidos)");
+  assert.ok(ler("../components/pc/PcInicio.tsx").includes("contadorDoPainel(colunas)"), "o Início escreve um número por tipo");
 });
 
 test("topo: dentro da visita o título é só 'Visita N'; o Início usa a mesma barra das outras telas", () => {

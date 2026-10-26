@@ -1,6 +1,6 @@
 // Início (PC): regras puras da tela (sem JSX): visitas recentes, visitas paradas, configuração da empresa e o guia de primeiros passos.
 import { diasDeVisitaAberta } from "./visitasLista.ts";
-import { quantidade } from "./plural.ts";
+import { palavra, quantidade } from "./plural.ts";
 import type { Empresa, Visita } from "../types/index.ts";
 
 export const DIAS_DE_VISITA_PARADA = 30;
@@ -179,12 +179,16 @@ export function correcoesSemPrazo(ncs: Pick<NaoConformidade, "id" | "empresaId" 
     }));
 }
 
+export type VencidosPorOrigem = Record<ItemDoPainel["origem"], number>;
+
 export type ColunasDoInicio = {
   /** Vencidos, POPs aguardando aprovação e, por último, correções abertas sem prazo. */
   precisa: ItemDaEsquerda[];
   /** Vence em até 30 dias, por data. */
   vencendo: ItemDeVencimento[];
   vencidos: number;
+  /** Os mesmos vencidos, por origem (o cabeçalho diz o tipo de cada número). */
+  vencidosPorOrigem: VencidosPorOrigem;
   aguardando: number;
   /** Correções abertas sem prazo (parte do contador, nunca "vencidas"). */
   semPrazo: number;
@@ -216,7 +220,10 @@ export function colunasDoInicio(itens: ItemDoPainel[], pops: Pick<ProcedimentoOp
     vencendo.push({ id: `revisao:${pop.id}`, origem: "pop-revisao", titulo: `${pop.codigo ? `${pop.codigo} · ` : ""}${pop.titulo} (revisão)`, quem: pop.responsavel?.trim() || "Responsável do estabelecimento", validade: pop.proximaRevisao, dias });
   }
   vencendo.sort((a, b) => a.validade.localeCompare(b.validade) || a.titulo.localeCompare(b.titulo, "pt-BR"));
-  return { precisa, vencendo, vencidos: urgentes.filter((item) => item.situacao === "vencido").length, aguardando: urgentes.filter((item) => item.situacao === "aguardando").length, semPrazo: precisa.filter((item) => item.situacao === "sem-prazo").length, semResponsavel: precisa.filter((item) => item.quem === SEM_RESPONSAVEL).length };
+  const vencidosDaEsquerda = urgentes.filter((item) => item.situacao === "vencido");
+  const vencidosPorOrigem: VencidosPorOrigem = { comprovante: 0, capacitacao: 0, correcao: 0, pop: 0 };
+  for (const item of vencidosDaEsquerda) vencidosPorOrigem[item.origem] += 1;
+  return { precisa, vencendo, vencidos: vencidosDaEsquerda.length, vencidosPorOrigem, aguardando: urgentes.filter((item) => item.situacao === "aguardando").length, semPrazo: precisa.filter((item) => item.situacao === "sem-prazo").length, semResponsavel: precisa.filter((item) => item.quem === SEM_RESPONSAVEL).length };
 }
 
 /** Acrescenta o ambiente às linhas que são correções (o painel de hoje não o carrega). */
@@ -228,10 +235,17 @@ export function comAmbienteDasCorrecoes(itens: ItemDaEsquerda[], ncs: Pick<NaoCo
   });
 }
 
-/** Cabeçalho de "Hoje precisa de você": só as partes maiores que zero, separadas por " · "; vazio quando tudo é zero. */
-export function contadorDoPainel(c: { vencidos: number; aguardando: number; semPrazo: number }): string {
+/**
+ * Cabeçalho de "Hoje precisa de você": só as partes maiores que zero, separadas por " · "; vazio quando tudo é zero.
+ * Cada vencido diz o seu tipo: "2 correções vencidas · 1 comprovante vencido · 2 treinamentos vencidos".
+ */
+export function contadorDoPainel(c: { vencidosPorOrigem: VencidosPorOrigem; aguardando: number; semPrazo: number }): string {
+  const v = c.vencidosPorOrigem;
   const partes: string[] = [];
-  if (c.vencidos > 0) partes.push(`${c.vencidos} ${c.vencidos === 1 ? "vencido" : "vencidos"}`);
+  if (v.correcao > 0) partes.push(`${quantidade(v.correcao, "correção", "correções")} ${palavra(v.correcao, "vencida", "vencidas")}`);
+  if (v.comprovante > 0) partes.push(`${quantidade(v.comprovante, "comprovante", "comprovantes")} ${palavra(v.comprovante, "vencido", "vencidos")}`);
+  if (v.capacitacao > 0) partes.push(`${quantidade(v.capacitacao, "treinamento", "treinamentos")} ${palavra(v.capacitacao, "vencido", "vencidos")}`);
+  if (v.pop > 0) partes.push(`${quantidade(v.pop, "POP", "POPs")} ${palavra(v.pop, "vencido", "vencidos")}`);
   if (c.aguardando > 0) partes.push(`${c.aguardando} aguardando aprovação`);
   if (c.semPrazo > 0) partes.push(`${c.semPrazo} ${c.semPrazo === 1 ? "aberta" : "abertas"} sem prazo`);
   return partes.join(" · ");

@@ -132,6 +132,7 @@ import RelatoriosAbas, { type AbaDeRelatorios } from "@/components/pc/Relatorios
 import { niveisDoCaminho } from "@/lib/caminhoDaFicha";
 import { assinaturaEdicaoEmpresa, temAlteracoesNaoSalvas } from "@/lib/estadoNaoSalvo";
 import { renomearAmbiente, resumoDaRenomeacao, textoDoResumo } from "@/lib/renomearAmbiente";
+import { correcoesAbertasDaEmpresa, correcoesVencidasDaEmpresa } from "@/lib/correcoesVencidas";
 import { caixasDoContinuar, colunasDoInicio, comAmbienteDasCorrecoes, correcoesSemPrazo, passosDeConfiguracao, resumoDaConfiguracao } from "@/lib/inicio";
 import { ePaginaDeCadastro, marcarComoRevisado } from "@/lib/revisaoDeCadastros";
 import RevisaoDaPagina from "@/components/pc/RevisaoDaPagina";
@@ -5584,7 +5585,7 @@ export default function Home() {
   function ncsDaTelaDeCorrecoes(): NaoConformidade[] {
     if (!visitaAtual) return [];
     if (!correcoesDaEmpresa) return ncsVisita;
-    return (db.ncs || []).filter((nc) => nc.empresaId === visitaAtual.empresaId && !nc.inativaNoChecklist && nc.status !== "Resolvida");
+    return correcoesAbertasDaEmpresa(db.ncs, visitaAtual.empresaId);
   }
 
   function abrirAjudaRapida() {
@@ -7092,8 +7093,8 @@ export default function Home() {
         reservarAltura={reservarAltura}
       />
     ) : null;
-  // UMA regra: o número vermelho do trilho em Correções é o mesmo "N vencidos" do Início (vencidos do painel "Hoje precisa de você").
-  const ncsVencidasDaEmpresa = dadosDasColunas?.vencidos ?? 0;
+  // O número vermelho do trilho em Correções conta SÓ correções vencidas, o mesmo conjunto da lista de Correções da empresa (`correcoesVencidasDaEmpresa`); sem a permissão de acompanhar, não há número.
+  const ncsVencidasDaEmpresa = atual && permitido("ncs.acompanhar", atual.id) ? correcoesVencidasDaEmpresa(db.ncs, atual.id, hojeISO()).length : 0;
   // Central da Empresa: "← Central da Empresa › Documentos ▾". O menu troca de seção e substitui os três botões que ficavam numa linha própria.
   const naCentralComMenu =
     !dentroDaVisita && !!atual && ((view === "pops" && (telaVisivel("pops") || ehFiscal)) || (view === "empresas" && showEmpresaForm && !!editingEmpresaId && permitido("empresas.editar")));

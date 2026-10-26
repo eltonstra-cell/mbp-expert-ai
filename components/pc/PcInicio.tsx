@@ -1,7 +1,7 @@
 "use client";
 
 import type { ItemDoPainel } from "@/lib/painelHoje";
-import { contadorDoPainel, subDaLinhaDoPainel, LIMITE_DE_LINHAS_DO_PAINEL, quadradoDoVencimento, textoDoPrazoEm, type ItemDaEsquerda, type ItemDeVencimento } from "@/lib/inicio";
+import { contadorDoPainel, subDaLinhaDoPainel, LIMITE_DE_LINHAS_DO_PAINEL, quadradoDoVencimento, textoDoPrazoEm, type ItemDaEsquerda, type ItemDeVencimento, type VencidosPorOrigem } from "@/lib/inicio";
 
 export type CaixaDoInicio = {
   chave: string;
@@ -31,6 +31,7 @@ type Props = {
   colunas: {
     precisa: ItemDaEsquerda[];
     vencidos: number;
+    vencidosPorOrigem: VencidosPorOrigem;
     aguardando: number;
     semPrazo: number;
     semResponsavel: number;
@@ -174,7 +175,7 @@ export default function PcInicio({ nome, avisoPops = null, caixas, onNovaVisita 
               <h2 className="ini3-rotulo">CORREÇÕES</h2>
               <h3 className="ini3-titulo">Hoje precisa de você</h3>
               <div className="ini3-resumo">
-                <span>{contador}</span>
+                <span className="ini3-partes">{contador.split(" · ").filter(Boolean).map((parte) => <span key={parte} className="ini3-parte">{parte}</span>)}</span>
                 {colunas.semResponsavel > 0 && <span className="ini3-semresp">{colunas.semResponsavel} sem responsável</span>}
               </div>
               <div className="ini3-lista">

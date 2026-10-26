@@ -5513,7 +5513,10 @@ html[data-modo="completo"] .pc-offset:has(.ini3)>.ini3{flex:1 1 auto;min-height:
 .ini3-colunas.is-uma{grid-template-columns:minmax(0,1fr)}
 .ini3-colunas .ini3-secao{min-height:0}
 .ini3-resumo{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 16px;font-size:14px;color:var(--rd-cinza)}
-.ini3-semresp{color:var(--rd-laranja-texto)}
+.ini3-partes{display:flex;flex-wrap:wrap;gap:2px 0}
+.ini3-parte{white-space:nowrap}
+.ini3-parte:not(:last-child)::after{content:"·";margin:0 .5em}
+.ini3-semresp{color:var(--rd-laranja-texto);margin-left:auto}
 .ini3-lista{display:flex;flex-direction:column;gap:8px;min-height:0;overflow-y:auto;padding-right:4px;scrollbar-width:thin;scrollbar-color:#B4C2CE transparent}
 .ini3-linha{display:flex;align-items:center;gap:14px;width:100%;min-height:56px;padding:6px 14px 6px 0;border:1px solid #E3E8EE;border-radius:12px;background:#fff;color:var(--rd-ink);text-align:left;cursor:pointer;overflow:hidden}
 .ini3-linha:hover{background:#FAFBFD}
