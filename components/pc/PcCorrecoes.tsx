@@ -2,6 +2,7 @@
 
 import { dataISOLocal, formatarDataCurta, formatarDataHora, formatarHora, hojeLocalISO } from "@/lib/dataLocal";
 import AntesDepois, { type FotoDoPar } from "@/components/AntesDepois";
+import CaixaQueCresce from "@/components/CaixaQueCresce";
 import { sugestoesDeResponsavel } from "@/lib/pessoas";
 import { confirmar } from "@/lib/dialogos";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -14,7 +15,7 @@ import { mostrarToast } from "@/lib/toast";
 import { acaoPadraoVisivel } from "@/lib/conteudoValidado";
 import { criarRascunhosDeCorrecao, planoAoAbrir, textoDoQueFalta, type RascunhosDeCorrecao } from "@/lib/rascunhoDeCorrecao";
 import { CAUSAS_RAIZ, validarCausaRaiz } from "@/lib/memoriaDoPlano";
-import { acrescimosVazios, conteudoDeAtualizacoes, conteudoDeEvidencias, contagemDeEvidencias, contextoDoDetalhe, evidenciasSemFoto, rotuloDeRegistrarAtualizacao, selosDoCartao } from "@/lib/layoutDeCorrecoes";
+import { acrescimosNaLinhaDasEvidencias, acrescimosVazios, conteudoDeAtualizacoes, conteudoDeEvidencias, contagemDeEvidencias, contextoDoDetalhe, evidenciasSemFoto, rotuloDeRegistrarAtualizacao, selosDoCartao } from "@/lib/layoutDeCorrecoes";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import {
   contarEtapas,
@@ -29,6 +30,9 @@ import {
 } from "@/lib/actionPlan";
 
 type StatusNc = "Aberta" | "Em tratamento" | "Resolvida";
+
+/** "O que será feito" cresce com o texto até esta altura (px); depois rola por dentro. */
+const LIMITE_DA_CAIXA_DA_ACAO = 160;
 
 export type CorrecaoItem = {
   id: string;
@@ -589,6 +593,8 @@ function Detalhe({
       )}
     </div>
   );
+  // Só Evidências com conteúdo: os acréscimos vazios ficam na mesma linha delas (à direita), sem altura própria; descem se não couberem.
+  const acrescimosNaLinhaDasEvidenciasAtivo = acrescimosNaLinhaDasEvidencias(mostrarEvidencias, mostrarAtualizacoes);
   const funcionouVisivel = nc.reincidente && Boolean(nc.acaoQueFuncionou) && acao.trim() !== nc.acaoQueFuncionou;
   const [sugestoesAbertas, setSugestoesAbertas] = useState(false);
   const sugestoes: { rotulo: string; texto: string }[] = [
@@ -713,8 +719,9 @@ function Detalhe({
               O que será feito <span className="pc-obrig">· obrigatório</span>
             </span>
             <div className={`pc-acao-conjunto${mostrarErro("acao") ? " is-invalid" : ""}${bloqueado ? " is-bloqueado" : ""}`}>
-            <textarea
+            <CaixaQueCresce
               ref={acaoRef}
+              alturaMaxima={LIMITE_DA_CAIXA_DA_ACAO}
               className="ui-input pc-acao-area"
               value={acao}
               disabled={bloqueado}
@@ -764,6 +771,15 @@ function Detalhe({
             <div className="pc-plan-block pc-plan-resp">
               <span className="pc-plan-rotulo">
                 <label htmlFor={`resp-${nc.id}`}>Responsável</label>
+                {!bloqueado && nomesSugeridos.length > 0 && (
+                  <span className="pc-memoria" role="group" aria-label="Responsáveis sugeridos">
+                    {nomesSugeridos.map((nome) => (
+                      <button key={nome} type="button" className="pc-chip-btn pc-chip-btn--soft" title={nome} onClick={() => setResponsavel(nome)}>
+                        {nome}
+                      </button>
+                    ))}
+                  </span>
+                )}
                 {onLembrete && (
                   <button type="button" className="pc-plan-lembrete" onClick={onLembrete}>
                     Enviar lembrete
@@ -787,15 +803,6 @@ function Detalhe({
                   <option key={pessoa} value={pessoa} />
                 ))}
               </datalist>
-              {!bloqueado && nomesSugeridos.length > 0 && (
-                <span className="pc-memoria" role="group" aria-label="Responsáveis sugeridos">
-                  {nomesSugeridos.map((nome) => (
-                    <button key={nome} type="button" className="pc-chip-btn pc-chip-btn--soft" onClick={() => setResponsavel(nome)}>
-                      {nome}
-                    </button>
-                  ))}
-                </span>
-              )}
             </div>
             <label className="pc-plan-block pc-plan-prazo">
               <span className="pc-plan-rotulo">Prazo</span>
@@ -829,7 +836,7 @@ function Detalhe({
         {resolvida && <div className="ui-note">Correção resolvida: o plano está protegido. Novas atualizações ou reabertura ficam em Atualizações.</div>}
 
         {(mostrarEvidencias || mostrarAtualizacoes) && (
-        <div className={`pc-detail-duas${mostrarEvidencias && mostrarAtualizacoes ? "" : " pc-detail-duas--uma"}`}>
+        <div className={`pc-detail-duas${mostrarEvidencias && mostrarAtualizacoes ? "" : " pc-detail-duas--uma"}${acrescimosNaLinhaDasEvidenciasAtivo ? " pc-detail-duas--acrescimos" : ""}`}>
           {mostrarEvidencias && (
           <section className="pc-detail-secao" aria-label="Evidências">
             <div className="pc-detail-secao-titulo">
@@ -933,9 +940,10 @@ function Detalhe({
             )}
           </section>
           )}
+          {acrescimosNaLinhaDasEvidenciasAtivo && linhaDeAcrescimos}
         </div>
         )}
-        {linhaDeAcrescimos}
+        {!acrescimosNaLinhaDasEvidenciasAtivo && linhaDeAcrescimos}
       </div>
 
       <div className="pc-detail-foot pc-detail-foot--plano">

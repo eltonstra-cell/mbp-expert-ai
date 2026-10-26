@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { acrescimosVazios, conteudoDeAtualizacoes, conteudoDeEvidencias, contagemDeEvidencias, contextoDoDetalhe, evidenciasSemFoto, rotuloDeRegistrarAtualizacao, selosDoCartao } from "../lib/layoutDeCorrecoes.ts";
+import { acrescimosNaLinhaDasEvidencias, acrescimosVazios, conteudoDeAtualizacoes, conteudoDeEvidencias, contagemDeEvidencias, contextoDoDetalhe, evidenciasSemFoto, rotuloDeRegistrarAtualizacao, selosDoCartao } from "../lib/layoutDeCorrecoes.ts";
 
 const foto = { id: "f1" };
 const audio = { id: "a1", tipo: "Áudio" };
@@ -63,4 +63,11 @@ test("contextoDoDetalhe: gravidade, ambiente, item e reincidência; o código fi
   assert.deepEqual(contextoDoDetalhe(nc(), "Importante"), { texto: "Importante · Cozinha · item 2", codigo: "NC01" });
   assert.equal(contextoDoDetalhe(nc({ reincidente: true, vezes: 2 }), "Importante").texto, "Importante · Cozinha · item 2 · pela 2ª vez");
   assert.equal(contextoDoDetalhe(nc({ itemNumero: 0 }), "Leve").texto, "Leve · Cozinha");
+});
+
+test("acrescimosNaLinhaDasEvidencias: só com evidências e sem bloco de atualizações", () => {
+  assert.equal(acrescimosNaLinhaDasEvidencias(true, false), true);
+  assert.equal(acrescimosNaLinhaDasEvidencias(true, true), false, "com atualizações os acréscimos vão ao fim do corpo");
+  assert.equal(acrescimosNaLinhaDasEvidencias(false, false), false, "sem evidências não há linha onde ancorar");
+  assert.equal(acrescimosNaLinhaDasEvidencias(false, true), false);
 });

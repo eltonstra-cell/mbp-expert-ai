@@ -1,21 +1,37 @@
 "use client";
 
-import { useLayoutEffect, useRef, type TextareaHTMLAttributes } from "react";
+import { useCallback, useLayoutEffect, useRef, type ComponentPropsWithRef } from "react";
 
-type Props = Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "rows"> & {
+type Props = Omit<ComponentPropsWithRef<"textarea">, "rows"> & {
   /** Altura mínima, em linhas. */
   linhasMinimas?: number;
+  /** Altura máxima, em px: acima dela a caixa para de crescer e passa a rolar por dentro. Sem valor, cresce sempre. */
+  alturaMaxima?: number;
 };
 
-/** Caixa de texto que cresce com o conteúdo: sem barra de rolagem interna e sem corte (a altura segue o texto). */
-export default function CaixaQueCresce({ linhasMinimas = 1, className = "", value, onChange, ...resto }: Props) {
+/** Caixa de texto que cresce com o conteúdo: sem barra de rolagem interna e sem corte (a altura segue o texto, até o limite opcional). */
+export default function CaixaQueCresce({ linhasMinimas = 1, alturaMaxima, className = "", value, onChange, ref: refDeFora, ...resto }: Props) {
   const ref = useRef<HTMLTextAreaElement | null>(null);
+
+  const guardarRef = useCallback(
+    (caixa: HTMLTextAreaElement | null) => {
+      ref.current = caixa;
+      if (typeof refDeFora === "function") refDeFora(caixa);
+      else if (refDeFora) refDeFora.current = caixa;
+    },
+    [refDeFora]
+  );
 
   function ajustar() {
     const caixa = ref.current;
     if (!caixa) return;
     caixa.style.height = "auto";
-    caixa.style.height = `${caixa.scrollHeight}px`;
+    const altura = caixa.scrollHeight;
+    const passou = alturaMaxima !== undefined && altura > alturaMaxima;
+    caixa.style.height = `${passou ? alturaMaxima : altura}px`;
+    // O CSS da caixa força overflow:hidden; só passando do limite a rolagem interna volta.
+    if (passou) caixa.style.setProperty("overflow-y", "auto", "important");
+    else caixa.style.removeProperty("overflow-y");
   }
 
   useLayoutEffect(() => {
@@ -37,5 +53,5 @@ export default function CaixaQueCresce({ linhasMinimas = 1, className = "", valu
     return () => observador.disconnect();
   }, []);
 
-  return <textarea {...resto} ref={ref} rows={linhasMinimas} className={`${className} caixa-cresce`} value={value} onChange={onChange} />;
+  return <textarea {...resto} ref={guardarRef} rows={linhasMinimas} className={`${className} caixa-cresce`} value={value} onChange={onChange} />;
 }

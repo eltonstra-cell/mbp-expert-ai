@@ -44,6 +44,11 @@ export function acrescimosVazios(
   };
 }
 
+/** Os acréscimos vazios ficam na linha das Evidências só quando há evidências e não há bloco de Atualizações (com conteúdo ou em edição). */
+export function acrescimosNaLinhaDasEvidencias(mostrarEvidencias: boolean, mostrarAtualizacoes: boolean): boolean {
+  return mostrarEvidencias && !mostrarAtualizacoes;
+}
+
 export function rotuloDeRegistrarAtualizacao(resolvida: boolean): string {
   return resolvida ? "Registrar nova atualização / reabrir" : "+ Registrar atualização";
 }
