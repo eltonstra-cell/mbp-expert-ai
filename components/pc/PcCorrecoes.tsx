@@ -10,6 +10,7 @@ import { NavIcon } from "@/components/NavIcons";
 import { Pill, type Tom } from "@/components/ui/Pill";
 import { NOME_DA_GRAVIDADE, linhaDaCorrecao, mensagemDeFaltas, primeiroCampoComProblema, type CampoDoPlano } from "@/lib/correcaoRotulos";
 import { acaoPadraoVisivel } from "@/lib/conteudoValidado";
+import { criarRascunhosDeCorrecao, planoAoAbrir, textoDoQueFalta, type RascunhosDeCorrecao } from "@/lib/rascunhoDeCorrecao";
 import { CAUSAS_RAIZ, seloDaReincidencia, validarCausaRaiz } from "@/lib/memoriaDoPlano";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import {
@@ -168,6 +169,9 @@ export default function PcCorrecoes({
   const [lote, setLote] = useState(false);
   const [aviso, setAviso] = useState("");
   const [filtrarAberto, setFiltrarAberto] = useState(false);
+  // Rascunho por correção (só os campos editados), só na memória desta tela: trocar de cartão ou de etapa não descarta o que foi digitado.
+  // Salvar, resolver, marcar/desfazer feita e aplicar em lote limpam; sair da tela, trocar de empresa/usuário ou sair da conta desmonta (a página usa key).
+  const [rascunhos] = useState(criarRascunhosDeCorrecao);
 
   const contagem = contarEtapas(itens);
   const recorrentes = itens.filter((nc) => nc.reincidente).length;
@@ -196,8 +200,14 @@ export default function PcCorrecoes({
 
   const salvarPlano: Props["onSalvarPlano"] = (id, dados) => {
     onSalvarPlano(id, dados);
+    rascunhos.limpar(id);
     setEtapa(dados.etapa);
     setAviso("Plano salvo");
+  };
+
+  const registrarAtualizacao: Props["onRegistrar"] = (id, texto, status) => {
+    onRegistrar(id, texto, status);
+    if (status === "Resolvida") rascunhos.limpar(id);
   };
 
   const grupos: { rotulo: string; faixa: Tom; itens: CorrecaoItem[] }[] =
@@ -349,10 +359,17 @@ export default function PcCorrecoes({
                 podeEvidenciar={podeEvidenciar}
                 podeMarcar={podeMarcar}
                 pessoas={pessoas}
-                onMarcarFeita={onMarcarFeita}
-                onDesfazerFeita={onDesfazerFeita}
+                onMarcarFeita={(id, observacao) => {
+                  onMarcarFeita(id, observacao);
+                  rascunhos.limpar(id);
+                }}
+                onDesfazerFeita={(id) => {
+                  onDesfazerFeita(id);
+                  rascunhos.limpar(id);
+                }}
                 onSalvarPlano={salvarPlano}
-                onRegistrar={onRegistrar}
+                onRegistrar={registrarAtualizacao}
+                rascunhos={rascunhos}
                 onAdicionarEvidencia={onAdicionarEvidencia}
                 onFotoDepois={onFotoDepois}
                 onCriarPop={onCriarPop}
@@ -382,6 +399,7 @@ export default function PcCorrecoes({
           onFechar={() => setLote(false)}
           onAplicar={(ids, valores) => {
             onLote(ids, valores);
+            ids.forEach((id) => rascunhos.limpar(id));
             setLote(false);
           }}
         />
@@ -418,7 +436,9 @@ function Detalhe({
   onLembrete,
   onProxima,
   temOutras,
+  rascunhos,
 }: {
+  rascunhos: RascunhosDeCorrecao;
   onLembrete?: () => void;
   pessoas: string[];
   onVerNoChecklist: Props["onVerNoChecklist"];
@@ -438,11 +458,19 @@ function Detalhe({
   onCriarPop: Props["onCriarPop"];
   onAbrirPop: Props["onAbrirPop"];
 }) {
-  const [acao, setAcao] = useState(nc.acaoCorretiva);
   // O responsável começa vazio (o RT escolhe); o último responsável do ambiente aparece como o primeiro chip. Prazo = o da gravidade.
-  const [responsavel, setResponsavel] = useState(nc.responsavelAcao || "");
-  const [prazo, setPrazo] = useState(nc.prazo || prazoSugerido(nc.gravidade, hoje).data);
-  const [causa, setCausa] = useState(nc.causaRaiz || "");
+  const planoDaCorrecao = { acao: nc.acaoCorretiva, responsavel: nc.responsavelAcao || "", prazo: nc.prazo || prazoSugerido(nc.gravidade, hoje).data, causa: nc.causaRaiz || "" };
+  const [aoAbrir] = useState(() => planoAoAbrir(planoDaCorrecao, rascunhos.obter(nc.id)));
+  const [acao, setAcao] = useState(aoAbrir.acao);
+  const [responsavel, setResponsavel] = useState(aoAbrir.responsavel);
+  const [prazo, setPrazo] = useState(aoAbrir.prazo);
+  const [causa, setCausa] = useState(aoAbrir.causa);
+  const baseRef = useRef(planoDaCorrecao);
+  baseRef.current = planoDaCorrecao;
+  // Só reage ao que a pessoa digita (não ao salvar): o rascunho some quando o texto volta a ser o da correção.
+  useEffect(() => {
+    rascunhos.guardar(nc.id, { acao, responsavel, prazo, causa }, baseRef.current);
+  }, [rascunhos, nc.id, acao, responsavel, prazo, causa]);
   const causaRef = useRef<HTMLInputElement | null>(null);
   // Salvar o plano leva a correção para "Com plano"; quem já está em acompanhamento continua lá.
   const etapaAlvo: EtapaCorrecao = etapaDaCorrecao(nc) === "acompanhamento" ? "acompanhamento" : "plano";
@@ -497,6 +525,7 @@ function Detalhe({
   const nomesSugeridos = sugestoesDeResponsavel({ cadastradas: pessoas, ultimoDoAmbiente: nc.responsavelSugerido, escolhido: responsavel, limite: 3 });
   const responsavelVazio = vazio(responsavel);
   const faltaParaSalvar = [vazio(acao) ? "a ação" : "", responsavelVazio ? "o responsável" : "", erros.prazo ? "o prazo" : "", erroCausa ? "a causa raiz" : ""].filter(Boolean);
+  const motivoDoBotao = textoDoQueFalta(faltaParaSalvar);
   const [registrando, setRegistrando] = useState(false);
   const contextoDaLinha = linhaDaCorrecao(nc);
   const funcionouVisivel = nc.reincidente && Boolean(nc.acaoQueFuncionou) && acao.trim() !== nc.acaoQueFuncionou;
@@ -547,7 +576,7 @@ function Detalhe({
             {podeEditar ? (
               <button
                 type="button"
-                className="ui-btn ui-btn--primary ui-btn--small"
+                className="ui-btn ui-btn--acao"
                 onClick={() => {
                   setStatusNovo("Resolvida");
                   setRegistrando(true);
@@ -570,7 +599,7 @@ function Detalhe({
             <input className="ui-input" value={notaFeita} onChange={(evento) => setNotaFeita(evento.target.value)} placeholder="Observação (opcional)" aria-label="Observação ao marcar como feita" />
             <button
               type="button"
-              className="ui-btn ui-btn--primary ui-btn--small pc-self-start"
+              className="ui-btn ui-btn--acao pc-self-start"
               onClick={() => {
                 onMarcarFeita(nc.id, notaFeita);
                 setNotaFeita("");
@@ -713,9 +742,10 @@ function Detalhe({
                   onChange={(evento) => setPrazo(evento.target.value)}
                   onBlur={() => marcarTocado("prazo")}
                   aria-invalid={Boolean(mostrarErro("prazo"))}
+                  aria-describedby={mostrarErro("prazo") ? `prazo-erro-${nc.id}` : undefined}
                 />
                 {mostrarErro("prazo") ? (
-                  <span className="pc-prazo-erro" role="alert">
+                  <span id={`prazo-erro-${nc.id}`} className="pc-prazo-erro" role="alert">
                     {erros.prazo}
                   </span>
                 ) : (
@@ -853,6 +883,11 @@ function Detalhe({
             {faltas}
           </span>
         )}
+        {!bloqueado && motivoDoBotao && (
+          <span id={`falta-${nc.id}`} className="pc-falta pc-falta--motivo">
+            {motivoDoBotao}
+          </span>
+        )}
         {temOutras && (
           <button type="button" className="ui-btn ui-btn--secondary" onClick={onProxima}>
             Próxima correção →
@@ -863,7 +898,7 @@ function Detalhe({
             type="button"
             className="ui-btn ui-btn--save"
             disabled={faltaParaSalvar.length > 0}
-            title={faltaParaSalvar.length > 0 ? `Falta: ${faltaParaSalvar.join(", ")}` : undefined}
+            aria-describedby={motivoDoBotao ? `falta-${nc.id}` : undefined}
             onClick={salvar}
           >
             Salvar plano
@@ -939,7 +974,7 @@ export function LoteJanela({
             <button type="button" className="ui-btn ui-btn--secondary" onClick={onFechar}>
               Cancelar
             </button>
-            <button type="button" className="ui-btn ui-btn--primary" disabled={marcadas.length === 0} onClick={aplicar}>
+            <button type="button" className="ui-btn ui-btn--acao" disabled={marcadas.length === 0} onClick={aplicar}>
               Aplicar a {marcadas.length}
             </button>
           </div>

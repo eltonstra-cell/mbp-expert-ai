@@ -240,15 +240,22 @@ export function comAmbienteDasCorrecoes(itens: ItemDaEsquerda[], ncs: Pick<NaoCo
  * Cada vencido diz o seu tipo: "2 correções vencidas · 1 comprovante vencido · 2 treinamentos vencidos".
  */
 export function contadorDoPainel(c: { vencidosPorOrigem: VencidosPorOrigem; aguardando: number; semPrazo: number }): string {
+  return partesDoContador(c).map((parte) => parte.texto).join(" · ");
+}
+
+export type ParteDoContador = { texto: string; /** Vencido (correção, comprovante, treinamento ou POP): a tela dá cor de função a esta parte. */ urgente: boolean };
+
+/** As mesmas partes de `contadorDoPainel`, uma por tipo, dizendo quais são vencidas. */
+export function partesDoContador(c: { vencidosPorOrigem: VencidosPorOrigem; aguardando: number; semPrazo: number }): ParteDoContador[] {
   const v = c.vencidosPorOrigem;
-  const partes: string[] = [];
-  if (v.correcao > 0) partes.push(`${quantidade(v.correcao, "correção", "correções")} ${palavra(v.correcao, "vencida", "vencidas")}`);
-  if (v.comprovante > 0) partes.push(`${quantidade(v.comprovante, "comprovante", "comprovantes")} ${palavra(v.comprovante, "vencido", "vencidos")}`);
-  if (v.capacitacao > 0) partes.push(`${quantidade(v.capacitacao, "treinamento", "treinamentos")} ${palavra(v.capacitacao, "vencido", "vencidos")}`);
-  if (v.pop > 0) partes.push(`${quantidade(v.pop, "POP", "POPs")} ${palavra(v.pop, "vencido", "vencidos")}`);
-  if (c.aguardando > 0) partes.push(`${c.aguardando} aguardando aprovação`);
-  if (c.semPrazo > 0) partes.push(`${c.semPrazo} ${c.semPrazo === 1 ? "aberta" : "abertas"} sem prazo`);
-  return partes.join(" · ");
+  const partes: ParteDoContador[] = [];
+  if (v.correcao > 0) partes.push({ texto: `${quantidade(v.correcao, "correção", "correções")} ${palavra(v.correcao, "vencida", "vencidas")}`, urgente: true });
+  if (v.comprovante > 0) partes.push({ texto: `${quantidade(v.comprovante, "comprovante", "comprovantes")} ${palavra(v.comprovante, "vencido", "vencidos")}`, urgente: true });
+  if (v.capacitacao > 0) partes.push({ texto: `${quantidade(v.capacitacao, "treinamento", "treinamentos")} ${palavra(v.capacitacao, "vencido", "vencidos")}`, urgente: true });
+  if (v.pop > 0) partes.push({ texto: `${quantidade(v.pop, "POP", "POPs")} ${palavra(v.pop, "vencido", "vencidos")}`, urgente: true });
+  if (c.aguardando > 0) partes.push({ texto: `${c.aguardando} aguardando aprovação`, urgente: false });
+  if (c.semPrazo > 0) partes.push({ texto: `${c.semPrazo} ${c.semPrazo === 1 ? "aberta" : "abertas"} sem prazo`, urgente: false });
+  return partes;
 }
 
 /** Segunda linha de cada item: correção = "Ambiente · Correção · situação · responsável"; o responsável indefinido não se repete por linha. */

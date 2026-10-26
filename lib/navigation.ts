@@ -359,6 +359,11 @@ export function chaveAtiva(view: string): NavKey | null {
   }
 }
 
+/** O "Mais" do trilho é a página atual quando a tela aberta é um dos destinos que ele guarda (Empresas, Cadastros, Ajuda e guias, Administração). */
+export function maisEstaAtivo(ativa: NavKey | null, destinosDoMais: Pick<NavItem, "key">[]): boolean {
+  return ativa !== null && destinosDoMais.some((item) => item.key === ativa);
+}
+
 export function itemDoMenu(key: NavKey): NavItem | undefined {
   return POR_CHAVE.get(key);
 }

@@ -8572,6 +8572,7 @@ export default function Home() {
           correcoesDoCelular()
         ) : view === "correcoes" && visitaAtual ? (
             <PcCorrecoes
+              key={`${visitaAtual.empresaId}:${usuarioDaSessao?.id || "sem-usuario"}`}
               onLembrete={podeEnviarLembrete(usuarioDaSessao) ? () => setLembreteAberto(true) : undefined}
               empresa={nomeParaExibir(empresaVisita)}
               data={correcoesDaEmpresa ? "todas as visitas" : fdata(visitaAtual.data)}

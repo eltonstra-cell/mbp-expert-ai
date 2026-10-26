@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { LogoSymbol } from "@/components/BrandLogo";
 import { NavIcon } from "@/components/NavIcons";
-import { itensVisiveis, registrarDisponivel, type NavContexto, type NavItem, type NavKey } from "@/lib/navigation";
+import { itensVisiveis, maisEstaAtivo, registrarDisponivel, type NavContexto, type NavItem, type NavKey } from "@/lib/navigation";
 
 type Props = {
   contexto: NavContexto;
@@ -76,7 +76,7 @@ export default function AppNavigation({ contexto, ativa, onSelecionar, vencidas,
   const principais = pegar(PRINCIPAIS);
   const extras = pegar(EXTRAS);
   const temRegistrar = registrarDisponivel(contexto);
-  const maisAtivo = extras.some((item) => item.key === ativa);
+  const maisAtivo = maisEstaAtivo(ativa, extras);
 
   const alternarMais = () => {
     setPerfilAberto(false);
@@ -138,12 +138,13 @@ export default function AppNavigation({ contexto, ativa, onSelecionar, vencidas,
             <button
               ref={maisBotaoRef}
               type="button"
-              className={`tr-item${maisAberto || maisAtivo ? " is-mais" : ""}`}
+              className={`tr-item${maisAberto || maisAtivo ? " is-mais" : ""}${maisAtivo ? " is-atual" : ""}`}
+              aria-current={maisAtivo ? "page" : undefined}
               aria-haspopup="menu"
               aria-expanded={maisAberto}
               onClick={alternarMais}
             >
-              <Ladrilho ativo={false}>
+              <Ladrilho ativo={maisAtivo}>
                 <NavIcon name="mais" size={24} strokeWidth={1.7} />
               </Ladrilho>
               <span className="tr-rotulo">Mais</span>

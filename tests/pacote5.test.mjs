@@ -162,7 +162,7 @@ test("estados vazios: Tudo em dia, só um bloco e contadores/lembrete só com it
   assert.ok(inicio.includes("temVisita ? \"CONTINUAR DE ONDE PARAREI\" : \"COMECE POR AQUI\"") && inicio.includes("Nenhuma visita em andamento.") && inicio.includes("Nova visita"));
   // contador e lembrete ficam dentro do bloco que só existe com itens
   const bloco = inicio.slice(inicio.indexOf("{!semPendencias && ("), inicio.indexOf("{!semVencimentos && ("));
-  assert.ok(inicio.includes("contadorDoPainel(colunas)") && bloco.includes("ini3-parte") && inicio.includes('rotulo: "Lembrete ao responsável"'), "o lembrete virou link do rodapé");
+  assert.ok(inicio.includes("partesDoContador(colunas)") && bloco.includes("ini3-parte") && inicio.includes('rotulo: "Lembrete ao responsável"'), "o lembrete virou link do rodapé");
   const css = ler("../app/globals.css");
   assert.match(css, /.ini2-tudo-em-dia{padding:22px 26px;border-radius:20px;background:#F0FAF3}/);
   assert.match(css, /\.ini3-botao\{[^}]*height:40px;[^}]*background:var\(--rd-acao\)[^}]*color:#fff/);

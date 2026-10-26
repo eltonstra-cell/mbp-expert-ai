@@ -1,7 +1,7 @@
 "use client";
 
 import type { ItemDoPainel } from "@/lib/painelHoje";
-import { contadorDoPainel, subDaLinhaDoPainel, LIMITE_DE_LINHAS_DO_PAINEL, quadradoDoVencimento, textoDoPrazoEm, type ItemDaEsquerda, type ItemDeVencimento, type VencidosPorOrigem } from "@/lib/inicio";
+import { partesDoContador, subDaLinhaDoPainel, LIMITE_DE_LINHAS_DO_PAINEL, quadradoDoVencimento, textoDoPrazoEm, type ItemDaEsquerda, type ItemDeVencimento, type VencidosPorOrigem } from "@/lib/inicio";
 
 export type CaixaDoInicio = {
   chave: string;
@@ -91,7 +91,7 @@ export default function PcInicio({ nome, avisoPops = null, caixas, onNovaVisita 
   const temVisita = caixas.some((caixa) => caixa.tipo === "visita");
   const mostrarCartao = temVisita || caixas.length > 0 || Boolean(onNovaVisita);
   const semPendencias = linhas.length === 0;
-  const contador = colunas ? contadorDoPainel(colunas) : "";
+  const partes = colunas ? partesDoContador(colunas) : [];
   const semVencimentos = colunas ? colunas.vencendo.length === 0 : true;
 
   const linhaDeConfiguracao = configuracao && (
@@ -151,7 +151,7 @@ export default function PcInicio({ nome, avisoPops = null, caixas, onNovaVisita 
                       {caixa.subtitulo && <span className="ini3-cartao-sub">{caixa.subtitulo}</span>}
                     </div>
                   </div>
-                  <button type="button" className="ini3-botao ini3-botao--cheio" onClick={caixa.onAbrir}>
+                  <button type="button" className="ini3-botao ini3-botao--cartao" onClick={caixa.onAbrir}>
                     Continuar →
                   </button>
                 </article>
@@ -171,11 +171,11 @@ export default function PcInicio({ nome, avisoPops = null, caixas, onNovaVisita 
       {colunas && !semPendencias && (
         <div className="ini3-colunas is-uma">
           {!semPendencias && (
-            <section className="ini3-secao ini3-correcoes" aria-label="Hoje precisa de você">
-              <h2 className="ini3-rotulo">CORREÇÕES</h2>
-              <h3 className="ini3-titulo">Hoje precisa de você</h3>
+            <section className="ini3-secao ini3-correcoes" aria-labelledby="ini3-pendencias-titulo">
+              <p className="ini3-rotulo">PENDÊNCIAS</p>
+              <h2 id="ini3-pendencias-titulo" className="ini3-titulo">Hoje precisa de você</h2>
               <div className="ini3-resumo">
-                <span className="ini3-partes">{contador.split(" · ").filter(Boolean).map((parte) => <span key={parte} className="ini3-parte">{parte}</span>)}</span>
+                <span className="ini3-partes">{partes.map((parte) => <span key={parte.texto} className={`ini3-parte${parte.urgente ? " ini3-parte--urgente" : ""}`}>{parte.texto}</span>)}</span>
                 {colunas.semResponsavel > 0 && <span className="ini3-semresp">{colunas.semResponsavel} sem responsável</span>}
               </div>
               <div className="ini3-lista">

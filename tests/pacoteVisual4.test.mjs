@@ -12,7 +12,7 @@ test("número vermelho do trilho: só correções vencidas, pela função única
   assert.match(pagina, /ncs\.acompanhar[^;]*correcoesVencidasDaEmpresa\(/);
   assert.ok(pagina.includes("return correcoesAbertasDaEmpresa(db.ncs, visitaAtual.empresaId);"), "a lista da empresa usa a mesma função de base");
   assert.ok(pagina.includes("vencidas={ncsVencidasDaEmpresa}"));
-  assert.ok(ler("../components/pc/PcInicio.tsx").includes("contadorDoPainel(colunas)"), "o Início escreve um número por tipo");
+  assert.ok(ler("../components/pc/PcInicio.tsx").includes("partesDoContador(colunas)"), "o Início escreve um número por tipo");
 });
 
 test("topo: dentro da visita o título é só 'Visita N'; o Início usa a mesma barra das outras telas", () => {
