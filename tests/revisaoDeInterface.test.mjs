@@ -75,7 +75,7 @@ test("rascunho: lote, marcar como feita, desfazer e troca de empresa/usuário li
 
 test("Correções: o motivo do Salvar plano e o aviso do responsável não se repetem para leitor de tela", () => {
   const tela = ler("../components/pc/PcCorrecoes.tsx");
-  assert.ok(!tela.includes("title={motivoDoBotao") && !tela.includes("resp-aviso"));
+  assert.ok(!tela.includes("title={motivoDoBotao}") && !/title=\{motivoDoBotao \? (?!undefined)/.test(tela) && !tela.includes("resp-aviso"), "o motivo do botão desabilitado não vai em title");
   assert.ok(tela.includes("aria-describedby={motivoDoBotao"));
 });
 

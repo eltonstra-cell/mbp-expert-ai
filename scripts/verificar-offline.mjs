@@ -518,6 +518,28 @@ try {
   await js(`(()=>{const set=(el,v)=>{Object.getOwnPropertyDescriptor(Object.getPrototypeOf(el),"value").set.call(el,v);el.dispatchEvent(new Event("input",{bubbles:true}))};set(document.querySelector(".pc-cor .pc-acao-area"),"Providenciar a correção");set(document.querySelector(".pc-cor .pc-plan-resp input"),"Elton");return true})()`);
   await n.esperar(300);
   registrar("17j. Correções: 'Salvar plano' habilita com ação e responsável", await js(`(()=>{const salvar=[...document.querySelectorAll(".pc-cor .pc-detail-foot button")].find((b)=>b.innerText.includes("Salvar plano"));return !!salvar&&!salvar.disabled&&getComputedStyle(salvar).backgroundColor==="rgb(46, 139, 87)"})()`));
+  registrar("17x. Correções: o rodapé tem só 'Salvar plano' (verde, 40 px) e o texto 'Depois de salvar, abre: …', 'Depois de salvar, abre a próxima sem plano' ou 'Esta é a última sem plano'; não existe 'Próxima correção'", await js(`(()=>{const foot=document.querySelector(".pc-cor .pc-detail-foot");const botoes=[...foot.querySelectorAll("button")];const texto=foot.querySelector(".pc-falta--motivo")?.textContent||"";return botoes.length===1&&botoes[0].innerText.includes("Salvar plano")&&Math.round(botoes[0].getBoundingClientRect().height)===40&&/^(Depois de salvar, abre: .+|Depois de salvar, abre a próxima sem plano|Esta é a última sem plano)$/.test(texto.trim())&&!/Próxima correção/.test(document.querySelector(".pc-cor").innerText)})()`));
+  // 17y depende de 17j: o plano (ação e responsável) já está preenchido na correção aberta. Antes de salvar, garante que a aba aberta é a Identificadas (primeira) e que a correção é uma dela.
+  const abaIdentificadas = `document.querySelectorAll(".pc-cor .pc-etapa")[0]`;
+  if (!(await js(`${abaIdentificadas}.getAttribute("aria-pressed")==="true"`))) {
+    registrar("17y. (pré-condição) a aba Identificadas não estava aberta: o 17j deixou a tela em outro estado", false);
+  } else {
+    const estadoDoFluxo = `(()=>{const aba=${abaIdentificadas};return JSON.stringify({ativa:aba.getAttribute("aria-pressed")==="true",planoAtiva:document.querySelectorAll(".pc-cor .pc-etapa")[1].getAttribute("aria-pressed")==="true",num:Number(aba.querySelector(".pc-etapa-num").textContent),cartoes:document.querySelectorAll(".pc-cor .pc-cor-card").length,selecionado:document.querySelector(".pc-cor .pc-cor-card.is-selected .pc-cor-titulo")?.textContent||"",foco:document.activeElement?.classList.contains("pc-acao-area")||false,aviso:[...document.querySelectorAll("[role=status]")].map((x)=>x.textContent).join("|")})})()`;
+    const fluxoAntes = JSON.parse(await js(estadoDoFluxo));
+    const rodapeAntes = (await js(`document.querySelector(".pc-cor .pc-detail-foot .pc-falta--motivo")?.textContent||""`)).trim();
+    const tituloPrevisto = rodapeAntes.startsWith("Depois de salvar, abre: ") ? rodapeAntes.replace("Depois de salvar, abre: ", "") : "";
+    const ultima = rodapeAntes === "Esta é a última sem plano";
+    await js(`[...document.querySelectorAll(".pc-cor .pc-detail-foot button")].find((b)=>b.innerText.includes("Salvar plano"))?.click()`);
+    await esperar(async () => js('[...document.querySelectorAll("[role=status]")].some((x)=>x.textContent.includes("Plano salvo"))'), 8000);
+    if (tituloPrevisto) await esperar(async () => js('document.activeElement?.classList.contains("pc-acao-area")'), 3000);
+    const fluxoDepois = JSON.parse(await js(estadoDoFluxo));
+    const contadorCaiu = fluxoDepois.planoAtiva || fluxoDepois.num === fluxoAntes.num - 1;
+    const ok = ultima
+      ? fluxoDepois.planoAtiva && /Plano salvo\. Não há mais correções sem plano\./.test(fluxoDepois.aviso)
+      : fluxoDepois.ativa && contadorCaiu && fluxoDepois.foco && /Plano salvo\. Falt(a|am) \d+ sem plano\./.test(fluxoDepois.aviso) && (!tituloPrevisto || (fluxoDepois.selecionado === tituloPrevisto && fluxoDepois.cartoes === fluxoAntes.cartoes - 1));
+    registrar("17y. Correções: salvar em Identificadas mantém a aba, o contador cai 1, abre a próxima sem plano com o foco em 'O que será feito' e avisa (ou vai a Com plano se era a última)", ok, JSON.stringify({ fluxoAntes, fluxoDepois, rodapeAntes }));
+  }
+  // Nada depois do 17y (17k em diante, seções 18 a 20) depende da quantidade de correções sem plano: 17k/17l só olham o trilho e a faixa; a seção 19 só confere que a tela de Correções abre.
   await itemDoTrilho("Início", true);
   await esperar(async () => js('!!document.querySelector(".ini3")'), 15000);
   registrar("17k. Tocar num item do trilho sai da visita: a faixa some e a visita continua em andamento (cartão no Início)", await js('!document.querySelector(".fv")&&!!document.querySelector(".ini3-cartao")'));

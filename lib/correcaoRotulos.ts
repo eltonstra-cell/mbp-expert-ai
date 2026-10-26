@@ -1,4 +1,6 @@
 import { nomeDeExibicaoDoAmbiente } from "./checklistEnvs.ts";
+import type { EtapaCorrecao } from "./actionPlan.ts";
+import { textoDoQueFalta } from "./rascunhoDeCorrecao.ts";
 
 // Textos da lista de Correções: o título é o NOME DO ITEM; o ambiente fica pequeno embaixo.
 
@@ -35,4 +37,12 @@ export function mensagemDeFaltas(faltando: CampoDoPlano[], invalidos: CampoDoPla
 /** Primeiro campo que precisa de atenção (para levar o foco até ele). */
 export function primeiroCampoComProblema(faltando: CampoDoPlano[], invalidos: CampoDoPlano[] = []): CampoDoPlano | null {
   return ORDEM_DOS_CAMPOS.find((campo) => faltando.includes(campo) || invalidos.includes(campo)) ?? null;
+}
+
+/** Texto ao lado do "Salvar plano": o que falta, ou o que abre depois de salvar. */
+export function rodapeDoSalvar({ faltas, proximoTitulo, etapa, haOutraSemPlano = false }: { faltas: string[]; proximoTitulo: string | null; etapa: EtapaCorrecao; haOutraSemPlano?: boolean }): string {
+  if (faltas.length > 0) return textoDoQueFalta(faltas);
+  if (proximoTitulo) return `Depois de salvar, abre: ${proximoTitulo}`;
+  if (etapa !== "identificadas") return "";
+  return haOutraSemPlano ? "Depois de salvar, abre a próxima sem plano" : "Esta é a última sem plano";
 }

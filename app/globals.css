@@ -5670,7 +5670,7 @@ html .ui-screen.pc-cor .pc-detail-registrar{align-self:flex-start;padding:0;bord
 html .ui-screen.pc-cor .pc-update{display:flex;flex-direction:column;gap:8px}
 html .ui-screen.pc-cor .pc-update-acoes{display:flex;justify-content:flex-end;gap:10px}
 html .ui-screen.pc-cor .pc-detail-foot{display:flex;flex:none;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:12px;padding-top:14px;border-top:1px solid var(--rd-trilho)}
-html .ui-screen.pc-cor .pc-detail-foot .ui-btn{height:44px;padding:0 22px;border:0;border-radius:12px;font-size:16px;font-weight:400}
+html .ui-screen.pc-cor .pc-detail-foot .ui-btn{height:40px;padding:0 22px;border:0;border-radius:12px;font-size:16px;font-weight:400}
 html .ui-screen.pc-cor .pc-detail-foot .ui-btn--secondary{background:var(--rd-neutro);color:var(--rd-ink)}
 html .ui-screen.pc-cor .ui-btn--save{background:var(--rd-verde-acao);color:#fff}
 html .ui-screen.pc-cor .ui-btn--save:disabled{background:#DDE3EC;color:var(--rd-texto-fraco);cursor:not-allowed}
@@ -5817,8 +5817,9 @@ html .ui-btn.ui-btn--acao{height:40px;min-height:40px;padding:0 20px;border:0;bo
 html .ui-btn.ui-btn--acao:hover:not(:disabled){background:var(--rd-acao-hover)}
 html .ui-btn.ui-btn--acao:disabled{background:#DDE3EC;color:var(--rd-texto-fraco);cursor:not-allowed}
 html .ui-screen.pc-cor .pc-falta--motivo{flex:1 1 220px;min-width:0;color:var(--rd-texto-fraco)}
+html .ui-screen.pc-cor .pc-falta--motivo.is-proxima{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left}
 /* abaixo de 1200 px o motivo ganha linha própria acima dos botões (sem sobrepor) */
 @media (max-width:1199px){
 html .ui-screen.pc-cor .pc-detail-foot{flex-wrap:wrap;row-gap:6px}
-html .ui-screen.pc-cor .pc-falta--motivo{order:-1;flex:1 1 100%;text-align:right}
+html .ui-screen.pc-cor .pc-falta--motivo{order:-1;flex:1 1 100%;text-align:left}
 }

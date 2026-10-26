@@ -8,7 +8,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
 import { NavIcon } from "@/components/NavIcons";
 import { Pill, type Tom } from "@/components/ui/Pill";
-import { NOME_DA_GRAVIDADE, linhaDaCorrecao, mensagemDeFaltas, primeiroCampoComProblema, type CampoDoPlano } from "@/lib/correcaoRotulos";
+import { NOME_DA_GRAVIDADE, linhaDaCorrecao, mensagemDeFaltas, primeiroCampoComProblema, rodapeDoSalvar, type CampoDoPlano } from "@/lib/correcaoRotulos";
+import { agruparCorrecoes, aposSalvarPlano, ordemVisual, primeiraSemPlano, proximaSemPlano, restantesSemPlano, type AgruparCorrecoes } from "@/lib/fluxoDeCorrecoes";
+import { mostrarToast } from "@/lib/toast";
 import { acaoPadraoVisivel } from "@/lib/conteudoValidado";
 import { criarRascunhosDeCorrecao, planoAoAbrir, textoDoQueFalta, type RascunhosDeCorrecao } from "@/lib/rascunhoDeCorrecao";
 import { CAUSAS_RAIZ, seloDaReincidencia, validarCausaRaiz } from "@/lib/memoriaDoPlano";
@@ -113,11 +115,9 @@ const ETAPAS: { chave: EtapaCorrecao; rotulo: string; tom: Tom; classe: string }
   { chave: "resolvidas", rotulo: "Resolvidas", tom: "ok", classe: "pc-etapa--ok" },
 ];
 const FAIXA: Record<GravidadeNc, Tom> = { Crítica: "nc", Importante: "amber", Rotina: "na" };
-const GRUPOS: GravidadeNc[] = ["Crítica", "Importante", "Rotina"];
-const NOME_GRAVIDADE: Record<GravidadeNc, string> = { Crítica: "CRÍTICAS", Importante: "IMPORTANTES", Rotina: "LEVES" };
 const COR_DA_GRAVIDADE: Record<GravidadeNc, string> = { Crítica: "#D93A3A", Importante: "#F5A623", Rotina: "#3AA6D9" };
 
-type Agrupar = "gravidade" | "ambiente";
+type Agrupar = AgruparCorrecoes;
 
 function dataCurta(iso: string) {
   const [ano, mes, dia] = iso.split("-");
@@ -167,7 +167,6 @@ export default function PcCorrecoes({
   const [rapidos, setRapidos] = useState<{ recorrentes: boolean; semResp: boolean; atrasadas: boolean }>({ recorrentes: false, semResp: false, atrasadas: false });
   const [escolhidaId, setEscolhidaId] = useState(selecionadaInicial);
   const [lote, setLote] = useState(false);
-  const [aviso, setAviso] = useState("");
   const [filtrarAberto, setFiltrarAberto] = useState(false);
   // Rascunho por correção (só os campos editados), só na memória desta tela: trocar de cartão ou de etapa não descarta o que foi digitado.
   // Salvar, resolver, marcar/desfazer feita e aplicar em lote limpam; sair da tela, trocar de empresa/usuário ou sair da conta desmonta (a página usa key).
@@ -191,33 +190,52 @@ export default function PcCorrecoes({
   );
   const ordenados = ordenarCorrecoes(filtrados);
   const selecionada = ordenados.find((nc) => nc.id === escolhidaId) || ordenados[0];
+  const grupos = agruparCorrecoes(ordenados, agrupar);
+  const visiveis = ordemVisual(ordenados, agrupar);
+  const idDaProxima = selecionada ? proximaSemPlano(visiveis, selecionada.id) : null;
+  const tituloDaProxima = idDaProxima ? linhaDaCorrecao(visiveis.find((nc) => nc.id === idDaProxima) as CorrecaoItem).titulo : null;
+  // Quantas sem plano sobram depois de salvar a atual, em TODAS as de Identificadas (os filtros rápidos não entram na conta).
+  const outrasSemPlano = selecionada ? restantesSemPlano(itens, selecionada.id) : 0;
+  const aposSalvar = useRef<{ id: string; focar: boolean } | null>(null);
+  const atual = useRef({ selecionadaId: selecionada?.id, itens, etapa });
+  atual.current = { selecionadaId: selecionada?.id, itens, etapa };
 
+  // Depois de salvar: rola a lista até o cartão selecionado e leva o foco para "O que será feito" da próxima correção.
+  // O pedido é sempre consumido (e limpo) na primeira mudança de cartão ou de aba, mesmo que não seja o esperado.
   useEffect(() => {
-    if (!aviso) return;
-    const tempo = window.setTimeout(() => setAviso(""), 2600);
-    return () => window.clearTimeout(tempo);
-  }, [aviso]);
+    const pendente = aposSalvar.current;
+    aposSalvar.current = null;
+    if (!pendente || selecionada?.id !== pendente.id) return;
+    document.querySelector(".pc-cor .pc-cor-card.is-selected")?.scrollIntoView({ block: "nearest" });
+    if (pendente.focar) document.querySelector<HTMLTextAreaElement>(".pc-cor .pc-acao-area")?.focus();
+  }, [selecionada?.id, etapa]);
 
   const salvarPlano: Props["onSalvarPlano"] = (id, dados) => {
+    // Ignora clique tardio: só salva a correção que está aberta agora e que ainda está na etapa da aba.
+    const agora = atual.current;
+    const gravada = agora.itens.find((nc) => nc.id === id);
+    if (id !== agora.selecionadaId || !gravada || etapaDaCorrecao(gravada) !== agora.etapa) return;
     onSalvarPlano(id, dados);
     rascunhos.limpar(id);
-    setEtapa(dados.etapa);
-    setAviso("Plano salvo");
+    const todasSemPlano = ordemVisual(ordenarCorrecoes(itens.filter((nc) => etapaDaCorrecao(nc) === "identificadas")), agrupar);
+    const resultado = aposSalvarPlano({
+      etapaAntes: etapa,
+      proximoId: proximaSemPlano(visiveis, id),
+      foraDoFiltroId: primeiraSemPlano(todasSemPlano, id),
+      idSalvo: id,
+      restantes: restantesSemPlano(itens, id),
+    });
+    setEtapa(resultado.etapa);
+    setEscolhidaId(resultado.selecionar);
+    if (resultado.limparFiltros) setRapidos({ recorrentes: false, semResp: false, atrasadas: false });
+    aposSalvar.current = resultado.selecionar !== id || resultado.etapa !== etapa ? { id: resultado.selecionar, focar: resultado.selecionar !== id } : null;
+    mostrarToast(resultado.aviso, { duracaoMs: 4500 });
   };
 
   const registrarAtualizacao: Props["onRegistrar"] = (id, texto, status) => {
     onRegistrar(id, texto, status);
     if (status === "Resolvida") rascunhos.limpar(id);
   };
-
-  const grupos: { rotulo: string; faixa: Tom; itens: CorrecaoItem[] }[] =
-    agrupar === "gravidade"
-      ? GRUPOS.map((g) => ({ rotulo: NOME_GRAVIDADE[g], faixa: FAIXA[g], itens: ordenados.filter((nc) => nc.gravidade === g) }))
-      : Array.from(new Set(ordenados.map((nc) => nc.ambiente || "Sem ambiente"))).map((ambiente) => ({
-          rotulo: ambiente.toLocaleUpperCase("pt-BR"),
-          faixa: "info" as Tom,
-          itens: ordenados.filter((nc) => (nc.ambiente || "Sem ambiente") === ambiente),
-        }));
 
   const alternarRapido = (chave: keyof typeof rapidos) => setRapidos((atual) => ({ ...atual, [chave]: !atual[chave] }));
 
@@ -228,15 +246,6 @@ export default function PcCorrecoes({
   }`;
   const etapaAtiva = etapa;
   const filtrosAtivos = Number(rapidos.recorrentes) + Number(rapidos.semResp) + Number(rapidos.atrasadas);
-
-  // "Próxima correção": a seguinte sem plano; se não houver, a seguinte da lista.
-  const irParaProxima = () => {
-    if (ordenados.length === 0) return;
-    const posicao = ordenados.findIndex((nc) => nc.id === selecionada?.id);
-    const depois = [...ordenados.slice(posicao + 1), ...ordenados.slice(0, Math.max(0, posicao))];
-    const alvo = depois.find((nc) => etapaDaCorrecao(nc) === "identificadas") || depois[0];
-    if (alvo) setEscolhidaId(alvo.id);
-  };
 
   return (
     <section className="ui-screen pc-cor" aria-label="Correções">
@@ -250,7 +259,10 @@ export default function PcCorrecoes({
             type="button"
             className={`pc-etapa ${passo.classe}${etapaAtiva === passo.chave ? " is-ativa" : ""}${contagem[passo.chave] === 0 ? " is-zero" : ""}${etapa === passo.chave ? " is-on" : ""}`}
             aria-pressed={etapa === passo.chave}
-            onClick={() => setEtapa(passo.chave)}
+            onClick={() => {
+              aposSalvar.current = null;
+              setEtapa(passo.chave);
+            }}
           >
             <span className="pc-etapa-label">{passo.rotulo}</span>
             <span className="pc-etapa-num">{contagem[passo.chave]}</span>
@@ -297,7 +309,10 @@ export default function PcCorrecoes({
                             style={{ "--grav": COR_DA_GRAVIDADE[nc.gravidade] } as React.CSSProperties}
                             aria-pressed={selecionada?.id === nc.id}
                             title={`${NOME_DA_GRAVIDADE[nc.gravidade]} · ${linha.titulo}`}
-                            onClick={() => setEscolhidaId(nc.id)}
+                            onClick={() => {
+                              aposSalvar.current = null;
+                              setEscolhidaId(nc.id);
+                            }}
                           >
                             <span className="pc-cor-titulo">{linha.titulo}</span>
                             <span className="pc-cor-topo">
@@ -376,19 +391,14 @@ export default function PcCorrecoes({
                 onAbrirPop={onAbrirPop}
                 onVerNoChecklist={onVerNoChecklist}
                 onLembrete={onLembrete}
-                onProxima={irParaProxima}
-                temOutras={ordenados.length > 1}
+                etapaAberta={etapa}
+                tituloDaProxima={tituloDaProxima}
+                haOutraSemPlano={outrasSemPlano > 0}
               />
             ) : (
               <div className="ui-empty">Selecione uma correção.</div>
             )}
           </div>
-        </div>
-      )}
-
-      {aviso && (
-        <div className="pc-toast pc-toast--ok" role="status">
-          <span>{aviso}</span>
         </div>
       )}
 
@@ -434,16 +444,18 @@ function Detalhe({
   pessoas,
   onVerNoChecklist,
   onLembrete,
-  onProxima,
-  temOutras,
+  etapaAberta,
+  tituloDaProxima,
+  haOutraSemPlano,
   rascunhos,
 }: {
+  haOutraSemPlano: boolean;
   rascunhos: RascunhosDeCorrecao;
   onLembrete?: () => void;
   pessoas: string[];
   onVerNoChecklist: Props["onVerNoChecklist"];
-  onProxima: () => void;
-  temOutras: boolean;
+  etapaAberta: EtapaCorrecao;
+  tituloDaProxima: string | null;
   nc: CorrecaoItem;
   hoje: string;
   podeEditar: boolean;
@@ -526,6 +538,7 @@ function Detalhe({
   const responsavelVazio = vazio(responsavel);
   const faltaParaSalvar = [vazio(acao) ? "a ação" : "", responsavelVazio ? "o responsável" : "", erros.prazo ? "o prazo" : "", erroCausa ? "a causa raiz" : ""].filter(Boolean);
   const motivoDoBotao = textoDoQueFalta(faltaParaSalvar);
+  const textoDoRodape = rodapeDoSalvar({ faltas: faltaParaSalvar, proximoTitulo: tituloDaProxima, etapa: etapaAberta, haOutraSemPlano });
   const [registrando, setRegistrando] = useState(false);
   const contextoDaLinha = linhaDaCorrecao(nc);
   const funcionouVisivel = nc.reincidente && Boolean(nc.acaoQueFuncionou) && acao.trim() !== nc.acaoQueFuncionou;
@@ -883,15 +896,10 @@ function Detalhe({
             {faltas}
           </span>
         )}
-        {!bloqueado && motivoDoBotao && (
-          <span id={`falta-${nc.id}`} className="pc-falta pc-falta--motivo">
-            {motivoDoBotao}
+        {!bloqueado && textoDoRodape && (
+          <span id={`falta-${nc.id}`} className={`pc-falta pc-falta--motivo${motivoDoBotao ? "" : " is-proxima"}`} title={motivoDoBotao ? undefined : textoDoRodape}>
+            {textoDoRodape}
           </span>
-        )}
-        {temOutras && (
-          <button type="button" className="ui-btn ui-btn--secondary" onClick={onProxima}>
-            Próxima correção →
-          </button>
         )}
         {!bloqueado && (
           <button
