@@ -185,3 +185,14 @@ Projeto separado do FoodControl. **Atenção:** o projeto Neon "mbp-expert-ai" t
 - Equipamentos em chips: `components/ManualBaseFields.tsx` + `lib/equipamentosCadastro.ts` (`copiarEquipamentos`/`desfazerCopia`, `equipamentosDoPacote`, `confirmarSugestao`, `definirLimite`). Campos opcionais de `EquipamentoSetor`: `sugerido`, `limiteTemperaturaId`, `limiteConfirmado`. No checklist, só o limite CONFIRMADO do equipamento do ambiente vira o tipo inicial do campo de temperatura; sem limite, nada é classificado.
 
 - Ajustes da rodada 1 do Pacote 1: a BrasilAPI só responde com `User-Agent` (sem ele dá 403 e a consulta sempre caía na CNPJ.ws; a rota agora o envia); a ordem das fontes e a UF da outra fonte ficam em `lib/consultaCnpjFontes.ts`. UF: só as 27 siglas valem (`lib/ufBrasil.ts`; a CNPJ.ws devolve "EX" em `estado.sigla`); inválida -> UF da outra fonte, depois CEP (faixas gerais dos Correios, a conferir) ou capital, senão vazia, sempre com o aviso "UF não veio da consulta, confirme". Telefone e CNAE formatados (`formatarTelefone`, `formatarCnae`); CNAEs secundários em lista recolhível. "Ver e escolher" abre a janela `JanelaDoPacote` (`components/PacoteDoTipo.tsx`, classes `esc-*`; regras puras em `lib/escolhaDoPacote.ts`: cascata ambiente -> equipamentos, marcar/desmarcar todos, contagens). Nomes curtos dos setores em `nomeCurtoDoSetor` (`lib/tiposDeEstabelecimento.ts`; o nome oficial vai no `title`). Títulos de grupo e o botão "Ver e escolher" em negrito: exceção pedida pelo dono.
+
+## Agentes e fluxo de trabalho
+- Funcionalidade nova ou mudança em mais de um arquivo, tabela ou tela: usar o agente arquiteto antes de implementar e perguntar ao usuário só o que o pedido não respondeu.
+- Depois de qualquer mudança de código: usar o revisor-codigo.
+- Mudança em tela ou componente visual: usar também o revisor-interface.
+- Mudança que toque dados de pessoas, permissões, logs ou exportação: usar também o seguranca-lgpd.
+- Mudança em banco, JSONB ou sincronização: usar também o banco-migracoes.
+- Cálculo ou regra de nutrição e cozinha: usar o revisor-dominio.
+- Conteúdo ligado a ANVISA, CFN ou rotulagem: usar o regulatorio, que busca o texto da norma.
+- Erro ou tela em branco: usar o depurador.
+- Ao terminar um trabalho, avisar quais revisores ainda não foram usados.
