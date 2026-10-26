@@ -3,7 +3,7 @@
 import { dataISOLocal, formatarDataCurta, formatarDataHora, formatarHora, hojeLocalISO } from "@/lib/dataLocal";
 import AntesDepois, { type FotoDoPar } from "@/components/AntesDepois";
 import CaixaQueCresce from "@/components/CaixaQueCresce";
-import { rotulosDeChipsDePessoas, sugestoesDeResponsavel } from "@/lib/pessoas";
+import { mesmaPessoa, pessoasDaLista, rotulosDeChipsDePessoas } from "@/lib/pessoas";
 import { confirmar } from "@/lib/dialogos";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
@@ -16,7 +16,7 @@ import { mostrarToast } from "@/lib/toast";
 import { acaoPadraoVisivel } from "@/lib/conteudoValidado";
 import { criarRascunhosDeCorrecao, planoAoAbrir, textoDoQueFalta, type RascunhosDeCorrecao } from "@/lib/rascunhoDeCorrecao";
 import { CAUSAS_RAIZ, validarCausaRaiz } from "@/lib/memoriaDoPlano";
-import { acrescimosNaLinhaDasEvidencias, acrescimosVazios, conteudoDeAtualizacoes, conteudoDeEvidencias, contagemDeEvidencias, contextoDoDetalhe, evidenciasSemFoto, rotuloDeRegistrarAtualizacao, selosDoCartao } from "@/lib/layoutDeCorrecoes";
+import { botoesDeProvas, conteudoDeAtualizacoes, conteudoDeEvidencias, contagemDeEvidencias, contextoDoDetalhe, evidenciasSemFoto, provasVisiveis, rotuloDeRegistrarAtualizacao, selosDoCartao } from "@/lib/layoutDeCorrecoes";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import {
   contarEtapas,
@@ -487,7 +487,14 @@ function Detalhe({
   const [tocado, setTocado] = useState<Record<CampoDoPlano, boolean>>({ acao: false, responsavel: false, prazo: false });
   const [faltas, setFaltas] = useState("");
   const acaoRef = useRef<HTMLTextAreaElement | null>(null);
-  const responsavelRef = useRef<HTMLInputElement | null>(null);
+  const responsavelRef = useRef<HTMLDivElement | null>(null);
+  // "Outra pessoa": o campo substitui o botão tracejado; o texto ainda em digitação NÃO entra na lista de pessoas (só a pessoa escolhida).
+  const [outraPessoa, setOutraPessoa] = useState(false);
+  const [digitando, setDigitando] = useState(false);
+  const campoRef = useRef<HTMLInputElement | null>(null);
+  const outraRef = useRef<HTMLButtonElement | null>(null);
+  const devolverFocoAoBotao = useRef(false);
+  const valorAntesDeAbrir = useRef("");
   const prazoRef = useRef<HTMLInputElement | null>(null);
   const [notaFeita, setNotaFeita] = useState("");
   const [texto, setTexto] = useState("");
@@ -514,8 +521,10 @@ function Detalhe({
     if (faltando.length > 0 || invalidos.length > 0) {
       setFaltas(mensagemDeFaltas(faltando, invalidos));
       const primeiro = primeiroCampoComProblema(faltando, invalidos);
-      const alvo = primeiro === "acao" ? acaoRef.current : primeiro === "responsavel" ? responsavelRef.current : prazoRef.current;
-      alvo?.focus();
+      if (primeiro === "responsavel") {
+        // Campo aberto (ou lista vazia, que mantém o campo aberto): foco no campo; senão, na pessoa que recebe o Tab (a marcada ou a primeira).
+        (campoRef.current ?? responsavelRef.current?.querySelector<HTMLElement>('[role="radio"][tabindex="0"]'))?.focus();
+      } else (primeiro === "acao" ? acaoRef.current : prazoRef.current)?.focus();
       return;
     }
     setFaltas("");
@@ -530,10 +539,44 @@ function Detalhe({
 
   const vazio = (valor: string) => !valor.trim();
 
-  // Chips: só pessoas cadastradas na empresa (e o usuário atual), no máximo 3, sempre em ordem alfabética; rótulo = primeiro nome + último sobrenome (nome completo no title); nome digitado à mão em outra correção nunca vira sugestão.
-  const nomesSugeridos = sugestoesDeResponsavel({ cadastradas: pessoas, escolhido: responsavel, limite: 3 });
-  const rotulosDosChips = rotulosDeChipsDePessoas(nomesSugeridos);
+  // Lista empilhada: só pessoas cadastradas na empresa (e o usuário atual), até 3, sempre em ordem alfabética; rótulo = primeiro nome + último sobrenome (nome completo no title). A pessoa escolhida fica marcada; o nome digitado à mão em "Outra pessoa" só entra na lista depois de confirmado (Enter ou sair do campo) ou quando coincide com uma pessoa cadastrada.
+  const coincideComCadastrada = pessoas.some((pessoa) => mesmaPessoa(pessoa, responsavel));
+  const nomesDaLista = pessoasDaLista({ cadastradas: pessoas, escolhido: digitando && !coincideComCadastrada ? "" : responsavel, limite: 3 });
+  const rotulosDaLista = rotulosDeChipsDePessoas(nomesDaLista);
+  const indiceMarcado = nomesDaLista.findIndex((nome) => mesmaPessoa(nome, responsavel));
+  const campoAberto = !bloqueado && (outraPessoa || nomesDaLista.length === 0);
+  const escolherPessoa = (nome: string) => {
+    setResponsavel(nome);
+    setDigitando(false);
+  };
+  const fecharCampo = (devolverFoco: boolean) => {
+    devolverFocoAoBotao.current = devolverFoco;
+    setDigitando(false);
+    setOutraPessoa(false);
+    marcarTocado("responsavel");
+  };
+  // Depois de fechar o campo com Enter ou Esc, o foco volta ao botão "Outra pessoa".
+  useEffect(() => {
+    if (devolverFocoAoBotao.current && outraRef.current) {
+      outraRef.current.focus();
+      devolverFocoAoBotao.current = false;
+    }
+  });
+  // Grupo de escolha única: Tab entra na pessoa marcada (ou na primeira) e as setas trocam a escolha.
+  const aoTeclarNasPessoas = (evento: React.KeyboardEvent<HTMLDivElement>) => {
+    const avanca = evento.key === "ArrowDown" || evento.key === "ArrowRight";
+    if (!avanca && evento.key !== "ArrowUp" && evento.key !== "ArrowLeft") return;
+    evento.preventDefault();
+    const botoes = Array.from(evento.currentTarget.querySelectorAll<HTMLButtonElement>('[role="radio"]'));
+    const atual = botoes.indexOf(document.activeElement as HTMLButtonElement);
+    const proximo = (Math.max(atual, 0) + (avanca ? 1 : -1) + botoes.length) % botoes.length;
+    escolherPessoa(nomesDaLista[proximo]);
+    botoes[proximo]?.focus();
+  };
   const responsavelVazio = vazio(responsavel);
+  const erroDoPrazo = Boolean(mostrarErro("prazo"));
+  const prazoNoPassado = erroDoPrazo && Boolean(prazo);
+  const prazoVazioComErro = erroDoPrazo && !prazo;
   const faltaParaSalvar = [vazio(acao) ? "a ação" : "", responsavelVazio ? "o responsável" : "", erros.prazo ? "o prazo" : "", erroCausa ? "a causa raiz" : ""].filter(Boolean);
   const motivoDoBotao = textoDoQueFalta(faltaParaSalvar);
   const textoDoRodape = rodapeDoSalvar({ faltas: faltaParaSalvar, proximoTitulo: tituloDaProxima, etapa: etapaAberta, haOutraSemPlano });
@@ -554,48 +597,17 @@ function Detalhe({
   const entradaFoto = useRef<HTMLInputElement | null>(null);
   // Com o par antes/depois a foto segue o fluxo do depois (precisa de onFotoDepois); sem par, o fluxo de evidências da visita.
   const podeFoto = podeEvidenciar && (nc.par ? Boolean(onFotoDepois) : true);
-  const acrescimos = acrescimosVazios(nc, nc.evidencias, { podeEditar, podeEvidenciar: podeFoto });
+  const botoes = botoesDeProvas({ podeEditar, podeEvidenciar: podeFoto }, registrando);
   const mostrarEvidencias = conteudoDeEvidencias(nc, nc.evidencias);
   const totalEvidencias = contagemDeEvidencias(nc, nc.evidencias);
   const evidenciasExtras = evidenciasSemFoto(nc.evidencias);
   const fotosNoPar = (nc.par?.antes.length ?? 0) + (nc.par?.depois.length ?? 0);
-  const mostrarAtualizacoes = conteudoDeAtualizacoes(nc) || (podeEditar && registrando);
+  const mostrarAtualizacoes = conteudoDeAtualizacoes(nc);
+  const mostrarProvas = provasVisiveis({ evidencias: mostrarEvidencias, atualizacoes: mostrarAtualizacoes, registrando: podeEditar && registrando, botoes });
   const pedirFoto = () => {
     if (nc.par && onFotoDepois) entradaFoto.current?.click();
     else onAdicionarEvidencia(nc.id);
   };
-  const linhaDeAcrescimos = (acrescimos.foto || (acrescimos.atualizacao && !registrando)) && (
-    <div className="pc-acrescimos">
-      <span className="pc-acrescimos-rotulo">Acrescentar:</span>
-      {acrescimos.foto && (
-        <>
-          <input
-            ref={entradaFoto}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            hidden
-            onChange={(evento) => {
-              const arquivo = evento.target.files?.[0];
-              evento.target.value = "";
-              if (arquivo) onFotoDepois?.(nc.id, arquivo);
-            }}
-          />
-          <button type="button" className="pc-acrescimo" aria-label="Adicionar foto" onClick={pedirFoto}>
-            + Foto
-          </button>
-        </>
-      )}
-      {acrescimos.foto && acrescimos.atualizacao && !registrando && <span aria-hidden="true">·</span>}
-      {acrescimos.atualizacao && !registrando && (
-        <button type="button" className="pc-acrescimo" onClick={() => setRegistrando(true)}>
-          {rotuloDeRegistrarAtualizacao(resolvida)}
-        </button>
-      )}
-    </div>
-  );
-  // Só Evidências com conteúdo: os acréscimos vazios ficam na mesma linha delas (à direita), sem altura própria; descem se não couberem.
-  const acrescimosNaLinhaDasEvidenciasAtivo = acrescimosNaLinhaDasEvidencias(mostrarEvidencias, mostrarAtualizacoes);
   const funcionouVisivel = nc.reincidente && Boolean(nc.acaoQueFuncionou) && acao.trim() !== nc.acaoQueFuncionou;
   const [sugestoesAbertas, setSugestoesAbertas] = useState(false);
   const sugestoes: { rotulo: string; texto: string }[] = [
@@ -639,345 +651,417 @@ function Detalhe({
   return (
     <>
       <div className="pc-detail-head">
-        <div className="pc-detail-titulo-linha">
-          <h2 className="pc-detail-title" title={nc.titulo}>
-            {nc.titulo}
-          </h2>
-          {nc.checklistItemId && (
-            <button type="button" className="pc-detail-ver" onClick={() => onVerNoChecklist(nc.checklistItemId, nc.ambiente)}>
-              Ver no checklist ›
-            </button>
-          )}
-        </div>
+        <h2 className="pc-detail-title" title={nc.titulo}>
+          {nc.titulo}
+        </h2>
         <div className="pc-detail-contexto">
           <span className="pc-detail-ponto" style={{ "--grav": COR_DA_GRAVIDADE[nc.gravidade] } as React.CSSProperties} aria-hidden="true" />
           <span className="pc-detail-contexto-texto">{contextoDaLinha.texto}</span>
+          <span className="pc-detail-sep" aria-hidden="true">·</span>
           <span className="pc-detail-codigo">{contextoDaLinha.codigo}</span>
-        </div>
-        <div className="pc-detail-fonte">
-          {nc.criterio ? `${nc.criterio} · ` : ""}
-          {nc.referencia ? `Fonte: ${nc.referencia}` : "Fonte não registrada"}
+          <span className="pc-detail-sep" aria-hidden="true">·</span>
+          <span className="pc-detail-fonte" title={`${nc.criterio ? nc.criterio + " · " : ""}${nc.referencia ? `Fonte: ${nc.referencia}` : "Fonte não registrada"}`}>
+            {nc.referencia ? `Fonte: ${nc.referencia}` : "Fonte não registrada"}
+          </span>
           {nc.pop?.existe && (
-            <button type="button" className="pc-detail-pop" title={`${nc.pop.codigo ? nc.pop.codigo + " · " : ""}${nc.pop.titulo}`} onClick={onAbrirPop}>
-              POP
-            </button>
+            <>
+              <span className="pc-detail-sep" aria-hidden="true">·</span>
+              <button type="button" className="pc-detail-pop" title={`${nc.pop.codigo ? nc.pop.codigo + " · " : ""}${nc.pop.titulo}`} onClick={onAbrirPop}>
+                POP
+              </button>
+            </>
+          )}
+          {nc.checklistItemId && (
+            <>
+              <span className="pc-detail-sep" aria-hidden="true">·</span>
+              <button type="button" className="pc-detail-ver" onClick={() => onVerNoChecklist(nc.checklistItemId, nc.ambiente)}>
+                Ver no checklist ›
+              </button>
+            </>
           )}
         </div>
       </div>
 
-      <div className="ui-scroll pc-detail-scroll">
-        {nc.marcadaFeita && !resolvida && (
-          <div className="pc-feita" role="status">
-            <span>
-              Feita, aguardando confirmação · por {nc.marcadaFeita.por} em {formatarDataHora(nc.marcadaFeita.em)}
-              {nc.marcadaFeita.observacao ? ` — ${nc.marcadaFeita.observacao}` : ""}
-            </span>
-            {podeEditar ? (
+      <div className="pc-detail-corpo">
+        <div className="ui-scroll pc-detail-scroll">
+          {nc.marcadaFeita && !resolvida && (
+            <div className="pc-feita" role="status">
+              <span>
+                Feita, aguardando confirmação · por {nc.marcadaFeita.por} em {formatarDataHora(nc.marcadaFeita.em)}
+                {nc.marcadaFeita.observacao ? ` — ${nc.marcadaFeita.observacao}` : ""}
+              </span>
+              {podeEditar ? (
+                <button
+                  type="button"
+                  className="ui-btn ui-btn--acao"
+                  onClick={() => {
+                    setStatusNovo("Resolvida");
+                    setRegistrando(true);
+                  }}
+                >
+                  Confirmar e resolver
+                </button>
+              ) : (
+                podeMarcar && (
+                  <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => onDesfazerFeita(nc.id)}>
+                    Desfazer
+                  </button>
+                )
+              )}
+            </div>
+          )}
+          {podeMarcar && !podeEditar && !resolvida && !nc.marcadaFeita && (
+            <div className="pc-feita is-form">
+              <span className="ui-eyebrow">Esta correção já foi feita?</span>
+              <input className="ui-input" value={notaFeita} onChange={(evento) => setNotaFeita(evento.target.value)} placeholder="Observação (opcional)" aria-label="Observação ao marcar como feita" />
               <button
                 type="button"
-                className="ui-btn ui-btn--acao"
+                className="ui-btn ui-btn--acao pc-self-start"
                 onClick={() => {
-                  setStatusNovo("Resolvida");
-                  setRegistrando(true);
+                  onMarcarFeita(nc.id, notaFeita);
+                  setNotaFeita("");
                 }}
               >
-                Confirmar e resolver
+                Marcar como feita
               </button>
-            ) : (
-              podeMarcar && (
-                <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => onDesfazerFeita(nc.id)}>
-                  Desfazer
-                </button>
-              )
-            )}
-          </div>
-        )}
-        {podeMarcar && !podeEditar && !resolvida && !nc.marcadaFeita && (
-          <div className="pc-feita is-form">
-            <span className="ui-eyebrow">Esta correção já foi feita?</span>
-            <input className="ui-input" value={notaFeita} onChange={(evento) => setNotaFeita(evento.target.value)} placeholder="Observação (opcional)" aria-label="Observação ao marcar como feita" />
-            <button
-              type="button"
-              className="ui-btn ui-btn--acao pc-self-start"
-              onClick={() => {
-                onMarcarFeita(nc.id, notaFeita);
-                setNotaFeita("");
-              }}
-            >
-              Marcar como feita
-            </button>
-            <span className="ui-row-sub">O Consultor/RT confirma antes de resolver.</span>
-          </div>
-        )}
-
-        <div className="pc-plan-stack">
-          {(nc.observacao.trim() || nc.ultimaOcorrencia) && (
-            <div className="pc-plan-info">
-              {nc.observacao.trim() && (
-                <div className="pc-registrado">
-                  <span className="ui-eyebrow">Registrado no checklist · {quandoCurto(nc.registradoEm)}</span>
-                  <p className="pc-registrado-texto">“{nc.observacao.trim()}”</p>
-                </div>
-              )}
-              {nc.ultimaOcorrencia && (
-                <div className="pc-ultima">
-                  <span className="ui-eyebrow">Como foi nesse critério na última visita</span>
-                  <p className="pc-registrado-texto">
-                    {nc.ultimaOcorrencia.data} · {nc.ultimaOcorrencia.situacao}
-                    {nc.ultimaOcorrencia.acao ? ` · ${nc.ultimaOcorrencia.acao}` : ""}
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
-          {nc.reincidente && (
-            <div className="pc-plan-block">
-              <span className="ui-eyebrow">
-                Causa raiz <span className="pc-obrig">· obrigatória: o problema voltou</span>
-              </span>
-              <div className="pc-memoria" role="group" aria-label="Causas comuns">
-                {CAUSAS_RAIZ.map((opcao) => (
-                  <button key={opcao} type="button" className={`pc-chip-btn pc-chip-btn--soft${causa === opcao ? " is-on" : ""}`} disabled={bloqueado} aria-pressed={causa === opcao} onClick={() => setCausa(opcao)}>
-                    {opcao}
-                  </button>
-                ))}
-              </div>
-              <input ref={causaRef} className={`ui-input${tentou && erroCausa ? " is-invalid" : ""}`} value={causa} disabled={bloqueado} onChange={(evento) => setCausa(evento.target.value)} placeholder="Por que voltou a acontecer?" aria-label="Causa raiz" aria-invalid={Boolean(tentou && erroCausa)} />
-              {tentou && erroCausa && <span className="ui-field-error">{erroCausa}</span>}
+              <span className="ui-row-sub">O Consultor/RT confirma antes de resolver.</span>
             </div>
           )}
 
-          <div className="pc-plan-block pc-plan-acao">
-            <span className="ui-eyebrow">
-              O que será feito <span className="pc-obrig">· obrigatório</span>
-            </span>
-            <div className={`pc-acao-conjunto${mostrarErro("acao") ? " is-invalid" : ""}${bloqueado ? " is-bloqueado" : ""}`}>
-            <CaixaQueCresce
-              ref={acaoRef}
-              alturaMaxima={LIMITE_DA_CAIXA_DA_ACAO}
-              className="ui-input pc-acao-area"
-              value={acao}
-              disabled={bloqueado}
-              onChange={(evento) => setAcao(evento.target.value)}
-              onBlur={() => marcarTocado("acao")}
-              placeholder={bloqueado ? "Sem ação registrada" : "Descreva a ação corretiva"}
-              aria-label="O que será feito (ação corretiva)"
-              aria-invalid={Boolean(mostrarErro("acao"))}
-              aria-describedby={mostrarErro("acao") ? `acao-erro-${nc.id}` : undefined}
-            />
-            {!bloqueado && (
-              <div ref={linhaDaAcaoRef} className="pc-acao-linha">
-                <span className="ui-field-tools">
-                  <FieldVoiceTools fieldKey={`acao-${nc.id}`} value={acao} onChange={setAcao} rotuloIa="Sugerir com IA" contexto="Ação corretiva para uma não conformidade em segurança dos alimentos." />
-                </span>
-                {funcionouVisivel && (
-                  <button ref={chipFuncionouRef} type="button" className={`pc-chip-btn pc-chip-btn--soft pc-chip-funcionou${chipNaBarra ? "" : " is-oculto"}`} title={nc.acaoQueFuncionou} aria-hidden={chipNaBarra ? undefined : true} tabIndex={chipNaBarra ? undefined : -1} onClick={() => escolherAcao(nc.acaoQueFuncionou as string)}>
-                    ↺ {rotuloDoFuncionou}
-                  </button>
-                )}
-                {sugestoesDaLista.length > 0 && (
-                  <button type="button" className="pc-acao-mais" aria-expanded={sugestoesAbertas} onClick={() => setSugestoesAbertas((aberto) => !aberto)}>
-                    {sugestoesAbertas ? "Recolher sugestões" : `+${sugestoesDaLista.length} ${sugestoesDaLista.length === 1 ? "sugestão" : "sugestões"}`}
-                  </button>
-                )}
-              </div>
-            )}
-            </div>
-            {!bloqueado && sugestoesAbertas && sugestoesDaLista.length > 0 && (
-              <div className="pc-acao-sugestoes" role="group" aria-label="Outras sugestões de ação">
-                {sugestoesDaLista.map((sugestao) => (
-                  <button key={`${sugestao.rotulo}:${sugestao.texto}`} type="button" className="pc-acao-sugestao" title={sugestao.texto} onClick={() => escolherAcao(sugestao.texto)}>
-                    <span className="pc-acao-sugestao-rotulo">{sugestao.rotulo}</span>
-                    <span className="pc-acao-sugestao-texto">{sugestao.texto}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-            {mostrarErro("acao") && (
-              <span id={`acao-erro-${nc.id}`} className="ui-field-error">
-                {erros.acao}
-              </span>
-            )}
-          </div>
-
-          <div className="pc-plan-campos">
-            <div className="pc-plan-block pc-plan-resp">
-              <span className="pc-plan-rotulo">
-                <label htmlFor={`resp-${nc.id}`}>Responsável</label>
-                {onLembrete && (
-                  <button type="button" className="pc-plan-lembrete" onClick={onLembrete}>
-                    Enviar lembrete
-                  </button>
-                )}
-                {!bloqueado && nomesSugeridos.length > 0 && (
-                  <span className="pc-memoria" role="group" aria-label="Responsáveis sugeridos">
-                    {nomesSugeridos.map((nome, indice) => (
-                      <button key={nome} type="button" className="pc-chip-btn pc-chip-btn--soft" title={nome} aria-label={`Usar ${nome} como responsável`} onClick={() => setResponsavel(nome)}>
-                        {rotulosDosChips[indice]}
-                      </button>
-                    ))}
-                  </span>
-                )}
-              </span>
-              <input
-                id={`resp-${nc.id}`}
-                ref={responsavelRef}
-                className={`ui-input ui-input--lista${!bloqueado && responsavelVazio ? " is-invalid" : ""}`}
-                value={responsavel}
-                list={`pessoas-${nc.id}`}
-                disabled={bloqueado}
-                onChange={(evento) => setResponsavel(evento.target.value)}
-                onBlur={() => marcarTocado("responsavel")}
-                placeholder={bloqueado ? "Sem responsável" : "Escolha o responsável"}
-                aria-invalid={!bloqueado && responsavelVazio}
-              />
-              <datalist id={`pessoas-${nc.id}`}>
-                {pessoas.map((pessoa) => (
-                  <option key={pessoa} value={pessoa} />
-                ))}
-              </datalist>
-            </div>
-            <label className="pc-plan-block pc-plan-prazo">
-              <span className="pc-plan-rotulo">Prazo</span>
-              <span className="pc-prazo-campo">
-                <input
-                  ref={prazoRef}
-                  type="date"
-                  className={`ui-input${mostrarErro("prazo") ? " is-invalid" : ""}`}
-                  value={prazo}
+          <div className="pc-plan-stack">
+            <div className="pc-plan-block pc-plan-acao">
+              <h3 className="pc-bloco-titulo">
+                <span className="pc-bloco-num is-azul" aria-hidden="true">1</span>
+                <span>O que será feito</span> <span className="pc-obrig">· obrigatório</span>
+              </h3>
+              <div className={`pc-acao-conjunto${mostrarErro("acao") ? " is-invalid" : ""}${bloqueado ? " is-bloqueado" : ""}`}>
+                <CaixaQueCresce
+                  ref={acaoRef}
+                  alturaMaxima={LIMITE_DA_CAIXA_DA_ACAO}
+                  className="ui-input pc-acao-area"
+                  value={acao}
                   disabled={bloqueado}
-                  onChange={(evento) => setPrazo(evento.target.value)}
-                  onBlur={() => marcarTocado("prazo")}
-                  aria-invalid={Boolean(mostrarErro("prazo"))}
-                  aria-describedby={mostrarErro("prazo") ? `prazo-erro-${nc.id}` : undefined}
+                  onChange={(evento) => setAcao(evento.target.value)}
+                  onBlur={() => marcarTocado("acao")}
+                  placeholder={bloqueado ? "Sem ação registrada" : "Descreva a ação corretiva"}
+                  aria-label="O que será feito (ação corretiva)"
+                  aria-invalid={Boolean(mostrarErro("acao"))}
+                  aria-describedby={mostrarErro("acao") ? `acao-erro-${nc.id}` : undefined}
                 />
-                {mostrarErro("prazo") ? (
-                  <span id={`prazo-erro-${nc.id}`} className="pc-prazo-erro" role="alert" title={erros.prazo}>
-                    <span aria-hidden="true">{prazo ? "Data no passado" : erros.prazo}</span>
-                    <span className="sr-only">{erros.prazo}</span>
-                  </span>
-                ) : (
-                  !bloqueado && (
-                  <button type="button" className="pc-prazo-sugerido" title={`Usar ${dataMes(sugestao.data)}`} onClick={() => setPrazo(sugestao.data)}>
-                    {sugestao.dias} dias · {nc.gravidade === "Rotina" ? "leve" : nc.gravidade.toLocaleLowerCase("pt-BR")}
-                  </button>
-                  )
-                )}
-              </span>
-            </label>
-          </div>
-        </div>
-        {resolvida && <div className="ui-note">Correção resolvida: o plano está protegido. Novas atualizações ou reabertura ficam em Atualizações.</div>}
-
-        {(mostrarEvidencias || mostrarAtualizacoes) && (
-        <div className={`pc-detail-duas${mostrarEvidencias && mostrarAtualizacoes ? "" : " pc-detail-duas--uma"}${acrescimosNaLinhaDasEvidenciasAtivo ? " pc-detail-duas--acrescimos" : ""}`}>
-          {mostrarEvidencias && (
-          <section className="pc-detail-secao" aria-label="Evidências">
-            <div className="pc-detail-secao-titulo">
-              Evidências {totalEvidencias > 0 && <span>{totalEvidencias}</span>}
-            </div>
-            {nc.par && fotosNoPar > 0 && (
-              <AntesDepois
-                variante="pc"
-                antes={nc.par.antes}
-                depois={nc.par.depois}
-                podeAdicionar={podeEvidenciar && Boolean(onFotoDepois)}
-                resolvida={resolvida}
-                onFotoDepois={(arquivo) => onFotoDepois?.(nc.id, arquivo)}
-              />
-            )}
-            {evidenciasExtras.length > 0 && (
-              <ul className="pc-detail-extras" aria-label="Outras evidências">
-                {evidenciasExtras.map((ev) => (
-                  <li key={ev.id}>
-                    {ev.url ? (
-                      <a href={ev.url} target="_blank" rel="noreferrer">
-                        {ev.tipo} · {ev.quando}
-                      </a>
-                    ) : (
-                      <span>
-                        {ev.tipo} · {ev.quando}
-                      </span>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-          )}
-
-          {mostrarAtualizacoes && (
-          <section className="pc-detail-secao" aria-label="Atualizações">
-            <div className="pc-detail-secao-titulo">
-              Atualizações {nc.historico.length > 0 && <span>{nc.historico.length}</span>}
-            </div>
-            {nc.historico.length > 0 && (
-              <div className="pc-history">
-                {nc.historico.map((item) => (
-                  <div key={item.id} className="pc-history-item">
-                    <span className={`pc-history-ponto is-${item.status === "Resolvida" ? "ok" : item.status === "Em tratamento" ? "pend" : "nc"}`} aria-hidden="true" />
-                    <span className="pc-history-corpo">
-                      <span className="pc-history-text">{item.observacao}</span>
-                      <span className="pc-history-quando">{item.quando}</span>
+                {!bloqueado && (
+                  <div ref={linhaDaAcaoRef} className="pc-acao-linha">
+                    <span className="ui-field-tools">
+                      <FieldVoiceTools fieldKey={`acao-${nc.id}`} value={acao} onChange={setAcao} rotuloIa="Sugerir com IA" contexto="Ação corretiva para uma não conformidade em segurança dos alimentos." />
                     </span>
+                    {funcionouVisivel && (
+                      <button ref={chipFuncionouRef} type="button" className={`pc-chip-btn pc-chip-btn--soft pc-chip-funcionou${chipNaBarra ? "" : " is-oculto"}`} title={nc.acaoQueFuncionou} aria-hidden={chipNaBarra ? undefined : true} tabIndex={chipNaBarra ? undefined : -1} onClick={() => escolherAcao(nc.acaoQueFuncionou as string)}>
+                        ↺ {rotuloDoFuncionou}
+                      </button>
+                    )}
+                    {sugestoesDaLista.length > 0 && (
+                      <button type="button" className="pc-acao-mais" aria-expanded={sugestoesAbertas} onClick={() => setSugestoesAbertas((aberto) => !aberto)}>
+                        {sugestoesAbertas ? "Recolher sugestões" : `+${sugestoesDaLista.length} ${sugestoesDaLista.length === 1 ? "sugestão" : "sugestões"}`}
+                      </button>
+                    )}
                   </div>
-                ))}
+                )}
               </div>
-            )}
-            {podeEditar && !registrando && nc.historico.length > 0 && (
-              <button type="button" className="pc-detail-registrar" onClick={() => setRegistrando(true)}>
-                {rotuloDeRegistrarAtualizacao(resolvida)}
-              </button>
-            )}
-            {podeEditar && registrando && (
-              <div className="pc-update">
-                <span className="ui-field-wrap ui-field-wrap--area">
-                  <textarea
-                    ref={atualizacaoRef}
-                    className="ui-input pc-input-tools"
-                    rows={3}
-                    value={texto}
-                    onChange={(evento) => setTexto(evento.target.value)}
-                    placeholder="Ex.: piso comprado; aguardando instalação; correção concluída..."
-                    aria-label="Texto da atualização"
-                  />
-                  <span className="ui-field-tools">
-                    <FieldVoiceTools fieldKey={`atualizacao-${nc.id}`} value={texto} onChange={setTexto} contexto="Atualização de acompanhamento de uma não conformidade em segurança dos alimentos." />
-                  </span>
-                </span>
-                <div className="pc-status-buttons" role="group" aria-label="Situação após a atualização">
-                  {(["Aberta", "Em tratamento", "Resolvida"] as StatusNc[]).map((status) => (
-                    <button key={status} type="button" aria-pressed={statusNovo === status} className={`pc-status-btn${statusNovo === status ? " is-on" : ""}`} onClick={() => setStatusNovo(status)}>
-                      {status === "Aberta" ? "Aberta" : status === "Em tratamento" ? "Em acompanhamento" : "Resolvida"}
+              {!bloqueado && sugestoesAbertas && sugestoesDaLista.length > 0 && (
+                <div className="pc-acao-sugestoes" role="group" aria-label="Outras sugestões de ação">
+                  {sugestoesDaLista.map((sugestao) => (
+                    <button key={`${sugestao.rotulo}:${sugestao.texto}`} type="button" className="pc-acao-sugestao" title={sugestao.texto} onClick={() => escolherAcao(sugestao.texto)}>
+                      <span className="pc-acao-sugestao-rotulo">{sugestao.rotulo}</span>
+                      <span className="pc-acao-sugestao-texto">{sugestao.texto}</span>
                     </button>
                   ))}
                 </div>
-                {statusNovo === "Resolvida" && !resolvida && <div className="ui-note">Para concluir, é necessário ter pelo menos uma evidência vinculada.</div>}
-                <div className="pc-update-acoes">
-                  <button type="button" className="ui-btn ui-btn--secondary" onClick={() => setRegistrando(false)}>
-                    Cancelar
-                  </button>
-                  <button
-                    type="button"
-                    className="ui-btn ui-btn--save"
-                    disabled={!texto.trim()}
-                    onClick={() => {
-                      onRegistrar(nc.id, texto, statusNovo);
-                      setTexto("");
-                      setRegistrando(false);
-                    }}
-                  >
-                    {statusNovo === "Resolvida" && !resolvida ? "Concluir e registrar" : "Registrar atualização"}
-                  </button>
+              )}
+              {mostrarErro("acao") && (
+                <span id={`acao-erro-${nc.id}`} className="ui-field-error">
+                  {erros.acao}
+                </span>
+              )}
+            </div>
+
+            {nc.reincidente && (
+              <div className="pc-plan-block pc-plan-causa">
+                <span className="ui-eyebrow">
+                  Causa raiz <span className="pc-obrig">· obrigatória: o problema voltou</span>
+                </span>
+                <div className="pc-memoria" role="group" aria-label="Causas comuns">
+                  {CAUSAS_RAIZ.map((opcao) => (
+                    <button key={opcao} type="button" className={`pc-chip-btn pc-chip-btn--soft${causa === opcao ? " is-on" : ""}`} disabled={bloqueado} aria-pressed={causa === opcao} onClick={() => setCausa(opcao)}>
+                      {opcao}
+                    </button>
+                  ))}
                 </div>
+                <input ref={causaRef} className={`ui-input${tentou && erroCausa ? " is-invalid" : ""}`} value={causa} disabled={bloqueado} onChange={(evento) => setCausa(evento.target.value)} placeholder="Por que voltou a acontecer?" aria-label="Causa raiz" aria-invalid={Boolean(tentou && erroCausa)} />
+                {tentou && erroCausa && <span className="ui-field-error">{erroCausa}</span>}
               </div>
             )}
-          </section>
+            {(nc.observacao.trim() || nc.ultimaOcorrencia) && (
+              <div className="pc-plan-info">
+                {nc.observacao.trim() && (
+                  <div className="pc-registrado">
+                    <span className="ui-eyebrow">Registrado no checklist · {quandoCurto(nc.registradoEm)}</span>
+                    <p className="pc-registrado-texto">“{nc.observacao.trim()}”</p>
+                  </div>
+                )}
+                {nc.ultimaOcorrencia && (
+                  <div className="pc-ultima">
+                    <span className="ui-eyebrow">Como foi nesse critério na última visita</span>
+                    <p className="pc-registrado-texto">
+                      {nc.ultimaOcorrencia.data} · {nc.ultimaOcorrencia.situacao}
+                      {nc.ultimaOcorrencia.acao ? ` · ${nc.ultimaOcorrencia.acao}` : ""}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+          </div>
+          {resolvida && <div className="ui-note">Correção resolvida: o plano está protegido. Novas atualizações ou reabertura ficam em Atualizações.</div>}
+
+          {mostrarProvas && (
+            <div className="pc-provas">
+              <h3 className="pc-bloco-titulo">
+                <span className="pc-bloco-num" aria-hidden="true">3</span>
+                <span>Provas</span> <span className="pc-bloco-opcional">· opcional</span>
+              </h3>
+              {(botoes.foto || botoes.atualizacao) && (
+                <div className="pc-provas-botoes">
+                  {botoes.foto && (
+                    <>
+                      <input
+                        ref={entradaFoto}
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        hidden
+                        onChange={(evento) => {
+                          const arquivo = evento.target.files?.[0];
+                          evento.target.value = "";
+                          if (arquivo) onFotoDepois?.(nc.id, arquivo);
+                        }}
+                      />
+                      <button type="button" className="pc-prova-botao" aria-label={nc.par ? "Adicionar foto do depois" : "Adicionar foto"} onClick={pedirFoto}>
+                        + Foto
+                      </button>
+                    </>
+                  )}
+                  {botoes.atualizacao && (
+                    <button type="button" className="pc-prova-botao" onClick={() => setRegistrando(true)}>
+                      {rotuloDeRegistrarAtualizacao(resolvida)}
+                    </button>
+                  )}
+                </div>
+              )}
+              {mostrarEvidencias && (
+                <section className="pc-detail-secao" aria-label="Evidências">
+                  <div className="pc-detail-secao-titulo">
+                    Evidências {totalEvidencias > 0 && <span>{totalEvidencias}</span>}
+                  </div>
+                  {nc.par && fotosNoPar > 0 && (
+                    <AntesDepois variante="pc" antes={nc.par.antes} depois={nc.par.depois} podeAdicionar={false} resolvida={resolvida} onFotoDepois={(arquivo) => onFotoDepois?.(nc.id, arquivo)} />
+                  )}
+                  {evidenciasExtras.length > 0 && (
+                    <ul className="pc-detail-extras" aria-label="Outras evidências">
+                      {evidenciasExtras.map((ev) => (
+                        <li key={ev.id}>
+                          {ev.url ? (
+                            <a href={ev.url} target="_blank" rel="noreferrer">
+                              {ev.tipo} · {ev.quando}
+                            </a>
+                          ) : (
+                            <span>
+                              {ev.tipo} · {ev.quando}
+                            </span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </section>
+              )}
+              {(mostrarAtualizacoes || (podeEditar && registrando)) && (
+                <section className="pc-detail-secao" aria-label="Atualizações">
+                  <div className="pc-detail-secao-titulo">
+                    Atualizações {nc.historico.length > 0 && <span>{nc.historico.length}</span>}
+                  </div>
+                  {nc.historico.length > 0 && (
+                    <div className="pc-history">
+                      {nc.historico.map((item) => (
+                        <div key={item.id} className="pc-history-item">
+                          <span className={`pc-history-ponto is-${item.status === "Resolvida" ? "ok" : item.status === "Em tratamento" ? "pend" : "nc"}`} aria-hidden="true" />
+                          <span className="pc-history-corpo">
+                            <span className="pc-history-text">{item.observacao}</span>
+                            <span className="pc-history-quando">{item.quando}</span>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {podeEditar && registrando && (
+                    <div className="pc-update">
+                      <span className="ui-field-wrap ui-field-wrap--area">
+                        <textarea
+                          ref={atualizacaoRef}
+                          className="ui-input pc-input-tools"
+                          rows={3}
+                          value={texto}
+                          onChange={(evento) => setTexto(evento.target.value)}
+                          placeholder="Ex.: piso comprado; aguardando instalação; correção concluída..."
+                          aria-label="Texto da atualização"
+                        />
+                        <span className="ui-field-tools">
+                          <FieldVoiceTools fieldKey={`atualizacao-${nc.id}`} value={texto} onChange={setTexto} contexto="Atualização de acompanhamento de uma não conformidade em segurança dos alimentos." />
+                        </span>
+                      </span>
+                      <div className="pc-status-buttons" role="group" aria-label="Situação após a atualização">
+                        {(["Aberta", "Em tratamento", "Resolvida"] as StatusNc[]).map((status) => (
+                          <button key={status} type="button" aria-pressed={statusNovo === status} className={`pc-status-btn${statusNovo === status ? " is-on" : ""}`} onClick={() => setStatusNovo(status)}>
+                            {status === "Aberta" ? "Aberta" : status === "Em tratamento" ? "Em acompanhamento" : "Resolvida"}
+                          </button>
+                        ))}
+                      </div>
+                      {statusNovo === "Resolvida" && !resolvida && <div className="ui-note">Para concluir, é necessário ter pelo menos uma evidência vinculada.</div>}
+                      <div className="pc-update-acoes">
+                        <button type="button" className="ui-btn ui-btn--secondary" onClick={() => setRegistrando(false)}>
+                          Cancelar
+                        </button>
+                        <button
+                          type="button"
+                          className="ui-btn ui-btn--save"
+                          disabled={!texto.trim()}
+                          onClick={() => {
+                            onRegistrar(nc.id, texto, statusNovo);
+                            setTexto("");
+                            setRegistrando(false);
+                          }}
+                        >
+                          {statusNovo === "Resolvida" && !resolvida ? "Concluir e registrar" : "Registrar atualização"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </section>
+              )}
+            </div>
           )}
-          {acrescimosNaLinhaDasEvidenciasAtivo && linhaDeAcrescimos}
         </div>
-        )}
-        {!acrescimosNaLinhaDasEvidenciasAtivo && linhaDeAcrescimos}
+
+        <aside className="pc-detail-lateral" aria-label="Quem faz e até quando">
+          <h3 className="pc-bloco-titulo">
+            <span className="pc-bloco-num is-azul" aria-hidden="true">2</span>
+            <span>Quem faz e até quando</span>
+          </h3>
+          <div className="pc-plan-block pc-plan-resp">
+            <span className="pc-plan-rotulo" id={`resp-rotulo-${nc.id}`}>
+              Responsável
+            </span>
+            {bloqueado ? (
+              <input id={`resp-${nc.id}`} className="ui-input" value={responsavel} disabled readOnly placeholder="Sem responsável" aria-labelledby={`resp-rotulo-${nc.id}`} />
+            ) : (
+              <div ref={responsavelRef} className="pc-pessoas">
+                {nomesDaLista.length > 0 && (
+                  <div className="pc-pessoas-lista" role="radiogroup" aria-labelledby={`resp-rotulo-${nc.id}`} aria-describedby={responsavelVazio ? `resp-erro-${nc.id}` : undefined} onKeyDown={aoTeclarNasPessoas}>
+                    {nomesDaLista.map((nome, indice) => {
+                      const marcada = mesmaPessoa(nome, responsavel);
+                      return (
+                        <button key={nome} type="button" role="radio" aria-checked={marcada} tabIndex={indice === Math.max(indiceMarcado, 0) ? 0 : -1} className={`pc-pessoa${marcada ? " is-on" : ""}`} title={nome} aria-label={nome} onClick={() => escolherPessoa(nome)}>
+                          {rotulosDaLista[indice]}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                {campoAberto ? (
+                  <>
+                    <input
+                      ref={campoRef}
+                      id={`resp-${nc.id}`}
+                      className="ui-input ui-input--lista pc-pessoa-campo"
+                      value={responsavel}
+                      list={`pessoas-${nc.id}`}
+                      autoFocus
+                      onChange={(evento) => {
+                        setResponsavel(evento.target.value);
+                        setDigitando(true);
+                      }}
+                      onBlur={() => fecharCampo(false)}
+                      onKeyDown={(evento) => {
+                        // Enter confirma o nome digitado; Esc cancela e volta ao que estava escolhido antes de abrir o campo.
+                        if (evento.key === "Enter" || evento.key === "Escape") {
+                          evento.preventDefault();
+                          if (evento.key === "Escape") setResponsavel(valorAntesDeAbrir.current);
+                          fecharCampo(true);
+                        }
+                      }}
+                      placeholder="Escolha o responsável"
+                      aria-label="Nome do responsável"
+                      aria-invalid={responsavelVazio}
+                      aria-describedby={responsavelVazio ? `resp-erro-${nc.id}` : undefined}
+                    />
+                    <datalist id={`pessoas-${nc.id}`}>
+                      {pessoas.map((pessoa) => (
+                        <option key={pessoa} value={pessoa} />
+                      ))}
+                    </datalist>
+                  </>
+                ) : (
+                  <button ref={outraRef} type="button" className="pc-pessoa pc-pessoa--outra" onClick={() => {
+                    valorAntesDeAbrir.current = responsavel;
+                    setOutraPessoa(true);
+                  }}>
+                    Outra pessoa <span aria-hidden="true">▾</span>
+                  </button>
+                )}
+              </div>
+            )}
+            <span id={`resp-erro-${nc.id}`} className="pc-resp-erro" aria-live="polite">
+              {!bloqueado && responsavelVazio ? "Escolha o responsável" : ""}
+            </span>
+            {onLembrete && (
+              <button type="button" className="pc-plan-lembrete" onClick={onLembrete}>
+                Enviar lembrete
+              </button>
+            )}
+          </div>
+          <div className="pc-plan-block pc-plan-prazo">
+            <label className="pc-plan-rotulo" htmlFor={`prazo-${nc.id}`}>
+              Prazo
+            </label>
+            <span className="pc-prazo-campo">
+              <input
+                ref={prazoRef}
+                id={`prazo-${nc.id}`}
+                type="date"
+                className={`ui-input${erroDoPrazo ? " is-invalid" : ""}`}
+                value={prazo}
+                disabled={bloqueado}
+                onChange={(evento) => setPrazo(evento.target.value)}
+                onBlur={() => marcarTocado("prazo")}
+                aria-invalid={erroDoPrazo}
+                aria-describedby={[erroDoPrazo ? `prazo-erro-${nc.id}` : "", !bloqueado ? `prazo-sug-${nc.id}` : ""].filter(Boolean).join(" ") || undefined}
+              />
+              {prazoNoPassado && (
+                <span id={`prazo-erro-${nc.id}`} className="pc-prazo-erro" role="alert" title={erros.prazo}>
+                  Já passou
+                </span>
+              )}
+            </span>
+            {prazoVazioComErro && (
+              <span id={`prazo-erro-${nc.id}`} className="pc-prazo-aviso" role="alert">
+                {erros.prazo}
+              </span>
+            )}
+            {!bloqueado && (
+              <button type="button" id={`prazo-sug-${nc.id}`} className="pc-prazo-sugerido" title={`Usar ${dataMes(sugestao.data)}`} onClick={() => setPrazo(sugestao.data)}>
+                {sugestao.dias} dias · {nc.gravidade === "Rotina" ? "leve" : nc.gravidade.toLocaleLowerCase("pt-BR")}
+              </button>
+            )}
+          </div>
+        </aside>
       </div>
 
       <div className="pc-detail-foot pc-detail-foot--plano">

@@ -31,22 +31,17 @@ export function conteudoDeAtualizacoes(nc: { historico: unknown[] }): boolean {
   return nc.historico.length > 0;
 }
 
-/** Quais acréscimos entram na linha do fim do detalhe: só o que está vazio e que a pessoa pode fazer. */
-export function acrescimosVazios(
-  nc: ComPar & { historico: unknown[] },
-  _evidencias: EvidenciaComTipo[],
-  permissoes: { podeEditar: boolean; podeEvidenciar: boolean }
-): { foto: boolean; atualizacao: boolean } {
-  return {
-    // O link "+ Foto" vale enquanto não houver FOTO (par vazio), mesmo com áudio já listado.
-    foto: permissoes.podeEvidenciar && fotosDoPar(nc) === 0,
-    atualizacao: permissoes.podeEditar && !conteudoDeAtualizacoes(nc),
-  };
+/**
+ * Botões do bloco "3 Provas · opcional": "+ Foto" e "+ Registrar atualização" ficam SEMPRE no bloco, conforme a permissão
+ * (sem permissão para nada não há botão). "+ Registrar atualização" some só enquanto o formulário da atualização está aberto.
+ */
+export function botoesDeProvas(permissoes: { podeEditar: boolean; podeEvidenciar: boolean }, registrando = false): { foto: boolean; atualizacao: boolean } {
+  return { foto: permissoes.podeEvidenciar, atualizacao: permissoes.podeEditar && !registrando };
 }
 
-/** Os acréscimos vazios ficam na linha das Evidências só quando há evidências e não há bloco de Atualizações (com conteúdo ou em edição). */
-export function acrescimosNaLinhaDasEvidencias(mostrarEvidencias: boolean, mostrarAtualizacoes: boolean): boolean {
-  return mostrarEvidencias && !mostrarAtualizacoes;
+/** O bloco "3 Provas" aparece com conteúdo existente (evidências, atualizações, formulário aberto) ou com algum botão permitido. */
+export function provasVisiveis(dados: { evidencias: boolean; atualizacoes: boolean; registrando: boolean; botoes: { foto: boolean; atualizacao: boolean } }): boolean {
+  return dados.evidencias || dados.atualizacoes || dados.registrando || dados.botoes.foto || dados.botoes.atualizacao;
 }
 
 export function rotuloDeRegistrarAtualizacao(resolvida: boolean): string {

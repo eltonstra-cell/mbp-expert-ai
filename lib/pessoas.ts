@@ -31,17 +31,20 @@ export function pessoasUnicas(nomes: string[]): string[] {
 const ORDEM_DE_NOMES = new Intl.Collator("pt-BR", { sensitivity: "base" });
 
 /**
- * Chips de sugestão de responsável: só pessoas cadastradas na empresa e o usuário atual (nome digitado à mão em outra correção
- * nunca vira sugestão). A ordem é SEMPRE alfabética pelo nome completo (sem acento nem caixa), igual em todas as correções;
- * a pessoa já escolhida não aparece. Máximo de `limite`.
+ * Lista empilhada do Responsável (uma pessoa por linha): as primeiras `limite` pessoas cadastradas na empresa (e o usuário atual),
+ * SEMPRE em ordem alfabética pelo nome completo (sem acento nem caixa), igual em todas as correções. Quem já está escolhido continua na lista
+ * (marcado na tela); se a escolhida não está entre as primeiras, entra no fim, para a escolha ficar sempre à vista. Nome digitado à mão só
+ * aparece depois de escolhido (quem chama não passa o texto ainda em digitação).
  */
-export function sugestoesDeResponsavel(dados: { cadastradas: string[]; usuarioAtual?: string; escolhido?: string; limite?: number }): string[] {
+export function pessoasDaLista(dados: { cadastradas: string[]; usuarioAtual?: string; escolhido?: string; limite?: number }): string[] {
   const limite = dados.limite ?? 3;
-  const pessoas = pessoasUnicas([...dados.cadastradas, ...(dados.usuarioAtual ? [dados.usuarioAtual] : [])]);
-  return pessoas
-    .filter((nome) => !dados.escolhido || !mesmaPessoa(nome, dados.escolhido))
-    .sort((a, b) => ORDEM_DE_NOMES.compare(a, b))
-    .slice(0, limite);
+  const todas = pessoasUnicas([...dados.cadastradas, ...(dados.usuarioAtual ? [dados.usuarioAtual] : [])]).sort((a, b) => ORDEM_DE_NOMES.compare(a, b));
+  const lista = todas.slice(0, limite);
+  const escolhido = pessoasUnicas([dados.escolhido || ""])[0] ?? "";
+  if (escolhido && !lista.some((nome) => mesmaPessoa(nome, escolhido))) {
+    lista.push(todas.find((nome) => mesmaPessoa(nome, escolhido)) ?? escolhido);
+  }
+  return lista;
 }
 
 const SUFIXOS_DE_NOME = new Set(["neto", "filho", "junior", "jr", "sobrinho"]);

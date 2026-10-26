@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { acrescimosNaLinhaDasEvidencias, chipDaAcaoCabeNaBarra, RESERVA_DO_LINK_DE_SUGESTOES, acrescimosVazios, conteudoDeAtualizacoes, conteudoDeEvidencias, contagemDeEvidencias, contextoDoDetalhe, evidenciasSemFoto, rotuloDeRegistrarAtualizacao, selosDoCartao } from "../lib/layoutDeCorrecoes.ts";
+import { botoesDeProvas, provasVisiveis, chipDaAcaoCabeNaBarra, RESERVA_DO_LINK_DE_SUGESTOES, conteudoDeAtualizacoes, conteudoDeEvidencias, contagemDeEvidencias, contextoDoDetalhe, evidenciasSemFoto, rotuloDeRegistrarAtualizacao, selosDoCartao } from "../lib/layoutDeCorrecoes.ts";
 
 const foto = { id: "f1" };
 const audio = { id: "a1", tipo: "Áudio" };
@@ -29,21 +29,26 @@ test("conteudoDeAtualizacoes: só com histórico", () => {
   assert.equal(conteudoDeAtualizacoes(nc({ historico: [{ id: "h1" }] })), true);
 });
 
-test("acrescimosVazios: só o que está vazio E permitido (cada combinação)", () => {
+test("botoesDeProvas: sempre no bloco, conforme a permissão; a atualização some só com o formulário aberto", () => {
   const tudo = { podeEditar: true, podeEvidenciar: true };
-  assert.deepEqual(acrescimosVazios(nc(), [], tudo), { foto: true, atualizacao: true });
-  assert.deepEqual(acrescimosVazios(nc({ historico: [{ id: "h" }] }), [], tudo), { foto: true, atualizacao: false });
-  assert.deepEqual(acrescimosVazios(nc({ par: { antes: [foto], depois: [] } }), [], tudo), { foto: false, atualizacao: true });
-  assert.deepEqual(acrescimosVazios(nc({ par: { antes: [foto], depois: [] }, historico: [{ id: "h" }] }), [], tudo), { foto: false, atualizacao: false });
-  assert.deepEqual(acrescimosVazios(nc(), [audio], tudo), { foto: true, atualizacao: true }, "só áudio: o link + Foto continua (não há foto)");
-  assert.deepEqual(acrescimosVazios(nc(), [], { podeEditar: false, podeEvidenciar: true }), { foto: true, atualizacao: false });
-  assert.deepEqual(acrescimosVazios(nc(), [], { podeEditar: true, podeEvidenciar: false }), { foto: false, atualizacao: true });
-  assert.deepEqual(acrescimosVazios(nc(), [], { podeEditar: false, podeEvidenciar: false }), { foto: false, atualizacao: false }, "sem permissão não há linha");
+  assert.deepEqual(botoesDeProvas(tudo), { foto: true, atualizacao: true });
+  assert.deepEqual(botoesDeProvas(tudo, true), { foto: true, atualizacao: false });
+  assert.deepEqual(botoesDeProvas({ podeEditar: false, podeEvidenciar: true }), { foto: true, atualizacao: false });
+  assert.deepEqual(botoesDeProvas({ podeEditar: true, podeEvidenciar: false }), { foto: false, atualizacao: true });
+  assert.deepEqual(botoesDeProvas({ podeEditar: false, podeEvidenciar: false }), { foto: false, atualizacao: false }, "sem permissão não há botão");
 });
 
-test("acrescimosVazios: correção resolvida mantém as regras e o rótulo vira 'Registrar nova atualização / reabrir'", () => {
-  const resolvida = nc({ status: "Resolvida" });
-  assert.deepEqual(acrescimosVazios(resolvida, [], { podeEditar: true, podeEvidenciar: true }), { foto: true, atualizacao: true });
+test("provasVisiveis: conteúdo existente ou botão permitido; sem nada, o bloco não existe", () => {
+  const sem = { foto: false, atualizacao: false };
+  const base = { evidencias: false, atualizacoes: false, registrando: false, botoes: sem };
+  assert.equal(provasVisiveis(base), false);
+  assert.equal(provasVisiveis({ ...base, evidencias: true }), true);
+  assert.equal(provasVisiveis({ ...base, atualizacoes: true }), true);
+  assert.equal(provasVisiveis({ ...base, registrando: true }), true);
+  assert.equal(provasVisiveis({ ...base, botoes: { foto: true, atualizacao: false } }), true);
+});
+
+test("rotuloDeRegistrarAtualizacao: correção resolvida vira 'Registrar nova atualização / reabrir'", () => {
   assert.equal(rotuloDeRegistrarAtualizacao(true), "Registrar nova atualização / reabrir");
   assert.equal(rotuloDeRegistrarAtualizacao(false), "+ Registrar atualização");
 });
@@ -63,13 +68,6 @@ test("contextoDoDetalhe: gravidade, ambiente, item e reincidência; o código fi
   assert.deepEqual(contextoDoDetalhe(nc(), "Importante"), { texto: "Importante · Cozinha · item 2", codigo: "NC01" });
   assert.equal(contextoDoDetalhe(nc({ reincidente: true, vezes: 2 }), "Importante").texto, "Importante · Cozinha · item 2 · pela 2ª vez");
   assert.equal(contextoDoDetalhe(nc({ itemNumero: 0 }), "Leve").texto, "Leve · Cozinha");
-});
-
-test("acrescimosNaLinhaDasEvidencias: só com evidências e sem bloco de atualizações", () => {
-  assert.equal(acrescimosNaLinhaDasEvidencias(true, false), true);
-  assert.equal(acrescimosNaLinhaDasEvidencias(true, true), false, "com atualizações os acréscimos vão ao fim do corpo");
-  assert.equal(acrescimosNaLinhaDasEvidencias(false, false), false, "sem evidências não há linha onde ancorar");
-  assert.equal(acrescimosNaLinhaDasEvidencias(false, true), false);
 });
 
 test("chip 'Ação que funcionou antes' fica na barra só quando cabe inteiro; senão entra em '+N sugestões'", () => {

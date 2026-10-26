@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { chaveDaPessoa, mesmaPessoa, nomeCurtoDaPessoa, pessoasUnicas, rotulosDeChipsDePessoas, sugestoesDeResponsavel } from "../lib/pessoas.ts";
+import { chaveDaPessoa, mesmaPessoa, nomeCurtoDaPessoa, pessoasDaLista, pessoasUnicas, rotulosDeChipsDePessoas } from "../lib/pessoas.ts";
 
 test("nomes iguais sem acento, sem maiúsculas e sem espaços sobrando são a mesma pessoa", () => {
   assert.equal(chaveDaPessoa("  Élton   Volmir "), "elton volmir");
@@ -11,19 +11,23 @@ test("nomes iguais sem acento, sem maiúsculas e sem espaços sobrando são a me
   assert.deepEqual(pessoasUnicas(["Elton", "Élton", "elton ", "Marivane", ""]), ["Elton", "Marivane"]);
 });
 
-test("chips de responsável: só pessoas cadastradas e o usuário atual, em ordem alfabética (sem acento nem caixa), no máximo 3, sem a pessoa já escolhida", () => {
+test("lista de responsáveis: só pessoas cadastradas e o usuário atual, em ordem alfabética (sem acento nem caixa), no máximo 3, igual em toda correção", () => {
   const cadastradas = ["Teste Responsável", "Élton Volmir Strapazon", "marivane", "Ana Quarta"];
-  assert.deepEqual(sugestoesDeResponsavel({ cadastradas }), ["Ana Quarta", "Élton Volmir Strapazon", "marivane"]);
-  assert.deepEqual(sugestoesDeResponsavel({ cadastradas, escolhido: "ANA quarta" }), ["Élton Volmir Strapazon", "marivane", "Teste Responsável"]);
-  // a ordem não depende do último responsável do ambiente: é a mesma em toda correção
-  assert.deepEqual(sugestoesDeResponsavel({ cadastradas, ultimoDoAmbiente: "Teste Responsável" }), sugestoesDeResponsavel({ cadastradas }));
-  assert.deepEqual(sugestoesDeResponsavel({ cadastradas: [...cadastradas].reverse() }), sugestoesDeResponsavel({ cadastradas }));
-  // nome digitado à mão em outra correção (não cadastrado) nunca vira sugestão
-  assert.deepEqual(sugestoesDeResponsavel({ cadastradas: ["Marivane"] }), ["Marivane"]);
-  // o usuário atual entra no lugar alfabético, sem repetir quem já está na lista
-  assert.deepEqual(sugestoesDeResponsavel({ cadastradas: ["Marivane"], usuarioAtual: "Élton" }), ["Élton", "Marivane"]);
-  assert.deepEqual(sugestoesDeResponsavel({ cadastradas: ["Elton"], usuarioAtual: "Élton" }), ["Elton"]);
-  assert.deepEqual(sugestoesDeResponsavel({ cadastradas, limite: 2 }), ["Ana Quarta", "Élton Volmir Strapazon"]);
+  assert.deepEqual(pessoasDaLista({ cadastradas }), ["Ana Quarta", "Élton Volmir Strapazon", "marivane"]);
+  assert.deepEqual(pessoasDaLista({ cadastradas: [...cadastradas].reverse() }), pessoasDaLista({ cadastradas }));
+  assert.deepEqual(pessoasDaLista({ cadastradas: ["Marivane"], usuarioAtual: "Élton" }), ["Élton", "Marivane"]);
+  assert.deepEqual(pessoasDaLista({ cadastradas: ["Elton"], usuarioAtual: "Élton" }), ["Elton"]);
+  assert.deepEqual(pessoasDaLista({ cadastradas, limite: 2 }), ["Ana Quarta", "Élton Volmir Strapazon"]);
+});
+
+test("lista de responsáveis: a pessoa escolhida fica marcada na lista e a que está fora das 3 primeiras entra no fim (espaços e caixa não importam)", () => {
+  const cadastradas = ["Marcos Souza", "Isabel", "Ana Quarta", "Zeca Silva"];
+  assert.deepEqual(pessoasDaLista({ cadastradas, escolhido: "  marcos   souza " }), ["Ana Quarta", "Isabel", "Marcos Souza"], "já está na lista: não repete, mesmo com espaços duplos");
+  assert.deepEqual(pessoasDaLista({ cadastradas, escolhido: "zeca  silva" }), ["Ana Quarta", "Isabel", "Marcos Souza", "Zeca Silva"], "cadastrada fora das 3: entra no fim com a grafia do cadastro");
+  assert.deepEqual(pessoasDaLista({ cadastradas, escolhido: "Isabel" }), ["Ana Quarta", "Isabel", "Marcos Souza"]);
+  assert.deepEqual(pessoasDaLista({ cadastradas: ["Beto"], usuarioAtual: "Ana", escolhido: "Fulano   de Tal" }), ["Ana", "Beto", "Fulano de Tal"], "nome à mão só aparece depois de escolhido, com espaços normalizados");
+  assert.deepEqual(pessoasDaLista({ cadastradas, escolhido: "" }), pessoasDaLista({ cadastradas }), "texto vazio não cria linha");
+  assert.deepEqual(pessoasDaLista({ cadastradas: [] }), []);
 });
 
 test("nome do chip: primeiro nome + último sobrenome; duas pessoas com o mesmo resultado usam o nome completo", () => {

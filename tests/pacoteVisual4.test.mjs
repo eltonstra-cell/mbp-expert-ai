@@ -21,11 +21,11 @@ test("topo: dentro da visita o título é só 'Visita N'; o Início usa a mesma 
   assert.equal(pagina.includes('variante={view === "inicio"'), false);
 });
 
-test("Correções: aviso do responsável dentro do campo, abas sempre filtram a lista, chips só de pessoas cadastradas", () => {
+test("Correções: aviso do responsável abaixo da lista de pessoas, abas sempre filtram a lista, lista só de pessoas cadastradas", () => {
   const tela = ler("../components/pc/PcCorrecoes.tsx");
-  assert.ok(tela.includes('"Escolha o responsável"') && !tela.includes('<span className="ui-field-error">Escolha o responsável</span>'));
+  assert.ok(tela.includes('className="pc-resp-erro"') && tela.includes("Escolha o responsável") && !tela.includes('<span className="ui-field-error">Escolha o responsável</span>'));
   assert.ok(tela.includes("useState<EtapaCorrecao>(() => etapaInicial(itens, selecionadaInicial))") && tela.includes("if (etapaDaCorrecao(nc) !== etapa) return false;"));
-  assert.ok(tela.includes("sugestoesDeResponsavel({ cadastradas: pessoas") && !tela.includes("memoriaResponsaveis || []"));
+  assert.ok(tela.includes("pessoasDaLista({ cadastradas: pessoas") && !tela.includes("memoriaResponsaveis || []"));
   assert.ok(tela.includes("pc-acao-linha") && tela.includes("sugestões"), "ferramentas e sugestões numa linha abaixo da caixa");
 });
 
