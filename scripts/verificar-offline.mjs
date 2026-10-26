@@ -68,12 +68,12 @@ const estadoInicial = async () => {
   e.db.empresas["elton-volmir"] = { ...e.db.empresas["beyond-nutri"], id: "elton-volmir", nomeFantasia: "Elton Volmir Strapazon", razaoSocial: "Elton Volmir Strapazon" };
   e.db.visitas.push({ ...e.db.visitas[0], id: "vt9", empresaId: "elton-volmir", data: "2026-10-18", checklist: [item(31), item(32)] });
   // Correção de gravidade Rotina (última da lista) com UMA foto e título longo (2 linhas no detalhe): serve à verificação 17z.
-  e.db.ncs = [{ id: "nc-semente-foto", empresaId: "beyond-nutri", visitaId: "vt1", ambiente: "Cozinha", checklistItemId: "", titulo: TITULO_LONGO, categoria: "Higiene", criticidade: "Rotina", referencia: "", orientacao: "", observacao: "", prioridade: "Baixa", status: "Aberta", criadoEm: "2026-10-22T10:05:00.000Z" }];
-  // Pessoas com nomes compostos longos (chips de responsável: "primeiro nome + último sobrenome", sem cortar) e uma correção reincidente
+  e.db.ncs = [{ id: "nc-semente-foto", empresaId: "beyond-nutri", visitaId: "vt1", ambiente: "Cozinha", checklistItemId: "", responsavelAcao: "  elton   volmir   strapazon ", titulo: TITULO_LONGO, categoria: "Higiene", criticidade: "Rotina", referencia: "", orientacao: "", observacao: "", prioridade: "Baixa", status: "Aberta", criadoEm: "2026-10-22T10:05:00.000Z" }];
+  // Pessoas com nomes compostos longos (opções do campo de responsável, 8 pessoas para a lista rolar: "primeiro nome + último sobrenome", sem cortar) e uma correção reincidente
   // (Rotina, para não mudar a ordem das demais) cuja correção anterior, resolvida na Visita 1, traz a ação que funcionou.
   const agora = "2026-10-01T10:00:00.000Z";
   const pessoa = (id, nome) => ({ id, nome, email: `${id}@example.com`, perfil: "Administrador", status: "Ativo", empresaIds: ["beyond-nutri"], cargo: "Nutricionista", criadoEm: agora, atualizadoEm: agora });
-  e.db.usuarios.push(pessoa("u2", "Ana Beatriz Cavalcanti de Albuquerque Montenegro"), pessoa("u3", "Francisco José de Assis Albuquerque Vasconcelos Neto"), pessoa("u4", "Marivane Aparecida de Oliveira Santos Albuquerque"));
+  e.db.usuarios.push(pessoa("u2", "Ana Beatriz Cavalcanti de Albuquerque Montenegro"), pessoa("u3", "Francisco José de Assis Albuquerque Vasconcelos Neto"), pessoa("u4", "Marivane Aparecida de Oliveira Santos Albuquerque"), pessoa("u5", "Bruno Henrique Teixeira"), pessoa("u6", "Carla Dias"), pessoa("u7", "Débora Lima Prado"), pessoa("u8", "Zélia Monteiro"));
   e.db.visitas.push({ ...e.db.visitas[0], id: "vt0", data: "2026-09-10", status: "Concluída", criadoEm: "2026-09-10T10:00:00.000Z", checklist: [item(41)] });
   const ncRalo = { id: "nc-ralo-agora", empresaId: "beyond-nutri", visitaId: "vt1", ambiente: "Cozinha", checklistItemId: "", titulo: "Ralo sem tampa na cozinha", categoria: "Higiene", criticidade: "Rotina", referencia: "", orientacao: "", observacao: "", prioridade: "Baixa", status: "Aberta", criadoEm: "2026-10-22T10:07:00.000Z" };
   e.db.ncs.push(ncRalo, { ...ncRalo, id: "nc-ralo-antes", visitaId: "vt0", status: "Resolvida", acaoCorretiva: "Trocar o ralo e registrar a limpeza diária", responsavelAcao: "Marivane Aparecida de Oliveira Santos Albuquerque", prazo: "2026-09-20", criadoEm: "2026-09-10T10:07:00.000Z", resolvidaEm: "2026-09-18T10:00:00.000Z" });
@@ -485,11 +485,13 @@ try {
   await foto("17-correcoes");
   registrar("17e. Troca de assunto pela faixa: Correções da visita abre, a faixa continua e o segmento atual fica branco", await js(`(()=>{const at=document.querySelector(".fv .fv-item.is-atual");return !!at&&at.getAttribute("data-chave")==="correcoes"&&getComputedStyle(at).backgroundColor==="rgb(255, 255, 255)"&&document.querySelector(".tr-item.is-atual .tr-rotulo")?.textContent.trim()==="Visitas"})()`));
   registrar("17f. Correções: etapas em texto com contagem, sem título repetido, lista de cartões com rodapé fixo e página sem rolagem", await js(`(()=>{const e=[...document.querySelectorAll(".pc-cor .pc-etapa")].map((x)=>x.innerText.replace(/\\s+/g," ").trim());const visivel=[...document.querySelectorAll(".pc-cor h1")].every((h)=>getComputedStyle(h).position==="absolute");return e.length===4&&/^Identificadas \\d+$/.test(e[0])&&visivel&&!!document.querySelector(".pc-cor .pc-cor-card")&&!!document.querySelector(".pc-cor .pc-cor-rodape")&&document.scrollingElement.scrollHeight<=innerHeight+2})()`));
-  registrar("17g0. Correções: ao abrir, NENHUM erro aparece (a região aria-live do responsável já existe, vazia) e o rodapé diz 'Falta: …'", await js(`(()=>{const erro=document.querySelector(".pc-cor .pc-resp-erro");const foot=document.querySelector(".pc-cor .pc-detail-foot");return !!erro&&erro.getAttribute("aria-live")==="polite"&&erro.textContent.trim()===""&&/^Falta: /.test(foot.innerText.trim())&&!document.querySelector(".pc-cor .pc-prazo-erro")&&!document.querySelector(".pc-cor .pc-prazo-aviso")})()`));
-  await js('(()=>{const b=document.querySelector(".pc-cor .pc-pessoas [role=radio]");b?.dispatchEvent(new FocusEvent("focusout",{bubbles:true}));return !!b})()');
-  await n.esperar(250);
-  registrar("17g. Correções: responsável vazio com o erro 'Escolha o responsável' em vermelho (contraste >= 4,5:1 sobre #F4F6FA, aria-live) logo abaixo da lista de pessoas (nenhuma marcada); 'Salvar plano' desabilitado", await js(`(()=>{const lista=document.querySelector(".pc-cor .pc-pessoas");const erro=document.querySelector(".pc-cor .pc-resp-erro");const salvar=[...document.querySelectorAll(".pc-cor .pc-detail-foot button")].find((b)=>b.innerText.includes("Salvar plano"));return !!lista&&!!erro&&erro.textContent.trim()==="Escolha o responsável"&&(()=>{const lum=(c)=>{const v=c.match(/[0-9.]+/g).slice(0,3).map(Number).map((x)=>{x/=255;return x<=0.03928?x/12.92:Math.pow((x+0.055)/1.055,2.4)});return 0.2126*v[0]+0.7152*v[1]+0.0722*v[2]};const a=lum(getComputedStyle(erro).color),b=lum(getComputedStyle(erro.closest(".pc-detail-lateral")).backgroundColor);return (Math.max(a,b)+0.05)/(Math.min(a,b)+0.05)>=4.5})()&&erro.getAttribute("aria-live")==="polite"&&erro.getBoundingClientRect().top>=lista.getBoundingClientRect().bottom-1&&[...lista.querySelectorAll('[role="radio"]')].every((b)=>b.getAttribute("aria-checked")==="false")&&!!lista.querySelector('[role="radiogroup"]')&&!!salvar&&salvar.disabled})()`));
-  const medirSobreposicao = `(()=>{try{const raiz=document.querySelector(".pc-detail--corr");const corpo=raiz.querySelector(".pc-detail-corpo");const lateral=raiz.querySelector(".pc-detail-lateral");const cl=(e)=>lateral.contains(e)?lateral:corpo.contains(e)?corpo:null;const blocos=[...raiz.querySelectorAll(".pc-detail-head, .pc-detail-corpo > *, .pc-detail-lateral > *, .pc-detail-foot, .pc-plan-stack > *, .pc-provas > *, .pc-pessoas > *")];const recorta=(b)=>{const r=b.getBoundingClientRect();const c=cl(b);if(!c||b===c)return r;const x=c.getBoundingClientRect();return {left:Math.max(r.left,x.left),right:Math.min(r.right,x.right),top:Math.max(r.top,x.top),bottom:Math.min(r.bottom,x.bottom)}};const rs=blocos.map((b)=>({b,r:recorta(b)})).filter(({r})=>r.right-r.left>0&&r.bottom-r.top>0);let pares=0;const nomes=[];for(let i=0;i<rs.length;i++)for(let j=i+1;j<rs.length;j++){const a=rs[i],c=rs[j];if(a.b.contains(c.b)||c.b.contains(a.b))continue;const x=Math.min(a.r.right,c.r.right)-Math.max(a.r.left,c.r.left);const y=Math.min(a.r.bottom,c.r.bottom)-Math.max(a.r.top,c.r.top);if(x>1&&y>1){pares++;nomes.push(a.b.className+" x "+c.b.className)}}const ar=document.querySelector(".tr-avatar").getBoundingClientRect();const pb=raiz.querySelector(".pc-provas-botoes");const foot=raiz.querySelector(".pc-detail-foot").getBoundingClientRect();const salvar=[...raiz.querySelectorAll(".pc-detail-foot button")].find((b)=>b.innerText.includes("Salvar plano"));return JSON.stringify({pares,nomes,provasBotoes:!!pb&&/\\+ Foto/.test(pb.innerText)&&/Registrar atualização/.test(pb.innerText)&&[...pb.querySelectorAll("button")].every((b)=>b.getBoundingClientRect().height>=40),corpoRola:corpo.scrollHeight>corpo.clientHeight+1,lateralRola:lateral.scrollHeight>lateral.clientHeight+1,rodapeVisivel:foot.bottom<=innerHeight+0.5&&salvar.getBoundingClientRect().bottom<=innerHeight+0.5,avatarDentro:ar.bottom<=innerHeight&&ar.top>=0,trRola:document.querySelector(".tr-lista").scrollHeight>document.querySelector(".tr-lista").clientHeight+1})}catch(e){return JSON.stringify({erro:String(e.stack).slice(0,300)})}})()`;
+  registrar("17g0. Correções: ao abrir, o campo do responsável já mostra o erro 'Escolha o responsável' (região aria-live com 20 px reservados), o rodapé diz 'Falta: …' e não há erro de prazo", await js(`(()=>{const erro=document.querySelector(".pc-cor .pc-resp-erro");const foot=document.querySelector(".pc-cor .pc-detail-foot");return !!erro&&erro.getAttribute("aria-live")==="polite"&&erro.textContent.trim()==="Escolha o responsável"&&Math.round(erro.getBoundingClientRect().height)>=20&&/^Falta: /.test(foot.innerText.trim())&&!document.querySelector(".pc-cor .pc-prazo-erro")&&!document.querySelector(".pc-cor .pc-prazo-aviso")})()`));
+  // resultadoDosChecks é declarado mais abaixo (const): aqui a lista de medidas é avaliada na hora e cada uma tem nome.
+  {
+    const m17g = JSON.parse(await js(`(()=>{const campo=document.querySelector(".pc-cor .pc-resp-seletor");const erro=document.querySelector(".pc-cor .pc-resp-erro");const salvar=[...document.querySelectorAll(".pc-cor .pc-detail-foot button")].find((b)=>b.innerText.includes("Salvar plano"));const lum=(c)=>{const v=c.match(/[0-9.]+/g).slice(0,3).map(Number).map((x)=>{x/=255;return x<=0.03928?x/12.92:Math.pow((x+0.055)/1.055,2.4)});return 0.2126*v[0]+0.7152*v[1]+0.0722*v[2]};const a=lum(getComputedStyle(erro).color),b=lum(getComputedStyle(erro.closest(".pc-detail-lateral")).backgroundColor);return JSON.stringify({campo:!!campo,erroTexto:erro.textContent.trim()==="Escolha o responsável",contraste:(Math.max(a,b)+0.05)/(Math.min(a,b)+0.05)>=4.5,aria:erro.getAttribute("aria-live")==="polite",abaixo:erro.getBoundingClientRect().top>=campo.getBoundingClientRect().bottom-1,borda:getComputedStyle(campo).borderTopColor,texto:campo.innerText.replace(/\\s+/g," ").trim(),describedby:campo.getAttribute("aria-describedby")===erro.id,desabilitado:!!salvar&&salvar.disabled})})()`));
+    registrar("17g. Correções: responsável vazio (depois do primeiro toque) com o erro 'Escolha o responsável' em vermelho (contraste >= 4,5:1 sobre #F4F6FA, aria-live) logo abaixo do campo único, borda vermelha #B83A33 e nenhuma pessoa escolhida; 'Salvar plano' desabilitado", m17g.campo && m17g.erroTexto && m17g.contraste && m17g.aria && m17g.abaixo && m17g.borda === "rgb(184, 58, 51)" && m17g.texto === "Escolha uma pessoa ▾" && m17g.describedby && m17g.desabilitado, JSON.stringify(m17g));
+  }
+  const medirSobreposicao = `(()=>{try{const raiz=document.querySelector(".pc-detail--corr");const corpo=raiz.querySelector(".pc-detail-corpo");const lateral=raiz.querySelector(".pc-detail-lateral");const cl=(e)=>lateral.contains(e)?lateral:corpo.contains(e)?corpo:null;const blocos=[...raiz.querySelectorAll(".pc-detail-head, .pc-detail-corpo > *, .pc-detail-lateral > *, .pc-detail-foot, .pc-plan-stack > *, .pc-provas > *, .pc-plan-resp > *")];const recorta=(b)=>{const r=b.getBoundingClientRect();const c=cl(b);if(!c||b===c)return r;const x=c.getBoundingClientRect();return {left:Math.max(r.left,x.left),right:Math.min(r.right,x.right),top:Math.max(r.top,x.top),bottom:Math.min(r.bottom,x.bottom)}};const rs=blocos.map((b)=>({b,r:recorta(b)})).filter(({r})=>r.right-r.left>0&&r.bottom-r.top>0);let pares=0;const nomes=[];for(let i=0;i<rs.length;i++)for(let j=i+1;j<rs.length;j++){const a=rs[i],c=rs[j];if(a.b.contains(c.b)||c.b.contains(a.b))continue;const x=Math.min(a.r.right,c.r.right)-Math.max(a.r.left,c.r.left);const y=Math.min(a.r.bottom,c.r.bottom)-Math.max(a.r.top,c.r.top);if(x>1&&y>1){pares++;nomes.push(a.b.className+" x "+c.b.className)}}const ar=document.querySelector(".tr-avatar").getBoundingClientRect();const pb=raiz.querySelector(".pc-provas-botoes");const foot=raiz.querySelector(".pc-detail-foot").getBoundingClientRect();const salvar=[...raiz.querySelectorAll(".pc-detail-foot button")].find((b)=>b.innerText.includes("Salvar plano"));return JSON.stringify({pares,nomes,provasBotoes:!!pb&&/\\+ Foto/.test(pb.innerText)&&/Registrar atualização/.test(pb.innerText)&&[...pb.querySelectorAll("button")].every((b)=>b.getBoundingClientRect().height>=40),corpoRola:corpo.scrollHeight>corpo.clientHeight+1,lateralRola:lateral.scrollHeight>lateral.clientHeight+1,rodapeVisivel:foot.bottom<=innerHeight+0.5&&salvar.getBoundingClientRect().bottom<=innerHeight+0.5,avatarDentro:ar.bottom<=innerHeight&&ar.top>=0,trRola:document.querySelector(".tr-lista").scrollHeight>document.querySelector(".tr-lista").clientHeight+1})}catch(e){return JSON.stringify({erro:String(e.stack).slice(0,300)})}})()`;
   // 17h: roda com a correção de 1 foto e título de 2 linhas (câmara fria); depois volta ao cartão que estava selecionado.
   const cartaoOriginal17h = await js('document.querySelector(".pc-cor .pc-cor-card.is-selected .pc-cor-titulo")?.textContent||""');
   await js(`(()=>{const c=[...document.querySelectorAll(".pc-cor .pc-cor-card")].find((x)=>x.innerText.includes("câmara fria"));c?.click();return !!c})()`);
@@ -533,13 +535,11 @@ try {
   await js('document.querySelectorAll(".pc-cor .pc-etapa")[0].click()');
   await n.esperar(300);
   registrar("17n. Correções: em cada etapa a lista mostra só os itens dela e o número da aba é o da lista", abasBatem.every(Boolean), JSON.stringify(abasBatem));
-  await js('(()=>{const b=document.querySelector(".pc-cor .pc-pessoas [role=radio]");b?.dispatchEvent(new FocusEvent("focusout",{bubbles:true}));return !!b})()');
-  await n.esperar(250);
   registrar("17p. Correções: 'Escolha o responsável' é o texto vermelho abaixo da lista de pessoas (uma só vez) e o topo é só 'Visita N'", await js(`(()=>{const erros=[...document.querySelectorAll(".pc-cor .pc-resp-erro")];const outro=[...document.querySelectorAll(".pc-cor .ui-field-error")].some((x)=>x.textContent.includes("Escolha o responsável"));const topo=document.querySelector(".pc-crumbs, .pc-topbar")?.innerText||"";return erros.length===1&&erros[0].textContent.trim()==="Escolha o responsável"&&!outro&&/Visita \\d/.test(topo)&&!/Visita \\d\\s*›/.test(topo)})()`));
   registrar("17q. Correções: respiro de 32 px à direita em 'Finalizar visita' e 'Salvar plano'; o link 'Ver no checklist ›' (quando existe) fica na linha de metadados, dentro do cabeçalho", await js(`(()=>{const fin=document.querySelector(".fv-finalizar");const salvar=[...document.querySelectorAll(".pc-cor .pc-detail-foot button")].find((b)=>b.innerText.includes("Salvar plano"));const ver=document.querySelector(".pc-cor .pc-detail-ver");const head=document.querySelector(".pc-cor .pc-detail-head").getBoundingClientRect();const direita=[fin,salvar].every((e)=>!!e&&innerWidth-e.getBoundingClientRect().right>=31.5);const verOk=!ver||(!!ver.closest(".pc-detail-contexto")&&ver.getBoundingClientRect().right<=head.right+0.5&&ver.getBoundingClientRect().bottom<=head.bottom+0.5&&/Ver no checklist/.test(ver.textContent));return direita&&verOk})()`));
   // Cada medida vira um item com nome: a falha mostra QUAL medida quebrou, não só "falso".
   const resultadoDosChecks = (json) => { const r = JSON.parse(json); const falhas = Object.entries(r).filter(([, v]) => v === false).map(([k]) => k); return [r.existe !== false && falhas.length === 0, falhas.length ? `falhou: ${falhas.join(", ")} | ${json}` : ""]; };
-  registrar("17o. Correções a 1440 px: pessoas empilhadas (uma por linha, 42 px), no máximo 3, em ordem alfabética pelo nome completo (no title), com o nome curto (primeiro nome + último sobrenome) à vista, NUNCA cortadas (scrollWidth <= clientWidth), sem nomes repetidos (Elton/Élton) e 'Outra pessoa ▾' tracejado logo abaixo", ...resultadoDosChecks(await js(`(()=>{const lista=document.querySelector(".pc-cor .pc-plan-resp .pc-pessoas");const pessoas=lista?[...lista.querySelectorAll(".pc-pessoa:not(.pc-pessoa--outra)")]:[];const outra=lista?.querySelector(".pc-pessoa--outra");const norm=(t)=>t.normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").toLowerCase();const nomes=pessoas.map((c)=>norm(c.title));const curto=(nome)=>{const p=nome.trim().split(/\\s+/);if(p.length<=2)return p.join(" ");const ult=p[p.length-1];const sn=["neto","filho","junior","jr","sobrinho"].includes(norm(ult).replace(/\\.$/,""))?p[p.length-2]:ult;return p[0]+" "+sn};const ordenados=[...pessoas.map((c)=>c.title)].sort((a,b)=>a.localeCompare(b,"pt-BR",{sensitivity:"base"}));const rs=pessoas.map((c)=>c.getBoundingClientRect());return JSON.stringify({existe:pessoas.length>0,ate3:pessoas.length<=3,semRepetir:new Set(nomes).size===nomes.length,ordemAlfabetica:JSON.stringify(ordenados)===JSON.stringify(pessoas.map((c)=>c.title)),semCorte:pessoas.every((c)=>c.scrollWidth<=c.clientWidth),umaPorLinha:rs.every((q,i)=>i===0||q.top>=rs[i-1].bottom-0.5),alturas42:rs.every((q)=>Math.round(q.height)===42),nomeCurto:pessoas.every((c)=>c.textContent.replace(/^[✓\s]+/,"").trim()===curto(c.title)||c.textContent.replace(/^[✓\s]+/,"").trim()===c.title.trim())&&pessoas.some((c)=>c.textContent.replace(/^[✓\s]+/,"").trim()!==c.title.trim()),ariaLabel:pessoas.every((c)=>c.getAttribute("aria-label")===c.title&&c.getAttribute("role")==="radio"&&c.hasAttribute("aria-checked")),radiogroup:!!lista.querySelector('[role="radiogroup"]')&&pessoas.filter((c)=>c.tabIndex===0).length===1,alvoOutra40:!!outra&&Math.round(outra.getBoundingClientRect().height)>=40,outraTracejada:!!outra&&getComputedStyle(outra).borderTopStyle==="dashed"&&/Outra pessoa/.test(outra.textContent)&&outra.getBoundingClientRect().top>=rs[rs.length-1].bottom-0.5,textos:pessoas.map((c)=>c.textContent.trim()+"|"+c.title)})})()`)));
+  registrar("17o. Correções a 1440 px: o Responsável é UM campo seletor de 42 px (combobox), sem pessoas empilhadas nem 'Outra pessoa' tracejado, com 'Escolha uma pessoa ▾' e o rótulo 'Responsável' ligado ao campo", ...resultadoDosChecks(await js(`(()=>{const q=document.querySelector(".pc-cor .pc-plan-resp");const c=q?.querySelector(".pc-resp-seletor");const rot=q?.querySelector(".pc-plan-rotulo");return JSON.stringify({existe:!!c,umSoCampo:q.querySelectorAll('.pc-resp-seletor, .pc-resp-digitar').length===1,altura42:!!c&&Math.round(c.getBoundingClientRect().height)===42,combobox:!!c&&c.getAttribute("role")==="combobox"&&c.getAttribute("aria-haspopup")==="listbox",rotuloLigado:!!c&&!!rot&&(c.getAttribute("aria-labelledby")||"").split(" ").includes(rot.id)&&rot.textContent.trim()==="Responsável",semBotoesDePessoa:!q.querySelector("[role=radio], .pc-pessoa, .pc-pessoas, datalist"),semCorte:!!c&&c.scrollWidth<=c.clientWidth+1})})()`)));
   const medirCampoDaAcao = `(()=>{const conj=document.querySelector(".pc-cor .pc-acao-conjunto");const area=document.querySelector(".pc-cor .pc-acao-area");const linha=document.querySelector(".pc-cor .pc-acao-linha");if(!conj||!area||!linha)return JSON.stringify({existe:false,conj:!!conj,area:!!area,linha:!!linha});const c=conj.getBoundingClientRect(),a=area.getBoundingClientRect(),l=linha.getBoundingClientRect();const bordas=[conj,area].filter((e)=>parseFloat(getComputedStyle(e).borderTopWidth)>0).length;const botoes=[...linha.querySelectorAll(".ui-field-tools button")];return JSON.stringify({conjuntoMin150:Math.round(c.height)>=150&&Math.round(c.height)<=156,alturaDaCaixa:Math.round(a.height),alturaDoConjunto:Math.round(c.height),borda2px:getComputedStyle(conj).borderTopWidth==="2px",corDaBorda:getComputedStyle(conj).borderTopColor==="rgb(169, 179, 201)",caixaSemBorda:getComputedStyle(area).borderTopWidth==="0px",umaBordaSo:bordas===1,barraDentro:l.top>=a.bottom-1&&l.top>=c.top&&l.bottom<=c.bottom+0.5&&l.left>=c.left&&l.right<=c.right+0.5,textosDaBarra:/Sugerir com IA/.test(linha.innerText)&&(innerWidth<1200?(()=>{const fb=linha.querySelector(".field-assist-voice");return !!fb&&fb.innerText.trim()===""&&/Falar/.test(fb.getAttribute("aria-label")||"")&&/Falar/.test(fb.title)&&fb.getBoundingClientRect().width<=44})():/Falar/.test(linha.innerText)),botoes40:botoes.length>=2&&botoes.every((b)=>Math.round(b.getBoundingClientRect().height)>=40),barraSemEstouro:linha.scrollWidth<=linha.clientWidth+1})})()`;
   registrar("17r. Correções a 1440 px: 'O que será feito' é um conjunto de UMA borda de 2 px (#A9B3C9) com no mínimo 150 px de altura (caixa vazia de 98 px) sem borda própria e a barra 'Sugerir com IA' e 'Falar' (com texto, 40 px) DENTRO da borda", ...resultadoDosChecks(await js(medirCampoDaAcao)));
   registrar("17s. Correções: bloco '3 Provas · opcional' com o número 3 só contornado (círculo de 28 px, sem fundo), botões baixos '+ Foto' e '+ Registrar atualização' de borda fraca (40 px) e SEM a antiga linha 'Acrescentar:'", ...resultadoDosChecks(await js(`(()=>{const bloco=document.querySelector(".pc-cor .pc-provas");const t=bloco?.querySelector(".pc-bloco-titulo");const n=t?.querySelector(".pc-bloco-num");const botoes=bloco?[...bloco.querySelectorAll(".pc-provas-botoes .pc-prova-botao")]:[];const raio=n?getComputedStyle(n).borderTopLeftRadius:"";return JSON.stringify({existe:!!bloco,titulo:!!t&&/^3\\s*Provas\\s*· opcional$/.test(t.innerText.replace(/\\s+/g," ").trim()),numero28:!!n&&Math.round(n.getBoundingClientRect().width)===28&&Math.round(n.getBoundingClientRect().height)===28&&(raio==="50%"||parseFloat(raio)>=14),numeroSoContorno:!!n&&getComputedStyle(n).backgroundColor==="rgba(0, 0, 0, 0)"&&parseFloat(getComputedStyle(n).borderTopWidth)>0,botoes:botoes.length===2&&/^[+] Foto$/.test(botoes[0].innerText.trim())&&/^[+] Registrar atualização$/.test(botoes[1].innerText.trim()),alvos40:botoes.length>0&&botoes.every((b)=>Math.round(b.getBoundingClientRect().height)===40),bordaFraca:botoes.every((b)=>getComputedStyle(b).borderTopWidth==="1px"&&getComputedStyle(b).borderTopColor==="rgb(201, 208, 222)"),semAcrescentar:!/Acrescentar:/.test(document.querySelector(".pc-cor .pc-detail--corr").innerText)&&!document.querySelector(".pc-cor .pc-acrescimos")})})()`)));
@@ -597,7 +597,7 @@ try {
   }
   // 17aa. Etapa de 1000 a 1300 px e chips de pessoas: medidas em 1152 e 1440 px na correção reincidente (com a ação que funcionou antes).
   const corDeAcao = await js(`(()=>{const e=document.createElement("span");e.style.color="var(--rd-acao)";document.body.appendChild(e);const c=getComputedStyle(e).color;e.remove();return c})()`);
-  const medirAjustesDeCorrecoes = `(()=>{try{const corDeAcao=${JSON.stringify(corDeAcao)};const raiz=document.querySelector(".pc-detail--corr");const corpo=raiz.querySelector(".pc-detail-corpo");const lateral=raiz.querySelector(".pc-detail-lateral");const foot=raiz.querySelector(".pc-detail-foot");const linha=raiz.querySelector(".pc-acao-linha");const lista=document.querySelector(".pc-cor .pc-master-list");const rotulo=lateral.querySelector(".pc-plan-resp .pc-plan-rotulo");const todas=[...lateral.querySelectorAll(".pc-pessoas .pc-pessoa")];const outra=lateral.querySelector(".pc-pessoa--outra");const pessoas=todas.filter((c)=>c!==outra);const erro=lateral.querySelector(".pc-resp-erro");const lembrete=lateral.querySelector(".pc-plan-lembrete");const prazo=lateral.querySelector(".pc-plan-prazo input");const sug=lateral.querySelector(".pc-prazo-sugerido");const avisoPrazo=lateral.querySelector(".pc-prazo-erro");const r=(e)=>e.getBoundingClientRect();
+  const medirAjustesDeCorrecoes = `(()=>{try{const corDeAcao=${JSON.stringify(corDeAcao)};const raiz=document.querySelector(".pc-detail--corr");const corpo=raiz.querySelector(".pc-detail-corpo");const lateral=raiz.querySelector(".pc-detail-lateral");const foot=raiz.querySelector(".pc-detail-foot");const linha=raiz.querySelector(".pc-acao-linha");const lista=document.querySelector(".pc-cor .pc-master-list");const rotulo=lateral.querySelector(".pc-plan-resp .pc-plan-rotulo");const campoResp=lateral.querySelector(".pc-resp-seletor, .pc-resp-digitar");const todas=campoResp?[campoResp]:[];const pessoas=todas;const erro=lateral.querySelector(".pc-resp-erro");const lembrete=lateral.querySelector(".pc-plan-lembrete");const prazo=lateral.querySelector(".pc-plan-prazo input");const sug=lateral.querySelector(".pc-prazo-sugerido");const avisoPrazo=lateral.querySelector(".pc-prazo-erro");const r=(e)=>e.getBoundingClientRect();
 const norm=(t)=>t.normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").toLowerCase();
 const curto=(nome)=>{const p=nome.trim().split(/\\s+/);if(p.length<=2)return p.join(" ");const ult=p[p.length-1];const sn=["neto","filho","junior","jr","sobrinho"].includes(norm(ult).replace(/\\.$/,""))?p[p.length-2]:ult;return p[0]+" "+sn};
 const rot=(c)=>c.textContent.replace(/^[✓\s]+/,"").trim();const visivel=(e)=>e&&getComputedStyle(e).visibility!=="hidden"&&r(e).width>0&&r(e).height>0;
@@ -605,7 +605,6 @@ const folhas=[rotulo,...todas,erro,lembrete,prazo,sug,raiz.querySelector(".pc-ac
 const clip=(e)=>{const q0=r(e);const d=e===lembrete?9:e===sug?10:0;const q={left:q0.left,right:q0.right,top:q0.top+d,bottom:q0.bottom-d};const cs=[corpo.contains(e)?corpo:null,lateral.contains(e)&&getComputedStyle(lateral).overflowY!=="visible"?lateral:null].filter(Boolean);return cs.reduce((acc,c)=>{const x=r(c);return {left:Math.max(acc.left,x.left),right:Math.min(acc.right,x.right),top:Math.max(acc.top,x.top),bottom:Math.min(acc.bottom,x.bottom)}},q)};
 const sobrepostos=[];for(let i=0;i<folhas.length;i++)for(let j=i+1;j<folhas.length;j++){const a=clip(folhas[i]),b=clip(folhas[j]);if(a.right-a.left<=0||a.bottom-a.top<=0||b.right-b.left<=0||b.bottom-b.top<=0)continue;if(Math.min(a.right,b.right)-Math.max(a.left,b.left)>1&&Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top)>1)sobrepostos.push((folhas[i].className||folhas[i].tagName)+" x "+(folhas[j].className||folhas[j].tagName))}
 const cs=getComputedStyle(prazo);const cv=document.createElement("canvas").getContext("2d");cv.font=cs.fontStyle+" "+cs.fontWeight+" "+cs.fontSize+" "+cs.fontFamily;const fimDoValor=r(prazo).left+parseFloat(cs.borderLeftWidth)+parseFloat(cs.paddingLeft)+cv.measureText("00/00/0000").width;
-const ordenados=pessoas.map((c)=>c.title).sort((a,b)=>a.localeCompare(b,"pt-BR",{sensitivity:"base"}));
 const lr=r(lembrete);const lateralR=r(lateral);
 const falar=linha.querySelector(".field-assist-voice");const chip=linha.querySelector(".pc-chip-funcionou");const mais=linha.querySelector(".pc-acao-mais");const chipVisivel=!!chip&&getComputedStyle(chip).visibility!=="hidden";
 const dentroDaLateral=[...todas,erro,lembrete,prazo,sug].filter(Boolean).every((e)=>r(e).left>=lateralR.left-0.5&&r(e).right<=lateralR.right+0.5);
@@ -613,10 +612,8 @@ return JSON.stringify({existe:pessoas.length>0&&!!lembrete&&!!chip,
 largura:innerWidth,
 semSobreposicao:sobrepostos.length===0,
 pessoasSemCorte:todas.every((c)=>c.scrollWidth<=c.clientWidth),
-pessoasNomeCurto:pessoas.every((c)=>rot(c)===curto(c.title)||rot(c)===c.title.trim())&&pessoas.some((c)=>rot(c)!==c.title.trim()),
-pessoasOrdemAlfabetica:JSON.stringify(ordenados)===JSON.stringify(pessoas.map((c)=>c.title)),
 lembreteAzul16:getComputedStyle(lembrete).color===corDeAcao&&getComputedStyle(lembrete).fontSize==="16px"&&Math.round(r(lembrete).height)>=40,
-lembreteLogoAposOErro:!!erro&&r(erro).bottom<=lr.top+9.5&&lr.top+9-r(erro).bottom<=12,
+lembreteNaLinhaDoRotulo:!!lembrete&&!!rotulo&&!!campoResp&&Math.abs((r(rotulo).top+r(rotulo).bottom)/2-(r(lembrete).top+r(lembrete).bottom)/2)<=3&&r(lembrete).left>=r(rotulo).right&&r(lembrete).right>=r(campoResp).right-4&&r(lembrete).right<=r(campoResp).right+1,
 dentroDaLateral,
 prazoSemSobrepor:!avisoPrazo||(r(avisoPrazo).left>=fimDoValor+4&&r(avisoPrazo).right<=r(prazo).right),
 prazoInteiro:r(prazo).width>=150&&prazo.scrollWidth<=prazo.clientWidth+1&&r(prazo).right<=innerWidth,
@@ -641,7 +638,7 @@ detalhes:{chipDaAcaoNaBarra:chipVisivel,sobrepostos,pessoas:pessoas.map((c)=>c.t
       await foto(`17aa-${largura}`);
       const normal = JSON.parse(await js(medirAjustesDeCorrecoes));
       const [okN, falhaN] = resultadoDosChecks(JSON.stringify(normal));
-      registrar(`17aa. ${largura} px: pessoas empilhadas sem corte (nome curto, ordem alfabética), 'Enviar lembrete' azul de 16 px logo abaixo do erro, nada sobreposto entre as duas colunas, lateral de ${largura < 1300 ? "260" : "300"} px, lista de ${largura < 1200 ? "280" : "340"} px, 'Falar' ${largura < 1200 ? "só o ícone" : "com texto"}, chip 'Ação que funcionou antes' inteiro ou em '+N sugestões'`, okN, falhaN || JSON.stringify(normal.detalhes));
+      registrar(`17aa. ${largura} px: campo único do Responsável sem corte, 'Enviar lembrete' azul de 16 px na linha do rótulo, nada sobreposto entre as duas colunas, lateral de ${largura < 1300 ? "260" : "300"} px, lista de ${largura < 1200 ? "280" : "340"} px, 'Falar' ${largura < 1200 ? "só o ícone" : "com texto"}, chip 'Ação que funcionou antes' inteiro ou em '+N sugestões'`, okN, falhaN || JSON.stringify(normal.detalhes));
       // Chip fora da barra: a lista de "+N sugestões" o traz inteiro, com o "Visita N".
       if (!normal.detalhes.chipDaAcaoNaBarra) {
         await js('document.querySelector(".pc-cor .pc-acao-mais")?.click()');
@@ -671,87 +668,323 @@ detalhes:{chipDaAcaoNaBarra:chipVisivel,sobrepostos,pessoas:pessoas.map((c)=>c.t
       await js('document.querySelector(".pc-cor .pc-plan-prazo input")?.scrollIntoView({block:"nearest"})');
       await n.esperar(150);
       const m = JSON.parse(await js(medirAjustesDeCorrecoes));
-      const l = JSON.parse(await js(`(()=>{const lat=document.querySelector(".pc-cor .pc-detail-lateral");const corpo=document.querySelector(".pc-cor .pc-detail-corpo");const foot=document.querySelector(".pc-cor .pc-detail-foot").getBoundingClientRect();const prazo=lat.querySelector(".pc-plan-prazo input").getBoundingClientRect();const cb=corpo.getBoundingClientRect();const nums=[...document.querySelectorAll(".pc-cor .pc-detail--corr .pc-bloco-num")];const azul=(e)=>getComputedStyle(e).backgroundColor==="rgb(43, 84, 207)"&&getComputedStyle(e).color==="rgb(255, 255, 255)"&&getComputedStyle(e).fontWeight==="400";const fundo=getComputedStyle(lat).backgroundColor;return JSON.stringify({existe:nums.length>=3,prazoVisivel:prazo.top>=cb.top-0.5&&prazo.bottom<=Math.min(cb.bottom,foot.top)+0.5&&prazo.left>=0&&prazo.right<=innerWidth,numeros28:nums.every((e)=>Math.round(e.getBoundingClientRect().width)===28&&Math.round(e.getBoundingClientRect().height)===28),umEDoisAzuis:nums.filter((e)=>/^[12]$/.test(e.textContent.trim())).length===2&&nums.filter((e)=>/^[12]$/.test(e.textContent.trim())).every(azul),tresSoContorno:nums.filter((e)=>e.textContent.trim()==="3").every((e)=>getComputedStyle(e).backgroundColor==="rgba(0, 0, 0, 0)"),fundoCinzaClaro:fundo==="rgb(244, 246, 250)",bordaAEsquerda:innerWidth<=1149||getComputedStyle(lat).borderLeftWidth==="1px",ordemNoEstreito:innerWidth>=1150||(()=>{const q=document.querySelector(".pc-cor .pc-detail--corr");const o=(e)=>q.querySelector(e).getBoundingClientRect().top;return o(".pc-plan-acao")<o(".pc-detail-lateral")&&o(".pc-detail-lateral")<o(".pc-provas")})(),metadadosUmaLinha:(()=>{const c=document.querySelector(".pc-cor .pc-detail-contexto");return c.getBoundingClientRect().height<=30&&c.scrollWidth<=c.clientWidth+1})(),alvos40:[...document.querySelectorAll(".pc-cor .pc-detail-ver, .pc-cor .pc-detail-pop, .pc-cor .pc-pessoa--outra, .pc-cor .pc-prazo-sugerido")].every((e)=>Math.round(e.getBoundingClientRect().height)>=40-(e.classList.contains("pc-pessoa--outra")?0:0)),barraDaAcaoUmaLinha:(()=>{const b=document.querySelector(".pc-cor .pc-acao-linha");const bs=[...b.querySelectorAll(".ui-field-tools button, .pc-acao-mais")].filter((e)=>getComputedStyle(e).visibility!=="hidden");return bs.every((e)=>Math.abs(e.getBoundingClientRect().top-bs[0].getBoundingClientRect().top)<=2)})(),provasSemQuebra:[...document.querySelectorAll(".pc-cor .pc-provas-botoes .pc-prova-botao")].every((e)=>Math.round(e.getBoundingClientRect().height)===40)})})()`));
-      const [okL, falhaL] = resultadoDosChecks(JSON.stringify({ existe: m.existe && l.existe, semSobreposicao: m.semSobreposicao, larguraDaLateral: m.larguraDaLateral, dentroDaLateral: m.dentroDaLateral, prazoInteiro: m.prazoInteiro, prazoSemSobrepor: m.prazoSemSobrepor, pessoasSemCorte: m.pessoasSemCorte, lembreteLogoAposOErro: m.lembreteLogoAposOErro, corpoSemRolagemHorizontal: m.corpoSemRolagemHorizontal, prazoVisivel: l.prazoVisivel, ordemNoEstreito: l.ordemNoEstreito, metadadosUmaLinha: l.metadadosUmaLinha, alvos40: l.alvos40, barraDaAcaoUmaLinha: l.barraDaAcaoUmaLinha, provasSemQuebra: l.provasSemQuebra, numeros28: l.numeros28, umEDoisAzuis: l.umEDoisAzuis, tresSoContorno: l.tresSoContorno, fundoCinzaClaro: l.fundoCinzaClaro, bordaAEsquerda: l.bordaAEsquerda }));
+      const l = JSON.parse(await js(`(()=>{const lat=document.querySelector(".pc-cor .pc-detail-lateral");const corpo=document.querySelector(".pc-cor .pc-detail-corpo");const foot=document.querySelector(".pc-cor .pc-detail-foot").getBoundingClientRect();const prazo=lat.querySelector(".pc-plan-prazo input").getBoundingClientRect();const cb=corpo.getBoundingClientRect();const nums=[...document.querySelectorAll(".pc-cor .pc-detail--corr .pc-bloco-num")];const azul=(e)=>getComputedStyle(e).backgroundColor==="rgb(43, 84, 207)"&&getComputedStyle(e).color==="rgb(255, 255, 255)"&&getComputedStyle(e).fontWeight==="400";const fundo=getComputedStyle(lat).backgroundColor;return JSON.stringify({existe:nums.length>=3,prazoVisivel:prazo.top>=cb.top-0.5&&prazo.bottom<=Math.min(cb.bottom,foot.top)+0.5&&prazo.left>=0&&prazo.right<=innerWidth,numeros28:nums.every((e)=>Math.round(e.getBoundingClientRect().width)===28&&Math.round(e.getBoundingClientRect().height)===28),umEDoisAzuis:nums.filter((e)=>/^[12]$/.test(e.textContent.trim())).length===2&&nums.filter((e)=>/^[12]$/.test(e.textContent.trim())).every(azul),tresSoContorno:nums.filter((e)=>e.textContent.trim()==="3").every((e)=>getComputedStyle(e).backgroundColor==="rgba(0, 0, 0, 0)"),fundoCinzaClaro:fundo==="rgb(244, 246, 250)",bordaAEsquerda:innerWidth<=1149||getComputedStyle(lat).borderLeftWidth==="1px",ordemNoEstreito:innerWidth>=1150||(()=>{const q=document.querySelector(".pc-cor .pc-detail--corr");const o=(e)=>q.querySelector(e).getBoundingClientRect().top;return o(".pc-plan-acao")<o(".pc-detail-lateral")&&o(".pc-detail-lateral")<o(".pc-provas")})(),metadadosUmaLinha:(()=>{const c=document.querySelector(".pc-cor .pc-detail-contexto");return c.getBoundingClientRect().height<=30&&c.scrollWidth<=c.clientWidth+1})(),alvos40:[...document.querySelectorAll(".pc-cor .pc-detail-ver, .pc-cor .pc-detail-pop, .pc-cor .pc-prazo-sugerido")].every((e)=>Math.round(e.getBoundingClientRect().height)>=40),barraDaAcaoUmaLinha:(()=>{const b=document.querySelector(".pc-cor .pc-acao-linha");const bs=[...b.querySelectorAll(".ui-field-tools button, .pc-acao-mais")].filter((e)=>getComputedStyle(e).visibility!=="hidden");return bs.every((e)=>Math.abs(e.getBoundingClientRect().top-bs[0].getBoundingClientRect().top)<=2)})(),provasSemQuebra:[...document.querySelectorAll(".pc-cor .pc-provas-botoes .pc-prova-botao")].every((e)=>Math.round(e.getBoundingClientRect().height)===40)})})()`));
+      const [okL, falhaL] = resultadoDosChecks(JSON.stringify({ existe: m.existe && l.existe, semSobreposicao: m.semSobreposicao, larguraDaLateral: m.larguraDaLateral, dentroDaLateral: m.dentroDaLateral, prazoInteiro: m.prazoInteiro, prazoSemSobrepor: m.prazoSemSobrepor, campoSemCorte: m.pessoasSemCorte, lembreteNaLinhaDoRotulo: m.lembreteNaLinhaDoRotulo, corpoSemRolagemHorizontal: m.corpoSemRolagemHorizontal, prazoVisivel: l.prazoVisivel, ordemNoEstreito: l.ordemNoEstreito, metadadosUmaLinha: l.metadadosUmaLinha, alvos40: l.alvos40, barraDaAcaoUmaLinha: l.barraDaAcaoUmaLinha, provasSemQuebra: l.provasSemQuebra, numeros28: l.numeros28, umEDoisAzuis: l.umEDoisAzuis, tresSoContorno: l.tresSoContorno, fundoCinzaClaro: l.fundoCinzaClaro, bordaAEsquerda: l.bordaAEsquerda }));
       if (largura <= 1000) {
         const lista = JSON.parse(await js(`(()=>{const rol=document.querySelector(".pc-cor .pc-master-list > .ui-scroll")||document.querySelector(".pc-cor .pc-master-list");const rr=rol.getBoundingClientRect();const cartoes=[...document.querySelectorAll(".pc-cor .pc-cor-card")];const det=document.querySelector(".pc-cor .pc-detail--corr").getBoundingClientRect();return JSON.stringify({cartoes:cartoes.length,visiveis:cartoes.filter((c)=>c.getBoundingClientRect().top>=rr.top-1&&c.getBoundingClientRect().bottom<=rr.bottom+1).length,detalheNaJanela:det.top<innerHeight-200&&det.bottom<=innerHeight+1})})()`));
         registrar(`17ab0. ${largura} px: a lista de cima mostra pelo menos 2 cartões inteiros (ou todos, se houver menos) e o detalhe aparece na janela`, lista.visiveis >= Math.min(2, lista.cartoes) && lista.detalheNaJanela, JSON.stringify(lista));
       }
-      registrar(`17ab. ${largura} px: coluna lateral de ${largura <= 1149 ? "largura total (corpo em coluna única, bloco 2 antes de Provas)" : largura < 1300 ? "260 px" : "300 px"} em #F4F6FA, Responsável (pessoas, erro, lembrete) e Prazo sem sobreposição e dentro da coluna, Prazo inteiro e visível, números dos blocos de 28 px (1 e 2 azuis, 3 só contorno)`, okL, falhaL || JSON.stringify(m.detalhes));
+      registrar(`17ab. ${largura} px: coluna lateral de ${largura <= 1149 ? "largura total (corpo em coluna única, bloco 2 antes de Provas)" : largura < 1300 ? "260 px" : "300 px"} em #F4F6FA, Responsável (campo único, 'Enviar lembrete' na linha do rótulo, erro) e Prazo sem sobreposição e dentro da coluna, Prazo inteiro e visível, números dos blocos de 28 px (1 e 2 azuis, 3 só contorno)`, okL, falhaL || JSON.stringify(m.detalhes));
     }
-    // 17ac. Caminho "Outra pessoa" (1440x800, correção reincidente): abrir, digitar sem criar botão, escolher da lista, apagar, confirmar com Enter, cancelar com Esc, foco e setas.
-    {
+    // 17ac e 17ag. Responsável como CAMPO ÚNICO (combobox): teclas reais via CDP, abrir, escolher, Esc, "+ Outra pessoa…", foco, aria, lista com muitas pessoas e lista sem corte (1440x800, correção reincidente).
+    bloco17ac: {
       await n.enviar("Emulation.setDeviceMetricsOverride", { width: 1440, height: 800, screenWidth: 1440, screenHeight: 800, deviceScaleFactor: 1, mobile: false });
       await n.esperar(400);
-      const digitarNome = (valor) => js(`(()=>{const el=document.querySelector(".pc-cor .pc-pessoa-campo");if(!el)return false;Object.getOwnPropertyDescriptor(Object.getPrototypeOf(el),"value").set.call(el,${JSON.stringify(valor)});el.dispatchEvent(new Event("input",{bubbles:true}));return true})()`);
-      const teclar = (seletor, tecla) => js(`(()=>{const el=document.querySelector(${JSON.stringify(seletor)});if(!el)return false;el.dispatchEvent(new KeyboardEvent("keydown",{key:${JSON.stringify(tecla)},bubbles:true,cancelable:true}));return true})()`);
-      const estado = async () => JSON.parse(await js(`(()=>{const q=document.querySelector(".pc-cor .pc-plan-resp");const rs=[...q.querySelectorAll('[role="radio"]')];const lat=document.querySelector(".pc-cor .pc-detail-lateral");const campo=q.querySelector(".pc-pessoa-campo");const outra=q.querySelector(".pc-pessoa--outra");const foco=document.activeElement;return JSON.stringify({expandido:outra?.getAttribute("aria-expanded"),radios:rs.length,marcados:rs.filter((b)=>b.getAttribute("aria-checked")==="true").map((b)=>b.title),campo:!!campo,botaoOutra:!!outra,focoNoCampo:!!campo&&foco===campo,focoNoBotao:!!outra&&foco===outra,focoNoRadio:rs.indexOf(foco),latRola:lat.scrollHeight>lat.clientHeight+1,campoValor:campo?campo.value:null,rotulo:campo?.getAttribute("aria-label")||"",erroVisivel:!!q.querySelector(".pc-resp-erro")&&q.querySelector(".pc-resp-erro").textContent.trim()!=="",opcoes:[...q.querySelectorAll("datalist option")].map((o)=>o.value)})})()`));
+      const TECLAS = { Enter: ["Enter", "Enter", 13, "\r"], Espaco: [" ", "Space", 32, " "], Baixo: ["ArrowDown", "ArrowDown", 40], Cima: ["ArrowUp", "ArrowUp", 38], Home: ["Home", "Home", 36], End: ["End", "End", 35], Esc: ["Escape", "Escape", 27] };
+      const apertar = async (nome) => {
+        const [key, code, vk, texto] = TECLAS[nome];
+        await n.enviar("Input.dispatchKeyEvent", { type: texto ? "keyDown" : "rawKeyDown", key, code, windowsVirtualKeyCode: vk, ...(texto ? { text: texto } : {}) });
+        await n.enviar("Input.dispatchKeyEvent", { type: "keyUp", key, code, windowsVirtualKeyCode: vk });
+        await n.esperar(150);
+      };
+      const digitarReal = async (texto) => {
+        await n.enviar("Input.insertText", { text: texto });
+        await n.esperar(150);
+      };
+      const clicarEm = async (x, y) => {
+        await n.enviar("Input.dispatchMouseEvent", { type: "mouseMoved", x, y });
+        await n.enviar("Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "left", clickCount: 1 });
+        await n.enviar("Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "left", clickCount: 1 });
+        await n.esperar(200);
+      };
+      const centroDe = (seletor, indice = 0) => js(`(()=>{const e=[...document.querySelectorAll(${JSON.stringify(seletor)})][${indice}];if(!e)return null;e.scrollIntoView({block:"nearest"});const r=e.getBoundingClientRect();return {x:Math.round(r.left+r.width/2),y:Math.round(r.top+r.height/2)}})()`);
+      const clicarReal = async (seletor, indice = 0) => {
+        const p = await centroDe(seletor, indice);
+        if (p) await clicarEm(p.x, p.y);
+        return !!p;
+      };
+      const norm = (t) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+      const estado = async () => JSON.parse(await js(`(()=>{const s=document.querySelector(".pc-cor .pc-resp-seletor");const inp=document.querySelector(".pc-cor .pc-resp-digitar");const l=document.querySelector(".pc-resp-lista");const ops=l?[...l.querySelectorAll('[role="option"]')]:[];const a=document.activeElement;const lat=document.querySelector(".pc-cor .pc-detail-lateral");const corpo=document.querySelector(".pc-cor .pc-detail-corpo");const erro=document.querySelector(".pc-cor .pc-resp-erro");const ativoId=s?.getAttribute("aria-activedescendant")||"";return JSON.stringify({seletor:!!s,digitando:!!inp,texto:s?s.innerText.replace(/\\s+/g," ").trim():null,titulo:s?.title||"",aberto:!!l,expanded:s?.getAttribute("aria-expanded"),ativo:ativoId,indiceAtivo:ops.findIndex((o)=>o.id===ativoId),opcoes:ops.map((o)=>o.textContent.replace(/^[✓\\s]+/,"").trim()),titulos:ops.map((o)=>o.title),selecionadas:ops.filter((o)=>o.getAttribute("aria-selected")==="true").map((o)=>o.title),foco:a===s?"seletor":a===inp?"input":(a?.tagName||""),valorInput:inp?inp.value:null,latRola:lat.scrollHeight>lat.clientHeight+1,corpoRola:corpo.scrollHeight>corpo.clientHeight+1,erroTexto:erro?erro.textContent.trim():null,describedby:s?.getAttribute("aria-describedby")||inp?.getAttribute("aria-describedby")||"",erroId:erro?.id||"",borda:s?getComputedStyle(s).borderTopColor:""})})()`));
+      const abrirSeletor = async () => {
+        await js('document.querySelector(".pc-cor .pc-resp-seletor")?.focus()');
+        await apertar("Enter");
+      };
+      const VERMELHO = "rgb(184, 58, 51)";
+      const CINZA = "rgb(169, 179, 201)";
+      const AZUL = "rgb(43, 84, 207)";
+
+      // Estado limpo: nenhuma escolha na correção reincidente.
       const inicial = await estado();
-      await js('document.querySelector(".pc-cor .pc-pessoa--outra")?.click()');
+      // Pré-condição (os passos seguintes dependem dela): a correção aberta ainda NÃO tem responsável. Se não tiver, falha aqui com a causa e pula o bloco.
+      if (!inicial.seletor || inicial.texto !== "Escolha uma pessoa ▾") {
+        registrar("17ac0. (pré-condição) a correção reincidente aberta deveria estar sem responsável e fechada; os passos 17ac e 17ag foram pulados", false, JSON.stringify(inicial));
+        break bloco17ac;
+      }
+      registrar("17ac0. Responsável é UM campo (combobox) e não há mais botões de pessoa, radiogroup nem 'Outra pessoa' tracejado", inicial.seletor && (await js('!document.querySelector(".pc-cor .pc-pessoa, .pc-cor .pc-pessoas, .pc-cor [role=radio], .pc-cor [role=radiogroup], .pc-cor datalist")')), JSON.stringify(inicial));
+      // Linha do rótulo: "Responsável" à esquerda e "Enviar lembrete" à direita, na mesma linha, com o campo de 42 px abaixo.
+      const linha = JSON.parse(await js(`(()=>{const q=document.querySelector(".pc-cor .pc-plan-resp");const rot=q.querySelector(".pc-plan-rotulo").getBoundingClientRect();const lem=q.querySelector(".pc-plan-lembrete");const l=lem.getBoundingClientRect();const c=q.querySelector(".pc-resp-seletor").getBoundingClientRect();return JSON.stringify({mesmaLinha:Math.abs((rot.top+rot.bottom)/2-(l.top+l.bottom)/2)<=3,lembreteADireita:l.left>=rot.right&&Math.abs(l.right-c.right)<=4,rotuloAEsquerda:Math.abs(rot.left-c.left)<=1,campoAbaixo:c.top>=Math.max(rot.bottom,l.bottom-9)-1,campo42:Math.round(c.height)===42,larguraTotal:Math.abs(c.width-q.getBoundingClientRect().width)<=1,lembreteDepoisNoDom:!!(q.querySelector(".pc-resp").compareDocumentPosition(lem)&Node.DOCUMENT_POSITION_FOLLOWING)})})()`));
+      const [okLinha, falhaLinha] = resultadoDosChecks(JSON.stringify(linha));
+      registrar("17ac. Fechado: linha do rótulo com 'Responsável' à esquerda e 'Enviar lembrete' à direita (mesma linha), campo de 42 px na largura toda logo abaixo; no DOM o lembrete vem depois do campo (ordem do Tab)", okLinha, falhaLinha);
+      registrar("17ac1. Fechado e sem escolha, DESDE O INÍCIO: 'Escolha uma pessoa ▾' com borda vermelha (#B83A33), erro 'Escolha o responsável' na região aria-live ligado ao campo por aria-describedby; combobox com aria-haspopup=listbox, aria-expanded=false e SEM aria-controls enquanto fechado", inicial.texto === "Escolha uma pessoa ▾" && inicial.borda === VERMELHO && inicial.erroTexto === "Escolha o responsável" && inicial.describedby === inicial.erroId && inicial.expanded === "false" && (await js('(()=>{const s=document.querySelector(".pc-cor .pc-resp-seletor");const q=document.querySelector(".pc-cor .pc-resp-erro");return s.getAttribute("role")==="combobox"&&s.getAttribute("aria-haspopup")==="listbox"&&!s.hasAttribute("aria-controls")&&q.getAttribute("aria-live")==="polite"})()')), JSON.stringify(inicial));
       await n.esperar(250);
+      const tocado = await estado();
+      await foto("17ag-fechado-sem-escolha-1440x800");
+      await n.enviar("Emulation.setDeviceMetricsOverride", { width: 1152, height: 800, screenWidth: 1440, screenHeight: 800, deviceScaleFactor: 1, mobile: false });
+      await n.esperar(400);
+      await foto("17ag-fechado-sem-escolha-1152x800");
+      await n.enviar("Emulation.setDeviceMetricsOverride", { width: 1440, height: 800, screenWidth: 1440, screenHeight: 800, deviceScaleFactor: 1, mobile: false });
+      await n.esperar(400);
+      registrar("17ac2. A linha do erro tem 20 px reservados e o erro fica abaixo do campo: com o erro visível o campo e o Prazo não se deslocam depois (altura da lateral estável) ", tocado.borda === VERMELHO && tocado.erroTexto === "Escolha o responsável" && (await js('(()=>{const s=document.querySelector(".pc-cor .pc-resp-seletor").getBoundingClientRect();const e=document.querySelector(".pc-cor .pc-resp-erro").getBoundingClientRect();return e.top>=s.bottom-1&&Math.round(e.height)>=20})()')), JSON.stringify(tocado));
+      const alturaLateralVazio = await js('(()=>{const l=document.querySelector(".pc-cor .pc-detail-lateral");return {sh:l.scrollHeight,prazoTop:Math.round(document.querySelector(".pc-cor .pc-plan-prazo").getBoundingClientRect().top)}})()');
+      // Com o responsável ainda vazio, abrir "+ Outra pessoa…" NÃO mostra o erro durante a digitação; ao cancelar (Esc) o erro volta.
+      await js('document.querySelector(".pc-cor .pc-resp-seletor")?.focus()');
+      await apertar("Enter");
+      await apertar("End");
+      await apertar("Enter");
+      const digitandoVazio = await estado();
+      const inputVazio = await js('(()=>{const i=document.querySelector(".pc-cor .pc-resp-digitar");return {invalido:i?.getAttribute("aria-invalid"),borda:i?getComputedStyle(i).borderTopColor:""}})()');
+      await apertar("Esc");
+      const voltouVazio = await estado();
+      registrar("17ac2c. Responsável vazio: durante a digitação em '+ Outra pessoa…' o erro NÃO aparece (região aria-live vazia, campo sem vermelho); cancelar com Esc devolve o foco ao campo e o erro volta", digitandoVazio.digitando && digitandoVazio.erroTexto === "" && inputVazio.invalido === "false" && inputVazio.borda !== VERMELHO && !voltouVazio.digitando && voltouVazio.foco === "seletor" && voltouVazio.erroTexto === "Escolha o responsável" && voltouVazio.borda === VERMELHO, JSON.stringify({ digitandoVazio: digitandoVazio.erroTexto, inputVazio, voltou: voltouVazio.erroTexto }));
+
+      // Abrir com o mouse (clique real): a lista cola no campo, com todas as pessoas e "+ Outra pessoa…" no fim.
+      const antesLat = await js('(()=>{const l=document.querySelector(".pc-cor .pc-detail-lateral");const c=document.querySelector(".pc-cor .pc-detail-corpo");return {l:l.scrollHeight,c:c.scrollHeight}})()');
+      await clicarReal(".pc-cor .pc-resp-seletor");
+      await n.esperar(150);
       const aberto = await estado();
-      registrar("17ac1. 'Outra pessoa' abre o campo no lugar do botão tracejado (sem somar altura: a lateral não rola), com o foco no campo, aria-label 'Nome do responsável' e a lista de pessoas intacta", aberto.campo && !aberto.botaoOutra && aberto.focoNoCampo && !aberto.latRola && aberto.rotulo === "Nome do responsável" && aberto.radios === inicial.radios, JSON.stringify({ inicial, aberto }));
-      await digitarNome("Mar");
-      await n.esperar(250);
+      await foto("17ag-aberto-1440x800");
+      const geo = JSON.parse(await js(`(()=>{const s=document.querySelector(".pc-cor .pc-resp-seletor");const l=document.querySelector(".pc-resp-lista");if(!l)return JSON.stringify({existe:false});const sr=s.getBoundingClientRect(),lr=l.getBoundingClientRect();const ops=[...l.querySelectorAll('[role="option"]')];const lat=document.querySelector(".pc-cor .pc-detail-lateral");const corpo=document.querySelector(".pc-cor .pc-detail-corpo");const outraTop=l.querySelector(".pc-resp-opcao--outra").getBoundingClientRect().top;const noTopo=(e)=>{const r=e.getBoundingClientRect();const ehOutra=e.classList.contains("pc-resp-opcao--outra");const topo=Math.max(r.top,lr.top),base=Math.min(r.bottom,ehOutra?lr.bottom:outraTop,lr.bottom);if(base-topo<=2)return true;const t=document.elementFromPoint(r.left+r.width/2,(topo+base)/2);return !!t&&(t===e||e.contains(t))};const visiveis=ops;return JSON.stringify({existe:true,coladaNoCampo:Math.abs(lr.top-sr.bottom)<=2&&Math.abs(lr.left-sr.left)<=1&&Math.abs(lr.width-sr.width)<=1,bordaAzul:getComputedStyle(l).borderLeftColor==="${AZUL}"&&getComputedStyle(s).borderTopColor==="${AZUL}",opcoes44:ops.every((o)=>Math.round(o.getBoundingClientRect().height)===44),dentroDaJanela:lr.left>=0&&lr.right<=innerWidth&&lr.top>=0&&lr.bottom<=innerHeight,semCorteNemCobertura:visiveis.every(noTopo),semRolagemNaLateral:lat.scrollHeight<=lat.clientHeight&&corpo.scrollHeight<=${antesLat.c},ordem:l.getAttribute("role")==="listbox"&&!!l.id&&s.getAttribute("aria-controls")===l.id,z:getComputedStyle(l).position==="fixed",medidas:{lista:[Math.round(lr.left),Math.round(lr.top),Math.round(lr.right),Math.round(lr.bottom)],campo:[Math.round(sr.left),Math.round(sr.top),Math.round(sr.right),Math.round(sr.bottom)],latScroll:lat.scrollHeight,latClient:lat.clientHeight}})})()`));
+      const [okGeo, falhaGeo] = resultadoDosChecks(JSON.stringify(geo));
+      registrar("17ag1. Aberto por clique: a lista cola no campo (mesma largura, 2 px), borda azul #2B54CF, opções de 44 px, dentro da janela, nenhuma opção coberta ou cortada (elementFromPoint) e a lateral/corpo NÃO ganham rolagem", aberto.aberto && aberto.expanded === "true" && okGeo, falhaGeo || JSON.stringify(geo.medidas));
+      const ordenados = [...aberto.titulos.slice(0, -1)].sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }));
+      registrar("17ag2. Lista com mais de 3 pessoas: TODAS aparecem (não há limite de 3), em ordem alfabética pelo nome completo (no title), sem repetidos, nome curto à vista, 'Elton Strapazon' etc., e '+ Outra pessoa…' no fim", aberto.opcoes.length - 1 >= 8 && JSON.stringify(ordenados) === JSON.stringify(aberto.titulos.slice(0, -1)) && new Set(aberto.titulos.slice(0, -1).map(norm)).size === aberto.opcoes.length - 1 && aberto.opcoes[aberto.opcoes.length - 1] === "+ Outra pessoa…" && aberto.opcoes.includes("Ana Montenegro") && aberto.opcoes.includes("Francisco Vasconcelos") && aberto.selecionadas.length === 0, JSON.stringify(aberto.opcoes));
+      registrar("17ag3. ARIA do aberto: role=listbox ligada ao campo por aria-controls, cada opção com role=option e aria-selected (nenhuma marcada sem escolha), aria-activedescendant aponta a opção ativa", aberto.indiceAtivo === 0 && aberto.ativo !== "" && (await js('(()=>{const ops=[...document.querySelectorAll(".pc-resp-lista [role=option]")];return ops.length>0&&ops.every((o)=>o.id&&o.hasAttribute("aria-selected"))})()')), JSON.stringify({ indiceAtivo: aberto.indiceAtivo }));
+      // Rolagem por dentro: com mais de 6 opções a lista tem altura máxima (6 pessoas + "+ Outra pessoa…") e rola; com 6 ou menos não rola.
+      const rolagem = JSON.parse(await js(`(()=>{const l=document.querySelector(".pc-resp-lista");const total=l.querySelectorAll('[role=option]').length;const rola=l.scrollHeight>l.clientHeight+1;const altura=Math.round(l.getBoundingClientRect().height);const outra=l.querySelector(".pc-resp-opcao--outra").getBoundingClientRect();const lr=l.getBoundingClientRect();const stick=outra.bottom<=lr.bottom+0.5&&outra.top>=lr.top;const copia=[...l.querySelectorAll('[role=option]')];const removidos=[];while(l.querySelectorAll('[role=option]').length>7){const o=l.querySelectorAll('[role=option]')[0];removidos.push(o);o.remove()}const semRolar=l.scrollHeight<=l.clientHeight+1;const alturaCom7=Math.round(l.getBoundingClientRect().height);removidos.reverse().forEach((o)=>l.insertBefore(o,l.firstChild));return JSON.stringify({total,rolaComMaisDe6:total-1>6&&rola,alturaMaxima:altura===310||altura<=310,outraSempreVisivel:stick,semRolagemComAte6:semRolar,alturaCom6PessoasMaisOutra:alturaCom7===7*44+2,medidas:{altura,alturaCom7}})})()`));
+      const [okRol, falhaRol] = resultadoDosChecks(JSON.stringify(rolagem));
+      registrar("17ag4. Mais de 6 pessoas: a lista rola por dentro (altura máxima de 6 pessoas + '+ Outra pessoa…', esta sempre visível no fim); com 6 pessoas ou menos não rola (7 linhas de 44 px + bordas)", okRol, falhaRol || JSON.stringify(rolagem.medidas));
+      // Mouse real: mover sobre uma opção a torna ativa (aria-activedescendant); a roda rola a lista por dentro e a rolagem NÃO volta.
+      const alvoDaLista = await js('(()=>{const l=document.querySelector(".pc-resp-lista");const r=l.getBoundingClientRect();return {x:Math.round(r.left+r.width/2),y:Math.round(r.top+100)}})()');
+      await n.enviar("Input.dispatchMouseEvent", { type: "mouseMoved", x: alvoDaLista.x, y: alvoDaLista.y });
+      await n.esperar(150);
+      const sobreOpcao = await estado();
+      const topoDaLista = await js('document.querySelector(".pc-resp-lista").getBoundingClientRect().top');
+      await n.enviar("Input.dispatchMouseEvent", { type: "mouseWheel", x: alvoDaLista.x, y: alvoDaLista.y, deltaX: 0, deltaY: 30 });
+      await n.esperar(350);
+      const rol1 = await js('document.querySelector(".pc-resp-lista").scrollTop');
+      await n.esperar(450);
+      const rol2 = await js('document.querySelector(".pc-resp-lista").scrollTop');
+      await n.enviar("Input.dispatchMouseEvent", { type: "mouseWheel", x: alvoDaLista.x, y: alvoDaLista.y, deltaX: 0, deltaY: 30 });
+      await n.esperar(450);
+      const rol3 = await js('document.querySelector(".pc-resp-lista").scrollTop');
+      const topoDepois = await js('document.querySelector(".pc-resp-lista").getBoundingClientRect().top');
+      registrar("17ag4b. Mouse real: passar sobre a 3ª opção a torna ativa (aria-activedescendant); a roda do mouse rola a lista por dentro e a rolagem NÃO é desfeita (não volta à opção ativa, a lista não se reposiciona)", sobreOpcao.indiceAtivo === 2 && rol1 > 0 && rol2 === rol1 && rol3 > rol2 && rol3 > rol1 && topoDaLista === topoDepois, JSON.stringify({ ativo: sobreOpcao.indiceAtivo, rol1, rol2, rol3, topoDaLista, topoDepois }));
+      await js('document.querySelector(".pc-resp-lista").scrollTop=0');
+      // Clicar fora fecha sem alterar a escolha (clique real no título do detalhe).
+      await clicarReal(".pc-cor .pc-detail-title");
+      const fora = await estado();
+      registrar("17ag5. Clicar fora fecha a lista sem alterar a escolha (continua 'Escolha uma pessoa ▾')", !fora.aberto && fora.expanded === "false" && fora.texto === "Escolha uma pessoa ▾", JSON.stringify({ aberto: fora.aberto, texto: fora.texto }));
+
+      // Teclado: abrir com Enter, Espaço e seta para baixo; Esc fecha e devolve o foco ao campo.
+      const abriu = {};
+      for (const [nome, tecla] of [["Enter", "Enter"], ["Espaço", "Espaco"], ["Seta para baixo", "Baixo"]]) {
+        await js('document.querySelector(".pc-cor .pc-resp-seletor")?.focus()');
+        await apertar(tecla);
+        const a = await estado();
+        await apertar("Esc");
+        const f = await estado();
+        abriu[nome] = a.aberto && a.expanded === "true" && a.indiceAtivo === 0 && !f.aberto && f.foco === "seletor" && f.texto === "Escolha uma pessoa ▾";
+      }
+      registrar("17ag6. Teclas reais (CDP): Enter, Espaço e seta para baixo ABREM a lista; Esc FECHA, devolve o foco ao campo e não muda a escolha", Object.values(abriu).every(Boolean), JSON.stringify(abriu));
+      // Navegação: setas, Home e End; Enter escolhe a opção ativa.
+      await abrirSeletor();
+      await apertar("Baixo");
+      await apertar("Baixo");
+      const nav2 = await estado();
+      await apertar("End");
+      const navFim = await estado();
+      await apertar("Home");
+      const navIni = await estado();
+      await apertar("Cima");
+      const navCima = await estado();
+      registrar("17ag7. Setas navegam (2x seta para baixo = 3ª opção), End vai para '+ Outra pessoa…', Home para a 1ª e seta para cima na 1ª não sai da lista; a escolha só muda com Enter", nav2.indiceAtivo === 2 && navFim.indiceAtivo === navFim.opcoes.length - 1 && navIni.indiceAtivo === 0 && navCima.indiceAtivo === 0 && navCima.texto === "Escolha uma pessoa ▾" && navCima.foco === "seletor", JSON.stringify({ nav2: nav2.indiceAtivo, fim: navFim.indiceAtivo, ini: navIni.indiceAtivo, cima: navCima.indiceAtivo }));
+      await apertar("Baixo");
+      await apertar("Baixo");
+      const terceira = (await estado()).titulos[2];
+      await apertar("Enter");
+      const escolhido = await estado();
+      await foto("17ag-fechado-escolhido-1440x800");
+      const alturaLateralEscolhido = await js('(()=>{const l=document.querySelector(".pc-cor .pc-detail-lateral");return {sh:l.scrollHeight,prazoTop:Math.round(document.querySelector(".pc-cor .pc-plan-prazo").getBoundingClientRect().top)}})()');
+      registrar("17ac2b. Sem erro e com erro a lateral tem a mesma altura e o Prazo fica no mesmo lugar (a linha do erro é reservada, sem gap extra)", alturaLateralVazio.sh === alturaLateralEscolhido.sh && alturaLateralVazio.prazoTop === alturaLateralEscolhido.prazoTop, JSON.stringify({ alturaLateralVazio, alturaLateralEscolhido }));
+      const curtoDe = (nome) => { const p = nome.trim().split(/\s+/); if (p.length <= 2) return p.join(" "); const ult = p[p.length - 1]; const sn = ["neto", "filho", "junior", "jr", "sobrinho"].includes(norm(ult).replace(/\.$/, "")) ? p[p.length - 2] : ult; return p[0] + " " + sn; };
+      registrar("17ag8. Enter escolhe a opção ativa (3ª da lista): fecha, o foco volta ao campo, mostra '✓ Nome curto ▾' com o nome completo no title, borda cinza padrão e o erro some (região aria-live vazia, sem aria-describedby)", !escolhido.aberto && escolhido.foco === "seletor" && escolhido.texto === `✓ ${curtoDe(terceira)} ▾` && escolhido.titulo === terceira && escolhido.borda === CINZA && escolhido.erroTexto === "" && escolhido.describedby === "", JSON.stringify({ texto: escolhido.texto, borda: escolhido.borda }));
+      // Reabrir: a escolhida aparece marcada (aria-selected, ✓ e creme) e a opção ativa começa nela; clicar nela de novo não desmarca.
+      await apertar("Enter");
+      const reaberto = await estado();
+      await apertar("Baixo");
+      const marca = JSON.parse(await js(`(()=>{const ops=[...document.querySelectorAll(".pc-resp-lista [role=option]")];const o=ops.find((x)=>x.getAttribute("aria-selected")==="true");const at=ops.find((x)=>x.classList.contains("is-ativa"));return JSON.stringify({existe:!!o,creme:!!o&&getComputedStyle(o).backgroundColor==="rgb(255, 246, 229)",visto:!!o&&o.textContent.trim().startsWith("✓"),unica:document.querySelectorAll('.pc-resp-lista [aria-selected="true"]').length===1,ativaCremeEscuro:!!at&&at!==o&&getComputedStyle(at).backgroundColor==="rgb(255, 239, 208)"})})()`));
+      await apertar("Cima");
+      const [okMarca, falhaMarca] = resultadoDosChecks(JSON.stringify(marca));
+      registrar("17ag9. Reaberta, a pessoa atual fica marcada (aria-selected=true, ✓ e fundo creme #FFF6E5) e é a opção ativa (a ativa pelo teclado fica em creme mais escuro #FFEFD0, distinta da atual)", reaberto.selecionadas.length === 1 && reaberto.selecionadas[0] === terceira && reaberto.indiceAtivo === 2 && okMarca, falhaMarca);
+      await foto("17ag-aberto-com-escolha-1440x800");
+      await apertar("Esc");
+      // Escolher com o mouse (clique real na 2ª opção).
+      await clicarReal(".pc-cor .pc-resp-seletor");
+      const segunda = (await estado()).titulos[1];
+      await clicarReal(".pc-resp-lista [role=option]", 1);
+      const porMouse = await estado();
+      registrar("17ag10. Escolher com o mouse (clique real na 2ª opção): fecha a lista, mostra '✓ Nome curto ▾' e mantém o foco no campo", !porMouse.aberto && porMouse.texto === `✓ ${curtoDe(segunda)} ▾` && porMouse.titulo === segunda && porMouse.foco === "seletor", JSON.stringify({ texto: porMouse.texto, foco: porMouse.foco }));
+      // Foco visível (Tab real chegando ao campo).
+      await js('document.querySelector(".pc-cor .pc-acao-area")?.focus()');
+      for (let i = 0; i < 40; i++) {
+        await n.enviar("Input.dispatchKeyEvent", { type: "rawKeyDown", key: "Tab", code: "Tab", windowsVirtualKeyCode: 9 });
+        await n.enviar("Input.dispatchKeyEvent", { type: "keyUp", key: "Tab", code: "Tab", windowsVirtualKeyCode: 9 });
+        if (await js('document.activeElement?.classList.contains("pc-resp-seletor")')) break;
+      }
+      const focoVisivel = await js(`(()=>{const s=document.querySelector(".pc-cor .pc-resp-seletor");const c=getComputedStyle(s);return document.activeElement===s&&c.outlineStyle==="solid"&&c.outlineWidth==="3px"&&s.matches(":focus-visible")})()`);
+      registrar("17ag11. Tab real leva o foco ao campo e o foco é VISÍVEL (contorno sólido de 3 px, :focus-visible)", focoVisivel);
+      // Tab real com a lista aberta: fecha a lista, não muda a escolha e o foco segue para "Enviar lembrete".
+      await js('document.querySelector(".pc-cor .pc-resp-seletor")?.focus()');
+      await apertar("Enter");
+      const abertaParaTab = await estado();
+      await n.enviar("Input.dispatchKeyEvent", { type: "rawKeyDown", key: "Tab", code: "Tab", windowsVirtualKeyCode: 9 });
+      await n.enviar("Input.dispatchKeyEvent", { type: "keyUp", key: "Tab", code: "Tab", windowsVirtualKeyCode: 9 });
+      await n.esperar(200);
+      const aposTab = await estado();
+      registrar("17ag11b. Tab com a lista aberta fecha a lista (sem mudar a escolha) e o foco segue para 'Enviar lembrete'", abertaParaTab.aberto && !aposTab.aberto && aposTab.texto === `✓ ${curtoDe(segunda)} ▾` && (await js('document.activeElement?.classList.contains("pc-plan-lembrete")')) && (await js('document.querySelectorAll(".pc-resp-lista").length===0')), JSON.stringify({ aposTab: aposTab.aberto }));
+      await js('document.querySelector(".pc-cor .pc-resp-seletor")?.focus()');
+      // "+ Outra pessoa…": digitar; o parcial nunca vira responsável nem opção.
+      await apertar("Enter");
+      await apertar("End");
+      await apertar("Enter");
+      const dig = await estado();
+      registrar("17ac3. '+ Outra pessoa…' troca o campo por digitação (foco no input, aria-label 'Nome do responsável', placeholder 'Digite o nome e Enter', 42 px, lista fechada, sem somar altura: a lateral não rola)", dig.digitando && dig.foco === "input" && !dig.aberto && !dig.latRola && (await js('(()=>{const i=document.querySelector(".pc-cor .pc-resp-digitar");return i?.getAttribute("aria-label")==="Nome do responsável"&&i.placeholder==="Digite o nome e Enter"&&Math.round(i.getBoundingClientRect().height)===42})()')), JSON.stringify({ digitando: dig.digitando, foco: dig.foco }));
+      await foto("17ag-digitando-1440x800");
+      await digitarReal("Mar");
       const parcial = await estado();
-      registrar("17ac2. Texto parcial ('Mar') NÃO vira botão marcado na lista: o número de pessoas não muda, nenhuma fica marcada e a lateral não rola", parcial.radios === inicial.radios && parcial.marcados.length === 0 && parcial.campoValor === "Mar" && !parcial.latRola, JSON.stringify(parcial));
-      const nomeCadastrado = aberto.opcoes[0] || "";
-      await digitarNome(nomeCadastrado);
-      await n.esperar(250);
-      const escolhida = await estado();
-      registrar("17ac3. Escolher um nome da lista do campo (datalist) marca a pessoa cadastrada na lista de pessoas", !!nomeCadastrado && escolhida.marcados.length === 1 && escolhida.marcados[0].normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() === nomeCadastrado.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(), JSON.stringify({ nomeCadastrado: "(nome da lista)", marcados: escolhida.marcados.length, radios: escolhida.radios }));
-      await digitarNome("");
-      await n.esperar(250);
-      const apagado = await estado();
-      registrar("17ac4. Apagar o campo desmarca a pessoa, sem deixar botão vazio na lista, e mostra de novo 'Escolha o responsável'", apagado.marcados.length === 0 && apagado.radios === inicial.radios && apagado.erroVisivel, JSON.stringify(apagado));
-      await digitarNome("Fulano de Tal");
-      await n.esperar(150);
-      await teclar(".pc-cor .pc-pessoa-campo", "Enter");
-      await n.esperar(300);
-      const confirmado = await estado();
-      registrar("17ac5. Enter confirma o nome digitado: o campo fecha, o foco volta ao botão 'Outra pessoa' e a pessoa entra na lista marcada", !confirmado.campo && confirmado.botaoOutra && confirmado.focoNoBotao && confirmado.marcados.includes("Fulano de Tal") && confirmado.radios === inicial.radios + 1 && !confirmado.latRola, JSON.stringify(confirmado));
-      await js('document.querySelector(".pc-cor .pc-pessoa--outra")?.click()');
-      await n.esperar(200);
-      await digitarNome("Zé Qualquer");
-      await n.esperar(150);
-      await teclar(".pc-cor .pc-pessoa-campo", "Escape");
-      await n.esperar(300);
+      registrar("17ac4. Texto parcial ('Mar') não vira responsável nem opção: nenhuma lista aberta, nenhuma opção 'Mar' e a lateral não rola", parcial.digitando && parcial.valorInput === "Mar" && !parcial.aberto && !parcial.latRola, JSON.stringify(parcial.valorInput));
+      await apertar("Esc");
       const cancelado = await estado();
-      registrar("17ac6. Esc cancela: o campo fecha, o foco volta ao botão 'Outra pessoa' e o texto digitado não entra na lista (fica a escolha anterior)", !cancelado.campo && cancelado.focoNoBotao && cancelado.marcados.includes("Fulano de Tal") && !cancelado.marcados.includes("Zé Qualquer") && cancelado.radios === confirmado.radios, JSON.stringify(cancelado));
-      // Blur com nome preenchido: vira a grafia do cadastro (sem espaços sobrando); blur com o campo vazio restaura o valor de antes.
-      const nomeMari = aberto.opcoes.find((o) => /marivane/i.test(o)) || "";
-      await js('document.querySelector(".pc-cor .pc-pessoa--outra")?.click()');
-      await n.esperar(200);
-      await digitarNome("  " + nomeMari.toLowerCase().split(" ").join("   ") + " ");
-      await n.esperar(150);
-      await js('document.querySelector(".pc-cor .pc-pessoa-campo")?.dispatchEvent(new FocusEvent("focusout",{bubbles:true}))');
+      registrar("17ac5. Esc cancela a digitação: volta ao campo com o foco, restaura o valor anterior e o parcial não aparece na lista", !cancelado.digitando && cancelado.foco === "seletor" && cancelado.texto === `✓ ${curtoDe(segunda)} ▾` && (await (async () => { await apertar("Enter"); const e = await estado(); await apertar("Esc"); return !e.opcoes.some((o) => /^Mar$/.test(o)) && e.selecionadas[0] === segunda; })()), JSON.stringify({ texto: cancelado.texto }));
+      await abrirSeletor();
+      await apertar("End");
+      await apertar("Enter");
+      await digitarReal("  Fulano   de   Tal ");
+      await apertar("Enter");
+      const confirmado = await estado();
+      registrar("17ac6. Enter confirma o nome digitado NORMALIZADO (espaços únicos): o campo volta com o foco, mostra '✓ Fulano Tal ▾' com 'Fulano de Tal' no title e a pessoa entra na lista, marcada", !confirmado.digitando && confirmado.foco === "seletor" && confirmado.titulo === "Fulano de Tal" && confirmado.texto === "✓ Fulano Tal ▾" && (await (async () => { await apertar("Enter"); const e = await estado(); await apertar("Esc"); return e.titulos.includes("Fulano de Tal") && e.selecionadas.length === 1 && e.selecionadas[0] === "Fulano de Tal"; })()), JSON.stringify({ texto: confirmado.texto, titulo: confirmado.titulo }));
+      // Blur com nome preenchido confirma com a GRAFIA DO CADASTRO; blur vazio restaura.
+      const nomeMari = aberto.titulos.find((o) => /marivane/i.test(o)) || "";
+      await abrirSeletor();
+      await apertar("End");
+      await apertar("Enter");
+      await digitarReal("  " + nomeMari.toLowerCase().split(" ").join("   ") + " ");
+      await clicarReal(".pc-cor .pc-detail-title");
       await n.esperar(300);
       const normalizado = await estado();
-      registrar("17ac8. Sair do campo com o nome em minúsculas e espaços duplos confirma a GRAFIA DO CADASTRO (uma pessoa marcada, sem criar outra linha com a grafia digitada)", !!nomeMari && !normalizado.campo && normalizado.marcados.length === 1 && normalizado.marcados[0] === nomeMari, JSON.stringify({ marcados: normalizado.marcados.length, radios: normalizado.radios }));
-      await js('document.querySelector(".pc-cor .pc-pessoa--outra")?.click()');
-      await n.esperar(200);
-      await digitarNome("");
-      await n.esperar(150);
-      await js('document.querySelector(".pc-cor .pc-pessoa-campo")?.dispatchEvent(new FocusEvent("focusout",{bubbles:true}))');
+      registrar("17ac7. Sair do campo (blur REAL, clique fora) com o nome em minúsculas e espaços duplos confirma a GRAFIA DO CADASTRO (sem criar outra pessoa com a grafia digitada)", !!nomeMari && !normalizado.digitando && normalizado.titulo === nomeMari, JSON.stringify({ titulo: normalizado.titulo === nomeMari }));
+      await abrirSeletor();
+      await apertar("End");
+      await apertar("Enter");
+      await n.enviar("Input.dispatchKeyEvent", { type: "rawKeyDown", key: "Tab", code: "Tab", windowsVirtualKeyCode: 9 });
+      await n.enviar("Input.dispatchKeyEvent", { type: "keyUp", key: "Tab", code: "Tab", windowsVirtualKeyCode: 9 });
       await n.esperar(300);
       const restaurado = await estado();
-      registrar("17ac9. Sair do campo VAZIO restaura a escolha de antes (a pessoa continua marcada)", !restaurado.campo && restaurado.marcados.length === 1 && restaurado.marcados[0] === nomeMari, JSON.stringify({ marcados: restaurado.marcados.length }));
-      // Setas no grupo de pessoas (escolha única, tabindex móvel).
-      await js('document.querySelector(".pc-cor .pc-plan-resp [role=radio]")?.focus()');
-      await teclar('.pc-cor .pc-plan-resp [role="radio"]', "ArrowDown");
+      registrar("17ac8. Sair do campo VAZIO (blur REAL, Tab) restaura a escolha de antes", !restaurado.digitando && restaurado.titulo === nomeMari, JSON.stringify({ titulo: restaurado.titulo === nomeMari }));
+      await abrirSeletor();
+      await apertar("End");
+      await apertar("Enter");
+      await apertar("Enter");
+      const enterVazio = await estado();
+      registrar("17ac9. Enter com o campo vazio restaura a escolha de antes (nada vira responsável) e devolve o foco ao campo", !enterVazio.digitando && enterVazio.titulo === nomeMari && enterVazio.foco === "seletor", JSON.stringify({ foco: enterVazio.foco }));
+      // Trocar de correção ou de etapa SEM blur (clique por script) com a lista aberta: o portal some; com digitação preenchida o texto é CONFIRMADO normalizado.
+      const cartaoSemRalo = `(()=>{const c=[...document.querySelectorAll(".pc-cor .pc-cor-card")].find((x)=>!x.innerText.includes("Ralo sem tampa"));c?.click();return !!c})()`;
+      const abrirRalo = async () => {
+        await js('(()=>{const c=[...document.querySelectorAll(".pc-cor .pc-cor-card")].find((x)=>x.innerText.includes("Ralo sem tampa"));c?.click();return !!c})()');
+        await esperar(async () => js('document.querySelector(".pc-cor .pc-detail-title")?.textContent.includes("Ralo sem tampa")'), 5000);
+        await n.esperar(250);
+      };
+      await js('document.querySelector(".pc-cor .pc-resp-seletor")?.focus()');
+      await apertar("Enter");
+      const listasAntes = await js('document.querySelectorAll(".pc-resp-lista").length');
+      await js(cartaoSemRalo);
+      await n.esperar(400);
+      const listasDepois = await js('document.querySelectorAll(".pc-resp-lista").length');
+      await abrirRalo();
+      registrar("17ag13. Trocar de correção com a lista aberta remove a lista do body (nenhum portal sobra) e a correção reaberta tem o campo fechado", listasAntes === 1 && listasDepois === 0 && !(await estado()).aberto, JSON.stringify({ listasAntes, listasDepois }));
+      await js('document.querySelector(".pc-cor .pc-resp-seletor")?.focus()');
+      await apertar("Enter");
+      await js('document.querySelectorAll(".pc-cor .pc-etapa")[1].click()');
+      await n.esperar(400);
+      const listasEtapa = await js('document.querySelectorAll(".pc-resp-lista").length');
+      await js('document.querySelectorAll(".pc-cor .pc-etapa")[0].click()');
+      await n.esperar(400);
+      await abrirRalo();
+      registrar("17ag14. Trocar de etapa com a lista aberta também remove a lista do body", listasEtapa === 0);
+      await js('document.querySelector(".pc-cor .pc-resp-seletor")?.focus()');
+      await apertar("Enter");
+      await apertar("End");
+      await apertar("Enter");
+      await digitarReal("  beltrano   de   teste ");
+      await js(cartaoSemRalo);
+      await n.esperar(400);
+      await abrirRalo();
+      const confirmadoNaTroca = await estado();
+      registrar("17ac10. Texto preenchido em '+ Outra pessoa…' e a correção trocada SEM blur: o nome é CONFIRMADO normalizado (rascunho em memória) e aparece marcado ao voltar; nada se perde em silêncio", confirmadoNaTroca.titulo === "beltrano de teste", JSON.stringify({ titulo: confirmadoNaTroca.titulo, texto: confirmadoNaTroca.texto }));
+      await js('document.querySelector(".pc-cor .pc-resp-seletor")?.focus()');
+      await apertar("Enter");
+      await apertar("Home");
+      await apertar("Enter");
+      // Responsável antigo não normalizado ("  elton   volmir   strapazon " gravado na correção da câmara fria): aparece marcado, com a grafia do cadastro, sem linha duplicada.
+      await js('(()=>{const c=[...document.querySelectorAll(".pc-cor .pc-cor-card")].find((x)=>x.innerText.includes("câmara fria"));c?.click();return !!c})()');
+      await esperar(async () => js('document.querySelector(".pc-cor .pc-detail-title")?.textContent.includes("câmara fria")'), 5000);
       await n.esperar(250);
-      const seta = await estado();
-      registrar("17ac7. Seta para baixo no grupo de pessoas passa a escolha e o foco para a próxima pessoa (só uma marcada)", seta.marcados.length === 1 && seta.focoNoRadio === 1, JSON.stringify(seta));
-      await teclar('.pc-cor .pc-plan-resp [role="radio"]', "Home");
+      const antigoFechado = await estado();
+      await js('document.querySelector(".pc-cor .pc-resp-seletor")?.focus()');
+      await apertar("Enter");
+      const antigoAberto = await estado();
+      await apertar("Esc");
+      registrar("17ag15. Responsável antigo não normalizado ('  elton   volmir   strapazon ') aparece marcado com a grafia do cadastro ('Elton Volmir Strapazon'), uma só vez na lista (mesma quantidade de opções) e a lista não ganha linha duplicada", antigoFechado.texto === "✓ Elton Strapazon ▾" && antigoFechado.titulo === "Elton Volmir Strapazon" && antigoAberto.selecionadas.length === 1 && antigoAberto.selecionadas[0] === "Elton Volmir Strapazon" && antigoAberto.opcoes.length === aberto.opcoes.length, JSON.stringify({ texto: antigoFechado.texto, opcoes: antigoAberto.opcoes.length, esperado: aberto.opcoes.length }));
+      await abrirRalo();
+      // Larguras de 1000 a 1300 (e 1440): a lista aberta fica inteira na janela, não é coberta nem corta, e nada ganha rolagem.
+      for (const [largura, altura] of [[1000, 800], [1100, 800], [1152, 800], [1200, 800], [1300, 800], [1440, 800], [1000, 700], [1000, 900], [1152, 700], [1152, 900], [1440, 700], [1440, 900]]) {
+        await n.enviar("Emulation.setDeviceMetricsOverride", { width: largura, height: altura, screenWidth: 1440, screenHeight: 800, deviceScaleFactor: 1, mobile: false });
+        await n.esperar(450);
+        await js('document.querySelector(".pc-cor .pc-resp-seletor")?.scrollIntoView({block:"center"})');
+        await n.esperar(150);
+        const rolagens = await js('(()=>{const l=document.querySelector(".pc-cor .pc-detail-lateral");const c=document.querySelector(".pc-cor .pc-detail-corpo");return {l:l.scrollHeight,lc:l.clientHeight,c:c.scrollHeight,cc:c.clientHeight,top:c.scrollTop}})()');
+        await abrirSeletor();
+        await n.esperar(200);
+        const g = JSON.parse(await js(`(()=>{const s=document.querySelector(".pc-cor .pc-resp-seletor");const l=document.querySelector(".pc-resp-lista");if(!l)return JSON.stringify({existe:false});const sr=s.getBoundingClientRect(),lr=l.getBoundingClientRect();const ops=[...l.querySelectorAll('[role="option"]')];const outraTop=l.querySelector(".pc-resp-opcao--outra").getBoundingClientRect().top;const noTopo=(e)=>{const r=e.getBoundingClientRect();const ehOutra=e.classList.contains("pc-resp-opcao--outra");const topo=Math.max(r.top,lr.top),base=Math.min(r.bottom,ehOutra?lr.bottom:outraTop,lr.bottom);if(base-topo<=2)return true;const t=document.elementFromPoint(r.left+r.width/2,(topo+base)/2);return !!t&&(t===e||e.contains(t))};const lat=document.querySelector(".pc-cor .pc-detail-lateral");const c=document.querySelector(".pc-cor .pc-detail-corpo");const foot=document.querySelector(".pc-cor .pc-detail-foot").getBoundingClientRect();const colada=Math.abs(lr.top-sr.bottom)<=2||Math.abs(lr.bottom-sr.top)<=2;return JSON.stringify({existe:true,coladaNoCampo:colada&&Math.abs(lr.left-sr.left)<=1&&Math.abs(lr.width-sr.width)<=1,dentroDaJanela:lr.left>=0&&lr.right<=innerWidth&&lr.top>=0&&lr.bottom<=innerHeight,semCobertura:ops.every(noTopo),latSemMudar:lat.scrollHeight===${rolagens.l}&&c.scrollHeight===${rolagens.c},listaCabeNaJanela:lr.height<=innerHeight-16+0.5,abaixoOuSemEspaco:(lr.top>=sr.bottom-2&&lr.bottom<=foot.top+0.5)||(lr.bottom<=sr.top+2&&(foot.top-8-sr.bottom)<Math.min(ops.length,7)*44+2),lateralDe100cqh:innerWidth<1150||(Math.abs(lat.clientHeight-c.clientHeight)<=1&&lat.getBoundingClientRect().bottom<=foot.top+1),campoNaJanela:sr.top>=0&&sr.bottom<=innerHeight,medidas:{lista:[Math.round(lr.left),Math.round(lr.top),Math.round(lr.right),Math.round(lr.bottom)],campo:[Math.round(sr.top),Math.round(sr.bottom)],rodapeTop:Math.round(foot.top),maxima:Math.round(lr.height)}})})()`));
+        const [okG, falhaG] = resultadoDosChecks(JSON.stringify(g));
+        if (altura === 800 && (largura === 1152 || largura === 1000)) await foto(`17ag-aberto-${largura}x800`);
+        registrar(`17ag12. ${largura}x${altura}: com a lista aberta ela cola no campo, fica inteira na janela (altura <= janela - 16 px), abre para baixo sem passar do rodapé fixo (ou sobe, só quando não há espaço embaixo nem rolando o corpo), nenhuma opção é coberta ou cortada, a lateral (100cqh) fica acima do rodapé e nem a lateral nem o corpo ganham rolagem`, okG, falhaG || JSON.stringify(g.medidas));
+        if (largura === 1000 && altura === 800) {
+          // Campo fora da área visível do corpo ao rolar: a lista fecha (a lateral é empurrada para baixo por script para forçar o campo para fora).
+          await js('(()=>{const c=document.querySelector(".pc-cor .pc-detail-corpo");document.querySelector(".pc-cor .pc-detail-lateral").style.marginTop="2000px";c.scrollTop=c.scrollTop+1;return true})()');
+          await n.esperar(300);
+          const fechouAoRolar = await js('document.querySelectorAll(".pc-resp-lista").length===0');
+          await js('(()=>{const c=document.querySelector(".pc-cor .pc-detail-corpo");document.querySelector(".pc-cor .pc-detail-lateral").style.marginTop="";c.scrollTop=0;return true})()');
+          registrar("17ag16. 1000x800: a lista fecha quando o campo sai da área visível do corpo ao rolar", fechouAoRolar);
+        }
+        await apertar("Esc");
+        if (largura === 1152 && altura === 800) {
+          await foto("17ag-fechado-escolhido-1152x800");
+          await apertar("Enter");
+          await apertar("End");
+          await apertar("Enter");
+          await foto("17ag-digitando-1152x800");
+          await apertar("Esc");
+        }
+      }
+      await n.enviar("Emulation.setDeviceMetricsOverride", { width: 1440, height: 800, screenWidth: 1440, screenHeight: 800, deviceScaleFactor: 1, mobile: false });
+      await n.esperar(400);
+      // Volta a um estado limpo: escolhe a primeira pessoa cadastrada (a digitada à mão sai da lista).
+      await abrirSeletor();
+      await apertar("Home");
+      await apertar("Enter");
       await n.esperar(200);
-      const inicio = await estado();
-      await teclar('.pc-cor .pc-plan-resp [role="radio"]', "End");
-      await n.esperar(200);
-      const fim = await estado();
-      registrar("17ac7b. Home leva à primeira pessoa e End à última (a escolha acompanha o foco)", inicio.focoNoRadio === 0 && inicio.marcados.length === 1 && fim.focoNoRadio === fim.radios - 1 && fim.marcados.length === 1, JSON.stringify({ inicio: inicio.focoNoRadio, fim: fim.focoNoRadio }));
-      // Volta a um estado limpo: escolhe a primeira pessoa cadastrada (a pessoa digitada à mão sai da lista).
-      await js('document.querySelector(".pc-cor .pc-plan-resp [role=radio]")?.click()');
-      await n.esperar(200);
+      await js('document.querySelector(".pc-cor .pc-detail-corpo")?.scrollTo(0,0)');
     }
     // 17ad. Prazo vazio: o erro aparece abaixo do campo (sem cobrir a data); Prazo no passado: "Já passou" não invade o valor, de 1001 a 1299 px.
     {
@@ -763,12 +996,12 @@ detalhes:{chipDaAcaoNaBarra:chipVisivel,sobrepostos,pessoas:pessoas.map((c)=>c.t
         try {
           await setPrazo("");
           await n.esperar(250);
-          const vazio = JSON.parse(await js(`(()=>{const l=document.querySelector(".pc-cor .pc-detail-lateral");const i=l.querySelector(".pc-plan-prazo input");const a=l.querySelector(".pc-prazo-aviso");const e=l.querySelector(".pc-prazo-erro");const lr=l.getBoundingClientRect();return JSON.stringify({aviso:!!a&&a.textContent.trim().length>0,semJaPassou:!e,abaixoDoCampo:!!a&&a.getBoundingClientRect().top>=i.getBoundingClientRect().bottom-1,dentroDaLateral:!!a&&a.getBoundingClientRect().left>=lr.left-0.5&&a.getBoundingClientRect().right<=lr.right+0.5,ligadoAoCampo:!!a&&(i.getAttribute("aria-describedby")||"").split(" ").includes(a.id)})})()`));
+          const vazio = JSON.parse(await js(`(()=>{const l=document.querySelector(".pc-cor .pc-detail-lateral");const i=l.querySelector(".pc-plan-prazo input");const a=l.querySelector(".pc-prazo-aviso");const e=l.querySelector(".pc-prazo-erro");const lr=l.getBoundingClientRect();return JSON.stringify({aviso:!!a&&a.textContent.trim().length>0,semJaPassou:!e,abaixoDoCampo:!!a&&a.getBoundingClientRect().top>=i.getBoundingClientRect().bottom-1,dentroDaLateral:!!a&&a.getBoundingClientRect().left>=lr.left-0.5&&a.getBoundingClientRect().right<=lr.right+0.5,ligadoAoCampo:!!a&&(i.getAttribute("aria-describedby")||"").split(" ").includes(a.id),idUnico:document.querySelectorAll('[id^="prazo-erro-"]').length===1})})()`));
           const [okV, falhaV] = resultadoDosChecks(JSON.stringify(vazio));
           registrar(`17ad. ${largura} px, Prazo vazio: o erro mais longo aparece ABAIXO do campo (não 'Já passou' sobre a data), dentro da coluna e ligado ao campo por aria-describedby`, okV, falhaV);
           await setPrazo("2020-01-01");
           await n.esperar(250);
-          const passado = JSON.parse(await js(`(()=>{const l=document.querySelector(".pc-cor .pc-detail-lateral");const i=l.querySelector(".pc-plan-prazo input");const e=l.querySelector(".pc-prazo-erro");if(!e)return JSON.stringify({aviso:false});const cs=getComputedStyle(i);const cv=document.createElement("canvas").getContext("2d");cv.font=cs.fontStyle+" "+cs.fontWeight+" "+cs.fontSize+" "+cs.fontFamily;const fim=i.getBoundingClientRect().left+parseFloat(cs.borderLeftWidth)+parseFloat(cs.paddingLeft)+cv.measureText("00/00/0000").width;const er=e.getBoundingClientRect();return JSON.stringify({aviso:e.textContent.trim()==="Já passou",naoInvadeAData:er.left>=fim+4,dentroDoCampo:er.right<=i.getBoundingClientRect().right})})()`));
+          const passado = JSON.parse(await js(`(()=>{const l=document.querySelector(".pc-cor .pc-detail-lateral");const i=l.querySelector(".pc-plan-prazo input");const e=l.querySelector(".pc-prazo-erro");if(!e)return JSON.stringify({aviso:false});const cs=getComputedStyle(i);const cv=document.createElement("canvas").getContext("2d");cv.font=cs.fontStyle+" "+cs.fontWeight+" "+cs.fontSize+" "+cs.fontFamily;const fim=i.getBoundingClientRect().left+parseFloat(cs.borderLeftWidth)+parseFloat(cs.paddingLeft)+cv.measureText("00/00/0000").width;const er=e.getBoundingClientRect();return JSON.stringify({aviso:e.textContent.trim()==="Já passou",naoInvadeAData:er.left>=fim+4,dentroDoCampo:er.right<=i.getBoundingClientRect().right,idUnico:document.querySelectorAll('[id^="prazo-erro-"]').length===1})})()`));
           const [okJ, falhaJ] = resultadoDosChecks(JSON.stringify(passado));
           registrar(`17ad2. ${largura} px, data no passado: 'Já passou' só nesse caso e à direita do valor da data (folga >= 4 px)`, okJ, falhaJ);
         } finally {
@@ -801,10 +1034,10 @@ detalhes:{chipDaAcaoNaBarra:chipVisivel,sobrepostos,pessoas:pessoas.map((c)=>c.t
       const [okR, falhaR] = resultadoDosChecks(JSON.stringify(re));
       registrar("17ae. 1440x800, correção reincidente: a Causa raiz (obrigatória) vem logo após 'O que será feito' e fica visível sem rolar; os avisos informativos vêm depois; a lateral não rola e o rodapé está à vista (só a coluna esquerda pode rolar)", okR, falhaR || JSON.stringify(re.medidas));
     }
-    // 1440x800: a coluna lateral não rola com 3 pessoas (a correção reincidente de teste tem o mesmo conteúdo lateral que a 17z).
+    // 1440x800: a coluna lateral não rola com o campo único (a correção reincidente de teste tem o mesmo conteúdo lateral que a 17z).
     await n.enviar("Emulation.setDeviceMetricsOverride", { width: 1440, height: 800, screenWidth: 1440, screenHeight: 800, deviceScaleFactor: 1, mobile: false });
     await n.esperar(400);
-    registrar("17ab2. 1440x800: a coluna lateral (3 pessoas, 'Outra pessoa', erro, lembrete e Prazo) não tem rolagem interna e termina acima do rodapé", await js('(()=>{const l=document.querySelector(".pc-cor .pc-detail-lateral");const f=document.querySelector(".pc-cor .pc-detail-foot").getBoundingClientRect();return l.scrollHeight<=l.clientHeight&&l.getBoundingClientRect().bottom<=f.top+1&&document.querySelectorAll(".pc-cor .pc-pessoas .pc-pessoa:not(.pc-pessoa--outra)").length===3})()'));
+    registrar("17ab2. 1440x800: a coluna lateral (campo único do Responsável, erro, lembrete e Prazo) não tem rolagem interna e termina acima do rodapé", await js('(()=>{const l=document.querySelector(".pc-cor .pc-detail-lateral");const f=document.querySelector(".pc-cor .pc-detail-foot").getBoundingClientRect();return l.scrollHeight<=l.clientHeight&&l.getBoundingClientRect().bottom<=f.top+1&&document.querySelectorAll(".pc-cor .pc-resp-seletor, .pc-cor .pc-resp-digitar").length===1})()'));
     for (const largura of [1199, 1200, 1300]) {
       await n.enviar("Emulation.setDeviceMetricsOverride", { width: largura, height: 800, screenWidth: 1440, screenHeight: 800, deviceScaleFactor: 1, mobile: false });
       await n.esperar(400);
@@ -840,7 +1073,9 @@ detalhes:{chipDaAcaoNaBarra:chipVisivel,sobrepostos,pessoas:pessoas.map((c)=>c.t
     await n.enviar("Emulation.setDeviceMetricsOverride", { width: 1440, height: 800, screenWidth: 1440, screenHeight: 800, deviceScaleFactor: 1, mobile: false });
     await n.esperar(300);
   }
-  await js(`(()=>{const set=(el,v)=>{Object.getOwnPropertyDescriptor(Object.getPrototypeOf(el),"value").set.call(el,v);el.dispatchEvent(new Event("input",{bubbles:true}))};set(document.querySelector(".pc-cor .pc-acao-area"),"Providenciar a correção");document.querySelector(".pc-cor .pc-pessoa:not(.pc-pessoa--outra)").click();return true})()`);
+  await js(`(()=>{const set=(el,v)=>{Object.getOwnPropertyDescriptor(Object.getPrototypeOf(el),"value").set.call(el,v);el.dispatchEvent(new Event("input",{bubbles:true}))};set(document.querySelector(".pc-cor .pc-acao-area"),"Providenciar a correção");document.querySelector(".pc-cor .pc-resp-seletor").click();return true})()`);
+  await n.esperar(200);
+  await js('document.querySelector(".pc-resp-lista .pc-resp-opcao")?.click()');
   await n.esperar(300);
   registrar("17j. Correções: 'Salvar plano' habilita com ação e responsável", await js(`(()=>{const salvar=[...document.querySelectorAll(".pc-cor .pc-detail-foot button")].find((b)=>b.innerText.includes("Salvar plano"));return !!salvar&&!salvar.disabled&&getComputedStyle(salvar).backgroundColor==="rgb(46, 139, 87)"})()`));
   registrar("17x. Correções: o rodapé tem só 'Salvar plano' (verde, 40 px) e o texto 'Depois de salvar, abre: …', 'Depois de salvar, abre a próxima sem plano' ou 'Esta é a última sem plano'; não existe 'Próxima correção'", await js(`(()=>{const foot=document.querySelector(".pc-cor .pc-detail-foot");const botoes=[...foot.querySelectorAll("button")];const texto=foot.querySelector(".pc-falta--motivo")?.textContent||"";return botoes.length===1&&botoes[0].innerText.includes("Salvar plano")&&Math.round(botoes[0].getBoundingClientRect().height)===40&&/^(Depois de salvar, abre: .+|Depois de salvar, abre a próxima sem plano|Esta é a última sem plano)$/.test(texto.trim())&&!/Próxima correção/.test(document.querySelector(".pc-cor").innerText)})()`));

@@ -3,7 +3,8 @@
 import { dataISOLocal, formatarDataCurta, formatarDataHora, formatarHora, hojeLocalISO } from "@/lib/dataLocal";
 import AntesDepois, { type FotoDoPar } from "@/components/AntesDepois";
 import CaixaQueCresce from "@/components/CaixaQueCresce";
-import { chaveDaPessoa, mesmaPessoa, nomeNormalizado, pessoasDaLista, pessoasUnicas, rotulosDeChipsDePessoas } from "@/lib/pessoas";
+import { nomeNormalizado, valoresDeLoteNormalizados } from "@/lib/pessoas";
+import CampoResponsavel from "@/components/pc/CampoResponsavel";
 import { confirmar } from "@/lib/dialogos";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
@@ -414,7 +415,7 @@ export default function PcCorrecoes({
           hoje={hoje}
           onFechar={() => setLote(false)}
           onAplicar={(ids, valores) => {
-            onLote(ids, valores);
+            onLote(ids, valoresDeLoteNormalizados(valores, pessoas));
             ids.forEach((id) => rascunhos.limpar(id));
             setLote(false);
           }}
@@ -476,6 +477,10 @@ function Detalhe({
   const [causa, setCausa] = useState(aoAbrir.causa);
   const baseRef = useRef(planoDaCorrecao);
   baseRef.current = planoDaCorrecao;
+  const planoRef = useRef({ acao, responsavel, prazo, causa });
+  planoRef.current = { acao, responsavel, prazo, causa };
+  // "+ Outra pessoa…" aberto: enquanto se digita o responsável ainda vazio não é erro.
+  const [digitandoResp, setDigitandoResp] = useState(false);
   // Só reage ao que a pessoa digita (não ao salvar): o rascunho some quando o texto volta a ser o da correção.
   useEffect(() => {
     rascunhos.guardar(nc.id, { acao, responsavel, prazo, causa }, baseRef.current);
@@ -485,15 +490,6 @@ function Detalhe({
   const [tocado, setTocado] = useState<Record<CampoDoPlano, boolean>>({ acao: false, responsavel: false, prazo: false });
   const [causaTocada, setCausaTocada] = useState(false);
   const acaoRef = useRef<HTMLTextAreaElement | null>(null);
-  const responsavelRef = useRef<HTMLDivElement | null>(null);
-  // "Outra pessoa": o campo substitui o botão tracejado; o texto ainda em digitação NÃO entra na lista de pessoas (só a pessoa escolhida).
-  const [outraPessoa, setOutraPessoa] = useState(false);
-  const [digitando, setDigitando] = useState(false);
-  const campoRef = useRef<HTMLInputElement | null>(null);
-  const outraRef = useRef<HTMLButtonElement | null>(null);
-  const devolverFocoAoBotao = useRef(false);
-  const valorAntesDeAbrir = useRef("");
-  const enterAdiado = useRef(false);
   const prazoRef = useRef<HTMLInputElement | null>(null);
   const [notaFeita, setNotaFeita] = useState("");
   const [texto, setTexto] = useState("");
@@ -515,51 +511,8 @@ function Detalhe({
 
   const vazio = (valor: string) => !valor.trim();
 
-  // Lista empilhada: só pessoas cadastradas na empresa (e o usuário atual), até 3, sempre em ordem alfabética; rótulo = primeiro nome + último sobrenome (nome completo no title). A pessoa escolhida fica marcada; o nome digitado à mão em "Outra pessoa" só entra na lista depois de confirmado (Enter ou sair do campo) ou quando coincide com uma pessoa cadastrada.
-  const coincideComCadastrada = pessoas.some((pessoa) => mesmaPessoa(pessoa, responsavel));
-  const nomesDaLista = pessoasDaLista({ cadastradas: pessoas, escolhido: digitando && !coincideComCadastrada ? "" : responsavel, limite: 3 });
-  const rotulosDaLista = rotulosDeChipsDePessoas(nomesDaLista);
-  const indiceMarcado = nomesDaLista.findIndex((nome) => mesmaPessoa(nome, responsavel));
-  const campoAberto = !bloqueado && (outraPessoa || nomesDaLista.length === 0);
-  // O campo "Outra pessoa" some (Enter, Esc, blur ou escolha): o texto em digitação deixa de existir junto com ele.
-  useEffect(() => {
-    if (!campoAberto) setDigitando(false);
-  }, [campoAberto]);
-  const escolherPessoa = (nome: string) => {
-    setResponsavel(nome);
-    setDigitando(false);
-  };
-  const fecharCampo = (devolverFoco: boolean, novoValor: string) => {
-    devolverFocoAoBotao.current = devolverFoco;
-    setResponsavel(novoValor);
-    setDigitando(false);
-    setOutraPessoa(false);
-    marcarTocado("responsavel");
-  };
-  // Confirmar (Enter ou sair do campo): texto vazio volta ao valor de antes; preenchido vira a grafia do cadastro ou o nome com espaços únicos (lido do próprio campo, que é sempre o valor mais novo, inclusive o da lista do navegador).
-  const confirmarCampo = (devolverFoco: boolean) => {
-    const bruto = campoRef.current?.value ?? responsavel;
-    fecharCampo(devolverFoco, bruto.trim() ? nomeNormalizado(bruto, pessoas) : valorAntesDeAbrir.current);
-  };
-  // Depois de fechar o campo com Enter ou Esc o foco volta ao botão "Outra pessoa"; sem botão (lista vazia), a marca é apenas zerada.
-  useEffect(() => {
-    if (devolverFocoAoBotao.current) {
-      outraRef.current?.focus();
-      devolverFocoAoBotao.current = false;
-    }
-  });
-  // Grupo de escolha única: Tab entra na pessoa marcada (ou na primeira); as setas, Home e End trocam a escolha.
-  const aoTeclarNasPessoas = (evento: React.KeyboardEvent<HTMLDivElement>) => {
-    const teclas = ["ArrowDown", "ArrowRight", "ArrowUp", "ArrowLeft", "Home", "End"];
-    if (!teclas.includes(evento.key)) return;
-    evento.preventDefault();
-    const botoes = Array.from(evento.currentTarget.querySelectorAll<HTMLButtonElement>('[role="radio"]'));
-    const atual = Math.max(botoes.indexOf(document.activeElement as HTMLButtonElement), 0);
-    const proximo = evento.key === "Home" ? 0 : evento.key === "End" ? botoes.length - 1 : (atual + (evento.key === "ArrowDown" || evento.key === "ArrowRight" ? 1 : -1) + botoes.length) % botoes.length;
-    escolherPessoa(nomesDaLista[proximo]);
-    botoes[proximo]?.focus();
-  };
-  const erroDoResponsavel = !bloqueado && tocado.responsavel && vazio(responsavel);
+  // Sem escolha o campo já nasce em vermelho com "Escolha o responsável" (o rodapé também diz "Falta: …"); só some enquanto se digita em "+ Outra pessoa…".
+  const erroDoResponsavel = !bloqueado && vazio(responsavel) && !digitandoResp;
   const responsavelVazio = vazio(responsavel);
   const erroDoPrazo = Boolean(mostrarErro("prazo"));
   const prazoNoPassado = erroDoPrazo && Boolean(prazo);
@@ -825,79 +778,7 @@ function Detalhe({
             {bloqueado ? (
               <input id={`resp-${nc.id}`} className="ui-input" value={responsavel} disabled readOnly placeholder="Sem responsável" aria-labelledby={`resp-rotulo-${nc.id}`} />
             ) : (
-              <div ref={responsavelRef} className="pc-pessoas">
-                {nomesDaLista.length > 0 && (
-                  <div className="pc-pessoas-lista" role="radiogroup" aria-labelledby={`resp-rotulo-${nc.id}`} aria-describedby={erroDoResponsavel ? `resp-erro-${nc.id}` : undefined} onKeyDown={aoTeclarNasPessoas} onBlur={() => marcarTocado("responsavel")}>
-                    {nomesDaLista.map((nome, indice) => {
-                      const marcada = mesmaPessoa(nome, responsavel);
-                      return (
-                        <button key={nome} type="button" role="radio" aria-checked={marcada} tabIndex={indice === Math.max(indiceMarcado, 0) ? 0 : -1} className={`pc-pessoa${marcada ? " is-on" : ""}`} title={nome} aria-label={nome} onClick={() => escolherPessoa(nome)}>
-                          {marcada && <span className="pc-pessoa-check" aria-hidden="true">✓ </span>}
-                          {rotulosDaLista[indice]}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-                {campoAberto ? (
-                  <>
-                    <input
-                      ref={campoRef}
-                      id={`resp-${nc.id}`}
-                      className="ui-input ui-input--lista pc-pessoa-campo"
-                      value={responsavel}
-                      list={`pessoas-${nc.id}`}
-                      autoFocus
-                      onFocus={() => {
-                        valorAntesDeAbrir.current = responsavel;
-                      }}
-                      onChange={(evento) => {
-                        enterAdiado.current = false;
-                        setResponsavel(evento.target.value);
-                        setDigitando(true);
-                        marcarTocado("responsavel");
-                      }}
-                      onBlur={() => confirmarCampo(false)}
-                      onKeyDown={(evento) => {
-                        if (evento.key === "Escape") {
-                          // Esc cancela: volta ao que estava escolhido antes (sem fechar a tela de trás).
-                          evento.preventDefault();
-                          evento.stopPropagation();
-                          fecharCampo(true, valorAntesDeAbrir.current);
-                        } else if (evento.key === "Enter") {
-                          // Enter confirma, mas não atropela a lista do navegador: com um nome parcial que ainda casa com opções, o primeiro Enter fica para a lista (escolher a opção) e o segundo confirma.
-                          const valor = campoRef.current?.value ?? "";
-                          const exato = pessoas.some((pessoa) => mesmaPessoa(pessoa, valor));
-                          const listaProvavel = Boolean(valor.trim()) && !exato && pessoas.some((pessoa) => chaveDaPessoa(pessoa).includes(chaveDaPessoa(valor)));
-                          if (listaProvavel && !enterAdiado.current) {
-                            enterAdiado.current = true;
-                            return;
-                          }
-                          enterAdiado.current = false;
-                          evento.preventDefault();
-                          confirmarCampo(true);
-                        }
-                      }}
-                      placeholder="Escolha o responsável"
-                      aria-label="Nome do responsável"
-                      aria-invalid={erroDoResponsavel}
-                      aria-describedby={erroDoResponsavel ? `resp-erro-${nc.id}` : undefined}
-                    />
-                    <datalist id={`pessoas-${nc.id}`}>
-                      {pessoasUnicas(pessoas).map((pessoa) => (
-                        <option key={chaveDaPessoa(pessoa)} value={pessoa} />
-                      ))}
-                    </datalist>
-                  </>
-                ) : (
-                  <button ref={outraRef} type="button" className="pc-pessoa pc-pessoa--outra" aria-expanded={false} onClick={() => {
-                    valorAntesDeAbrir.current = responsavel;
-                    setOutraPessoa(true);
-                  }}>
-                    Outra pessoa <span aria-hidden="true">▾</span>
-                  </button>
-                )}
-              </div>
+              <CampoResponsavel id={`resp-${nc.id}`} valor={responsavel} pessoas={pessoas} rotuloId={`resp-rotulo-${nc.id}`} erro={erroDoResponsavel} erroId={`resp-erro-${nc.id}`} onEscolher={setResponsavel} onDigitando={setDigitandoResp} aoSairComTexto={(nome) => rascunhos.guardar(nc.id, { ...planoRef.current, responsavel: nome }, baseRef.current)} />
             )}
             <span id={`resp-erro-${nc.id}`} className="pc-resp-erro" aria-live="polite">
               {erroDoResponsavel ? "Escolha o responsável" : ""}

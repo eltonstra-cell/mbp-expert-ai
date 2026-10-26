@@ -1,5 +1,7 @@
 "use client";
 
+import { nomeNormalizado, valoresDeLoteNormalizados } from "@/lib/pessoas";
+
 import { dataISOLocal, formatarDataCurta, formatarHora, hojeLocalISO } from "@/lib/dataLocal";
 import type { ReactNode } from "react";
 
@@ -503,7 +505,7 @@ export function CampoCorrecoes({
           hoje={hoje}
           onFechar={() => setLote(false)}
           onAplicar={(ids, valores) => {
-            onLote(ids, valores);
+            onLote(ids, valoresDeLoteNormalizados(valores, pessoas));
             setLote(false);
           }}
         />
@@ -576,7 +578,7 @@ function DetalheCampo({
       return;
     }
     setFaltas("");
-    onSalvar({ acao: acao.trim(), responsavel: responsavel.trim(), prazo, etapa: etapaAlvo });
+    onSalvar({ acao: acao.trim(), responsavel: nomeNormalizado(responsavel, pessoas), prazo, etapa: etapaAlvo });
   };
 
   return (

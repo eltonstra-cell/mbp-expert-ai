@@ -5924,23 +5924,41 @@ html .ui-screen.pc-cor .pc-provas .ad--pc{align-items:center}
 /* Coluna direita: 2 Quem faz e até quando */
 html .ui-screen.pc-cor .pc-detail-lateral{position:sticky;top:0;display:flex;grid-column:2;grid-row:1 / span 3;flex-direction:column;align-self:start;gap:10px;box-sizing:border-box;min-width:0;height:100cqh;overflow-y:auto;padding:12px 20px 8px;border-left:1px solid var(--rd-trilho);background:var(--rd-lateral-fundo)}
 html .ui-screen.pc-cor .pc-detail-lateral>*{flex:none}
-html .ui-screen.pc-cor :is(button,a,[role="radio"],.pc-cor-card):focus-visible{outline:3px solid var(--rd-acao);outline-offset:2px}
+html .ui-screen.pc-cor :is(button,a,.pc-cor-card):focus-visible{outline:3px solid var(--rd-acao);outline-offset:2px}
 html .ui-screen.pc-cor .pc-detail-lateral>.pc-bloco-titulo{margin:0}
-html .ui-screen.pc-cor .pc-plan-resp,html .ui-screen.pc-cor .pc-plan-prazo{display:flex;flex:none;flex-direction:column;gap:5px;min-width:0;width:auto}
+html .ui-screen.pc-cor .pc-plan-prazo{display:flex;flex:none;flex-direction:column;gap:5px;min-width:0;width:auto}
 html .ui-screen.pc-cor .pc-plan-rotulo{display:block;font-size:16px;line-height:20px;color:var(--rd-texto-fraco)}
-html .ui-screen.pc-cor .pc-pessoas{display:flex;flex-direction:column;gap:4px;min-width:0}
-html .ui-screen.pc-cor .pc-pessoa{box-sizing:border-box;display:block;width:100%;height:42px;padding:0 14px;overflow:hidden;border:1px solid #7E8AA6;border-radius:10px;background:#fff;font-size:16px;font-weight:400;line-height:40px;color:var(--rd-ink);text-align:left;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
-html .ui-screen.pc-cor .pc-pessoa:hover{background:#F4F6FA}
-html .ui-screen.pc-cor .pc-pessoa.is-on{border:2px solid var(--rd-ambar);background:var(--rd-creme-cartao);line-height:38px}
-html .ui-screen.pc-cor .pc-pessoa-check{color:var(--rd-ambar)}
-html .ui-screen.pc-cor .pc-pessoa--outra{height:40px;margin:-1px 0;line-height:38px;border:1px dashed #7E8AA6;background:transparent;color:var(--rd-texto-fraco)}
-html .ui-screen.pc-cor .pc-pessoa:focus-visible{outline:3px solid var(--rd-acao);outline-offset:2px}
-html .ui-screen.pc-cor .pc-pessoa-campo,html .ui-screen.pc-cor .pc-plan-resp input.ui-input,html .ui-screen.pc-cor .pc-prazo-campo .ui-input{box-sizing:border-box;width:100%;height:42px;padding:0 14px;border:2px solid var(--rd-borda-campo);border-radius:12px;font-size:16px;color:var(--rd-ink)}
+/* Responsável: campo único (combobox). Rótulo e "Enviar lembrete" na mesma linha (o lembrete vem depois no DOM, para manter a ordem do Tab); fechado = "Escolha uma pessoa ▾" ou "✓ Nome ▾"; a lista aberta é desenhada num portal (position:fixed, fora do overflow da lateral) */
+html .ui-screen.pc-cor .pc-plan-resp{display:grid;flex:none;grid-template-columns:minmax(0,1fr) auto;column-gap:12px;row-gap:0;min-width:0}
+html .ui-screen.pc-cor .pc-plan-resp>.pc-plan-rotulo{grid-area:1 / 1;align-self:center}
+html .ui-screen.pc-cor .pc-plan-resp>.pc-resp,html .ui-screen.pc-cor .pc-plan-resp>input{grid-area:2 / 1 / 3 / 3;margin-top:5px}
+html .ui-screen.pc-cor .pc-plan-resp>.pc-resp-erro{grid-area:3 / 1 / 4 / 3;min-height:20px;margin-top:3px}
+html .ui-screen.pc-cor .pc-plan-resp>.pc-plan-lembrete{grid-area:1 / 2;align-self:center}
+html .ui-screen.pc-cor .pc-resp{min-width:0}
+html .ui-screen.pc-cor .pc-resp-seletor{box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;height:42px;padding:0 14px;border:2px solid var(--rd-borda-campo);border-radius:12px;background:#fff;font-size:16px;line-height:20px;color:var(--rd-ink);cursor:pointer;user-select:none}
+html .ui-screen.pc-cor .pc-resp-valor{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html .ui-screen.pc-cor .pc-resp-seletor.is-vazio .pc-resp-valor{color:var(--rd-texto-fraco)}
+html .ui-screen.pc-cor .pc-resp-seta{flex:none;font-size:14px;color:var(--rd-texto-fraco)}
+html .ui-screen.pc-cor .pc-resp-seletor.is-erro{border-color:var(--rd-venceu)}
+html .ui-screen.pc-cor .pc-resp-seletor.is-aberto{border-color:#2B54CF;border-radius:12px 12px 0 0}
+html .ui-screen.pc-cor .pc-resp-seletor.is-aberto.is-acima{border-radius:0 0 12px 12px}
+html .ui-screen.pc-cor .pc-resp-seletor:focus-visible{outline:3px solid var(--rd-acao);outline-offset:2px}
+html .ui-screen.pc-cor .pc-resp-seletor.is-aberto:focus-visible{outline:none}
+html .ui-screen.pc-cor .pc-resp-digitar[aria-invalid="true"]{border-color:var(--rd-venceu)}
+html .pc-resp-lista{position:fixed;z-index:80;box-sizing:border-box;max-height:310px;overflow-y:auto;scroll-padding-bottom:44px;border:2px solid #2B54CF;border-top:0;border-radius:0 0 12px 12px;background:#fff;font-family:inherit;box-shadow:0 8px 18px rgba(27,36,51,.16)}
+html .pc-resp-lista.is-acima{border-top:2px solid #2B54CF;border-bottom:0;border-radius:12px 12px 0 0}
+html .pc-resp-opcao{box-sizing:border-box;display:block;height:44px;padding:0 14px;overflow:hidden;font-size:16px;font-weight:400;line-height:44px;color:#1B2433;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
+html .pc-resp-opcao.is-ativa{background:#FFEFD0}
+html .pc-resp-opcao.is-escolhida{background:#FFF6E5}
+html .pc-resp-opcao.is-escolhida.is-ativa{box-shadow:inset 0 0 0 2px #2B54CF}
+html .pc-resp-opcao--outra{position:sticky;bottom:0;border-top:1px solid #D5DBE8;background:#fff;line-height:42px;color:#2B54CF}
+html .pc-resp-opcao--outra.is-ativa{background:#FFEFD0}
+html .ui-screen.pc-cor .pc-resp-digitar,html .ui-screen.pc-cor .pc-plan-resp input.ui-input,html .ui-screen.pc-cor .pc-prazo-campo .ui-input{box-sizing:border-box;width:100%;height:42px;padding:0 14px;border:2px solid var(--rd-borda-campo);border-radius:12px;font-size:16px;color:var(--rd-ink)}
 /* Um só vermelho nos erros da tela de Correções: #B83A33 passa de 4,5:1 sobre branco e sobre o cinza da lateral (o #C9473F do resto do app dá 4,36:1 no cinza) */
 html .ui-screen.pc-cor{--rd-venceu:#B83A33}
 html .ui-screen.pc-cor .pc-resp-erro{font-size:16px;line-height:20px;color:var(--rd-venceu)}
 html .ui-screen.pc-cor .pc-prazo-aviso{font-size:16px;line-height:20px;color:var(--rd-venceu)}
-html .ui-screen.pc-cor .pc-plan-lembrete{align-self:flex-start;box-sizing:border-box;min-height:40px;margin:-9px 0 -9px;padding:0 2px;border:0;background:transparent;font-size:16px;color:var(--rd-acao);text-decoration:underline;white-space:nowrap;cursor:pointer}
+html .ui-screen.pc-cor .pc-plan-lembrete{box-sizing:border-box;min-height:40px;margin:-9px 0;padding:0 2px;border:0;background:transparent;font-size:16px;color:var(--rd-acao);text-decoration:underline;white-space:nowrap;cursor:pointer}
 html .ui-screen.pc-cor .pc-prazo-campo{position:relative;display:block}
 html .ui-screen.pc-cor .pc-prazo-erro{position:absolute;top:50%;right:38px;transform:translateY(-50%);font-size:14px;color:var(--rd-venceu);white-space:nowrap;pointer-events:none}
 html .ui-screen.pc-cor .pc-prazo-sugerido{position:static;align-self:flex-start;box-sizing:border-box;min-height:40px;margin:-10px 0;padding:0 2px;border:0;border-radius:0;background:transparent;font-size:16px;line-height:20px;color:var(--rd-texto-fraco);text-align:left;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px;cursor:pointer}

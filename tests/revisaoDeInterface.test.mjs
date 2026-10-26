@@ -66,7 +66,7 @@ test("rascunho parcial: guarda só os campos editados e mescla sobre a base ATUA
 
 test("rascunho: lote, marcar como feita, desfazer e troca de empresa/usuário limpam o rascunho", () => {
   const tela = ler("../components/pc/PcCorrecoes.tsx");
-  assert.match(tela, /onLote\(ids, valores\);\s*ids\.forEach\(\(id\) => rascunhos\.limpar\(id\)\)/);
+  assert.match(tela, /onLote\(ids, valoresDeLoteNormalizados\(valores, pessoas\)\);\s*ids\.forEach\(\(id\) => rascunhos\.limpar\(id\)\)/);
   assert.match(tela, /onMarcarFeita\(id, observacao\);\s*rascunhos\.limpar\(id\)/);
   assert.match(tela, /onDesfazerFeita\(id\);\s*rascunhos\.limpar\(id\)/);
   const pagina = ler("../app/page.tsx");
