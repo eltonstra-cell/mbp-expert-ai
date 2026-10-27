@@ -17,7 +17,7 @@ import { COR_DO_SEGMENTO, rotuloDoSegmento } from "@/lib/checklistSegmentos";
 import { useCapturaCamera } from "@/components/useCapturaMidia";
 import { estadosDosBotoes, gravidadeSugerida } from "@/lib/checklistUi";
 import { textoDeBaseLegal } from "@/lib/conteudoValidado";
-import { fonteParaExibir } from "@/lib/fonteDaPergunta";
+import { rotuloDaFonte } from "@/lib/fonteDaPergunta";
 import type { EstadoVoz } from "@/lib/vozLinha";
 import { dependenciasDoNavegador, validarFotoEscolhida } from "@/lib/fotoCompressao";
 import type { ChecklistCriticidade, ChecklistItem, ChecklistStatus } from "@/types";
@@ -349,11 +349,11 @@ export default function ChecklistFocoItem({
             i
           </button>
         )}
-        {mostrarApoio && fonteAberta && !campo && <p className="chk-fonte-linha" role="note">Fonte: {fonteParaExibir(item.referencia)}</p>}
+        {mostrarApoio && fonteAberta && !campo && <p className="chk-fonte-linha" role="note">{rotuloDaFonte(item.referencia)}</p>}
         {mostrarApoio && fonteAberta && campo && (
           <div className="chk-fonte-linha chk-fonte-linha--campo" role="note">
             <p className="chk-fonte-pergunta">{item.titulo}</p>
-            <p className="chk-fonte-texto">Fonte: {fonteParaExibir(item.referencia)}</p>
+            <p className="chk-fonte-texto">{rotuloDaFonte(item.referencia)}</p>
           </div>
         )}
       </div>

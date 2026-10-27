@@ -6,6 +6,12 @@ export const SEM_FONTE = "Fonte não registrada";
 
 const GENERICOS = [/^Boas Práticas — critério operacional$/i, /^Manual de Boas Práticas — Capítulo [123](?: — .*)?$/i, /^Boas Práticas — .*$/i];
 
+/** Texto "Fonte: …" para a tela; sem fonte registrada mostra só "Fonte não registrada" (sem repetir a palavra). Não altera o dado guardado. */
+export function rotuloDaFonte(referencia: string | undefined | null): string {
+  const fonte = fonteParaExibir(referencia);
+  return fonte === SEM_FONTE ? SEM_FONTE : `Fonte: ${fonte}`;
+}
+
 export function fonteParaExibir(referencia: string | undefined | null): string {
   const texto = (referencia || "").trim();
   if (!texto) return SEM_FONTE;

@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react";
 import FotoAmpliada from "@/components/FotoAmpliada";
 import AmbientesCortina from "@/components/AmbientesCortina";
 import type { InfoAmbiente } from "@/lib/checklistEnvs";
+import { rotuloDaFonte } from "@/lib/fonteDaPergunta";
 import { progressoDaCaminhada, textoDaCaminhada } from "@/lib/caminhada";
 import { legendaDaEvidencia, rotuloDoSegmento } from "@/lib/checklistSegmentos";
 import type { ChecklistStatus } from "@/types";
@@ -110,7 +111,7 @@ function PainelDeApoio({ apoio }: { apoio: ApoioDoItem }) {
   const vazio = !apoio.reincidencia && !apoio.orientacao && !apoio.baseLegal && !apoio.pop && !apoio.ultimaVisita && apoio.evidencias.length === 0;
   return (
     <aside className="chk-apoio" aria-label="Apoio ao item">
-      {apoio.fonte && <p className="chk-apoio-fonte">Fonte: {apoio.fonte}</p>}
+      {apoio.fonte && <p className="chk-apoio-fonte">{rotuloDaFonte(apoio.fonte)}</p>}
       {apoio.reincidencia && (
         <CartaoDeApoio titulo="Reincidência" tom="ambar">
           <p className="chk-apoio-texto">{apoio.reincidencia}</p>

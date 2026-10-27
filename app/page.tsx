@@ -151,7 +151,7 @@ import { mostrarToast } from "@/lib/toast";
 import { limparTextoDePessoa, nomeECargo, nomeProprio } from "@/lib/nomeCargo";
 import { diasEntreDatas, formatarData, formatarDataCurta, formatarDataHora, formatarHora, hojeLocalISO } from "@/lib/dataLocal";
 import { palavra as pal, quantidade as qtd } from "@/lib/plural";
-import { ressalvasDeFinalizar } from "@/lib/ressalvasDeFinalizar";
+import { ressalvasDeFinalizar, semRespostaPorAmbiente } from "@/lib/ressalvasDeFinalizar";
 import { ROTULO_DA_SUBABA, grupoDaSubaba, gruposVisiveis, lembrarSubaba, lerSubabaLembrada, opcoesDoSeletorDeSecao, resolverSubaba, subabaAoEscolherSecao, subabasVisiveis, type GrupoCentral, type SubAbaCentral } from "@/lib/centralEmpresa";
 import { empresaTemImplantacao, implantacaoConcluida, implantacaoDeEmpresaNova, passosDeImplantacao } from "@/lib/implantacao";
 import { divergenciaDeResponsavel, responsavelEfetivo, textoDoResponsavel } from "@/lib/responsavelEstabelecimento";
@@ -7334,6 +7334,7 @@ export default function Home() {
         <ConfirmarFinalizar
           faltam={pendentesVisita}
           ressalvas={ressalvasDeVisita()}
+          semResposta={semRespostaPorAmbiente(checklistAtual)}
           onCancelar={() => setConfirmaFinalizarCampo(false)}
           onVoltarECompletar={() => {
             setConfirmaFinalizarCampo(false);

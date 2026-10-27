@@ -1,22 +1,25 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { tituloFaltam } from "@/lib/ressalvasDeFinalizar";
+import { textoSemResposta, tituloFaltam } from "@/lib/ressalvasDeFinalizar";
 
 // Janela ÚNICA do "Finalizar visita" no modo Campo: o ✓ da faixa abre SEMPRE esta janela; nada é encerrado no primeiro toque.
-// Três casos: (a) nada pendente: "Finalizar a visita?" com Cancelar e Finalizar; (b) só ressalvas: "Antes de finalizar" com
+// Três casos (no caso c a janela explica o número do título e separa "Impede finalizar" de "Fica como ressalva"): (a) nada pendente: "Finalizar a visita?" com Cancelar e Finalizar; (b) só ressalvas: "Antes de finalizar" com
 // "Voltar e completar" (principal) e "Finalizar com ressalvas"; (c) faltam itens: só "Voltar e completar" (a regra de negócio recusa finalizar).
 // Acessível: role=dialog + aria-modal, o foco vai para o botão seguro (Cancelar ou Voltar e completar), Tab fica dentro da janela,
 // Esc fecha e o foco volta ao ✓.
 export default function ConfirmarFinalizar({
   faltam,
   ressalvas,
+  semResposta = [],
   onCancelar,
   onVoltarECompletar,
   onFinalizar,
 }: {
   faltam: number;
   ressalvas: string[];
+  /** Itens sem resposta, uma linha por ambiente (só nomes de ambiente e contagens). */
+  semResposta?: string[];
   onCancelar: () => void;
   onVoltarECompletar: () => void;
   onFinalizar: () => void;
@@ -69,12 +72,46 @@ export default function ConfirmarFinalizar({
         <h2 id="cf-titulo" className="cf-titulo">
           {titulo}
         </h2>
-        {caso !== "a" && ressalvas.length > 0 && (
-          <ul className="cf-lista">
-            {ressalvas.map((ressalva) => (
-              <li key={ressalva}>{ressalva}</li>
-            ))}
-          </ul>
+        {caso === "c" && <p className="cf-resumo">{textoSemResposta(faltam)}</p>}
+        {caso !== "a" && (
+          <div className="cf-corpo">
+            {caso === "c" && (
+              <section className="cf-grupo cf-grupo--impede" aria-labelledby="cf-g-impede">
+                <h3 id="cf-g-impede" className="cf-sub cf-sub--impede">
+                  Impede finalizar
+                </h3>
+                <ul className="cf-lista">
+                  {(semResposta.length > 0 ? semResposta : ["Responda os itens que faltam no checklist"]).map((linha) => (
+                    <li key={linha}>
+                      <svg className="cf-ico cf-ico--impede" viewBox="0 0 20 20" width="18" height="18" aria-hidden="true" focusable="false">
+                        <circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" strokeWidth="1.8" />
+                        <path d="M7 7l6 6M13 7l-6 6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                      </svg>
+                      <span>{linha}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+            {ressalvas.length > 0 && (
+              <section className="cf-grupo cf-grupo--ressalva" aria-labelledby="cf-g-ressalva">
+                <h3 id="cf-g-ressalva" className="cf-sub cf-sub--ressalva">
+                  Fica como ressalva
+                </h3>
+                <ul className="cf-lista">
+                  {ressalvas.map((ressalva) => (
+                    <li key={ressalva}>
+                      <svg className="cf-ico cf-ico--ressalva" viewBox="0 0 20 20" width="18" height="18" aria-hidden="true" focusable="false">
+                        <path d="M10 2.8L18 16.5H2z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+                        <path d="M10 8v4M10 14.2v.1" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                      </svg>
+                      <span>{ressalva}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+          </div>
         )}
         {caso === "c" && <p className="cf-aviso">Não dá para finalizar enquanto faltam itens</p>}
         {caso === "a" ? (

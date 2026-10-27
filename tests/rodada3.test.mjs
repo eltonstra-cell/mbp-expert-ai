@@ -278,3 +278,18 @@ test("fonte da pergunta na tela: derivada/parcial aparecem como estão; textos g
   assert.equal(SEM_FONTE, "Fonte não registrada");
   assert.ok(ler("../app/page.tsx").includes("fonte: fonteParaExibir(foco.referencia)"));
 });
+
+test("rotuloDaFonte: 'Fonte não registrada' aparece sem o prefixo 'Fonte: ' e o dado guardado não muda", async () => {
+  const { rotuloDaFonte, SEM_FONTE } = await import("../lib/fonteDaPergunta.ts");
+  assert.equal(rotuloDaFonte("Fonte não registrada"), SEM_FONTE);
+  assert.equal(rotuloDaFonte(""), SEM_FONTE);
+  assert.equal(rotuloDaFonte(undefined), SEM_FONTE);
+  assert.equal(rotuloDaFonte("Boas Práticas — critério operacional"), SEM_FONTE);
+  assert.equal(rotuloDaFonte("Derivada do Manual, cap. 1, item 2.5"), "Fonte: Derivada do Manual, cap. 1, item 2.5");
+  assert.equal(rotuloDaFonte("RDC 216/2004 — item 4.7.2"), "Fonte: RDC 216/2004 — item 4.7.2");
+  for (const arquivo of ["../components/ChecklistFocoItem.tsx", "../components/pc/PcChecklist.tsx", "../components/pc/PcRelatoriosEmitidos.tsx"]) {
+    const codigo = ler(arquivo);
+    assert.ok(codigo.includes("rotuloDaFonte("), arquivo);
+    assert.ok(!/Fonte: \{/.test(codigo), arquivo + " não monta 'Fonte: ' à mão");
+  }
+});

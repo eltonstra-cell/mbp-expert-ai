@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-import { ressalvasDeFinalizar, tituloFaltam } from "../lib/ressalvasDeFinalizar.ts";
+import { ressalvasDeFinalizar, semRespostaPorAmbiente, textoSemResposta, tituloFaltam } from "../lib/ressalvasDeFinalizar.ts";
 import { ABAS_PADRAO, PASSOS_DA_FAIXA_NO_CAMPO, abasDoCampoDoPerfil, destinoFicaSoNoMais, finalizarComRotulo } from "../lib/abasDoCampo.ts";
 
 const ler = (c) => readFileSync(new URL(c, import.meta.url), "utf8");
@@ -149,4 +149,27 @@ test("Verde dos botões de Finalizar e Salvar e próximo no Campo: #1E7A3E (o #2
   assert.ok(css.includes(".chk-foco-rodape .ui-btn--save:not(:disabled){border:0;background:var(--rd-verde-botao);color:#fff}"));
   assert.ok(css.includes(".cf-btn--finalizar:hover,.cf-btn--finalizar:active{background:var(--rd-verde-botao-escuro)}"));
   assert.ok(css.includes('.fv--campo .fv-finalizar:hover,html[data-modo="campo"] .fv--campo .fv-finalizar:active{background:var(--rd-verde-botao-escuro)}'));
+});
+
+test("Janela de finalizar (faltam itens): linha 'N itens sem resposta' e dois grupos, 'Impede finalizar' e 'Fica como ressalva'", () => {
+  assert.equal(textoSemResposta(1), "1 item sem resposta");
+  assert.equal(textoSemResposta(3), "3 itens sem resposta");
+  assert.deepEqual(semRespostaPorAmbiente([{ status: "Pendente", ambiente: "Cozinha" }, { status: "Conforme", ambiente: "Cozinha" }, { status: "Pendente", ambiente: "Cozinha" }, { status: "Pendente", ambiente: "Estoque" }]), ["Cozinha · 2 itens", "Estoque · 1 item"]);
+  assert.deepEqual(semRespostaPorAmbiente([{ status: "Conforme", ambiente: "Cozinha" }]), []);
+  const janela = ler("../components/campo/ConfirmarFinalizar.tsx").replace(/\r\n/g, "\n");
+  for (const texto of ["Impede finalizar", "Fica como ressalva", "textoSemResposta(faltam)", "cf-ico--impede", "cf-ico--ressalva", "aria-labelledby=\"cf-g-impede\"", "Voltar e completar"]) assert.ok(janela.includes(texto), texto);
+  assert.ok(janela.includes('{caso === "c" && ('), "grupo 'Impede finalizar' só quando faltam itens");
+  assert.ok(janela.includes("{ressalvas.length > 0 && ("), "grupo de ressalvas só quando há ressalvas");
+  assert.ok(ler("../app/page.tsx").includes("semResposta={semRespostaPorAmbiente(checklistAtual)}"));
+  const css = ler("../app/globals.css");
+  assert.ok(css.includes(".cf-sub--impede{color:#B83A33}") && css.includes(".cf-sub--ressalva{color:#AF640A}") && css.includes(".cf-corpo{display:flex;min-height:0;flex:1 1 auto;flex-direction:column;gap:12px;overflow-y:auto;"));
+});
+
+test("Ajustes de janela estreita: '+ Nova' no azul padrão, Próxima etapa sem reticências, Visitas sem estourar e Checklist compacto", () => {
+  const css = ler("../app/globals.css");
+  assert.ok(/\.campo-mais-nova\{[^}]*color:#2B54CF/.test(css));
+  assert.ok(/\.campo-proxima-amb\{[^}]*white-space:normal/.test(css) && !/\.campo-proxima-amb\{[^}]*text-overflow:ellipsis/.test(css));
+  assert.ok(/\.pc-next-title\{[^}]*white-space:normal/.test(css) && !/\.pc-next-title\{[^}]*text-overflow:ellipsis/.test(css));
+  assert.ok(css.includes("@media (max-width:899px){\n  .ui-screen[aria-label=\"Visitas técnicas\"] .vis-toolbar{flex-wrap:wrap;") || css.includes("@media (max-width:899px){\r\n  .ui-screen[aria-label=\"Visitas técnicas\"] .vis-toolbar{flex-wrap:wrap;"));
+  assert.ok(css.includes('html[data-modo="campo"] .campo-head--busca{display:grid;') && css.includes('html[data-modo="campo"] .campo-tela .chk-foco-topo{display:grid;'));
 });

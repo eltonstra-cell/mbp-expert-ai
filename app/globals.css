@@ -1368,7 +1368,7 @@ html[data-modo="equilibrado"] .pc-kbd{display:none}
 .pc-field--wide{grid-column:span 2}
 
 /* ===== PC: Central da visita ===== */
-.pc-next-title{margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--font-display),"Outfit",sans-serif;font-size:1.4rem;color:var(--ink)}
+.pc-next-title{margin-top:2px;overflow:visible;white-space:normal;overflow-wrap:break-word;line-height:1.2;font-family:var(--font-display),"Outfit",sans-serif;font-size:1.4rem;color:var(--ink)}
 .pc-three{display:grid;flex:none;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 .pc-three .pc-card-btn{align-content:start}
 .pc-card-btn:disabled{opacity:.6}
@@ -2691,7 +2691,7 @@ button.pc-company-chip:focus-visible{outline:3px solid var(--brand);outline-offs
 .campo-proxima-texto{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;font-size:.9rem;line-height:1.25;color:var(--ink-2)}
 .campo-proxima-seta{flex:none;font-size:1.6rem;line-height:1;color:var(--ink-2)}
 .campo-proxima-titulo{display:flex;min-width:0}
-.campo-proxima-amb{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.campo-proxima-amb{min-width:0;overflow:visible;white-space:normal;overflow-wrap:break-word}
 .campo-proxima-item{flex:none;white-space:nowrap}
 
 /* ===== Pacote 7 · Tema E: Evidências (PC, tablet e celular) ===== */
@@ -6089,7 +6089,7 @@ html[data-modo="campo"] .campo-mais-lista--junta .campo-mais-tile{width:28px;hei
 html[data-modo="campo"] .campo-mais-nome{flex:1 1 auto;min-width:0;font-size:16px;line-height:1.2}
 html[data-modo="campo"] .campo-mais-valor{flex:none;font-size:15px;color:#3D4A5C}
 html[data-modo="campo"] .campo-mais-seta{flex:none;font-size:1.3rem;line-height:1;color:#596273}
-html[data-modo="campo"] .campo-mais-nova{position:absolute;top:50%;right:34px;height:34px;padding:0 10px;transform:translateY(-50%);border:0;border-radius:10px;background:transparent;font-size:15px;font-weight:400;color:var(--rd-acao);cursor:pointer}
+html[data-modo="campo"] .campo-mais-nova{position:absolute;top:50%;right:34px;height:34px;padding:0 10px;transform:translateY(-50%);border:0;border-radius:10px;background:transparent;font-size:15px;font-weight:400;color:#2B54CF;cursor:pointer}
 html[data-modo="campo"] .campo-mais-item.is-perigo .campo-mais-nome{color:#B83A33}
 
 /* Revisão: tamanho mínimo de 15 px nos textos de apoio do Campo */
@@ -6126,7 +6126,53 @@ html[data-modo="campo"] .campo-mais-cartao:disabled{border-color:#D5DAE3;backgro
 .cf-btn--acao:hover,.cf-btn--acao:active{background:#2247AD}
 .cf-btn--outline{border:2px solid var(--rd-acao);background:#fff;color:#000}
 .cf-btn--cancelar:active,.cf-btn--outline:active{background:#EEF1F7}
-.cf-lista{margin:0;min-height:0;flex:1 1 auto;overflow-y:auto;padding:0 0 0 20px;display:flex;flex-direction:column;gap:6px;font-size:15px;line-height:1.35;color:#1B2433}
-.cf-aviso{margin:0;font-size:15px;line-height:1.35;color:#1B2433}
+.cf-resumo{flex:none;margin:-6px 0 0;font-size:15px;line-height:1.35;color:#1B2433}
+.cf-corpo{display:flex;min-height:0;flex:1 1 auto;flex-direction:column;gap:12px;overflow-y:auto;overscroll-behavior:contain}
+.cf-grupo{display:flex;flex:none;flex-direction:column;gap:6px}
+.cf-sub{margin:0;font-family:var(--font-display),"Outfit",sans-serif;font-size:1rem;font-weight:500;line-height:1.25}
+.cf-sub--impede{color:#B83A33}
+.cf-sub--ressalva{color:#AF640A}
+.cf-lista{margin:0;padding:0 0 0 4px;list-style:none;display:flex;flex-direction:column;gap:8px;font-size:15px;line-height:1.35;color:#000}
+.cf-lista li{display:flex;align-items:flex-start;gap:8px}
+.cf-ico{flex:none;margin-top:1px}
+.cf-ico--impede{color:#B83A33}
+.cf-ico--ressalva{color:#AF640A}
+.cf-aviso{flex:none;margin:0;font-size:15px;line-height:1.35;color:#1B2433}
 .cf-botoes--coluna{flex-direction:column}
 .cf-btn:focus-visible{outline:3px solid var(--rd-acao);outline-offset:2px}
+
+/* ===== Ajustes de janela estreita (~630 px) ===== */
+/* Checklist no Campo, a partir de 520 px: empresa ativa e busca na mesma linha, ambiente e pergunta lado a lado, alturas menores (o corpo do item cabe sem rolar) */
+@media (min-width:520px) and (max-width:900px){
+  html[data-modo="campo"] .campo-head--busca{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);align-items:center;gap:2px 8px;padding:8px 12px 8px}
+  html[data-modo="campo"] .campo-head--busca .campo-head-linha{grid-column:1 / -1}
+  html[data-modo="campo"] .campo-head--busca .campo-voltar-pilha{width:40px;height:40px}
+  html[data-modo="campo"] .campo-head--busca .emp-ativa{grid-column:1;grid-row:2;width:auto;min-width:0;gap:8px;padding-top:8px}
+  html[data-modo="campo"] .campo-head--busca .emp-ativa-avatar{width:32px;height:32px;font-size:.8rem}
+  html[data-modo="campo"] .campo-head--busca .emp-ativa-caixa{min-width:0;height:34px;padding:0 8px}
+  html[data-modo="campo"] .campo-head--busca .emp-ativa-nome{font-size:16px}
+  html[data-modo="campo"] .campo-head--busca .pc-busca{grid-column:2;grid-row:2;margin-top:8px}
+  html[data-modo="campo"] .campo-head--busca .pc-busca .pc-smartbar{height:38px}
+  html[data-modo="campo"] .campo-head--busca .pc-busca-input{height:36px}
+  html[data-modo="campo"] .campo-head--busca .pc-mic{width:30px;height:30px}
+  html[data-modo="campo"] .campo-head--busca .pc-go{height:30px}
+  html[data-modo="campo"] .fv--campo{margin-top:6px;gap:6px}
+  html[data-modo="campo"] .campo-tela .chk-foco-topo{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);align-items:stretch;gap:8px}
+  html[data-modo="campo"] .campo-tela .chk-foco-topo .chk-foco-card{align-self:stretch}
+  html[data-modo="campo"] .campo-tela .chk-foco-topo .amb-cortina{right:auto;width:min(560px,calc(100vw - 24px))}
+  html[data-modo="campo"] .campo-tela .chk-foco{gap:6px}
+  html[data-modo="campo"] .campo-tela .chk-foco-corpo{gap:6px}
+}
+@media (min-width:520px) and (max-width:900px) and (max-height:800px){
+  html[data-modo="campo"] .campo-tela .chk-obs-campo .chk-obs-area{height:60px;min-height:60px}
+  html[data-modo="campo"] .campo-tela .chk-resp{height:34px;min-height:34px}
+}
+
+/* Visitas em janela estreita: abas, busca em linha própria e botões embaixo, sem estourar a largura */
+@media (max-width:899px){
+  .ui-screen[aria-label="Visitas técnicas"] .vis-toolbar{flex-wrap:wrap;gap:8px}
+  .ui-screen[aria-label="Visitas técnicas"] .vis-toolbar>.ui-tabs{flex:1 1 100%;max-width:100%;flex-wrap:wrap}
+  .ui-screen[aria-label="Visitas técnicas"] .vis-toolbar-fim{flex:1 1 100%;flex-wrap:wrap;justify-content:flex-end;gap:8px}
+  .ui-screen[aria-label="Visitas técnicas"] .vis-toolbar-fim .pc-search{flex:1 1 100%;width:100%;min-width:0;max-width:none}
+  .ui-screen[aria-label="Visitas técnicas"] .vis-toolbar-fim>.ui-btn{flex:0 1 auto;min-height:40px}
+}

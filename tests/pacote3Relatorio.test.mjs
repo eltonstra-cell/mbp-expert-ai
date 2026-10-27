@@ -205,7 +205,7 @@ test("o app não escreve parecer: sem 'sugestão automática', sem preenchimento
   assert.ok(vista.includes("Parecer do RT") && vista.includes("Como se calcula") && vista.includes("Como se compara") && vista.includes("critério do app") === false ? vista.includes("dados.criterio") : true);
   assert.ok(ler("../components/pc/PcRelatorio.tsx").includes("Confirmar e emitir") && ler("../components/pc/PcRelatorio.tsx").includes("Revisar"));
   assert.ok(pagina.includes("setRevisaoAberta(true)"), "ao finalizar a visita abre a revisão do rascunho");
-  assert.ok(ler("../components/pc/PcRelatoriosEmitidos.tsx").includes("RelatorioMontadoVista") && ler("../components/pc/PcRelatoriosEmitidos.tsx").includes("fonteParaExibir(nc.referencia)"));
+  assert.ok(ler("../components/pc/PcRelatoriosEmitidos.tsx").includes("RelatorioMontadoVista") && ler("../components/pc/PcRelatoriosEmitidos.tsx").includes("rotuloDaFonte(nc.referencia)"));
 });
 
 test("montarRelatorio é puro e funciona só com dados locais (sem rede)", () => {

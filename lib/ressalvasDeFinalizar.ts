@@ -23,3 +23,19 @@ export function ressalvasDeFinalizar(e: EntradaRessalvas): string[] {
 export function tituloFaltam(faltam: number): string {
   return `${pal(faltam, "Falta", "Faltam")} ${qtd(faltam, "item", "itens")}`;
 }
+
+/** Explica o número do título: "1 item sem resposta" / "3 itens sem resposta". */
+export function textoSemResposta(faltam: number): string {
+  return `${qtd(faltam, "item", "itens")} sem resposta`;
+}
+
+/** Itens sem resposta por ambiente, na ordem em que aparecem: "Cozinha · 2 itens". Só nomes de ambiente e contagens. */
+export function semRespostaPorAmbiente(checklist: { status: string; ambiente?: string }[]): string[] {
+  const contagem = new Map<string, number>();
+  for (const item of checklist) {
+    if (item.status !== "Pendente") continue;
+    const ambiente = (item.ambiente || "").trim() || "Sem ambiente";
+    contagem.set(ambiente, (contagem.get(ambiente) || 0) + 1);
+  }
+  return [...contagem.entries()].map(([ambiente, n]) => `${ambiente} · ${qtd(n, "item", "itens")}`);
+}
