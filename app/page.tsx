@@ -151,6 +151,7 @@ import { mostrarToast } from "@/lib/toast";
 import { limparTextoDePessoa, nomeECargo, nomeProprio } from "@/lib/nomeCargo";
 import { diasEntreDatas, formatarData, formatarDataCurta, formatarDataHora, formatarHora, hojeLocalISO } from "@/lib/dataLocal";
 import { palavra as pal, quantidade as qtd } from "@/lib/plural";
+import { ressalvasDeFinalizar } from "@/lib/ressalvasDeFinalizar";
 import { ROTULO_DA_SUBABA, grupoDaSubaba, gruposVisiveis, lembrarSubaba, lerSubabaLembrada, opcoesDoSeletorDeSecao, resolverSubaba, subabaAoEscolherSecao, subabasVisiveis, type GrupoCentral, type SubAbaCentral } from "@/lib/centralEmpresa";
 import { empresaTemImplantacao, implantacaoConcluida, implantacaoDeEmpresaNova, passosDeImplantacao } from "@/lib/implantacao";
 import { divergenciaDeResponsavel, responsavelEfetivo, textoDoResponsavel } from "@/lib/responsavelEstabelecimento";
@@ -3460,7 +3461,17 @@ export default function Home() {
     }
   }
 
-  async function finalizarInspecao() {
+  /** Ressalvas que não impedem finalizar (a mesma lista na janela do Campo e na confirmação do PC). */
+  function ressalvasDeVisita(): string[] {
+    return ressalvasDeFinalizar({
+      ncsSomenteAbertas,
+      ncsSemAcao,
+      analisesIAPendentes,
+      conclusao: visitaAtual?.conclusao,
+    });
+  }
+
+  async function finalizarInspecao(opcoes?: { jaConfirmado?: boolean }) {
     if (!visitaAtual) return;
     if (!exigirPermissao("visitas.concluir", visitaAtual.empresaId)) return;
     const avisoSemItem = avisoParaFinalizar(itensRespondidos(checklistAtual));
@@ -3482,16 +3493,13 @@ export default function Home() {
       return;
     }
 
-    const alertas: string[] = [];
-    if (ncsSomenteAbertas > 0) alertas.push(`${qtd(ncsSomenteAbertas, "não conformidade", "não conformidades")} ${pal(ncsSomenteAbertas, "seguirá", "seguirão")} ${pal(ncsSomenteAbertas, "aberta", "abertas")} para acompanhamento`);
-    if (ncsSemAcao > 0) alertas.push(`${qtd(ncsSemAcao, "não conformidade", "não conformidades")} ainda ${pal(ncsSemAcao, "está", "estão")} sem ação corretiva definida`);
-    if (analisesIAPendentes > 0) alertas.push(`${qtd(analisesIAPendentes, "sugestão", "sugestões")} de análise fotográfica por IA ainda ${pal(analisesIAPendentes, "aguarda", "aguardam")} confirmação ou descarte`);
-    if (!(visitaAtual.conclusao || "").trim()) alertas.push("o parecer do RT ainda está em branco (o app não escreve parecer)");
+    const alertas = ressalvasDeVisita();
 
     const ressalvas = alertas.length
       ? `\n\nAtenção:\n• ${alertas.join("\n• ")}\n\nEssas pendências não impedem o encerramento da inspeção e continuarão disponíveis no pós-visita.`
       : "";
-    if (!(await confirmar(`Finalizar esta inspeção?${ressalvas}\n\nA visita ficará marcada como Concluída.`, { titulo: "Finalizar inspeção", confirmarRotulo: "Finalizar" }))) return;
+    // Campo: a janela única "Finalizar a visita?" já mostrou as ressalvas e recebeu a confirmação (só o confirmar() final é pulado).
+    if (opcoes?.jaConfirmado !== true && !(await confirmar(`Finalizar esta inspeção?${ressalvas}\n\nA visita ficará marcada como Concluída.`, { titulo: "Finalizar inspeção", confirmarRotulo: "Finalizar" }))) return;
 
     const agora = new Date().toISOString();
     const novo: AppDB = {
@@ -7324,10 +7332,16 @@ export default function Home() {
 
       {modo === "campo" && confirmaFinalizarCampo && (
         <ConfirmarFinalizar
+          faltam={pendentesVisita}
+          ressalvas={ressalvasDeVisita()}
           onCancelar={() => setConfirmaFinalizarCampo(false)}
+          onVoltarECompletar={() => {
+            setConfirmaFinalizarCampo(false);
+            abrirChecklist();
+          }}
           onFinalizar={() => {
             setConfirmaFinalizarCampo(false);
-            void finalizarInspecao();
+            void finalizarInspecao({ jaConfirmado: true });
           }}
         />
       )}
@@ -7781,9 +7795,11 @@ export default function Home() {
           <CampoMais
             secoes={(() => {
               const visiveis = new Set(itensVisiveis(contextoMenu).map((item) => item.key));
+              // "ambientes" é item só da visita (somenteNaVisita) e a tela Mais não conta como tela da visita; aqui vale o contexto da visita atual.
+              const visiveisNaVisita = new Set(itensVisiveis({ ...contextoMenu, dentroDeVisita: true }).map((item) => item.key));
               const pendentesTotal = fila.resumo.pendentes + pendentesDoEstado;
               return [
-                // "Desta visita": 3 atalhos lado a lado, sem subtítulo; sem visita atual a seção não aparece. Central e Ambientes saíram daqui.
+                // "Desta visita": 4 atalhos em grade 2x2 (Evidências, POPs, Relatório, Ambientes), sem subtítulo; sem visita atual a seção não aparece. A Central saiu daqui.
                 {
                   titulo: "Desta visita",
                   layout: "atalhos" as const,
@@ -7792,6 +7808,7 @@ export default function Home() {
                         ...(visiveis.has("evidencias") ? [{ id: "evidencias", rotulo: "Evidências", icone: "evidencias" as const, onClick: () => irParaMenu("evidencias") }] : []),
                         ...(telaVisivel("popsVisita") ? [{ id: "popsvisita", rotulo: "POPs", icone: "pops" as const, onClick: () => { setMenuMaisAberto(false); setView("popsvisita"); } }] : []),
                         ...(visiveis.has("relatorio") ? [{ id: "relatorio", rotulo: "Relatório", icone: "relatorio" as const, onClick: () => irParaMenu("relatorio") }] : []),
+                        ...(visiveisNaVisita.has("ambientes") && permitido("visitas.executar", visitaAtual?.empresaId) ? [{ id: "ambientes", rotulo: "Ambientes", icone: "ambientes" as const, onClick: () => irParaMenu("ambientes") }] : []),
                       ]
                     : [],
                 },
@@ -9456,7 +9473,7 @@ export default function Home() {
                   else abrirSecaoEmpresaPeloMenu("dados");
                 }}
                 onSelecionavel={(tipo) => void gerarPdfSelecionavel(tipo)}
-                onFinalizar={finalizarInspecao}
+                onFinalizar={() => void finalizarInspecao()}
                 avisoFinalizar={avisoParaFinalizar(itensRespondidos(checklistAtual))}
                 avisoEmitir={avisoParaEmitir(visitaAtual.status, itensRespondidos(checklistAtual))}
                 onReabrir={reabrirInspecao}
@@ -9548,7 +9565,7 @@ export default function Home() {
                     )}
                   </div>
                 ) : permitido("visitas.concluir", visitaAtual.empresaId) ? (
-                  <button type="button" onClick={finalizarInspecao} className="ui-btn ui-btn--save w-full">
+                  <button type="button" onClick={() => void finalizarInspecao()} className="ui-btn ui-btn--save w-full">
                     ✓ Finalizar inspeção
                   </button>
                 ) : null}

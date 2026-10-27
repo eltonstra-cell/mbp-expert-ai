@@ -226,7 +226,7 @@ test("Nova empresa: um aviso único da consulta, sem chips por campo, sem lista 
 });
 
 // ===== Navegação e Início =====
-test("Mais do celular (menu enxuto): 'Desta visita' com 3 atalhos, Cadastros e Empresas com '+ Nova' na linha, Conta e app, Sincronizar e Sair; sem subtítulos, sem 'Usar versão completa agora' e sem 'Trocar empresa'", () => {
+test("Mais do celular (menu enxuto): 'Desta visita' com 4 atalhos em grade 2x2, Cadastros e Empresas com '+ Nova' na linha, Conta e app, Sincronizar e Sair; sem subtítulos, sem 'Usar versão completa agora' e sem 'Trocar empresa'", () => {
   const campo = ler("../components/campo/CampoTelas.tsx");
   assert.ok(campo.includes("SecaoMais") && campo.includes("campo-mais-nova") && campo.includes("campo-mais-atalhos"));
   assert.equal(campo.includes("Usar versão completa agora") || campo.includes("onVersaoCompleta") || campo.includes("campo-mais-sub"), false, "sem botão de versão completa nem subtítulos");
