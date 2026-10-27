@@ -393,8 +393,8 @@ try {
   await js('[...document.querySelectorAll(".campo-tab")].find((b) => b.innerText.includes("Mais"))?.click()');
   await n.esperar(600);
   await foto("14-mais-celular");
-  registrar("14b. Mais em seções com uma linha de apoio por item e sem a etiqueta 'novo'", await js(`(()=>{const t=document.querySelector(".campo-tela--mais")?.innerText||"";const secoes=["Da visita atual","Cadastro e documentos","Conta e app","Ações"].every((x)=>t.includes(x));const apoio=document.querySelectorAll(".campo-mais-sub").length;return secoes&&apoio>=8&&!/novo/i.test(t.replace(/novos?/gi,"x"))&&t.includes("Meu perfil")&&t.includes("Trocar empresa")&&t.includes("Sair")&&t.includes("Usar versão completa agora")})()`));
-  registrar("14c. Mais: atalho '+ Nova empresa' em Empresas; o resto rola por dentro e a página não rola", await js(`(()=>{const t=document.querySelector(".campo-tela--mais")?.innerText||"";const r=document.querySelector(".campo-mais-rolagem");return t.includes("+ Nova empresa")&&!!r&&getComputedStyle(r).overflowY==="auto"&&document.documentElement.scrollHeight<=innerHeight+2})()`));
+  registrar("14b. Mais (menu enxuto): seções 'Desta visita', 'Cadastros e documentos' e 'Conta e app'; Meu perfil, Sincronizar e Sair; sem subtítulos, sem 'Usar versão completa agora' e sem 'Trocar empresa'", await js(`(()=>{const t=document.querySelector(".campo-tela--mais")?.innerText||"";const secoes=["Desta visita","Cadastros e documentos","Conta e app"].every((x)=>t.includes(x));return secoes&&document.querySelectorAll(".campo-mais-sub").length===0&&t.includes("Meu perfil")&&t.includes("Sincronizar")&&t.includes("Sair")&&!t.includes("Trocar empresa")&&!t.includes("Usar versão completa")&&!t.includes("Da visita atual")&&!/novo/i.test(t.replace(/novos?/gi,"x").replace(/Nova/g,"x"))})()`));
+  registrar("14c. Mais: '+ Nova' dentro da linha de Empresas e a página não rola", await js(`(()=>{const nova=document.querySelector(".campo-mais-nova");const li=nova?.closest("li");return !!nova&&nova.innerText.trim()==="+ Nova"&&!!li&&li.innerText.includes("Empresas")&&document.documentElement.scrollHeight<=innerHeight+2})()`));
 
   // 15. Relatório montado como RASCUNHO (Revisar) e Mapa de risco, no PC, sem sinal.
   await n.enviar("Emulation.clearDeviceMetricsOverride");
@@ -1178,6 +1178,264 @@ detalhes:{chipDaAcaoNaBarra:chipVisivel,sobrepostos,pessoas:pessoas.map((c)=>c.t
     registrar(`20. Barra de baixo em ${larg} px (fora do modo Campo): mesmos destinos do trilho, alvos de 44 px, rótulos de 12 px, sem corte e sem rolagem horizontal`, await js(`(()=>{const tr=document.querySelector(".tr");const itens=[...tr.querySelectorAll(".tr-item")];const rot=itens.map((i)=>i.querySelector(".tr-rotulo").textContent.trim());const r=tr.getBoundingClientRect();return getComputedStyle(tr).position==="fixed"&&Math.round(r.bottom)===innerHeight&&Math.round(r.width)===innerWidth&&["Início","Visitas","Correções","POPs","Relatórios","Mais"].every((x)=>rot.includes(x))&&itens.every((i)=>{const b=i.getBoundingClientRect();return b.height>=44&&b.left>=0&&b.right<=innerWidth+0.5&&i.querySelector(".tr-rotulo").scrollWidth<=i.querySelector(".tr-rotulo").clientWidth+1})&&getComputedStyle(tr.querySelector(".tr-rotulo")).fontSize==="12px"&&tr.scrollWidth<=tr.clientWidth+1&&document.documentElement.scrollWidth<=innerWidth+1&&parseInt(getComputedStyle(document.querySelector(".pc-offset")).marginLeft)===0})()`));
   }
   await js('localStorage.removeItem("mbp-expert-ai:modo-tela:v1")');
+
+  // 21. Modo Campo v2 (celular) em 390x844 e 360x740: Checklist (busca do PC, pergunta em até 2 linhas, respostas, observação, rodapé, barra de baixo),
+  // Mais (menu enxuto) e Finalizar visita (confirmação). Mede retângulos e estilos calculados na tela de verdade; o PC (Completo) é conferido no fim.
+  await flag("__off", false);
+  await evento("online");
+  const abrirChecklistNoCelular = async (largura, altura) => {
+    await n.enviar("Emulation.setDeviceMetricsOverride", { width: largura, height: altura, screenWidth: largura, screenHeight: altura, deviceScaleFactor: 1, mobile: true });
+    await n.ir(app.base);
+    await esperar(async () => js('!!document.querySelector(".campo-bar")'), 20000);
+    await n.esperar(1500);
+    await js('[...document.querySelectorAll(".campo-tab")].find((b) => b.innerText.includes("Início"))?.click()');
+    await n.esperar(500);
+    await js('[...document.querySelectorAll("button")].find((b) => b.innerText.trim().startsWith("Continuar checklist"))?.click()');
+    const abriu = await esperar(async () => js('!!document.querySelector(".chk-foco-rodape")'), 15000);
+    await n.esperar(900);
+    return abriu;
+  };
+  const medirChecklistNoCelular = () => {
+    const q = (s, raiz = document) => raiz.querySelector(s);
+    const r = (e) => (e ? e.getBoundingClientRect() : null);
+    const cs = (e) => getComputedStyle(e);
+    const dentro = (e, caixa) => Boolean(e && caixa) && r(e).left >= caixa.left - 0.5 && r(e).right <= caixa.right + 0.5 && r(e).top >= caixa.top - 0.5 && r(e).bottom <= caixa.bottom + 0.5;
+    const barra = r(q(".campo-bar"));
+    const rodape = q(".chk-foco-rodape");
+    const rodapeR = r(rodape);
+    const corpo = q(".chk-foco-corpo");
+    const botoesRodape = rodape ? [...rodape.querySelectorAll("button")] : [];
+    const anterior = botoesRodape.find((b) => b.innerText.includes("Anterior"));
+    const salvar = botoesRodape.find((b) => b.innerText.includes("Salvar e próximo"));
+    // Busca
+    const busca = q(".campo-head .pc-smartbar");
+    const entrada = q(".campo-head .pc-busca-input");
+    const mic = q(".campo-head .pc-mic");
+    const ir = q(".campo-head .pc-go");
+    const raio = q(".campo-head .pc-bolt");
+    let larguraDoTexto = 0;
+    let cabe = false;
+    if (entrada) {
+      const c = document.createElement("canvas").getContext("2d");
+      const st = cs(entrada);
+      c.font = st.fontWeight + " " + st.fontSize + " " + st.fontFamily;
+      larguraDoTexto = c.measureText(entrada.placeholder).width;
+      cabe = larguraDoTexto <= entrada.clientWidth - parseFloat(st.paddingLeft) - parseFloat(st.paddingRight) + 0.5;
+    }
+    const topo = r(q(".campo-head-linha"));
+    const empresa = r(q(".campo-head .emp-ativa"));
+    // Pergunta
+    const titulo = q(".chk-foco-title");
+    const icone = q(".chk-fonte-i");
+    const alturaDeLinha = titulo ? parseFloat(cs(titulo).lineHeight) : 0;
+    // Respostas
+    const respostas = [...document.querySelectorAll(".chk-foco-botoes .chk-resp")].map((e) => ({ texto: e.innerText.trim(), filhos: e.children.length, w: r(e).width, h: r(e).height, bg: cs(e).backgroundColor, borda: cs(e).borderTopColor, cor: cs(e).color, peso: cs(e).fontWeight, tam: cs(e).fontSize, estado: [...e.classList].find((c) => c.startsWith("is-")) }));
+    // Observação
+    const obs = q(".chk-foco-obs");
+    const area = q(".chk-obs-area");
+    const botoesObs = obs ? [".chk-linha-foto", ".voz-btn", ".voz-ia"].map((s) => q(s, obs)) : [];
+    const medidaDoBotao = (b) => (b ? { texto: b.innerText.trim(), h: r(b).height, w: r(b).width, bg: cs(b).backgroundColor, cor: cs(b).color, tam: cs(b).fontSize, peso: cs(b).fontWeight, svg: b.querySelector("svg") ? r(b.querySelector("svg")).width : null, esq: r(b).left - r(obs).left, topo: r(b).top } : null);
+    // Barra de baixo
+    const orbe = q(".campo-register-orb");
+    // Faixa
+    const faixa = q(".fv--campo");
+    const seg = q(".fv-seg", faixa || document);
+    const finalizar = q(".fv-finalizar", faixa || document);
+    const abas = faixa ? [...faixa.querySelectorAll(".fv-item")] : [];
+    const apoio = q(".chk-foco-apoio");
+    return JSON.stringify({
+      vw: innerWidth,
+      vh: innerHeight,
+      paginaSemRolagem: document.scrollingElement.scrollHeight <= innerHeight + 1 && document.documentElement.scrollWidth <= innerWidth + 1,
+      rodapeVisivel: Boolean(rodapeR) && rodapeR.top > 0 && rodapeR.bottom <= barra.top + 0.5,
+      barraVisivel: Boolean(barra) && barra.top < innerHeight && barra.bottom <= innerHeight + 1,
+      rodapeLivre: Boolean(salvar) && salvar.contains(document.elementFromPoint(r(salvar).left + r(salvar).width / 2, r(salvar).top + r(salvar).height / 2)),
+      corpoRola: Boolean(corpo) && corpo.scrollHeight > corpo.clientHeight + 1,
+      busca: { existe: Boolean(busca), altura: busca && r(busca).height, placeholder: entrada && entrada.placeholder, cabe, larguraDoTexto: Math.round(larguraDoTexto), larguraDoCampo: entrada && entrada.clientWidth, raio: Boolean(raio), mic: Boolean(mic), micW: mic && r(mic).width, ir: ir && ir.innerText.trim(), irSemCorte: Boolean(ir) && ir.scrollWidth <= ir.clientWidth + 1, tudoDentro: [raio, entrada, mic, ir].every((e) => dentro(e, r(busca))), abaixoDoTopo: Boolean(busca) && r(busca).top >= topo.bottom - 0.5, acimaDaEmpresa: Boolean(busca) && r(busca).bottom <= empresa.top + 0.5 },
+      pergunta: { linhas: titulo ? Math.round((r(titulo).height / alturaDeLinha) * 100) / 100 : null, tam: titulo && cs(titulo).fontSize, iForaDoTexto: Boolean(icone && titulo) && r(icone).left >= r(titulo).right - 0.5, iDentroDoCartao: dentro(icone, r(q(".chk-foco-card"))), iTam: icone && [r(icone).width, r(icone).height] },
+      respostas,
+      obs: { semRotulo: obs ? !/Observação \(opcional\)/.test(obs.innerText) : null, padding: obs && [cs(obs).paddingTop, cs(obs).paddingRight, cs(obs).paddingBottom, cs(obs).paddingLeft], comecaNosBotoes: Boolean(obs && botoesObs[0]) && r(botoesObs[0]).top - r(obs).top <= 12, botoes: botoesObs.map(medidaDoBotao), placeholder: area && area.placeholder, alturaDoCampo: area && r(area).height, campoAbaixoDosBotoes: Boolean(area) && botoesObs.every((b) => b && r(area).top >= r(b).bottom - 0.5) },
+      rodape: { anterior: anterior && { h: r(anterior).height, w: r(anterior).width, tam: cs(anterior).fontSize, esq: r(anterior).left - rodapeR.left }, salvar: salvar && { h: r(salvar).height, w: r(salvar).width, tam: cs(salvar).fontSize, bg: cs(salvar).backgroundColor, cor: cs(salvar).color, dir: rodapeR.right - r(salvar).right, peso: cs(salvar).fontWeight } },
+      // O corpo pode rolar por dentro (360x740): o fim visível da observação é o fim do corpo, não o fim da caixa (que continua abaixo, recortada).
+      apoio: apoio ? { abaixoDaObs: r(apoio).top >= Math.min(r(obs).bottom, r(corpo).bottom) - 0.5, foraDoCorpo: !corpo.contains(apoio), acimaDoRodape: r(apoio).bottom <= rodapeR.top + 0.5 } : null,
+      barra: { itens: document.querySelectorAll(".campo-bar > *").length, rotulos: [...document.querySelectorAll(".campo-bar .campo-tab-label")].map((x) => x.textContent.trim()), tamRotulo: cs(q(".campo-bar .campo-tab-label")).fontSize, orbe: orbe && { w: r(orbe).width, h: r(orbe).height, borda: cs(orbe).borderTopWidth, bg: cs(orbe).backgroundColor, dentroDaBarra: r(orbe).top >= barra.top - 0.5 && r(orbe).bottom <= barra.bottom + 0.5 }, rotuloRegistrar: (q(".campo-register .campo-tab-label") || {}).textContent },
+      faixa: { abas: abas.map((x) => x.childNodes[0].textContent.trim()), semCorte: Boolean(seg) && abas.every((x) => dentro(x, r(seg))) && seg.scrollWidth <= seg.clientWidth + 1, segRola: Boolean(seg) && seg.scrollWidth > seg.clientWidth + 1, finalizarAoLado: Boolean(finalizar) && r(finalizar).left >= r(seg).right - 0.5 && r(finalizar).right <= innerWidth + 0.5, finalizar: finalizar && { w: r(finalizar).width, h: r(finalizar).height, aria: finalizar.getAttribute("aria-label"), titulo: finalizar.title, texto: finalizar.innerText.trim(), bg: cs(finalizar).backgroundColor } },
+    });
+  };
+  const medirMaisNoCelular = () => {
+    const q = (s, raiz = document) => raiz.querySelector(s);
+    const r = (e) => (e ? e.getBoundingClientRect() : null);
+    const cs = (e) => getComputedStyle(e);
+    const tela = q(".campo-tela--mais");
+    const rolagem = q(".campo-mais-rolagem");
+    const barra = r(q(".campo-bar"));
+    const nova = q(".campo-mais-nova");
+    const itens = [...document.querySelectorAll(".campo-mais-item")];
+    const ultimo = itens[itens.length - 1];
+    const cartoes = [...document.querySelectorAll(".campo-mais-cartao")];
+    const nomes = [...document.querySelectorAll(".campo-mais-linha")].map((b) => (b.querySelector(".campo-mais-nome") || {}).textContent.trim());
+    const empresas = itens.find((li) => (li.innerText || "").includes("Empresas"));
+    const modo = itens.find((li) => (li.innerText || "").includes("Modo de tela"));
+    const sair = q(".campo-mais-item.is-perigo .campo-mais-nome");
+    const menor = Math.min(...[...document.querySelectorAll(".campo-mais-linha, .campo-mais-cartao, .campo-mais-nova")].map((b) => r(b).height));
+    return JSON.stringify({
+      vw: innerWidth,
+      vh: innerHeight,
+      paginaSemRolagem: document.scrollingElement.scrollHeight <= innerHeight + 1 && document.documentElement.scrollWidth <= innerWidth + 1,
+      listaSemRolagem: Boolean(rolagem) && rolagem.scrollHeight <= rolagem.clientHeight + 1,
+      ultimoVisivel: Boolean(ultimo) && r(ultimo).bottom <= barra.top + 0.5,
+      barraVisivel: barra.top < innerHeight && barra.bottom <= innerHeight + 1,
+      semH1Repetido: Boolean(tela) && !tela.querySelector("h1"),
+      tituloDoTopo: (q(".campo-head-pagina") || {}).textContent,
+      selo: (q(".campo-sync") || {}).innerText,
+      empresaAtiva: Boolean(q(".campo-head .emp-ativa")),
+      buscaAusente: !q(".campo-head .pc-smartbar"),
+      secoes: [...document.querySelectorAll(".campo-mais-rotulo")].map((x) => x.textContent.trim()),
+      atalhos: cartoes.map((c) => c.innerText.trim()),
+      atalhosLadoALado: cartoes.length === 3 && new Set(cartoes.map((c) => Math.round(r(c).top))).size === 1,
+      nomes,
+      subtitulos: document.querySelectorAll(".campo-mais-sub").length,
+      textoCompleto: tela ? tela.innerText : "",
+      nova: nova && { texto: nova.innerText.trim(), dentroDaLinha: Boolean(empresas) && r(nova).left >= r(empresas).left && r(nova).right <= r(empresas).right + 0.5 && r(nova).top >= r(empresas).top - 0.5 && r(nova).bottom <= r(empresas).bottom + 0.5 },
+      modoValor: modo ? (modo.querySelector(".campo-mais-valor") || {}).textContent : null,
+      sincronizar: (itens.find((li) => (li.innerText || "").includes("Sincronizar")) || { innerText: "" }).innerText.replace(/\s+/g, " "),
+      sairCor: sair && cs(sair).color,
+      alvoMinimo: menor,
+    });
+  };
+  const rgb = (texto) => (texto.match(/\d+(\.\d+)?/g) || []).slice(0, 3).map(Number).join(",");
+  const perto = (a, b, tol = 0.6) => typeof a === "number" && Math.abs(a - b) <= tol;
+  const rodar21 = async (largura, altura) => {
+    const rotulo = `${largura}x${altura}`;
+    const abriu = await abrirChecklistNoCelular(largura, altura);
+    registrar(`21a0 ${rotulo}. o Checklist do celular abre`, abriu);
+    if (!abriu) return;
+    await foto(`21-checklist-${largura}`);
+    const m = JSON.parse(await js(`(${medirChecklistNoCelular.toString()})()`));
+    registrar(`21a ${rotulo}. Checklist sem rolagem de página; rodapé e barra de baixo sempre à vista e sem nada por cima`, m.paginaSemRolagem && m.rodapeVisivel && m.barraVisivel && m.rodapeLivre, JSON.stringify({ pagina: m.paginaSemRolagem, rodape: m.rodapeVisivel, barra: m.barraVisivel, livre: m.rodapeLivre, corpoRolaPorDentro: m.corpoRola }));
+    const b = m.busca;
+    registrar(`21b ${rotulo}. busca do PC logo abaixo do cabeçalho: ⚡ + 'Busque ou diga o que quer fazer' + microfone + 'Ir →', 46 px, tudo dentro da barra e entre o título e a empresa`, b.existe && perto(b.altura, 46, 1) && b.placeholder === "Busque ou diga o que quer fazer" && b.raio && b.mic && b.micW >= 34 && b.ir === "Ir →" && b.irSemCorte && b.tudoDentro && b.abaixoDoTopo && b.acimaDaEmpresa, JSON.stringify(b));
+    // O texto do campo cabe por inteiro em 390 px; em 360 px o campo tem de sobra só para ~190 px e o texto de 15 px usa reticências (informado, não reprovado).
+    registrar(`21b2 ${rotulo}. texto da busca sem corte${largura >= 390 ? "" : " (em 360 px o placeholder pode terminar em reticências; aqui só se informa)"}`, largura < 390 || b.cabe, `texto ${b.larguraDoTexto}px para um campo de ${b.larguraDoCampo}px`);
+    const p = m.pergunta;
+    registrar(`21c ${rotulo}. pergunta em no máximo 2 linhas (fonte 16 px) e o 'i' fora do texto, dentro do cartão, com alvo de 34 px ou mais`, p.linhas !== null && p.linhas <= 2.05 && parseFloat(p.tam) >= 15 && p.iForaDoTexto && p.iDentroDoCartao && p.iTam[0] >= 34 && p.iTam[1] >= 34, JSON.stringify(p));
+    const cores = { Conforme: ["227,245,234", "155,211,176"], "Não conforme": ["251,228,226", "233,167,162"], "Não se aplica": ["238,241,247", "197,204,218"] };
+    const rs = m.respostas;
+    registrar(`21d ${rotulo}. três respostas com a MESMA largura e 38 px, sem ícone, texto preto 15 px sem negrito, fundo e borda suaves da mesma família`, rs.length === 3 && rs.every((x) => perto(x.h, 38, 0.6) && perto(x.w, rs[0].w, 1) && x.filhos === 1 && x.peso === "400" && parseFloat(x.tam) >= 15 && rgb(x.cor) === "0,0,0" && cores[x.texto] && rgb(x.bg) === cores[x.texto][0] && rgb(x.borda) === cores[x.texto][1]), JSON.stringify(rs.map((x) => [x.texto, Math.round(x.w * 10) / 10, x.h, rgb(x.bg), rgb(x.borda)])));
+    const o = m.obs;
+    const [foto21, falar, ia] = o.botoes;
+    registrar(`21e ${rotulo}. observação sem o rótulo 'Observação (opcional)', caixa com padding de 8 a 10 px começando direto nos botões, campo com placeholder 'Observação' e 84 px`, o.semRotulo === true && o.padding.every((v) => parseFloat(v) >= 8 && parseFloat(v) <= 10) && o.comecaNosBotoes && o.placeholder === "Observação" && perto(o.alturaDoCampo, 84, 1) && o.campoAbaixoDosBotoes, JSON.stringify({ semRotulo: o.semRotulo, padding: o.padding, comeca: o.comecaNosBotoes, placeholder: o.placeholder, altura: o.alturaDoCampo }));
+    registrar(`21f ${rotulo}. Foto (#AF640A), Falar (#1F78B4) e IA (#1D5F95) com 34 px, largura do conteúdo, à esquerda na mesma linha, texto branco 14 px sem negrito, ícone de 16 px`, Boolean(foto21 && falar && ia) && [foto21, falar, ia].every((x) => perto(x.h, 34, 0.6) && x.w < 140 && rgb(x.cor) === "255,255,255" && x.tam === "14px" && x.peso === "400") && rgb(foto21.bg) === "175,100,10" && rgb(falar.bg) === "31,120,180" && rgb(ia.bg) === "29,95,149" && foto21.esq <= 14 && perto(foto21.topo, falar.topo, 1) && perto(falar.topo, ia.topo, 1) && foto21.svg === 16 && falar.svg === 16, JSON.stringify(o.botoes));
+    registrar(`21g ${rotulo}. rodapé: '← Anterior' à esquerda e 'Salvar e próximo →' verde à direita, 36 px, largura do conteúdo, 15 px, sem esticar`, Boolean(m.rodape.anterior && m.rodape.salvar) && perto(m.rodape.anterior.h, 36, 0.6) && perto(m.rodape.salvar.h, 36, 0.6) && m.rodape.anterior.w < 160 && m.rodape.salvar.w < 220 && m.rodape.anterior.tam === "15px" && m.rodape.salvar.tam === "15px" && m.rodape.anterior.esq <= 1 && m.rodape.salvar.dir <= 1 && rgb(m.rodape.salvar.bg) === "46,139,87" && rgb(m.rodape.salvar.cor) === "255,255,255" && m.rodape.salvar.peso === "400", JSON.stringify(m.rodape));
+    registrar(`21h ${rotulo}. 'O que verificar' fica embaixo, logo acima do rodapé (se o item tem apoio)`, m.apoio === null || (m.apoio.abaixoDaObs && m.apoio.foraDoCorpo && m.apoio.acimaDoRodape), JSON.stringify(m.apoio));
+    const bar = m.barra;
+    registrar(`21i ${rotulo}. barra de baixo com 7 itens (rótulo de 12 px) e Registrar em círculo terracota #AF640A de 40 px, sem borda, dentro da barra`, bar.itens === 7 && ["Início", "Visitas", "Correções", "POPs", "Relatórios", "Mais"].every((x) => bar.rotulos.includes(x)) && bar.rotuloRegistrar === "Registrar" && bar.tamRotulo === "12px" && Boolean(bar.orbe) && perto(bar.orbe.w, 40, 0.6) && perto(bar.orbe.h, 40, 0.6) && bar.orbe.borda === "0px" && rgb(bar.orbe.bg) === "175,100,10" && bar.orbe.dentroDaBarra, JSON.stringify(bar));
+    const f = m.faixa;
+    registrar(`21j ${rotulo}. faixa: abas Checklist, Evidências e Correções sem corte, ✓ verde de 44 px ao lado, só com o ícone enquanto falta responder, nome acessível e dica 'Finalizar visita'`, JSON.stringify(f.abas) === JSON.stringify(["Checklist", "Evidências", "Correções"]) && f.semCorte && f.finalizarAoLado && Boolean(f.finalizar) && perto(f.finalizar.w, 44, 0.6) && perto(f.finalizar.h, 44, 0.6) && f.finalizar.texto === "" && f.finalizar.aria === "Finalizar visita" && f.finalizar.titulo === "Finalizar visita" && rgb(f.finalizar.bg) === "46,139,87", JSON.stringify(f));
+    // Resposta escolhida: acende forte, texto branco simples. "Não conforme" não avança sozinho.
+    await clicarResposta("Não conforme");
+    await n.esperar(500);
+    const forte = JSON.parse(await js('JSON.stringify((()=>{const b=[...document.querySelectorAll(".chk-foco-botoes .chk-resp")].map((e)=>({t:e.innerText.trim(),s:[...e.classList].find((c)=>c.startsWith("is-")),bg:getComputedStyle(e).backgroundColor,cor:getComputedStyle(e).color,peso:getComputedStyle(e).fontWeight,filhos:e.children.length,h:e.getBoundingClientRect().height,w:e.getBoundingClientRect().width}));return b})())'));
+    const marcado = forte.find((x) => x.s === "is-marcado");
+    registrar(`21k ${rotulo}. ao escolher 'Não conforme' a caixa acende forte (cor cheia, texto branco simples, sem ícone) e as três seguem iguais`, Boolean(marcado) && marcado.t === "Não conforme" && rgb(marcado.bg) === "201,71,63" && rgb(marcado.cor) === "255,255,255" && marcado.peso === "400" && marcado.filhos === 1 && forte.every((x) => perto(x.w, forte[0].w, 1) && perto(x.h, 38, 0.6)), JSON.stringify(forte));
+    // Pergunta longa: duas linhas com reticências, o "i" abre o texto inteiro e a fonte
+    const longo = JSON.parse(await js(`JSON.stringify((()=>{const t=document.querySelector(".chk-foco-title");const original=t.textContent;t.textContent=${JSON.stringify(TITULO_LONGO + " " + TITULO_LONGO)};const lh=parseFloat(getComputedStyle(t).lineHeight);const rt=t.getBoundingClientRect();const i=document.querySelector(".chk-fonte-i").getBoundingClientRect();const r={linhas:Math.round(rt.height/lh*100)/100,cortado:t.scrollHeight>t.clientHeight+1,iForaDoTexto:i.left>=rt.right-0.5,reticencias:getComputedStyle(t).webkitLineClamp==="2"||getComputedStyle(t).getPropertyValue("-webkit-line-clamp")==="2",titleAttr:t.title===${JSON.stringify(TITULO_LONGO + " " + TITULO_LONGO)}||t.title===original};t.textContent=original;return r})())`));
+    registrar(`21c2 ${rotulo}. pergunta longa: no máximo 2 linhas cortadas com reticências (line-clamp 2) e o 'i' continua fora do texto`, longo.linhas <= 2.05 && longo.cortado && longo.iForaDoTexto && longo.reticencias, JSON.stringify(longo));
+    await js('document.querySelector(".chk-fonte-i")?.click()');
+    await n.esperar(300);
+    const nota = JSON.parse(await js('JSON.stringify((()=>{const n=document.querySelector(".chk-fonte-linha--campo");const t=document.querySelector(".chk-foco-title").textContent.trim();return {existe:!!n,inteiro:!!n&&n.innerText.includes(t),fonte:!!n&&/Fonte:/.test(n.innerText),i:document.querySelector(".chk-fonte-i").getAttribute("aria-label")}})())'));
+    registrar(`21c3 ${rotulo}. o 'i' mostra o texto inteiro da pergunta e a fonte`, nota.existe && nota.inteiro && nota.fonte && nota.i === "Pergunta completa e fonte", JSON.stringify(nota));
+    await js('document.querySelector(".chk-fonte-i")?.click()');
+    // Mais
+    await js('[...document.querySelectorAll(".campo-tab")].find((x) => x.innerText.includes("Mais"))?.click()');
+    await esperar(async () => js('!!document.querySelector(".campo-tela--mais")'), 8000);
+    await n.esperar(900);
+    await foto(`21-mais-${largura}`);
+    const mm = JSON.parse(await js(`(${medirMaisNoCelular.toString()})()`));
+    registrar(`21m ${rotulo}. Mais sem rolagem de página${largura === 390 ? " e a lista inteira numa tela só (sem rolagem por dentro)" : ""}; barra de baixo à vista e último item acima dela`, mm.paginaSemRolagem && mm.barraVisivel && mm.ultimoVisivel && (largura !== 390 || mm.listaSemRolagem), JSON.stringify({ pagina: mm.paginaSemRolagem, lista: mm.listaSemRolagem, ultimo: mm.ultimoVisivel }));
+    const t = mm.textoCompleto;
+    registrar(`21n ${rotulo}. Mais: cabeçalho com voltar, 'Mais' (sem título repetido), selo de sincronização e ⋯; seletor 'Empresa ativa' mantido; sem a busca`, mm.tituloDoTopo === "Mais" && mm.semH1Repetido && /Tudo enviado|Sincronizado|pendente|Sem sinal|Não sincronizou/.test(mm.selo) && mm.empresaAtiva && mm.buscaAusente, JSON.stringify({ titulo: mm.tituloDoTopo, h1: !mm.semH1Repetido, selo: mm.selo }));
+    registrar(`21o ${rotulo}. Mais: 'Desta visita' com Evidências, POPs e Relatório lado a lado e sem subtítulo; 'Cadastros e documentos' com Cadastros e Empresas (+ Nova dentro da linha); 'Conta e app'; Sincronizar e Sair`, mm.secoes.slice(0, 3).join("|") === "Desta visita|Cadastros e documentos|Conta e app" && JSON.stringify(mm.atalhos) === JSON.stringify(["Evidências", "POPs", "Relatório"]) && mm.atalhosLadoALado && mm.subtitulos === 0 && mm.nomes.includes("Cadastros") && mm.nomes.includes("Empresas") && Boolean(mm.nova) && mm.nova.texto === "+ Nova" && mm.nova.dentroDaLinha && ["Meu perfil", "Ajuda e guias", "Modo de tela", "Sincronizar", "Sair"].every((x) => mm.nomes.includes(x)), JSON.stringify({ secoes: mm.secoes, atalhos: mm.atalhos, nomes: mm.nomes, nova: mm.nova }));
+    registrar(`21p ${rotulo}. Mais: sem os itens removidos (Usar versão completa agora, Trocar empresa, POPs e documentos, Relatórios, Central, Ambientes, subtítulos)`, !/Usar versão completa|Trocar empresa|POPs e documentos|Central da visita|Escolher por onde|Da visita atual/.test(t) && !mm.nomes.includes("Relatórios") && !mm.nomes.includes("POPs e documentos") && !mm.nomes.includes("Ambientes") && !mm.nomes.includes("Trocar empresa"), JSON.stringify(mm.nomes));
+    registrar(`21q ${rotulo}. Mais: 'Modo de tela' mostra o modo atual (Campo), Sincronizar mostra o estado, Sair em vermelho, alvos de 34 px ou mais`, mm.modoValor === "Campo" && /✓ Tudo enviado|pendente/.test(mm.sincronizar) && Boolean(mm.sairCor) && Number(mm.sairCor.match(/\d+/g)[0]) > 150 && Number(mm.sairCor.match(/\d+/g)[1]) < 90 && mm.alvoMinimo >= 34, JSON.stringify({ modo: mm.modoValor, sync: mm.sincronizar, sair: mm.sairCor, alvo: mm.alvoMinimo }));
+  };
+  await rodar21(390, 844);
+  await rodar21(360, 740);
+
+  // 21r. PC (Completo): nada mudou (uma só busca, rótulo da observação e placeholder vazio, "Finalizar visita" com texto).
+  await n.enviar("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+  await n.ir(app.base);
+  await esperar(async () => js('!!document.querySelector(".tr")'), 20000);
+  await n.esperar(1500);
+  await js('[...document.querySelectorAll("button")].find((b) => b.innerText.trim().startsWith("Continuar →"))?.click()');
+  await n.esperar(1200);
+  await js('[...document.querySelectorAll("button")].find((b) => b.innerText.trim().startsWith("Checklist"))?.click()');
+  await esperar(async () => js('document.querySelectorAll(".chk-pc-num").length>2'), 20000);
+  await n.esperar(1200);
+  await foto("21r-pc");
+  const c21r = JSON.parse(await js(`JSON.stringify((()=>{const t=document.querySelector(".chk-foco-obs")?.innerText||"";const fin=document.querySelector(".fv-finalizar");return {buscas:document.querySelectorAll(".pc-busca").length,buscaNoTopo:!!document.querySelector(".pc-topbar .pc-busca"),rotulo:/Observação \\(opcional\\)|Registrar a não conformidade/.test(t),obsTexto:t.slice(0,60),placeholder:document.querySelector(".chk-obs-area")?.placeholder??null,fin:fin?fin.innerText.trim():null,faixaCampo:!!document.querySelector(".fv--campo"),fonteCampo:!!document.querySelector(".chk-fonte-linha--campo")}})())`));
+  registrar("21r. PC (Completo) sem mudança: uma só busca no topo, rótulo 'Observação (opcional)', campo sem placeholder, 'Finalizar visita' com texto e nada da faixa do celular", c21r.buscas === 1 && c21r.buscaNoTopo && c21r.rotulo && c21r.placeholder === "" && /Finalizar visita/.test(c21r.fin || "") && !c21r.faixaCampo && !c21r.fonteCampo, JSON.stringify(c21r));
+
+  // 21s. Finalizar visita no celular: o toque abre SEMPRE a confirmação; Cancelar e Esc não encerram; Finalizar só roda ao confirmar.
+  const idDaVisitaAtual = () => js(`JSON.parse(localStorage.getItem(${JSON.stringify(CHAVE_NAV)})).visitaAtualId`);
+  const statusDaVisita = async () => js(`(JSON.parse(localStorage.getItem(${JSON.stringify(CHAVE)})).visitas.find((v) => v.id === ${JSON.stringify(await idDaVisitaAtual())})||{}).status`);
+  const dialogoAberto = () => js('!!document.querySelector(\'[role="dialog"][aria-labelledby="cf-titulo"]\')');
+  const tocarNoCheck = () => js('document.querySelector(".fv--campo .fv-finalizar")?.click()');
+  await abrirChecklistNoCelular(390, 844);
+  registrar("21s. visita em andamento e ✓ sem texto enquanto há item sem resposta", (await statusDaVisita()) === "Em andamento" && (await js('document.querySelector(".fv--campo .fv-finalizar")?.innerText.trim()===""')));
+  await tocarNoCheck();
+  await n.esperar(300);
+  await foto("21-confirmacao-390");
+  const dlg = JSON.parse(await js(`JSON.stringify((()=>{const d=document.querySelector('[role="dialog"][aria-labelledby="cf-titulo"]');if(!d)return null;const bs=[...d.querySelectorAll("button")];const fin=bs.find((b)=>b.innerText.trim()==="Finalizar");const can=bs.find((b)=>b.innerText.trim()==="Cancelar");const rf=fin.getBoundingClientRect();return {titulo:d.querySelector("h2").innerText.trim(),modal:d.getAttribute("aria-modal"),foco:document.activeElement===can,altura:[can.getBoundingClientRect().height,rf.height],bg:getComputedStyle(fin).backgroundColor,cor:getComputedStyle(fin).color,peso:getComputedStyle(fin).fontWeight,tam:getComputedStyle(fin).fontSize}})())`));
+  registrar("21t. o toque no ✓ abre a confirmação 'Finalizar a visita?' (role=dialog, aria-modal, foco em Cancelar, botões de 44 px, Finalizar verde com texto branco simples) e nada foi encerrado", Boolean(dlg) && dlg.titulo === "Finalizar a visita?" && dlg.modal === "true" && dlg.foco && dlg.altura.every((x) => x >= 40) && rgb(dlg.bg) === "46,139,87" && rgb(dlg.cor) === "255,255,255" && dlg.peso === "400" && parseFloat(dlg.tam) >= 15 && (await statusDaVisita()) === "Em andamento", JSON.stringify(dlg));
+  await js('window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }))');
+  await n.esperar(300);
+  registrar("21u. Esc cancela: a janela fecha, a visita continua em andamento e o foco volta ao ✓", !(await dialogoAberto()) && (await statusDaVisita()) === "Em andamento" && (await js('document.activeElement?.classList.contains("fv-finalizar")')));
+  await tocarNoCheck();
+  await n.esperar(300);
+  await js('[...document.querySelectorAll(\'[role="dialog"] button\')].find((b) => b.innerText.trim() === "Cancelar")?.click()');
+  await n.esperar(300);
+  registrar("21v. Cancelar não encerra a visita", !(await dialogoAberto()) && (await statusDaVisita()) === "Em andamento");
+  await tocarNoCheck();
+  await n.esperar(300);
+  await js('[...document.querySelectorAll(\'[role="dialog"] button\')].find((b) => b.innerText.trim() === "Finalizar")?.click()');
+  await n.esperar(600);
+  registrar("21w. Finalizar com itens sem resposta segue o fluxo de hoje (o aviso 'Não é possível finalizar') e a visita NÃO é encerrada", !(await dialogoAberto()) && (await js('/Não é possível finalizar/.test(document.querySelector(".dialogo-app")?.innerText||"")')) && (await statusDaVisita()) === "Em andamento");
+  await js('[...document.querySelectorAll(".dialogo-app button")].find((b) => b.innerText.trim() === "Entendi")?.click()');
+  // Tudo respondido: o ✓ ganha o texto 'Finalizar'
+  // Responde tudo pela tela (Conforme avança sozinho; se o item já estava respondido, anda com os botões do rodapé). A visita é a ATUAL da tela (depois da seção 18 é a da empresa Elton Volmir, não a vt1).
+  const tudoRespondidoNaTela = () => js('(()=>{const t=document.body.innerText.split("respondidos")[0].split(String.fromCharCode(10)).join(" ").trim().split(" ").pop().split("/");return t.length===2&&t[0]===t[1]})()');
+  const pendentesDaVisita = async () => js(`(JSON.parse(localStorage.getItem(${JSON.stringify(CHAVE)})).visitas.find((v) => v.id === ${JSON.stringify(await idDaVisitaAtual())}).checklist||[]).filter((i) => i.status === "Pendente").length`);
+  let rodadasDeResposta = 0;
+  // Só toca em "Conforme" quando o item ainda não tem resposta (tocar de novo na mesma resposta a desmarca); respondido, anda: para a frente até o fim do ambiente e depois para trás.
+  let paraFrente = true;
+  for (let i = 0; i < 150 && !(await tudoRespondidoNaTela()); i++) {
+    rodadasDeResposta++;
+    const semResposta = await js('!document.querySelector(".chk-foco-botoes .is-marcado")');
+    if (semResposta) {
+      await clicarResposta("Conforme");
+      await n.esperar(750);
+      continue;
+    }
+    const andou = await js(`(()=>{const b=[...document.querySelectorAll(".chk-foco-rodape button")];const p=b.find((x)=>x.innerText.includes("Salvar e próximo"));const a=b.find((x)=>x.innerText.includes("Anterior"));const ordem=${paraFrente}?[p,a]:[a,p];const alvo=ordem.find((x)=>x&&!x.disabled);if(!alvo)return false;if(alvo===p&&!${paraFrente}||alvo===a&&${paraFrente})return "inverteu";alvo.click();return "andou"})()`);
+    if (andou === "inverteu") paraFrente = !paraFrente;
+    else if (!andou) break;
+    await n.esperar(250);
+  }
+  await n.esperar(1500);
+  registrar("21x0. pré-condição: todos os itens da visita atual foram respondidos pela tela (e gravados no aparelho)", (await tudoRespondidoNaTela()) && (await pendentesDaVisita()) === 0, `${rodadasDeResposta} rodadas · armazenamento: ${await pendentesDaVisita()} sem resposta`);
+  const rotuloCheio = JSON.parse(await js('JSON.stringify((()=>{const f=document.querySelector(".fv--campo .fv-finalizar");const r=f.getBoundingClientRect();return {texto:f.innerText.trim(),aria:f.getAttribute("aria-label"),titulo:f.title,dentro:r.right<=innerWidth+0.5&&r.left>=0,h:r.height}})())'));
+  await foto("21-finalizar-com-rotulo-390");
+  registrar("21x. com tudo respondido o botão mostra 'Finalizar' ao lado do ✓ (nome acessível e dica continuam 'Finalizar visita'), inteiro dentro da tela", rotuloCheio.texto === "Finalizar" && rotuloCheio.aria === "Finalizar visita" && rotuloCheio.titulo === "Finalizar visita" && rotuloCheio.dentro && rotuloCheio.h >= 44, JSON.stringify(rotuloCheio));
+  await tocarNoCheck();
+  await n.esperar(300);
+  registrar("21y. com tudo respondido o toque também abre a confirmação (nada encerrado ainda)", (await dialogoAberto()) && (await statusDaVisita()) === "Em andamento");
+  await js('[...document.querySelectorAll(\'[role="dialog"] button\')].find((b) => b.innerText.trim() === "Finalizar")?.click()');
+  await esperar(async () => js('!!document.querySelector(".dialogo-app")||!!document.querySelector(".rev-janela")'), 8000);
+  const textoDoAviso = await js('document.querySelector(".dialogo-app")?.innerText||""');
+  if (/Finalizar (esta )?inspeção/.test(textoDoAviso)) await js('[...document.querySelectorAll(".dialogo-app button")].find((b) => b.innerText.trim() === "Finalizar")?.click()');
+  const encerrou = await esperar(async () => (await statusDaVisita()) === "Concluída", 10000);
+  registrar("21z. Finalizar na confirmação executa finalizarInspecao (a visita passa a Concluída depois da confirmação de hoje)", encerrou, `${await statusDaVisita()} · ${textoDoAviso.slice(0, 80)}`);
   await n.enviar("Emulation.clearDeviceMetricsOverride");
 } catch (erro) {
   registrar(`erro na verificação: ${erro.message}`, false);

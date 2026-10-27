@@ -5986,3 +5986,131 @@ html:not([data-modo="campo"]) .pc-offset:has(.pc-cor){padding-bottom:8px}
   html .ui-screen.pc-cor .pc-detail-lateral{position:static;align-self:stretch;height:auto;overflow:visible;margin:0 16px 6px 24px;border:1px solid var(--rd-trilho);border-radius:12px}
   html .ui-screen.pc-cor .pc-detail-lateral>*{max-width:360px}
 }
+
+/* =====================================================================================================================
+   MODO CAMPO v2 (celular) · Checklist, barra de baixo, Mais e confirmação de "Finalizar visita"
+   Tudo escopado em html[data-modo="campo"]: PC e tablet não mudam. Medidas pedidas: busca 46 px; respostas 38 px; Foto/Falar/IA 34 px;
+   rodapé 36 px; Registrar 40 px; observação 84 px. Texto de 15 px ou mais (exceto rótulos da barra de baixo e os botões Foto/Falar/IA, 14 px).
+   ===================================================================================================================== */
+
+/* Busca (a mesma do PC) logo abaixo da linha do título, só no Checklist */
+html[data-modo="campo"] .campo-head--busca .pc-busca{display:block;flex:none;width:100%;max-width:none;min-width:0;margin:0}
+html[data-modo="campo"] .campo-head .pc-busca .pc-smartbar{display:flex;box-sizing:border-box;width:100%;height:46px;margin:0;padding:0 6px 0 6px;border:1.5px solid #C9CFDC;border-radius:14px;background:#fff;box-shadow:none}
+html[data-modo="campo"] .campo-head .pc-busca .pc-smartbar:focus-within,html[data-modo="campo"] .campo-head .pc-busca .pc-smartbar.is-aberta{border-color:var(--rd-acao);border-radius:14px}
+html[data-modo="campo"] .campo-head .pc-smartbar-campos{display:flex;flex:1 1 auto;align-items:center;gap:4px;min-width:0;height:100%}
+html[data-modo="campo"] .campo-head .pc-bolt{display:grid;flex:none;place-items:center;width:30px;height:30px;border:0;border-radius:9px;background:#E6ECFB;color:var(--rd-acao)}
+html[data-modo="campo"] .campo-head .pc-busca-input{flex:1 1 0;min-width:0;height:44px;min-height:0;padding:0;border:0!important;outline:0!important;box-shadow:none!important;background:transparent;font-size:15px;color:var(--rd-ink);text-overflow:ellipsis}
+html[data-modo="campo"] .campo-head .pc-busca-input::placeholder{color:#596273;opacity:1}
+html[data-modo="campo"] .campo-head .pc-mic{flex:none;width:34px;height:34px;background:var(--rd-mic);color:#fff}
+html[data-modo="campo"] .campo-head .pc-go{flex:none;height:36px;min-height:0;padding:0 12px;border-radius:12px;background:var(--rd-acao);font-size:15px;font-weight:400;color:#fff;white-space:nowrap}
+html[data-modo="campo"] .campo-head .pc-busca-painel{position:absolute;top:calc(100% + 6px);right:0;left:0;z-index:80;max-height:calc(100dvh - 200px);margin:0;border:2px solid var(--rd-acao);border-radius:14px}
+html[data-modo="campo"] .campo-tela--fixa{height:calc(100dvh - 258px - var(--faixas-h,0px) - var(--faixa-h,0px) - var(--faixa-visita-h,0px))}
+
+/* Faixa da visita no Campo: três abas e o ✓ de finalizar ao lado (com "Finalizar" quando tudo foi respondido) */
+html[data-modo="campo"] .fv--campo{gap:8px;margin-top:10px}
+html[data-modo="campo"] .fv--campo .fv-seg{flex:1 1 0;min-width:0;gap:2px;padding:3px}
+html[data-modo="campo"] .fv--campo .fv-item{flex:1 1 auto;justify-content:center;gap:6px;height:36px;padding:0 8px;font-size:15px}
+html[data-modo="campo"] .fv--campo .fv-finalizar{flex:none;width:44px;height:44px;margin-left:0;padding:0;justify-content:center;gap:6px;border-radius:12px;font-size:15px;font-weight:400}
+html[data-modo="campo"] .fv--campo .fv-finalizar:has(span){width:auto;padding:0 14px}
+html[data-modo="campo"] .fv--campo .fv-finalizar span{display:inline;font-size:15px;font-weight:400}
+
+/* Pergunta: no máximo 2 linhas e o "i" ao lado (nunca sobre o texto) */
+html[data-modo="campo"] .campo-tela .chk-foco-card{display:grid;grid-template-columns:minmax(0,1fr) 36px;align-items:center;gap:0 4px;padding:2px 4px 2px 12px}
+html[data-modo="campo"] .campo-tela .chk-foco-card .chk-foco-title{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;grid-column:1;margin:6px 0;overflow:hidden;font-size:16px;line-height:1.3}
+html[data-modo="campo"] .campo-tela .chk-fonte-i{position:relative;top:auto;right:auto;grid-column:2;grid-row:1;width:36px;height:36px}
+html[data-modo="campo"] .campo-tela .chk-fonte-linha--campo{grid-column:1 / -1;margin:0 0 8px;padding:8px 10px;border-radius:10px;background:#F4F6FA;font-size:15px;line-height:1.35;color:#1B2433}
+html[data-modo="campo"] .campo-tela .chk-fonte-linha--campo p{margin:0}
+html[data-modo="campo"] .campo-tela .chk-fonte-linha--campo .chk-fonte-pergunta{margin-bottom:6px}
+html[data-modo="campo"] .campo-tela .chk-fonte-linha--campo .chk-fonte-texto{color:#596273}
+
+/* Respostas: três caixas iguais de 38 px, sem ícone; suaves, e a escolhida acende forte com texto branco simples */
+html[data-modo="campo"] .campo-tela .chk-foco-botoes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+html[data-modo="campo"] .campo-tela .chk-resp{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;width:100%;min-width:0;height:38px;min-height:38px;padding:0 2px;gap:0;border:1.5px solid;border-radius:10px;font-size:15px;font-weight:400;line-height:1;color:#000;white-space:nowrap;overflow:visible}
+html[data-modo="campo"] .campo-tela .chk-resp span{font-size:15px;font-weight:400}
+html[data-modo="campo"] .campo-tela .chk-resp.chk-resp--ok{border-color:#9BD3B0;background:#E3F5EA}
+html[data-modo="campo"] .campo-tela .chk-resp.chk-resp--nc{border-color:#E9A7A2;background:#FBE4E2}
+html[data-modo="campo"] .campo-tela .chk-resp.chk-resp--na{border-color:#C5CCDA;background:#EEF1F7}
+html[data-modo="campo"] .campo-tela .chk-resp.is-marcado{color:#fff}
+html[data-modo="campo"] .campo-tela .chk-resp.is-marcado.chk-resp--ok{border-color:#15803D;background:#15803D}
+html[data-modo="campo"] .campo-tela .chk-resp.is-marcado.chk-resp--nc{border-color:#C9473F;background:#C9473F}
+html[data-modo="campo"] .campo-tela .chk-resp.is-marcado.chk-resp--na{border-color:#5B6B80;background:#5B6B80}
+html[data-modo="campo"] .campo-tela .chk-resp.is-apagado{opacity:.6}
+
+/* Observação: caixa compacta que começa nos botões Foto, Falar e IA; campo de 84 px que cresce ao digitar */
+html[data-modo="campo"] .campo-tela .chk-foco-obs{flex:none;gap:6px;padding:8px 10px;border-radius:14px}
+html[data-modo="campo"] .campo-tela .voz-linha{display:flex;flex-wrap:nowrap;align-items:center;justify-content:flex-start;gap:8px}
+html[data-modo="campo"] .campo-tela :is(.chk-linha-foto,.voz-btn,.voz-ia){box-sizing:border-box;flex:none;width:auto;height:34px;min-height:34px;margin:0;padding:0 12px;gap:6px;border:0;border-radius:10px;color:#fff;font-size:14px;font-weight:400;line-height:1}
+html[data-modo="campo"] .campo-tela .chk-linha-foto{background:#AF640A}
+html[data-modo="campo"] .campo-tela .voz-btn{background:#1F78B4}
+html[data-modo="campo"] .campo-tela .voz-ia{background:#1D5F95}
+html[data-modo="campo"] .campo-tela :is(.chk-linha-foto,.voz-btn) svg{width:16px;height:16px}
+html[data-modo="campo"] .campo-tela .voz-ia>span:first-child{font-size:16px;line-height:1;color:#fff}
+html[data-modo="campo"] .campo-tela .chk-obs-campo{position:relative;flex:none}
+html[data-modo="campo"] .campo-tela .chk-obs-campo .chk-obs-area{box-sizing:border-box;flex:none;width:100%;height:84px;min-height:84px;max-height:40vh;padding:8px 10px;font-size:15px;line-height:1.35}
+html[data-modo="campo"] .campo-tela .chk-obs-campo .chk-obs-area::placeholder{color:#596273;opacity:1}
+/* "Limpar resposta" numa linha própria abaixo do campo: nunca cobre o texto digitado */
+html[data-modo="campo"] .chk-obs-limpar{position:static;display:flex;justify-content:flex-end;margin-top:4px}
+html[data-modo="campo"] .chk-obs-limpar .chk-limpar{min-height:34px;padding:0 4px;border:0;border-radius:0;background:transparent;font-size:15px;text-decoration:underline;color:#1B2433}
+
+/* "O que verificar" embaixo, logo acima do rodapé */
+html[data-modo="campo"] .campo-tela .chk-foco-corpo{gap:8px;padding:2px 0 4px}
+html[data-modo="campo"] .campo-tela .chk-foco-apoio{flex:none;margin:0;padding-top:2px}
+html[data-modo="campo"] .campo-tela .chk-apoio-toggle{min-height:38px;font-size:15px}
+
+/* Rodapé fixo: Anterior à esquerda e Salvar e próximo (verde) à direita, cada um com a largura do próprio conteúdo */
+html[data-modo="campo"] .campo-tela .chk-foco-rodape{justify-content:space-between;gap:8px;padding-top:6px}
+html[data-modo="campo"] .campo-tela .chk-foco-rodape .ui-btn{flex:none;width:auto;max-width:none;height:36px;min-height:36px;padding:0 18px;border-radius:10px;font-size:15px;font-weight:400}
+html[data-modo="campo"] .campo-tela .chk-foco-rodape .ui-btn--save:not(:disabled){border:0;background:var(--rd-verde-acao);color:#fff}
+
+/* Barra de baixo: Registrar é um círculo terracota de 40 px com a câmera, dentro da barra (sem borda e sem cobrir o conteúdo) */
+html .campo-bar .campo-register{padding:0 0 4px}
+html .campo-bar .campo-register-orb{width:40px;height:40px;margin-top:0;border:0;background:var(--rd-ambar);box-shadow:none}
+
+/* Mais: uma tela só */
+html[data-modo="campo"] .campo-tela--mais{gap:0;padding-bottom:0;overflow:hidden}
+html[data-modo="campo"] .campo-mais-rolagem{gap:10px;padding:0 0 4px}
+html[data-modo="campo"] .campo-mais-secao{gap:4px}
+html[data-modo="campo"] .campo-mais-rotulo{margin:0;font-size:15px;font-weight:400;line-height:1.3;color:#3D4A5C}
+html[data-modo="campo"] .campo-mais-atalhos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0;padding:0;list-style:none}
+html[data-modo="campo"] .campo-mais-cartao{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;width:100%;height:64px;padding:0 4px;border:1.5px solid #C9CFDC;border-radius:14px;background:#fff;color:#1B2433;font-size:15px;line-height:1.2;cursor:pointer}
+html[data-modo="campo"] .campo-mais-lista--junta{gap:0;overflow:hidden;border:1.5px solid #C9CFDC;border-radius:14px;background:#fff}
+html[data-modo="campo"] .campo-mais-lista--junta .campo-mais-item{position:relative;flex-direction:row;gap:0;border-top:1px solid #E3E7EF}
+html[data-modo="campo"] .campo-mais-lista--junta .campo-mais-item:first-child{border-top:0}
+html[data-modo="campo"] .campo-mais-lista--junta .campo-mais-linha{min-height:44px;padding:4px 12px;gap:10px;border:0;border-radius:0;background:transparent;color:#1B2433;text-align:left;cursor:pointer}
+html[data-modo="campo"] .campo-mais-lista--junta .campo-mais-tile{width:28px;height:28px;border-radius:8px}
+html[data-modo="campo"] .campo-mais-nome{flex:1 1 auto;min-width:0;font-size:16px;line-height:1.2}
+html[data-modo="campo"] .campo-mais-valor{flex:none;font-size:15px;color:#3D4A5C}
+html[data-modo="campo"] .campo-mais-seta{flex:none;font-size:1.3rem;line-height:1;color:#596273}
+html[data-modo="campo"] .campo-mais-nova{position:absolute;top:50%;right:34px;height:34px;padding:0 10px;transform:translateY(-50%);border:0;border-radius:10px;background:transparent;font-size:15px;font-weight:400;color:var(--rd-acao);cursor:pointer}
+html[data-modo="campo"] .campo-mais-item.is-perigo .campo-mais-nome{color:#B83A33}
+
+/* Revisão: tamanho mínimo de 15 px nos textos de apoio do Campo */
+html[data-modo="campo"] .campo-tela :is(.chk-foto-link,.chk-obs-ouvindo,.chk-obs-aviso,.chk-foto-aviso,.chk-apoio-corpo,.chk-foco-amb-pos){font-size:15px}
+html[data-modo="campo"] .campo-tela .chk-foto-link{min-height:34px;padding:6px 4px}
+
+/* Revisão: foco visível em tudo que toca no Campo (contorno azul de ação; dentro da barra azul de busca o contorno branco some) */
+html[data-modo="campo"] :is(.fv-item,.fv-finalizar,.pc-go,.pc-mic,.campo-mais-linha,.campo-mais-cartao,.campo-mais-nova,.chk-fonte-i,.chk-apoio-toggle,.campo-tab,.campo-register):focus-visible{outline:3px solid var(--rd-acao);outline-offset:2px}
+
+/* Revisão: estado desabilitado visível (cinza) */
+html[data-modo="campo"] .campo-tela .chk-linha-foto:disabled{background:#EEF1F5;color:#51606c;cursor:not-allowed}
+html[data-modo="campo"] .campo-mais-cartao:disabled{border-color:#D5DAE3;background:#EEF1F5;color:#51606c;cursor:not-allowed}
+
+/* Revisão: telas de 360 px ou menos, sem rolagem horizontal */
+@media (max-width:380px){
+  html[data-modo="campo"] .campo-tela .voz-linha{flex-wrap:wrap;gap:6px}
+  html[data-modo="campo"] .campo-tela :is(.chk-linha-foto,.voz-btn,.voz-ia){min-width:0;padding:0 10px;gap:4px}
+  html[data-modo="campo"] .fv--campo .fv-item{min-width:0;padding:0 5px;gap:4px;overflow:hidden;text-overflow:ellipsis}
+  html[data-modo="campo"] .fv--campo .fv-seg{overflow-x:auto}
+  html[data-modo="campo"] .fv--campo .fv-finalizar:has(span){flex:none;padding:0 10px}
+}
+
+/* Confirmação de "Finalizar visita" */
+.cf-camada{position:fixed;inset:0;z-index:90;display:grid;place-items:center;padding:16px}
+.cf-fundo{position:absolute;inset:0;border:0;background:rgba(18,32,43,.55);cursor:default}
+.cf-janela{position:relative;display:flex;flex-direction:column;gap:20px;width:min(360px,100%);box-sizing:border-box;padding:22px 20px 20px;border-radius:18px;background:#fff;color:#1B2433;box-shadow:0 20px 50px rgba(18,32,43,.3)}
+.cf-titulo{margin:0;font-family:var(--font-display),"Outfit",sans-serif;font-size:1.3rem;font-weight:500;line-height:1.25}
+.cf-botoes{display:flex;gap:10px}
+.cf-btn{flex:1 1 0;min-height:44px;padding:0 16px;border-radius:12px;font-size:16px;font-weight:400;cursor:pointer}
+.cf-btn--cancelar{border:2px solid var(--rd-acao);background:#fff;color:#1B2433}
+.cf-btn--finalizar{border:0;background:var(--rd-verde-acao);color:#fff}
+.cf-btn:focus-visible{outline:3px solid var(--rd-acao);outline-offset:2px}

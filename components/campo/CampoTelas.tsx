@@ -5,7 +5,7 @@ import { nomeNormalizado, valoresDeLoteNormalizados } from "@/lib/pessoas";
 import { dataISOLocal, formatarDataCurta, formatarHora, hojeLocalISO } from "@/lib/dataLocal";
 import type { ReactNode } from "react";
 
-import { useRef, useState, type CSSProperties } from "react";
+import { useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
 import AntesDepois from "@/components/AntesDepois";
 import { LoteJanela, type CorrecaoItem } from "@/components/pc/PcCorrecoes";
@@ -40,9 +40,10 @@ export function CampoCabecalho({
   onTrocarEmpresa,
   onVoltar,
   titulo = "",
-}: Pick<Chrome, "empresa" | "sincronizacao" | "menuModo"> & { empresaCor?: string; empresaIniciais?: string; onTrocarEmpresa?: () => void; onVoltar?: () => void; /** Nome da página atual, em destaque no topo. */ titulo?: string }) {
+  busca = null,
+}: Pick<Chrome, "empresa" | "sincronizacao" | "menuModo"> & { empresaCor?: string; empresaIniciais?: string; onTrocarEmpresa?: () => void; onVoltar?: () => void; /** Nome da página atual, em destaque no topo. */ titulo?: string; /** Busca inteligente (a mesma do PC) logo abaixo da linha do título; só no Checklist. */ busca?: ReactNode }) {
   return (
-    <header className="campo-head">
+    <header className={`campo-head${busca ? " campo-head--busca" : ""}`}>
       <div className="campo-head-linha">
       {onVoltar && (
         // Mesma pilha de telas do PC; no celular a área de toque é de 44 px.
@@ -58,6 +59,7 @@ export function CampoCabecalho({
       </button>
       {menuModo.length > 0 && <RowMenu itens={menuModo} rotulo="Modo de tela" />}
       </div>
+      {busca}
       <div className="emp-ativa" style={{ "--emp-cor": empresaCor } as CSSProperties}>
         <span className="emp-ativa-avatar" aria-hidden="true">
           {empresaIniciais}
@@ -100,7 +102,7 @@ export function CampoBarra({ tela, correcoesAbertas, podeRegistrar, onIr, onRegi
             return podeRegistrar ? (
               <button key="registrar" type="button" className="campo-register" onClick={onRegistrar}>
                 <span className="campo-register-orb">
-                  <NavIcon name="registrar" size={26} strokeWidth={2.1} />
+                  <NavIcon name="registrar" size={22} strokeWidth={2.1} />
                 </span>
                 <span className="campo-tab-label">Registrar</span>
               </button>
@@ -764,48 +766,118 @@ function quandoCurtoCampo(iso: string) {
   return dataISOLocal(iso) === hojeLocalISO() ? `hoje ${hora}` : `${formatarDataCurta(iso)} ${hora}`;
 }
 
-/** Item do "Mais": ícone colorido, nome e uma linha de apoio (mesmo padrão do cartão "Empresas · Cadastro, cor e seleção"). */
-export type LinhaMais = { id: string; rotulo: string; detalhe: string; icone: NavIconName; tom: string; onClick: () => void; desabilitado?: boolean; /** Só quando ajuda (ex.: "3 pendentes"); sem repetir o que a linha já diz. */ contador?: string; /** Atalho dentro da linha (ex.: "+ Nova empresa"). */ atalho?: { rotulo: string; onClick: () => void } };
-export type SecaoMais = { titulo: string; itens: LinhaMais[] };
-
-export function CampoMais({ secoes, onVersaoCompleta }: { secoes: SecaoMais[]; onVersaoCompleta: () => void }) {
+/** Tela de altura fixa do Campo (Checklist e Mais): ocupa só o espaço entre o que está acima dela e a barra de baixo, medido na tela. Assim a página nunca rola e a barra e o rodapé ficam sempre à vista, qualquer que seja a altura do cabeçalho. Sem JavaScript vale a altura calculada pelo CSS. */
+export function CampoTelaFixa({ className, rotulo, children }: { className: string; rotulo: string; children: ReactNode }) {
+  const raiz = useRef<HTMLElement | null>(null);
+  useLayoutEffect(() => {
+    const el = raiz.current;
+    if (!el) return;
+    const medir = () => {
+      const barra = document.querySelector<HTMLElement>(".campo-bar");
+      if (!barra) return;
+      const livre = Math.floor(barra.getBoundingClientRect().top - el.getBoundingClientRect().top - 8);
+      if (livre > 160) el.style.height = `${livre}px`;
+      else el.style.removeProperty("height");
+    };
+    medir();
+    const observador = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(medir);
+    const observados = new Set<Element>();
+    const observarFaixas = () => {
+      for (const seletor of [".campo-head", ".fv", ".campo-bar"]) {
+        const alvo = document.querySelector(seletor);
+        if (alvo && !observados.has(alvo)) {
+          observados.add(alvo);
+          observador?.observe(alvo);
+        }
+      }
+    };
+    observarFaixas();
+    // A faixa .fv pode aparecer depois (troca de visita ou de tela): reobserva quando o pai muda.
+    const pai = el.parentElement;
+    const mutacoes =
+      typeof MutationObserver === "undefined" || !pai
+        ? null
+        : new MutationObserver(() => {
+            observarFaixas();
+            medir();
+          });
+    if (pai) mutacoes?.observe(pai, { childList: true });
+    window.addEventListener("resize", medir);
+    void document.fonts?.ready.then(medir);
+    return () => {
+      observador?.disconnect();
+      mutacoes?.disconnect();
+      window.removeEventListener("resize", medir);
+    };
+  }, []);
   return (
-    <section className="campo-tela campo-tela--mais" aria-label="Mais">
-      <h1 className="campo-h1">Mais</h1>
+    <section ref={raiz} className={className} aria-label={rotulo}>
+      {children}
+    </section>
+  );
+}
+
+/** Item do "Mais": ícone, nome e, se ajudar, um valor à direita (ex.: "Campo", "✓ Tudo enviado"). Sem subtítulo. */
+export type LinhaMais = {
+  id: string;
+  rotulo: string;
+  icone: NavIconName;
+  onClick: () => void;
+  desabilitado?: boolean;
+  /** Texto curto à direita, antes da seta. */
+  valor?: string;
+  /** Atalho DENTRO da própria linha (ex.: "+ Nova" em Empresas). */
+  atalho?: { rotulo: string; nome: string; onClick: () => void };
+  /** Ação de saída (texto vermelho, sem seta). */
+  perigo?: boolean;
+};
+/** `layout: "atalhos"` = itens lado a lado (cartões com ícone em cima); sem título = grupo final (Sincronizar e Sair). */
+export type SecaoMais = { titulo?: string; layout?: "atalhos"; itens: LinhaMais[] };
+
+export function CampoMais({ secoes }: { secoes: SecaoMais[] }) {
+  return (
+    <CampoTelaFixa className="campo-tela campo-tela--mais" rotulo="Mais">
       <div className="campo-mais-rolagem">
         {secoes
           .filter((secao) => secao.itens.length > 0)
-          .map((secao) => (
-            <div key={secao.titulo} className="campo-mais-secao">
-              <div className="ui-eyebrow">{secao.titulo}</div>
-              <ul className="campo-mais-lista">
-                {secao.itens.map((linha) => (
-                  <li key={linha.id} className="campo-mais-item">
-                    <button type="button" className="campo-mais-linha" onClick={linha.onClick} disabled={linha.desabilitado}>
-                      <span className="campo-mais-tile" style={{ background: `linear-gradient(160deg, var(--tile-${linha.tom}-from), var(--tile-${linha.tom}-to))` }}>
+          .map((secao, indice) => (
+            <div key={secao.titulo ?? `grupo-${indice}`} className="campo-mais-secao">
+              {secao.titulo && <h2 className="campo-mais-rotulo">{secao.titulo}</h2>}
+              {secao.layout === "atalhos" ? (
+                <ul className="campo-mais-atalhos">
+                  {secao.itens.map((linha) => (
+                    <li key={linha.id}>
+                      <button type="button" className="campo-mais-cartao" onClick={linha.onClick} disabled={linha.desabilitado}>
                         <NavIcon name={linha.icone} size={22} strokeWidth={1.9} />
-                      </span>
-                      <span className="campo-mais-textos">
-                        <span className="campo-mais-titulo">{linha.rotulo}</span>
-                        <span className="campo-mais-sub">{linha.detalhe}</span>
-                      </span>
-                      {linha.contador && <span className="campo-mais-contador">{linha.contador}</span>}
-                      <span className="campo-mais-seta" aria-hidden="true">›</span>
-                    </button>
-                    {linha.atalho && (
-                      <button type="button" className="ui-btn ui-btn--secondary campo-mais-atalho" onClick={linha.atalho.onClick}>
-                        {linha.atalho.rotulo}
+                        <span>{linha.rotulo}</span>
                       </button>
-                    )}
-                  </li>
-                ))}
-              </ul>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <ul className="campo-mais-lista campo-mais-lista--junta">
+                  {secao.itens.map((linha) => (
+                    <li key={linha.id} className={`campo-mais-item${linha.perigo ? " is-perigo" : ""}`}>
+                      <button type="button" className="campo-mais-linha" onClick={linha.onClick} disabled={linha.desabilitado}>
+                        <span className="campo-mais-tile" aria-hidden="true">
+                          <NavIcon name={linha.icone} size={18} strokeWidth={1.9} />
+                        </span>
+                        <span className="campo-mais-nome">{linha.rotulo}</span>
+                        {linha.valor && <span className="campo-mais-valor">{linha.valor}</span>}
+                        {!linha.perigo && <span className="campo-mais-seta" aria-hidden="true">›</span>}
+                      </button>
+                      {linha.atalho && (
+                        <button type="button" className="campo-mais-nova" aria-label={linha.atalho.nome} onClick={linha.atalho.onClick}>
+                          {linha.atalho.rotulo}
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           ))}
       </div>
-      <button type="button" className="campo-btn campo-btn--brand" onClick={onVersaoCompleta}>
-        Usar versão completa agora
-      </button>
-    </section>
+    </CampoTelaFixa>
   );
 }

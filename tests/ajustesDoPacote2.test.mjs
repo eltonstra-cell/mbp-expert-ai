@@ -58,7 +58,7 @@ test("botões: resposta com 40 px em uma linha, gravidade em contorno, Falar e I
   assert.ok(voz.includes("voz-semsinal"));
   assert.equal(/linhaInicio[\s\S]{0,40}Precisa de internet/.test(voz), false);
   const item = ler("../components/ChecklistFocoItem.tsx");
-  assert.ok(item.includes('ehItemDeTemperatura(item.titulo) ? "Ex.: termômetro a 9 °C" : ""'), "o placeholder não repete o rótulo");
+  assert.ok(item.includes('ehItemDeTemperatura(item.titulo) ? "Ex.: termômetro a 9 °C" : campo ? "Observação" : ""'), "o placeholder não repete o rótulo (só o Campo, sem rótulo, usa 'Observação')");
 });
 
 test("relatório: temperatura classificada pelo app imprime valor, limite e a marca; resposta trocada pelo RT também é dita", () => {
@@ -120,7 +120,7 @@ test("PC: ações do ambiente são botões de 40 px, trilho azul de 104 px com p
 
 test("campo de observação: um só texto (sem rótulo repetido no placeholder) e miniatura da foto ao lado do botão Foto", () => {
   const item = ler("../components/ChecklistFocoItem.tsx");
-  assert.ok(item.includes(': ehItemDeTemperatura(item.titulo) ? "Ex.: termômetro a 9 °C" : ""'));
+  assert.ok(item.includes(': ehItemDeTemperatura(item.titulo) ? "Ex.: termômetro a 9 °C" : campo ? "Observação" : ""'));
   assert.ok(item.includes("chk-foto-mini-ao-lado") && item.includes('"Foto guardada · Na fila"'));
   assert.ok(ler("../app/globals.css").includes('.chk-foco-amb-pos{flex:none;padding:0;border:0;border-radius:0;background:transparent'));
 });

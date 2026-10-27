@@ -110,17 +110,18 @@ import { cssDoDocumentoImpresso, cssDoRodapeDeImpressao, suportaCaixasDeMargem, 
 import { sincronizarNcDoItem } from "@/lib/checklistNcs";
 import { visitaDaEmpresaAtiva } from "@/lib/trocarEmpresa";
 import { dadosExtrasDoItem, desfazerLimpeza, limparResposta, listaEmTexto, type InstantaneoDaResposta } from "@/lib/limparResposta";
-import { ABAS_PADRAO, abasDoCampoDoPerfil, type AbaDaBarra } from "@/lib/abasDoCampo";
-import { CampoBarra, CampoCabecalho, CampoCorrecoes, CampoInicio, CampoMais, type TelaCampo } from "@/components/campo/CampoTelas";
+import { ABAS_PADRAO, PASSOS_DA_FAIXA_NO_CAMPO, abasDoCampoDoPerfil, destinoFicaSoNoMais, finalizarComRotulo, type AbaDaBarra } from "@/lib/abasDoCampo";
+import { CampoBarra, CampoCabecalho, CampoCorrecoes, CampoInicio, CampoMais, CampoTelaFixa, type TelaCampo } from "@/components/campo/CampoTelas";
+import ConfirmarFinalizar from "@/components/campo/ConfirmarFinalizar";
 import FiscalInicio from "@/components/FiscalInicio";
 import { AvisoFotoProvider, useAvisoAntesDeFotografar } from "@/components/AvisoAntesDeFotografar";
 import type { ItemMenu } from "@/components/ui/RowMenu";
-import { ROTULO_DE_USO, descreverAparelho } from "@/lib/screenMode";
+import { ROTULO_DE_USO, ROTULO_DO_MODO, descreverAparelho } from "@/lib/screenMode";
 import { preparacaoDaEmpresa, pendenciasDaEmpresa, textoDaPendencia, destinoDaPendencia } from "@/lib/companyReadiness";
 import ChecklistEnvStrip from "@/components/ChecklistEnvStrip";
 import CommandPalette from "@/components/CommandPalette";
 import { construirDestinos, construirDestinosDaVisita, type Destino, type EntradaDeDestinos } from "@/lib/commandSearch";
-import type { ContextoDaVoz } from "@/components/BuscaNaBarra";
+import BuscaNaBarra, { type ContextoDaVoz } from "@/components/BuscaNaBarra";
 import { quantidadeDeAmbientes, resumoAmbientes, vizinhoDoAmbiente } from "@/lib/checklistEnvs";
 import { NavIcon } from "@/components/NavIcons";
 import { iniciaisDaEmpresa, chaveAtiva, itemDoMenu, itensVisiveis, nomeSemNumerosNoInicio, type NavContexto, type NavKey } from "@/lib/navigation";
@@ -617,6 +618,8 @@ export default function Home() {
   const [caixaAberta, setCaixaAberta] = useState(false);
   const [caixaComVoz, setCaixaComVoz] = useState(false);
   const [buscaNaBarraAtiva, setBuscaNaBarraAtiva] = useState(false);
+  // Modo Campo: o ✓ da faixa da visita abre esta confirmação; finalizarInspecao só roda ao confirmar.
+  const [confirmaFinalizarCampo, setConfirmaFinalizarCampo] = useState(false);
   const [pedidoDeFocoNaBusca, setPedidoDeFocoNaBusca] = useState(0);
   // Foto escolhida em "Registrar": confirma o vínculo antes de enviar (nada é vinculado em silêncio).
   const [confirmaFoto, setConfirmaFoto] = useState<{
@@ -7080,18 +7083,30 @@ export default function Home() {
   const modoVisitaNoMenu = !!visitaAtual && VISIT_VIEWS.includes(view) && !(view === "correcoes" && correcoesDaEmpresa);
   const chaveMenuAtivo: NavKey | null = modoVisitaNoMenu ? "visitas" : view === "correcoes" ? "ncs" : chaveDaTela;
   // Faixa da visita (só dentro da visita): troca de assunto e "Finalizar visita". No celular reserva a própria altura.
-  const faixaDaVisita = (reservarAltura: boolean) =>
+  const faixaDaVisita = (reservarAltura: boolean, campo = false) =>
     modoVisitaNoMenu && visitaAtual ? (
       <FaixaDaVisita
-        passos={passosDaTrilha(dadosTrilha).filter((passo) => telaVisivel(passo.chave === "pops" ? "popsVisita" : (passo.chave as TelaKey)))}
+        passos={passosDaTrilha(dadosTrilha)
+          .filter((passo) => telaVisivel(passo.chave === "pops" ? "popsVisita" : (passo.chave as TelaKey)))
+          .filter((passo) => !campo || (PASSOS_DA_FAIXA_NO_CAMPO as readonly string[]).includes(passo.chave))}
         atual={passoAtualDaTrilha}
         ncsAbertas={ncsAbertas}
         onIrPasso={irParaPasso}
-        onFinalizar={() => void finalizarInspecao()}
+        onFinalizar={() => (campo ? setConfirmaFinalizarCampo(true) : void finalizarInspecao())}
         podeFinalizar={visitaAtual.status !== "Concluída" && permitido("visitas.concluir", visitaAtual.empresaId)}
         reservarAltura={reservarAltura}
+        campo={campo}
+        comRotulo={campo && finalizarComRotulo(checklistAtual.length, pendentesVisita)}
       />
     ) : null;
+  // Barra de baixo do Campo: o padrão filtrado pelo que o perfil vê (também decide o que "Mais" ainda precisa mostrar).
+  const abasNaBarraDoCampo: AbaDaBarra[] =
+    abasDoCampo === ABAS_PADRAO
+      ? ABAS_PADRAO.filter((aba) => {
+          const chave = aba === "correcoes" ? "ncs" : aba;
+          return !["visitas", "ncs", "pops", "relatorios"].includes(chave) || itensVisiveis(contextoMenu).some((item) => item.key === chave);
+        })
+      : abasDoCampo;
   // O número vermelho do trilho em Correções conta SÓ correções vencidas, o mesmo conjunto da lista de Correções da empresa (`correcoesVencidasDaEmpresa`); sem a permissão de acompanhar, não há número.
   const ncsVencidasDaEmpresa = atual && permitido("ncs.acompanhar", atual.id) ? correcoesVencidasDaEmpresa(db.ncs, atual.id, hojeISO()).length : 0;
   // Central da Empresa: "← Central da Empresa › Documentos ▾". O menu troca de seção e substitui os três botões que ficavam numa linha própria.
@@ -7305,6 +7320,16 @@ export default function Home() {
             </div>
           </div>
         </div>
+      )}
+
+      {modo === "campo" && confirmaFinalizarCampo && (
+        <ConfirmarFinalizar
+          onCancelar={() => setConfirmaFinalizarCampo(false)}
+          onFinalizar={() => {
+            setConfirmaFinalizarCampo(false);
+            void finalizarInspecao();
+          }}
+        />
       )}
 
       <CommandPalette
@@ -7621,18 +7646,33 @@ export default function Home() {
               empresaCor={atual ? corDaEmpresa(atual) : undefined}
               empresaIniciais={atual ? iniciaisDaEmpresa(atual.nomeFantasia || "") : ""}
               titulo={TITULO_DA_TELA_NO_CAMPO[view] || ""}
-              sincronizacao={{ ...seloAtual, onClick: tocarNoSelo }}
+              sincronizacao={{ ...seloAtual, rotulo: view === "campomais" && seloAtual.estado === "ok" ? "Tudo enviado" : seloAtual.rotulo, onClick: tocarNoSelo }}
               menuModo={itensMenuModo}
               onTrocarEmpresa={() => setTrocarEmpresaAberto(true)}
               onVoltar={mostrarVoltar(localDaTela) ? () => void voltarUmaTela() : undefined}
+              busca={
+                view === "checklist" && visitaAtual ? (
+                  <BuscaNaBarra
+                    variante="campo"
+                    destinos={destinosCaixa}
+                    atalhos={atalhosDaBarra}
+                    usuarioId={usuarioDaSessao?.id}
+                    onAtiva={setBuscaNaBarraAtiva}
+                    onEscolher={escolherDestinoDaCaixa}
+                    micDisponivel={deveExibirRecursosDeIa(usuarioDaSessao)}
+                    pedidoDeFoco={pedidoDeFocoNaBusca}
+                    voz={contextoDaVoz}
+                  />
+                ) : null
+              }
             />
-            {faixaDaVisita(true)}
+            {faixaDaVisita(true, true)}
             <CampoBarra
               tela={view === "inicio" ? "inicio" : abasDoCampo.includes("visitas") && modoVisitaNoMenu ? "visitas" : view === "visitas" ? "visitas" : view === "pops" || view === "popsvisita" ? "pops" : ["relatoriosemitidos", "resumo", "dossie", "evolucao"].includes(view) ? "relatorios" : view === "checklist" ? "checklist" : view === "correcoes" ? "correcoes" : view === "evidencias" ? "evidencias" : view === "campomais" || view === "empresas" ? "mais" : null}
               correcoesAbertas={ncsAbertas}
               podeRegistrar={permitido("evidencias.adicionar") || permitido("visitas.executar")}
               onIr={irParaTelaCampo}
-              abas={abasDoCampo === ABAS_PADRAO ? ABAS_PADRAO.filter((aba) => { const chave = aba === "correcoes" ? "ncs" : aba; return !["visitas", "ncs", "pops", "relatorios"].includes(chave) || itensVisiveis(contextoMenu).some((item) => item.key === chave); }) : abasDoCampo}
+              abas={abasNaBarraDoCampo}
               onRegistrar={() => setRegistrarAberto(true)}
             />
           </>
@@ -7655,6 +7695,7 @@ export default function Home() {
           contextoDaVoz={contextoDaVoz}
           micDisponivel={deveExibirRecursosDeIa(usuarioDaSessao)}
           modo={modo}
+          semBusca={modo === "campo"}
           sincronizacao={{ ...seloAtual, onClick: tocarNoSelo }}
           automatico={telaModo.preferencia.automatico}
           onEscolherModo={telaModo.escolherModo}
@@ -7742,48 +7783,46 @@ export default function Home() {
               const visiveis = new Set(itensVisiveis(contextoMenu).map((item) => item.key));
               const pendentesTotal = fila.resumo.pendentes + pendentesDoEstado;
               return [
+                // "Desta visita": 3 atalhos lado a lado, sem subtítulo; sem visita atual a seção não aparece. Central e Ambientes saíram daqui.
                 {
-                  titulo: "Da visita atual",
+                  titulo: "Desta visita",
+                  layout: "atalhos" as const,
                   itens: visitaAtual
                     ? [
-                        ...(visiveis.has("central") ? [{ id: "central", rotulo: "Central da visita", detalhe: "Resumo e etapas desta visita", icone: "central" as const, tom: "azul", onClick: () => irParaMenu("central") }] : []),
-                        ...(visiveis.has("ambientes") ? [{ id: "ambientes", rotulo: "Ambientes", detalhe: "Escolher por onde a visita passa", icone: "ambientes" as const, tom: "turquesa", onClick: () => irParaMenu("ambientes") }] : []),
-                        ...(visiveis.has("evidencias") ? [{ id: "evidencias", rotulo: "Evidências", detalhe: "Fotos e áudios desta visita", icone: "evidencias" as const, tom: "ceu", onClick: () => irParaMenu("evidencias") }] : []),
-                        ...(telaVisivel("popsVisita") ? [{ id: "popsvisita", rotulo: "POPs desta visita", detalhe: "Procedimentos ligados aos itens", icone: "pops" as const, tom: "violeta", onClick: () => { setMenuMaisAberto(false); setView("popsvisita"); } }] : []),
-                        ...(visiveis.has("relatorio") ? [{ id: "relatorio", rotulo: "Relatório da visita", detalhe: "Conferir e gerar o relatório", icone: "relatorio" as const, tom: "ardosia", onClick: () => irParaMenu("relatorio") }] : []),
+                        ...(visiveis.has("evidencias") ? [{ id: "evidencias", rotulo: "Evidências", icone: "evidencias" as const, onClick: () => irParaMenu("evidencias") }] : []),
+                        ...(telaVisivel("popsVisita") ? [{ id: "popsvisita", rotulo: "POPs", icone: "pops" as const, onClick: () => { setMenuMaisAberto(false); setView("popsvisita"); } }] : []),
+                        ...(visiveis.has("relatorio") ? [{ id: "relatorio", rotulo: "Relatório", icone: "relatorio" as const, onClick: () => irParaMenu("relatorio") }] : []),
                       ]
                     : [],
                 },
+                // "POPs e documentos" e "Relatórios" usam o mesmo caminho da barra de baixo (irParaTelaCampo → irParaMenu): só ficam aqui para o perfil cuja barra não os tem.
                 {
-                  titulo: "Cadastro e documentos",
+                  titulo: "Cadastros e documentos",
                   itens: [
-                    ...(visiveis.has("cadastros") ? [{ id: "cadastros", rotulo: "Cadastros", detalhe: "Ambientes, equipamentos e fluxos", icone: "cadastros" as const, tom: "turquesa", onClick: () => irParaMenu("cadastros") }] : []),
-                    ...(visiveis.has("empresas") ? [{ id: "empresas", rotulo: "Empresas", detalhe: "Cadastro, cor e seleção", icone: "empresas" as const, tom: "turquesa", onClick: () => irParaMenu("empresas"), ...(permitido("empresas.editar") ? { atalho: { rotulo: "+ Nova empresa", onClick: abrirNovaEmpresaPeloMenu } } : {}) }] : []),
-                    ...(visiveis.has("pops") ? [{ id: "pops", rotulo: "POPs e documentos", detalhe: "POPs, comprovantes e pessoas", icone: "pops" as const, tom: "ceu", onClick: () => irParaMenu("pops") }] : []),
-                    ...(visiveis.has("relatorios") ? [{ id: "relatorios", rotulo: "Relatórios", detalhe: "Emitidos, resumo, dossiê e evolução", icone: "relatorios" as const, tom: "ardosia", onClick: () => irParaMenu("relatorios") }] : []),
+                    ...(visiveis.has("cadastros") ? [{ id: "cadastros", rotulo: "Cadastros", icone: "cadastros" as const, onClick: () => irParaMenu("cadastros") }] : []),
+                    ...(visiveis.has("empresas") ? [{ id: "empresas", rotulo: "Empresas", icone: "empresas" as const, onClick: () => irParaMenu("empresas"), ...(permitido("empresas.editar") ? { atalho: { rotulo: "+ Nova", nome: "Nova empresa", onClick: abrirNovaEmpresaPeloMenu } } : {}) }] : []),
+                    ...(visiveis.has("pops") && destinoFicaSoNoMais("pops", abasNaBarraDoCampo) ? [{ id: "pops", rotulo: "POPs e documentos", icone: "pops" as const, onClick: () => irParaMenu("pops") }] : []),
+                    ...(visiveis.has("relatorios") && destinoFicaSoNoMais("relatorios", abasNaBarraDoCampo) ? [{ id: "relatorios", rotulo: "Relatórios", icone: "relatorios" as const, onClick: () => irParaMenu("relatorios") }] : []),
                   ],
                 },
                 {
                   titulo: "Conta e app",
                   itens: [
-                    ...(usuarioDaSessao ? [{ id: "perfil", rotulo: "Meu perfil", detalhe: "Seus dados e preferências neste aparelho", icone: "acessos" as const, tom: "indigo", onClick: () => { setMenuMaisAberto(false); setPerfilAberto(true); } }] : []),
-                    { id: "ajuda", rotulo: "Ajuda e guias", detalhe: "Primeiros passos e guia rápido", icone: "ajuda" as const, tom: "laranja", onClick: () => irParaMenu("ajuda") },
-                    ...(visiveis.has("acessos") ? [{ id: "acessos", rotulo: "Administração", detalhe: "Acessos e permissões", icone: "escudo" as const, tom: "ardosia", onClick: () => irParaMenu("acessos") }] : []),
-                    { id: "modo", rotulo: "Modo de tela", detalhe: "Celular, tablet ou computador", icone: "modo" as const, tom: "roxo", onClick: () => setView("modotela") },
+                    ...(usuarioDaSessao ? [{ id: "perfil", rotulo: "Meu perfil", icone: "acessos" as const, onClick: () => { setMenuMaisAberto(false); setPerfilAberto(true); } }] : []),
+                    { id: "ajuda", rotulo: "Ajuda e guias", icone: "ajuda" as const, onClick: () => irParaMenu("ajuda") },
+                    ...(visiveis.has("acessos") ? [{ id: "acessos", rotulo: "Administração", icone: "escudo" as const, onClick: () => irParaMenu("acessos") }] : []),
+                    { id: "modo", rotulo: "Modo de tela", icone: "modo" as const, valor: ROTULO_DO_MODO[modo], onClick: () => setView("modotela") },
                   ],
                 },
                 {
-                  titulo: "Ações",
                   itens: [
-                    { id: "trocar-empresa", rotulo: "Trocar empresa", detalhe: "Escolher a empresa ativa", icone: "empresas" as const, tom: "turquesa", onClick: () => setTrocarEmpresaAberto(true) },
-                    { id: "sincronizar", rotulo: "Sincronizar", detalhe: pendentesTotal ? "Enviar e atualizar agora" : "Tudo enviado", icone: "sincronizar" as const, tom: "verde", ...(pendentesTotal ? { contador: `${pendentesTotal} ${pendentesTotal === 1 ? "pendente" : "pendentes"}` } : {}), onClick: () => { void atualizarNuvemManualmente(); setView("fila"); } },
-                    ...(fila.resumo.pendentes > 0 ? [{ id: "enviar-agora", rotulo: "Enviar agora", detalhe: "Mandar as fotos e áudios guardados", icone: "sincronizar" as const, tom: "verde", onClick: () => { void enviarTudoAgora(); } }] : []),
-                    { id: "sair", rotulo: "Sair", detalhe: "Encerrar a sessão neste aparelho", icone: "sair" as const, tom: "vermelho", onClick: () => void sairDoSistema() },
+                    { id: "sincronizar", rotulo: "Sincronizar", icone: "sincronizar" as const, valor: pendentesTotal ? `${pendentesTotal} ${pendentesTotal === 1 ? "pendente" : "pendentes"}` : "✓ Tudo enviado", onClick: () => { void atualizarNuvemManualmente(); setView("fila"); } },
+                    ...(fila.resumo.pendentes > 0 ? [{ id: "enviar-agora", rotulo: "Enviar agora", icone: "sincronizar" as const, onClick: () => { void enviarTudoAgora(); } }] : []),
+                    { id: "sair", rotulo: "Sair", icone: "sair" as const, perigo: true, onClick: () => void sairDoSistema() },
                   ],
                 },
               ];
             })()}
-            onVersaoCompleta={() => telaModo.escolherModo("completo")}
           />
         ) : modo === "campo" && view === "inicio" && !ehFiscal ? (
           (() => {
@@ -7856,7 +7895,7 @@ export default function Home() {
             const foco = itemEmFoco();
             const posicao = foco ? lista.findIndex((item) => item.id === foco.id) : -1;
             return (
-              <section className="campo-tela campo-tela--fixa" aria-label="Checklist">
+              <CampoTelaFixa className="campo-tela campo-tela--fixa" rotulo="Checklist">
                 {foco ? (
                   <ChecklistFocoItem
                     item={foco}
@@ -7888,11 +7927,12 @@ export default function Home() {
                       onAnterior={() => moverItemFoco(-1)}
                     onProximo={() => moverItemFoco(1)}
                     onAvancar={(status) => avancarAposResponder(foco, status)}
+                    campo
                   />
                 ) : (
                   <p className="campo-sub" role="status">{(visitaAtual.ambientes || []).length === 0 ? "Peça ao responsável para definir os ambientes." : "Esta visita não tem itens de checklist."}</p>
                 )}
-              </section>
+              </CampoTelaFixa>
             );
           })()
         ) : modo === "campo" && view === "correcoes" && visitaAtual ? (

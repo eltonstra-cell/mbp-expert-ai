@@ -226,11 +226,16 @@ test("Nova empresa: um aviso único da consulta, sem chips por campo, sem lista 
 });
 
 // ===== Navegação e Início =====
-test("Mais do celular: seções, uma linha de apoio por item, sem etiqueta 'novo'; atalho '+ Nova empresa' no Mais e no seletor", () => {
+test("Mais do celular (menu enxuto): 'Desta visita' com 3 atalhos, Cadastros e Empresas com '+ Nova' na linha, Conta e app, Sincronizar e Sair; sem subtítulos, sem 'Usar versão completa agora' e sem 'Trocar empresa'", () => {
   const campo = ler("../components/campo/CampoTelas.tsx");
-  assert.ok(campo.includes("SecaoMais") && campo.includes("campo-mais-sub") && campo.includes("Usar versão completa agora"));
+  assert.ok(campo.includes("SecaoMais") && campo.includes("campo-mais-nova") && campo.includes("campo-mais-atalhos"));
+  assert.equal(campo.includes("Usar versão completa agora") || campo.includes("onVersaoCompleta") || campo.includes("campo-mais-sub"), false, "sem botão de versão completa nem subtítulos");
   const pagina = ler("../app/page.tsx");
-  for (const texto of ["Da visita atual", "Cadastro e documentos", "Conta e app", 'titulo: "Ações"', "Meu perfil", "Administração", "Modo de tela", "Trocar empresa", "Sincronizar", "POPs e documentos", "Relatórios"]) assert.ok(pagina.includes(texto), texto);
+  for (const texto of ["Desta visita", "Cadastros e documentos", "Conta e app", "Meu perfil", "Administração", "Modo de tela", "Sincronizar", "Enviar agora", "Sair", '"+ Nova"', "ROTULO_DO_MODO[modo]", '"✓ Tudo enviado"']) assert.ok(pagina.includes(texto), texto);
+  const bloco = pagina.slice(pagina.indexOf("<CampoMais"), pagina.indexOf("modo === \"campo\" && view === \"inicio\" && !ehFiscal"));
+  assert.ok(bloco.length > 500, "bloco do Mais encontrado");
+  for (const removido of ["Da visita atual", "Central da visita", "Escolher por onde a visita passa", "Trocar empresa", "Usar versão completa", "POPs desta visita", "Relatório da visita"]) assert.equal(bloco.includes(removido), false, removido);
+  assert.equal(pagina.includes("onVersaoCompleta"), false);
   assert.equal(pagina.includes('etiqueta: "novo"'), false);
   assert.ok(pagina.includes("abrirNovaEmpresaPeloMenu") && pagina.includes("onNovaEmpresa={permitido(\"empresas.editar\")"));
   assert.ok(ler("../components/campo/TrocarEmpresaPainel.tsx").includes("+ Nova empresa"));

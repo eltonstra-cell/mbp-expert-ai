@@ -15,12 +15,15 @@ type Props = {
   podeFinalizar: boolean;
   /** No celular a faixa reserva a própria altura para as telas de altura fixa não ganharem rolagem. */
   reservarAltura?: boolean;
+  /** Modo Campo (celular): botão só com o ✓ (nome acessível "Finalizar visita"); com "comRotulo" mostra "✓ Finalizar". Sem isto, o PC fica como era. */
+  campo?: boolean;
+  comRotulo?: boolean;
 };
 
 const ROTULO: Record<PassoVisita, string> = { central: "Visita", checklist: "Checklist", evidencias: "Evidências", correcoes: "Correções", pops: "POPs", relatorio: "Relatório" };
 
 // Faixa que aparece só dentro da visita: troca de assunto (Checklist, Evidências, Correções, POPs, Relatório) e "Finalizar visita".
-export default function FaixaDaVisita({ passos, atual, ncsAbertas, onIrPasso, onFinalizar, podeFinalizar, reservarAltura = false }: Props) {
+export default function FaixaDaVisita({ passos, atual, ncsAbertas, onIrPasso, onFinalizar, podeFinalizar, reservarAltura = false, campo = false, comRotulo = false }: Props) {
   const raiz = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     if (!reservarAltura) return;
@@ -37,7 +40,7 @@ export default function FaixaDaVisita({ passos, atual, ncsAbertas, onIrPasso, on
 
   const itens = passos.filter((passo) => passo.chave !== "central");
   return (
-    <div ref={raiz} className="fv" role="navigation" aria-label="Assuntos da visita">
+    <div ref={raiz} className={`fv${campo ? " fv--campo" : ""}`} role="navigation" aria-label="Assuntos da visita">
       <div className="fv-seg" role="group" aria-label="Assunto da visita">
         {itens.map((passo) => {
           const ehAtual = atual === passo.chave;
@@ -63,11 +66,11 @@ export default function FaixaDaVisita({ passos, atual, ncsAbertas, onIrPasso, on
         })}
       </div>
       {podeFinalizar && (
-        <button type="button" className="fv-finalizar" aria-label="Finalizar visita" onClick={onFinalizar}>
+        <button type="button" className="fv-finalizar" aria-label="Finalizar visita" title={campo ? "Finalizar visita" : undefined} onClick={onFinalizar}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M5 12.5l4.5 4.5L19 7.5" />
           </svg>
-          <span>Finalizar visita</span>
+          {(!campo || comRotulo) && <span>{campo ? "Finalizar" : "Finalizar visita"}</span>}
         </button>
       )}
     </div>

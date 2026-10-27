@@ -39,8 +39,8 @@ type Props = {
   onEscolher: (destino: Destino) => void;
   /** Mostra o microfone (só quem pode usar IA). */
   micDisponivel: boolean;
-  /** "inicio": campo cinza claro com lupa à esquerda e microfone azul à direita; sem "Ctrl K" e sem "Ir" (Enter envia). */
-  variante?: "inicio";
+  /** "inicio": campo cinza claro com lupa à esquerda e microfone azul à direita; sem "Ctrl K" e sem "Ir" (Enter envia). "campo": celular (modo Campo), a mesma barra do PC (⚡, campo, microfone e "Ir →") sempre inline, sem "Ctrl K". */
+  variante?: "inicio" | "campo";
   /** Muda a cada Ctrl K: leva o foco para a barra. */
   pedidoDeFoco: number;
   voz?: ContextoDaVoz;
@@ -86,7 +86,7 @@ export default function BuscaNaBarra({ destinos, atalhos, usuarioId, onAtiva, on
   }
 
   useEffect(() => {
-    const medir = () => setCompacta(variante !== "inicio" && modoDaBusca(window.innerWidth) === "compacta");
+    const medir = () => setCompacta(variante !== "inicio" && variante !== "campo" && modoDaBusca(window.innerWidth) === "compacta");
     medir();
     window.addEventListener("resize", medir);
     return () => window.removeEventListener("resize", medir);
@@ -291,14 +291,14 @@ export default function BuscaNaBarra({ destinos, atalhos, usuarioId, onAtiva, on
         <NavIcon name="raio" size={20} />
       </span>
       {campo}
-      <kbd className="pc-kbd">Ctrl K</kbd>
+      {variante !== "campo" && <kbd className="pc-kbd">Ctrl K</kbd>}
       {microfone}
       {ir}
     </div>
   );
 
   return (
-    <div className={`pc-busca${compacta ? " pc-busca--compacta" : ""}${variante === "inicio" ? " pc-busca--inicio" : ""}`} ref={raizRef} onKeyDown={aoTeclar}>
+    <div className={`pc-busca${compacta ? " pc-busca--compacta" : ""}${variante === "inicio" ? " pc-busca--inicio" : ""}${variante === "campo" ? " pc-busca--campo" : ""}`} ref={raizRef} onKeyDown={aoTeclar}>
       {compacta ? (
         <button type="button" className={`pc-busca-gatilho${aberto ? " is-aberta" : ""}`} aria-label="Abrir a busca (Ctrl K)" aria-expanded={aberto} onClick={() => (aberto ? fechar() : abrir())}>
           <NavIcon name="lupa" size={18} />
@@ -433,13 +433,15 @@ export default function BuscaNaBarra({ destinos, atalhos, usuarioId, onAtiva, on
                 <span className="pc-cmd-option-title">{resultado.destino.titulo}</span>
                 {resultado.destino.detalhe && <span className="pc-cmd-option-detail">{resultado.destino.detalhe}</span>}
               </span>
-              {posicao === indice && digitando && <span className="pc-cmd-enter">Enter</span>}
+              {variante !== "campo" && posicao === indice && digitando && <span className="pc-cmd-enter">Enter</span>}
             </button>
           ))}
           {digitando && lista.length === 0 && <div className="pc-cmd-empty">{`Nada encontrado para “${consulta.trim()}”. Tente outra palavra.`}</div>}
-          <div className="pc-cmd-foot" aria-hidden="true">
-            <span>Digite para buscar · ↑↓ navegam · Enter abre · Esc fecha</span>
-          </div>
+          {variante !== "campo" && (
+            <div className="pc-cmd-foot" aria-hidden="true">
+              <span>Digite para buscar · ↑↓ navegam · Enter abre · Esc fecha</span>
+            </div>
+          )}
         </div>
       )}
     </div>

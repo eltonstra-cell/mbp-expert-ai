@@ -74,6 +74,8 @@ type Props = {
   limitesDosEquipamentos?: string[];
   /** Grava a temperatura medida; o resultado indicado pelo limite vira a resposta do item (corrigível). */
   onTemperatura?: (medida: { valor: number; limiteId: string } | null, resultado: ResultadoDaTemperatura | null) => void;
+  /** Modo Campo (celular): respostas sem ícone, observação sem rótulo (placeholder "Observação"), "Limpar resposta" abaixo do campo e o texto inteiro da pergunta no "i". */
+  campo?: boolean;
 };
 
 const NOME_GRAVIDADE: Record<string, string> = { Crítica: "Crítica", Importante: "Importante", Rotina: "Leve" };
@@ -129,6 +131,7 @@ export default function ChecklistFocoItem({
   equipamentosDoAmbiente = [],
   limitesDosEquipamentos = [],
   onTemperatura,
+  campo = false,
 }: Props) {
   const [texto, setTexto] = useState(item.observacao || "");
   // Celular e tablet: a fonte da pergunta fica atrás de um "i" discreto (no PC ela já aparece no painel de apoio).
@@ -260,6 +263,13 @@ export default function ChecklistFocoItem({
     setAmpliada(false);
   }
 
+  const botaoLimpar =
+    podeEditar && onLimpar && item.status !== "Pendente" ? (
+      <button type="button" className="chk-limpar" onClick={onLimpar}>
+        Limpar resposta
+      </button>
+    ) : null;
+
   const salvarTexto = () => {
     if (podeEditar && texto !== (item.observacao || "")) onObservacao(texto);
   };
@@ -333,13 +343,19 @@ export default function ChecklistFocoItem({
         );
       })()}
       <div className={`chk-foco-card${destaque ? " is-destaque" : ""}`}>
-        <h2 className="chk-foco-title">{item.titulo}</h2>
+        <h2 className="chk-foco-title" title={campo ? item.titulo : undefined}>{item.titulo}</h2>
         {mostrarApoio && (
-          <button type="button" className="chk-fonte-i" aria-expanded={fonteAberta} aria-label="De onde vem esta pergunta" title="De onde vem esta pergunta" onClick={() => setFonteAberta((valor) => !valor)}>
+          <button type="button" className="chk-fonte-i" aria-expanded={fonteAberta} aria-label={campo ? "Pergunta completa e fonte" : "De onde vem esta pergunta"} title={campo ? "Pergunta completa e fonte" : "De onde vem esta pergunta"} onClick={() => setFonteAberta((valor) => !valor)}>
             i
           </button>
         )}
-        {mostrarApoio && fonteAberta && <p className="chk-fonte-linha" role="note">Fonte: {fonteParaExibir(item.referencia)}</p>}
+        {mostrarApoio && fonteAberta && !campo && <p className="chk-fonte-linha" role="note">Fonte: {fonteParaExibir(item.referencia)}</p>}
+        {mostrarApoio && fonteAberta && campo && (
+          <div className="chk-fonte-linha chk-fonte-linha--campo" role="note">
+            <p className="chk-fonte-pergunta">{item.titulo}</p>
+            <p className="chk-fonte-texto">Fonte: {fonteParaExibir(item.referencia)}</p>
+          </div>
+        )}
       </div>
       </div>
 
@@ -371,7 +387,7 @@ export default function ChecklistFocoItem({
                 if (resposta === "Não Conforme" && podeFotografar && fotosNoItem < maxFotos && cameraAutomaticaLigada()) pedirAvisoDeFoto(() => void camera.abrir());
               }}
             >
-              {(estado === "marcado" || simbolo) && <span aria-hidden="true">{estado === "marcado" ? "✓" : simbolo}</span>}
+              {!campo && (estado === "marcado" || simbolo) && <span aria-hidden="true">{estado === "marcado" ? "✓" : simbolo}</span>}
               <span>{rotulo}</span>
             </button>
           );
@@ -404,14 +420,12 @@ export default function ChecklistFocoItem({
       )}
 
       <div className="chk-foco-obs" ref={caixaRef}>
-        <div className="chk-obs-titulo">
-          <span className="ui-eyebrow">{naoConforme ? "Registrar a não conformidade" : "Observação (opcional)"}</span>
-          {podeEditar && onLimpar && item.status !== "Pendente" && (
-            <button type="button" className="chk-limpar" onClick={onLimpar}>
-              Limpar resposta
-            </button>
-          )}
-        </div>
+        {!campo && (
+          <div className="chk-obs-titulo">
+            <span className="ui-eyebrow">{naoConforme ? "Registrar a não conformidade" : "Observação (opcional)"}</span>
+            {botaoLimpar}
+          </div>
+        )}
         {podeEditar ? (
           <FieldVoiceTools
             variante="linha"
@@ -483,13 +497,13 @@ export default function ChecklistFocoItem({
             </div>,
             document.body
           )}
-        <div className="chk-obs-campo">
+        <div className={`chk-obs-campo${campo && botaoLimpar ? " chk-obs-campo--limpar" : ""}`}>
           <textarea
             ref={areaRef}
             className="ui-input chk-obs-area"
             value={texto}
             disabled={!podeEditar}
-            placeholder={estadoVoz === "gravando" ? "Ouvindo… fale a observação" : ehItemDeTemperatura(item.titulo) ? "Ex.: termômetro a 9 °C" : ""}
+            placeholder={estadoVoz === "gravando" ? "Ouvindo… fale a observação" : ehItemDeTemperatura(item.titulo) ? "Ex.: termômetro a 9 °C" : campo ? "Observação" : ""}
             rows={2}
             aria-label="Observação do item"
             onChange={(evento) => {
@@ -498,6 +512,7 @@ export default function ChecklistFocoItem({
             }}
             onBlur={salvarTexto}
           />
+          {campo && botaoLimpar && <span className="chk-obs-limpar">{botaoLimpar}</span>}
           {estadoVoz !== "ocioso" && (
             <span className="chk-obs-ouvindo" role="status">
               {estadoVoz === "gravando" ? "Ouvindo… o texto entra quando você parar" : "Transcrevendo…"}
@@ -512,7 +527,7 @@ export default function ChecklistFocoItem({
         </div>
       </div>
 
-      {mostrarApoio && (item.orientacao || textoDeBaseLegal(item)) && (
+      {!campo && mostrarApoio && (item.orientacao || textoDeBaseLegal(item)) && (
         <div className="chk-foco-apoio" key={item.id}>
           {item.orientacao && <LinhaDeApoio titulo="O que verificar" texto={item.orientacao} />}
           {textoDeBaseLegal(item) && <LinhaDeApoio titulo="Base legal" texto={textoDeBaseLegal(item)} />}
@@ -528,6 +543,13 @@ export default function ChecklistFocoItem({
       )}
 
       </div>
+
+      {campo && mostrarApoio && (item.orientacao || textoDeBaseLegal(item)) && (
+        <div className="chk-foco-apoio" key={item.id}>
+          {item.orientacao && <LinhaDeApoio titulo="O que verificar" texto={item.orientacao} />}
+          {textoDeBaseLegal(item) && <LinhaDeApoio titulo="Base legal" texto={textoDeBaseLegal(item)} />}
+        </div>
+      )}
 
       <div className="chk-foco-rodape">
         <button

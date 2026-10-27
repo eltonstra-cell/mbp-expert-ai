@@ -54,6 +54,8 @@ type Props = {
   ocultarChipDeModo?: boolean;
   /** "inicio": barra do Início (PC) no desenho aprovado: busca larga sem Ctrl K nem Ir, sincronização sem pílula, seletor de empresa sem borda. */
   variante?: "inicio";
+  /** Modo Campo (celular): a busca fica no cabeçalho do Campo (CampoCabecalho), então esta barra, escondida por CSS, não a repete. */
+  semBusca?: boolean;
 };
 
 export default function AppTopbar({
@@ -85,6 +87,7 @@ export default function AppTopbar({
   secao,
   ocultarChipDeModo = false,
   variante,
+  semBusca = false,
 }: Props) {
   const itensModo: ItemMenu[] =
     modo && onEscolherModo
@@ -131,7 +134,7 @@ export default function AppTopbar({
           </span>
         )}
       </nav>
-      <BuscaNaBarra variante={variante} destinos={destinos} atalhos={atalhos} usuarioId={usuarioId} onAtiva={onBuscaAtiva} onEscolher={onEscolherDestino} micDisponivel={micDisponivel} pedidoDeFoco={pedidoDeFocoNaBusca} voz={contextoDaVoz} />
+      {!semBusca && <BuscaNaBarra variante={variante} destinos={destinos} atalhos={atalhos} usuarioId={usuarioId} onAtiva={onBuscaAtiva} onEscolher={onEscolherDestino} micDisponivel={micDisponivel} pedidoDeFoco={pedidoDeFocoNaBusca} voz={contextoDaVoz} />}
       {subtituloDoCaminho && <span className="pc-crumb-apoio">{subtituloDoCaminho}</span>}
 
       {mostrarTodasVisitas && (

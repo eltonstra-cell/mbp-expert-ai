@@ -34,3 +34,16 @@ export function abasDoCampoDoPerfil(perfil: string | undefined, telaVisivel: (te
   });
   return visiveis.length ? visiveis : ["inicio"];
 }
+
+/** Faixa da visita no Campo (celular): só estes assuntos, para o ✓ de finalizar caber ao lado sem cortar aba. POPs e Relatório da visita ficam em Mais › Desta visita. */
+export const PASSOS_DA_FAIXA_NO_CAMPO = ["checklist", "evidencias", "correcoes"] as const;
+
+/** Em Mais › Cadastros e documentos, "POPs e documentos" e "Relatórios" só aparecem quando a barra de baixo NÃO tem esse destino (Executor e Fiscal): o caminho é o mesmo da barra (`irParaTelaCampo`), então repetir seria duplicar. */
+export function destinoFicaSoNoMais(destino: "pops" | "relatorios", abasNaBarra: AbaDaBarra[]): boolean {
+  return !abasNaBarra.includes(destino);
+}
+
+/** O ✓ de finalizar da faixa vira "✓ Finalizar" só quando o checklist tem itens e todos já foram respondidos. */
+export function finalizarComRotulo(total: number, pendentes: number): boolean {
+  return total > 0 && pendentes === 0;
+}
