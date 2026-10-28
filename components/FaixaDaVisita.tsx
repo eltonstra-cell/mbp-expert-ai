@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import type { PassoTrilha, PassoVisita } from "@/lib/visitTrail";
 
 type Props = {
-  /** Assuntos da visita que a pessoa pode abrir (a Central da visita não entra: o topo já diz "Visita N"). */
+  /** Assuntos da visita que a pessoa pode abrir; a Central da visita vem primeiro. */
   passos: PassoTrilha[];
   atual: PassoVisita | null;
   /** Correções abertas DA VISITA, vencidas ou não (número vermelho do segmento Correções). A barra lateral conta outra coisa: só as vencidas da empresa toda. */
@@ -20,9 +20,9 @@ type Props = {
   comRotulo?: boolean;
 };
 
-const ROTULO: Record<PassoVisita, string> = { central: "Visita", checklist: "Checklist", evidencias: "Evidências", correcoes: "Correções", pops: "POPs", relatorio: "Relatório" };
+const ROTULO: Record<PassoVisita, string> = { central: "Central", checklist: "Checklist", evidencias: "Evidências", correcoes: "Correções", pops: "POPs", relatorio: "Relatório" };
 
-// Faixa que aparece só dentro da visita: troca de assunto (Checklist, Evidências, Correções, POPs, Relatório) e "Finalizar visita".
+// Faixa que aparece só dentro da visita: troca de assunto (Central, Checklist, Evidências, Correções, POPs, Relatório) e "Finalizar visita".
 export default function FaixaDaVisita({ passos, atual, ncsAbertas, onIrPasso, onFinalizar, podeFinalizar, reservarAltura = false, campo = false, comRotulo = false }: Props) {
   const raiz = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
@@ -38,11 +38,10 @@ export default function FaixaDaVisita({ passos, atual, ncsAbertas, onIrPasso, on
     };
   }, [reservarAltura]);
 
-  const itens = passos.filter((passo) => passo.chave !== "central");
   return (
     <div ref={raiz} className={`fv${campo ? " fv--campo" : ""}`} role="navigation" aria-label="Assuntos da visita">
       <div className="fv-seg" role="group" aria-label="Assunto da visita">
-        {itens.map((passo) => {
+        {passos.map((passo) => {
           const ehAtual = atual === passo.chave;
           const badge = passo.chave === "correcoes" ? ncsAbertas : 0;
           return (

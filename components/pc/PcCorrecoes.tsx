@@ -108,7 +108,6 @@ type Props = {
   onLembrete?: () => void;
   onAbrirPop: () => void;
   onLote: (ids: string[], valores: { responsavel: string; prazo: string }) => void;
-  onVoltar: () => void;
   /** Pessoas da empresa, para sugerir o responsável. */
   pessoas: string[];
   onVerNoChecklist: (checklistItemId: string, ambiente: string) => void;

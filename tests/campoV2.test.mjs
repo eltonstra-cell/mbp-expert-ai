@@ -27,7 +27,7 @@ test("Finalizar no Campo: o rótulo 'Finalizar' só aparece com o checklist inte
 });
 
 test("Faixa da visita no Campo: só Checklist, Evidências e Correções (POPs e Relatório ficam em Mais › Desta visita)", () => {
-  assert.deepEqual([...PASSOS_DA_FAIXA_NO_CAMPO], ["checklist", "evidencias", "correcoes"]);
+  assert.deepEqual([...PASSOS_DA_FAIXA_NO_CAMPO], ["central", "checklist", "evidencias", "correcoes"]);
 });
 
 test("Finalizar visita no Campo: o ✓ abre a confirmação e finalizarInspecao só roda ao confirmar; PC continua chamando direto", () => {
@@ -60,7 +60,7 @@ test("Checklist do Campo: busca do PC no cabeçalho, respostas só com texto at�
   assert.ok(/onAvancar=\{\(\) => avancarAposResponder\(foco\)\}\s*campo\s*\/>/.test(pagina));
   const item = ler("../components/ChecklistFocoItem.tsx").replace(/\r\n/g, "\n");
   assert.ok(item.includes("{estado === \"marcado\" && ("), "ícone ✓ só na resposta escolhida (Campo e PC)");
-  assert.ok(/\{!campo && \(\s*<div className="chk-obs-titulo">/.test(item), "sem o rótulo 'Observação (opcional)' no Campo");
+  assert.ok(item.includes('{!campo && <span className="chk-obs-rotulo">'), "sem o rótulo 'Observação (opcional)' no Campo");
   assert.ok(item.includes('campo ? "Observação" : ""'));
   assert.ok(item.includes("Observação (opcional)"), "o PC mantém o rótulo");
   const css = ler("../app/globals.css");
@@ -89,9 +89,9 @@ test("Confirmação de finalizar: ignora o segundo toque, Esc não chega a outro
   assert.ok(busca.includes('variante !== "campo" && posicao === indice && digitando') && busca.includes('{variante !== "campo" && (\n            <div className="pc-cmd-foot"') || /variante !== "campo" && \(\s*<div className="pc-cmd-foot"/.test(busca));
 });
 
-test("Campo: Limpar resposta em linha própria, textos de apoio de 15 px, foco único e estado desabilitado", () => {
+test("Campo: Limpar resposta na linha das respostas, textos de apoio de 15 px, foco único e estado desabilitado", () => {
   const css = ler("../app/globals.css").replace(/\r\n/g, "\n");
-  assert.ok(css.includes('html[data-modo="campo"] .chk-obs-limpar{position:static;'));
+  assert.ok(css.includes('html[data-modo="campo"] .campo-tela .chk-foco-botoes .chk-limpar{'), "Limpar resposta na linha das respostas, também no Campo");
   assert.ok(!css.includes(".chk-obs-campo--limpar .chk-obs-area{padding-bottom:44px}"));
   assert.ok(css.includes(".chk-foto-link,.chk-obs-ouvindo,.chk-obs-aviso,.chk-foto-aviso,.chk-apoio-corpo,.chk-foco-amb-pos){font-size:15px}"));
   assert.ok(css.includes(".campo-register):focus-visible{outline:3px solid var(--rd-acao);outline-offset:2px}"));

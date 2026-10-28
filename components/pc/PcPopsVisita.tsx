@@ -25,7 +25,6 @@ type Props = {
   onCriarTodos: () => void;
   onContinuar: () => void;
   onTodosPops: () => void;
-  onVoltar: () => void;
 };
 
 const ROTULO: Record<SituacaoPopVisita, string> = {
@@ -45,7 +44,7 @@ function descricaoDasNcs(numeros: number[], titulos: Map<number, string>) {
   return numeros.length > 2 ? `${numeros.slice(0, 2).map(nome).join("; ")}; e mais ${numeros.length - 2}` : numeros.map(nome).join("; ");
 }
 
-export default function PcPopsVisita({ empresa, data, resumo, linhas, podeCriar, semNorma, ncsDaVisita, opcoesDeVinculo, onTrocarVinculo, onCriar, onAbrir, onCriarTodos, onContinuar, onTodosPops, onVoltar }: Props) {
+export default function PcPopsVisita({ empresa, data, resumo, linhas, podeCriar, semNorma, ncsDaVisita, opcoesDeVinculo, onTrocarVinculo, onCriar, onAbrir, onCriarTodos, onContinuar, onTodosPops }: Props) {
   const [confirmando, setConfirmando] = useState(false);
   // Trocar vínculo abre direto a lista das NCs: as da linha escolhida ou, em "Sem POP sugerido", as sem POP.
   const [trocando, setTrocando] = useState<number[] | null>(null);
@@ -143,9 +142,6 @@ export default function PcPopsVisita({ empresa, data, resumo, linhas, podeCriar,
       <div className="ui-footer">
         <span className="ui-row-sub">Os POPs ficam na biblioteca da empresa e podem ser editados lá.</span>
         <div className="ui-footer-actions">
-          <button type="button" className="ui-btn ui-btn--secondary" onClick={onVoltar}>
-            ← Central
-          </button>
           <button type="button" className="ui-btn ui-btn--save" onClick={onContinuar}>
             Continuar para o Relatório →
           </button>

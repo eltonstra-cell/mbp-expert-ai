@@ -33,7 +33,6 @@ type Props = {
   avisoFinalizar?: string;
   avisoEmitir?: string;
   onReabrir: () => void;
-  onVoltar: () => void;
   /** RT e Administrador emitem o relatório assinado (número e data atribuídos pelo servidor). */
   podeEmitir?: boolean;
   emitido?: { numero: string; versao: number };
@@ -61,7 +60,6 @@ export default function PcRelatorio({
   avisoFinalizar = "",
   avisoEmitir = "",
   onReabrir,
-  onVoltar,
   podeEmitir = false,
   emitido,
   estado,
@@ -142,9 +140,6 @@ export default function PcRelatorio({
                 {avisoFinalizar && <span id="aviso-finalizar" className="ui-field-error" role="status">{avisoFinalizar}</span>}
               </span>
             ))}
-          <button type="button" className="ui-btn ui-btn--secondary" onClick={onVoltar}>
-            ← Central
-          </button>
         </div>
       </div>
 

@@ -35,7 +35,6 @@ type Props = {
   cadastroVazio?: boolean;
   /** Leva a Central › Cadastros › Ambientes (só quem edita a empresa). */
   onGerenciarAmbientes?: () => void;
-  onVoltar: () => void;
   onIniciar: () => void;
 };
 
@@ -64,7 +63,6 @@ export default function PcAmbientes({
   onQuestionario,
   cadastroVazio = false,
   onGerenciarAmbientes,
-  onVoltar,
   onIniciar,
 }: Props) {
   const [verTodosSugeridos, setVerTodosSugeridos] = useState(false);
@@ -247,9 +245,6 @@ export default function PcAmbientes({
           {tocado && semAmbientes ? " · escolha ao menos um ambiente" : ""}
         </span>
         <div className="ui-footer-actions">
-          <button type="button" className="ui-btn ui-btn--secondary" onClick={onVoltar}>
-            Voltar à Central
-          </button>
           <button
             type="button"
             className="ui-btn ui-btn--save"

@@ -8465,7 +8465,6 @@ export default function Home() {
             onQuestionario={ehPC && (!usuarioDaSessao || podeEditarQuestionario(usuarioDaSessao)) ? abrirQuestionario : undefined}
             cadastroVazio={!(empresaVisita?.setoresManual || []).length}
             onGerenciarAmbientes={atual && atual.id === visitaAtual.empresaId && permitido("empresas.editar", atual.id) ? () => void abrirSecaoEmpresaPeloMenu("ambientes") : undefined}
-            onVoltar={() => setView("visita")}
             onIniciar={() => {
               if (JSON.stringify(visitaAtual.ambientes || []) !== JSON.stringify(ambientesSelecionados)) {
                 atualizarAmbientesDaVisita(ambientesSelecionados);
@@ -8618,7 +8617,6 @@ export default function Home() {
               onCriarPop={(codigo) => criarPopsSugeridos(codigo)}
               onAbrirPop={abrirPopsPeloAtalho}
               onLote={(ids, valores) => alteracoesEmLote(ncsDaTelaDeCorrecoes(), ids, valores).forEach((alteracao) => atualizarNC(alteracao.id, alteracao.patch))}
-              onVoltar={() => setView("visita")}
               pessoas={nomesDasPessoasDaEmpresa(visitaAtual.empresaId)}
               onVerNoChecklist={(itemId) => verItemNoChecklist(itemId)}
             />
@@ -8645,7 +8643,6 @@ export default function Home() {
               onCriarTodos={() => criarPopsSugeridos()}
               onContinuar={() => setView("relatorio")}
               onTodosPops={abrirPopsPeloAtalho}
-              onVoltar={() => setView("visita")}
             />
         ) : view === "checklist" && visitaAtual && modo === "completo" ? (
           (() => {
@@ -8686,6 +8683,16 @@ export default function Home() {
                   .map((ev) => ({ id: ev.id, url: urlEvidencia(ev), tipo: ev.tipo, nome: ev.descricao?.trim() || ev.nomeArquivo, criadoEm: ev.criadoEm })),
               };
             }
+            // A coluna de apoio vale para a visita inteira (nunca some e volta conforme o item): existe se algum item tem orientação ou base legal, se há POP sugerido, evidência de item ou visita anterior da empresa.
+            // Mesmo conteúdo que o apoio mostra, decidido pela visita (não por item): orientação, base legal, POP sugerido, resultado de visita anterior, evidência de item ou histórico de reincidência.
+            const visitasAnteriores = db.visitas.filter((visita) => visita.empresaId === visitaAtual.empresaId && visita.id !== visitaAtual.id && visita.data <= visitaAtual.data);
+            const categoriasDaVisita = [...new Set(lista.map((item) => item.categoria))];
+            const colunaDeApoio =
+              lista.some((item) => Boolean(item.orientacao) || Boolean(textoDeBaseLegal(item))) ||
+              categoriasDaVisita.some((categoria) => popsDaVisita([{ numero: 1, categoria, popCatalogoId: undefined }], empresaVisita?.pops || [], conjuntoDaVisita).linhas.length > 0) ||
+              (db.evidencias || []).some((ev) => ev.visitaId === visitaAtual.id && lista.some((item) => item.id === ev.checklistItemId)) ||
+              visitasAnteriores.some((anterior) => (anterior.checklist || []).some((igual) => igual.status !== "Pendente" && lista.some((item) => igual.id === item.id || (igual.titulo === item.titulo && igual.ambiente === item.ambiente)))) ||
+              (db.ncs || []).some((nc) => nc.empresaId === visitaAtual.empresaId && nc.visitaId !== visitaAtual.id && !nc.inativaNoChecklist);
             return (
               <PcChecklist
                 titulo="Checklist"
@@ -8710,8 +8717,8 @@ export default function Home() {
                   setItemFocoId(id);
                   setUltimoItemChecklistId(id);
                 }}
-                onVoltar={() => setView("visita")}
                 apoio={apoio}
+                colunaDeApoio={colunaDeApoio}
                 principal={
                   foco ? (
                     <ChecklistFocoItem
@@ -8783,7 +8790,6 @@ export default function Home() {
                   setItemFocoId(id);
                   setUltimoItemChecklistId(id);
                 }}
-                onVoltar={() => setView("visita")}
                 principal={
                   foco ? (
                     <ChecklistFocoItem
@@ -8831,13 +8837,6 @@ export default function Home() {
                   <h1 className="pc-check-title">Checklist</h1>
                   <p className="pc-check-sub">{respondidos} de {totalChecklist} · {percentualChecklist}%</p>
                 </div>
-                <button
-                  onClick={() => setView("visita")}
-                  aria-label="Voltar à Central da visita"
-                  className="pc-check-back"
-                >
-                  ← Central da visita
-                </button>
               </div>
               <div
                 className="pc-segbar pc-segbar--lg"
@@ -9339,7 +9338,7 @@ export default function Home() {
         ) : view === "visita" && visitaAtual ? (
           <PcCentral
             passos={([
-              { chave: "checklist", rotulo: "Checklist", resumo: `${respondidos} de ${totalChecklist} respondidos`, icone: "checklist", tom: "ok" },
+              { chave: "checklist", rotulo: "Checklist", resumo: `${respondidos} de ${totalChecklist} ${totalChecklist === 1 ? "item" : "itens"}`, icone: "checklist", tom: "ok" },
               { chave: "evidencias", rotulo: "Evidências", resumo: `${fotosVisita} ${fotosVisita === 1 ? "foto" : "fotos"} · ${audiosVisita} ${audiosVisita === 1 ? "áudio" : "áudios"}`, icone: "evidencias", tom: "info" },
               { chave: "correcoes", rotulo: "Correções", resumo: qtd(ncsAbertas, "aberta", "abertas"), titulo: `${qtd(ncsAbertas, "correção aberta", "correções abertas")} nesta visita (a barra lateral conta só as vencidas da empresa toda)`, icone: "ncs", tom: "nc" },
               { chave: "pops", rotulo: "POPs da visita", resumo: resumoPopsVisita.pendentes > 0 ? `${resumoPopsVisita.pendentes} a criar` : "Nenhum a criar", titulo: resumoPopsVisita.pendentes > 0 ? `${resumoPopsVisita.pendentes} a criar ou em rascunho` : undefined, icone: "pops", tom: "pend" },
@@ -9427,7 +9426,6 @@ export default function Home() {
                 avisoFinalizar={avisoParaFinalizar(itensRespondidos(checklistAtual))}
                 avisoEmitir={avisoParaEmitir(visitaAtual.status, itensRespondidos(checklistAtual))}
                 onReabrir={reabrirInspecao}
-                onVoltar={() => setView("visita")}
                 podeEmitir={podeEmitirRelatorio(usuarioDaSessao) || (!usuarioDaSessao && true)}
                 emitido={(() => {
                   const ultimo = ultimaVersao(db.relatoriosEmitidos || [], visitaAtual.id);
@@ -9493,12 +9491,6 @@ export default function Home() {
                   </div>
                 </div>
 
-                <button
-                  onClick={() => setView("visita")}
-                  className="print-control rounded-xl bg-[var(--na-bg)] px-3 py-2 text-sm font-bold text-[color:var(--ink)]"
-                >
-                  Voltar à Central
-                </button>
               </div>
 
               <div className="print-control mt-5">
@@ -10295,7 +10287,7 @@ export default function Home() {
               <div className="pc-hero flex flex-col overflow-hidden rounded-2xl bg-[var(--brand)] p-4 text-white shadow-[0_16px_40px_rgba(6,27,79,0.16)] lg:min-h-[320px] lg:rounded-[28px] lg:p-7 lg:shadow-[0_22px_60px_rgba(6,27,79,0.20)]">
                 <div className="hidden lg:block">
                   <div className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-blue-200">Visão geral</div>
-                  <h1 className="mt-2 text-2xl font-extrabold tracking-tight sm:text-3xl">
+                  <h1 className="mt-2 text-2xl font-extrabold sm:text-3xl">
                     Olá, {usuarioDaSessao?.nome.split(" ").filter(Boolean)[0] || "bem-vindo"}
                   </h1>
                   <p className="mt-2 text-sm text-blue-100">Acompanhe sua operação e continue de onde parou.</p>

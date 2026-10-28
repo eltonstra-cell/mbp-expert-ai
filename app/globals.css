@@ -12,7 +12,7 @@
 .auth-brand-caption{margin-top:.15rem;font-size:.78rem;font-weight:400;color:#c9d8ff}
 .auth-brand-message{position:relative;z-index:1;max-width:37rem}
 .auth-kicker{font-size:.72rem;font-weight:650;letter-spacing:.18em;text-transform:uppercase;color:#77edfa}
-.auth-brand-message h1{max-width:34rem;margin:.9rem 0 0;font-size:clamp(2.35rem,4.2vw,4.9rem);font-weight:520;line-height:1.02;letter-spacing:-.05em}
+.auth-brand-message h1{max-width:34rem;margin:.9rem 0 0;font-size:clamp(2.35rem,4.2vw,4.9rem);font-weight:520;line-height:1.02;letter-spacing:normal}
 .auth-brand-message p{max-width:30rem;margin:1.4rem 0 0;font-size:1.05rem;font-weight:400;line-height:1.65;color:#d9e4ff}
 .auth-brand-foot{position:relative;z-index:1;font-size:.8rem;color:#b9caff}
 .auth-form-panel{display:grid;min-height:100svh;place-items:center;padding:2rem}
@@ -20,7 +20,7 @@
 .auth-form-wrap{width:100%;max-width:29rem}
 .auth-welcome{margin-bottom:1.5rem}
 .auth-welcome .auth-kicker{color:var(--brand)}
-.auth-welcome h2{margin:.55rem 0 0;font-size:2rem;font-weight:570;letter-spacing:-.04em}
+.auth-welcome h2{margin:.55rem 0 0;font-size:2rem;font-weight:570;letter-spacing:normal}
 .auth-welcome p{margin:.55rem 0 0;font-size:.95rem;line-height:1.5;color:#64748b}
 .auth-card{max-width:none!important;gap:0!important;border:1px solid #e2e8f0!important;border-radius:1.4rem!important;padding:0!important;background:#fff!important;box-shadow:0 22px 60px rgba(6,27,79,.10)!important}
 .auth-card-header{padding:1.4rem 1.5rem .25rem!important}
@@ -513,7 +513,7 @@
 .mbp-bottom-sheet{position:absolute;left:0;right:0;bottom:0;max-height:min(78svh,46rem);overflow:auto;border-radius:1.55rem 1.55rem 0 0;background:#fff;padding:.55rem 1rem max(1rem,env(safe-area-inset-bottom));color:var(--ink);box-shadow:0 -18px 50px rgba(6,27,79,.20)}
 .mbp-sheet-handle{width:3rem;height:.28rem;margin:.05rem auto .7rem;border-radius:999px;background:#cbd5e1}
 .mbp-sheet-title-row{display:grid;grid-template-columns:2.6rem minmax(0,1fr) 2.6rem;align-items:center;gap:.5rem}
-.mbp-sheet-title-row h2{grid-column:2;margin:0;text-align:center;font-size:1.2rem;font-weight:700;letter-spacing:-.025em}
+.mbp-sheet-title-row h2{grid-column:2;margin:0;text-align:center;font-size:1.2rem;font-weight:700;letter-spacing:normal}
 .mbp-sheet-title-row>h2:first-child{grid-column:1/3;text-align:left}
 .mbp-sheet-close{display:grid;width:2.55rem;height:2.55rem;place-items:center;border:0;border-radius:999px;background:#EEF1F5;color:var(--brand);font-size:1.35rem;line-height:1}
 .mbp-sheet-title-row>h2:first-child+.mbp-sheet-close{grid-column:3}
@@ -753,7 +753,7 @@
 .help-page{max-width:1180px;margin:0 auto;padding-bottom:1rem;color:#0f172a}
 .help-hero{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;border:1px solid #DDE6EA;border-radius:1.4rem;background:linear-gradient(135deg,color-mix(in srgb,var(--brand) 80%,#000) 0%,var(--brand) 58%,var(--brand) 100%);padding:1.5rem;color:#fff;box-shadow:0 16px 36px rgba(6,27,79,.14)}
 .help-kicker{font-size:.68rem;font-weight:800;letter-spacing:.16em;color:#9eeefa}
-.help-hero h1{margin-top:.4rem;font-size:clamp(1.65rem,3vw,2.35rem);font-weight:700;line-height:1.05;letter-spacing:-.035em}
+.help-hero h1{margin-top:.4rem;font-size:clamp(1.65rem,3vw,2.35rem);font-weight:700;line-height:1.05;letter-spacing:normal}
 .help-hero p{max-width:48rem;margin-top:.55rem;font-size:.95rem;line-height:1.5;color:#DDE6EA}
 .help-back-button{flex:none;border:1px solid rgba(255,255,255,.24);border-radius:999px;background:rgba(255,255,255,.1);padding:.65rem .9rem;font-size:.8rem;font-weight:700;color:#fff}
 .help-back-button:hover{background:rgba(255,255,255,.17)}
@@ -1070,7 +1070,7 @@ html[data-modo="equilibrado"] .pc-kbd{display:none}
 .pc-smartbar{display:none;align-items:center;gap:10px;margin-bottom:14px;padding:8px 10px;border:1px solid var(--border);border-radius:16px;background:#fff}
 .pc-bolt{display:grid;flex:none;place-items:center;width:30px;height:30px;border-radius:9px;background:linear-gradient(160deg,var(--tile-azul-from),var(--tile-azul-to));color:#fff}
 .pc-smartbar-field{display:flex;flex:1;align-items:center;gap:10px;min-width:0;min-height:40px;border:0;background:transparent;text-align:left;font-size:.92rem;color:var(--ink-2)}
-.pc-smartbar-field:focus-visible,.pc-mic:focus-visible,.pc-go:focus-visible,.pc-cmd-close:focus-visible,.pc-cmd-option:focus-visible,.pc-env-pill:focus-visible,.pc-env-cell:focus-visible,.pc-env-arrow:focus-visible,.pc-env-all:focus-visible,.pc-env-step button:focus-visible,.pc-next-pending:focus-visible,.pc-check-back:focus-visible,.pc-link-photo:focus-visible,.pc-dialog button:focus-visible,.pc-env-toggle button:focus-visible,.pc-env-close:focus-visible,.pc-cmd-status-btn:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
+.pc-smartbar-field:focus-visible,.pc-mic:focus-visible,.pc-go:focus-visible,.pc-cmd-close:focus-visible,.pc-cmd-option:focus-visible,.pc-env-pill:focus-visible,.pc-env-cell:focus-visible,.pc-env-arrow:focus-visible,.pc-env-all:focus-visible,.pc-env-step button:focus-visible,.pc-next-pending:focus-visible,.pc-link-photo:focus-visible,.pc-dialog button:focus-visible,.pc-env-toggle button:focus-visible,.pc-env-close:focus-visible,.pc-cmd-status-btn:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
 .pc-smartbar-text-short{display:none}
 .pc-kbd{flex:none;margin-left:auto;border:1px solid var(--border);border-radius:8px;background:var(--bg);padding:2px 8px;font:inherit;font-size:.75rem;color:var(--ink-2)}
 .pc-mic{display:grid;flex:none;place-items:center;width:40px;height:40px;border:0;border-radius:50%;background:linear-gradient(160deg,var(--tile-ceu-from),var(--tile-ceu-to));color:#fff}
@@ -1124,7 +1124,6 @@ html[data-modo="equilibrado"] .pc-kbd{display:none}
 .pc-check-head{display:flex;flex-direction:column;gap:12px}
 .pc-check-title{font-size:1.7rem;line-height:1.1;color:var(--ink)}
 .pc-check-sub{margin-top:2px;font-size:.95rem;color:var(--ink-2)}
-.pc-check-back{min-height:40px;padding:0 16px;border:2px solid var(--brand);border-radius:999px;background:#fff;font-size:.85rem;font-weight:400;color:var(--ink)}
 .pc-segbar--lg{height:10px;margin-top:0;background:var(--seg-pend)}
 .pc-photo-wait{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 12px;border-radius:14px;background:var(--pend-bg);font-size:.85rem;color:var(--ink)}
 .pc-photo-wait button{min-height:36px;border:1.5px solid var(--outline);border-radius:999px;background:#fff;padding:0 12px;font-size:.8rem;color:var(--ink)}
@@ -2601,7 +2600,6 @@ html[data-modo="campo"] .chk-foco-amb-pos{flex:none;font-size:.9rem;padding:2px 
 @media (max-height:760px){.pc-ev-link-text{-webkit-line-clamp:1}.pc-ev-new .pc-ev-link .ui-eyebrow{margin:0}}
 
 /* ===== Pacote 6 · Tema A ===== */
-.chk-obs-titulo{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .chk-limpar{flex:none;min-height:28px;padding:0 10px;border:1.5px solid #E8B04B;border-radius:999px;background:#fff;color:var(--ink-2);font-size:.8rem;font-weight:400;cursor:pointer}
 .chk-limpar:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
 html[data-modo="campo"] .pc-toast{bottom:calc(92px + env(safe-area-inset-bottom))}
@@ -6052,8 +6050,6 @@ html[data-modo="campo"] .campo-tela .chk-obs-campo{position:relative;display:fle
 html[data-modo="campo"] .campo-tela .chk-obs-campo .chk-obs-area{box-sizing:border-box;flex:1 1 auto;width:100%;height:auto;min-height:84px;max-height:none;padding:8px 10px;font-size:15px;line-height:1.35}
 html[data-modo="campo"] .campo-tela .chk-obs-campo .chk-obs-area::placeholder{color:#596273;opacity:1}
 /* "Limpar resposta" numa linha própria abaixo do campo: nunca cobre o texto digitado */
-html[data-modo="campo"] .chk-obs-limpar{position:static;display:flex;justify-content:flex-end;margin-top:4px}
-html[data-modo="campo"] .chk-obs-limpar .chk-limpar{min-height:34px;padding:0 4px;border:0;border-radius:0;background:transparent;font-size:15px;text-decoration:underline;color:#1B2433}
 
 /* "O que verificar" embaixo, logo acima do rodapé */
 html[data-modo="campo"] .campo-tela .chk-foco-corpo{gap:8px;padding:2px 0 0}
@@ -6284,7 +6280,7 @@ html:not([data-modo="campo"]) .chk-pc .chk-obs-campo .chk-obs-area{flex:none;min
 .ui-screen[aria-label="Central da visita"]>.ui-head .ui-head-actions{margin-left:auto}
 html[data-modo] .ui-screen[aria-label="Central da visita"] .ui-head-actions .ui-btn{height:40px;min-height:40px;padding:0 18px;border-radius:12px;font-size:16px;font-weight:400;line-height:1}
 html[data-modo="campo"] .ui-screen[aria-label="Central da visita"] .ui-head-actions .ui-btn{font-size:15px;padding:0 14px}
-html[data-modo] .ui-screen[aria-label="Central da visita"] .ui-head-actions .ui-btn--secondary{border:2px solid #2B54CF;background:#fff;color:#1B2433}
+html[data-modo] .ui-screen[aria-label="Central da visita"] .ui-head-actions .ui-btn--secondary{border:2px solid #8A96AD;background:#fff;color:#1B2433}
 html[data-modo] .ui-screen[aria-label="Central da visita"] .ui-head-actions .pc-central-finalizar{border:0;background:#1E7A3E;color:#fff}
 html[data-modo] .ui-screen[aria-label="Central da visita"] .ui-head-actions .pc-central-finalizar:hover,html[data-modo] .ui-screen[aria-label="Central da visita"] .ui-head-actions .pc-central-finalizar:active{background:#186633}
 .ui-screen[aria-label="Central da visita"] .ui-head-actions .ui-btn:focus-visible{outline:3px solid #2B54CF;outline-offset:2px}
@@ -6299,7 +6295,7 @@ html[data-modo] .ui-screen[aria-label="Central da visita"] .ui-head-actions .pc-
 .pc-steps-row .pc-step-card--pend .pc-step-tile{background:#AF640A}
 .pc-steps-row .pc-step-card--lilas .pc-step-tile{background:#55607A}
 .pc-steps-row .pc-step-text{gap:2px}
-.pc-steps-row .pc-step-name,.pc-steps-row .pc-step-sum{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:400;color:#1B2433}
+.pc-steps-row .pc-step-name,.pc-steps-row .pc-step-sum{min-width:0;overflow:visible;text-overflow:clip;white-space:normal;overflow-wrap:break-word;font-weight:400;color:#1B2433}
 .pc-steps-row .pc-step-name{font-size:16px;line-height:22px}
 .pc-steps-row .pc-step-sum{font-size:15px;line-height:20px}
 .pc-steps-row .pc-step-arrow{flex:none;font-size:24px;line-height:1;color:#1B2433}
@@ -6359,3 +6355,45 @@ html[data-modo="campo"] .fv--campo .fv-item{padding:0 4px;font-size:15px}
   html[data-modo="campo"] .campo-tela .chk-foco-card{padding-top:0;padding-bottom:0}
   html[data-modo="campo"] .campo-tela .chk-fonte-abaixo{margin:0 0 2px;-webkit-line-clamp:1}
 }
+
+/* ===== Rodada 6 (A) (v2.46): Observação, Limpar resposta, apoio fixo, Central creme ===== */
+/* A1 · Observação (PC e tablet): o rótulo desce (12 px a mais acima) e Foto, Falar e IA ficam na MESMA linha, logo depois dele, ~10% menores (32 px; fonte 15 px). O Campo não tem rótulo e não muda */
+html:not([data-modo="campo"]) .chk-obs-cabeca{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-top:12px}
+html:not([data-modo="campo"]) .chk-obs-cabeca>.chk-obs-rotulo{flex:none}
+html:not([data-modo="campo"]) .chk-obs-cabeca>.voz-linha{flex:0 1 auto;flex-wrap:wrap;gap:6px}
+html:not([data-modo="campo"]) .chk-obs-cabeca>:not(.voz-linha):not(.chk-obs-rotulo){flex:1 1 100%}
+html:not([data-modo="campo"]) .chk-foco-obs :is(.chk-linha-foto,.voz-btn,.voz-ia,.voz-barra){height:32px;min-height:0;padding:0 12px;gap:5px;border-radius:11px;font-size:15px}
+html:not([data-modo="campo"]) .chk-foco-obs .chk-linha-foto.chk-linha-foto--destaque{height:36px;min-height:0;padding:0 14px;font-size:15px}
+html:not([data-modo="campo"]) .chk-foco-obs :is(.chk-linha-foto,.voz-btn) svg{width:16px;height:16px}
+/* O campo de texto começa com 2 linhas e cresce ao digitar (o componente ajusta a altura) */
+html:not([data-modo="campo"]) .chk-pc .chk-obs-campo .chk-obs-area{min-height:56px}
+
+/* A2 · "Limpar resposta" na linha das respostas, logo depois de "Não se aplica" (link simples, 15 px) */
+html:not([data-modo="campo"]) .chk-foco-botoes{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+html:not([data-modo="campo"]) .chk-foco-botoes .chk-resp{flex:0 0 auto;width:auto;padding:0 16px}
+html:not([data-modo="campo"]) .chk-foco-botoes .chk-limpar{flex:none;min-height:32px;margin-left:4px;padding:0 6px;border:0;border-radius:0;background:transparent;font-size:15px;font-weight:400;color:#1B2433;text-decoration:underline}
+
+/* A6 · Conforme e Não conforme não escolhidos (há outra resposta marcada): texto grafite mais forte, opacidade reduzida mantida */
+html[data-modo] .chk-resp.is-apagado,html[data-modo] .chk-resp.is-apagado span,html[data-modo="campo"] .campo-tela .chk-resp.is-apagado:not(.is-marcado){color:#0B1220}
+
+/* A7 · Coluna de apoio do checklist no PC: largura fixa; existe em todos os itens ou em nenhum (decisão por visita) */
+.chk-pc-corpo:not(.chk-pc-corpo--sem-apoio){grid-template-columns:minmax(0,1fr) 22rem}
+
+/* A5 · Central da visita: cartão "Próxima etapa" em creme */
+.ui-screen[aria-label="Central da visita"] .pc-continue{background:#FFF6E5}
+
+/* ===== Campo (<768 px), rodada 6 (A): Limpar resposta na linha das respostas e aba Central na faixa ===== */
+/* Três caixas iguais (grade de 3 colunas); "Limpar resposta" numa linha própria logo abaixo, dentro do grupo das respostas, à esquerda */
+html[data-modo="campo"] .campo-tela .chk-foco-botoes .chk-limpar{grid-column:1/-1;justify-self:start;min-height:34px;margin:0;padding:0 4px;border:0;border-radius:0;background:transparent;font-size:15px;font-weight:400;color:#1B2433;text-decoration:underline}
+/* Faixa com 4 abas em texto + ✓ sem rolagem lateral em 360 px */
+html[data-modo="campo"] .fv--campo .fv-seg{padding:0}
+html[data-modo="campo"] .fv--campo .fv-item{padding:0 3px;gap:3px}
+@media (max-width:389px){
+  html[data-modo="campo"] .fv--campo{gap:4px}
+  html[data-modo="campo"] .fv--campo .fv-item{padding:0 1px;gap:2px}
+  html[data-modo="campo"] .fv--campo .fv-finalizar{width:40px}
+}
+
+/* Campo: a linha do "Limpar resposta" fica reservada (38 + 6 + 34 px) para o bloco não pular ao limpar ou responder */
+html[data-modo="campo"] .campo-tela .chk-foco-botoes{min-height:78px;align-content:start}
+@media (max-height:660px){html[data-modo="campo"] .campo-tela .chk-foco-botoes{min-height:74px}}

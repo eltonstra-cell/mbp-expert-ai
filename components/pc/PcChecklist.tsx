@@ -33,7 +33,6 @@ type Props = {
   fila: ItemDaFila[];
   itemAtualId: string;
   onItem: (id: string) => void;
-  onVoltar: () => void;
   principal: ReactNode;
   /** Pular o ambiente atual: abre o próximo sem marcar nada (os itens ficam pendentes). */
   onPularAmbiente?: (proximo: string) => void;
@@ -43,6 +42,8 @@ type Props = {
   ditado?: ReactNode;
   /** Sem apoio (tablet), o painel da direita não aparece. */
   apoio?: ApoioDoItem;
+  /** Decisão por visita: com true a coluna de apoio existe em TODOS os itens (largura fixa); com false não existe em nenhum. Sem o campo, vale o conteúdo do item. */
+  colunaDeApoio?: boolean;
 };
 
 const CLASSE_DO_STATUS: Record<ChecklistStatus, string> = {
@@ -109,6 +110,8 @@ function apoioVazio(apoio: ApoioDoItem) {
 function PainelDeApoio({ apoio }: { apoio: ApoioDoItem }) {
   const [ampliadaId, setAmpliadaId] = useState<string | null>(null);
   const ampliada = apoio.evidencias.find((evidencia) => evidencia.id === ampliadaId && evidencia.tipo === "Foto");
+  // Item sem apoio: o espaço fica reservado (a largura não muda ao avançar), mas sem landmark vazio para o leitor de tela.
+  if (apoioVazio(apoio)) return <div className="chk-apoio" aria-hidden="true" />;
   return (
     <aside className="chk-apoio" aria-label="Apoio ao item">
       {apoio.reincidencia && (
@@ -174,12 +177,13 @@ function PainelDeApoio({ apoio }: { apoio: ApoioDoItem }) {
   );
 }
 
-export default function PcChecklist({ titulo, subtitulo, ambientes, ambienteAtual, onAmbiente, fila, itemAtualId, onItem, onVoltar, principal, apoio, onPularAmbiente, restanteDoLote, ditado }: Props) {
+export default function PcChecklist({ titulo, subtitulo, ambientes, ambienteAtual, onAmbiente, fila, itemAtualId, onItem, principal, apoio, colunaDeApoio, onPularAmbiente, restanteDoLote, ditado }: Props) {
   const [recolhidosAbertos, setRecolhidosAbertos] = useState(false);
   const caminhada = progressoDaCaminhada(ambientes, ambienteAtual);
   const recolhidos = fila.filter((item) => item.recolhido && item.id !== itemAtualId);
   const textoCaminhada = textoDaCaminhada(caminhada);
-  const temApoio = apoio ? !apoioVazio(apoio) : false;
+  // A coluna de apoio é decidida pela visita (colunaDeApoio), nunca pelo item: a pergunta e a observação não mudam de largura ao avançar.
+  const temApoio = Boolean(apoio) && (colunaDeApoio ?? !apoioVazio(apoio as ApoioDoItem));
   return (
     <section className="ui-screen chk-pc" aria-label="Checklist">
       <div className="ui-head">
@@ -187,9 +191,6 @@ export default function PcChecklist({ titulo, subtitulo, ambientes, ambienteAtua
           <h1 className="ui-title">{titulo}</h1>
           <p className="ui-subtitle">{subtitulo}</p>
         </div>
-        <button type="button" className="ui-btn ui-btn--secondary" onClick={onVoltar}>
-          ← Central da visita
-        </button>
       </div>
 
       <div className={`chk-pc-corpo${temApoio ? "" : " chk-pc-corpo--sem-apoio"}`}>

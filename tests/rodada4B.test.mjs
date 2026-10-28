@@ -14,7 +14,7 @@ test("Central da visita: sem a fileira de 4 números nem o cartão 'Atividade da
 });
 
 test("Central: cada cartão tem UMA linha de texto com o número real; o escopo das correções fica no title/aria; sem 'N conformes · N itens sem resposta'", () => {
-  assert.ok(pagina.includes('resumo: `${respondidos} de ${totalChecklist} respondidos`'));
+  assert.ok(pagina.includes('resumo: `${respondidos} de ${totalChecklist} ${totalChecklist === 1 ? "item" : "itens"}`'));
   assert.ok(!pagina.includes('qtd(conformesChecklist, "conforme", "conformes")'));
   assert.ok(pagina.includes('qtd(linhasConferenciaRel.filter((linha) => !linha.ok).length, "pendência", "pendências")'));
   assert.ok(pagina.includes('resumo: qtd(ncsAbertas, "aberta", "abertas")') && pagina.includes("nesta visita (a barra lateral conta só as vencidas da empresa toda)"));
@@ -34,7 +34,7 @@ test("Central: cartões de 84 px com ícone branco em quadrado colorido (cores d
   assert.ok(css.includes(".pc-steps-row .pc-step-card{height:84px;min-height:84px;"));
   for (const [tom, cor] of [["ok", "#2E8B57"], ["info", "#1F78B4"], ["nc", "#B83A33"], ["pend", "#AF640A"], ["lilas", "#55607A"]]) assert.ok(css.includes(`.pc-steps-row .pc-step-card--${tom} .pc-step-tile{background:${cor}}`), tom);
   assert.ok(central.includes('className="pc-step-arrow" aria-hidden="true">›<'));
-  assert.ok(css.includes(".pc-steps-row .pc-step-name,.pc-steps-row .pc-step-sum{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:400;color:#1B2433}"));
+  assert.ok(css.includes(".pc-steps-row .pc-step-name,.pc-steps-row .pc-step-sum{min-width:0;overflow:visible;text-overflow:clip;white-space:normal;overflow-wrap:break-word;font-weight:400;color:#1B2433}"), "sem reticências nos cartões da Central");
 });
 
 test("Central: lista de não conformidades sem chip 'Aberta' nem 'Acompanhar →'; linha inteira clicável com seta; 'Ver todas (N) →' no topo", () => {
@@ -103,9 +103,10 @@ test("Visitas: abas em texto com sublinhado na ativa (sem pílula), sem chip 'Em
   assert.ok(visitas.includes('<h1 className="sr-only">Visitas</h1>') && !visitas.includes("Visitas técnicas</h1>"));
 });
 
-test("Checklist: rótulo da observação em grafite 15 px sem maiúsculas; Foto, Falar e IA com 15 px; campo começa com 84 px e cresce", () => {
+test("Checklist: rótulo da observação em grafite 15 px sem maiúsculas; Foto, Falar e IA com 15 px; campo começa com 2 linhas e cresce", () => {
   const item = ler("../components/ChecklistFocoItem.tsx");
   assert.ok(item.includes('<span className="chk-obs-rotulo">') && !item.includes('<span className="ui-eyebrow">{naoConforme'));
+  assert.ok(css.includes('html:not([data-modo="campo"]) .chk-pc .chk-obs-campo .chk-obs-area{min-height:56px}'));
   assert.ok(css.includes(".chk-obs-rotulo{font-size:15px;font-weight:400;line-height:22px;letter-spacing:0;text-transform:none;color:#1B2433}"));
   assert.ok(css.includes("html[data-modo] .chk-foco-obs :is(.chk-linha-foto,.voz-btn,.voz-ia,.voz-barra){font-size:15px}"));
   assert.ok(css.includes('html:not([data-modo="campo"]) .chk-pc .chk-obs-campo .chk-obs-area{flex:none;min-height:84px;max-height:40vh'));

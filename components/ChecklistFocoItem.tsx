@@ -139,6 +139,7 @@ export default function ChecklistFocoItem({
   const [fonteAberta, setFonteAberta] = useState(false);
   useEffect(() => setFonteAberta(false), [item.id]);
   const areaRef = useRef<HTMLTextAreaElement | null>(null);
+  const primeiraRespostaRef = useRef<HTMLButtonElement | null>(null);
   const caixaRef = useRef<HTMLDivElement | null>(null);
   const timerAvanco = useRef<ReturnType<typeof setTimeout> | null>(null);
   const marcadoEmRef = useRef<number | null>(null);
@@ -267,7 +268,15 @@ export default function ChecklistFocoItem({
 
   const botaoLimpar =
     podeEditar && onLimpar && item.status !== "Pendente" ? (
-      <button type="button" className="chk-limpar" onClick={onLimpar}>
+      <button
+        type="button"
+        className="chk-limpar"
+        onClick={() => {
+          onLimpar?.();
+          // O botão sai da tela quando a resposta é limpa: o foco volta ao primeiro botão de resposta.
+          primeiraRespostaRef.current?.focus();
+        }}
+      >
         Limpar resposta
       </button>
     ) : null;
@@ -368,11 +377,12 @@ export default function ChecklistFocoItem({
             ["Não Conforme", "nc", "Não conforme"],
             ["Não se aplica", "na", "Não se aplica"],
           ] as [ChecklistStatus, string, string][]
-        ).map(([resposta, tom, rotulo]) => {
+        ).map(([resposta, tom, rotulo], indice) => {
           const estado = estados[resposta as "Conforme" | "Não Conforme" | "Não se aplica"];
           return (
             <button
               key={resposta}
+              ref={indice === 0 ? primeiraRespostaRef : undefined}
               type="button"
               disabled={!podeEditar}
               aria-pressed={estado === "marcado"}
@@ -403,6 +413,7 @@ export default function ChecklistFocoItem({
             </button>
           );
         })}
+        {botaoLimpar}
       </div>
 
       {podeEditar && onTemperatura && ehItemDeTemperatura(item.titulo) && (
@@ -431,26 +442,23 @@ export default function ChecklistFocoItem({
       )}
 
       <div className="chk-foco-obs" ref={caixaRef}>
-        {!campo && (
-          <div className="chk-obs-titulo">
-            <span className="chk-obs-rotulo">{naoConforme ? "Registrar a não conformidade" : "Observação (opcional)"}</span>
-            {botaoLimpar}
-          </div>
-        )}
-        {podeEditar ? (
-          <FieldVoiceTools
-            variante="linha"
-            linhaInicio={botaoFoto}
-            onEstado={setEstadoVoz}
-            onAviso={setAvisoVoz}
-            fieldKey={`checklist-${item.id}`}
-            value={texto}
-            onChange={setTexto}
-            contexto="Observação de um item de checklist de boas práticas em segurança dos alimentos."
-          />
-        ) : (
-          <div className="voz-linha">{botaoFoto(false)}</div>
-        )}
+        <div className="chk-obs-cabeca">
+          {!campo && <span className="chk-obs-rotulo">{naoConforme ? "Registrar a não conformidade" : "Observação (opcional)"}</span>}
+          {podeEditar ? (
+            <FieldVoiceTools
+              variante="linha"
+              linhaInicio={botaoFoto}
+              onEstado={setEstadoVoz}
+              onAviso={setAvisoVoz}
+              fieldKey={`checklist-${item.id}`}
+              value={texto}
+              onChange={setTexto}
+              contexto="Observação de um item de checklist de boas práticas em segurança dos alimentos."
+            />
+          ) : (
+            <div className="voz-linha">{botaoFoto(false)}</div>
+          )}
+        </div>
         {(avisoFoto || camera.aviso) && (
           <div className="chk-foto-linha" role="status">
             {(avisoFoto || camera.aviso) && (
@@ -508,7 +516,7 @@ export default function ChecklistFocoItem({
             </div>,
             document.body
           )}
-        <div className={`chk-obs-campo${campo && botaoLimpar ? " chk-obs-campo--limpar" : ""}`}>
+        <div className="chk-obs-campo">
           <textarea
             ref={areaRef}
             className="ui-input chk-obs-area"
@@ -523,7 +531,6 @@ export default function ChecklistFocoItem({
             }}
             onBlur={salvarTexto}
           />
-          {campo && botaoLimpar && <span className="chk-obs-limpar">{botaoLimpar}</span>}
           {estadoVoz !== "ocioso" && (
             <span className="chk-obs-ouvindo" role="status">
               {estadoVoz === "gravando" ? "Ouvindo… o texto entra quando você parar" : "Transcrevendo…"}
