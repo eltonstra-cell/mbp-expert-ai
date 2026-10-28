@@ -23,13 +23,6 @@ const NOME_DO_ESTADO: Record<ChecklistStatus, string> = {
   Pendente: "sem resposta",
 };
 
-/** Cor do aviso do avanço automático: acompanha a resposta (Não Conforme = nc, Não se aplica = na, o resto = ok). */
-export function tomDoStatus(status: ChecklistStatus): "ok" | "nc" | "na" {
-  if (status === "Não se aplica") return "na";
-  if (status === "Não Conforme") return "nc";
-  return "ok";
-}
-
 export function rotuloDoSegmento(indice: number, status: ChecklistStatus): string {
   return `Item ${indice + 1}, ${NOME_DO_ESTADO[status]}`;
 }

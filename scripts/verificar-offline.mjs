@@ -321,7 +321,13 @@ try {
   await clicarBotao("Salvar");
   const subiuArquivo = await esperar(async () => Number(await js(`JSON.parse(localStorage.getItem("__ups")||"[]").length`)) === 1, 20000).catch(() => false);
   const idArquivo = await js(`JSON.parse(localStorage.getItem("__ups")||"[]")[0]||""`);
-  registrar("11a. caminho 'Arquivo' com sinal: o arquivo sobe uma vez e o registro guarda o arquivo enviado", subiuArquivo && Boolean(idArquivo) && (await js(`(JSON.parse(localStorage.getItem(${JSON.stringify(CHAVE)})).evidencias||[]).some(e=>e.id===${JSON.stringify(idArquivo)}&&!!e.blobPathname)`)), idArquivo.slice(0, 8));
+  // O servidor falso anota o envio em "__ups" ANTES de responder; o app só grava o registro com o arquivo (blobPathname) depois da resposta,
+  // e o estado vai ao localStorage em seguida. Ler na hora é uma corrida do teste: espera-se a condição (até 15 s) e o motivo da falha é impresso.
+  const lerRegs11a = () => js(`JSON.stringify((JSON.parse(localStorage.getItem(${JSON.stringify(CHAVE)})).evidencias||[]).filter(e=>!e.id.startsWith("ev-semente")).map(e=>({id:e.id.slice(0,8),envio:e.envio,blob:!!e.blobPathname})))`);
+  const registroComArquivo11a = Boolean(idArquivo) && (await esperar(async () => (await js(`(JSON.parse(localStorage.getItem(${JSON.stringify(CHAVE)})).evidencias||[]).some(e=>e.id===${JSON.stringify(idArquivo)}&&!!e.blobPathname)`)) === true, 15000));
+  const upsFinal11a = await js(`localStorage.getItem("__ups")||"[]"`);
+  const regs11a = await lerRegs11a();
+  registrar("11a. caminho 'Arquivo' com sinal: o arquivo sobe uma vez e o registro guarda o arquivo enviado", subiuArquivo && registroComArquivo11a && (JSON.parse(upsFinal11a).length === 1), `${idArquivo.slice(0, 8)} subiu=${subiuArquivo} ups=${upsFinal11a.replace(/(.{8})[^",]*/g, "$1")} registros=${regs11a}`);
   await foto("11-arquivo-com-sinal");
   registrar("11b. o registro do caminho 'Arquivo' mostra estado coerente (sem 'Arquivo não enviado') e o selo fica 'Sincronizado'", !/Arquivo não enviado/.test(await texto()) && (await esperar(async () => /Sincronizado/.test(await texto()), 10000)));
 
@@ -348,7 +354,7 @@ try {
   registrar("12d. sem duplicar: continua um único registro com esse id", (await js(`(JSON.parse(localStorage.getItem(${JSON.stringify(CHAVE)})).evidencias||[]).filter(e=>e.id==="sem-arquivo-2259").length`)) === 1);
   registrar("12e. depois do envio o selo volta a 'Sincronizado'", await esperar(async () => /Sincronizado/.test(await texto()), 12000));
 
-  // 13. Avanço automático: Conforme grava e abre o próximo item (aviso com Desfazer); Não conforme e observação já digitada NÃO avançam.
+  // 13. Avanço automático: Conforme grava e abre o próximo item (sem aviso; tocar de novo na resposta marcada a limpa); Não conforme e observação já digitada NÃO avançam.
   await n.enviar("Emulation.clearDeviceMetricsOverride");
   await n.ir(app.base);
   await esperar(async () => js('!!document.querySelector(".tr")'), 20000);
@@ -365,10 +371,13 @@ try {
   const tituloDepois = await titulo();
   const id8 = (await status()).split(",")[7].split(":")[0];
   registrar("13a. Conforme grava na hora e, depois de ~0,5 s, abre o PRÓXIMO item", Boolean(tituloAntes) && tituloDepois !== tituloAntes && (await status()).includes(id8 + ":Conforme"), tituloAntes + " -> " + tituloDepois);
-  registrar("13b. o aviso diz 'Item 8 · Conforme' e tem o botão Desfazer", await js('(()=>{const t=document.querySelector(".pc-toast");return !!t&&t.innerText.includes("Item 8 · Conforme")&&!!t.querySelector(".toast-acao")})()'));
-  await js('document.querySelector(".toast-acao")?.click()');
+  registrar("13b. responder NÃO mostra aviso com Desfazer", await js('!document.querySelector(".toast-salvo")&&![...document.querySelectorAll(".pc-toast")].some((t)=>t.innerText.includes("Desfazer")||t.innerText.includes("Item 8"))'));
+  await clicarNumero(8);
   await n.esperar(500);
-  registrar("13c. Desfazer volta ao item e deixa a resposta como Pendente", (await titulo()) === tituloAntes && (await status()).includes(id8 + ":Pendente"), await titulo());
+  await clicarResposta("Conforme");
+  await n.esperar(600);
+  registrar("13c. tocar de novo em Conforme (já marcado) limpa: volta a sem resposta e fica no item", (await titulo()) === tituloAntes && (await status()).includes(id8 + ":Pendente"), await titulo());
+  registrar("13c2. rodapé do checklist: 'Anterior' e 'Salvar e próximo' com 44 px de altura", await js('(()=>{const b=[...document.querySelectorAll(".chk-foco-rodape button")];return b.length===2&&b.every((x)=>Math.abs(x.getBoundingClientRect().height-44)<=1)})()'));
   await clicarResposta("Não Conforme");
   await n.esperar(1100);
   registrar("13d. Não conforme NÃO avança sozinho (fica no item para gravidade, foto e observação)", (await titulo()) === tituloAntes);
@@ -551,7 +560,22 @@ try {
   await n.esperar(400);
   registrar("17s2. Correções: cartão sem pino, 'item N' e seta, título em até 2 linhas, sem sobreposição; detalhe com o código NC e a Fonte na mesma linha de metadados (NC antes da Fonte)", await js(`(()=>{const cards=[...document.querySelectorAll(".pc-cor .pc-cor-card")];if(cards.length===0)return false;const t=document.querySelector(".pc-cor .pc-detail-contexto");const linhasDoTitulo=cards.every((c)=>{const ti=c.querySelector(".pc-cor-titulo");if(getComputedStyle(ti).whiteSpace==="nowrap")return false;const lh=parseFloat(getComputedStyle(ti).lineHeight)||parseFloat(getComputedStyle(ti).fontSize)*1.4;return ti.getBoundingClientRect().height<=lh*2+1});const sem=cards.every((c)=>!c.querySelector("svg")&&!c.querySelector(".pc-cor-seta, .pc-cor-pino, .pc-cor-item")&&!/item [0-9]/.test(c.innerText)&&!c.innerText.includes("›"));const semSobrepor=cards.every((c)=>{const f=[...c.children].map((e)=>e.getBoundingClientRect());return f.every((r,k)=>k===0||r.top>=f[k-1].bottom-1)&&f.every((r)=>r.bottom<=c.getBoundingClientRect().bottom+0.5)});const fonteEl=document.querySelector(".pc-cor .pc-detail-fonte");const ctx=t&&t.querySelector(".pc-detail-codigo")&&/^NC[0-9]+$/.test(t.querySelector(".pc-detail-codigo").innerText.trim())&&!!fonteEl&&t.contains(fonteEl)&&(t.querySelector(".pc-detail-codigo").compareDocumentPosition(fonteEl)&Node.DOCUMENT_POSITION_FOLLOWING)>0;const fonte=document.querySelector(".pc-cor .pc-detail-fonte");return linhasDoTitulo&&sem&&semSobrepor&&!!ctx&&!!fonte&&/Fonte/.test(fonte.innerText)})()`));
   registrar("17s3. Correções: cartões da lista em creme #FFF6E5 (sem azul-lilás) e o selecionado em terracota #AF640A com texto branco", await js(`(()=>{const cards=[...document.querySelectorAll(".pc-cor .pc-cor-card")];const sel=cards.filter((c)=>c.classList.contains("is-selected"));const outros=cards.filter((c)=>!c.classList.contains("is-selected"));return cards.length>0&&sel.length===1&&getComputedStyle(sel[0]).backgroundColor==="rgb(175, 100, 10)"&&getComputedStyle(sel[0]).color==="rgb(255, 255, 255)"&&outros.every((c)=>getComputedStyle(c).backgroundColor==="rgb(255, 246, 229)")})()`));
-  registrar("17t. Topo: 'Modo de tela' só com o ícone (36 px), busca com um contorno só e foco sem segundo anel", await js(`(()=>{const chip=document.querySelector(".pc-topbar .pc-mode-chip");const barra=document.querySelector(".pc-topbar .pc-smartbar");const campo=document.querySelector(".pc-topbar .pc-busca-input");if(!chip||!barra||!campo)return false;campo.focus();const ok=Math.round(chip.getBoundingClientRect().width)===36&&chip.innerText.trim()===""&&getComputedStyle(barra).borderTopWidth==="1px"&&getComputedStyle(campo).borderTopWidth==="0px"&&getComputedStyle(campo).outlineStyle==="none"&&getComputedStyle(campo).boxShadow==="none";campo.blur();return ok})()`));
+  const modo17t = await js(`document.documentElement.getAttribute("data-modo")||""`);
+  const busca17t = await js(`(()=>{const barra=document.querySelector(".pc-topbar .pc-smartbar");const campo=document.querySelector(".pc-topbar .pc-busca-input");if(!barra||!campo)return false;campo.focus();const ok=getComputedStyle(barra).borderTopWidth==="1px"&&getComputedStyle(campo).borderTopWidth==="0px"&&getComputedStyle(campo).outlineStyle==="none"&&getComputedStyle(campo).boxShadow==="none";campo.blur();return ok})()`);
+  let modoOk17t;
+  if (modo17t === "completo") {
+    // No Completo o chip não aparece no topo; o menu ⋯ traz o modo atual marcado.
+    const chipOculto = await js(`(()=>{const c=document.querySelector(".pc-topbar .pc-mode-chip");return !c||getComputedStyle(c).display==="none"})()`);
+    await js(`document.querySelector(".pc-topbar .ui-menu-btn[aria-label='Modo de tela']").click()`);
+    await n.esperar(300);
+    const marcado = await js(`[...document.querySelectorAll(".ui-menu-pop [role=menuitem]")].filter((b)=>b.innerText.trim().startsWith("●")).length===1`);
+    await js(`document.body.click()`);
+    await n.esperar(200);
+    modoOk17t = chipOculto && marcado;
+  } else {
+    modoOk17t = await js(`(()=>{const chip=document.querySelector(".pc-topbar .pc-mode-chip");return !!chip&&Math.round(chip.getBoundingClientRect().width)===36&&chip.innerText.trim()===""})()`);
+  }
+  registrar("17t. Topo: modo de tela (Completo: sem chip no topo e menu ⋯ com o modo atual marcado; demais: só o ícone, 36 px), busca com um contorno só e foco sem segundo anel", Boolean(modoOk17t) && Boolean(busca17t));
   registrar("17u. Trilho: avatar do usuário é um ícone de pessoa em círculo branco (não as iniciais)", await js(`(()=>{const a=document.querySelector(".tr-avatar");return !!a&&!!a.querySelector("svg")&&a.innerText.trim()===""&&getComputedStyle(a).backgroundColor==="rgb(255, 255, 255)"&&getComputedStyle(a).borderTopLeftRadius!=="0px"})()`));
   // 17z. 1440x800, correção com UMA foto e título de 2 linhas: o corpo do detalhe NÃO rola e o rodapé com "Salvar plano" fica fixo e à vista.
   {
@@ -1328,7 +1352,7 @@ detalhes:{chipDaAcaoNaBarra:chipVisivel,sobrepostos,pessoas:pessoas.map((c)=>c.t
     const o = m.obs;
     const [foto21, falar, ia] = o.botoes;
     registrar(`21e ${rotulo}. observação sem o rótulo 'Observação (opcional)', SEM borda externa, começando direto nos botões, campo com placeholder 'Observação' e pelo menos 84 px (cresce para ocupar o espaço livre)`, o.semRotulo === true && o.borda === "0px" && o.comecaNosBotoes && o.placeholder === "Observação" && o.alturaDoCampo >= 83 && o.campoAbaixoDosBotoes, JSON.stringify({ semRotulo: o.semRotulo, padding: o.padding, comeca: o.comecaNosBotoes, placeholder: o.placeholder, altura: o.alturaDoCampo }));
-    registrar(`21f ${rotulo}. Foto (#AF640A), Falar (#1F78B4) e IA (#1D5F95) com 34 px, largura do conteúdo, à esquerda na mesma linha, texto branco 14 px sem negrito, ícone de 16 px`, Boolean(foto21 && falar && ia) && [foto21, falar, ia].every((x) => perto(x.h, 34, 0.6) && x.w < 140 && rgb(x.cor) === "255,255,255" && x.tam === "14px" && x.peso === "400") && rgb(foto21.bg) === "175,100,10" && rgb(falar.bg) === "31,120,180" && rgb(ia.bg) === "29,95,149" && foto21.esq <= 14 && perto(foto21.topo, falar.topo, 1) && perto(falar.topo, ia.topo, 1) && foto21.svg === 16 && falar.svg === 16, JSON.stringify(o.botoes));
+    registrar(`21f ${rotulo}. Foto (#AF640A), Falar (#1F78B4) e IA (#1D5F95) com 34 px, largura do conteúdo, à esquerda na mesma linha, texto branco 15 px sem negrito, ícone de 16 px`, Boolean(foto21 && falar && ia) && [foto21, falar, ia].every((x) => perto(x.h, 34, 0.6) && x.w < 140 && rgb(x.cor) === "255,255,255" && x.tam === "15px" && x.peso === "400") && rgb(foto21.bg) === "175,100,10" && rgb(falar.bg) === "31,120,180" && rgb(ia.bg) === "29,95,149" && foto21.esq <= 14 && perto(foto21.topo, falar.topo, 1) && perto(falar.topo, ia.topo, 1) && foto21.svg === 16 && falar.svg === 16, JSON.stringify(o.botoes));
     registrar(`21g ${rotulo}. rodapé: '← Anterior' à esquerda e 'Salvar e próximo →' verde #1E7A3E à direita, 44 px, largura do conteúdo, 15 px, sem esticar`, Boolean(m.rodape.anterior && m.rodape.salvar) && perto(m.rodape.anterior.h, 44, 0.6) && perto(m.rodape.salvar.h, 44, 0.6) && m.rodape.anterior.w < 160 && m.rodape.salvar.w < 220 && m.rodape.anterior.tam === "15px" && m.rodape.salvar.tam === "15px" && m.rodape.anterior.esq <= 1 && m.rodape.salvar.dir <= 1 && rgb(m.rodape.salvar.bg) === "30,122,62" && rgb(m.rodape.salvar.cor) === "255,255,255" && m.rodape.salvar.peso === "400", JSON.stringify(m.rodape));
     registrar(`21h ${rotulo}. 'O que verificar' fica embaixo, logo acima do rodapé (se o item tem apoio)`, m.apoio === null || (m.apoio.abaixoDaObs && m.apoio.foraDoCorpo && m.apoio.acimaDoRodape), JSON.stringify(m.apoio));
     const bar = m.barra;
@@ -1340,7 +1364,7 @@ detalhes:{chipDaAcaoNaBarra:chipVisivel,sobrepostos,pessoas:pessoas.map((c)=>c.t
     await n.esperar(500);
     const forte = JSON.parse(await js('JSON.stringify((()=>{const b=[...document.querySelectorAll(".chk-foco-botoes .chk-resp")].map((e)=>({t:e.innerText.trim(),s:[...e.classList].find((c)=>c.startsWith("is-")),bg:getComputedStyle(e).backgroundColor,cor:getComputedStyle(e).color,peso:getComputedStyle(e).fontWeight,filhos:e.children.length,ico:(e.querySelector("svg")?e.querySelector("svg").getBoundingClientRect().width:0),h:e.getBoundingClientRect().height,w:e.getBoundingClientRect().width}));return b})())'));
     const marcado = forte.find((x) => x.s === "is-marcado");
-    registrar(`21k ${rotulo}. ao escolher 'Não conforme' a caixa acende forte (cor cheia, texto branco simples, ícone ✓ de 16 px antes do texto, nunca ×) e as três seguem iguais; as outras duas ficam só com texto`, Boolean(marcado) && marcado.t === "Não conforme" && rgb(marcado.bg) === "201,71,63" && rgb(marcado.cor) === "255,255,255" && marcado.peso === "400" && marcado.filhos === 2 && perto(marcado.ico, 16, 0.6) && forte.filter((x) => x !== marcado).every((x) => x.filhos === 1 && x.ico === 0) && !forte.some((x) => x.t.includes("×")) && forte.every((x) => perto(x.w, forte[0].w, 1) && perto(x.h, 38, 0.6)), JSON.stringify(forte));
+    registrar(`21k ${rotulo}. ao escolher 'Não conforme' a caixa acende forte (cor cheia, texto branco simples, ícone ✓ de 16 px antes do texto, nunca ×) e as três seguem iguais; as outras duas ficam só com texto`, Boolean(marcado) && marcado.t === "Não conforme" && rgb(marcado.bg) === "184,58,51" && rgb(marcado.cor) === "255,255,255" && marcado.peso === "400" && marcado.filhos === 2 && perto(marcado.ico, 16, 0.6) && forte.filter((x) => x !== marcado).every((x) => x.filhos === 1 && x.ico === 0) && !forte.some((x) => x.t.includes("×")) && forte.every((x) => perto(x.w, forte[0].w, 1) && perto(x.h, 38, 0.6)), JSON.stringify(forte));
     // Pergunta longa: duas linhas com reticências, o "i" abre o texto inteiro e a fonte
     const longo = JSON.parse(await js(`JSON.stringify((()=>{const t=document.querySelector(".chk-foco-title");const original=t.textContent;t.textContent=${JSON.stringify(TITULO_LONGO + " " + TITULO_LONGO)};const lh=parseFloat(getComputedStyle(t).lineHeight);const rt=t.getBoundingClientRect();const i=document.querySelector(".chk-fonte-i").getBoundingClientRect();const r={linhas:Math.round(rt.height/lh*100)/100,cortado:t.scrollHeight>t.clientHeight+1,iForaDoTexto:i.left>=rt.right-0.5,reticencias:getComputedStyle(t).webkitLineClamp==="2"||getComputedStyle(t).getPropertyValue("-webkit-line-clamp")==="2",titleAttr:t.title===${JSON.stringify(TITULO_LONGO + " " + TITULO_LONGO)}||t.title===original};t.textContent=original;return r})())`));
     registrar(`21c2 ${rotulo}. pergunta longa: no máximo 2 linhas cortadas com reticências (line-clamp 2) e o 'i' continua fora do texto`, longo.linhas <= 2.05 && longo.cortado && longo.iForaDoTexto && longo.reticencias, JSON.stringify(longo));
@@ -1381,6 +1405,8 @@ detalhes:{chipDaAcaoNaBarra:chipVisivel,sobrepostos,pessoas:pessoas.map((c)=>c.t
   await foto("21r-pc");
   const c21r = JSON.parse(await js(`JSON.stringify((()=>{const t=document.querySelector(".chk-foco-obs")?.innerText||"";const fin=document.querySelector(".fv-finalizar");return {buscas:document.querySelectorAll(".pc-busca").length,buscaNoTopo:!!document.querySelector(".pc-topbar .pc-busca"),rotulo:/Observação \\(opcional\\)|Registrar a não conformidade/.test(t),obsTexto:t.slice(0,60),placeholder:document.querySelector(".chk-obs-area")?.placeholder??null,fin:fin?fin.innerText.trim():null,faixaCampo:!!document.querySelector(".fv--campo"),fonteCampo:!!document.querySelector(".chk-fonte-linha--campo")}})())`));
   registrar("21r. PC (Completo) sem mudança: uma só busca no topo, rótulo 'Observação (opcional)', campo sem placeholder, 'Finalizar visita' com texto e nada da faixa do celular", c21r.buscas === 1 && c21r.buscaNoTopo && c21r.rotulo && c21r.placeholder === "" && /Finalizar visita/.test(c21r.fin || "") && !c21r.faixaCampo && !c21r.fonteCampo, JSON.stringify(c21r));
+  registrar("21r2. PC (rodada 4): rótulo da observação em grafite, 15 px ou mais e sem maiúsculas; Foto, Falar e IA com 15 px ou mais; campo vazio com ~3 linhas (84 a 140 px), não a folga da tela", await js(`(()=>{const r=document.querySelector(".chk-foco-obs .chk-obs-rotulo");const a=document.querySelector(".chk-obs-area");if(!r||!a)return false;const e=getComputedStyle(r);const f=[...document.querySelectorAll(".chk-foco-obs .voz-ia, .chk-foco-obs .voz-btn, .chk-foco-obs .chk-linha-foto")].map((x)=>parseFloat(getComputedStyle(x).fontSize));const h=a.getBoundingClientRect().height;return e.textTransform==="none"&&parseFloat(e.fontSize)>=15&&f.length>=2&&f.every((x)=>x>=15)&&(a.value!==""||(h>=83&&h<=140))})()`));
+  registrar("21r3. Topo do Completo: sem o chip do modo de tela (fica no menu ⋯) e Empresa ativa com contorno de 2 px", await js(`(()=>{const chip=document.querySelector(".pc-topbar .pc-mode-chip");const cx=document.querySelector(".pc-topbar .emp-ativa-caixa");if(!cx)return false;return (!chip||getComputedStyle(chip).display==="none")&&getComputedStyle(cx).borderTopWidth==="2px"})()`));
 
   // 21s. Finalizar visita no celular: o toque abre SEMPRE a janela única; Esc e "Voltar e completar" não encerram; nada de segunda janela.
   const idDaVisitaAtual = () => js(`JSON.parse(localStorage.getItem(${JSON.stringify(CHAVE_NAV)})).visitaAtualId`);

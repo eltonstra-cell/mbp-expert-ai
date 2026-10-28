@@ -84,7 +84,7 @@ test("janela: estrutura (modal por cima, fundo rgba(18,32,43,.28), página trava
   assert.match(bloco, /@media \(max-width:759px\)\{\.esc-opcoes\{grid-template-columns:minmax\(0,1fr\)\}\}/);
   assert.match(bloco, /\.esc-opcao\{[^}]*min-height:46px[^}]*border:1\.5px solid #B4C2CE/);
   assert.match(bloco, /\.esc-opcao\.is-on\{border-color:#E8B04B;background:#FEF6E6\}/);
-  assert.match(bloco, /\.esc-caixa:checked\{border-color:#E8760A;background:#E8760A\}/);
+  assert.match(bloco, /\.esc-caixa:checked\{border-color:#AF640A;background:#AF640A\}/);
   assert.match(bloco, /\.esc-titulo\{[^}]*font-size:20px;font-weight:500/);
   assert.equal(/text-overflow|white-space:nowrap/.test(bloco.slice(bloco.indexOf(".esc-opcao{"))), false, "o nome do setor nunca é cortado");
   assert.ok(janela.includes("Marque somente") === false, "o apoio vem de quem usa a janela");

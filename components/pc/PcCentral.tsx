@@ -5,7 +5,6 @@ import { useCabem } from "@/components/useFit";
 import { ListRow } from "@/components/ui/ListRow";
 import { Pill } from "@/components/ui/Pill";
 import { SegmentedProgress } from "@/components/ui/ProgressBar";
-import { StatStrip } from "@/components/ui/StatStrip";
 
 export type NcAbertaCentral = {
   id: string;
@@ -35,10 +34,9 @@ type Props = {
     desabilitado: boolean;
     onContinuar: () => void;
   };
-  indicadores: { conformes: number; naoConformidades: number; evidencias: number; evidenciasTexto?: string; pendencias: number };
-  equipamentos: { texto: string; desabilitado: boolean; onAbrir: () => void };
+  /** Sem equipamento: linha compacta ("Nenhum equipamento cadastrado · Cadastrar ›"); `onCadastrar` nulo = sem permissão, só o texto. */
+  equipamentos: { vazio: boolean; textoVazio: string; onCadastrar: (() => void) | null; texto: string; desabilitado: boolean; onAbrir: () => void };
   programas: { texto: string; onAbrir: () => void } | null;
-  atividade: { texto: string; onAcompanhar: (() => void) | null };
   ncsAbertas: NcAbertaCentral[] | null;
   onVerNcs: () => void;
   onEditarAmbientes: (() => void) | null;
@@ -51,10 +49,8 @@ export default function PcCentral({
   empresa,
   detalhe,
   proxima,
-  indicadores,
   equipamentos,
   programas,
-  atividade,
   ncsAbertas,
   onVerNcs,
   onEditarAmbientes,
@@ -98,16 +94,6 @@ export default function PcCentral({
         </button>
       </div>
 
-      <StatStrip
-        rotulo="Resumo da visita"
-        itens={[
-          { rotulo: "Conformes", valor: indicadores.conformes, tom: "ok" },
-          { rotulo: "Correções abertas", valor: indicadores.naoConformidades, tom: "nc", detalhe: "da visita" },
-          { rotulo: "Evidências", valor: indicadores.evidencias, tom: "info", detalhe: indicadores.evidenciasTexto },
-          { rotulo: "Pendências", valor: indicadores.pendencias, tom: "pend" },
-        ]}
-      />
-
       <div className="pc-steps-row" role="group" aria-label="Próximos passos da visita">
         {passos.map((passo) => (
           <button key={passo.chave} type="button" className={`pc-step-card pc-step-card--${passo.tom}`} onClick={() => onIrPasso(passo.chave)}>
@@ -123,32 +109,41 @@ export default function PcCentral({
         ))}
       </div>
 
-      <div className="pc-three">
-        <button type="button" className="ui-card pc-card-btn" disabled={equipamentos.desabilitado} onClick={equipamentos.onAbrir}>
-          <span className="ui-eyebrow">Equipamentos e móveis</span>
-          <span className="ui-row-sub">{equipamentos.texto}</span>
-        </button>
-        {programas ? (
-          <button type="button" className="ui-card pc-card-btn" onClick={programas.onAbrir}>
-            <span className="ui-eyebrow">Programas de Controle</span>
-            <span className="ui-row-sub">{programas.texto}</span>
-          </button>
-        ) : (
-          <div className="ui-card pc-card-btn">
-            <span className="ui-eyebrow">Programas de Controle</span>
-            <span className="ui-row-sub">Nenhum programa ativo para esta visita.</span>
-          </div>
-        )}
-        <div className="ui-card pc-card-btn">
-          <span className="ui-eyebrow">Atividade da visita</span>
-          <span className="ui-row-sub">{atividade.texto}</span>
-          {atividade.onAcompanhar && (
-            <button type="button" className="ui-btn ui-btn--secondary ui-btn--small pc-self-start" onClick={atividade.onAcompanhar}>
-              Acompanhar →
+      {(equipamentos.vazio || !programas) && (
+        <div className="pc-vazios">
+          {equipamentos.vazio && (
+            <p className="pc-vazio-linha">
+              <span>{equipamentos.textoVazio}</span>
+              {equipamentos.onCadastrar && (
+                <>
+                  <span aria-hidden="true"> · </span>
+                  <button type="button" className="pc-link-btn" onClick={equipamentos.onCadastrar}>
+                    Cadastrar ›
+                  </button>
+                </>
+              )}
+            </p>
+          )}
+          {!programas && <p className="pc-vazio-linha">Nenhum programa ativo</p>}
+        </div>
+      )}
+
+      {(!equipamentos.vazio || programas) && (
+        <div className="pc-three">
+          {!equipamentos.vazio && (
+            <button type="button" className="ui-card pc-card-btn" disabled={equipamentos.desabilitado} onClick={equipamentos.onAbrir}>
+              <span className="ui-eyebrow">Equipamentos e móveis</span>
+              <span className="ui-row-sub">{equipamentos.texto}</span>
+            </button>
+          )}
+          {programas && (
+            <button type="button" className="ui-card pc-card-btn" onClick={programas.onAbrir}>
+              <span className="ui-eyebrow">Programas de Controle</span>
+              <span className="ui-row-sub">{programas.texto}</span>
             </button>
           )}
         </div>
-      </div>
+      )}
 
       {ncsAbertas && ncsAbertas.length > 0 && (
         <div className="pc-open-block">

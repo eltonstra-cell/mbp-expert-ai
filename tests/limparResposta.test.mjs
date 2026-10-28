@@ -1,18 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { respostaRepetida, temResposta, dadosExtrasDoItem, limparResposta, desfazerLimpeza, listaEmTexto } from "../lib/limparResposta.ts";
+import { temResposta, dadosExtrasDoItem, limparResposta, desfazerLimpeza, listaEmTexto } from "../lib/limparResposta.ts";
 import { sincronizarNcDoItem } from "../lib/checklistNcs.ts";
 
 const visita = { id: "v1", empresaId: "e1" };
 const itemBase = { id: "i1", ambiente: "Cozinha", titulo: "Piso limpo", categoria: "Higiene", status: "Pendente", observacao: "" };
 const AGORA = "2026-10-19T10:00:00.000Z";
 
-test("tocar de novo na opção já marcada não faz nada", () => {
-  assert.equal(respostaRepetida({ status: "Conforme" }, "Conforme"), true);
-  assert.equal(respostaRepetida({ status: "Não Conforme" }, "Não Conforme"), true);
-  assert.equal(respostaRepetida({ status: "Conforme" }, "Não Conforme"), false);
-  assert.equal(respostaRepetida({ status: "Pendente" }, "Conforme"), false);
-});
 
 test("só tem o que limpar quando o item tem resposta", () => {
   assert.equal(temResposta({ status: "Pendente" }), false);

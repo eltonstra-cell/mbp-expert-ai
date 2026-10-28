@@ -38,7 +38,6 @@ import { podeGerarDossie } from "@/lib/dossie";
 import { CAPACIDADE_VAZIA, TEXTO_DA_CAPACIDADE, capacidadeDoFormulario, capacidadeParaFormulario, validarCapacidade, type CapacidadeEmTexto } from "@/lib/capacidadeEmpresa";
 import PainelHojeCard, { AtalhosDeRelatorios } from "@/components/PainelHoje";
 import { fonteParaExibir } from "@/lib/fonteDaPergunta";
-import { tomDoStatus } from "@/lib/checklistSegmentos";
 import RelatorioMontadoVista from "@/components/RelatorioMontadoVista";
 import PcRevisaoDoRelatorio from "@/components/pc/PcRevisaoDoRelatorio";
 import PcMapaDeRisco from "@/components/pc/PcMapaDeRisco";
@@ -68,7 +67,6 @@ import { passoDaView, passosDaTrilha, percentualDaVisita, type PassoVisita } fro
 import { conferenciaDoRelatorio, destinoDoPreencherCrn } from "@/lib/reportCheck";
 import { ocultarAmbiente, mostrarAmbiente, excluirAmbienteOculto, resumoOcultos } from "@/lib/hiddenEnvs";
 import { reincidenciaDaNc } from "@/lib/actionPlan";
-import { DURACAO_DO_AVISO_DO_AVANCO_MS, textoDoAvanco } from "@/lib/avancoAutomatico";
 import { acharItemDeDestino, mostrarCartaoProximaEtapa, primeiroItemSemResposta, proximaEtapaDaVisita, textoDoContinuar, type ItemDeDestino } from "@/lib/proximaEtapa";
 import { corDaEmpresa, proximaCorLivre } from "@/lib/empresaCor";
 import { BolinhasDeCor } from "@/components/CorDaEmpresa";
@@ -4882,22 +4880,10 @@ export default function Home() {
     setUltimoItemChecklistId(alvo.id);
   }
 
-  // Avanço automático: a resposta ("Conforme" ou "Não se aplica") já foi gravada; abre o próximo item e avisa com "Desfazer".
-  function avancarAposResponder(item: ChecklistItem, status: ChecklistStatus) {
+  // Avanço automático: a resposta ("Conforme" ou "Não se aplica") já foi gravada; abre o próximo item, sem aviso (tocar de novo na resposta marcada a limpa).
+  function avancarAposResponder(item: ChecklistItem) {
     const lista = itensEmOrdem();
     const alvo = lista[lista.findIndex((registro) => registro.id === item.id) + 1];
-    const doAmbiente = lista.filter((registro) => registro.ambiente === item.ambiente);
-    const proximoAmbiente = alvo && alvo.ambiente !== item.ambiente ? nomeDeExibicaoDoAmbiente(alvo.ambiente) : "";
-    const desfazer = () => {
-      setItemFocoId(item.id);
-      setAmbienteChecklistAtivo(item.ambiente);
-      setUltimoItemChecklistId(item.id);
-      atualizarChecklistItem(item.id, { status: "Pendente" });
-    };
-    mostrarToast(
-      textoDoAvanco({ posNoAmbiente: doAmbiente.findIndex((registro) => registro.id === item.id) + 1, status, proximoAmbiente, fimDaLista: !alvo }),
-      { tom: tomDoStatus(status), duracaoMs: DURACAO_DO_AVISO_DO_AVANCO_MS, acao: { rotulo: "Desfazer", aoClicar: desfazer } }
-    );
     // Registro honesto: o relatório mostra quantas respostas foram seguidas do avanço automático.
     atualizarChecklistItem(item.id, { avancouSozinho: true });
     if (!alvo) return;
@@ -7202,7 +7188,7 @@ export default function Home() {
         </div>
       )}
       {respostaLimpa && (
-        <div className="pc-toast" role="status">
+        <div className="pc-toast aviso-acima-do-rodape" role="status">
           <span>Resposta limpa</span>
           <button type="button" className="pc-link-btn" onClick={desfazerLimparResposta}>
             Desfazer
@@ -7533,7 +7519,7 @@ export default function Home() {
       <ConflitosDeEdicao conflitos={conflitos} onEscolher={escolherConflito} />
 
       {loteParaDesfazer && (
-        <div className="lote-desfazer" role="status">
+        <div className="lote-desfazer aviso-acima-do-rodape" role="status">
           <span>{loteParaDesfazer.texto}</span>
           <button type="button" className="pc-link-btn" onClick={desfazerOLote}>Desfazer</button>
         </div>
@@ -7945,7 +7931,7 @@ export default function Home() {
                     onLimpar={() => void limparRespostaDoItem(foco.id)}
                       onAnterior={() => moverItemFoco(-1)}
                     onProximo={() => moverItemFoco(1)}
-                    onAvancar={(status) => avancarAposResponder(foco, status)}
+                    onAvancar={() => avancarAposResponder(foco)}
                     campo
                   />
                 ) : (
@@ -8790,7 +8776,7 @@ export default function Home() {
                       onLimpar={() => void limparRespostaDoItem(foco.id)}
                       onAnterior={() => moverItemFoco(-1)}
                       onProximo={() => moverItemFoco(1)}
-                    onAvancar={(status) => avancarAposResponder(foco, status)}
+                    onAvancar={() => avancarAposResponder(foco)}
                     />
                   ) : (
                     <p className="ui-row-sub">Esta visita não tem itens de checklist.</p>
@@ -8860,7 +8846,7 @@ export default function Home() {
                       onLimpar={() => void limparRespostaDoItem(foco.id)}
                       onAnterior={() => moverItemFoco(-1)}
                       onProximo={() => moverItemFoco(1)}
-                    onAvancar={(status) => avancarAposResponder(foco, status)}
+                    onAvancar={() => avancarAposResponder(foco)}
                     />
                   ) : (
                     <p className="ui-row-sub">Esta visita não tem itens de checklist.</p>
@@ -9385,11 +9371,11 @@ export default function Home() {
         ) : view === "visita" && visitaAtual ? (
           <PcCentral
             passos={([
-              { chave: "checklist", rotulo: "Checklist", resumo: `${respondidos} de ${totalChecklist} respondidos`, icone: "checklist", tom: "ok" },
+              { chave: "checklist", rotulo: "Checklist", resumo: `${qtd(conformesChecklist, "conforme", "conformes")} · ${pendentesChecklist > 0 ? qtd(pendentesChecklist, "item sem resposta", "itens sem resposta") : "tudo respondido"}`, icone: "checklist", tom: "ok" },
               { chave: "evidencias", rotulo: "Evidências", resumo: `${fotosVisita} ${fotosVisita === 1 ? "foto" : "fotos"} · ${audiosVisita} ${audiosVisita === 1 ? "áudio" : "áudios"}`, icone: "evidencias", tom: "info" },
-              { chave: "correcoes", rotulo: "Correções", resumo: `${ncsAbertas} em aberto`, icone: "ncs", tom: "nc" },
+              { chave: "correcoes", rotulo: "Correções", resumo: `${qtd(ncsAbertas, "aberta", "abertas")} nesta visita`, icone: "ncs", tom: "nc" },
               { chave: "pops", rotulo: "POPs da visita", resumo: `${resumoPopsVisita.pendentes} a criar ou em rascunho`, icone: "pops", tom: "pend" },
-              { chave: "relatorio", rotulo: "Relatório", resumo: `${linhasConferenciaRel.filter((linha) => !linha.ok).length} pendências`, icone: "relatorio", tom: "lilas" },
+              { chave: "relatorio", rotulo: "Relatório", resumo: linhasConferenciaRel.filter((linha) => !linha.ok).length > 0 ? qtd(linhasConferenciaRel.filter((linha) => !linha.ok).length, "pendência do relatório", "pendências do relatório") : "Sem pendências do relatório", icone: "relatorio", tom: "lilas" },
             ] as PassoCentral[]).filter((passo) => telaVisivel(passo.chave === "pops" ? "popsVisita" : (passo.chave as TelaKey)))}
             onIrPasso={(chave) => irParaPasso(chave as PassoVisita)}
             empresa={nomeParaExibir(empresaVisita)}
@@ -9407,14 +9393,10 @@ export default function Home() {
               desabilitado: !(permitido("visitas.executar", visitaAtual.empresaId) || (!!usuarioDaSessao && telaVisivel("checklist"))),
               onContinuar: () => ((visitaAtual.ambientes || []).length ? abrirChecklist() : abrirAmbientes()),
             }}
-            indicadores={{
-              conformes: conformesVisita,
-              naoConformidades: ncsAbertas,
-              evidencias: contagemEvidencias.total,
-              evidenciasTexto: contagemEvidencias.texto,
-              pendencias: pendentesVisita,
-            }}
             equipamentos={{
+              vazio: equipamentosDaVisita.length === 0,
+              textoVazio: (empresaVisita?.equipamentosSetores || []).length === 0 ? "Nenhum equipamento cadastrado" : "Nenhum equipamento nos ambientes desta visita",
+              onCadastrar: atual && atual.id === visitaAtual.empresaId && permitido("empresas.editar", atual.id) ? () => irParaMenu("cadastros") : null,
               texto: `${equipamentosDaVisita.length} tipos · ${totalUnidadesEquipamentos} unidades`,
               desabilitado: (visitaAtual.ambientes || []).length === 0,
               onAbrir: () => abrirChecklistNoAmbiente(equipamentosDaVisita[0]?.setor || (visitaAtual.ambientes || [])[0]),
@@ -9427,10 +9409,6 @@ export default function Home() {
                   }
                 : null
             }
-            atividade={{
-              texto: `${respondidos} itens respondidos · ${ncsVisita.length} não conformidades`,
-              onAcompanhar: permitido("ncs.acompanhar", visitaAtual.empresaId) ? () => setView("acompanhamento") : null,
-            }}
             ncsAbertas={
               permitido("ncs.acompanhar", visitaAtual.empresaId)
                 ? [...ncsVisita]

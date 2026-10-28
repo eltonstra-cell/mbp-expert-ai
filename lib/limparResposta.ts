@@ -15,11 +15,6 @@ export function idDaNcDoItem(visitaId: string, itemId: string) {
   return `${visitaId}:${itemId}`;
 }
 
-/** Tocar de novo na opção já marcada não faz nada: nem desmarca. */
-export function respostaRepetida(item: Pick<ChecklistItem, "status">, nova: ChecklistItem["status"]) {
-  return item.status !== "Pendente" && item.status === nova;
-}
-
 export function temResposta(item: Pick<ChecklistItem, "status">) {
   return item.status !== "Pendente";
 }

@@ -57,7 +57,7 @@ test("Checklist do Campo: busca do PC no cabeçalho, respostas só com texto at�
   assert.ok(busca.includes('variante?: "inicio" | "campo"') && busca.includes('variante !== "campo" && <kbd'));
   const pagina = ler("../app/page.tsx");
   assert.ok(pagina.includes('variante="campo"') && pagina.includes("semBusca={modo === \"campo\"}"));
-  assert.ok(/onAvancar=\{\(status\) => avancarAposResponder\(foco, status\)\}\s*campo\s*\/>/.test(pagina));
+  assert.ok(/onAvancar=\{\(\) => avancarAposResponder\(foco\)\}\s*campo\s*\/>/.test(pagina));
   const item = ler("../components/ChecklistFocoItem.tsx").replace(/\r\n/g, "\n");
   assert.ok(item.includes("{estado === \"marcado\" && ("), "ícone ✓ só na resposta escolhida (Campo e PC)");
   assert.ok(/\{!campo && \(\s*<div className="chk-obs-titulo">/.test(item), "sem o rótulo 'Observação (opcional)' no Campo");
@@ -217,36 +217,34 @@ test("Checklist em janela estreita: respostas dentro do cartão e 'Pular ambient
   assert.ok(ler("../components/ChecklistFocoItem.tsx").includes("chk-foco-count-texto"));
 });
 
-test("Pacote de ajustes: pastel com texto grafite, aviso colorido com Desfazer sublinhado, pergunta e observação sem caixa, apoio sem frase repetida", async () => {
+test("Pacote de ajustes: pastel com texto grafite, aviso com ação sublinhada, pergunta e observação sem caixa, apoio sem frase repetida", async () => {
   const css = ler("../app/globals.css");
   for (const regra of [
     ".chk-acao--voz{background:#DCEBFB;border-color:#9CBFE6;color:#1B2433}",
     ".chk-acao--conforme{background:#E3F5EA;border-color:#9BD3B0;color:#1B2433}",
-    ".toast-salvo.toast-tom--ok{border-color:#1E7A3E;background:#1E7A3E}",
-    ".toast-salvo.toast-tom--na{border-color:#5B6575;background:#5B6575}",
-    ".toast-salvo[class*=\"toast-tom--\"] .toast-acao{color:#fff}",
     "text-decoration:underline",
     "html .chk-foco-card,html[data-modo=\"campo\"] .campo-tela .chk-foco-card{border:0;background:transparent;box-shadow:none}",
     "{padding:0;border:0;background:transparent;box-shadow:none}",
   ]) assert.ok(css.includes(regra), regra);
   assert.ok(/\.toast-salvo \.toast-acao\{[^}]*min-height:36px/.test(css), "área de toque de Desfazer >= 34 px");
   const { mostrarToast, toastAtual, limparToast } = await import("../lib/toast.ts");
-  mostrarToast("Item 2 · Não se aplica", { tom: "na", duracaoMs: 50, acao: { rotulo: "Desfazer", aoClicar() {} } });
-  assert.equal(toastAtual().tom, "na");
+  mostrarToast("Algo", { duracaoMs: 50, acao: { rotulo: "Desfazer", aoClicar() {} } });
+  assert.equal(toastAtual().tom, undefined);
   limparToast();
-  assert.ok(ler("../components/ToastHost.tsx").includes("toast-tom--${toast.tom}"));
-  assert.ok(ler("../components/ToastHost.tsx").includes('const ehOk = toast.tipo === "ok" || Boolean(toast.tom)'), "aviso com tom sempre usa o ✓ (só a cor muda)");
+  assert.ok(!ler("../components/ToastHost.tsx").includes("toast-tom"), "sem tom no aviso");
   const apoio = ler("../components/pc/PcChecklist.tsx");
   assert.ok(!apoio.includes("Sem material de apoio"), "uma linha só: Fonte não registrada");
   assert.ok(apoio.includes("linhaDeFonteDoApoio(apoio.fonte, !vazio)"));
 });
 
-test("tomDoStatus: Conforme = ok, Não Conforme = nc, Não se aplica = na (cor do aviso do avanço automático)", async () => {
-  const { tomDoStatus } = await import("../lib/checklistSegmentos.ts");
-  assert.equal(tomDoStatus("Conforme"), "ok");
-  assert.equal(tomDoStatus("Não Conforme"), "nc");
-  assert.equal(tomDoStatus("Não se aplica"), "na");
-  assert.ok(ler("../app/page.tsx").includes("tom: tomDoStatus(status)"));
+test("responder o checklist não mostra aviso com Desfazer; lote e 'Resposta limpa' ficam acima do rodapé; tocar na resposta marcada limpa", () => {
+  const pagina = ler("../app/page.tsx");
+  const trecho = pagina.slice(pagina.indexOf("function avancarAposResponder"), pagina.indexOf("function registrarRapido"));
+  assert.ok(!trecho.includes("mostrarToast") && !trecho.includes("Desfazer"));
+  assert.ok(pagina.includes('className="lote-desfazer aviso-acima-do-rodape"'));
+  assert.ok(/.aviso-acima-do-rodape{bottom:104px!important}/.test(ler("../app/globals.css")));
+  const foco = ler("../components/ChecklistFocoItem.tsx");
+  assert.ok(/if \(estado === "marcado"\) \{[\s\S]*?reToqueValido\(Date\.now\(\), marcadoEmRef\.current\)\) onLimpar\?\.\(\);\s*return;/.test(foco));
 });
 
 test("linha de fonte do apoio: com outro material e sem fonte não mostra 'Fonte não registrada'; sem nada mostra uma linha só; fonte real sempre aparece", async () => {
@@ -256,4 +254,30 @@ test("linha de fonte do apoio: com outro material e sem fonte não mostra 'Fonte
   assert.equal(linhaDeFonteDoApoio("", false), "Fonte não registrada");
   assert.equal(linhaDeFonteDoApoio("Derivada do Manual, cap. 1, item 2.5", true), "Fonte: Derivada do Manual, cap. 1, item 2.5");
   assert.equal(linhaDeFonteDoApoio("Derivada do Manual, cap. 1, item 2.5", false), "Fonte: Derivada do Manual, cap. 1, item 2.5");
+});
+
+test("Pacote de ajustes (parte 2): rodapé de 44 px, cores do DS, faixa fina em 2 linhas, Não conforme do Campo #B83A33 e 'próxima etapa' em até 2 linhas", () => {
+  const css = ler("../app/globals.css");
+  assert.ok(css.includes("html .chk-foco-rodape .ui-btn{height:44px!important;min-height:44px!important"));
+  assert.ok(css.includes("html .chk-foco-rodape{padding-top:0}"));
+  assert.ok(css.includes(".chk-linha-foto{background:#AF640A;cursor:pointer}"));
+  assert.ok(css.includes(".voz-btn{background:#1F78B4;cursor:pointer}"));
+  assert.ok(css.includes("border:0;background:#1D5F95;color:#fff;font-weight:400}"));
+  assert.ok(css.includes(".ui-btn--primary{background:#AF640A;color:#fff}"));
+  assert.ok(css.includes(".ui-btn--criar{background:#AF640A;color:#fff;font-weight:400}"));
+  const semCartaz = css.split("\n").filter((linha) => !/\.cz[-\s{,:]|\.cz--/.test(linha)).join("\n");
+  assert.ok(!/#E8760A/i.test(semCartaz), "o laranja forte antigo só resta no cartaz impresso");
+  assert.ok(/\.faixa-fina\{[^}]*white-space:normal/.test(css) && !/\.faixa-fina\{[^}]*text-overflow/.test(css));
+  assert.ok(css.includes('.chk-resp.is-marcado.chk-resp--nc{border-color:#B83A33;background:#B83A33;color:#fff}'));
+  assert.ok(!css.includes("chk-resp--nc{border-color:#C9473F"));
+  assert.ok(/\.ini3-cartao-sub\{[^}]*white-space:normal/.test(css) && !/\.ini3-cartao-sub\{[^}]*text-overflow/.test(css));
+  assert.ok(ler("../lib/brand.ts").includes('"--count": "#AF640A"'));
+});
+
+test("re-toque na resposta marcada: ignora toque duplo nos primeiros 700 ms e vale depois", async () => {
+  const { reToqueValido } = await import("../lib/reToque.ts");
+  assert.equal(reToqueValido(1000, null), true);
+  assert.equal(reToqueValido(1300, 1000), false);
+  assert.equal(reToqueValido(1699, 1000), false);
+  assert.equal(reToqueValido(1700, 1000), true);
 });

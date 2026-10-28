@@ -1885,7 +1885,7 @@ html:not([data-modo="campo"]) .campo-head,html:not([data-modo="campo"]) .campo-b
 .campo-tab,.campo-register{display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 0;border:0;border-radius:12px;background:transparent;color:var(--ink);cursor:pointer}
 .campo-tab.is-on{background:var(--brand-soft)}
 .campo-tab-icon{position:relative;display:grid;place-items:center;width:34px;height:28px}
-.campo-tab-count{position:absolute;top:-4px;right:-10px;min-width:18px;padding:0 5px;border-radius:999px;background:#E8760A;color:#fff;font-size:.68rem;line-height:1.5}
+.campo-tab-count{position:absolute;top:-4px;right:-10px;min-width:18px;padding:0 5px;border-radius:999px;background:#AF640A;color:#fff;font-size:.68rem;line-height:1.5}
 .campo-tab-label{font-size:.72rem;line-height:1.1}
 .campo-register-orb{display:grid;place-items:center;width:54px;height:54px;margin-top:-22px;border-radius:50%;background:var(--register-gradient);box-shadow:var(--register-shadow);color:var(--ink)}
 .campo-tela{display:flex;height:calc(100dvh - 137px);flex-direction:column;gap:12px;padding-bottom:12px;overflow-y:auto}
@@ -1905,7 +1905,7 @@ html[data-modo="campo"] .ui-screen{flex:none;height:calc(100dvh - 137px);overflo
 .campo-btn{display:flex;align-items:center;justify-content:center;min-height:52px;padding:0 16px;border:2px solid transparent;border-radius:14px;font-size:1rem;cursor:pointer}
 .campo-btn:disabled{opacity:.5}
 .campo-btn--brand{background:var(--brand);color:#fff}
-.campo-btn--orange{background:#E8760A;color:var(--ink)}
+.campo-btn--orange{background:#AF640A;color:var(--ink)}
 .campo-btn--soft{background:var(--brand-soft);color:var(--ink)}
 .campo-btn--outline{background:#fff;border-color:var(--brand);color:var(--ink)}
 .campo-btn--save{background:var(--ok);color:#fff;flex:1}
@@ -2172,7 +2172,7 @@ html[data-modo="equilibrado"] .ui-screen[aria-label="Relatório da visita"] .ui-
 .pc-step:hover{background:rgba(255,255,255,.1)}
 .pc-step.is-active{background:var(--side-active-bg)}
 .pc-step-count{color:rgba(255,255,255,.9);font-size:.82rem}
-.pc-step-count.is-badge{min-width:22px;padding:1px 8px;border-radius:999px;background:#E8760A;color:#fff;text-align:center}
+.pc-step-count.is-badge{min-width:22px;padding:1px 8px;border-radius:999px;background:#AF640A;color:#fff;text-align:center}
 
 .pc-mini-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .pc-mini{display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%;min-height:36px;padding:0 10px;border:0;border-radius:12px;background:rgba(255,255,255,.16);color:#fff;font-size:.82rem;white-space:nowrap;cursor:pointer}
@@ -2323,7 +2323,7 @@ html[data-modo="equilibrado"] .ui-screen[aria-label="Relatório da visita"] .ui-
 .pc-cor-topo{align-items:center}
 .pc-cor-topo .pc-cor-grav{margin-left:auto}
 .chk-foco-card.is-destaque{animation:chk-destaque 2.4s ease-out}
-@keyframes chk-destaque{0%,60%{box-shadow:0 0 0 4px #E8760A}100%{box-shadow:0 0 0 0 rgba(232,118,10,0)}}
+@keyframes chk-destaque{0%,60%{box-shadow:0 0 0 4px #AF640A}100%{box-shadow:0 0 0 0 rgba(175,100,10,0)}}
 
 /* Celular: campo "O que será feito" com 3 a 4 linhas; o resto do espaço vira informação */
 .campo-field--acao{flex:none}
@@ -2415,8 +2415,7 @@ html[data-modo="equilibrado"] .pc-topbar-end{flex:1 1 auto;justify-content:flex-
 .pc-step-card--ok,.pc-step-card--info,.pc-step-card--nc,.pc-step-card--pend,.pc-step-card--lilas,
 .pc-reg-card--foto,.pc-reg-card--arq,.pc-reg-card--audio,
 .chk-tool--foto,.chk-tool--ditar,.chk-tool--digitar{background:#fff}
-.ui-stat::after,.pc-help-cat::after,.pc-reg-card::after{content:"";position:absolute;top:10px;right:10px;width:8px;height:8px;border-radius:50%;background:var(--dot,transparent)}
-.ui-stat--ok{--dot:var(--ok)}.ui-stat--nc{--dot:var(--nc)}.ui-stat--pend,.ui-stat--amber{--dot:var(--pend)}.ui-stat--info{--dot:var(--info,#3AA6D9)}.ui-stat--brand{--dot:var(--brand)}.ui-stat--lilas{--dot:var(--lilas)}
+.pc-help-cat::after,.pc-reg-card::after{content:"";position:absolute;top:10px;right:10px;width:8px;height:8px;border-radius:50%;background:var(--dot,transparent)}
 .pc-help-cat--azul{--dot:var(--brand)}.pc-help-cat--verde{--dot:var(--ok)}.pc-help-cat--ceu{--dot:var(--info,#3AA6D9)}.pc-help-cat--ambar{--dot:var(--pend)}.pc-help-cat--violeta{--dot:var(--lilas)}.pc-help-cat--rosa{--dot:var(--nc)}
 .pc-reg-card--foto{--dot:var(--orange)}.pc-reg-card--arq{--dot:var(--brand)}.pc-reg-card--audio{--dot:var(--lilas)}
 .pc-step-card:hover{border-color:var(--brand)}
@@ -2549,8 +2548,6 @@ html[data-modo="campo"] .ui-screen[aria-label="Central da visita"] .ui-head{alig
 html[data-modo="campo"] .ui-screen[aria-label="Central da visita"] .ui-title{font-size:1.25rem}
 html[data-modo="campo"] .ui-screen[aria-label="Central da visita"] .pc-continue{padding:10px 12px}
 html[data-modo="campo"] .ui-screen[aria-label="Central da visita"] .pc-continue .ui-btn{width:100%}
-html[data-modo="campo"] .ui-screen[aria-label="Central da visita"] .ui-stats{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:6px}
-html[data-modo="campo"] .ui-screen[aria-label="Central da visita"] .ui-stat{padding:6px 10px}
 html[data-modo="campo"] .ui-screen[aria-label="Central da visita"] .pc-steps-row{display:flex;flex:1;min-height:0;flex-direction:column;gap:6px;overflow-y:auto}
 html[data-modo="campo"] .ui-screen[aria-label="Central da visita"] .pc-step-card{flex:none;padding:8px 10px}
 html[data-modo="campo"] .ui-screen[aria-label="Central da visita"] .pc-three,html[data-modo="campo"] .ui-screen[aria-label="Central da visita"] .pc-open-block{display:none}
@@ -2832,7 +2829,7 @@ html[data-modo="campo"] .ev7-lista-topo .ui-tab{flex:1 1 auto;justify-content:ce
 .ev7-pk-item{display:flex;flex:none;align-items:center;gap:10px;width:100%;min-height:36px;padding:4px 12px;border:1px solid var(--border);border-radius:10px;background:#fff;text-align:left;font-size:.88rem;line-height:1.25;color:var(--ink);cursor:pointer}
 .ev7-pk-item.is-atual{border:1.5px solid #E8B04B}
 .ev7-pk-bola{flex:none;width:10px;height:10px;border:1.5px solid #B4C2CE;border-radius:50%;background:#fff}
-.ev7-pk-item.is-atual .ev7-pk-bola{border-color:#E8782A;background:#F28C28}
+.ev7-pk-item.is-atual .ev7-pk-bola{border-color:#AF640A;background:#AF640A}
 .ev7-pk-item-txt{display:-webkit-box;min-width:0;flex:1;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow-wrap:anywhere}
 .ev7-picker--etapas .ev7-pk-rotulo{padding:6px 16px 4px}
 .ev7-picker--etapas .ev7-pk-painel{margin:0 12px 12px}
@@ -2896,7 +2893,7 @@ html[data-modo="campo"] .ev7-lista-topo .ui-tab{flex:1 1 auto;justify-content:ce
   html:not([data-modo="campo"]) .ev7-privacidade{font-size:.72rem;line-height:1.25}
 }
 .pc-modo-card.is-on{border-color:#E8B04B;background:#FEF6E6}
-.pc-modo-radio.is-on{border-color:#E8782A;background:#F28C28}
+.pc-modo-radio.is-on{border-color:#AF640A;background:#AF640A}
 .pc-modo-quick-list li.is-on{background:#FEF6E6}
 @media (max-height:820px){.pc-modo-quick-list{display:none}}
 /* ===== Pacote 9 · A: contorno das caixas do checklist (Campo, Equilibrado e Completo) ===== */
@@ -2945,8 +2942,8 @@ html[data-modo="completo"] .emp-ativa-avatar{width:34px;height:34px;font-size:.8
 /* ===== Pacote 10 · A: Observação em uma linha (Foto, Falar, IA) ===== */
 .voz-linha{display:flex;flex:none;align-items:center;gap:8px;min-width:0}
 .chk-linha-foto,.voz-btn,.voz-barra{display:inline-flex;flex:none;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 14px;border:0;border-radius:12px;color:#fff;font-size:.92rem;font-weight:400;line-height:1;white-space:nowrap}
-.chk-linha-foto{background:linear-gradient(135deg,#F28C1E,#E8760A);cursor:pointer}
-.voz-btn{background:#2BA6E8;cursor:pointer}
+.chk-linha-foto{background:#AF640A;cursor:pointer}
+.voz-btn{background:#1F78B4;cursor:pointer}
 .chk-linha-foto svg,.voz-btn svg{width:18px;height:18px;flex:none}
 .chk-linha-foto:disabled,.voz-btn:disabled{cursor:default;opacity:.55}
 .chk-linha-foto.is-apagado{opacity:.4}
@@ -2955,7 +2952,7 @@ html[data-modo="completo"] .emp-ativa-avatar{width:34px;height:34px;font-size:.8
 .voz-ia > span:first-child{color:#2BA6E8}
 .voz-ia:disabled{cursor:default;opacity:.55}
 .voz-ia.is-apagado{opacity:.4}
-.voz-barra{flex:1;min-width:0;justify-content:flex-start;gap:10px;background:#2BA6E8}
+.voz-barra{flex:1;min-width:0;justify-content:flex-start;gap:10px;background:#1F78B4}
 .voz-ponto{flex:none;width:9px;height:9px;border-radius:50%;background:#fff;animation:voz-pisca 1s ease-in-out infinite}
 .voz-medidor{display:flex;flex:1;min-width:0;align-items:center;justify-content:center;gap:3px;height:22px}
 .voz-medidor span{width:3px;min-height:4px;border-radius:2px;background:#fff;transition:height .08s linear}
@@ -3109,7 +3106,7 @@ html[data-modo="equilibrado"] .campo-tela{height:calc(100dvh - 190px - var(--fai
 .ev7-nota--ia{border:1.5px solid #E8B04B}
 
 /* ===== Pacote 13 · D: privacidade e guarda por empresa ===== */
-.ui-btn--criar{background:#E8760A;color:#fff;font-weight:400}
+.ui-btn--criar{background:#AF640A;color:#fff;font-weight:400}
 .ui-btn--criar:disabled{opacity:.5}
 .priv-painel{display:flex;flex-direction:column;gap:10px;margin-top:12px}
 .priv-cartao{display:flex;flex-direction:column;gap:8px;padding:12px 14px}
@@ -3119,7 +3116,7 @@ html[data-modo="equilibrado"] .campo-tela{height:calc(100dvh - 190px - var(--fai
 .priv-opcoes{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 .priv-opcao{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0 12px;border:1.5px solid #DDE6EA;border-radius:999px;background:#fff;font-size:.88rem;color:var(--ink);cursor:pointer}
 .priv-opcao.is-on{border-color:#E8B04B;background:#FEF6E6}
-.priv-opcao input{accent-color:#E8760A}
+.priv-opcao input{accent-color:#AF640A}
 .priv-outro{display:inline-flex;align-items:center;gap:6px}
 .priv-outro .ui-input{width:90px;min-height:32px}
 .priv-faixa{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 12px;padding:6px 12px;border:1.5px solid #E8B04B;border-radius:12px;background:#FFF3D6;font-size:.88rem;color:#000}
@@ -3142,7 +3139,7 @@ html[data-modo="equilibrado"] .campo-tela{height:calc(100dvh - 190px - var(--fai
 .aviso-foto-linha--nao{background:#FDE7E7}
 .aviso-foto-linha > span:first-child{flex:none;font-size:1.05rem}
 .aviso-foto-check{display:flex;align-items:center;gap:8px;font-size:.9rem;color:var(--ink)}
-.aviso-foto-check input{accent-color:#E8760A;width:18px;height:18px}
+.aviso-foto-check input{accent-color:#AF640A;width:18px;height:18px}
 .aviso-foto-botao{height:44px;border:0;border-radius:12px;background:#F5A623;color:#000;font-size:1rem;font-weight:400;cursor:pointer}
 .aviso-foto-botao:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
 @media (min-width:768px){.aviso-foto-camada{align-items:center}.aviso-foto-folha{border-radius:20px}}
@@ -3580,7 +3577,7 @@ html[data-modo="campo"] .ui-screen{overflow-x:hidden;overflow-y:auto}
 .dossie-opcoes{gap:10px}
 .dossie-opcao{display:flex;align-items:flex-start;gap:12px;padding:10px 12px;border:1.5px solid #B4C2CE;border-radius:12px;background:#fff;font-size:1rem;cursor:pointer}
 .dossie-opcao:has(input:checked){border-color:#E8B04B;background:#FEF6E6}
-.dossie-opcao input{flex:none;width:22px;height:22px;margin-top:1px;accent-color:#E8760A}
+.dossie-opcao input{flex:none;width:22px;height:22px;margin-top:1px;accent-color:#AF640A}
 .dossie-opcao-aviso{font-size:.88rem;color:#3D5160}
 .dossie-aviso{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;border:1.5px solid #E8B04B;border-radius:12px;background:#FEF6E6;font-size:.95rem;color:#12202B}
 @media print{
@@ -3591,7 +3588,7 @@ html[data-modo="campo"] .ui-screen{overflow-x:hidden;overflow-y:auto}
   .doc-foto,.dossie-fotos figure{break-inside:avoid}
   .doc-tabela tr{break-inside:avoid}
 }
-.quest-etiqueta-nova{display:inline-flex;align-items:center;min-height:24px;padding:0 10px;border-radius:999px;background:#E8760A;font-size:.84rem;color:#fff}
+.quest-etiqueta-nova{display:inline-flex;align-items:center;min-height:24px;padding:0 10px;border-radius:999px;background:#AF640A;font-size:.84rem;color:#fff}
 /* A regra geral de impressão esconde header e nav (menu do app); dentro dos documentos impressos eles são o cabeçalho e o índice. */
 @media print{.doc-impresso header,.doc-impresso nav{display:flex!important;flex-direction:column}}
 .emitido-assinatura,.doc-parcial,.doc-secao>h3{break-inside:avoid;break-after:avoid}
@@ -3696,7 +3693,7 @@ html[data-modo="campo"] .chk-foco-amb-pos{font-size:.78rem}
 .ficha-caminho{font-size:.92rem;color:#12202B;padding:2px 0}
 .ficha-topo{position:sticky;top:0;z-index:6;background:#fff;padding-bottom:8px;border-bottom:1px solid #EEF1F5}
 /* Botão principal da tela é laranja de ação; azul grande não existe mais (D1) */
-.ui-btn--primary{background:#E8760A;color:#fff}
+.ui-btn--primary{background:#AF640A;color:#fff}
 .rel-abas{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
 .rel-aba{height:34px;padding:0 14px;border:1px solid #B4C2CE;border-radius:999px;background:#fff;font-size:.92rem;color:#12202B;cursor:pointer}
 .rel-aba.is-ativa{border-color:#E8B04B;background:#FEF6E6}
@@ -3705,10 +3702,10 @@ html[data-modo="campo"] .chk-foco-amb-pos{font-size:.78rem}
 .pc-smartwrap{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
 .pc-smartbar{width:min(760px,100%);box-sizing:border-box;gap:12px;margin-bottom:0;padding:8px 10px;border:2px solid #B4C2CE;border-radius:16px;box-shadow:0 3px 10px rgba(18,32,43,.10)}
 .pc-smartbar:focus-within{border-color:#E8B04B;outline:0}
-.pc-bolt{width:40px;height:40px;border-radius:12px;background:linear-gradient(150deg,#F28C1E,#E8760A)}
+.pc-bolt{width:40px;height:40px;border-radius:12px;background:#AF640A}
 .pc-smartbar-field{font-size:1.05rem;color:#3D5160}
 .pc-mic{width:36px;height:36px;background:#CFEBF8;color:#12202B}
-.pc-go{min-height:38px;padding:0 20px;border-radius:12px;background:linear-gradient(150deg,#F28C1E,#E8760A)}
+.pc-go{min-height:38px;padding:0 20px;border-radius:12px;background:#AF640A}
 .pc-atalhos{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 .pc-atalhos-rotulo{font-size:.9rem;color:#3D5160}
 .pc-atalho{height:28px;padding:0 12px;border:0;border-radius:999px;background:#EEF1F5;font-size:.84rem;color:#12202B;cursor:pointer}
@@ -4233,7 +4230,7 @@ html[data-modo="equilibrado"] .pc-busca,html[data-modo="completo"] .pc-busca{dis
 .cen-subabas{display:flex;flex-wrap:wrap;gap:4px 24px}
 .cen-sub,.cen-sub.is-ativa{min-height:40px;margin-bottom:-1px;padding:0 2px;border:0;border-bottom:3px solid transparent;border-radius:0;background:transparent;font-size:1rem;color:#12202B;cursor:pointer}
 .cen-sub:hover{background:transparent;border-bottom-color:#E3E8EE}
-.cen-sub.is-ativa{border-bottom-color:#E8760A}
+.cen-sub.is-ativa{border-bottom-color:#AF640A}
 .cen-sub:focus-visible{outline:3px solid #E8B04B;outline-offset:2px}
 
 /* Topo da lista: abas e filtros à esquerda; à direita a coluna fixa de ~216 px (apoio + dois botões da mesma largura) */
@@ -4378,7 +4375,7 @@ html[data-modo] .pc-topbar-end > .emp-ativa{flex-shrink:1}
 .esc-opcao.is-on{border-color:#E8B04B;background:#FEF6E6}
 .esc-opcao:focus-within{outline:3px solid #E8B04B;outline-offset:1px}
 .esc-caixa{appearance:none;flex:none;display:grid;place-items:center;width:22px;height:22px;margin-top:1px;border:1.5px solid #B4C2CE;border-radius:6px;background:#fff;cursor:pointer}
-.esc-caixa:checked{border-color:#E8760A;background:#E8760A}
+.esc-caixa:checked{border-color:#AF640A;background:#AF640A}
 .esc-caixa:checked::after{content:"✓";font-size:14px;line-height:1;color:#fff}
 .esc-opcao-textos{display:flex;flex-direction:column;gap:2px;min-width:0}
 .esc-opcao-titulo{font-size:.98rem;font-weight:500;line-height:1.3;color:#12202B;overflow-wrap:anywhere}
@@ -4749,9 +4746,9 @@ button.esc-chip--mais:focus-visible{outline:3px solid #E8B04B;outline-offset:1px
 .mbp-sheet-backdrop,.pc-cmd-backdrop,.pc-modal-backdrop,.campo-sheet-fundo,.voz-revisao-fundo,.aviso-foto-fundo,.esc-fundo{background:rgba(236,240,245,.78);backdrop-filter:none}
 
 /* Botão da IA: cor viva, texto branco simples */
-.voz-ia,.field-assist-ai,.pc-ai-btn,.ev7-btn-ia,.ui-btn--ai{border:0;background:#1479B8;color:#fff;font-weight:400}
+.voz-ia,.field-assist-ai,.pc-ai-btn,.ev7-btn-ia,.ui-btn--ai{border:0;background:#1D5F95;color:#fff;font-weight:400}
 .voz-ia > span:first-child{color:#fff}
-.voz-ia:hover:not(:disabled),.field-assist-ai:hover:not(:disabled),.pc-ai-btn:hover:not(:disabled),.ev7-btn-ia:hover:not(:disabled),.ui-btn--ai:hover:not(:disabled){background:#0F6AA3;color:#fff}
+.voz-ia:hover:not(:disabled),.field-assist-ai:hover:not(:disabled),.pc-ai-btn:hover:not(:disabled),.ev7-btn-ia:hover:not(:disabled),.ui-btn--ai:hover:not(:disabled){background:#174E7A;color:#fff}
 .ev7-btn-ia.is-desligada,.voz-ia.is-apagado{background:#EEF1F5;color:#51606c}
 .voz-btn,.voz-ia{min-height:40px;height:40px}
 
@@ -4850,7 +4847,7 @@ button.esc-chip--mais:focus-visible{outline:3px solid #E8B04B;outline-offset:1px
 .pgg-contadores-linha{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 16px}
 .pgg-contadores{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 22px}
 .pgg-conta{display:inline-flex;align-items:baseline;gap:6px;min-height:40px;padding:0 2px;border:0;border-bottom:3px solid transparent;border-radius:0;background:transparent;font-size:.95rem;color:#51606c;cursor:pointer}
-.pgg-conta.is-ativo{border-bottom-color:#E8760A;color:#12202B}
+.pgg-conta.is-ativo{border-bottom-color:#AF640A;color:#12202B}
 .pgg-conta-num{font-family:var(--font-display),"Outfit",sans-serif;font-size:22px;font-weight:500;color:#12202B}
 .pgg-conta:focus-visible{outline:3px solid #E8B04B;outline-offset:2px}
 .pgl-acoes{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
@@ -5012,7 +5009,7 @@ html[data-modo] .pc-offset:has(.ini2){height:auto;min-height:100vh;overflow:visi
 .ini2-caixa{flex:0 0 auto;width:auto;max-width:100%;padding:0 20px}
 .ini2-sem-visita{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px}
 .ini2-sem-visita-texto{margin:0;font-size:16px;color:#3D5160}
-.ini2-nova{height:48px;padding:0 26px;border:0;border-radius:12px;background:#E8760A;font-size:16px;font-weight:400;color:#fff;cursor:pointer}
+.ini2-nova{height:48px;padding:0 26px;border:0;border-radius:12px;background:#AF640A;font-size:16px;font-weight:400;color:#fff;cursor:pointer}
 .ini2-nova:hover{background:#D66A06}
 .ini2-nova:focus-visible{outline:3px solid #E8B04B;outline-offset:2px}
 .ini2-colunas.is-uma{grid-template-columns:minmax(0,1fr)}
@@ -5056,6 +5053,10 @@ html[data-modo] .pc-offset:has(.ini2){height:auto;min-height:100vh;overflow:visi
 .chk-pc-num.is-reprovou{box-shadow:0 0 0 2px #D93A3A}
 .chk-pc-recolhidos{align-self:center;white-space:nowrap}
 
+/* Avisos com Desfazer (lote e resposta limpa): ficam ACIMA do rodapé do checklist, nunca sobre "Salvar e próximo". PC: acima do rodapé; Campo: acima do rodapé e da barra de baixo */
+.aviso-acima-do-rodape{bottom:104px!important}
+html[data-modo="campo"] .aviso-acima-do-rodape{bottom:calc(168px + env(safe-area-inset-bottom,0px))!important}
+
 /* Aviso com Desfazer depois de marcar o restante como Conforme */
 .lote-desfazer{position:fixed;left:50%;bottom:24px;z-index:70;display:flex;align-items:center;gap:14px;max-width:calc(100vw - 32px);padding:12px 18px;border:1.5px solid #E8B04B;border-radius:14px;background:#FFF8E8;font-size:.95rem;color:#12202B;transform:translateX(-50%);box-shadow:0 8px 24px rgba(18,32,43,.18)}
 
@@ -5068,14 +5069,14 @@ html[data-modo] .pc-offset:has(.ini2){height:auto;min-height:100vh;overflow:visi
 .voz-ambiente-campos{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 
 /* Selo de sincronização: texto curto + cor com função (azul/verde claro = sincronizado, amarelo = pendente, laranja = sem sinal, vermelho = erro real) */
-.pc-sync-chip.is-sem-sinal{background:#FFD8A8}.pc-sync-chip.is-sem-sinal .pc-sync-dot{background:#E8760A}
+.pc-sync-chip.is-sem-sinal{background:#FFD8A8}.pc-sync-chip.is-sem-sinal .pc-sync-dot{background:#AF640A}
 .pc-sync-chip.is-erro{background:#D93A3A;color:#fff}.pc-sync-chip.is-erro .pc-sync-dot{background:#fff}
 .pc-sync-chip.is-ok{background:#DCEFF9}.pc-sync-chip.is-ok .pc-sync-dot{background:#15803D}
 .pc-sync-chip.is-pendente{background:#FFF1B8}
-.pc-avatar-dot.is-sem-sinal{background:#E8760A}
+.pc-avatar-dot.is-sem-sinal{background:#AF640A}
 .campo-sync{display:inline-flex;flex:none;align-items:center;gap:6px;width:auto;height:32px;padding:0 12px;border-radius:999px;background:#DCEFF9;font-size:.82rem;line-height:1;color:#12202B;white-space:nowrap}
 .campo-sync span:first-child{flex:none;width:9px;height:9px}
-.campo-sync.is-pendente{background:#FFF1B8}.campo-sync.is-sem-sinal{background:#FFD8A8}.campo-sync.is-sem-sinal span:first-child{background:#E8760A}
+.campo-sync.is-pendente{background:#FFF1B8}.campo-sync.is-sem-sinal{background:#FFD8A8}.campo-sync.is-sem-sinal span:first-child{background:#AF640A}
 .campo-sync.is-erro{background:#D93A3A;color:#fff}.campo-sync.is-erro span:first-child{background:#fff}
 
 /* Topo do modo Campo: página atual em destaque, empresa ativa logo abaixo, selo com texto */
@@ -5115,7 +5116,7 @@ html[data-modo] .chk-resp{height:40px;min-height:40px;padding:0 6px;font-size:.9
 .voz-btn.is-sem-sinal,.voz-ia.is-sem-sinal{opacity:.55}
 .voz-semsinal{font-size:.75rem;line-height:1}
 /* Faixas finas do topo */
-.faixa-fina{padding:4px 12px;overflow:hidden;font-size:.8rem;line-height:1.3;color:#12202B;text-overflow:ellipsis;white-space:nowrap}
+.faixa-fina{padding:4px 12px;font-size:15px;line-height:1.3;color:#12202B;white-space:normal;overflow-wrap:anywhere}
 .faixas-do-topo{flex:none}
 /* Altura das telas fixas do celular: desconta as faixas do topo e reserva espaço para o botão Registrar */
 html[data-modo="campo"] .campo-tela--fixa{height:calc(100dvh - 176px - 26px - var(--faixas-h,0px) - var(--faixa-h,0px) - var(--faixa-visita-h,0px))}
@@ -5246,7 +5247,7 @@ html .pc-topbar .pc-busca{flex:1 1 180px;min-width:120px;max-width:380px}
 .pacote-janela .esc-titulo{font-size:1.1rem}
 .pacote-abas{display:flex;gap:22px;margin-top:8px;border-bottom:1px solid #EEF1F5}
 .pacote-aba{height:40px;padding:0 2px;border:0;border-bottom:3px solid transparent;background:none;color:#12202B;font:inherit;font-size:1rem;font-weight:700;cursor:pointer}
-.pacote-aba.is-on{border-bottom-color:#F28C28}
+.pacote-aba.is-on{border-bottom-color:#AF640A}
 .pacote-aba-conta{margin-left:4px;font-size:.85rem;font-weight:400;color:#51606c}
 .pacote-grupo-topo{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px;margin-bottom:8px}
 .pacote-grupo-titulo{margin:0;font-size:1.125rem;font-weight:700;color:#12202B}
@@ -5331,7 +5332,7 @@ html .pc-topbar .pc-busca{flex:1 1 180px;min-width:120px;max-width:380px}
 .campo-mais-atalho{align-self:flex-start;height:40px;min-height:40px;padding:0 14px}
 
 /* ===== Rodada 3: Início do celular ===== */
-.campo-btn--brand{background:#E8760A;color:#fff}
+.campo-btn--brand{background:#AF640A;color:#fff}
 .hoje-atalhos{display:flex;flex-direction:column;gap:8px}
 .hoje-atalhos .hoje-rodape{margin-top:0}
 .nova-form>.nova-campo--cnaeDescricao,.nova-form>.nova-campo--telefone,.nova-form>.nova-campo--horarioFuncionamento{grid-column:span 2}
@@ -5503,7 +5504,7 @@ html[data-modo="completo"] .pc-offset:has(.ini3)>.ini3{flex:1 1 auto;min-height:
 .ini3-cartao-textos{display:flex;flex-direction:column;gap:2px;min-width:0}
 .ini3-cartao-titulo{margin:0;overflow:hidden;font-family:var(--font-display),"Outfit",sans-serif;font-size:20px;font-weight:500;line-height:1.15;text-overflow:ellipsis;white-space:nowrap;color:var(--rd-ink)}
 .ini3-cartao-data{font-size:15px;color:var(--rd-cinza)}
-.ini3-cartao-sub{overflow:hidden;font-size:15px;text-overflow:ellipsis;white-space:nowrap;color:var(--rd-ink)}
+.ini3-cartao-sub{font-size:15px;line-height:1.3;white-space:normal;overflow-wrap:anywhere;color:var(--rd-ink)}
 .ini3-botao{display:inline-flex;align-items:center;justify-content:center;height:40px;padding:0 20px;border:0;border-radius:12px;background:var(--rd-acao);font-family:var(--font-body),"Nunito Sans",sans-serif;font-size:15px;font-weight:400;color:#fff;cursor:pointer}
 .ini3-botao:hover{background:var(--rd-acao-hover)}
 .ini3-botao:focus-visible{outline:3px solid #E8B04B;outline-offset:2px}
@@ -6035,7 +6036,7 @@ html[data-modo="campo"] .campo-tela .chk-resp.chk-resp--nc{border-color:#E9A7A2;
 html[data-modo="campo"] .campo-tela .chk-resp.chk-resp--na{border-color:#C5CCDA;background:#EEF1F7}
 html[data-modo="campo"] .campo-tela .chk-resp.is-marcado{color:#fff}
 html[data-modo="campo"] .campo-tela .chk-resp.is-marcado.chk-resp--ok{border-color:#1E7A3E;background:#1E7A3E}
-html[data-modo="campo"] .campo-tela .chk-resp.is-marcado.chk-resp--nc{border-color:#C9473F;background:#C9473F}
+html[data-modo="campo"] .campo-tela .chk-resp.is-marcado.chk-resp--nc{border-color:#B83A33;background:#B83A33;color:#fff}
 html[data-modo="campo"] .campo-tela .chk-resp.is-marcado.chk-resp--na{border-color:#5B6575;background:#5B6575}
 html[data-modo="campo"] .campo-tela .chk-resp.is-apagado{opacity:.6}
 html[data-modo="campo"] .campo-tela .chk-resp.is-marcado:disabled{opacity:1}
@@ -6224,14 +6225,9 @@ html .pc-sync-chip.is-ok,html .pc-topbar .pc-sync-chip.is-ok,html .campo-sync:no
 html .pc-topbar--inicio .pc-sync-chip.is-ok,html .pc-topbar--inicio .pc-sync-chip{background:transparent;box-shadow:none;border:0;padding:0 4px}
 html .pc-sync-chip.is-ok .pc-sync-dot,html .campo-sync:not(.is-pendente):not(.is-sem-sinal):not(.is-erro) span:first-child{background:#1E7A3E}
 
-/* Aviso com Desfazer: fundo na cor da resposta, texto branco simples, Desfazer sublinhado (branco: o azul da marca não passa de 4,5:1 sobre fundo forte) */
-.toast-salvo.toast-tom--ok{border-color:#1E7A3E;background:#1E7A3E}
-.toast-salvo.toast-tom--nc{border-color:#C9473F;background:#C9473F}
-.toast-salvo.toast-tom--na{border-color:#5B6575;background:#5B6575}
-.toast-salvo[class*="toast-tom--"]{color:#fff;font-weight:400}
+/* Aviso com ação (Desfazer): fundo claro, ação sublinhada em azul */
 .toast-salvo .toast-acao{display:inline-flex;align-items:center;min-height:36px;padding:0 6px;border:0;background:transparent;font-size:inherit;font-weight:400;text-decoration:underline;text-underline-offset:3px;cursor:pointer;color:#2B54CF}
-.toast-salvo[class*="toast-tom--"] .toast-acao{color:#fff}
-.toast-salvo .toast-acao:focus-visible{outline:3px solid #fff;outline-offset:1px}
+.toast-salvo .toast-acao:focus-visible{outline:3px solid #2B54CF;outline-offset:1px}
 
 /* Título da pergunta: só o texto, sem caixa com borda. No PC o recuo lateral da caixa sai, para o título alinhar com as respostas e com a coluna */
 html .chk-foco-card,html[data-modo="campo"] .campo-tela .chk-foco-card{border:0;background:transparent;box-shadow:none}
@@ -6245,3 +6241,42 @@ html[data-modo] .chk-foco-obs,html[data-modo="campo"] .campo-tela .chk-foco-obs{
 .vis-grupo-inteiro.is-ativa::before{content:"";position:absolute;left:2px;top:8px;bottom:8px;width:4px;border-radius:2px;background:var(--emp-cor,#AF640A);outline:1px solid #6B7280}
 @media (forced-colors:active){.vis-grupo-inteiro.is-ativa::before{background:Highlight;outline-color:CanvasText;forced-color-adjust:none}}
 .vis-rolagem{margin-top:12px}
+
+/* Rodapé do checklist (PC, tablet e Campo): "← Anterior" e "Salvar e próximo →" com 44 px, sem folga acima */
+html .chk-foco-rodape{padding-top:0}
+html .chk-foco-rodape .ui-btn{height:44px!important;min-height:44px!important;padding:0 18px;font-size:15px;font-weight:400;line-height:1}
+
+/* Central da visita (rodada 4, item 7): respiro abaixo da faixa de abas; linhas compactas para equipamento e programas vazios; passos com texto de 15 px que quebra em linhas */
+.ui-screen[aria-label="Central da visita"]{padding-top:16px}
+html[data-modo="campo"] .ui-screen[aria-label="Central da visita"]{padding-top:10px}
+.pc-vazios{display:flex;flex:none;flex-wrap:wrap;gap:4px 24px;margin:0}
+.pc-vazio-linha{display:flex;flex-wrap:wrap;align-items:center;gap:0 6px;margin:0;font-size:15px;line-height:24px;color:var(--ink)}
+.pc-vazio-linha .pc-link-btn{padding:0;font-size:15px;line-height:24px;color:#2B54CF;text-decoration:underline}
+html[data-modo="campo"] .ui-screen[aria-label="Central da visita"] .pc-vazios{display:none}
+.pc-step-name{font-size:16px;line-height:22px}
+.pc-step-sum{overflow:visible;text-overflow:clip;white-space:normal;font-size:15px;line-height:20px}
+
+/* Visitas (rodada 4, item 8c): abas em texto, a ativa com sublinhado; sem pílula nem fundo, contagem em texto simples; mínimo de 15 px */
+.ui-screen[aria-label="Visitas técnicas"] .ui-tabs{gap:22px;padding:0;border-radius:0;background:transparent}
+.ui-screen[aria-label="Visitas técnicas"] .ui-tab{min-height:40px;padding:0 2px;border-bottom:3px solid transparent;border-radius:0;background:transparent;box-shadow:none;font-size:16px;color:var(--rd-ink)}
+.ui-screen[aria-label="Visitas técnicas"] .ui-tab.is-active{border-bottom-color:#AF640A;background:transparent;box-shadow:none}
+@media (max-width:899px){
+  .ui-screen[aria-label="Visitas técnicas"] .vis-abas-bloco>.ui-tabs{gap:0;padding:0}
+  .ui-screen[aria-label="Visitas técnicas"] .vis-abas-bloco .ui-tab{padding:0 4px;font-size:15px}
+  .ui-screen[aria-label="Visitas técnicas"] .vis-abas-bloco .ui-tab-count{font-size:15px}
+}
+
+/* Topo do modo Completo (rodada 4, item 8a): "Empresa ativa" é o MESMO seletor com contorno dos outros modos (cor da empresa, selo na borda); o modo de tela sai do topo e fica no menu ⋯ (o modo atual vem marcado com ●) */
+html[data-modo="completo"] .pc-topbar:not(.pc-topbar--inicio) .emp-ativa-caixa{height:38px;padding:0 12px;border:2px solid var(--emp-cor);border-radius:10px;background:#fff}
+html[data-modo="completo"] .pc-topbar:not(.pc-topbar--inicio) .emp-ativa-selo{padding:0 6px;border-radius:6px;background:var(--emp-cor);color:#fff}
+html[data-modo="completo"] .pc-topbar .pc-mode-chip{display:none}
+
+/* Checklist · Observação (rodada 4, item 8d) */
+/* Rótulo em grafite 15 px, sem maiúsculas */
+.chk-obs-rotulo{font-size:15px;font-weight:400;line-height:22px;letter-spacing:0;text-transform:none;color:#1B2433}
+/* Foto, Falar e IA do campo de observação: 15 px em todos os modos */
+html[data-modo] .chk-foco-obs :is(.chk-linha-foto,.voz-btn,.voz-ia,.voz-barra){font-size:15px}
+html[data-modo] .chk-foco-obs .voz-ia>span:first-child{font-size:16px}
+/* PC e tablet: o campo vazio não ocupa a folga da tela; começa com ~3 linhas (84 px) e cresce ao digitar (altura definida pelo componente), com teto de 40% da janela */
+html:not([data-modo="campo"]) .chk-pc .chk-foco-obs,html:not([data-modo="campo"]) .chk-pc .chk-obs-campo{flex:none;min-height:0}
+html:not([data-modo="campo"]) .chk-pc .chk-obs-campo .chk-obs-area{flex:none;min-height:84px;max-height:40vh;overflow-y:auto}

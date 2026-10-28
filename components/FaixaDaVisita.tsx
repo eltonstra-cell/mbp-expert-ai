@@ -7,7 +7,7 @@ type Props = {
   /** Assuntos da visita que a pessoa pode abrir (a Central da visita não entra: o topo já diz "Visita N"). */
   passos: PassoTrilha[];
   atual: PassoVisita | null;
-  /** Correções abertas DA VISITA (número vermelho do segmento Correções). */
+  /** Correções abertas DA VISITA, vencidas ou não (número vermelho do segmento Correções). A barra lateral conta outra coisa: só as vencidas da empresa toda. */
   ncsAbertas: number;
   onIrPasso: (passo: PassoVisita) => void;
   /** "Finalizar visita" chama finalizarInspecao (valida e abre a janela Revisar). */
@@ -52,7 +52,8 @@ export default function FaixaDaVisita({ passos, atual, ncsAbertas, onIrPasso, on
               data-chave={passo.chave}
               className={`fv-item${ehAtual ? " is-atual" : ""}`}
               aria-current={ehAtual ? "page" : undefined}
-              aria-label={badge > 0 ? `${ROTULO[passo.chave]}, ${badge} em aberto` : undefined}
+              aria-label={badge > 0 ? `${ROTULO[passo.chave]}, ${badge} ${badge === 1 ? "correção aberta" : "correções abertas"} nesta visita` : undefined}
+              title={badge > 0 ? `${badge} ${badge === 1 ? "correção aberta" : "correções abertas"} nesta visita (a barra lateral conta só as vencidas da empresa toda)` : undefined}
               onClick={() => onIrPasso(passo.chave)}
             >
               {ROTULO[passo.chave]}

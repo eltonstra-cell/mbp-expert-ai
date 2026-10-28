@@ -99,7 +99,7 @@ test("filtro por chip: só no cliente (estado da tela, nada guardado), 'Todos' l
   assert.ok(lista.includes("setFiltro(item.id === null ? null : filtro === item.id ? null : item.id)") && lista.includes("aria-pressed={ativo}"));
   assert.equal(/persistir\(.*filtro|setItem\([^)]*filtro/.test(lista), false, "o filtro não é guardado (só o estado aberto dos grupos fica no aparelho)");
   assert.ok(lista.includes('rotulo: "todos"'));
-  assert.match(ler("../app/globals.css"), /\.pgg-conta\.is-ativo\{border-bottom-color:#E8760A;color:#12202B\}/);
+  assert.match(ler("../app/globals.css"), /\.pgg-conta\.is-ativo\{border-bottom-color:#AF640A;color:#12202B\}/);
 });
 
 // ===== 1.7 Linha =====

@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-import { ESPERA_DO_AVANCO_MS, deveAvancarSozinho, textoDoAvanco } from "../lib/avancoAutomatico.ts";
+import { ESPERA_DO_AVANCO_MS, deveAvancarSozinho } from "../lib/avancoAutomatico.ts";
 import { FONTE_NAO_REGISTRADA, obterModeloChecklistManual } from "../lib/manualChecklist.ts";
 import { SETORES_OFICIAIS_MANUAL, criarModelosQuestionarioAmbientes } from "../lib/manualBase.ts";
 import { acharMunicipio } from "../lib/municipiosIbge.ts";
@@ -32,17 +32,10 @@ test("avanço automático: Conforme e Não se aplica avançam; Não conforme nun
   assert.ok(ESPERA_DO_AVANCO_MS >= 300 && ESPERA_DO_AVANCO_MS <= 800);
 });
 
-test("avanço automático: textos do aviso (item, ambiente concluído com o próximo, fim)", () => {
-  assert.equal(textoDoAvanco({ posNoAmbiente: 4, status: "Conforme", proximoAmbiente: "", fimDaLista: false }), "Item 4 · Conforme");
-  assert.equal(textoDoAvanco({ posNoAmbiente: 2, status: "Não se aplica", proximoAmbiente: "", fimDaLista: false }), "Item 2 · Não se aplica");
-  assert.equal(textoDoAvanco({ posNoAmbiente: 11, status: "Conforme", proximoAmbiente: "Cozinha", fimDaLista: false }), "Ambiente concluído · Próximo: Cozinha");
-  assert.equal(textoDoAvanco({ posNoAmbiente: 11, status: "Conforme", proximoAmbiente: "", fimDaLista: true }), "Ambiente concluído · Fim do checklist");
-});
-
-test("avanço automático: a resposta é gravada na hora, o aviso tem Desfazer que volta o item a Pendente, e a preferência está em Meu perfil (ligada por padrão)", () => {
+test("avanço automático: a resposta é gravada na hora, não há aviso (tocar de novo na resposta marcada a limpa), e a preferência está em Meu perfil (ligada por padrão)", () => {
   const pagina = ler("../app/page.tsx");
-  assert.ok(pagina.includes("function avancarAposResponder(") && pagina.includes('atualizarChecklistItem(item.id, { status: "Pendente" })') && pagina.includes('rotulo: "Desfazer"'));
-  assert.equal((pagina.match(/onAvancar=\{\(status\) => avancarAposResponder\(foco, status\)\}/g) || []).length, 3, "celular, PC e tablet");
+  assert.ok(pagina.includes("function avancarAposResponder(") && !pagina.includes('rotulo: "Desfazer"'));
+  assert.equal((pagina.match(/onAvancar=\{\(\) => avancarAposResponder\(foco\)\}/g) || []).length, 3, "celular, PC e tablet");
   const componente = ler("../components/ChecklistFocoItem.tsx");
   assert.ok(componente.includes("deveAvancarSozinho(") && componente.includes("observacaoDigitada: texto.trim().length > 0"));
   assert.ok(componente.indexOf("deveAvancarSozinho(") < componente.indexOf("onStatus(resposta)"), "decide antes de gravar");
@@ -248,7 +241,7 @@ test("Início do celular: 'Hoje precisa de você' sem os atalhos de relatório, 
   assert.equal(principal.includes("Resumo de uma página") || principal.includes("Dossiê") || principal.includes("Lembrete ao responsável"), false);
   const campo = ler("../components/campo/CampoTelas.tsx");
   assert.ok(campo.includes("visitaAtiva.empresa !== empresa"));
-  assert.ok(ler("../app/globals.css").includes(".campo-btn--brand{background:#E8760A;color:#fff}"), "Continuar checklist é laranja com texto branco (nunca escuro)");
+  assert.ok(ler("../app/globals.css").includes(".campo-btn--brand{background:#AF640A;color:#fff}"), "Continuar checklist é terracota com texto branco (nunca escuro)");
 });
 
 test("Evidências: UM aviso fino no topo; o rótulo do modo de tela é claro", () => {

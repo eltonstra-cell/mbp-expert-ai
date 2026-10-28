@@ -7,6 +7,7 @@ import { useAvisoAntesDeFotografar } from "@/components/AvisoAntesDeFotografar";
 import FotoAmpliada from "@/components/FotoAmpliada";
 import AmbientesCortina from "@/components/AmbientesCortina";
 import { avancarAoResponderLigado, cameraAutomaticaLigada } from "@/lib/preferenciasDeCampo";
+import { reToqueValido } from "@/lib/reToque";
 import { ESPERA_DO_AVANCO_MS, deveAvancarSozinho } from "@/lib/avancoAutomatico";
 import CampoDeTemperatura, { ehItemDeTemperatura } from "@/components/CampoDeTemperatura";
 import type { ResultadoDaTemperatura } from "@/lib/limitesDeTemperatura";
@@ -62,7 +63,7 @@ type Props = {
   onAnterior: () => void;
   onProximo: () => void;
   /** Avanço automático: chamado ~0,5 s depois de "Conforme" ou "Não se aplica" (a resposta já foi gravada). Ausente = não avança. */
-  onAvancar?: (status: ChecklistStatus) => void;
+  onAvancar?: () => void;
   /** Item ligado a um POP com versão aprovada: abre a leitura do POP sem sair do checklist. */
   verPop?: { rotulo: string; onAbrir: () => void };
   /** Fotos já registradas neste item (até o máximo); no máximo, o botão Foto fica desligado. */
@@ -140,6 +141,7 @@ export default function ChecklistFocoItem({
   const areaRef = useRef<HTMLTextAreaElement | null>(null);
   const caixaRef = useRef<HTMLDivElement | null>(null);
   const timerAvanco = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const marcadoEmRef = useRef<number | null>(null);
   const cancelarAvanco = useCallback(() => {
     if (timerAvanco.current) clearTimeout(timerAvanco.current);
     timerAvanco.current = null;
@@ -151,7 +153,7 @@ export default function ChecklistFocoItem({
     setTexto(item.observacao || "");
   }, [item.id, item.observacao]);
 
-  // A observação começa com 2 linhas e cresce enquanto a pessoa digita.
+  // A observação começa com ~3 linhas (84 px de altura mínima no CSS) e cresce enquanto a pessoa digita.
   useEffect(() => {
     const area = areaRef.current;
     if (!area) return;
@@ -377,12 +379,18 @@ export default function ChecklistFocoItem({
               aria-pressed={estado === "marcado"}
               className={`chk-resp chk-resp--${tom} is-${estado}`}
               onClick={() => {
-                if (estado === "marcado") return;
                 cancelarAvanco();
+                // Tocar de novo na resposta já marcada a limpa (mesma regra de "Limpar resposta": confirma se houver observação, foto etc.).
+                if (estado === "marcado") {
+                  // Toque duplo acidental logo depois de marcar não apaga a resposta.
+                  if (reToqueValido(Date.now(), marcadoEmRef.current)) onLimpar?.();
+                  return;
+                }
+                marcadoEmRef.current = Date.now();
                 // Decide ANTES de gravar: observação já digitada = o RT ainda está no item, então não avança sozinho.
                 const avancaSozinho = Boolean(onAvancar) && deveAvancarSozinho({ status: resposta, avancarLigado: avancarAoResponderLigado(), observacaoDigitada: texto.trim().length > 0 || (item.observacao || "").trim().length > 0, podeEditar });
                 onStatus(resposta);
-                if (avancaSozinho) timerAvanco.current = setTimeout(() => { timerAvanco.current = null; onAvancar?.(resposta); }, ESPERA_DO_AVANCO_MS);
+                if (avancaSozinho) timerAvanco.current = setTimeout(() => { timerAvanco.current = null; onAvancar?.(); }, ESPERA_DO_AVANCO_MS);
                 // Opção do aparelho (desligada por padrão): ao marcar Não conforme, abre a câmera no mesmo toque.
                 if (resposta === "Não Conforme" && podeFotografar && fotosNoItem < maxFotos && cameraAutomaticaLigada()) pedirAvisoDeFoto(() => void camera.abrir());
               }}
@@ -426,7 +434,7 @@ export default function ChecklistFocoItem({
       <div className="chk-foco-obs" ref={caixaRef}>
         {!campo && (
           <div className="chk-obs-titulo">
-            <span className="ui-eyebrow">{naoConforme ? "Registrar a não conformidade" : "Observação (opcional)"}</span>
+            <span className="chk-obs-rotulo">{naoConforme ? "Registrar a não conformidade" : "Observação (opcional)"}</span>
             {botaoLimpar}
           </div>
         )}
