@@ -202,5 +202,5 @@ export function linhaDeConferencia(item: Pick<ItemInterpretado, "nome" | "quanti
 
 /** O item só pode ser confirmado com um ambiente do cadastro escolhido ou criado de propósito. */
 export function podeConfirmar(item: Pick<ItemInterpretado, "ambiente" | "nome" | "quantidade">): boolean {
-  return Boolean(item.ambiente.trim()) && Boolean(item.nome.trim()) && item.quantidade >= 1;
+  return Boolean(item.ambiente.trim()) && (item.nome.match(/\p{L}/gu) || []).length >= 3 && item.quantidade >= 1;
 }

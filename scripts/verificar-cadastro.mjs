@@ -192,9 +192,13 @@ try {
   await clicar("Cadastros");
   await esperar(async () => /Ambientes/.test(await texto()), 15000);
   await clicarContendo("Ambientes");
-  const veioSugestao = await esperar(async () => /Setor oficial: Refeitório e salão de consumação/.test(await texto()), 15000);
-  registrar("7a. 'Salão' sugere o setor oficial 'Refeitório e salão de consumação', marcado 'sugerido'", veioSugestao && /sugerido/.test(await texto()));
-  registrar("7b. a sugestão mostra a fonte (Portaria SES/RS 799/2023, item e data de conferência)", (await texto()).includes("Portaria SES/RS nº 799/2023, item 3.21 · conferido em"));
+  const veioSugestao = await esperar(async () => /Parece o setor oficial Refeitório e salão de consumação/.test(await texto()), 15000);
+  registrar("7a. 'Salão' sugere o setor oficial 'Refeitório e salão de consumação' na terceira linha ('Parece o setor oficial … · Vincular')", veioSugestao && !(await texto()).includes("Portaria SES/RS"));
+  await js(`document.querySelector('[aria-label="Mais ações de Salão"]')?.click()`);
+  await n.esperar(300);
+  registrar("7b. a base legal (Portaria SES/RS 799/2023, item e data de conferência) fica no menu ⋯ do ambiente, na linha 'Base: …'", (await texto()).includes("Base: Portaria SES/RS nº 799/2023, item 3.21 · conferido em"));
+  await js(`document.activeElement?.dispatchEvent(new KeyboardEvent("keydown",{key:"Escape",bubbles:true}))`);
+  await n.esperar(200);
   await foto("5-setor-sugerido");
   await js(`(()=>{const li=[...document.querySelectorAll("li")].find(x=>x.innerText.includes("Salão")&&x.innerText.includes("Vincular"));[...li.querySelectorAll("button")].find(b=>b.innerText.includes("Vincular")).click()})()`);
   await n.esperar(600);
@@ -231,7 +235,9 @@ try {
   await n.esperar(200);
   await js(`[...document.querySelectorAll(".cadest-form > .cadest-btn")].find((b)=>b.innerText.trim()==="Adicionar").click()`);
   await n.esperar(500);
-  registrar("8f. equipamento refrigerado vem com limite de temperatura sugerido e a fonte da norma, para o RT confirmar", (await texto()).includes("Limite sugerido pelo tipo do equipamento: até 5 °C") && (await texto()).includes("Portaria SES/RS nº 799/2023, item 10.09"));
+  registrar("8f. equipamento refrigerado vem com limite de temperatura sugerido e a fonte da norma, para o RT confirmar", (await texto()).includes("Limite sugerido: até 5 °C") && (await js(`(()=>{const b=[...document.querySelectorAll(".cadest-eq-item")].find((x)=>x.innerText.includes("Câmara fria"))?.querySelector(".cadest-mais");if(!b)return false;b.click();return true})()`)) && (await esperar(async () => (await texto()).includes("Base: Portaria SES/RS nº 799/2023, item 10.09"), 3000)));
+  await js(`document.activeElement?.dispatchEvent(new KeyboardEvent("keydown",{key:"Escape",bubbles:true}))`);
+  await n.esperar(200);
   await clicarContendo("Confirmar limite");
   await n.esperar(300);
   registrar("8g. o RT confirma o limite", /Limite confirmado: até 5 °C/.test(await texto()));

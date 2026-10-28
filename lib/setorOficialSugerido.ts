@@ -31,6 +31,14 @@ export const FONTE_DOS_SETORES: Record<string, FonteDoSetor | null> = {
 
 export type SetorSugerido = { oficial: string; fonte: FonteDoSetor | null };
 
+/** "Base: Portaria SES/RS nº 799/2023, item 3.1 · conferido em 23/10/2026"; setor sem trecho na norma lida: o texto que o app já usava. */
+export function baseDoSetorOficial(oficial: string): string {
+  const fonteDoSetor = FONTE_DOS_SETORES[oficial];
+  return fonteDoSetor
+    ? `Base: ${fonteDoSetor.norma}, item ${fonteDoSetor.item} · conferido em ${fonteDoSetor.conferidoEm.split("-").reverse().join("/")}`
+    : "Base: sem texto da norma encontrado para este setor";
+}
+
 const semAcento = (t: string) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLocaleLowerCase("pt-BR").replace(/[^a-z0-9]+/g, " ").trim();
 const tem = (texto: string, ...palavras: string[]) => palavras.some((p) => new RegExp(`(^| )${p}`).test(texto));
 

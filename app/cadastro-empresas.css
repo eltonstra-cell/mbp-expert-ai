@@ -30,20 +30,22 @@
 .emp-prep-linha .ui-progress{flex:1;min-width:0;height:8px;background:#D8DDE8}
 .emp-prep-linha .ui-progress-fill{background:#2B54CF}
 .emp-pct{flex:none;min-width:40px;font-size:15px;line-height:22px;text-align:right;color:#1B2433}
-.emp-falta{font-size:15px;line-height:22px;color:#55607A}
+.emp-falta{font-size:15px;line-height:22px;color:#55607A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .emp-ativa-texto{display:inline-flex;align-items:center;min-height:40px;padding:0 4px;border:0;background:none;font-size:16px;font-weight:500;color:#1E7A3E}
 .emp-linha .ui-btn{height:40px;min-height:40px;padding:0 14px;font-size:15px;line-height:1}
 .emp-c-central .ui-btn{border:2px solid #8A96AD;background:#fff;color:#1B2433}
 
 /* Completo: colunas fixas, alinhadas em todas as linhas e com a mesma altura. */
 @media (min-width:1100px){
-  html[data-modo="completo"] .emp-linha{display:grid;grid-template-columns:44px minmax(0,1fr) 190px 108px 170px 118px 44px;column-gap:12px;align-items:center;height:92px;padding:10px 12px 10px 20px;overflow:hidden}
+  html[data-modo="completo"] .emp-linha{display:grid;grid-template-columns:44px minmax(0,1fr) 244px 108px 170px 118px 44px;column-gap:12px;align-items:center;height:92px;padding:10px 12px 10px 20px;overflow:hidden}
   html[data-modo="completo"] .emp-linha>*{order:0;margin-left:0;flex:none;min-width:0}
   html[data-modo="completo"] .emp-linha .emp-c-visita:empty{display:block}
   html[data-modo="completo"] .emp-c-nome{overflow:hidden}
   html[data-modo="completo"] .emp-nome{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:1;overflow:hidden;overflow-wrap:break-word}
   html[data-modo="completo"] .emp-sub{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
-  html[data-modo="completo"] .emp-falta{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+  /* "Falta horário de funcionamento" cabe numa linha só (coluna mais larga); se faltar espaço, reticências em vez de quebrar: todas as linhas têm a mesma altura */
+  html[data-modo="completo"] .emp-falta{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  html[data-modo="completo"] .emp-falta .pend-texto{white-space:nowrap}
   html[data-modo="completo"] .emp-c-prep{margin-left:0}
   html[data-modo="completo"] .emp-c-sel,html[data-modo="completo"] .emp-c-central,html[data-modo="completo"] .emp-c-visita{display:flex;align-items:center}
   html[data-modo="completo"] .emp-c-sel .ui-btn,html[data-modo="completo"] .emp-c-central .ui-btn,html[data-modo="completo"] .emp-c-visita .ui-btn{width:100%}

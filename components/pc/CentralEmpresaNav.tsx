@@ -14,8 +14,8 @@ type Props = {
   direita?: ReactNode;
 };
 
-// Duas linhas, uma sob a outra: 1) Empresa | Estrutura | Documentos; 2) as sub-abas do grupo aberto, em texto com sublinhado azul na atual
-// (Ambientes, Equipamentos e Fluxos são abas separadas). Sem pílulas soltas.
+// Duas linhas, uma sob a outra: 1) Empresa | Estrutura | Documentos; 2) as sub-abas do grupo aberto. As duas em texto com sublinhado:
+// a atual com peso 500 e sublinhado azul #2B54CF de 3 px; as outras em cinza #55607A (Ambientes, Equipamentos e Fluxos são abas separadas). Sem pílulas.
 export default function CentralEmpresaNav({ grupos, subaba, onSubaba, contagens, direita }: Props) {
   const grupoAtual = grupoDaSubaba(subaba);
   const doGrupo = grupos.find((grupo) => grupo.id === grupoAtual);
@@ -25,7 +25,7 @@ export default function CentralEmpresaNav({ grupos, subaba, onSubaba, contagens,
   return (
     <nav className="cen-barras" aria-label="Central da Empresa">
       {grupos.length > 1 && (
-        <div className="cen-barra" role="tablist" aria-label="Grupos da Central">
+        <div className="cen-barra cen-barra--grupos" role="tablist" aria-label="Grupos da Central">
           {grupos.map((grupo) => (
             <button
               key={grupo.id}

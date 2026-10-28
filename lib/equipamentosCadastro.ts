@@ -1,5 +1,6 @@
 // Quadro de equipamentos do Cadastro: regras puras (sem tela).
 import type { EquipamentoSetor } from "../types/index.ts";
+import { mesmoEquipamentoOuSinonimo } from "./sinonimosEquipamentos.ts";
 
 /** Ambientes para onde o item pode ir: todos menos o atual. */
 export function ambientesParaMover(ambientes: string[], atual: string): string[] {
@@ -29,14 +30,49 @@ export function equipamentoRepetidoNoSetor(equipamentos: EquipamentoSetor[], set
 
 export const quantidadeValida = (valor: unknown): number => Math.max(1, Math.floor(Number(valor)) || 1);
 
-/** Aviso na hora, abaixo do campo: "Já existe Refrigerador (Qtd 2) neste setor". Vazio quando o nome não repete. */
-export function avisoDeNomeRepetido(repetido: EquipamentoSetor | undefined): string {
-  return repetido ? `Já existe ${repetido.nome} (Qtd ${repetido.quantidade}) neste setor` : "";
+/**
+ * Item do setor que é o mesmo equipamento do nome digitado: primeiro o nome igual (sem acento e sem caixa); se não houver, um sinônimo
+ * ("Geladeira" = "Refrigerador", lista em lib/sinonimosEquipamentos.ts). Só vale na hora de ADICIONAR (a edição de nome continua pelo nome igual).
+ */
+export function equipamentoParecidoNoSetor(equipamentos: EquipamentoSetor[], setor: string, nome: string, ignorarId?: string): EquipamentoSetor | undefined {
+  const igual = equipamentoRepetidoNoSetor(equipamentos, setor, nome, ignorarId);
+  if (igual || !chaveDoNome(nome)) return igual;
+  return equipamentos.find((item) => item.setor === setor && item.id !== ignorarId && mesmoEquipamentoOuSinonimo(item.nome, nome));
 }
 
-/** O botão Adicionar só liga quando há nome e, se o nome repete, a pessoa já escolheu "Somar" ou "Cadastrar como outro item". */
+/** Nome igual, ou sinônimo (usado para não sugerir de novo o que o setor já tem). */
+export const mesmoNomeOuSinonimo = (a: string, b: string): boolean => mesmoNomeDeEquipamento(a, b) || mesmoEquipamentoOuSinonimo(a, b);
+
+/**
+ * Aviso na hora, abaixo do campo: "Já existe Refrigerador (Qtd 2) neste setor"; com sinônimo, "Parece Geladeira (Qtd 1) neste setor"
+ * (passe o nome digitado). Vazio quando o nome não repete.
+ */
+export function avisoDeNomeRepetido(repetido: EquipamentoSetor | undefined, nomeDigitado?: string): string {
+  if (!repetido) return "";
+  const soParece = nomeDigitado !== undefined && !mesmoNomeDeEquipamento(repetido.nome, nomeDigitado);
+  return `${soParece ? "Parece" : "Já existe"} ${repetido.nome} (Qtd ${repetido.quantidade}) neste setor`;
+}
+
+export const MINIMO_DE_LETRAS_DO_NOME = 3;
+export const MENSAGEM_DE_NOME_CURTO = `Digite o nome do equipamento (mínimo ${MINIMO_DE_LETRAS_DO_NOME} letras)`;
+
+/** Letras do nome (sem contar espaços, números nem pontuação). */
+export const letrasDoNome = (nome: string): number => (String(nome ?? "").match(/\p{L}/gu) || []).length;
+
+export const nomeDeEquipamentoValido = (nome: string): boolean => letrasDoNome(nome) >= MINIMO_DE_LETRAS_DO_NOME;
+
+/**
+ * Mensagem na hora, abaixo do campo: aparece enquanto há texto com menos de 3 letras, ou depois de tentar adicionar (Enter ou botão) com o campo vazio.
+ * Campo vazio e sem tentativa: sem mensagem (a tela não grita ao abrir).
+ */
+export function avisoDeNomeCurto(nome: string, tentouAdicionar: boolean): string {
+  if (nomeDeEquipamentoValido(nome)) return "";
+  return nome.trim() !== "" || tentouAdicionar ? MENSAGEM_DE_NOME_CURTO : "";
+}
+
+/** O botão Adicionar só liga com nome de ao menos 3 letras e, se o nome repete, depois de a pessoa escolher "Somar" ou "Cadastrar como outro item". */
 export function podeAdicionarEquipamento(nome: string, repetido: EquipamentoSetor | undefined, escolha: "somar" | "outro" | null): boolean {
-  if (!nome.trim()) return false;
+  if (!nomeDeEquipamentoValido(nome)) return false;
   return !repetido || escolha === "somar" || escolha === "outro";
 }
 
@@ -69,7 +105,7 @@ export function removerEquipamento(equipamentos: EquipamentoSetor[], id: string)
 
 export function mudarNomeEQuantidade(equipamentos: EquipamentoSetor[], id: string, nome: string, quantidade: number): EquipamentoSetor[] {
   const limpo = nome.trim().replace(/\s+/g, " ");
-  if (!limpo) return equipamentos;
+  if (!limpo || !nomeDeEquipamentoValido(limpo)) return equipamentos;
   return equipamentos.map((item) => (item.id === id ? { ...item, nome: limpo, quantidade: quantidadeValida(quantidade) } : item));
 }
 
@@ -223,6 +259,7 @@ export function confirmarItensFalados(
   const criados: string[] = [];
   const somados: { id: string; quantidade: number }[] = [];
   for (const item of itens) {
+    if (!nomeDeEquipamentoValido(item.nome)) continue;
     const existente = equipamentoRepetidoNoSetor(atual, item.setor, item.nome);
     if (existente) {
       atual = somarAoExistente(atual, existente.id, item.quantidade);

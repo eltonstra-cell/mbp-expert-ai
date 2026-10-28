@@ -1,5 +1,6 @@
 // Ambientes próprios x setores oficiais na visita: regras puras (sem tela).
-import { SETORES_OFICIAIS_MANUAL, normalizarSetorManual } from "./manualBase.ts";
+import { SETORES_OFICIAIS_MANUAL } from "./manualBase.ts";
+import { oficialPorApelido } from "./nomesDeAmbiente.ts";
 
 /** Nome próprio do ambiente -> setor oficial vinculado (campo opcional da empresa; sem ele, nada muda). */
 export type VinculosDeAmbiente = Record<string, string>;
@@ -36,6 +37,5 @@ export function nomeJaExistente(nome: string, cadastro: string[]): string | unde
   if (!chave) return undefined;
   const igual = [...cadastro, ...SETORES_OFICIAIS_MANUAL].find((existente) => chaveDoNome(existente) === chave);
   if (igual) return igual;
-  const apelido = normalizarSetorManual(nome.trim());
-  return apelido !== nome.trim() && eOficial(apelido) ? apelido : undefined;
+  return oficialPorApelido(nome);
 }

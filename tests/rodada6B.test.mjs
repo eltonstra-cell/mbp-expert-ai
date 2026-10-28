@@ -297,7 +297,7 @@ test("Ambientes: textos, botões e salvamento ao marcar, sem botão Salvar", () 
   assert.match(css, /\.cadest-setor\.is-sel\{[^}]*border-color:#AF640A;background:#FFF6E5/);
   assert.match(css, /\.cadest-btn--azul[^{]*\{[^}]*background:#2B54CF[^}]*color:#fff/);
   assert.match(css, /\.cen-barras \.cen-barra--sub \.cen-bloco\.is-ativa\{[^}]*border-bottom-color:#2B54CF/);
-  assert.ok(!/#[0-9A-Fa-f]{6}/.test(css.replace(/#(1B2433|55607A|8A96AD|D8DDE8|2B54CF|B83A33|FFF6E5|FFF3DC|AF640A|1E7A3E|fff|F6F7FA|E8EBF2|2448B5|186632|BFDDF7|FBE4E2)/gi, "")), "só as cores do desenho");
+  assert.ok(!/#[0-9A-Fa-f]{6}/.test(css.replace(/#(1B2433|55607A|8A96AD|D8DDE8|2B54CF|B83A33|FFF6E5|FFF3DC|AF640A|1E7A3E|fff|F6F7FA|E8EBF2|2448B5|186632|BFDDF7|FBE4E2|EEF1F7)/gi, "")), "só as cores do desenho");
   assert.ok(!/purple|violet|#7c3aed|#8b5cf6/i.test(css), "nunca roxo");
 });
 
@@ -332,9 +332,11 @@ test("página: grava na hora, bloqueio de revisão com alteração não salva, C
 
 test("Ambientes: setor oficial sugerido (com fonte) e vínculo de questionário em lote continuam na aba nova, usando as mesmas regras", () => {
   const fonte = readFileSync(new URL("../components/pc/CadastroAmbientes.tsx", import.meta.url), "utf8");
-  assert.ok(fonte.includes('sugerirSetorOficial') && fonte.includes("sugerido") && fonte.includes("Setor oficial: {sugerida.oficial}") && fonte.includes("conferido em"));
+  // Rodada 7A: a linha da Portaria saiu da lista; a sugestão vira "Parece o setor oficial X · Vincular" e a base legal vai para o menu ⋯.
+  assert.ok(fonte.includes("sugerirSetorOficial") && fonte.includes("Parece o setor oficial {parecido}") && fonte.includes("baseDoSetorOficial") && fonte.includes("rodape={base?.texto}"));
+  assert.ok(ler("../lib/setorOficialSugerido.ts").includes("conferido em"), "a data de conferência continua a mesma fonte");
   assert.ok(fonte.includes("vincularQuestionarioEmLote") && fonte.includes("ambientesSemQuestionario") && fonte.includes("Vincular a um setor oficial"));
-  assert.ok(fonte.includes("sugestaoDeSetorOficial(novoNome.trim(), false)"), "a sugestão aparece já ao digitar o nome em + Ambiente próprio");
+  assert.ok(fonte.includes("oficialParecido(novoNome.trim())"), "a sugestão aparece já ao digitar o nome em + Ambiente próprio");
 });
 
 // ===== Revisão: Desfazer em delta, formulário aberto preservado, bloqueio de vários setores e rota =====

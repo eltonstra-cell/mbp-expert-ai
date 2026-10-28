@@ -11,6 +11,8 @@ import { copiarDeOutraEmpresa, type EquipamentoDeOrigem } from "@/lib/copiaEquip
 import {
   adicionarEquipamentoNoSetor,
   adicionarSugestoesEmLote,
+  avisoDeNomeCurto,
+  MENSAGEM_DE_NOME_CURTO,
   avisoDeNomeRepetido,
   concordar,
   confirmarItensFalados,
@@ -20,19 +22,24 @@ import {
   definirLimite,
   desfazerCopia,
   desfazerMover,
+  equipamentoParecidoNoSetor,
   equipamentoRepetidoNoSetor,
-  mesmoNomeDeEquipamento,
+  mesmoNomeOuSinonimo,
   moverSomandoSeRepetir,
   mudarNomeEQuantidade,
+  nomeDeEquipamentoValido,
   podeAdicionarEquipamento,
   quantidadeValida,
   removerEquipamento,
   somarAoExistente,
 } from "@/lib/equipamentosCadastro";
-import { LIMITES_DE_TEMPERATURA, limiteDoTipo, textoDoLimite } from "@/lib/limitesDeTemperatura";
-import { normalizarListaAmbientesReais } from "@/lib/manualBase";
+import { sugerirNomesDeEquipamento } from "@/lib/autocompletarEquipamento";
+import { LIMITES_DE_TEMPERATURA, baseDoLimite, limiteDoTipo, textoDoLimite } from "@/lib/limitesDeTemperatura";
+import { rotuloDoSetor } from "@/lib/nomesDeAmbiente";
+import { SETORES_OFICIAIS_MANUAL, normalizarListaAmbientesReais, normalizarSetorManual } from "@/lib/manualBase";
 import { quantidade } from "@/lib/plural";
-import { equipamentosSugeridosParaSetor, sugestaoPorCnae } from "@/lib/sugestaoPorCnae";
+import { limparVinculos } from "@/lib/ambientesVisita";
+import { avisoQuandoNaoHaSugestao, equipamentosSugeridosParaSetor, sugestaoPorCnae } from "@/lib/sugestaoPorCnae";
 import { limiteSugeridoParaEquipamento, nomeCurtoDoSetor } from "@/lib/tiposDeEstabelecimento";
 import { fecharToastDe, mostrarToast } from "@/lib/toast";
 import { nomeJaExistente } from "@/lib/ambientesVisita";
@@ -46,6 +53,7 @@ type Props = {
   estado: EstadoDoSalvamento;
   onGravar: (entrada: EntradaDeEstrutura) => boolean;
   onIrParaAmbientes: () => void;
+  onIrParaDados: () => void;
 };
 
 const DURACAO_DO_DESFAZER_MS = 8000;
@@ -89,7 +97,7 @@ function geradorEstavel() {
   };
 }
 
-export default function CadastroEquipamentos({ empresa, podeEditar, estado, onGravar, onIrParaAmbientes }: Props) {
+export default function CadastroEquipamentos({ empresa, podeEditar, estado, onGravar, onIrParaAmbientes, onIrParaDados }: Props) {
   const setores = normalizarListaAmbientesReais(empresa.setoresManual);
   const equipamentos = empresa.equipamentosSetores || [];
   const contagem = contagemPorSetor(equipamentos, setores);
@@ -105,6 +113,10 @@ export default function CadastroEquipamentos({ empresa, podeEditar, estado, onGr
   const [edicao, setEdicao] = useState<{ id: string; nome: string; qtd: number; limite: string; obs: string } | null>(null);
   const [menu, setMenu] = useState<{ id: string; nivel: "principal" | "mover" } | null>(null);
   const [copiando, setCopiando] = useState(false);
+  // Campo do nome: tentativa de adicionar (para a mensagem de nome curto) e lista de autocompletar (listbox).
+  const [tentou, setTentou] = useState(false);
+  const [listaAberta, setListaAberta] = useState(false);
+  const [opcaoAtiva, setOpcaoAtiva] = useState(-1);
   // Itens falados esperando conferência (nada entra no quadro sem confirmar) e cópia deste setor para outros setores da própria empresa.
   const [falados, setFalados] = useState<ItemParaConferir[]>([]);
   const [copiandoSetor, setCopiandoSetor] = useState<string[] | null>(null);
@@ -117,12 +129,20 @@ export default function CadastroEquipamentos({ empresa, podeEditar, estado, onGr
   // Um "Desfazer" não sobrevive à tela nem à empresa que o criou.
   useEffect(() => () => fecharToastDe(dono), [dono]);
 
+  // Cada setor guarda os seus equipamentos pelo nome COMPLETO do ambiente (único em setoresManual): "Cozinha" próprio e "Cozinha / Produção" nunca se misturam,
+  // mesmo mostrando o mesmo nome curto na lista (o próprio ganha "(próprio)").
   const doSetor = equipamentos.filter((item) => item.setor === selecionado);
-  const curto = nomeCurtoDoSetor(selecionado);
-  const repetido = equipamentoRepetidoNoSetor(equipamentos, selecionado, nome);
-  const aviso = avisoDeNomeRepetido(repetido);
+  const curto = rotuloDoSetor(selecionado, setores);
+  const vinculos = limparVinculos(empresa.setorOficialDoAmbiente, setores);
+  const repetido = equipamentoParecidoNoSetor(equipamentos, selecionado, nome);
+  const aviso = avisoDeNomeRepetido(repetido, nome);
+  const avisoCurto = avisoDeNomeCurto(nome, tentou);
   const podeAdicionar = podeEditar && podeAdicionarEquipamento(nome, repetido, escolha);
-  const sugeridosDoSetor = equipamentosSugeridosParaSetor(sugestao, selecionado, doSetor.map((item) => item.nome), mesmoNomeDeEquipamento);
+  const sugeridosDoSetor = equipamentosSugeridosParaSetor(sugestao, selecionado, doSetor.map((item) => item.nome), mesmoNomeOuSinonimo, vinculos);
+  const proprioSemVinculo = !(SETORES_OFICIAIS_MANUAL as readonly string[]).includes(selecionado) && !vinculos[selecionado] && normalizarSetorManual(selecionado) === selecionado;
+  const semSugestao = avisoQuandoNaoHaSugestao(sugestao, sugeridosDoSetor);
+  const opcoesDeNome = sugerirNomesDeEquipamento(nome, equipamentos.map((item) => item.nome));
+  const listaVisivel = listaAberta && opcoesDeNome.length > 0;
   const loteAtual = lote.setor === selecionado ? lote : { setor: selecionado, marcados: [], qtds: {} as Record<string, number> };
   const outrosSetores = setores.filter((setor) => setor !== selecionado);
   // Renomear para um nome que já existe no setor: avisa na hora e bloqueia (o item que está sendo editado não conta contra si mesmo).
@@ -138,17 +158,54 @@ export default function CadastroEquipamentos({ empresa, podeEditar, estado, onGr
   }
 
   function aviso8s(texto: string, desfazer: () => void) {
-    mostrarToast(`${texto} · `, { duracaoMs: DURACAO_DO_DESFAZER_MS, dono, acao: { rotulo: "Desfazer", aoClicar: desfazer } });
+    // O ✓ do aviso verde vem do próprio aviso (ToastHost): o texto não repete.
+    mostrarToast(`${texto.replace(/^✓\s*/, "")} · `, { duracaoMs: DURACAO_DO_DESFAZER_MS, dono, acao: { rotulo: "Desfazer", aoClicar: desfazer } });
   }
 
   function limparFormulario() {
     setNome("");
     setQtd(1);
     setEscolha(null);
+    setTentou(false);
+    setListaAberta(false);
+    setOpcaoAtiva(-1);
+  }
+
+  function escolherOpcao(texto: string) {
+    setNome(texto);
+    setEscolha(null);
+    setListaAberta(false);
+    setOpcaoAtiva(-1);
+    campoRef.current?.focus();
+  }
+
+  function aoTeclarNoNome(evento: KeyboardEvent<HTMLInputElement>) {
+    if (evento.key === "ArrowDown" && opcoesDeNome.length > 0) {
+      evento.preventDefault();
+      setListaAberta(true);
+      setOpcaoAtiva((atual) => (listaVisivel ? (atual + 1) % opcoesDeNome.length : 0));
+    } else if (evento.key === "ArrowUp" && listaVisivel) {
+      evento.preventDefault();
+      setOpcaoAtiva((atual) => (atual <= 0 ? opcoesDeNome.length - 1 : atual - 1));
+    } else if (evento.key === "Escape" && listaVisivel) {
+      evento.preventDefault();
+      evento.stopPropagation();
+      setListaAberta(false);
+      setOpcaoAtiva(-1);
+    } else if (evento.key === "Enter") {
+      evento.preventDefault();
+      if (listaVisivel && opcaoAtiva >= 0 && opcoesDeNome[opcaoAtiva]) escolherOpcao(opcoesDeNome[opcaoAtiva]);
+      else adicionar();
+    }
   }
 
   function adicionar() {
-    if (!podeAdicionar || !selecionado) return;
+    if (!podeEditar || !selecionado) return;
+    if (!nomeDeEquipamentoValido(nome)) {
+      setTentou(true);
+      return;
+    }
+    if (!podeAdicionar) return;
     const quantidadeDigitada = quantidadeValida(qtd);
     const setorAlvo = selecionado;
     if (repetido && escolha === "somar") {
@@ -206,7 +263,7 @@ export default function CadastroEquipamentos({ empresa, podeEditar, estado, onGr
     })) return;
     setMenu(null);
     window.setTimeout(() => tituloRef.current?.focus(), 0);
-    const nomeDestino = nomeCurtoDoSetor(destino);
+    const nomeDestino = rotuloDoSetor(destino, setores);
     const texto = previa.somouEm
       ? `✓ ${item.nome} já existia em ${nomeDestino}: somou, agora Qtd ${previa.somouEm.quantidade}`
       : `✓ ${item.nome} ${concordar(item.nome, "movid")} para ${nomeDestino}`;
@@ -214,7 +271,7 @@ export default function CadastroEquipamentos({ empresa, podeEditar, estado, onGr
   }
 
   function salvarEdicao() {
-    if (!edicao || !edicao.nome.trim() || repetidoNaEdicao) return;
+    if (!edicao || !nomeDeEquipamentoValido(edicao.nome) || repetidoNaEdicao) return;
     const { id, nome: novoNome, qtd: novaQtd, obs, limite } = edicao;
     const gravou = alterar((lista) => {
       const item = lista.find((outro) => outro.id === id);
@@ -268,7 +325,9 @@ export default function CadastroEquipamentos({ empresa, podeEditar, estado, onGr
   // O que é confirmado por voz passa pelas MESMAS regras da digitação: nome repetido no setor soma no item que já existe, o limite sugerido
   // entra como proposta, e há "Desfazer".
   function confirmarFalados(ids: string[]) {
-    const prontos = falados.filter((item) => ids.includes(item.id) && podeConfirmar(item));
+    const escolhidos = falados.filter((item) => ids.includes(item.id));
+    const prontos = escolhidos.filter((item) => podeConfirmar(item));
+    if (escolhidos.some((item) => !nomeDeEquipamentoValido(item.nome))) mostrarToast(`${MENSAGEM_DE_NOME_CURTO}: item por voz com nome curto não foi adicionado.`, { tipo: "aviso", duracaoMs: 5000, dono });
     if (prontos.length === 0) return;
     const entrada = prontos.map((item) => ({ id: item.id, setor: item.ambiente, nome: item.nome, quantidade: item.quantidade, limiteTemperaturaId: limiteSugeridoParaEquipamento(item.nome)?.id }));
     const previa = confirmarItensFalados(equipamentos, entrada);
@@ -371,11 +430,12 @@ export default function CadastroEquipamentos({ empresa, podeEditar, estado, onGr
     <section className="cadest cadest-eq" aria-label="Equipamentos da empresa">
       <div className="cadest-eq-grade">
         <nav className="cadest-setores" aria-label="Setores da empresa">
+          <p className="cadest-setores-titulo">Setor</p>
           <ul className="cadest-setores-lista">
             {setores.map((setor) => (
               <li key={setor}>
                 <button type="button" className={`cadest-setor${setor === selecionado ? " is-sel" : ""}`} aria-current={setor === selecionado ? "true" : undefined} title={setor} onClick={() => { setEscolhido(setor); setMenu(null); setEdicao(null); limparFormulario(); }}>
-                  <span className="cadest-setor-nome">{nomeCurtoDoSetor(setor)}</span>
+                  <span className="cadest-setor-nome">{rotuloDoSetor(setor, setores)}</span>
                   <span className="cadest-setor-conta" aria-label={quantidade(contagem[setor] || 0, "item", "itens")}>{contagem[setor] || 0}</span>
                 </button>
               </li>
@@ -383,7 +443,7 @@ export default function CadastroEquipamentos({ empresa, podeEditar, estado, onGr
           </ul>
           <div className="cadest-setor-seletor">
             <Select value={selecionado} onChange={(evento) => { setEscolhido(evento.target.value); setMenu(null); setEdicao(null); limparFormulario(); }} aria-label="Setor">
-              {setores.map((setor) => <option key={setor} value={setor}>{nomeCurtoDoSetor(setor)} ({contagem[setor] || 0})</option>)}
+              {setores.map((setor) => <option key={setor} value={setor}>{rotuloDoSetor(setor, setores)} ({contagem[setor] || 0})</option>)}
             </Select>
           </div>
         </nav>
@@ -392,7 +452,12 @@ export default function CadastroEquipamentos({ empresa, podeEditar, estado, onGr
           <div className="cadest-painel-cabeca">
             <h2 className="cadest-titulo" ref={tituloRef} tabIndex={-1}>{podeEditar ? `Adicionar em ${curto}` : `Equipamentos de ${curto}`}</h2>
             {podeEditar && setores.length > 0 && (
-              <button type="button" className="cadest-btn" aria-haspopup="dialog" onClick={() => setCopiando(true)}>Copiar de outra empresa</button>
+              <div className="cadest-painel-botoes">
+                {doSetor.length > 0 && outrosSetores.length > 0 && (
+                  <button type="button" className="cadest-btn" aria-expanded={copiandoSetor !== null} onClick={() => setCopiandoSetor(copiandoSetor ? null : [])}>Copiar para outros ambientes</button>
+                )}
+                <button type="button" className="cadest-btn" aria-haspopup="dialog" onClick={() => setCopiando(true)}>Copiar de outra empresa</button>
+              </div>
             )}
           </div>
 
@@ -405,20 +470,38 @@ export default function CadastroEquipamentos({ empresa, podeEditar, estado, onGr
                     ref={campoRef}
                     id="cadest-eq-nome"
                     value={nome}
-                    onChange={(evento) => { setNome(evento.target.value); setEscolha(null); }}
-                    onKeyDown={(evento) => {
-                      if (evento.key === "Enter") {
-                        evento.preventDefault();
-                        adicionar();
-                      }
-                    }}
+                    onChange={(evento) => { setNome(evento.target.value); setEscolha(null); setListaAberta(true); setOpcaoAtiva(-1); }}
+                    onKeyDown={aoTeclarNoNome}
+                    onBlur={() => { setListaAberta(false); setOpcaoAtiva(-1); }}
                     placeholder="Ex.: Refrigerador"
-                    aria-invalid={Boolean(repetido)}
+                    role="combobox"
+                    aria-autocomplete="list"
+                    aria-expanded={listaVisivel}
+                    aria-controls="cadest-eq-opcoes"
+                    aria-activedescendant={listaVisivel && opcaoAtiva >= 0 ? `cadest-eq-opcao-${opcaoAtiva}` : undefined}
+                    autoComplete="off"
+                    aria-invalid={Boolean(repetido || avisoCurto)}
                     aria-describedby="cadest-eq-repetido"
-                    className={`ui-input cad-input cad-input--voz${repetido ? " is-erro" : ""}`}
+                    className={`ui-input cad-input cad-input--voz${repetido || avisoCurto ? " is-erro" : ""}`}
                   />
+                  {listaVisivel && (
+                    <ul id="cadest-eq-opcoes" className="cadest-opcoes" role="listbox" aria-label="Sugestões de nome">
+                      {opcoesDeNome.map((opcao, indice) => (
+                        <li
+                          key={opcao}
+                          id={`cadest-eq-opcao-${indice}`}
+                          role="option"
+                          aria-selected={indice === opcaoAtiva}
+                          className={`cadest-opcao${indice === opcaoAtiva ? " is-sel" : ""}`}
+                          onMouseDown={(evento) => { evento.preventDefault(); escolherOpcao(opcao); }}
+                        >
+                          {opcao}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                   <span className="ui-field-tools cad-mic">
-                    <FieldVoiceTools fieldKey="novo-equipamento" value={nome} onChange={(texto) => { setNome(texto); setEscolha(null); }} onTextoDitado={tratarFala} contexto="Nome curto de um equipamento ou móvel de estabelecimento de alimentos." somenteVoz soIcone />
+                    <FieldVoiceTools fieldKey="novo-equipamento" value={nome} onChange={(texto) => { setNome(texto); setEscolha(null); setListaAberta(false); }} onTextoDitado={tratarFala} contexto="Nome curto de um equipamento ou móvel de estabelecimento de alimentos." somenteVoz soIcone />
                   </span>
                 </span>
               </label>
@@ -428,7 +511,8 @@ export default function CadastroEquipamentos({ empresa, podeEditar, estado, onGr
               </div>
               <button type="button" className="cadest-btn cadest-btn--azul" disabled={!podeAdicionar} aria-describedby="cadest-eq-repetido" onClick={adicionar}>Adicionar</button>
               <div id="cadest-eq-repetido" className="cadest-repetido" aria-live="polite">
-                {repetido && (
+                {avisoCurto && <p className="cadest-erro">{avisoCurto}</p>}
+                {!avisoCurto && repetido && (
                   <>
                     <p className="cadest-erro">{aviso}</p>
                     <div className="cadest-repetido-botoes">
@@ -453,9 +537,8 @@ export default function CadastroEquipamentos({ empresa, podeEditar, estado, onGr
             />
           )}
 
-          {podeEditar && doSetor.length > 0 && outrosSetores.length > 0 && (
+          {podeEditar && doSetor.length > 0 && outrosSetores.length > 0 && copiandoSetor && (
             <div className="cadest-copiar-setor">
-              <button type="button" className="cadest-link" aria-expanded={copiandoSetor !== null} onClick={() => setCopiandoSetor(copiandoSetor ? null : [])}>Copiar para outros ambientes</button>
               {copiandoSetor && (
                 <div className="cadest-copiar-painel" role="group" aria-label="Copiar equipamentos para outros ambientes">
                   <p className="cadest-rotulo">Copiar os {doSetor.length} equipamentos de {curto} para:</p>
@@ -463,7 +546,7 @@ export default function CadastroEquipamentos({ empresa, podeEditar, estado, onGr
                     {outrosSetores.map((setor) => (
                       <label key={setor} className="cadest-copiar-opcao cad-copiar-destino">
                         <input type="checkbox" checked={copiandoSetor.includes(setor)} onChange={(evento) => setCopiandoSetor(evento.target.checked ? [...copiandoSetor, setor] : copiandoSetor.filter((outro) => outro !== setor))} />
-                        <span>{setor}</span>
+                        <span>{rotuloDoSetor(setor, setores)}</span>
                       </label>
                     ))}
                   </div>
@@ -524,12 +607,13 @@ export default function CadastroEquipamentos({ empresa, podeEditar, estado, onGr
                                   <button type="button" role="menuitem" className="cadest-menu-item" onClick={() => { setMenu(null); setEdicao({ id: item.id, nome: item.nome, qtd: quantidadeValida(item.quantidade), limite: item.limiteTemperaturaId || "", obs: item.observacao || "" }); }}>Editar nome e quantidade</button>
                                   <button type="button" role="menuitem" className="cadest-menu-item" data-acao="mover" aria-haspopup="menu" aria-disabled={outrosSetores.length === 0} title={outrosSetores.length === 0 ? "Marque outro setor em Ambientes para mover" : undefined} onClick={() => { if (outrosSetores.length > 0) setMenu({ id: item.id, nivel: "mover" }); }}>Mover para outro setor ›</button>
                                   <button type="button" role="menuitem" className="cadest-menu-item cadest-menu-item--perigo" onClick={() => remover(item)}>Remover</button>
+                                  {limite && <p className="cadest-menu-base" title={limite.link}>{baseDoLimite(limite)}</p>}
                                 </>
                               ) : (
                                 <>
                                   <p className="cadest-menu-titulo" aria-hidden="true">Mover {item.nome} para</p>
                                   {outrosSetores.map((setor) => (
-                                    <button key={setor} type="button" role="menuitem" className="cadest-menu-item" onClick={() => mover(item, setor)}>{nomeCurtoDoSetor(setor)}</button>
+                                    <button key={setor} type="button" role="menuitem" className="cadest-menu-item" onClick={() => mover(item, setor)}>{rotuloDoSetor(setor, setores)}</button>
                                   ))}
                                 </>
                               )}
@@ -540,23 +624,26 @@ export default function CadastroEquipamentos({ empresa, podeEditar, estado, onGr
                     </div>
                     {(limite || item.sugerido) && (
                       <p className="cadest-eq-nota">
-                        {item.sugerido ? "Veio da sugestão do tipo de empresa, ainda não confirmada." : ""}
-                        {limite ? ` ${item.limiteConfirmado ? "Limite confirmado" : "Limite sugerido pelo tipo do equipamento"}: ${textoDoLimite(limite)} · ${limite.norma}, item ${limite.itens} · conferido em ${limite.conferidoEm.split("-").reverse().join("/")}.${limite.observacaoDaFonte ? ` ${limite.observacaoDaFonte}` : ""}` : ""}
+                        {[item.sugerido ? "Sugerido pelo tipo de empresa" : "", limite ? `${item.limiteConfirmado ? "Limite confirmado" : "Limite sugerido"}: ${textoDoLimite(limite)}` : ""].filter(Boolean).join(" · ")}
                         {podeEditar && naoConfirmado && (
-                          <button type="button" className="cadest-link" onClick={() => void alterar((lista) => confirmarSugestao(lista, item.id))}>{item.sugerido ? "Confirmar equipamento" : "Confirmar limite"}</button>
+                          <>
+                            {" · "}
+                            <button type="button" className="cadest-link" onClick={() => void alterar((lista) => confirmarSugestao(lista, item.id))}>{item.sugerido ? "Confirmar equipamento" : "Confirmar limite"}</button>
+                          </>
                         )}
                       </p>
                     )}
+                    {!podeEditar && limite && <p className="cadest-eq-nota" title={limite.link}>{baseDoLimite(limite)}</p>}
                     {editando && edicao && (
                       <div className="cadest-edicao">
                         <label className="cadest-campo">
                           <span className="cadest-rotulo">Nome</span>
                           <input
-                            className={`ui-input cad-input${edicao.nome.trim() && !repetidoNaEdicao ? "" : " is-erro"}`}
+                            className={`ui-input cad-input${nomeDeEquipamentoValido(edicao.nome) && !repetidoNaEdicao ? "" : " is-erro"}`}
                             value={edicao.nome}
                             autoFocus
-                            aria-invalid={!edicao.nome.trim() || Boolean(repetidoNaEdicao)}
-                            aria-describedby={!edicao.nome.trim() || repetidoNaEdicao ? "cadest-eq-edicao-erro" : undefined}
+                            aria-invalid={!nomeDeEquipamentoValido(edicao.nome) || Boolean(repetidoNaEdicao)}
+                            aria-describedby={!nomeDeEquipamentoValido(edicao.nome) || repetidoNaEdicao ? "cadest-eq-edicao-erro" : undefined}
                             onChange={(evento) => setEdicao({ ...edicao, nome: evento.target.value })}
                             onKeyDown={(evento) => {
                               if (evento.key === "Escape") setEdicao(null);
@@ -582,9 +669,9 @@ export default function CadastroEquipamentos({ empresa, podeEditar, estado, onGr
                           <span className="cadest-rotulo">Observação do equipamento</span>
                           <textarea rows={2} className="ui-input cad-obs-texto" value={edicao.obs} onChange={(evento) => setEdicao({ ...edicao, obs: evento.target.value })} />
                         </label>
-                        {(!edicao.nome.trim() || repetidoNaEdicao) && <p id="cadest-eq-edicao-erro" className="cadest-erro" role="alert">{!edicao.nome.trim() ? "Escreva o nome do equipamento." : `${avisoDeNomeRepetido(repetidoNaEdicao)}. Use outro nome ou some as quantidades no item que já existe.`}</p>}
+                        {(!nomeDeEquipamentoValido(edicao.nome) || repetidoNaEdicao) && <p id="cadest-eq-edicao-erro" className="cadest-erro" role="alert">{!nomeDeEquipamentoValido(edicao.nome) ? MENSAGEM_DE_NOME_CURTO : `${avisoDeNomeRepetido(repetidoNaEdicao)}. Use outro nome ou some as quantidades no item que já existe.`}</p>}
                         <div className="cadest-edicao-botoes">
-                          <button type="button" className="cadest-btn cadest-btn--verde" disabled={!edicao.nome.trim() || Boolean(repetidoNaEdicao)} onClick={salvarEdicao}>Salvar</button>
+                          <button type="button" className="cadest-btn cadest-btn--verde" disabled={!nomeDeEquipamentoValido(edicao.nome) || Boolean(repetidoNaEdicao)} onClick={salvarEdicao}>Salvar</button>
                           <button type="button" className="cadest-link" onClick={() => { setEdicao(null); botoesMenu.current[item.id]?.focus(); }}>Cancelar</button>
                         </div>
                       </div>
@@ -593,6 +680,21 @@ export default function CadastroEquipamentos({ empresa, podeEditar, estado, onGr
                 );
               })}
             </ul>
+          )}
+
+          {podeEditar && doSetor.length === 0 && semSugestao === "sem-cnae" && (
+            <p className="cadest-semsugestao" role="status">
+              Preencha o CNAE no cadastro para receber sugestões
+              <button type="button" className="cadest-link" onClick={onIrParaDados}>Ir para a aba Empresa</button>
+            </p>
+          )}
+          {podeEditar && doSetor.length === 0 && semSugestao === "sem-sugestao-do-setor" && (
+            <p className="cadest-semsugestao" role="status">
+              {proprioSemVinculo ? "Vincule este ambiente a um setor oficial para receber sugestões" : "Sem sugestões para este setor"}
+              {proprioSemVinculo && <button type="button" className="cadest-link" onClick={onIrParaAmbientes}>Vincular</button>}
+              <span aria-hidden="true">·</span>
+              <button type="button" className="cadest-link" aria-haspopup="dialog" onClick={() => setCopiando(true)}>Copiar de outra empresa</button>
+            </p>
           )}
 
           {podeEditar && doSetor.length === 0 && sugeridosDoSetor.length > 0 && sugestao.situacao === "ok" && (
@@ -630,7 +732,7 @@ export default function CadastroEquipamentos({ empresa, podeEditar, estado, onGr
 
           {podeEditar && (
             <footer className="cadest-rodape cadest-rodape--direita">
-              <StatusDeSalvamento estado={estado} />
+              <StatusDeSalvamento key={empresa.id} estado={estado} />
             </footer>
           )}
         </div>

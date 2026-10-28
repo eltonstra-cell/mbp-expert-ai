@@ -8443,6 +8443,7 @@ export default function Home() {
                     estado={syncStatus === "erro" && syncErroVisivel ? "erro" : estadoEstrutura}
                     onGravar={(entrada) => gravarEstrutura(entrada, editingEmpresaId)}
                     onIrParaAmbientes={() => irParaSubaba("ambientes")}
+                    onIrParaDados={() => irParaSubaba("dados")}
                   />
                 )}
 

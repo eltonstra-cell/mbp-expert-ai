@@ -4,6 +4,7 @@
 // A tabela CNAE → tipo usa os códigos e nomes da CNAE 2.x do IBGE (API de CNAE do IBGE, conferida em 2026-10-24).
 import { limiteSugerido, type LimiteDeTemperatura } from "./limitesDeTemperatura.ts";
 import { SETORES_OFICIAIS_MANUAL } from "./manualBase.ts";
+import { chaveDeEquipamento, sinonimosDe } from "./sinonimosEquipamentos.ts";
 import type { TipoFluxoOperacional } from "../types/index.ts";
 
 export const FONTE_DA_TABELA_DE_CNAE = {
@@ -51,17 +52,20 @@ const CNAE_PARA_TIPO: Record<string, { tipo: IdDoTipo; descricao: string }> = {
   "4712100": { tipo: "conveniencia", descricao: "Minimercados, mercearias e armazéns" },
 };
 
-/** Descrição da CNAE do IBGE para um código da tabela (usada só quando o cadastro não trouxe a descrição). */
-export const descricaoDoCnaeDaTabela = (codigo: string): string => CNAE_PARA_TIPO[(codigo || "").replace(/\D/g, "")]?.descricao || "";
+/** CNAE só com dígitos: "5611201", "5611-2/01" e "56.11-2-01" dão o mesmo "5611201". Aceita número e valor ausente. */
+export const normalizarCnae = (valor: unknown): string => String(valor ?? "").replace(/\D/g, "");
 
-/** Tipo sugerido pelo CNAE principal; se não houver correspondência, pelos secundários; senão "Outro". Nunca bloqueia. */
+/** Descrição da CNAE do IBGE para um código da tabela (usada só quando o cadastro não trouxe a descrição). */
+export const descricaoDoCnaeDaTabela = (codigo: string): string => CNAE_PARA_TIPO[normalizarCnae(codigo)]?.descricao || "";
+
+/** Tipo sugerido pelo CNAE principal; se não houver correspondência, pelos secundários; senão "Outro". Nunca bloqueia. Vale com ou sem pontuação. */
 export function tipoSugeridoPorCnae(principal: string | undefined, secundarios: { codigo: string }[] = []): { tipo: IdDoTipo; rotulo: string; codigo: string; correspondencia: boolean } {
-  for (const bruto of [principal || "", ...secundarios.map((s) => s.codigo)]) {
-    const codigo = (bruto || "").replace(/\D/g, "");
+  for (const bruto of [principal, ...(secundarios || []).map((s) => s?.codigo)]) {
+    const codigo = normalizarCnae(bruto);
     const achado = CNAE_PARA_TIPO[codigo];
     if (achado) return { tipo: achado.tipo, rotulo: rotuloDoTipo(achado.tipo), codigo, correspondencia: true };
   }
-  return { tipo: "outro", rotulo: "Outro", codigo: (principal || "").replace(/\D/g, ""), correspondencia: false };
+  return { tipo: "outro", rotulo: "Outro", codigo: normalizarCnae(principal), correspondencia: false };
 }
 
 const S = SETORES_OFICIAIS_MANUAL;
@@ -165,9 +169,25 @@ export function pacoteDoTipo(tipo: string | undefined): PacoteDoTipo {
   return { ambientes: [...p.ambientes], equipamentos: p.equipamentos.map((e) => ({ ...e })), fluxos: [...p.fluxos] };
 }
 
-/** Limite de temperatura que a norma indica para este equipamento (só sugestão; o RT confirma). Sem limite conhecido: undefined. */
+/** Nomes de equipamento dos pacotes de todos os tipos, sem repetir (base do autocompletar). */
+export function nomesDeEquipamentoDoCatalogo(): string[] {
+  const vistos = new Set<string>();
+  const nomes: string[] = [];
+  for (const pacote of Object.values(PACOTES)) {
+    for (const item of pacote.equipamentos) {
+      const chave = chaveDeEquipamento(item.nome);
+      if (chave && !vistos.has(chave)) {
+        vistos.add(chave);
+        nomes.push(item.nome);
+      }
+    }
+  }
+  return nomes;
+}
+
+/** Limite de temperatura que a norma indica para este equipamento (só sugestão; o RT confirma). Sem limite conhecido: undefined. Considera os sinônimos ("Geladeira" = "Refrigerador"). */
 export function limiteSugeridoParaEquipamento(nome: string): LimiteDeTemperatura | undefined {
-  return limiteSugerido([nome]);
+  return limiteSugerido([nome]) || limiteSugerido(sinonimosDe(nome));
 }
 
 /** As perguntas do questionário são sempre as padrão: nenhum tipo, CNAE ou pacote muda as perguntas. */

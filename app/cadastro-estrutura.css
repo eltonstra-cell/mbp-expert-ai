@@ -11,6 +11,13 @@
 .cen-barras .cen-barra--sub .cen-bloco:hover:not(.is-ativa){background:transparent;border-bottom-color:#D8DDE8}
 .cen-barras .cen-barra--sub .cen-bloco.is-ativa{border-radius:0;border-bottom-color:#2B54CF;background:transparent;font-weight:500;color:#1B2433}
 .cen-subdireita{min-width:0;margin-left:auto}
+/* Empresa | Estrutura | Documentos: texto com sublinhado (sem pílula cinza nem fundo azul claro); a atual com peso 500 e sublinhado azul de 3 px, as outras em cinza */
+.cen-barras .cen-barra--grupos{height:auto;gap:28px;border-radius:0;background:transparent}
+.cen-barras .cen-barra--grupos .cen-bloco{height:44px;padding:0 2px;border-radius:0;border-bottom:3px solid transparent;background:transparent;font-size:16px;font-weight:400;color:#55607A}
+.cen-barras .cen-barra--grupos .cen-bloco::before{display:none}
+.cen-barras .cen-barra--grupos .cen-bloco:hover:not(.is-ativa){background:transparent;border-bottom-color:#D8DDE8;color:#1B2433}
+.cen-barras .cen-barra--grupos .cen-bloco.is-ativa{border-radius:0;border-bottom-color:#2B54CF;background:transparent;font-weight:500;color:#1B2433}
+.cen-barras .cen-bloco:focus-visible{outline:3px solid #2B54CF;outline-offset:2px}
 
 /* Estado de revisão da aba atual */
 .cadrev{display:flex;flex-wrap:wrap;align-items:center;gap:2px 8px;min-height:44px;font-size:15px;color:#1B2433}
@@ -30,6 +37,7 @@
 .cadest-vazio{margin:0;font-size:15px;line-height:22px;color:#55607A}
 .cadest-dica{margin:0;font-size:15px;line-height:22px;color:#55607A}
 .cadest-erro{margin:0;font-size:15px;line-height:22px;color:#B83A33}
+.cadest-erro--linha{display:flex;flex-wrap:wrap;align-items:center;gap:0 12px}
 .cadest-aviso{margin:0;font-size:15px;line-height:22px;color:#1B2433}
 .cadest-rotulo{font-size:15px;line-height:22px;color:#55607A}
 .cadest-campo{display:flex;flex-direction:column;gap:4px;min-width:0}
@@ -53,7 +61,9 @@
 /* Campos com erro na hora */
 .cadest .ui-input.is-erro,.cadest .cad-input.is-erro{border:2px solid #B83A33}
 /* As regras globais de campo têm especificidade alta: aqui o vermelho do erro vence com certeza (campo e foco). */
-html .cadest input.is-erro,html .cadest input[aria-invalid="true"],html .cadest input.is-erro:focus,html .cadest input[aria-invalid="true"]:focus{border:2px solid #B83A33!important;border-color:#B83A33!important}
+html .cadest input.is-erro,html .cadest input[aria-invalid="true"],html .cadest input.is-erro:focus,html .cadest input[aria-invalid="true"]:focus{border:2px solid #B83A33!important;border-color:#B83A33!important;box-shadow:none!important;outline:none!important}
+/* Foco: borda azul fina de 2 px, sem laranja. O erro vermelho (regra acima, mais específica) tem prioridade sobre o foco. */
+html .cadest .ui-input:focus,html .cadest .ui-input:focus-visible,html .cadest .cad-input:focus,html .cadest .cad-input:focus-visible,html .cadest textarea:focus{border:2px solid #2B54CF!important;border-color:#2B54CF!important;box-shadow:none!important;outline:none!important}
 
 /* Sugestão de setor oficial para ambiente próprio (mesmo visual de antes) e vínculo em lote */
 /* Sugestão de setor oficial: texto simples dentro do item (sem caixa, sem fundo e sem borda azul); botão como link de 15 px */
@@ -85,8 +95,13 @@ html .cadest input.is-erro,html .cadest input[aria-invalid="true"],html .cadest 
 .cadest-nomes{display:flex;flex-direction:column;min-width:0}
 .cadest-nome{font-family:var(--font-display),"Outfit",sans-serif;font-size:18px;font-weight:500;line-height:26px;color:#1B2433;overflow-wrap:anywhere}
 .cadest-oficial{font-size:15px;line-height:22px;color:#55607A;overflow-wrap:anywhere}
-.cadest-perguntas{flex:none;font-size:15px;line-height:26px;color:#1B2433;white-space:nowrap}
-.cadest-item-acoes{display:flex;flex-wrap:wrap;gap:0 12px}
+.cadest-perguntas{flex:none;font-size:15px;line-height:36px;color:#1B2433;white-space:nowrap}
+.cadest-item-direita{display:flex;flex:none;align-items:flex-start;gap:12px}
+.cadest-nome:focus{outline:none}
+.cadest-parece{font-size:15px;line-height:22px;color:#1B2433}
+.cadest-parece .cadest-link{min-height:22px;padding:0}
+.cadest-erro .cadest-link{min-height:28px}
+.cadest-semsugestao{display:flex;flex-wrap:wrap;align-items:center;gap:0 12px;margin:0;font-size:15px;line-height:22px;color:#55607A}
 .cadest-renomear{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
 .cadest-select{max-width:360px}
 .cadest-rodape{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 24px}
@@ -97,16 +112,21 @@ html .cadest input.is-erro,html .cadest input[aria-invalid="true"],html .cadest 
 
 /* ---------- Equipamentos ---------- */
 .cadest-eq-grade{display:grid;grid-template-columns:minmax(200px,280px) minmax(0,1fr);gap:20px 40px;align-items:start}
-.cadest-setores-lista{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+/* A coluna dos setores acompanha a tela e a lista rola POR DENTRO (altura máxima da janela); o painel da direita segue o fluxo da página. */
+.cadest-setores{position:sticky;top:0;display:flex;flex-direction:column;gap:6px;min-height:0;max-height:calc(100dvh - 300px)}
+.cadest-setores-titulo{flex:none;margin:0;font-size:15px;line-height:22px;color:#55607A}
+.cadest-setores-lista{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
 .cadest-setor{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:44px;padding:0 14px;border:2px solid transparent;border-radius:10px;background:transparent;font-size:16px;font-weight:400;text-align:left;color:#1B2433;cursor:pointer}
 .cadest-setor:hover:not(.is-sel){background:#F6F7FA}
 .cadest-setor.is-sel{border-color:#AF640A;background:#FFF6E5;font-weight:400}
+.cadest-setor-nome{min-width:0;flex:1 1 auto;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .cadest-setor-conta{flex:none;font-size:15px;color:#55607A}
 .cadest-setor.is-sel .cadest-setor-conta{color:#1B2433}
 .cadest-setor-seletor{display:none}
 .cadest-painel{display:flex;flex-direction:column;gap:16px;min-width:0}
 .cadest-painel-cabeca{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 16px}
 .cadest-painel-cabeca .cadest-titulo:focus{outline:none}
+.cadest-painel-botoes{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
 .cadest-form{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px 16px}
 .cadest-campo--nome{flex:1 1 260px}
 .cadest-repetido{flex-basis:100%;display:flex;flex-direction:column;gap:8px;min-width:0}
@@ -120,22 +140,30 @@ html .cadest input.is-erro,html .cadest input[aria-invalid="true"],html .cadest 
 .cadest-qtd-campo{width:52px;height:100%;border:0;border-left:1px solid #D8DDE8;border-right:1px solid #D8DDE8;background:#fff;font-size:15px;text-align:center;color:#1B2433;-moz-appearance:textfield}
 .cadest-qtd-campo::-webkit-outer-spin-button,.cadest-qtd-campo::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .cadest-sugestoes{margin:0;font-size:15px;line-height:22px;color:#55607A}
+.cadest-form .ui-field-wrap{position:relative}
+.cadest-opcoes{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:45;list-style:none;margin:0;padding:6px;border:1px solid #8A96AD;border-radius:12px;background:#fff;box-shadow:0 10px 28px rgba(27,36,51,.18)}
+.cadest-opcao{display:flex;align-items:center;min-height:40px;padding:0 12px;border-radius:8px;font-size:15px;color:#1B2433;cursor:pointer}
+.cadest-opcao:hover,.cadest-opcao.is-sel{background:#FFF6E5}
+.cadest-opcao.is-sel{box-shadow:inset 0 0 0 2px #AF640A}
 .cadest-eq-lista{list-style:none;margin:0;padding:0}
 .cadest-eq-item{display:flex;flex-direction:column;gap:4px;padding:8px 0;border-bottom:1px solid #D8DDE8}
 .cadest-eq-linha{display:flex;align-items:center;gap:16px;min-height:44px}
 .cadest-eq-nome{flex:1 1 auto;min-width:0;font-size:16px;font-weight:500;color:#1B2433;overflow-wrap:anywhere}
 .cadest-eq-qtd{flex:none;font-size:15px;color:#1B2433}
 .cadest-eq-nota{margin:0;font-size:15px;line-height:22px;color:#55607A}
+.cadest-eq-nota .cadest-link{min-height:22px;padding:0}
 .cadest-menuwrap{position:relative;flex:none}
-.cadest-mais{width:44px;height:44px;border:0;border-radius:10px;background:transparent;font-size:22px;line-height:1;color:#1B2433;cursor:pointer}
-.cadest-mais:hover,.cadest-mais[aria-expanded="true"]{background:#F6F7FA}
-.cadest-menu{position:absolute;right:0;top:calc(100% + 2px);z-index:40;display:flex;flex-direction:column;min-width:260px;max-width:calc(100vw - 32px);padding:6px;border:1px solid #8A96AD;border-radius:12px;background:#fff;box-shadow:0 10px 28px rgba(27,36,51,.18)}
+.cadest-mais{width:36px;height:36px;border:0;border-radius:10px;background:#EEF1F7;font-size:20px;line-height:1;color:#1B2433;cursor:pointer}
+.cadest-mais:hover,.cadest-mais[aria-expanded="true"]{background:#D8DDE8}
+.cadest-menu{position:absolute;right:0;top:calc(100% + 2px);z-index:40;display:flex;flex-direction:column;min-width:min(260px,calc(100vw - 32px));max-width:min(360px,calc(100vw - 32px));max-height:min(70dvh,420px);overflow-y:auto;padding:6px;border:1px solid #8A96AD;border-radius:12px;background:#fff;box-shadow:0 10px 28px rgba(27,36,51,.18)}
 .cadest-menu-titulo{margin:0;padding:8px 12px 4px;font-size:15px;color:#55607A}
 .cadest-menu-item{display:flex;align-items:center;min-height:44px;padding:0 12px;border:0;border-radius:8px;background:transparent;font-size:15px;font-weight:400;text-align:left;color:#1B2433;cursor:pointer}
 .cadest-menu-item:hover:not(:disabled),.cadest-menu-item:focus-visible{background:#FFF6E5}
 .cadest-menu-item:disabled,.cadest-menu-item[aria-disabled="true"]{color:#55607A;cursor:default}
 .cadest-menu-item[aria-disabled="true"]:hover{background:transparent}
 .cadest-menu-item--perigo{color:#B83A33}
+.cadest-select-foco{display:block;outline:none}
+.cadest-menu-base{margin:4px 0 0;padding:8px 12px 6px;border-top:1px solid #D8DDE8;font-size:15px;line-height:22px;color:#55607A}
 .cadest-edicao{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px 16px;padding:8px 0 4px}
 .cadest-edicao .cadest-erro{flex-basis:100%}
 .cadest-edicao-botoes{display:flex;flex-wrap:wrap;align-items:center;gap:12px;flex-basis:100%}
@@ -171,8 +199,11 @@ html .cadest input.is-erro,html .cadest input[aria-invalid="true"],html .cadest 
   .cen-subdireita{margin-left:0;flex-basis:100%}
   .cadest-lista,.cadest-lote-lista,.cadest-lote-quest-lista{grid-template-columns:minmax(0,1fr)}
   .cadest-eq-grade{grid-template-columns:minmax(0,1fr)}
+  .cadest-setores{position:static;max-height:none}
   .cadest-setores-lista{display:none}
   .cadest-setor-seletor{display:block}
+  .cadest-mais{width:44px;height:44px}
+  .cadest-perguntas{line-height:44px}
   .cadest-btn,.cadest .esc-botao{min-height:44px}
   .cadest-qtd{height:44px}
   .cadest-qtd-botao{width:44px}
@@ -180,13 +211,17 @@ html .cadest input.is-erro,html .cadest input[aria-invalid="true"],html .cadest 
   .cadest-link,.cadrev-link{min-height:44px;display:inline-flex;align-items:center}
   .cadest-acoes{width:100%}
   .cadest-campo--nome,.cadest-novo .cadest-campo{flex-basis:100%;max-width:none}
-  .cadest-menu{min-width:0;width:calc(100vw - 48px)}
+  .cadest-menu{min-width:0;width:calc(100vw - 48px);max-width:calc(100vw - 48px)}
+  .cadest-item-direita .cadest-menuwrap .cadest-menu{right:0}
 }
 html[data-modo="campo"] .cen-barras .cen-barra--sub{gap:20px;max-width:100%}
 html[data-modo="campo"] .cen-subdireita{margin-left:0;flex-basis:100%}
 html[data-modo="campo"] .cadest-lista,html[data-modo="campo"] .cadest-lote-lista{grid-template-columns:minmax(0,1fr)}
 html[data-modo="campo"] .cadest-eq-grade{grid-template-columns:minmax(0,1fr)}
+html[data-modo="campo"] .cadest-setores{position:static;max-height:none}
 html[data-modo="campo"] .cadest-setores-lista{display:none}
+html[data-modo="campo"] .cadest-mais{width:44px;height:44px}
+html[data-modo="campo"] .cadest-perguntas{line-height:44px}
 html[data-modo="campo"] .cadest-setor-seletor{display:block}
 html[data-modo="campo"] .cadest-btn,html[data-modo="campo"] .cadest .esc-botao{min-height:44px}
 html[data-modo="campo"] .cadest-qtd{height:44px}

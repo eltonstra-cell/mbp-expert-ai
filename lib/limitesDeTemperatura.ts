@@ -59,6 +59,11 @@ export function textoDoLimite(limite: LimiteDeTemperatura): string {
   return `${sinal} ${String(limite.valor).replace(".", ",")} °C`;
 }
 
+/** "Base: Portaria SES/RS nº 799/2023, item 10.09, … · conferido em 23/10/2026" (e a ressalva da própria fonte, quando houver). Mesmos dados de sempre. */
+export function baseDoLimite(limite: LimiteDeTemperatura): string {
+  return `Base: ${limite.norma}, item ${limite.itens} · conferido em ${limite.conferidoEm.split("-").reverse().join("/")}.${limite.observacaoDaFonte ? ` ${limite.observacaoDaFonte}` : ""}`;
+}
+
 const semAcento = (texto: string) => texto.normalize("NFD").replace(/[̀-ͯ]/g, "").toLocaleLowerCase("pt-BR");
 
 /** Tipo de limite para um equipamento ou critério, pelo nome. Desconhecido -> undefined (o campo avisa; nada é classificado). */
