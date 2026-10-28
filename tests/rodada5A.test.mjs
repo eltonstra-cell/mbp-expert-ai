@@ -16,7 +16,7 @@ test("A1/A2: rótulo, Foto/Falar/IA na mesma linha e Limpar resposta na linha da
   assert.ok(item.includes("{botaoLimpar}\n      </div>") && item.indexOf("{botaoLimpar}\n      </div>") < item.indexOf('className="chk-foco-obs"'), "Limpar resposta fica dentro do grupo das respostas, em todos os modos");
   assert.ok(!item.includes("chk-obs-limpar"));
   assert.ok(css.includes('html:not([data-modo="campo"]) .chk-obs-cabeca{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-top:12px}'));
-  assert.ok(css.includes('html:not([data-modo="campo"]) .chk-foco-obs :is(.chk-linha-foto,.voz-btn,.voz-ia,.voz-barra){height:32px;min-height:0;padding:0 12px;gap:5px;border-radius:11px;font-size:15px}'));
+  assert.ok(css.includes('html:not([data-modo="campo"]) .chk-foco-obs :is(.chk-linha-foto,.voz-btn,.voz-ia,.voz-barra){height:40px;min-height:0;padding:0 12px;gap:5px;border-radius:11px;font-size:15px}'));
   assert.ok(css.includes('html:not([data-modo="campo"]) .chk-foco-botoes .chk-limpar{') && css.includes("font-size:15px;font-weight:400;color:#1B2433;text-decoration:underline"));
   assert.ok(css.includes('html:not([data-modo="campo"]) .chk-pc .chk-obs-campo .chk-obs-area{min-height:56px}'));
 });

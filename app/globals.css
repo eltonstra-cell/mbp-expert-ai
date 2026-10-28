@@ -2028,7 +2028,7 @@ html[data-modo="completo"] .chk-tool{min-height:32px;padding:0 12px;font-size:.8
 .chk-pc-mais-lista{position:absolute;top:calc(100% + 6px);right:0;z-index:60;display:flex;min-width:14rem;flex-direction:column;gap:2px;padding:6px;border:1px solid var(--border);border-radius:12px;background:#fff;box-shadow:0 10px 28px rgba(18,32,43,.22)}
 .chk-pc-fila{display:flex;flex:none;flex-wrap:wrap;gap:6px}
 .chk-pc-num{display:grid;place-items:center;width:34px;height:34px;border:2px solid var(--border);border-radius:10px;background:#fff;color:var(--ink);font-size:.86rem;cursor:pointer}
-.chk-pc-num.is-ok{background:#2E8B57;border-color:#2E8B57;color:#fff}
+.chk-pc-num.is-ok{background:#278050;border-color:#278050;color:#fff}
 .chk-pc-num.is-nc{background:#B83A33;border-color:#B83A33;color:#fff}
 .chk-pc-num.is-na{background:#6B7A90;border-color:#6B7A90;color:#fff}
 .chk-pc-num.is-atual{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}
@@ -3013,7 +3013,7 @@ html[data-modo="completo"] .chk-pc .chk-obs-area{height:auto;min-height:60px}
 .chk-pc-fila{flex-wrap:wrap}
 .chk-pc-num{width:40px;height:40px;border:2px solid transparent;border-radius:10px;background:#fff;color:#000;font-weight:400}
 .chk-pc-num.is-pend{border-color:#DDE3E9;background:#fff;color:#000}
-.chk-pc-num.is-ok{background:#2E8B57;border-color:#2E8B57;color:#fff}
+.chk-pc-num.is-ok{background:#278050;border-color:#278050;color:#fff}
 .chk-pc-num.is-nc{background:#B83A33;border-color:#B83A33;color:#fff}
 .chk-pc-num.is-na{background:#C3CDD6;border-color:#C3CDD6;color:#000}
 .chk-pc-num.is-atual{border-color:#2456D6;box-shadow:0 0 0 3px #DCE6FB}
@@ -6040,7 +6040,7 @@ html[data-modo="campo"] .campo-tela .chk-resp.is-marcado:disabled{opacity:1}
 /* Observação: caixa compacta que começa nos botões Foto, Falar e IA; campo de 84 px que cresce ao digitar */
 html[data-modo="campo"] .campo-tela .chk-foco-obs{flex:1 1 auto;min-height:0;gap:6px;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none}
 html[data-modo="campo"] .campo-tela .voz-linha{display:flex;flex-wrap:nowrap;align-items:center;justify-content:flex-start;gap:8px}
-html[data-modo="campo"] .campo-tela :is(.chk-linha-foto,.voz-btn,.voz-ia){box-sizing:border-box;flex:none;width:auto;height:34px;min-height:34px;margin:0;padding:0 12px;gap:6px;border:0;border-radius:10px;color:#fff;font-size:14px;font-weight:400;line-height:1}
+html[data-modo="campo"] .campo-tela :is(.chk-linha-foto,.voz-btn,.voz-ia){box-sizing:border-box;flex:none;width:auto;height:40px;min-height:40px;margin:0;padding:0 12px;gap:6px;border:0;border-radius:10px;color:#fff;font-size:14px;font-weight:400;line-height:1}
 html[data-modo="campo"] .campo-tela .chk-linha-foto{background:#AF640A}
 html[data-modo="campo"] .campo-tela .voz-btn{background:#1F78B4}
 html[data-modo="campo"] .campo-tela .voz-ia{background:#1D5F95}
@@ -6357,13 +6357,13 @@ html[data-modo="campo"] .fv--campo .fv-item{padding:0 4px;font-size:15px}
 }
 
 /* ===== Rodada 6 (A) (v2.46): Observação, Limpar resposta, apoio fixo, Central creme ===== */
-/* A1 · Observação (PC e tablet): o rótulo desce (12 px a mais acima) e Foto, Falar e IA ficam na MESMA linha, logo depois dele, ~10% menores (32 px; fonte 15 px). O Campo não tem rótulo e não muda */
+/* A1 · Observação (PC e tablet): o rótulo desce (12 px a mais acima) e Foto, Falar e IA ficam na MESMA linha, logo depois dele, 40 px de altura; fonte 15 px. O Campo não tem rótulo e não muda */
 html:not([data-modo="campo"]) .chk-obs-cabeca{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-top:12px}
 html:not([data-modo="campo"]) .chk-obs-cabeca>.chk-obs-rotulo{flex:none}
 html:not([data-modo="campo"]) .chk-obs-cabeca>.voz-linha{flex:0 1 auto;flex-wrap:wrap;gap:6px}
 html:not([data-modo="campo"]) .chk-obs-cabeca>:not(.voz-linha):not(.chk-obs-rotulo){flex:1 1 100%}
-html:not([data-modo="campo"]) .chk-foco-obs :is(.chk-linha-foto,.voz-btn,.voz-ia,.voz-barra){height:32px;min-height:0;padding:0 12px;gap:5px;border-radius:11px;font-size:15px}
-html:not([data-modo="campo"]) .chk-foco-obs .chk-linha-foto.chk-linha-foto--destaque{height:36px;min-height:0;padding:0 14px;font-size:15px}
+html:not([data-modo="campo"]) .chk-foco-obs :is(.chk-linha-foto,.voz-btn,.voz-ia,.voz-barra){height:40px;min-height:0;padding:0 12px;gap:5px;border-radius:11px;font-size:15px}
+html:not([data-modo="campo"]) .chk-foco-obs .chk-linha-foto.chk-linha-foto--destaque{height:40px;min-height:0;padding:0 14px;font-size:15px}
 html:not([data-modo="campo"]) .chk-foco-obs :is(.chk-linha-foto,.voz-btn) svg{width:16px;height:16px}
 /* O campo de texto começa com 2 linhas e cresce ao digitar (o componente ajusta a altura) */
 html:not([data-modo="campo"]) .chk-pc .chk-obs-campo .chk-obs-area{min-height:56px}

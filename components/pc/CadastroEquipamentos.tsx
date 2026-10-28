@@ -225,6 +225,18 @@ export default function CadastroEquipamentos({ empresa, podeEditar, estado, onGr
     campoRef.current?.focus();
   }
 
+  // Sugestão de um toque: entra com Qtd 1 (e o limite sugerido, como no adicionar normal) e mostra "X adicionado em <setor> · Desfazer".
+  function adicionarSugestaoRapida(nomeSugerido: string) {
+    if (!podeEditar || !selecionado) return;
+    const setorAlvo = selecionado;
+    const id = crypto.randomUUID();
+    const limite = limiteSugeridoParaEquipamento(nomeSugerido)?.id;
+    const naoGravou = () => mostrarToast(`${nomeSugerido} não foi adicionado: já existe neste setor ou o setor não está mais marcado.`, { tipo: "aviso", duracaoMs: 5000, dono });
+    if (equipamentoParecidoNoSetor(equipamentos, setorAlvo, nomeSugerido)) return naoGravou();
+    if (!alterar((lista, atuais) => (atuais.includes(setorAlvo) && !equipamentoParecidoNoSetor(lista, setorAlvo, nomeSugerido) ? adicionarEquipamentoNoSetor(lista, { id, setor: setorAlvo, nome: nomeSugerido, quantidade: 1, limiteTemperaturaId: limite }).equipamentos : null))) return naoGravou();
+    aviso8s(`${nomeSugerido} ${concordar(nomeSugerido, "adicionad")} em ${curto}`, () => void alterar((lista) => removerEquipamento(lista, id)));
+  }
+
   function adicionarLote() {
     const itens = sugeridosDoSetor.filter((item) => loteAtual.marcados.includes(item.nome)).map((item) => ({ nome: item.nome, quantidade: loteAtual.qtds[item.nome] ?? item.quantidade, limiteTemperaturaId: limiteSugeridoParaEquipamento(item.nome)?.id }));
     if (itens.length === 0) return;
@@ -562,8 +574,8 @@ export default function CadastroEquipamentos({ empresa, podeEditar, estado, onGr
           {podeEditar && doSetor.length > 0 && sugeridosDoSetor.length > 0 && (
             <p className="cadest-sugestoes" title="Sugestão genérica pelo tipo de empresa; o RT confirma">
               Sugestões (genéricas, o RT confirma):{" "}
-              {sugeridosDoSetor.map((item) => (
-                <button key={item.nome} type="button" className="cadest-link" onClick={() => { setNome(item.nome); setQtd(quantidadeValida(item.quantidade)); setEscolha(null); campoRef.current?.focus(); }}>{item.nome}</button>
+              {sugeridosDoSetor.slice(0, 6).map((item) => (
+                <button key={item.nome} type="button" className="cadest-link" onClick={() => adicionarSugestaoRapida(item.nome)}>+ {item.nome}</button>
               ))}
             </p>
           )}

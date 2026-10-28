@@ -139,7 +139,8 @@ html .cadest .ui-input:focus,html .cadest .ui-input:focus-visible,html .cadest .
 .cadest-qtd-botao:disabled{color:#55607A;cursor:default}
 .cadest-qtd-campo{width:52px;height:100%;border:0;border-left:1px solid #D8DDE8;border-right:1px solid #D8DDE8;background:#fff;font-size:15px;text-align:center;color:#1B2433;-moz-appearance:textfield}
 .cadest-qtd-campo::-webkit-outer-spin-button,.cadest-qtd-campo::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
-.cadest-sugestoes{margin:0;font-size:15px;line-height:22px;color:#55607A}
+.cadest-sugestoes{display:flex;flex-wrap:wrap;align-items:center;gap:0 12px;margin:0;font-size:15px;line-height:22px;color:#55607A}
+.cadest-sugestoes .cadest-link{min-height:40px;display:inline-flex;align-items:center;font-size:15px}
 .cadest-form .ui-field-wrap{position:relative}
 .cadest-opcoes{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:45;list-style:none;margin:0;padding:6px;border:1px solid #8A96AD;border-radius:12px;background:#fff;box-shadow:0 10px 28px rgba(27,36,51,.18)}
 .cadest-opcao{display:flex;align-items:center;min-height:40px;padding:0 12px;border-radius:8px;font-size:15px;color:#1B2433;cursor:pointer}
@@ -207,7 +208,7 @@ html .cadest .ui-input:focus,html .cadest .ui-input:focus-visible,html .cadest .
   .cadest-btn,.cadest .esc-botao{min-height:44px}
   .cadest-qtd{height:44px}
   .cadest-qtd-botao{width:44px}
-  .cadest-sugestao .cadest-link{min-height:44px}
+  .cadest-sugestao .cadest-link,.cadest-sugestoes .cadest-link{min-height:44px}
   .cadest-link,.cadrev-link{min-height:44px;display:inline-flex;align-items:center}
   .cadest-acoes{width:100%}
   .cadest-campo--nome,.cadest-novo .cadest-campo{flex-basis:100%;max-width:none}
@@ -226,6 +227,6 @@ html[data-modo="campo"] .cadest-setor-seletor{display:block}
 html[data-modo="campo"] .cadest-btn,html[data-modo="campo"] .cadest .esc-botao{min-height:44px}
 html[data-modo="campo"] .cadest-qtd{height:44px}
 html[data-modo="campo"] .cadest-qtd-botao{width:44px}
-html[data-modo="campo"] .cadest-sugestao .cadest-link{min-height:44px}
+html[data-modo="campo"] .cadest-sugestao .cadest-link,html[data-modo="campo"] .cadest-sugestoes .cadest-link{min-height:44px}
 html[data-modo="campo"] .cadest-campo--nome,html[data-modo="campo"] .cadest-novo .cadest-campo{flex-basis:100%;max-width:none}
 html[data-modo="campo"] .cadest-menu{min-width:0;width:calc(100vw - 48px)}

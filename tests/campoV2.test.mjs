@@ -73,7 +73,7 @@ test("Checklist do Campo: busca do PC no cabeçalho, respostas só com texto at�
     ".chk-linha-foto{background:#AF640A}",
     ".voz-btn{background:#1F78B4}",
     ".voz-ia{background:#1D5F95}",
-    "height:34px;min-height:34px;margin:0;padding:0 12px",
+    "height:40px;min-height:40px;margin:0;padding:0 12px",
     "height:auto;min-height:84px",
     "height:44px;min-height:44px;padding:0 18px",
     "-webkit-line-clamp:2;grid-column:1",
@@ -284,11 +284,11 @@ test("re-toque na resposta marcada: ignora toque duplo nos primeiros 700 ms e va
   assert.equal(reToqueValido(1700, 1000), true);
 });
 
-test("Checklist, parte 2: títulos em peso 500 sem espaçamento negativo, fileira de números #2E8B57/#B83A33, respostas apagadas mais legíveis", () => {
+test("Checklist, parte 2: títulos em peso 500 sem espaçamento negativo, fileira de números #278050 (PC) e #B83A33, respostas apagadas mais legíveis", () => {
   const css = ler("../app/globals.css");
   assert.ok(css.includes("h1,h2,h3{letter-spacing:normal}") && !css.includes("h1,h2,h3{letter-spacing:-.025em}"), "o espaçamento negativo global saiu");
   assert.ok(css.includes("html[data-modo] :is(.ui-title,.ui-card-title,.chk-foco-title,.pc-check-title){font-weight:500;letter-spacing:normal}"));
-  assert.equal(css.split("\n").filter((linha) => linha.startsWith(".chk-pc-num.is-ok{background:#2E8B57;border-color:#2E8B57;color:#fff}")).length, 2);
+  assert.equal(css.split("\n").filter((linha) => linha.startsWith(".chk-pc-num.is-ok{background:#278050;border-color:#278050;color:#fff}")).length, 2);
   assert.ok(!/\.chk-pc-num\.is-ok\{background:#15803D/.test(css) && !/\.chk-pc-num\.is-nc\{background:#D93A3A/.test(css));
   assert.ok(css.includes(".chk-pc-num.is-nc{background:#B83A33;border-color:#B83A33;color:#fff}"));
   assert.ok(css.includes(".chk-resp.is-marcado.chk-resp--nc{background:#B83A33}"), "Não conforme selecionado no PC = #B83A33");
