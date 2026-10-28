@@ -105,11 +105,11 @@ test("Início no desenho aprovado: cartão, duas colunas e nada de contadores, p
   assert.equal(pagina.includes("mbp-inicio-visitas-recentes"), false);
 });
 
-test("74. duas barras de blocos na Central; Ambientes e equipamentos é um bloco só; sem chip de modo", () => {
+test("74. duas barras na Central; Ambientes, Equipamentos e Fluxos são abas separadas; sem chip de modo", () => {
   assert.deepEqual(GRUPOS_DA_CENTRAL.map((g) => g.rotulo), ["Empresa", "Estrutura", "Documentos"]);
-  assert.equal(ROTULO_DA_SUBABA.ambientes, "Ambientes e equipamentos");
-  assert.deepEqual(subabasDaBarra(["ambientes", "equipamentos", "fluxos"]), ["ambientes", "fluxos"]);
-  assert.equal(blocoAtivoDaBarra("equipamentos"), "ambientes");
+  assert.equal(ROTULO_DA_SUBABA.ambientes, "Ambientes");
+  assert.deepEqual(subabasDaBarra(["ambientes", "equipamentos", "fluxos"]), ["ambientes", "equipamentos", "fluxos"]);
+  assert.equal(blocoAtivoDaBarra("equipamentos"), "equipamentos");
   const css = ler("../app/globals.css");
   assert.match(css, /\.cen-barra\{display:inline-flex;align-items:stretch;height:40px;border-radius:12px;background:#EEF1F5\}/);
   assert.match(css, /\.cen-bloco \+ \.cen-bloco::before\{[^}]*background:#CBD5E1\}/);

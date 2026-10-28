@@ -34,7 +34,7 @@ type Props = {
     desabilitado: boolean;
     onContinuar: () => void;
   };
-  /** Sem equipamento: linha compacta ("Nenhum equipamento cadastrado · Cadastrar ›"); `onCadastrar` nulo = sem permissão, só o texto. */
+  /** Sem equipamento: linha compacta ("Nenhum equipamento cadastrado · Cadastrar ›", leva a Estrutura › Equipamentos); `onCadastrar` nulo = sem permissão, só o texto. */
   equipamentos: { vazio: boolean; textoVazio: string; onCadastrar: (() => void) | null; texto: string; desabilitado: boolean; onAbrir: () => void };
   programas: { texto: string; onAbrir: () => void } | null;
   ncsAbertas: NcAbertaCentral[] | null;

@@ -4,6 +4,7 @@ import test from "node:test";
 
 import { pendenciasDaEmpresa, textoDaPendencia, preparacaoDaEmpresa } from "../lib/companyReadiness.ts";
 import { razaoSocialTitulo } from "../lib/nomeCargo.ts";
+import { subtituloDaEmpresa, textoDaPreparacao } from "../lib/listaDeEmpresas.ts";
 
 const ler = (c) => readFileSync(new URL(c, import.meta.url), "utf8");
 
@@ -31,7 +32,10 @@ test("empresa: 'Cadastro completo' só com a preparação em 100%; antes disso, 
   assert.equal(textoDaPendencia(["a", "b", "c"]), "Falta: a, b e c");
   assert.ok(pendenciasDaEmpresa(empresaBase({ cnpj: "" })).includes("CNPJ"), "sem CNPJ não é completa mesmo com a barra cheia");
   const tela = ler("../components/pc/PcEmpresas.tsx");
-  assert.ok(tela.includes('<Pill tom="ok">Cadastro completo</Pill>') && !tela.includes("Cadastro incompleto"));
+  assert.ok(tela.includes('"Cadastro completo"') && !tela.includes("Cadastro incompleto") && !tela.includes('<Pill tom="ok">Cadastro completo'), "texto simples, sem pílula");
+  assert.equal(textoDaPreparacao([]), "Cadastro completo");
+  assert.equal(textoDaPreparacao(["horário de funcionamento"]), "Falta horário de funcionamento");
+  assert.equal(textoDaPreparacao(["a", "b", "c"]), "3 pendências");
 });
 
 test("razão social em formato de título só na exibição", () => {
@@ -41,7 +45,7 @@ test("razão social em formato de título só na exibição", () => {
   assert.equal(razaoSocialTitulo("PADARIA DO JOSE ME"), "Padaria do Jose ME");
   assert.equal(razaoSocialTitulo("Mello Serviços Alimentícios Ltda"), "Mello Serviços Alimentícios Ltda");
   assert.equal(razaoSocialTitulo(""), "");
-  assert.ok(ler("../components/pc/PcEmpresas.tsx").includes("razaoSocialDiferente("));
+  assert.ok(!ler("../components/pc/PcEmpresas.tsx").includes("razaoSocialDiferente("), "a lista de Empresas não mostra a razão social");
 });
 
 test("visitas: placeholder da busca cabe sem corte; Início: Hoje com 'Ver todos (N)' e lista que rola por dentro", () => {
@@ -70,4 +74,10 @@ test("busca na própria barra: Ctrl K só foca, Esc devolve o foco, clique fora 
   assert.ok(pagina.includes('document.querySelector<HTMLElement>(".pc-busca")') && pagina.includes("setPedidoDeFocoNaBusca"));
   const css = ler("../app/globals.css");
   assert.ok(css.includes(".pc-busca-painel{position:absolute;top:100%;left:0;right:0"));
+});
+
+test("lista de Empresas: subtítulo sem zeros, com singular/plural, e sem a razão social", () => {
+  assert.equal(subtituloDaEmpresa({ setores: 10, equipamentos: 1, programas: 0, pops: 2 }), "10 setores · 1 equipamento · 2 POPs");
+  assert.equal(subtituloDaEmpresa({ setores: 1, equipamentos: 0, programas: 1, pops: 1 }), "1 setor · 1 programa · 1 POP");
+  assert.equal(subtituloDaEmpresa({ setores: 0, equipamentos: 0, programas: 0, pops: 0 }), "sem equipamentos, programas e POPs");
 });

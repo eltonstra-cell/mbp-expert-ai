@@ -75,7 +75,7 @@ test("Central: equipamento e programas vazios viram linha compacta; 'Cadastrar �
   assert.ok(central.includes("pc-vazio-linha") && central.includes("Cadastrar ›") && central.includes("Nenhum programa ativo"));
   assert.ok(central.includes("equipamentos.onCadastrar &&"));
   assert.ok(pagina.includes('"Nenhum equipamento cadastrado"'));
-  assert.ok(/onCadastrar: atual && atual\.id === visitaAtual\.empresaId && permitido\("empresas\.editar", atual\.id\) \? \(\) => irParaMenu\("cadastros"\) : null/.test(pagina));
+  assert.ok(/onCadastrar: atual && atual\.id === visitaAtual\.empresaId && permitido\("empresas\.editar", atual\.id\) \? \(\) => void abrirSecaoEmpresaPeloMenu\("equipamentos"\) : null/.test(pagina), "Cadastrar leva à aba Equipamentos (Estrutura › Equipamentos)");
   assert.ok(!central.includes("Nenhum programa ativo para esta visita"));
 });
 

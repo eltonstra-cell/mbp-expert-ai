@@ -23,7 +23,7 @@ test("topo: o modo compacto mostra um ícone de monitor reconhecível na pílula
 test("lista de Empresas: uma só marca de empresa ativa (o botão 'Ativa ✓' desabilitado), sem o rótulo ao lado do nome", () => {
   const tela = ler("../components/pc/PcEmpresas.tsx");
   assert.ok(!tela.includes("<Pill tom=\"brand\">Empresa ativa</Pill>"));
-  assert.ok(tela.includes('aria-current="true" disabled') && tela.includes("Ativa ✓"));
+  assert.ok(tela.includes('<span className="emp-ativa-texto">✓ Ativa</span>') && !tela.includes("Ativa ✓") && !tela.includes("disabled"), "texto verde, sem aparência de botão");
 });
 
 test("data curta: com ano quando não for o ano corrente, em um helper só", () => {

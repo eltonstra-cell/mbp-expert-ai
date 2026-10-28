@@ -6,6 +6,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { abrirNavegador } from "./navegador-cdp.mjs";
 import { iniciarApp, montarEstado } from "./verificar-capa-pdf.mjs";
 
@@ -1541,6 +1542,267 @@ detalhes:{chipDaAcaoNaBarra:chipVisivel,sobrepostos,pessoas:pessoas.map((c)=>c.t
   const textoDoAviso = await js('document.querySelector(".dialogo-app")?.innerText||""');
   const encerrou = await esperar(async () => (await statusDaVisita()) === "Concluída", 10000);
   registrar("21z. Finalizar pela janela única conclui a visita SEM a janela antiga 'Finalizar esta inspeção?' (uma só confirmação)", encerrou && !/Finalizar (esta )?inspeção/.test(textoDoAviso), `${await statusDaVisita()} · ${textoDoAviso.slice(0, 80)}`);
+  // 24. Lista de Empresas (Completo, ambiente simulado local): colunas alinhadas em todas as linhas, "+ Nova empresa" na linha da busca, "Nova visita" só na ativa, "✓ Ativa" verde em texto, sem lápis e sem razão social.
+  await n.enviar("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+  await n.ir(app.base);
+  await esperar(async () => js('!!document.querySelector(".tr")'), 20000);
+  await n.esperar(1500);
+  await js('[...document.querySelectorAll(".tr .tr-item")].find((b) => b.innerText.trim().endsWith("Mais"))?.click()');
+  await n.esperar(300);
+  await js('[...document.querySelectorAll(".tr-quadro button, .tr-quadro a")].find((b) => b.innerText.trim().startsWith("Empresas"))?.click()');
+  await esperar(async () => js('document.querySelectorAll(".emp-linha").length>=2'), 15000);
+  await n.esperar(600);
+  const lista24 = JSON.parse(await js(`JSON.stringify((()=>{
+    const r=(x)=>x.getBoundingClientRect();
+    const linhas=[...document.querySelectorAll(".emp-linha")];
+    const colunas=["emp-c-avatar","emp-c-nome","emp-c-prep","emp-c-sel","emp-c-central","emp-c-visita","emp-c-menu"];
+    const alinhadas=colunas.every((c)=>{const xs=linhas.map((l)=>l.querySelector("."+c)).map((e)=>e?[Math.round(r(e).left),Math.round(r(e).width)]:null);return xs.every((x)=>x&&x[0]===xs[0][0]&&x[1]===xs[0][1])});
+    const alturas=linhas.map((l)=>Math.round(r(l).height));
+    const busca=document.querySelector(".emp-toolbar input[type=search]");
+    const nova=[...document.querySelectorAll(".emp-toolbar > button")].find((b)=>b.innerText.trim()==="+ Nova empresa");
+    const novaOk=!!busca&&!!nova&&Math.abs((r(busca).top+r(busca).height/2)-(r(nova).top+r(nova).height/2))<=6&&r(nova).left>=r(busca).right&&Math.abs(r(nova).right-r(document.querySelector(".emp-toolbar")).right)<=2&&getComputedStyle(nova).backgroundColor==="rgb(175, 100, 10)"&&getComputedStyle(nova).color==="rgb(255, 255, 255)"&&getComputedStyle(nova).fontWeight==="400";
+    const visitas=[...document.querySelectorAll(".emp-linha button")].filter((b)=>b.innerText.trim()==="Nova visita");
+    const ativas=linhas.filter((l)=>l.classList.contains("is-ativa"));
+    const ativaTxt=ativas.length===1?ativas[0].querySelector(".emp-ativa-texto"):null;
+    const cs=ativaTxt?getComputedStyle(ativaTxt):null;
+    const sub=/^(sem equipamentos, programas e POPs|\\d+ (setor|setores|equipamento|equipamentos|programa|programas|POP|POPs)( · \\d+ (setor|setores|equipamento|equipamentos|programa|programas|POP|POPs))*)$/;
+    const subs=linhas.map((l)=>l.querySelector(".emp-sub").innerText.trim());
+    const pseudo=ativas[0]?getComputedStyle(ativas[0],"::before"):null;
+    const pb=linhas.map((l)=>l.querySelector(".emp-c-prep .ui-progress"));
+    return {linhas:linhas.length,alinhadas,alturas,iguais:alturas.every((a)=>a===alturas[0]),novaOk,visitas:visitas.length,visitaNaAtiva:visitas.length===1&&!!visitas[0].closest(".emp-linha.is-ativa"),colunasVisitaEmTodas:linhas.every((l)=>!!l.querySelector(".emp-c-visita")),ativas:ativas.length,ativaTag:ativaTxt?ativaTxt.tagName:"",ativaTexto:ativaTxt?ativaTxt.innerText.trim():"",ativaCor:cs?cs.color:"",ativaBorda:cs?cs.borderTopWidth:"",ativaFundo:cs?cs.backgroundColor:"",ativaBotao:ativas[0]?ativas[0].querySelectorAll(".emp-c-sel button").length:-1,naoAtivasTemSelecionar:linhas.filter((l)=>!l.classList.contains("is-ativa")).every((l)=>l.querySelector(".emp-c-sel button")?.innerText.trim()==="Selecionar"),fundoAtiva:ativas[0]?getComputedStyle(ativas[0]).backgroundColor:"",barraAtiva:pseudo?pseudo.width+" "+pseudo.backgroundColor:"",semLapis:!document.querySelector(".emp-lapis,.emp-avatar-btn"),subOk:subs.every((t)=>sub.test(t)&&!/(^| )0 /.test(t)),subs,barras:pb.every((b)=>b&&Math.round(r(b).height)===8&&getComputedStyle(b).backgroundColor==="rgb(216, 221, 232)"&&getComputedStyle(b.firstElementChild).backgroundColor==="rgb(43, 84, 207)"),semRolagemLateral:document.documentElement.scrollWidth<=innerWidth&&document.querySelector(".ui-scroll").scrollWidth<=document.querySelector(".ui-scroll").clientWidth+1,fonteMin:linhas.every((l)=>[...l.querySelectorAll(".emp-nome,.emp-sub,.emp-falta,.emp-pct,.ui-btn")].every((e)=>parseFloat(getComputedStyle(e).fontSize)>=15)),modo:document.documentElement.getAttribute("data-modo")}})())`));
+  const razoes24 = JSON.parse(await js(`JSON.stringify((()=>{const e=Object.values(JSON.parse(localStorage.getItem(${JSON.stringify(CHAVE)})).empresas||{});return e.map((x)=>{const l=document.querySelector('.emp-linha[data-empresa="'+x.id+'"]');if(!l||!x.razaoSocial)return true;const nome=l.querySelector(".emp-nome").innerText;const resto=l.innerText.split(nome).join("");return !resto.includes(x.razaoSocial)})})())`));
+  await foto("24-empresas-completo");
+  registrar("24a. Empresas (Completo): colunas alinhadas em todas as linhas (mesmo x e mesma largura de avatar, nome, preparação, Selecionar, Central, Nova visita e ⋯) e todas as linhas com a mesma altura", lista24.modo === "completo" && lista24.linhas >= 2 && lista24.alinhadas && lista24.iguais && lista24.colunasVisitaEmTodas, JSON.stringify(lista24));
+  registrar("24b. '+ Nova empresa' na MESMA linha da busca, à direita (terracota #AF640A, texto branco, peso 400)", lista24.novaOk, JSON.stringify({ novaOk: lista24.novaOk }));
+  registrar("24c. 'Nova visita' só na empresa ativa (uma só) e as demais mostram 'Selecionar'", lista24.visitas === 1 && lista24.visitaNaAtiva && lista24.ativas === 1 && lista24.naoAtivasTemSelecionar && lista24.ativaBotao === 0, JSON.stringify({ v: lista24.visitas, a: lista24.ativas }));
+  registrar("24d. '✓ Ativa' em verde #1E7A3E, em texto (span, sem borda nem fundo de botão); linha ativa em creme #FFF6E5 com barra terracota de 4 px", lista24.ativaTag === "SPAN" && lista24.ativaTexto === "✓ Ativa" && rgb(lista24.ativaCor) === "30,122,62" && lista24.ativaBorda === "0px" && (lista24.ativaFundo === "rgba(0, 0, 0, 0)" || lista24.ativaFundo === "transparent") && rgb(lista24.fundoAtiva) === "255,246,229" && lista24.barraAtiva.startsWith("4px") && rgb(lista24.barraAtiva.split(" ").slice(1).join(" ")) === "175,100,10", JSON.stringify({ t: lista24.ativaTexto, c: lista24.ativaCor, b: lista24.ativaBorda, f: lista24.fundoAtiva, barra: lista24.barraAtiva }));
+  registrar("24e. Sem o mini-lápis no avatar, sem razão social na linha, subtítulo sem zeros e barra de 8 px azul #2B54CF no trilho #D8DDE8, fonte de 15 px ou mais e sem rolagem lateral", lista24.semLapis && razoes24.every(Boolean) && lista24.subOk && lista24.barras && lista24.fonteMin && lista24.semRolagemLateral, JSON.stringify({ subs: lista24.subs, razoes24 }));
+  // 23. Central da Empresa › Estrutura (Ambientes e Equipamentos separados, gravação na hora). Ambiente simulado, SÓ dados de teste. A rota de cópia
+  // (/api/empresas/equipamentos-origem) não existe no servidor falso: a resposta é montada AQUI com as MESMAS funções puras que a rota usa
+  // (lib/copiaEquipamentos.ts), então o que se verifica na tela é a regra de elegibilidade de verdade, não só o texto.
+  try {
+    const lib23 = (arquivo) => import(pathToFileURL(path.resolve("lib", arquivo)).href);
+    const { marcarComoRevisado } = await lib23("revisaoDeCadastros.ts");
+    const { origensElegiveis, equipamentosDaOrigem } = await lib23("copiaEquipamentos.ts");
+    const { pacoteDoTipo, nomeCurtoDoSetor } = await lib23("tiposDeEstabelecimento.ts");
+    const { SETORES_OFICIAIS_MANUAL } = await lib23("manualBase.ts");
+    const COZINHA23 = SETORES_OFICIAIS_MANUAL[4];
+    const ESTOQUE23 = SETORES_OFICIAIS_MANUAL[1];
+    const agora23 = "2026-10-25T12:00:00.000Z";
+    const quem23 = { nome: "Elton Volmir Strapazon", cargo: "Nutricionista", id: "u1" };
+    const eq23 = (id, setor, nome, quantidade = 1) => ({ id, setor, nome, quantidade, estado: "Não avaliado", observacao: "" });
+    const dbLocal23 = async () => JSON.parse(await js(`localStorage.getItem(${JSON.stringify(CHAVE)})`));
+    const empresa23 = async () => (await dbLocal23()).empresas["beyond-nutri"];
+    const digitar23 = (seletor, valor) => js(`(()=>{const el=document.querySelector(${JSON.stringify(seletor)});if(!el)return false;Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value").set.call(el,${JSON.stringify(valor)});el.dispatchEvent(new Event("input",{bubbles:true}));return true})()`);
+    const teclar23 = (tecla) => js(`document.activeElement.dispatchEvent(new KeyboardEvent("keydown",{key:${JSON.stringify(tecla)},bubbles:true}))`);
+    const clicarTexto23 = (seletor, texto) => js(`(()=>{const b=[...document.querySelectorAll(${JSON.stringify(seletor)})].find((x)=>x.innerText.trim()===${JSON.stringify(texto)});if(!b||b.disabled)return false;b.click();return true})()`);
+    const abrirCadastros23 = async (celular) => {
+      if (celular) await js('[...document.querySelectorAll(".campo-bar .campo-tab")].find((b)=>b.innerText.trim().endsWith("Mais"))?.click()');
+      else await js('[...document.querySelectorAll(".tr .tr-item")].find((b)=>b.innerText.trim()==="Mais")?.click()');
+      await n.esperar(400);
+      await js('[...document.querySelectorAll(".tr-quadro-item, .campo-mais-linha, button")].find((b)=>b.innerText.trim().split("\\n")[0].trim()==="Cadastros")?.click()');
+      return esperar(async () => js('!!document.querySelector(".cen-barra--sub")'), 12000);
+    };
+
+    // Sementes de teste: Beyond Nutri com CNAE e SEM setores; "Elton Volmir" com Ambientes e Equipamentos REVISADOS; "Sem Revisão" sem revisão.
+    const semente23 = await dbLocal23();
+    const base23 = semente23.empresas["beyond-nutri"];
+    let origem23 = { ...base23, id: "elton-volmir", nomeFantasia: "Elton Volmir Strapazon", razaoSocial: "Elton Volmir Strapazon", setoresManual: [ESTOQUE23, COZINHA23], equipamentosSetores: [eq23("o1", COZINHA23, "Fogão", 2), eq23("o2", ESTOQUE23, "Freezer")], cadastrosRevisados: undefined };
+    origem23 = marcarComoRevisado(marcarComoRevisado(origem23, "ambientes", quem23, agora23), "equipamentos", quem23, agora23);
+    semente23.empresas["elton-volmir"] = origem23;
+    semente23.empresas["sem-revisao"] = { ...origem23, id: "sem-revisao", nomeFantasia: "Sem Revisão Teste", razaoSocial: "Sem Revisão Teste", cadastrosRevisados: undefined };
+    semente23.empresas["beyond-nutri"] = { ...base23, cnae: "5611201", cnaeDescricao: "Restaurantes e similares", cnaesSecundarios: [], setoresManual: [], equipamentosSetores: [], cadastrosRevisados: undefined };
+    semente23.empresaAtualId = "beyond-nutri";
+    const origens23 = origensElegiveis(semente23.usuarios[0], semente23.empresas, "beyond-nutri");
+    registrar("23a0. regra de elegibilidade (mesma função da rota): só a empresa com Ambientes E Equipamentos revisados é oferecida", origens23.length === 1 && origens23[0].id === "elton-volmir", JSON.stringify(origens23));
+    const resposta23 = { origens: origens23, equipamentos: Object.fromEntries(Object.keys(semente23.empresas).map((id) => [id, equipamentosDaOrigem(semente23.empresas[id])])) };
+
+    await n.enviar("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+    await js(`localStorage.setItem(${JSON.stringify(CHAVE)}, ${JSON.stringify(JSON.stringify(semente23))})`);
+    await n.ir(app.base);
+    await esperar(async () => js('!!document.querySelector(".tr")'), 20000);
+    await n.esperar(2500);
+    await js(`(()=>{const R=${JSON.stringify(resposta23)};const f=window.fetch;window.__chamadasOrigem=0;window.fetch=async(u,o={})=>{const url=String(u&&u.url?u.url:u);if(url.includes("/api/empresas/equipamentos-origem")){window.__chamadasOrigem+=1;const h={"content-type":"application/json"};if((o.method||"GET")==="POST"){const c=JSON.parse(o.body);const ok=R.origens.some((x)=>x.id===c.origem);return new Response(JSON.stringify(ok?{equipamentos:R.equipamentos[c.origem]}:{error:"Esta empresa não está disponível para cópia."}),{status:ok?200:403,headers:h})}return new Response(JSON.stringify({origens:R.origens}),{status:200,headers:h})}return f(u,o)}})()`);
+    const abriu23 = await abrirCadastros23(false);
+    await n.esperar(600);
+    await foto("23-ambientes-completo");
+
+    // 23a. Sub-abas separadas, sublinhado azul e estado de revisão por aba.
+    const abas23 = JSON.parse(await js(`JSON.stringify((()=>{const bs=[...document.querySelectorAll(".cen-barra--sub .cen-bloco")];const at=bs.find((b)=>b.classList.contains("is-ativa"));const cs=at&&getComputedStyle(at);const rev=document.querySelector(".cadrev");const r=(e)=>e.getBoundingClientRect();const sub=document.querySelector(".cen-barra--sub");return {abas:bs.map((b)=>b.innerText.trim()),ativa:at&&at.innerText.trim(),borda:cs&&cs.borderBottomColor,largura:cs&&cs.borderBottomWidth,fundo:cs&&cs.backgroundColor,rev:rev&&rev.innerText.replace(/\\s+/g," ").trim(),revADireita:!!rev&&!!sub&&r(rev).left>=r(sub).right-1&&Math.abs((r(rev).top+r(rev).bottom)/2-(r(sub).top+r(sub).bottom)/2)<=24,barraSalvar:!!document.querySelector(".cen-salvar")}})())`));
+    registrar("23a. Estrutura: sub-abas Ambientes | Equipamentos | Fluxos em texto, a aberta com sublinhado azul #2B54CF de 3 px, sem fundo; à direita o estado de revisão da aba ('Ambientes ainda não revisados · Marcar como revisado'); sem barra Salvar", abriu23 && JSON.stringify(abas23.abas) === JSON.stringify(["Ambientes", "Equipamentos", "Fluxos"]) && abas23.ativa === "Ambientes" && abas23.borda === "rgb(43, 84, 207)" && abas23.largura === "3px" && /^rgba\(0, 0, 0, 0\)|transparent/.test(abas23.fundo) && /^● Ambientes ainda não revisados · Marcar como revisado$/.test(abas23.rev || "") && abas23.revADireita && !abas23.barraSalvar, JSON.stringify(abas23));
+
+    // 23b. Sugestão pelo CNAE (empresa sem setores) e "Aceitar N setores" grava na hora.
+    const ambientesDoPacote23 = pacoteDoTipo("restaurante").ambientes;
+    const faixa23 = JSON.parse(await js(`JSON.stringify((()=>{const f=document.querySelector(".cadest-faixa");const bs=f?[...f.querySelectorAll("button")].map((b)=>b.innerText.trim()):[];const cs=f&&getComputedStyle(f);return {titulo:f&&f.querySelector(".cadest-faixa-titulo")?.innerText.trim(),texto:f&&f.innerText,fundo:cs&&cs.backgroundColor,bs,titulos:[...document.querySelectorAll(".cadest-titulo")].map((x)=>x.innerText.trim()),apoio:document.querySelector(".cadest-apoio")?.innerText.trim()}})())`));
+    registrar("23b. Empresa sem setores com CNAE no cadastro: faixa creme #FFF3DC 'Sugestão pelo CNAE 5611-2/01 · Restaurantes e similares', 'os setores mais comuns são', 'Você ajusta depois em Escolher setores.', botões 'Aceitar N setores' e 'Escolher outros'; título e linha de apoio da aba", faixa23.titulo === "Sugestão pelo CNAE 5611-2/01 · Restaurantes e similares" && faixa23.fundo === "rgb(255, 243, 220)" && /os setores mais comuns são/.test(faixa23.texto) && /Você ajusta depois em Escolher setores\./.test(faixa23.texto) && faixa23.bs.includes(`Aceitar ${ambientesDoPacote23.length} setores`) && faixa23.bs.includes("Escolher outros") && faixa23.titulos[0] === "Ambientes da empresa" && /^0 de 13 setores marcados · 0 ambientes próprios · as perguntas de cada setor são as padrão do Manual$/.test(faixa23.apoio || ""), JSON.stringify(faixa23));
+    await clicarTexto23(".cadest-faixa button", `Aceitar ${ambientesDoPacote23.length} setores`);
+    await n.esperar(1200);
+    const aceitou23 = await empresa23();
+    const lista23 = JSON.parse(await js(`JSON.stringify((()=>{const li=[...document.querySelectorAll(".cadest-lista .cadest-item")];const nome=li[0]&&getComputedStyle(li[0].querySelector(".cadest-nome"));const of=li[0]&&getComputedStyle(li[0].querySelector(".cadest-oficial"));const colunas=new Set(li.map((x)=>Math.round(x.getBoundingClientRect().left))).size;return {itens:li.length,perguntas:li.every((x)=>/^\\d+ perguntas?$/.test(x.querySelector(".cadest-perguntas").innerText.trim())),nomeTam:nome&&nome.fontSize,nomePeso:nome&&nome.fontWeight,oficialTam:of&&of.fontSize,oficialCor:of&&of.color,colunas,status:document.querySelector(".cadest-status")?.innerText.trim(),naoMarcados:document.querySelector(".cadest-naomarcados")?.innerText,barraSalvar:!!document.querySelector(".cen-salvar"),faixa:!!document.querySelector(".cadest-faixa"),rolagem:document.documentElement.scrollWidth<=innerWidth}})())`));
+    registrar("23c. 'Aceitar N setores' grava NA HORA (sem botão Salvar): os setores do pacote entram, os equipamentos do pacote NÃO; '✓ Alterações salvas'; lista em 2 colunas com nome 18 px/500, nome oficial 15 px cinza #55607A e 'N perguntas' reais", aceitou23.setoresManual.length === ambientesDoPacote23.length && (aceitou23.equipamentosSetores || []).length === 0 && lista23.itens === ambientesDoPacote23.length && lista23.perguntas && lista23.nomeTam === "18px" && lista23.nomePeso === "500" && lista23.oficialTam === "15px" && lista23.oficialCor === "rgb(85, 96, 122)" && lista23.colunas === 2 && lista23.status === "✓ Alterações salvas" && !lista23.barraSalvar && !lista23.faixa && lista23.rolagem, JSON.stringify({ ...lista23, setores: aceitou23.setoresManual.length }));
+
+    // 23d. Revisão por aba: marcar em Ambientes não revisa Equipamentos.
+    await clicarTexto23(".cadrev button", "Marcar como revisado");
+    await n.esperar(700);
+    const revAmb23 = await js('document.querySelector(".cadrev")?.innerText.replace(/\\s+/g," ").trim()');
+    await clicarTexto23(".cen-barra--sub .cen-bloco", "Equipamentos");
+    await n.esperar(700);
+    const revEq23 = await js('document.querySelector(".cadrev")?.innerText.replace(/\\s+/g," ").trim()');
+    registrar("23d. Estado de revisão por aba: Ambientes passa a '✓ Revisado' e Equipamentos continua '● Equipamentos ainda não revisados · Marcar como revisado'", revAmb23 === "✓ Revisado" && revEq23 === "● Equipamentos ainda não revisados · Marcar como revisado" && Boolean((await empresa23()).cadastrosRevisados?.ambientes) && !(await empresa23()).cadastrosRevisados?.equipamentos, JSON.stringify({ revAmb23, revEq23 }));
+
+    // 23e. Equipamentos: setor selecionado em creme com borda terracota; adicionar já no setor, sem perguntar o setor; toast com Desfazer.
+    const setor0 = aceitou23.setoresManual[0];
+    const setor1 = aceitou23.setoresManual[1];
+    const painel23 = JSON.parse(await js(`JSON.stringify((()=>{const s=document.querySelector(".cadest-setor.is-sel");const cs=s&&getComputedStyle(s);return {sel:s&&s.querySelector(".cadest-setor-nome").innerText.trim(),fundo:cs&&cs.backgroundColor,borda:cs&&cs.borderTopColor,titulo:document.querySelector(".cadest-painel .cadest-titulo")?.innerText.trim(),vazio:document.body.innerText.includes("Nenhum equipamento neste setor ainda."),copiar:!!document.querySelector(".cadest-painel-cabeca .cadest-btn"),pergunta:/vincular a qual setor/i.test(document.body.innerText)}})())`));
+    registrar("23e. Equipamentos: setor selecionado em creme #FFF6E5 com borda terracota #AF640A; painel 'Adicionar em <setor>'; 'Nenhum equipamento neste setor ainda.'; botão 'Copiar de outra empresa' no cabeçalho; nenhuma pergunta de 'vincular a qual setor'", painel23.sel === nomeCurtoDoSetor(setor0) && painel23.fundo === "rgb(255, 246, 229)" && painel23.borda === "rgb(175, 100, 10)" && painel23.titulo === `Adicionar em ${nomeCurtoDoSetor(setor0)}` && painel23.vazio && painel23.copiar && !painel23.pergunta, JSON.stringify(painel23));
+    await digitar23("#cadest-eq-nome", "Refrigerador");
+    await js('document.querySelector(\'.cadest-form [aria-label="Aumentar quantidade"]\')?.click()');
+    await n.esperar(200);
+    await clicarTexto23(".cadest-form .cadest-btn", "Adicionar");
+    await n.esperar(900);
+    const aposAdd23 = await empresa23();
+    const refri23 = (aposAdd23.equipamentosSetores || []).filter((i) => i.nome === "Refrigerador");
+    const toastAdd23 = await js('document.querySelector(".toast-salvo")?.innerText.replace(/\\s+/g," ").trim()||""');
+    registrar("23f. Adicionar grava na hora no setor selecionado (Qtd 2) e mostra '✓ Refrigerador adicionado em <setor> · Desfazer' na parte de baixo", refri23.length === 1 && refri23[0].setor === setor0 && refri23[0].quantidade === 2 && new RegExp(`✓ Refrigerador adicionado em ${nomeCurtoDoSetor(setor0)} · Desfazer`).test(toastAdd23), JSON.stringify({ refri23, toastAdd23 }));
+
+    // 23g. Nome repetido na hora: sem acento/caixa, borda #B83A33, aviso, Adicionar desabilitado até escolher; Somar e Outro item.
+    await digitar23("#cadest-eq-nome", "refrigerador");
+    await n.esperar(300);
+    const rep23 = JSON.parse(await js(`JSON.stringify((()=>{const i=document.querySelector("#cadest-eq-nome");const add=[...document.querySelectorAll(".cadest-form > .cadest-btn")].find((b)=>b.innerText.trim()==="Adicionar");const av=document.querySelector("#cadest-eq-repetido");const p=av&&av.querySelector(".cadest-erro");return {borda:getComputedStyle(i).borderTopColor,invalido:i.getAttribute("aria-invalid"),desc:i.getAttribute("aria-describedby"),texto:p&&p.innerText.trim(),cor:p&&getComputedStyle(p).color,live:av&&av.getAttribute("aria-live"),addOff:!!add&&add.disabled,botoes:av?[...av.querySelectorAll("button")].map((b)=>b.innerText.trim()):[],altura:av&&av.querySelector("button")?Math.round(av.querySelector("button").getBoundingClientRect().height):0}})())`));
+    registrar("23g. Nome repetido ('refrigerador' = 'Refrigerador'): campo com borda #B83A33, 'Já existe Refrigerador (Qtd 2) neste setor' em #B83A33, aria-live/aria-describedby, botões baixos 'Somar 1 ao existente' e 'Cadastrar como outro item' e Adicionar DESABILITADO", rep23.borda === "rgb(184, 58, 51)" && rep23.invalido === "true" && rep23.desc === "cadest-eq-repetido" && rep23.texto === "Já existe Refrigerador (Qtd 2) neste setor" && rep23.cor === "rgb(184, 58, 51)" && rep23.live === "polite" && rep23.addOff && JSON.stringify(rep23.botoes) === JSON.stringify(["Somar 1 ao existente", "Cadastrar como outro item"]) && rep23.altura > 0 && rep23.altura <= 44, JSON.stringify(rep23));
+    await clicarTexto23(".cadest-repetido button", "Somar 1 ao existente");
+    await n.esperar(200);
+    const addLigou23 = await js('![...document.querySelectorAll(".cadest-form > .cadest-btn")].find((b)=>b.innerText.trim()==="Adicionar").disabled');
+    await clicarTexto23(".cadest-form > .cadest-btn", "Adicionar");
+    await n.esperar(900);
+    const somou23 = ((await empresa23()).equipamentosSetores || []).filter((i) => i.nome === "Refrigerador");
+    registrar("23h. 'Somar 1 ao existente' liga o Adicionar e soma no item que já existe (Qtd 2 -> 3), sem criar outro", addLigou23 && somou23.length === 1 && somou23[0].quantidade === 3, JSON.stringify(somou23));
+    await digitar23("#cadest-eq-nome", "REFRIGERADOR");
+    await n.esperar(200);
+    await clicarTexto23(".cadest-repetido button", "Cadastrar como outro item");
+    await n.esperar(200);
+    await clicarTexto23(".cadest-form > .cadest-btn", "Adicionar");
+    await n.esperar(900);
+    const outro23 = ((await empresa23()).equipamentosSetores || []).filter((i) => i.nome.toLowerCase() === "refrigerador" && i.setor === setor0);
+    registrar("23i. 'Cadastrar como outro item' cria um 2º item com o mesmo nome (Qtd 3 e Qtd 1)", outro23.length === 2 && outro23.map((i) => i.quantidade).sort().join() === "1,3", JSON.stringify(outro23.map((i) => i.quantidade)));
+
+    // 23j. Menu ⋯: três ações, Remover em #B83A33, teclado (setas/Esc) e foco devolvido ao ⋯; mover mantém a quantidade; mover com nome igual soma.
+    await js('document.querySelector(".cadest-eq-item .cadest-mais")?.click()');
+    await n.esperar(300);
+    const menu23 = JSON.parse(await js(`JSON.stringify((()=>{const m=document.querySelector(".cadest-menu");const it=m?[...m.querySelectorAll('[role=menuitem]')]:[];const rem=it.find((b)=>b.innerText.trim()==="Remover");return {itens:it.map((b)=>b.innerText.trim()),removerCor:rem&&getComputedStyle(rem).color,foco:document.activeElement===it[0]}})())`));
+    await teclar23("ArrowDown");
+    const focoDepois23 = await js('document.activeElement.innerText.trim()');
+    await teclar23("Escape");
+    await n.esperar(300);
+    const focoMais23 = await js('document.activeElement.classList.contains("cadest-mais")&&!document.querySelector(".cadest-menu")');
+    registrar("23j. Menu ⋯: 'Editar nome e quantidade', 'Mover para outro setor ›' e 'Remover' (#B83A33); foco no 1º item, seta para baixo anda, Esc fecha e devolve o foco ao ⋯", JSON.stringify(menu23.itens) === JSON.stringify(["Editar nome e quantidade", "Mover para outro setor ›", "Remover"]) && menu23.removerCor === "rgb(184, 58, 51)" && menu23.foco && focoDepois23 === "Mover para outro setor ›" && focoMais23, JSON.stringify({ menu23, focoDepois23, focoMais23 }));
+    const antes23 = ((await empresa23()).equipamentosSetores || []).filter((i) => i.nome === "Refrigerador" && i.quantidade === 3)[0];
+    await js('[...document.querySelectorAll(".cadest-eq-item")].find((li)=>li.innerText.includes("Qtd 3")).querySelector(".cadest-mais").click()');
+    await n.esperar(300);
+    await clicarTexto23(".cadest-menu-item", "Mover para outro setor ›");
+    await n.esperar(300);
+    const sub23 = JSON.parse(await js(`JSON.stringify({titulo:document.querySelector(".cadest-menu-titulo")?.innerText.trim(),opcoes:[...document.querySelectorAll(".cadest-menu [role=menuitem]")].map((b)=>b.innerText.trim())})`));
+    await clicarTexto23(".cadest-menu-item", nomeCurtoDoSetor(setor1));
+    await n.esperar(900);
+    const movido23 = ((await empresa23()).equipamentosSetores || []).find((i) => i.id === antes23.id);
+    registrar("23k. 'Mover Refrigerador para' lista os OUTROS setores marcados; ao mover o item sai do setor atual, entra no escolhido e mantém a Qtd", sub23.titulo === "Mover Refrigerador para" && sub23.opcoes.length === aceitou23.setoresManual.length - 1 && !sub23.opcoes.includes(nomeCurtoDoSetor(setor0)) && movido23 && movido23.setor === setor1 && movido23.quantidade === 3, JSON.stringify({ sub23: sub23.titulo, movido23: movido23 && [movido23.setor, movido23.quantidade] }));
+    await js('document.querySelector(".cadest-eq-item .cadest-mais")?.click()');
+    await n.esperar(300);
+    await clicarTexto23(".cadest-menu-item", "Mover para outro setor ›");
+    await n.esperar(300);
+    await clicarTexto23(".cadest-menu-item", nomeCurtoDoSetor(setor1));
+    await n.esperar(900);
+    const somado23 = ((await empresa23()).equipamentosSetores || []).filter((i) => i.nome === "Refrigerador");
+    const toastMov23 = await js('document.querySelector(".toast-salvo")?.innerText.replace(/\\s+/g," ").trim()||""');
+    registrar("23l. Mover para setor que já tem o mesmo nome SOMA a quantidade (3 + 1 = 4), não duplica e avisa com Desfazer", somado23.length === 1 && somado23[0].setor === setor1 && somado23[0].quantidade === 4 && /já existia/.test(toastMov23) && /Desfazer/.test(toastMov23), JSON.stringify({ somado23: somado23.map((i) => [i.setor, i.quantidade]), toastMov23 }));
+
+    // 23m. Remover sem janela de confirmação, com aviso 'removido · Desfazer'; o Desfazer devolve.
+    await js(`(()=>{[...document.querySelectorAll(".cadest-setor")].find((b)=>b.innerText.includes(${JSON.stringify(nomeCurtoDoSetor(setor1))}))?.click()})()`);
+    await n.esperar(500);
+    await js('document.querySelector(".cadest-eq-item .cadest-mais")?.click()');
+    await n.esperar(300);
+    await clicarTexto23(".cadest-menu-item", "Remover");
+    await n.esperar(700);
+    const removeu23 = ((await empresa23()).equipamentosSetores || []).filter((i) => i.nome === "Refrigerador").length === 0;
+    const toastRem23 = await js('document.querySelector(".toast-salvo")?.innerText.replace(/\\s+/g," ").trim()||""');
+    const dialogo23 = await js('!!document.querySelector(\'[role="dialog"],[role="alertdialog"],.dialogo-app\')');
+    const linkDesfazer23 = JSON.parse(await js(`JSON.stringify((()=>{const a=document.querySelector(".toast-salvo .toast-acao");const cs=a&&getComputedStyle(a);return a?{cor:cs.color,sub:cs.textDecorationLine,fundo:cs.backgroundColor}:null})())`));
+    await js('document.querySelector(".toast-salvo .toast-acao")?.click()');
+    await n.esperar(700);
+    const voltou23 = ((await empresa23()).equipamentosSetores || []).filter((i) => i.nome === "Refrigerador").length === 1;
+    registrar("23m. Remover não abre janela de confirmação: remove, mostra '✓ Refrigerador removido · Desfazer' (link azul #2B54CF sublinhado, sem botão escuro) e o Desfazer devolve o item", removeu23 && !dialogo23 && /removido · Desfazer/.test(toastRem23) && linkDesfazer23 && linkDesfazer23.cor === "rgb(43, 84, 207)" && /underline/.test(linkDesfazer23.sub) && /^rgba\(0, 0, 0, 0\)$|transparent/.test(linkDesfazer23.fundo) && voltou23, JSON.stringify({ toastRem23, linkDesfazer23, voltou23 }));
+
+    // 23n. Sugestões em lote no setor vazio (do pacote do tipo; 'sugestão genérica — o RT confirma') e adicionar N itens.
+    // Setor-alvo: o primeiro setor marcado que HOJE não tem equipamento nenhum e para o qual o pacote do tipo traz sugestões.
+    const equipamentosAgora23 = (await empresa23()).equipamentosSetores || [];
+    const pacote23 = pacoteDoTipo("restaurante").equipamentos;
+    const alvoLote23 = aceitou23.setoresManual.find((setor) => !equipamentosAgora23.some((i) => i.setor === setor) && pacote23.some((i) => i.ambiente === setor)) || ESTOQUE23;
+    await js(`(()=>{[...document.querySelectorAll(".cadest-setor")].find((b)=>b.innerText.includes(${JSON.stringify(nomeCurtoDoSetor(alvoLote23))}))?.click()})()`);
+    await n.esperar(500);
+    const lote23 = JSON.parse(await js(`JSON.stringify((()=>{const l=document.querySelector(".cadest-lote");return {existe:!!l,titulo:l&&l.querySelector(".cadest-lote-titulo").innerText.trim(),nota:l&&l.querySelector(".cadest-lote-nota").innerText.trim(),itens:l?[...l.querySelectorAll(".cadest-lote-item")].map((x)=>x.querySelector(".cadest-lote-marca").innerText.trim()):[],links:l?[...l.querySelectorAll(".cadest-link")].map((b)=>b.innerText.trim()):[],botao:l?[...l.querySelectorAll(".cadest-btn")].map((b)=>b.innerText.trim()+(b.disabled?"|off":"")):[]}})())`));
+    const esperados23 = pacote23.filter((i) => i.ambiente === alvoLote23).map((i) => i.nome);
+    registrar("23n. Setor vazio: faixa 'Sugestões para Restaurantes e similares · CNAE 5611-2/01' com os itens do pacote para o setor, 'Sugestão genérica — o RT confirma.', 'Marcar todos', 'Adicionar 0 itens' desligado e '+ Digitar outro equipamento'", lote23.existe && lote23.titulo === "Sugestões para Restaurantes e similares · CNAE 5611-2/01" && lote23.nota === "Sugestão genérica — o RT confirma." && JSON.stringify(lote23.itens) === JSON.stringify(esperados23) && lote23.links.includes("Marcar todos") && lote23.links.includes("+ Digitar outro equipamento") && lote23.botao.includes("Adicionar 0 itens|off"), JSON.stringify({ lote23, esperados23 }));
+    await clicarTexto23(".cadest-lote .cadest-link", "Marcar todos");
+    await n.esperar(200);
+    await clicarTexto23(".cadest-lote .cadest-btn", `Adicionar ${esperados23.length} ${esperados23.length === 1 ? "item" : "itens"}`);
+    await n.esperar(900);
+    const emLote23 = ((await empresa23()).equipamentosSetores || []).filter((i) => i.setor === alvoLote23).map((i) => i.nome);
+    const toastLote23 = await js('document.querySelector(".toast-salvo")?.innerText.replace(/\\s+/g," ").trim()||""');
+    registrar("23o. 'Adicionar N itens' grava os marcados no setor e mostra o aviso com Desfazer", JSON.stringify(emLote23.sort()) === JSON.stringify([...esperados23].sort()) && /Desfazer/.test(toastLote23), JSON.stringify({ emLote23, toastLote23 }));
+
+    await js('document.querySelector(".toast-salvo .toast-acao")?.click()');
+    await n.esperar(700);
+    // 23p. Copiar de outra empresa: a lista vem da rota (só a revisada), copia para os mesmos setores marcados e o aviso 'Copiado: N itens · Desfazer'.
+    await js(`(()=>{[...document.querySelectorAll(".cadest-setor")].find((b)=>b.innerText.includes(${JSON.stringify(nomeCurtoDoSetor(COZINHA23))}))?.click()})()`);
+    await n.esperar(400);
+    await clicarTexto23(".cadest-painel-cabeca .cadest-btn", "Copiar de outra empresa");
+    await esperar(async () => js('!!document.querySelector(".cadest-copiar-opcao")'), 6000);
+    const opcoes23 = JSON.parse(await js('JSON.stringify([...document.querySelectorAll(".cadest-copiar-opcao")].map((o)=>o.innerText.trim()))'));
+    await js('document.querySelector(".cadest-copiar-opcao input")?.click()');
+    await n.esperar(200);
+    await clicarTexto23(".cadest-copiar .cadest-btn", "Continuar");
+    await esperar(async () => js('document.querySelectorAll(".cadest-copiar-opcao input[type=checkbox]").length>0'), 6000);
+    const setoresCopia23 = JSON.parse(await js('JSON.stringify([...document.querySelectorAll(".cadest-copiar-opcao")].map((o)=>o.innerText.trim()))'));
+    const estoqueAntes23 = ((await empresa23()).equipamentosSetores || []).length;
+    await clicarTexto23(".cadest-copiar .cadest-btn", "Copiar 2 itens");
+    await n.esperar(900);
+    const depoisCopia23 = (await empresa23()).equipamentosSetores || [];
+    const toastCopia23 = await js('document.querySelector(".toast-salvo")?.innerText.replace(/\\s+/g," ").trim()||""');
+    const chamadas23 = await js("window.__chamadasOrigem");
+    registrar("23p. Copiar de outra empresa: só aparece a empresa com Ambientes e Equipamentos revisados (a 'Sem Revisão Teste' não), a lista vem da rota, copia 2 itens para os mesmos setores e avisa 'Copiado: 2 itens · Desfazer'", JSON.stringify(opcoes23) === JSON.stringify(["Elton Volmir Strapazon"]) && setoresCopia23.length === 2 && chamadas23 >= 2 && depoisCopia23.length === estoqueAntes23 + 2 && depoisCopia23.some((i) => i.nome === "Fogão" && i.setor === COZINHA23 && i.quantidade === 2) && /^Copiado: 2 itens · Desfazer$/.test(toastCopia23.replace(/^✓\s*/, "")), JSON.stringify({ opcoes23, setoresCopia23, chamadas23, toastCopia23 }));
+    await js('document.querySelector(".toast-salvo .toast-acao")?.click()');
+    await n.esperar(700);
+    registrar("23q. Desfazer da cópia tira só os itens copiados", ((await empresa23()).equipamentosSetores || []).length === estoqueAntes23, String(((await empresa23()).equipamentosSetores || []).length));
+
+    // 23s. Um "Desfazer" não sobrevive à aba: com o aviso aberto, sair da aba Equipamentos fecha o aviso e o item gravado continua.
+    await digitar23("#cadest-eq-nome", "Equipamento de troca");
+    await n.esperar(200);
+    await clicarTexto23(".cadest-form > .cadest-btn", "Adicionar");
+    await n.esperar(500);
+    const avisoAberto23 = await js('!!document.querySelector(".toast-salvo .toast-acao")');
+    await clicarTexto23(".cen-barra--sub .cen-bloco", "Fluxos");
+    await n.esperar(600);
+    const avisoFechou23 = await js('!document.querySelector(".toast-salvo .toast-acao")');
+    registrar("23s. Com o aviso 'Desfazer' aberto, sair da aba fecha o aviso (não sobrevive à tela) e o item gravado continua na empresa", avisoAberto23 && avisoFechou23 && ((await empresa23()).equipamentosSetores || []).some((i) => i.nome === "Equipamento de troca"), JSON.stringify({ avisoAberto23, avisoFechou23 }));
+
+    // 23r. Campo (390x844): setores viram um seletor acima do painel, colunas empilham e não há rolagem lateral.
+    await n.enviar("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+    await n.ir(app.base);
+    await esperar(async () => js('!!document.querySelector(".campo-bar")'), 20000);
+    await n.esperar(2000);
+    const abriuCampo23 = await abrirCadastros23(true);
+    if (abriuCampo23) {
+      await clicarTexto23(".cen-barra--sub .cen-bloco", "Equipamentos");
+      await n.esperar(700);
+    }
+    await foto("23-equipamentos-campo");
+    const campo23 = JSON.parse(await js(`JSON.stringify((()=>{const r=(e)=>e&&e.getBoundingClientRect();const lista=document.querySelector(".cadest-setores-lista");const seletor=document.querySelector(".cadest-setor-seletor");const painel=document.querySelector(".cadest-painel");return {listaOculta:!!lista&&getComputedStyle(lista).display==="none",seletorVisivel:!!seletor&&getComputedStyle(seletor).display!=="none"&&r(seletor).height>0,seletorAcima:!!seletor&&!!painel&&r(seletor).bottom<=r(painel).top+1,modo:document.documentElement.dataset.modo,largura:innerWidth,temLista:!!lista,temSeletor:!!seletor,abas:[...document.querySelectorAll(".cen-barra--sub .cen-bloco")].map((b)=>b.innerText.trim()+(b.classList.contains("is-ativa")?"*":"")).join("|"),rolagem:document.documentElement.scrollWidth<=innerWidth,revDentro:(()=>{const v=document.querySelector(".cadrev");return !v||(r(v).right<=innerWidth+1&&r(v).left>=0)})()}})())`));
+    registrar("23r. Campo (390 px): a lista de setores vira um seletor acima do painel, o estado de revisão cabe na largura e não há rolagem lateral", abriuCampo23 && campo23.listaOculta && campo23.seletorVisivel && campo23.seletorAcima && campo23.rolagem && campo23.revDentro, JSON.stringify(campo23));
+    await n.enviar("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+  } catch (erro) {
+    registrar(`23. erro na seção da Estrutura: ${erro.message}`, false);
+  }
+
   await n.enviar("Emulation.clearDeviceMetricsOverride");
 } catch (erro) {
   registrar(`erro na verificação: ${erro.message}`, false);

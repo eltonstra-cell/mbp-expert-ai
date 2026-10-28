@@ -55,7 +55,7 @@ test("B1: o menu da empresa tem 'Central da Empresa' e não tem mais 'Editar emp
   assert.equal(acoesDaEmpresa({ podeEditar: true, podeGerenciarAcessos: false, arquivada: false })[0], "central");
   const tela = ler("../components/pc/PcEmpresas.tsx");
   assert.ok(!tela.includes("Editar empresa") && tela.includes("Central da Empresa"));
-  assert.ok(tela.includes('className="ui-btn ui-btn--secondary" onClick={() => onGerenciar(empresa.id)}'));
+  assert.ok(tela.includes('className="ui-btn ui-btn--secondary" aria-label={`Central da Empresa de ${empresa.nome}`} onClick={() => onGerenciar(empresa.id)}'));
 });
 
 test("B2: ficha do POP mostra só o caminho e o cabeçalho fica fixo", () => {

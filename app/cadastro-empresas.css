@@ -1,0 +1,73 @@
+/* Lista de Empresas (PcEmpresas e CampoEmpresas). Completo = uma linha de colunas fixas; Equilibrado = cartões; Campo = cartões do celular. */
+
+/* Busca e "+ Nova empresa" na mesma linha, o botão à direita. */
+.emp-toolbar{flex-wrap:wrap;align-items:center}
+.emp-toolbar .pc-search{flex:1 1 220px;min-width:0}
+.emp-toolbar>.ui-btn--criar{margin-left:auto;flex:none}
+
+/* Texto simples do que falta (sem pílula). */
+.pend-texto{display:inline;padding:0;border:0;background:none;font-family:inherit;font-size:15px;line-height:22px;color:#55607A;text-align:left}
+.pend-texto--botao{cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.pend-texto--botao:hover{color:#1B2433}
+
+/* Linha da empresa: base = cartão (Equilibrado). */
+.emp-lista{gap:8px}
+.emp-linha{position:relative;display:flex;flex-wrap:wrap;align-items:center;gap:10px 12px;padding:14px 12px 14px 20px;border:1px solid #E3E8EE;border-radius:12px;background:#fff;color:#1B2433}
+.emp-linha.is-ativa{background:#FFF6E5}
+.emp-linha.is-ativa::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:12px 0 0 12px;background:#AF640A}
+.emp-linha.is-arquivada{opacity:.75}
+.emp-linha .emp-c-avatar{order:0;width:44px;height:44px;flex:none}
+.emp-c-nome{order:1;display:flex;flex:1 1 0;min-width:0;flex-direction:column;gap:2px}
+.emp-c-menu{order:2;flex:none}
+.emp-c-prep{order:3;flex:0 0 calc(100% - 56px);margin-left:56px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.emp-c-sel{order:4;margin-left:56px;display:flex;align-items:center}
+.emp-c-central{order:5}
+.emp-c-visita{order:6}
+.emp-c-visita:empty{display:none}
+.emp-nome{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;font-size:18px;font-weight:500;line-height:24px;color:#1B2433;overflow-wrap:anywhere}
+.emp-sub{font-size:15px;line-height:22px;color:#55607A}
+.emp-prep-linha{display:flex;align-items:center;gap:10px}
+.emp-prep-linha .ui-progress{flex:1;min-width:0;height:8px;background:#D8DDE8}
+.emp-prep-linha .ui-progress-fill{background:#2B54CF}
+.emp-pct{flex:none;min-width:40px;font-size:15px;line-height:22px;text-align:right;color:#1B2433}
+.emp-falta{font-size:15px;line-height:22px;color:#55607A}
+.emp-ativa-texto{display:inline-flex;align-items:center;min-height:40px;padding:0 4px;border:0;background:none;font-size:16px;font-weight:500;color:#1E7A3E}
+.emp-linha .ui-btn{height:40px;min-height:40px;padding:0 14px;font-size:15px;line-height:1}
+.emp-c-central .ui-btn{border:2px solid #8A96AD;background:#fff;color:#1B2433}
+
+/* Completo: colunas fixas, alinhadas em todas as linhas e com a mesma altura. */
+@media (min-width:1100px){
+  html[data-modo="completo"] .emp-linha{display:grid;grid-template-columns:44px minmax(0,1fr) 190px 108px 170px 118px 44px;column-gap:12px;align-items:center;height:92px;padding:10px 12px 10px 20px;overflow:hidden}
+  html[data-modo="completo"] .emp-linha>*{order:0;margin-left:0;flex:none;min-width:0}
+  html[data-modo="completo"] .emp-linha .emp-c-visita:empty{display:block}
+  html[data-modo="completo"] .emp-c-nome{overflow:hidden}
+  html[data-modo="completo"] .emp-nome{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:1;overflow:hidden;overflow-wrap:break-word}
+  html[data-modo="completo"] .emp-sub{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+  html[data-modo="completo"] .emp-falta{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+  html[data-modo="completo"] .emp-c-prep{margin-left:0}
+  html[data-modo="completo"] .emp-c-sel,html[data-modo="completo"] .emp-c-central,html[data-modo="completo"] .emp-c-visita{display:flex;align-items:center}
+  html[data-modo="completo"] .emp-c-sel .ui-btn,html[data-modo="completo"] .emp-c-central .ui-btn,html[data-modo="completo"] .emp-c-visita .ui-btn{width:100%}
+}
+
+/* Campo (celular): cartões com o mesmo conteúdo. */
+.cemp-cartao .cemp-nome{white-space:normal;overflow:visible;text-overflow:clip;font-size:18px;font-weight:500;overflow-wrap:anywhere}
+.cemp-sub{font-size:15px;line-height:22px;color:#55607A}
+.cemp-cartao .cemp-situacao{flex-wrap:wrap;align-items:center;gap:6px 8px}
+.cemp-falta{font-size:15px;line-height:22px;color:#55607A}
+.cemp-cartao.is-ativa{position:relative;border-color:#B4C2CE;background:#FFF6E5;box-shadow:inset 4px 0 0 #AF640A}
+.cemp-cartao .cemp-sel{min-height:44px;padding:0 14px;font-size:15px}
+.cemp-ativa{display:inline-flex;flex:none;align-items:center;min-height:44px;padding:0 4px;font-size:16px;font-weight:500;color:#1E7A3E}
+.cemp-cartao .cemp-barra{height:8px;border-radius:99px;background:#D8DDE8}
+.cemp-cartao .cemp-barra span{border-radius:99px;background:#2B54CF}
+.cemp-cartao .cemp-pct{font-size:15px;color:#1B2433}
+
+/* "Ver arquivadas" e o aviso "Arquivada": texto simples (sem pílula), 15 px; 44 px de toque no Campo */
+.emp-toolbar .pc-quick-btn,.cemp-arquivadas{min-height:36px;padding:0 4px;border:0;border-radius:0;background:transparent;font-size:15px;line-height:22px;color:#2B54CF;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.emp-toolbar .pc-quick-btn:focus-visible,.cemp-arquivadas:focus-visible{outline:3px solid #2B54CF;outline-offset:2px}
+.emp-nome .ui-pill,.cemp-situacao .ui-pill{padding:0;border-radius:0;background:transparent;font-size:15px;color:#55607A}
+.emp-nome .ui-pill{margin-left:8px}
+html[data-modo="campo"] .cemp-arquivadas{display:inline-flex;align-items:center;min-height:44px}
+html[data-modo="campo"] .cemp-topo .ui-btn{min-height:44px}
+/* O Mais cabe numa tela só: abaixo de 761 px de altura as linhas encolhem para 40 px e o botão acompanha */
+@media (min-height:761px){html[data-modo="campo"] .campo-mais-nova{height:44px}}
+html[data-modo="campo"] .campo-mais-nova{font-size:15px}

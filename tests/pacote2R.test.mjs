@@ -48,15 +48,16 @@ test("item 'Cadastros' na barra lateral: logo depois de Visitas, só para quem e
 test("abas de Cadastros: Ambientes | Equipamentos | Fluxos; contagem no título quando maior que zero", () => {
   const cadastros = GRUPOS_DA_CENTRAL.find((grupo) => grupo.id === "estrutura");
   assert.deepEqual(cadastros.subabas, ["ambientes", "equipamentos", "fluxos"]);
-  assert.equal(ROTULO_DA_SUBABA.ambientes, "Ambientes e equipamentos");
+  assert.equal(ROTULO_DA_SUBABA.ambientes, "Ambientes");
   assert.equal(ROTULO_DA_SUBABA.equipamentos, "Equipamentos");
   assert.equal(ROTULO_DA_SUBABA.fluxos, "Fluxos");
   assert.ok(subabasVisiveis(TODOS).includes("equipamentos"));
   assert.equal(subabasVisiveis({ editar: false, verComprovantes: true, gerenciarPessoas: true }).includes("equipamentos"), false);
   const nav = ler("../components/pc/CentralEmpresaNav.tsx");
   assert.ok(nav.includes("contagens?.[id] ?") && nav.includes("cen-bloco-conta"), "a contagem em texto terra só aparece quando maior que zero");
-  assert.equal(ler("../app/page.tsx").includes("contagens={{ ambientes: setoresEmpresa.length"), false, "Ambientes e equipamentos é um bloco só, sem contagem");
-  assert.ok(ler("../app/page.tsx").includes('["dados", "manual", "ambientes", "equipamentos", "fluxos", "programas"].includes(secaoEmpresa'), "a barra de salvar continua em todas as abas");
+  assert.equal(ler("../app/page.tsx").includes("contagens={{ ambientes: setoresEmpresa.length"), false, "Ambientes e Equipamentos não têm contagem na barra");
+  // Ambientes e Equipamentos gravam na hora (sem o Salvar da barra de baixo); as outras abas de edição continuam com a barra.
+  assert.ok(ler("../app/page.tsx").includes('["dados", "manual", "fluxos", "programas"].includes(secaoEmpresa'), "a barra de salvar continua nas abas que não gravam na hora");
   // pendência de equipamentos abre a aba Equipamentos; setores, Ambientes
   assert.equal(destinoDaPendencia("equipamentos"), "equipamentos");
   assert.equal(destinoDaPendencia("setores"), "ambientes");

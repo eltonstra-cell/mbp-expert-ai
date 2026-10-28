@@ -1,12 +1,14 @@
 "use client";
 
-import { useCallback, useState, type CSSProperties } from "react";
+import { useCallback, useRef, useState, type CSSProperties } from "react";
 import { CorDaEmpresaJanela } from "@/components/CorDaEmpresa";
 import type { Props as PropsEmpresas } from "@/components/pc/PcEmpresas";
 import { menuDaEmpresa } from "@/components/pc/PcEmpresas";
 import { Pill } from "@/components/ui/Pill";
 import { RowMenu } from "@/components/ui/RowMenu";
+import { subtituloDaEmpresa, textoDaPreparacao } from "@/lib/listaDeEmpresas";
 import { iniciaisDaEmpresa } from "@/lib/navigation";
+import "../../app/cadastro-empresas.css";
 
 // Empresas no celular (modo Campo): busca, cartões compactos e escolha da cor pelo avatar.
 export default function CampoEmpresas({
@@ -26,7 +28,13 @@ export default function CampoEmpresas({
   onMostrarArquivadas,
 }: PropsEmpresas) {
   const [corAberta, setCorAberta] = useState<string | null>(null);
-  const fecharCor = useCallback(() => setCorAberta(null), []);
+  const idDaCor = useRef<string | null>(null);
+  // Fechar a janela de cor devolve o foco ao ⋯ da mesma empresa.
+  const fecharCor = useCallback(() => {
+    const id = idDaCor.current;
+    setCorAberta(null);
+    if (id) window.setTimeout(() => document.querySelector<HTMLElement>(`[data-empresa="${id.replace(/"/g, '\\"')}"] .row-menu button, [data-empresa="${id.replace(/"/g, '\\"')}"] [aria-haspopup="menu"]`)?.focus(), 0);
+  }, []);
   const empresaDaCor = corAberta ? empresas.find((item) => item.id === corAberta) : undefined;
 
   return (
@@ -54,50 +62,30 @@ export default function CampoEmpresas({
       )}
       <ul className="cemp-lista">
         {empresas.map((empresa) => {
-          const menu = menuDaEmpresa(empresa, { onGerenciar, onCor: setCorAberta, onHistorico, onAcessos, onArquivar });
+          const menu = menuDaEmpresa(empresa, { onGerenciar, onCor: (id) => { idDaCor.current = id; setCorAberta(id); }, onHistorico, onAcessos, onArquivar });
           const avatar = (
-            <span className="ui-avatar ui-avatar--round emp-avatar-cor cemp-avatar" style={{ "--emp-cor": empresa.cor } as CSSProperties} aria-hidden="true">
+            <span id={`emp-av-${empresa.id}`} className="ui-avatar ui-avatar--round emp-avatar-cor cemp-avatar" style={{ "--emp-cor": empresa.cor } as CSSProperties} aria-hidden="true">
               {iniciaisDaEmpresa(empresa.nome)}
             </span>
           );
           return (
-            <li key={empresa.id} className={`cemp-cartao${empresa.ativa ? " is-ativa" : ""}${empresa.arquivada ? " is-arquivada" : ""}`}>
+            <li key={empresa.id} data-empresa={empresa.id} className={`cemp-cartao${empresa.ativa ? " is-ativa" : ""}${empresa.arquivada ? " is-arquivada" : ""}`}>
               <div className="cemp-linha">
-                {empresa.podeGerenciar ? (
-                  <button
-                    type="button"
-                    id={`emp-av-${empresa.id}`}
-                    className="emp-avatar-btn cemp-avatar-btn"
-                    aria-label={`Mudar a cor de ${empresa.nome}`}
-                    aria-haspopup="dialog"
-                    onClick={() => setCorAberta(empresa.id)}
-                  >
-                    {avatar}
-                    <span className="emp-lapis" aria-hidden="true">
-                      <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M4 20l1-4L16.5 4.5a2.1 2.1 0 0 1 3 3L8 19z" />
-                      </svg>
-                    </span>
-                  </button>
-                ) : (
-                  avatar
-                )}
+                {avatar}
                 <div className="cemp-textos">
                   <span className="cemp-nome">{empresa.nome}</span>
+                  <span className="cemp-sub">{subtituloDaEmpresa(empresa)}</span>
                   <span className="cemp-situacao">
-                    {empresa.arquivada ? (
-                      <Pill tom="na">Arquivada</Pill>
-                    ) : (
-                      <Pill tom={empresa.faltas.length === 0 ? "ok" : "pend"}>{empresa.faltas.length === 0 ? "Completo" : "Incompleto"}</Pill>
-                    )}
+                    {empresa.arquivada && <Pill tom="na">Arquivada</Pill>}
+                    <span className="cemp-falta">{textoDaPreparacao(empresa.faltas)}</span>
                   </span>
                 </div>
                 {empresa.ativa ? (
-                  <span className="ui-btn ui-btn--secondary ui-btn--small cemp-sel" aria-current="true">
-                    Ativa ✓
+                  <span className="cemp-ativa" aria-current="true">
+                    ✓ Ativa
                   </span>
                 ) : (
-                  <button type="button" className="ui-btn ui-btn--secondary ui-btn--small cemp-sel" onClick={() => onSelecionar(empresa.id)}>
+                  <button type="button" className="ui-btn ui-btn--secondary cemp-sel" aria-label={`Selecionar ${empresa.nome}`} onClick={() => onSelecionar(empresa.id)}>
                     Selecionar
                   </button>
                 )}

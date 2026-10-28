@@ -14,11 +14,11 @@ test("a lista de Empresas não renderiza mais a fileira de bolinhas em cada cart
   assert.ok(!lista.includes("PALETA_EMPRESA"));
 });
 
-test("o avatar da lista abre a janelinha de cor e o menu ⋯ ganha Mudar cor", () => {
+test("a janelinha de cor abre pelo menu ⋯ (Editar cor/avatar); o avatar não tem mais lápis", () => {
   const lista = ler("../components/pc/PcEmpresas.tsx");
-  assert.ok(lista.includes("emp-avatar-btn") && lista.includes("emp-lapis"));
+  assert.ok(!lista.includes("emp-avatar-btn") && !lista.includes("emp-lapis"));
   assert.ok(lista.includes("CorDaEmpresaJanela"));
-  assert.ok(lista.includes("Mudar cor"));
+  assert.ok(lista.includes("Editar cor/avatar") && !lista.includes("Mudar cor"));
   assert.ok(acoesDaEmpresa({ podeEditar: true, podeGerenciarAcessos: false, arquivada: false }).includes("cor"));
   assert.ok(!acoesDaEmpresa({ podeEditar: false, podeGerenciarAcessos: false, arquivada: false }).includes("cor"));
 });

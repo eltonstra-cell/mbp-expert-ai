@@ -1,6 +1,8 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { ROTULO_DA_SUBABA, blocoAtivoDaBarra, grupoDaSubaba, subabasDaBarra, type GrupoCentral, type SubAbaCentral } from "@/lib/centralEmpresa";
+import "../../app/cadastro-estrutura.css";
 
 type Props = {
   grupos: { id: GrupoCentral; rotulo: string; subabas: SubAbaCentral[] }[];
@@ -8,11 +10,13 @@ type Props = {
   onSubaba: (subaba: SubAbaCentral) => void;
   /** Contagem em texto terra ao lado de uma sub-aba (ex.: pendências dos POPs). Zero não aparece. */
   contagens?: Partial<Record<SubAbaCentral, number>>;
+  /** À direita da linha das sub-abas (ex.: o estado de revisão da aba atual). */
+  direita?: ReactNode;
 };
 
-// Duas barras contínuas de blocos, uma sob a outra: 1) Empresa | Estrutura | Documentos; 2) as seções do grupo aberto.
-// Cada bloco tem a largura do texto, separadores finos e o selecionado em azul claro com texto preto. Sem pílulas soltas.
-export default function CentralEmpresaNav({ grupos, subaba, onSubaba, contagens }: Props) {
+// Duas linhas, uma sob a outra: 1) Empresa | Estrutura | Documentos; 2) as sub-abas do grupo aberto, em texto com sublinhado azul na atual
+// (Ambientes, Equipamentos e Fluxos são abas separadas). Sem pílulas soltas.
+export default function CentralEmpresaNav({ grupos, subaba, onSubaba, contagens, direita }: Props) {
   const grupoAtual = grupoDaSubaba(subaba);
   const doGrupo = grupos.find((grupo) => grupo.id === grupoAtual);
   if (!doGrupo) return null;
@@ -38,14 +42,19 @@ export default function CentralEmpresaNav({ grupos, subaba, onSubaba, contagens 
           ))}
         </div>
       )}
-      {blocos.length > 1 && (
-        <div className="cen-barra cen-barra--sub" role="tablist" aria-label={`Seções de ${doGrupo.rotulo}`}>
-          {blocos.map((id) => (
-            <button key={id} type="button" role="tab" aria-selected={id === ativo} className={`cen-bloco${id === ativo ? " is-ativa" : ""}`} onClick={() => onSubaba(id)}>
-              {ROTULO_DA_SUBABA[id]}
-              {contagens?.[id] ? <span className="cen-bloco-conta"> {contagens[id]}</span> : null}
-            </button>
-          ))}
+      {(blocos.length > 1 || direita) && (
+        <div className="cen-subrow">
+          {blocos.length > 1 && (
+            <div className="cen-barra cen-barra--sub" role="tablist" aria-label={`Seções de ${doGrupo.rotulo}`}>
+              {blocos.map((id) => (
+                <button key={id} type="button" role="tab" aria-selected={id === ativo} className={`cen-bloco${id === ativo ? " is-ativa" : ""}`} onClick={() => onSubaba(id)}>
+                  {ROTULO_DA_SUBABA[id]}
+                  {contagens?.[id] ? <span className="cen-bloco-conta"> {contagens[id]}</span> : null}
+                </button>
+              ))}
+            </div>
+          )}
+          {direita ? <div className="cen-subdireita">{direita}</div> : null}
         </div>
       )}
       <div className="cen-divisor" aria-hidden="true" />

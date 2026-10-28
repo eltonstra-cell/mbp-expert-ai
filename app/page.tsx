@@ -130,12 +130,15 @@ import QualityProgramsFields from "@/components/QualityProgramsFields";
 import CentralEmpresaNav from "@/components/pc/CentralEmpresaNav";
 import RelatoriosAbas, { type AbaDeRelatorios } from "@/components/pc/RelatoriosAbas";
 import { niveisDoCaminho } from "@/lib/caminhoDaFicha";
-import { assinaturaEdicaoEmpresa, temAlteracoesNaoSalvas } from "@/lib/estadoNaoSalvo";
+import { assinaturaComEstrutura, assinaturaEdicaoEmpresa, temAlteracoesNaoSalvas } from "@/lib/estadoNaoSalvo";
 import { renomearAmbiente, resumoDaRenomeacao, textoDoResumo } from "@/lib/renomearAmbiente";
 import { correcoesAbertasDaEmpresa, correcoesVencidasDaEmpresa } from "@/lib/correcoesVencidas";
 import { caixasDoContinuar, colunasDoInicio, comAmbienteDasCorrecoes, correcoesSemPrazo, passosDeConfiguracao, resumoDaConfiguracao } from "@/lib/inicio";
 import { ePaginaDeCadastro, marcarComoRevisado } from "@/lib/revisaoDeCadastros";
-import RevisaoDaPagina from "@/components/pc/RevisaoDaPagina";
+import RevisaoCompacta from "@/components/pc/RevisaoCompacta";
+import CadastroAmbientes, { type EntradaDeEstrutura, type EstadoDoSalvamento, type MudancaDeEstrutura } from "@/components/pc/CadastroAmbientes";
+import { aplicarDeltaDeEquipamentos, aplicarDeltaDeFluxos, aplicarDeltaDeLista, aplicarDeltaDeMapa, restaurarFluxos } from "@/lib/estruturaDelta";
+import CadastroEquipamentos from "@/components/pc/CadastroEquipamentos";
 import { avisoParaEmitir, avisoParaFinalizar, erroDoCnpj, erroDoNomeDaEmpresa, itensRespondidos, pendenciasParaSalvarEmpresa } from "@/lib/regrasDoPacote3";
 import { ambientesParaVisita, limparVinculos, nomeJaExistente } from "@/lib/ambientesVisita";
 import IdentificacaoComplementar from "@/components/IdentificacaoComplementar";
@@ -895,6 +898,10 @@ export default function Home() {
   const [avisoSemSinal, setAvisoSemSinal] = useState<string | null>(null);
   const [showEmpresaForm, setShowEmpresaForm] = useState(false);
   const [editingEmpresaId, setEditingEmpresaId] = useState<string | null>(null);
+  // A empresa aberta AGORA (para quem grava depois de um aviso "Desfazer" ou de uma pergunta) e o relógio do "Salvando…".
+  const editingEmpresaIdRef = useRef<string | null>(null);
+  editingEmpresaIdRef.current = editingEmpresaId;
+  const estruturaTimerRef = useRef<number | null>(null);
   const [empresaSecao, setEmpresaSecao] = useState<EmpresaSecao | null>(null);
   // Quem não edita a empresa vê só Documentos (POPs, Comprovantes, Pessoas): a sub-aba aberta fica aqui.
   const [usuarioResponsavelForm, setUsuarioResponsavelForm] = useState("");
@@ -1077,6 +1084,8 @@ export default function Home() {
   );
   const [popsEmpresa, setPopsEmpresa] = useState<ProcedimentoOperacionalPadronizado[]>([]);
   const [assinaturaEmpresaSalva, setAssinaturaEmpresaSalva] = useState("");
+  // Ambientes e Equipamentos gravam na hora (sem o Salvar da barra de baixo): "Salvando…" / "✓ Alterações salvas".
+  const [estadoEstrutura, setEstadoEstrutura] = useState<EstadoDoSalvamento>("salvo");
   const assinaturaEmpresaAtual = assinaturaEdicaoEmpresa({
     form,
     responsabilidades: responsabilidadesEmpresa,
@@ -3747,6 +3756,115 @@ export default function Home() {
       const anterior = atual.find((item) => item.para === de);
       return anterior ? atual.map((item) => (item === anterior ? { de: item.de, para: novo } : item)) : [...atual, { de, para: novo }];
     });
+    return true;
+  }
+
+  // Ambientes e Equipamentos: grava DIRETO na empresa (mesma permissão e mesmo estado do Salvar, sem recarregar a página).
+  // A mudança é calculada sobre a empresa de AGORA (dbRef), nunca sobre a cópia de quando o aviso "Desfazer" apareceu; só grava na empresa aberta;
+  // e o que mudou entra POR CIMA do formulário aberto (alterações não salvas de Dados, como o pacote do tipo, continuam lá).
+  function empresaComEstrutura(anterior: Empresa, mudanca: MudancaDeEstrutura): Empresa {
+    const setores = mudanca.setores ? normalizarListaAmbientesReais(mudanca.setores) : normalizarListaAmbientesReais(anterior.setoresManual);
+    const equipamentos = normalizarEquipamentos(mudanca.equipamentos ?? anterior.equipamentosSetores);
+    const vinculos = limparVinculos(mudanca.vinculos ?? anterior.setorOficialDoAmbiente, setores);
+    const modelos = criarModelosQuestionarioAmbientes(setores, mudanca.modelos ?? (anterior.modelosQuestionarioAmbientes || {}));
+    const fluxos = restaurarFluxos(adequarFluxosAosSetores(anterior.fluxosOperacionais, setores), mudanca.restaurarFluxos);
+    const { setorOficialDoAmbiente: _antigo, ...semVinculos } = anterior;
+    return {
+      ...semVinculos,
+      setoresManual: setores,
+      modelosQuestionarioAmbientes: modelos,
+      ...(Object.keys(vinculos).length ? { setorOficialDoAmbiente: vinculos } : {}),
+      equipamentosSetores: equipamentos,
+      fluxosOperacionais: fluxos,
+    };
+  }
+
+  function gravarEstrutura(entrada: EntradaDeEstrutura, empresaEsperada?: string | null): boolean {
+    const id = editingEmpresaIdRef.current;
+    if (!id || (empresaEsperada && empresaEsperada !== id)) return false;
+    if (!permitido("empresas.editar", id)) {
+      void avisar("Seu perfil não permite editar esta empresa.");
+      return false;
+    }
+    const base = dbRef.current;
+    const anterior = base.empresas[id];
+    if (!anterior) return false;
+    const calcular = (empresa: Empresa): Empresa | null => {
+      const mudanca = typeof entrada === "function" ? entrada(empresa) : entrada;
+      return mudanca ? empresaComEstrutura(empresa, mudanca) : null;
+    };
+    const atualizada = calcular(anterior);
+    if (!atualizada) return false;
+    if (estruturaTimerRef.current) window.clearTimeout(estruturaTimerRef.current);
+    setEstadoEstrutura("salvando");
+    const proximo: AppDB = { ...base, empresas: { ...base.empresas, [id]: atualizada } };
+    dbRef.current = proximo;
+    // O atualizador não tem efeito colateral: gravar no aparelho acontece aqui, fora dele.
+    setDb((o) => {
+      if (o === base) return proximo;
+      const empresa = o.empresas[id];
+      const recalculada = empresa ? calcular(empresa) : null;
+      return recalculada ? { ...o, empresas: { ...o.empresas, [id]: recalculada } } : o;
+    });
+    const salvouNoAparelho = salvarDBLocal(proximo);
+    // O formulário aberto recebe só a diferença; a linha de base de "não salvo" recebe o que ficou gravado.
+    setSetoresEmpresa((atuais) => aplicarDeltaDeLista(atuais, normalizarListaAmbientesReais(anterior.setoresManual), atualizada.setoresManual || []));
+    setEquipamentosEmpresa((atuais) => aplicarDeltaDeEquipamentos(atuais, anterior.equipamentosSetores || [], atualizada.equipamentosSetores || []));
+    setVinculosEmpresa((atuais) => aplicarDeltaDeMapa(atuais, anterior.setorOficialDoAmbiente, atualizada.setorOficialDoAmbiente));
+    setModelosEmpresa((atuais) => aplicarDeltaDeMapa(atuais, anterior.modelosQuestionarioAmbientes, atualizada.modelosQuestionarioAmbientes));
+    setFluxosEmpresa((atuais) => aplicarDeltaDeFluxos(atuais, anterior.fluxosOperacionais, atualizada.fluxosOperacionais));
+    setAssinaturaEmpresaSalva((assinatura) =>
+      assinaturaComEstrutura(assinatura, {
+        setores: atualizada.setoresManual,
+        equipamentos: atualizada.equipamentosSetores,
+        vinculos: atualizada.setorOficialDoAmbiente || {},
+        modelos: atualizada.modelosQuestionarioAmbientes,
+        adequarFluxos: (antigos) => (Array.isArray(antigos) ? aplicarDeltaDeFluxos(antigos as FluxoOperacional[], anterior.fluxosOperacionais, atualizada.fluxosOperacionais) : antigos),
+      })
+    );
+    // "Salvando…" fica visível por um instante antes de virar "✓ Alterações salvas" (ou o erro de gravação no aparelho).
+    estruturaTimerRef.current = window.setTimeout(() => setEstadoEstrutura(salvouNoAparelho ? "salvo" : "erro"), 450);
+    return true;
+  }
+
+  // Renomear ambiente próprio: confirma mostrando o que muda e grava na hora (cadastro, equipamentos, fluxos, visitas e o resto).
+  // Depois do "await" tudo é calculado de novo sobre o estado de AGORA, não sobre o de antes da pergunta.
+  async function renomearAmbienteAgora(de: string, para: string): Promise<boolean> {
+    const id = editingEmpresaIdRef.current;
+    const novo = para.trim();
+    if (!id || !novo || novo === de || !permitido("empresas.editar", id)) return false;
+    const resumo = resumoDaRenomeacao(dbRef.current, id, de);
+    const confirmado = await confirmar(
+      `Renomear “${de}” para “${novo}”?\n\n${textoDoResumo(resumo)}\n\nOs relatórios já emitidos não mudam.`,
+      { titulo: "Renomear ambiente", confirmarRotulo: "Renomear" }
+    );
+    if (!confirmado || editingEmpresaIdRef.current !== id) return false;
+    const base = dbRef.current;
+    const anterior = base.empresas[id];
+    if (!anterior) return false;
+    if (estruturaTimerRef.current) window.clearTimeout(estruturaTimerRef.current);
+    setEstadoEstrutura("salvando");
+    const proximo = renomearAmbiente(base, id, de, novo);
+    dbRef.current = proximo;
+    setDb((o) => (o === base ? proximo : renomearAmbiente(o, id, de, novo)));
+    const salvouNoAparelho = salvarDBLocal(proximo);
+    const atualizada = proximo.empresas[id] || anterior;
+    const troca = (nome: string) => (nome === de ? novo : nome);
+    setSetoresEmpresa((atuais) => atuais.map(troca));
+    setEquipamentosEmpresa((atuais) => atuais.map((item) => (item.setor === de ? { ...item, setor: novo } : item)));
+    setVinculosEmpresa((atuais) => (de in atuais ? Object.fromEntries(Object.entries(atuais).map(([nome, oficial]) => [troca(nome), oficial])) : atuais));
+    setModelosEmpresa((atuais) => (de in atuais ? Object.fromEntries(Object.entries(atuais).map(([nome, modelo]) => [troca(nome), modelo])) : atuais));
+    setFluxosEmpresa((atuais) => atuais.map((item) => (item.setorVinculado === de ? { ...item, setorVinculado: novo } : item)));
+    setAssinaturaEmpresaSalva((assinatura) =>
+      assinaturaComEstrutura(assinatura, {
+        setores: atualizada.setoresManual,
+        equipamentos: atualizada.equipamentosSetores,
+        vinculos: atualizada.setorOficialDoAmbiente || {},
+        modelos: atualizada.modelosQuestionarioAmbientes,
+        adequarFluxos: (antigos) => (Array.isArray(antigos) ? (antigos as FluxoOperacional[]).map((item) => (item.setorVinculado === de ? { ...item, setorVinculado: novo } : item)) : antigos),
+      })
+    );
+    estruturaTimerRef.current = window.setTimeout(() => setEstadoEstrutura(salvouNoAparelho ? "salvo" : "erro"), 450);
     return true;
   }
 
@@ -8055,7 +8173,27 @@ export default function Home() {
             {editingEmpresaId && (fichaAbertaRotulo && secaoEmpresa === "pops" ? (
               caminhoClicavel(fichaAbertaRotulo, true)
             ) : secaoEmpresa === "pops" ? null : (
-              <CentralEmpresaNav grupos={gruposVisiveis(quemVeNaCentral)} subaba={secaoEmpresa as SubAbaCentral} onSubaba={irParaSubaba} />
+              <CentralEmpresaNav
+                grupos={gruposVisiveis(quemVeNaCentral)}
+                subaba={secaoEmpresa as SubAbaCentral}
+                onSubaba={irParaSubaba}
+                direita={
+                  ePaginaDeCadastro(secaoEmpresa) && db.empresas[editingEmpresaId] ? (
+                    <RevisaoCompacta
+                      pagina={secaoEmpresa}
+                      empresa={db.empresas[editingEmpresaId]}
+                      podeMarcar={permitido("empresas.editar", editingEmpresaId)}
+                      naoSalvo={empresaTemAlteracoes}
+                      onIrParaDados={() => irParaSubaba("dados")}
+                      onMarcar={() => {
+                        const quem = usuarioDaSessao;
+                        atualizarEmpresaDosRegistros(editingEmpresaId, (empresa) => marcarComoRevisado(empresa, secaoEmpresa, { nome: quem?.nome || sessaoAtual?.name || "Usuário", cargo: quem?.cargo, id: quem?.id }, new Date().toISOString()));
+                        mostrarToast("Página marcada como revisada");
+                      }}
+                    />
+                  ) : undefined
+                }
+              />
             ))}
             {editingEmpresaId && msg && <div className="ui-note cen-msg">{msg}</div>}
             {editingEmpresaId && empresaGerenciada && secaoEmpresa === "dados" && pendenciasDaEmpresa(empresaGerenciada).length > 0 && (
@@ -8285,25 +8423,27 @@ export default function Home() {
                   </div>
                 )}
 
-                {editingEmpresaId && ePaginaDeCadastro(secaoEmpresa) && db.empresas[editingEmpresaId] && <div className="rev-linha">{(secaoEmpresa === "ambientes" || secaoEmpresa === "equipamentos" ? (["ambientes", "equipamentos"] as const) : ([secaoEmpresa] as const)).map((paginaRevisada) => (
-                  <RevisaoDaPagina
-                    key={paginaRevisada}
-                    pagina={paginaRevisada}
+                {editingEmpresaId && secaoEmpresa === "ambientes" && db.empresas[editingEmpresaId] && (
+                  <CadastroAmbientes
+                    key={editingEmpresaId}
                     empresa={db.empresas[editingEmpresaId]}
-                    podeMarcar={permitido("empresas.editar", editingEmpresaId)}
-                    naoSalvo={empresaTemAlteracoes}
-                    onMarcar={() => {
-                      const quem = usuarioDaSessao;
-                      atualizarEmpresaDosRegistros(editingEmpresaId, (empresa) => marcarComoRevisado(empresa, paginaRevisada, { nome: quem?.nome || sessaoAtual?.name || "Usuário", cargo: quem?.cargo, id: quem?.id }, new Date().toISOString()));
-                      mostrarToast("Página marcada como revisada");
-                    }}
+                    podeEditar={permitido("empresas.editar", editingEmpresaId)}
+                    estado={syncStatus === "erro" && syncErroVisivel ? "erro" : estadoEstrutura}
+                    onGravar={(entrada) => gravarEstrutura(entrada, editingEmpresaId)}
+                    onRenomear={renomearAmbienteAgora}
+                    onIrParaDados={() => irParaSubaba("dados")}
                   />
-                ))}</div>}
+                )}
 
-                {editingEmpresaId && (secaoEmpresa === "ambientes" || secaoEmpresa === "equipamentos") && (
-                  <div className="cen-cadastro">
-                    <ManualBaseFields tipoDoEstabelecimento={form.tipo} responsabilidades={responsabilidadesEmpresa} onResponsabilidadesChange={setResponsabilidadesEmpresa} setores={setoresEmpresa} onSetoresChange={setSetoresEmpresa} vinculos={vinculosEmpresa} onVinculosChange={setVinculosEmpresa} modelos={modelosEmpresa} onModelosChange={setModelosEmpresa} onRenomearAmbiente={renomearAmbienteDaEmpresa} equipamentos={equipamentosEmpresa} onEquipamentosChange={setEquipamentosEmpresa} setoresSalvos={marcadosSalvos.setores} fluxos={fluxosEmpresa} questionarios={db.empresas[editingEmpresaId]?.questionarios} modo="estrutura" />
-                  </div>
+                {editingEmpresaId && secaoEmpresa === "equipamentos" && db.empresas[editingEmpresaId] && (
+                  <CadastroEquipamentos
+                    key={editingEmpresaId}
+                    empresa={db.empresas[editingEmpresaId]}
+                    podeEditar={permitido("empresas.editar", editingEmpresaId)}
+                    estado={syncStatus === "erro" && syncErroVisivel ? "erro" : estadoEstrutura}
+                    onGravar={(entrada) => gravarEstrutura(entrada, editingEmpresaId)}
+                    onIrParaAmbientes={() => irParaSubaba("ambientes")}
+                  />
                 )}
 
                 {editingEmpresaId && secaoEmpresa === "fluxos" && (
@@ -8364,7 +8504,7 @@ export default function Home() {
               </>
             </div>
 
-            {(!editingEmpresaId || ["dados", "manual", "ambientes", "equipamentos", "fluxos", "programas"].includes(secaoEmpresa || "")) && (
+            {(!editingEmpresaId || ["dados", "manual", "fluxos", "programas"].includes(secaoEmpresa || "")) && (
               <div className={`cen-salvar${editingEmpresaId ? ` ${estadoDaBarraDeSalvar(empresaTemAlteracoes).classe}` : ""}`}>
                 {!editingEmpresaId && msg && <span className="cen-salvar-aviso">{msg}</span>}
                 {editingEmpresaId && (
@@ -9363,7 +9503,7 @@ export default function Home() {
             equipamentos={{
               vazio: equipamentosDaVisita.length === 0,
               textoVazio: (empresaVisita?.equipamentosSetores || []).length === 0 ? "Nenhum equipamento cadastrado" : "Nenhum equipamento nos ambientes desta visita",
-              onCadastrar: atual && atual.id === visitaAtual.empresaId && permitido("empresas.editar", atual.id) ? () => irParaMenu("cadastros") : null,
+              onCadastrar: atual && atual.id === visitaAtual.empresaId && permitido("empresas.editar", atual.id) ? () => void abrirSecaoEmpresaPeloMenu("equipamentos") : null,
               texto: `${equipamentosDaVisita.length} tipos · ${totalUnidadesEquipamentos} unidades`,
               desabilitado: (visitaAtual.ambientes || []).length === 0,
               onAbrir: () => abrirChecklistNoAmbiente(equipamentosDaVisita[0]?.setor || (visitaAtual.ambientes || [])[0]),

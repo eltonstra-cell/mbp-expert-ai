@@ -1,16 +1,15 @@
 "use client";
 
-import { useCallback, useState, type CSSProperties } from "react";
+import { useCallback, useRef, useState, type CSSProperties } from "react";
 import { CorDaEmpresaJanela } from "@/components/CorDaEmpresa";
-import { ListRow } from "@/components/ui/ListRow";
 import { Pill } from "@/components/ui/Pill";
 import { ProgressBar } from "@/components/ui/ProgressBar";
-import type { ItemMenu } from "@/components/ui/RowMenu";
+import { RowMenu, type ItemMenu } from "@/components/ui/RowMenu";
 import { acoesDaEmpresa } from "@/lib/menuActions";
-import { nomeSemNumerosNoInicio } from "@/lib/navigation";
-import { razaoSocialDiferente } from "@/lib/nomeCargo";
+import { subtituloDaEmpresa } from "@/lib/listaDeEmpresas";
 import PendenciasChip from "@/components/pc/PendenciasChip";
 import { iniciaisDaEmpresa } from "@/lib/navigation";
+import "../../app/cadastro-empresas.css";
 
 export type LinhaEmpresa = {
   id: string;
@@ -77,7 +76,7 @@ export function menuDaEmpresa(
       case "central":
         return { rotulo: "Central da Empresa", onClick: () => acoes.onGerenciar(empresa.id) };
       case "cor":
-        return { rotulo: "Mudar cor", onClick: () => acoes.onCor(empresa.id) };
+        return { rotulo: "Editar cor/avatar", onClick: () => acoes.onCor(empresa.id) };
       case "historico":
         return { rotulo: "Histórico da empresa", onClick: () => acoes.onHistorico(empresa.id) };
       case "acessos":
@@ -110,8 +109,15 @@ export default function PcEmpresas({
   onMostrarArquivadas,
 }: Props) {
   const [corAberta, setCorAberta] = useState<{ id: string; ancora: { left: number; top: number; bottom: number } } | null>(null);
-  const fecharCor = useCallback(() => setCorAberta(null), []);
+  const idDaCor = useRef<string | null>(null);
+  // Fechar a janela de cor devolve o foco ao ⋯ da mesma empresa (de onde ela foi aberta).
+  const fecharCor = useCallback(() => {
+    const id = idDaCor.current;
+    setCorAberta(null);
+    if (id) window.setTimeout(() => document.querySelector<HTMLElement>(`[data-empresa="${id.replace(/"/g, '\\"')}"] .emp-c-menu button`)?.focus(), 0);
+  }, []);
   const abrirCor = (id: string) => {
+    idDaCor.current = id;
     const caixa = document.getElementById(`emp-av-${id}`)?.getBoundingClientRect();
     setCorAberta({ id, ancora: caixa ? { left: caixa.left, top: caixa.top, bottom: caixa.bottom } : { left: 16, top: 120, bottom: 160 } });
   };
@@ -121,14 +127,9 @@ export default function PcEmpresas({
       <h1 className="sr-only">Empresas</h1>
       <div className="ui-head ui-head--so-direita">
         <span className="ui-subtitle ui-subtitle--linha">{plural(totalClientes, "cliente", "clientes")} · escolha a empresa ativa para trabalhar</span>
-        {podeCriar && (
-          <button type="button" className="ui-btn ui-btn--criar" onClick={onNova}>
-            + Nova empresa
-          </button>
-        )}
       </div>
 
-      <div className="ui-toolbar">
+      <div className="ui-toolbar emp-toolbar">
         <input
           type="search"
           className="ui-input pc-search pc-search--wide"
@@ -142,89 +143,63 @@ export default function PcEmpresas({
             {mostrarArquivadas ? "Ocultar arquivadas" : `Ver arquivadas (${arquivadasTotal})`}
           </button>
         )}
+        {podeCriar && (
+          <button type="button" className="ui-btn ui-btn--criar" onClick={onNova}>
+            + Nova empresa
+          </button>
+        )}
       </div>
 
       <div className="ui-scroll">
-        <div className="ui-list">
+        <div className="ui-list emp-lista" role="list">
           {empresas.map((empresa) => {
-            const detalhes =
-              empresa.setores === 0 && empresa.equipamentos === 0
-                ? "sem setores nem equipamentos"
-                : [
-                    plural(empresa.setores, "setor", "setores"),
-                    plural(empresa.equipamentos, "equipamento", "equipamentos"),
-                    plural(empresa.programas, "programa", "programas"),
-                    plural(empresa.pops, "POP", "POPs"),
-                  ].join(" · ");
             const menu = menuDaEmpresa(empresa, { onGerenciar, onCor: abrirCor, onHistorico, onAcessos, onArquivar });
             return (
-              <ListRow
-                key={empresa.id}
-                faixa={empresa.ativa ? "brand" : undefined}
-                selecionada={empresa.ativa}
-                esmaecida={empresa.arquivada}
-                icone={
-                  empresa.podeGerenciar ? (
-                    <button
-                      type="button"
-                      id={`emp-av-${empresa.id}`}
-                      className="emp-avatar-btn"
-                      aria-label={`Mudar a cor de ${empresa.nome}`}
-                      aria-haspopup="dialog"
-                      onClick={() => abrirCor(empresa.id)}
-                    >
-                      <span className="ui-avatar ui-avatar--round emp-avatar-cor" style={{ "--emp-cor": empresa.cor } as CSSProperties} aria-hidden="true">
-                        {iniciaisDaEmpresa(empresa.nome)}
-                      </span>
-                      <span className="emp-lapis" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M4 20l1-4L16.5 4.5a2.1 2.1 0 0 1 3 3L8 19z" />
-                        </svg>
-                      </span>
-                    </button>
-                  ) : (
-                    <span className="ui-avatar ui-avatar--round emp-avatar-cor" style={{ "--emp-cor": empresa.cor } as CSSProperties} aria-hidden="true">
-                      {iniciaisDaEmpresa(empresa.nome)}
-                    </span>
-                  )
-                }
-                titulo={empresa.nome}
-                chip={empresa.arquivada ? <Pill tom="na">Arquivada</Pill> : undefined}
-                secundario={<span className="pc-sub-quebra">{[razaoSocialDiferente(empresa.nome, empresa.razaoSocial), detalhes].filter(Boolean).join(" · ")}</span>}
-                meio={
-                  <>
-                    <ProgressBar percentual={empresa.preparacao} largura={120} rotulo={`Preparação ${empresa.preparacao}%`} />
-                    <span className="ui-row-sub" title="Preparação mede 6 itens: responsável, horário, setor, equipamento, programa e POP">Preparação {empresa.preparacao}%</span>
-                  </>
-                }
-                pilulas={
-                  <span className="pc-cadastro-status">
-                    {empresa.faltas.length === 0 ? <Pill tom="ok">Cadastro completo</Pill> : <PendenciasChip faltas={empresa.faltas} onAbrir={empresa.podeGerenciar && onAbrirPendencia ? (falta) => onAbrirPendencia(empresa.id, falta) : undefined} />}
+              <div key={empresa.id} role="listitem" className={`emp-linha${empresa.ativa ? " is-ativa" : ""}${empresa.arquivada ? " is-arquivada" : ""}`} data-empresa={empresa.id} aria-current={empresa.ativa ? "true" : undefined}>
+                <span id={`emp-av-${empresa.id}`} className="ui-avatar ui-avatar--round emp-avatar-cor emp-c-avatar" style={{ "--emp-cor": empresa.cor } as CSSProperties} aria-hidden="true">
+                  {iniciaisDaEmpresa(empresa.nome)}
+                </span>
+                <div className="emp-c-nome">
+                  <span className="emp-nome">
+                    {empresa.nome}
+                    {empresa.arquivada && <Pill tom="na">Arquivada</Pill>}
                   </span>
-                }
-                acao={
-                  <>
-                    {empresa.ativa ? (
-                      <button type="button" className="ui-btn ui-btn--secondary" aria-current="true" disabled>
-                        Ativa ✓
-                      </button>
-                    ) : (
-                      <button type="button" className="ui-btn ui-btn--secondary" onClick={() => onSelecionar(empresa.id)}>
-                        Selecionar
-                      </button>
-                    )}
-                    <button type="button" className="ui-btn ui-btn--secondary" onClick={() => onGerenciar(empresa.id)}>
-                      Central da Empresa
+                  <span className="emp-sub">{subtituloDaEmpresa(empresa)}</span>
+                </div>
+                <div className="emp-c-prep">
+                  <div className="emp-prep-linha" title="Preparação mede 6 itens: responsável, horário, setor, equipamento, programa e POP">
+                    <ProgressBar percentual={empresa.preparacao} rotulo={`Preparação ${empresa.preparacao}%`} />
+                    <span className="emp-pct">{empresa.preparacao}%</span>
+                  </div>
+                  <span className="emp-falta">
+                    {empresa.faltas.length === 0 ? "Cadastro completo" : <PendenciasChip faltas={empresa.faltas} texto onAbrir={empresa.podeGerenciar && onAbrirPendencia ? (falta) => onAbrirPendencia(empresa.id, falta) : undefined} />}
+                  </span>
+                </div>
+                <div className="emp-c-sel">
+                  {empresa.ativa ? (
+                    <span className="emp-ativa-texto">✓ Ativa</span>
+                  ) : (
+                    <button type="button" className="ui-btn ui-btn--secondary" aria-label={`Selecionar ${empresa.nome}`} onClick={() => onSelecionar(empresa.id)}>
+                      Selecionar
                     </button>
-                    {empresa.ativa && empresa.podeNovaVisita && (
-                      <button type="button" className="ui-btn ui-btn--criar" onClick={onNovaVisita}>
-                        Nova visita
-                      </button>
-                    )}
-                  </>
-                }
-                menu={menu}
-              />
+                  )}
+                </div>
+                <div className="emp-c-central">
+                  <button type="button" className="ui-btn ui-btn--secondary" aria-label={`Central da Empresa de ${empresa.nome}`} onClick={() => onGerenciar(empresa.id)}>
+                    Central da Empresa
+                  </button>
+                </div>
+                <div className="emp-c-visita">
+                  {empresa.ativa && empresa.podeNovaVisita && (
+                    <button type="button" className="ui-btn ui-btn--criar" aria-label={`Nova visita em ${empresa.nome}`} onClick={onNovaVisita}>
+                      Nova visita
+                    </button>
+                  )}
+                </div>
+                <div className="emp-c-menu">
+                  <RowMenu itens={menu} />
+                </div>
+              </div>
             );
           })}
           {empresas.length === 0 && <div className="ui-empty">Nenhuma empresa encontrada com esse termo.</div>}

@@ -1,6 +1,6 @@
 // Aviso curto na tela ("Salvo"). Funciona fora do React: quem chama só dá o texto; o <ToastHost /> mostra e some sozinho.
 
-export type Toast = { id: number; texto: string; tipo: "ok" | "aviso"; acao?: { rotulo: string; aoClicar: () => void } };
+export type Toast = { id: number; texto: string; tipo: "ok" | "aviso"; acao?: { rotulo: string; aoClicar: () => void }; dono?: string };
 
 let atual: Toast | null = null;
 let contador = 0;
@@ -11,12 +11,12 @@ const avisarOuvintes = () => ouvintes.forEach((ouvinte) => ouvinte());
 
 export const DURACAO_DO_TOAST_MS = 2200;
 
-export function mostrarToast(texto: string, opcoes: { tipo?: "ok" | "aviso"; duracaoMs?: number; acao?: { rotulo: string; aoClicar: () => void } } = {}): void {
+export function mostrarToast(texto: string, opcoes: { tipo?: "ok" | "aviso"; duracaoMs?: number; acao?: { rotulo: string; aoClicar: () => void }; dono?: string } = {}): void {
   const duracaoMs = opcoes.duracaoMs ?? DURACAO_DO_TOAST_MS;
   if (!texto.trim()) return;
   if (temporizador) clearTimeout(temporizador);
   contador += 1;
-  atual = { id: contador, texto: texto.trim(), tipo: opcoes.tipo || "ok", ...(opcoes.acao ? { acao: opcoes.acao } : {}) };
+  atual = { id: contador, texto: texto.trim(), tipo: opcoes.tipo || "ok", ...(opcoes.acao ? { acao: opcoes.acao } : {}), ...(opcoes.dono ? { dono: opcoes.dono } : {}) };
   avisarOuvintes();
   temporizador = setTimeout(() => {
     atual = null;
@@ -39,6 +39,11 @@ export function assinarToast(ouvinte: () => void): () => void {
 /** Fecha o aviso agora (por exemplo, depois de tocar na ação dele). */
 export function fecharToast(): void {
   limparToast();
+}
+
+/** Fecha o aviso só se ele é de `dono` (um "Desfazer" não pode sobreviver à tela ou à empresa que o criou). */
+export function fecharToastDe(dono: string): void {
+  if (atual && atual.dono === dono) limparToast();
 }
 
 /** Só para testes. */

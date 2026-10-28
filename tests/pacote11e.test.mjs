@@ -11,13 +11,13 @@ test("E: Mais mostra Empresas com etiqueta novo e a tela do celular tem busca, +
   assert.ok(pagina.includes("ehPC ? PcEmpresas : CampoEmpresas"));
   const tela = ler("../components/campo/CampoEmpresas.tsx");
   assert.ok(tela.includes("Buscar por nome, CNPJ ou município") && tela.includes("+ Nova"));
-  assert.ok(tela.includes("Selecionar") && tela.includes("Ativa ✓") && tela.includes("menuDaEmpresa"));
+  assert.ok(tela.includes("Selecionar") && tela.includes("✓ Ativa") && tela.includes("menuDaEmpresa"));
   assert.ok(css.includes(".cemp-avatar-btn{width:44px;height:44px}"));
 });
 
-test("E: o avatar abre a folha de cor no celular e o painel de troca mostra avatar redondo", () => {
+test("E: o menu ⋯ abre a folha de cor no celular e o painel de troca mostra avatar redondo", () => {
   const tela = ler("../components/campo/CampoEmpresas.tsx");
-  assert.ok(tela.includes("CorDaEmpresaJanela") && tela.includes("emp-lapis") && tela.includes("setCorAberta(empresa.id)"));
+  assert.ok(tela.includes("CorDaEmpresaJanela") && !tela.includes("emp-lapis") && tela.includes("setCorAberta(id)"), "a folha de cor abre pelo menu ⋯, sem lápis no avatar");
   const janela = ler("../components/CorDaEmpresa.tsx");
   assert.ok(janela.includes("(max-width: 767px)") && janela.includes("cor-folha"));
   const painel = ler("../components/campo/TrocarEmpresaPainel.tsx");

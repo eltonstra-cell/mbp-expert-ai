@@ -51,6 +51,9 @@ const CNAE_PARA_TIPO: Record<string, { tipo: IdDoTipo; descricao: string }> = {
   "4712100": { tipo: "conveniencia", descricao: "Minimercados, mercearias e armazéns" },
 };
 
+/** Descrição da CNAE do IBGE para um código da tabela (usada só quando o cadastro não trouxe a descrição). */
+export const descricaoDoCnaeDaTabela = (codigo: string): string => CNAE_PARA_TIPO[(codigo || "").replace(/\D/g, "")]?.descricao || "";
+
 /** Tipo sugerido pelo CNAE principal; se não houver correspondência, pelos secundários; senão "Outro". Nunca bloqueia. */
 export function tipoSugeridoPorCnae(principal: string | undefined, secundarios: { codigo: string }[] = []): { tipo: IdDoTipo; rotulo: string; codigo: string; correspondencia: boolean } {
   for (const bruto of [principal || "", ...secundarios.map((s) => s.codigo)]) {

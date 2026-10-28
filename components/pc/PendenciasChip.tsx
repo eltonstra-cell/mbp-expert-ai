@@ -3,14 +3,16 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { rotuloDoChipDePendencias } from "@/lib/companyReadiness";
+import { textoDaPreparacao } from "@/lib/listaDeEmpresas";
 
 // Chip âmbar com as pendências da empresa. Com uma só, mostra o nome; com várias, "N pendências ▸" e a lista completa numa janelinha (clique ou mouse em cima).
-export default function PendenciasChip({ faltas, onAbrir }: { faltas: string[]; /** Abre onde a pendência se resolve; sem isso a lista é só leitura. */ onAbrir?: (falta: string) => void }) {
+export default function PendenciasChip({ faltas, onAbrir, texto = false }: { faltas: string[]; /** Abre onde a pendência se resolve; sem isso a lista é só leitura. */ onAbrir?: (falta: string) => void; /** Texto simples cinza (lista de Empresas), sem a pílula âmbar. */ texto?: boolean }) {
   const [aberta, setAberta] = useState(false);
   const [posicao, setPosicao] = useState<{ top: number; left: number } | null>(null);
   const botaoRef = useRef<HTMLButtonElement | null>(null);
   const janelaRef = useRef<HTMLDivElement | null>(null);
-  const rotulo = rotuloDoChipDePendencias(faltas);
+  const rotulo = texto ? textoDaPreparacao(faltas) : rotuloDoChipDePendencias(faltas);
+  const classe = texto ? "pend-texto" : "pend-chip";
   const varias = faltas.length > 1;
 
   useLayoutEffect(() => {
@@ -43,18 +45,18 @@ export default function PendenciasChip({ faltas, onAbrir }: { faltas: string[]; 
   if (faltas.length === 0) return null;
   if (!varias)
     return onAbrir ? (
-      <button type="button" className="pend-chip pend-chip--botao" onClick={() => onAbrir(faltas[0])} title="Abrir onde se resolve">
+      <button type="button" className={`${classe} ${classe}--botao`} onClick={() => onAbrir(faltas[0])} title="Abrir onde se resolve">
         {rotulo}
       </button>
     ) : (
-      <span className="pend-chip">{rotulo}</span>
+      <span className={classe}>{rotulo}</span>
     );
   return (
     <>
       <button
         ref={botaoRef}
         type="button"
-        className="pend-chip pend-chip--botao"
+        className={`${classe} ${classe}--botao`}
         aria-haspopup="dialog"
         aria-expanded={aberta}
         onClick={(evento) => {

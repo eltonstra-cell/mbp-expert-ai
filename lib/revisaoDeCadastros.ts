@@ -20,7 +20,8 @@ function resumo(texto: string): string {
 export function assinaturaDaPagina(empresa: Pick<Empresa, "setoresManual" | "setorOficialDoAmbiente" | "modelosQuestionarioAmbientes" | "equipamentosSetores" | "fluxosOperacionais">, pagina: PaginaDeCadastro): string {
   const ordenado = (mapa: Record<string, string> | undefined) => Object.entries(mapa || {}).sort(([a], [b]) => a.localeCompare(b));
   if (pagina === "ambientes") return resumo(JSON.stringify([[...(empresa.setoresManual || [])].sort(), ordenado(empresa.setorOficialDoAmbiente), ordenado(empresa.modelosQuestionarioAmbientes)]));
-  if (pagina === "equipamentos") return resumo(JSON.stringify([...(empresa.equipamentosSetores || [])].sort((a, b) => a.id.localeCompare(b.id)).map((item) => [item.id, item.setor, item.nome, item.quantidade, item.observacao])));
+  if (pagina === "equipamentos") return resumo(JSON.stringify([...(empresa.equipamentosSetores || [])].sort((a, b) => a.id.localeCompare(b.id)).map((item) => [item.id, item.setor, item.nome, item.quantidade, item.observacao, ...(item.limiteTemperaturaId ? [item.limiteTemperaturaId] : [])])));
+  // O limite de temperatura entra na assinatura só quando existe: revisão antiga de equipamento sem limite continua em dia.
   return resumo(JSON.stringify([...(empresa.fluxosOperacionais || [])].sort((a, b) => a.id.localeCompare(b.id)).map((item) => [item.id, item.aplicavel, item.setorVinculado, item.descricao, item.responsavel, item.controlesRegistros])));
 }
 
