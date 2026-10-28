@@ -24,11 +24,6 @@ export function tituloFaltam(faltam: number): string {
   return `${pal(faltam, "Falta", "Faltam")} ${qtd(faltam, "item", "itens")}`;
 }
 
-/** Explica o número do título: "1 item sem resposta" / "3 itens sem resposta". */
-export function textoSemResposta(faltam: number): string {
-  return `${qtd(faltam, "item", "itens")} sem resposta`;
-}
-
 /** Itens sem resposta por ambiente, na ordem em que aparecem: "Cozinha · 2 itens". Só nomes de ambiente e contagens. */
 export function semRespostaPorAmbiente(checklist: { status: string; ambiente?: string }[]): string[] {
   const contagem = new Map<string, number>();

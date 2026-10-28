@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { textoSemResposta, tituloFaltam } from "@/lib/ressalvasDeFinalizar";
+import { tituloFaltam } from "@/lib/ressalvasDeFinalizar";
 
 // Janela ÚNICA do "Finalizar visita" no modo Campo: o ✓ da faixa abre SEMPRE esta janela; nada é encerrado no primeiro toque.
 // Três casos (no caso c a janela explica o número do título e separa "Impede finalizar" de "Fica como ressalva"): (a) nada pendente: "Finalizar a visita?" com Cancelar e Finalizar; (b) só ressalvas: "Antes de finalizar" com
@@ -72,7 +72,6 @@ export default function ConfirmarFinalizar({
         <h2 id="cf-titulo" className="cf-titulo">
           {titulo}
         </h2>
-        {caso === "c" && <p className="cf-resumo">{textoSemResposta(faltam)}</p>}
         {caso !== "a" && (
           <div className="cf-corpo">
             {caso === "c" && (

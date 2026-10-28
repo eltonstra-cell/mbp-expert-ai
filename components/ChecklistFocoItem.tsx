@@ -13,7 +13,7 @@ import type { ResultadoDaTemperatura } from "@/lib/limitesDeTemperatura";
 import { progressoDaCaminhada, textoDaCaminhada } from "@/lib/caminhada";
 import { NavIcon } from "@/components/NavIcons";
 import type { InfoAmbiente } from "@/lib/checklistEnvs";
-import { COR_DO_SEGMENTO, rotuloDoSegmento } from "@/lib/checklistSegmentos";
+import { COR_DO_SEGMENTO, COR_DO_SEGMENTO_CAMPO, rotuloDoSegmento } from "@/lib/checklistSegmentos";
 import { useCapturaCamera } from "@/components/useCapturaMidia";
 import { estadosDosBotoes, gravidadeSugerida } from "@/lib/checklistUi";
 import { textoDeBaseLegal } from "@/lib/conteudoValidado";
@@ -74,7 +74,7 @@ type Props = {
   limitesDosEquipamentos?: string[];
   /** Grava a temperatura medida; o resultado indicado pelo limite vira a resposta do item (corrigível). */
   onTemperatura?: (medida: { valor: number; limiteId: string } | null, resultado: ResultadoDaTemperatura | null) => void;
-  /** Modo Campo (celular): respostas sem ícone, observação sem rótulo (placeholder "Observação"), "Limpar resposta" abaixo do campo e o texto inteiro da pergunta no "i". */
+  /** Modo Campo (celular): observação sem rótulo (placeholder "Observação"), "Limpar resposta" abaixo do campo e o texto inteiro da pergunta no "i". */
   campo?: boolean;
 };
 
@@ -311,7 +311,7 @@ export default function ChecklistFocoItem({
                     key={outro.id}
                     type="button"
                     className={`chk-seg${outro.id === item.id ? " is-atual" : ""}`}
-                    style={{ background: COR_DO_SEGMENTO[outro.status] }}
+                    style={{ background: (campo ? COR_DO_SEGMENTO_CAMPO : COR_DO_SEGMENTO)[outro.status] }}
                     aria-label={rotuloDoSegmento(indice, outro.status)}
                     aria-current={outro.id === item.id ? "true" : undefined}
                     onClick={() => onItem(outro.id)}
@@ -324,10 +324,10 @@ export default function ChecklistFocoItem({
               </div>
             )}
             <span className="chk-foco-count">
-              {textoCaminhada || `Item ${posicao} de ${total} na visita`}
+              <span className="chk-foco-count-texto">{textoCaminhada || `Item ${posicao} de ${total} na visita`}</span>
               {caminhada?.nomeDoProximo && onAmbiente && (
                 <>
-                  {" · "}
+                  <span className="chk-foco-count-sep" aria-hidden="true">·</span>
                   <button type="button" className="pc-link-btn" onClick={() => onAmbiente(caminhada.nomeDoProximo as string)}>
                     Pular ambiente
                   </button>
@@ -363,11 +363,11 @@ export default function ChecklistFocoItem({
       <div className="chk-foco-botoes" role="group" aria-label="Resposta do item">
         {(
           [
-            ["Conforme", "ok", "Conforme", "✓"],
-            ["Não Conforme", "nc", "Não conforme", "×"],
-            ["Não se aplica", "na", "Não se aplica", ""],
-          ] as [ChecklistStatus, string, string, string][]
-        ).map(([resposta, tom, rotulo, simbolo]) => {
+            ["Conforme", "ok", "Conforme"],
+            ["Não Conforme", "nc", "Não conforme"],
+            ["Não se aplica", "na", "Não se aplica"],
+          ] as [ChecklistStatus, string, string][]
+        ).map(([resposta, tom, rotulo]) => {
           const estado = estados[resposta as "Conforme" | "Não Conforme" | "Não se aplica"];
           return (
             <button
@@ -387,7 +387,11 @@ export default function ChecklistFocoItem({
                 if (resposta === "Não Conforme" && podeFotografar && fotosNoItem < maxFotos && cameraAutomaticaLigada()) pedirAvisoDeFoto(() => void camera.abrir());
               }}
             >
-              {!campo && (estado === "marcado" || simbolo) && <span aria-hidden="true">{estado === "marcado" ? "✓" : simbolo}</span>}
+              {estado === "marcado" && (
+                <svg className="chk-resp-check" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+                  <path d="M3 8.5l3.2 3.2L13 4.5" />
+                </svg>
+              )}
               <span>{rotulo}</span>
             </button>
           );

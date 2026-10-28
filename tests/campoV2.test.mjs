@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-import { ressalvasDeFinalizar, semRespostaPorAmbiente, textoSemResposta, tituloFaltam } from "../lib/ressalvasDeFinalizar.ts";
+import { COR_DO_SEGMENTO, COR_DO_SEGMENTO_CAMPO } from "../lib/checklistSegmentos.ts";
+import { ressalvasDeFinalizar, semRespostaPorAmbiente, tituloFaltam } from "../lib/ressalvasDeFinalizar.ts";
 import { ABAS_PADRAO, PASSOS_DA_FAIXA_NO_CAMPO, abasDoCampoDoPerfil, destinoFicaSoNoMais, finalizarComRotulo } from "../lib/abasDoCampo.ts";
 
 const ler = (c) => readFileSync(new URL(c, import.meta.url), "utf8");
@@ -51,14 +52,14 @@ test("Confirmação de finalizar: dialog modal com título, Cancelar e Finalizar
   assert.ok(css.includes(".cf-btn{flex:1 1 0;font-family:inherit;min-height:44px;") && css.includes(".cf-btn--finalizar{border:0;background:var(--rd-verde-botao);color:#fff}"));
 });
 
-test("Checklist do Campo: busca do PC no cabeçalho, respostas sem ícone, observação sem rótulo e medidas pedidas", () => {
+test("Checklist do Campo: busca do PC no cabeçalho, respostas só com texto até serem escolhidas, observação sem rótulo e medidas pedidas", () => {
   const busca = ler("../components/BuscaNaBarra.tsx");
   assert.ok(busca.includes('variante?: "inicio" | "campo"') && busca.includes('variante !== "campo" && <kbd'));
   const pagina = ler("../app/page.tsx");
   assert.ok(pagina.includes('variante="campo"') && pagina.includes("semBusca={modo === \"campo\"}"));
   assert.ok(/onAvancar=\{\(status\) => avancarAposResponder\(foco, status\)\}\s*campo\s*\/>/.test(pagina));
   const item = ler("../components/ChecklistFocoItem.tsx").replace(/\r\n/g, "\n");
-  assert.ok(item.includes("{!campo && (estado === \"marcado\" || simbolo)"), "respostas sem ícone no Campo");
+  assert.ok(item.includes("{estado === \"marcado\" && ("), "ícone ✓ só na resposta escolhida (Campo e PC)");
   assert.ok(/\{!campo && \(\s*<div className="chk-obs-titulo">/.test(item), "sem o rótulo 'Observação (opcional)' no Campo");
   assert.ok(item.includes('campo ? "Observação" : ""'));
   assert.ok(item.includes("Observação (opcional)"), "o PC mantém o rótulo");
@@ -115,6 +116,7 @@ test("Janela única de finalizar: três casos (nada pendente, só ressalvas, fal
   const janela = ler("../components/campo/ConfirmarFinalizar.tsx").replace(/\r\n/g, "\n");
   assert.ok(janela.includes('faltam > 0 ? "c" : ressalvas.length > 0 ? "b" : "a"'));
   for (const texto of ["Finalizar a visita?", "Antes de finalizar", "Voltar e completar", "Finalizar com ressalvas", "Não dá para finalizar enquanto faltam itens", "tituloFaltam(faltam)"]) assert.ok(janela.includes(texto), texto);
+  assert.ok(!janela.includes("textoSemResposta") && !janela.includes("cf-resumo"), "sem a linha 'N itens sem resposta' abaixo do título");
   assert.ok(janela.includes('caso === "b" && ('), "'Finalizar com ressalvas' só no caso b");
   assert.equal(tituloFaltam(1), "Falta 1 item");
   assert.equal(tituloFaltam(3), "Faltam 3 itens");
@@ -151,13 +153,11 @@ test("Verde dos botões de Finalizar e Salvar e próximo no Campo: #1E7A3E (o #2
   assert.ok(css.includes('.fv--campo .fv-finalizar:hover,html[data-modo="campo"] .fv--campo .fv-finalizar:active{background:var(--rd-verde-botao-escuro)}'));
 });
 
-test("Janela de finalizar (faltam itens): linha 'N itens sem resposta' e dois grupos, 'Impede finalizar' e 'Fica como ressalva'", () => {
-  assert.equal(textoSemResposta(1), "1 item sem resposta");
-  assert.equal(textoSemResposta(3), "3 itens sem resposta");
+test("Janela de finalizar (faltam itens): título 'Faltam N itens' (sem a linha 'N itens sem resposta') e dois grupos, 'Impede finalizar' e 'Fica como ressalva'", () => {
   assert.deepEqual(semRespostaPorAmbiente([{ status: "Pendente", ambiente: "Cozinha" }, { status: "Conforme", ambiente: "Cozinha" }, { status: "Pendente", ambiente: "Cozinha" }, { status: "Pendente", ambiente: "Estoque" }]), ["Cozinha · 2 itens", "Estoque · 1 item"]);
   assert.deepEqual(semRespostaPorAmbiente([{ status: "Conforme", ambiente: "Cozinha" }]), []);
   const janela = ler("../components/campo/ConfirmarFinalizar.tsx").replace(/\r\n/g, "\n");
-  for (const texto of ["Impede finalizar", "Fica como ressalva", "textoSemResposta(faltam)", "cf-ico--impede", "cf-ico--ressalva", "aria-labelledby=\"cf-g-impede\"", "Voltar e completar"]) assert.ok(janela.includes(texto), texto);
+  for (const texto of ["Impede finalizar", "Fica como ressalva", "cf-ico--impede", "cf-ico--ressalva", "aria-labelledby=\"cf-g-impede\"", "Voltar e completar"]) assert.ok(janela.includes(texto), texto);
   assert.ok(janela.includes('{caso === "c" && ('), "grupo 'Impede finalizar' só quando faltam itens");
   assert.ok(janela.includes("{ressalvas.length > 0 && ("), "grupo de ressalvas só quando há ressalvas");
   assert.ok(ler("../app/page.tsx").includes("semResposta={semRespostaPorAmbiente(checklistAtual)}"));
@@ -172,4 +172,44 @@ test("Ajustes de janela estreita: '+ Nova' no azul padrão, Próxima etapa sem r
   assert.ok(/\.pc-next-title\{[^}]*white-space:normal/.test(css) && !/\.pc-next-title\{[^}]*text-overflow:ellipsis/.test(css));
   assert.ok(css.includes("@media (max-width:899px){\n  .ui-screen[aria-label=\"Visitas técnicas\"] .vis-toolbar{flex-wrap:wrap;") || css.includes("@media (max-width:899px){\r\n  .ui-screen[aria-label=\"Visitas técnicas\"] .vis-toolbar{flex-wrap:wrap;"));
   assert.ok(css.includes('html[data-modo="campo"] .campo-head--busca{display:grid;') && css.includes('html[data-modo="campo"] .campo-tela .chk-foco-topo{display:grid;'));
+});
+
+test("Respostas do checklist: só texto sem seleção; selecionada = ícone ✓ de 16 px nos três, nunca o ×; cores #1E7A3E, vermelho e grafite #5B6575", () => {
+  const item = ler("../components/ChecklistFocoItem.tsx");
+  assert.ok(item.includes('estado === "marcado" && ('), "ícone só quando selecionada");
+  assert.ok(item.includes('className="chk-resp-check" width="16" height="16"') && item.includes('stroke="currentColor"'));
+  assert.ok(!item.includes('"×"') && !item.includes("simbolo"), "sem × nem símbolo fixo");
+  assert.ok(item.includes("aria-pressed={estado === \"marcado\"}"));
+  const css = ler("../app/globals.css");
+  assert.ok(css.includes(".chk-resp.is-marcado.chk-resp--ok{background:#1E7A3E}") && css.includes(".chk-resp.is-marcado.chk-resp--na{background:#5B6575}"));
+  assert.ok(css.includes('.chk-resp.is-marcado.chk-resp--ok{border-color:#1E7A3E;background:#1E7A3E}') && css.includes('.chk-resp.is-marcado.chk-resp--na{border-color:#5B6575;background:#5B6575}'));
+  assert.ok(!css.includes('.chk-resp.is-marcado.chk-resp--ok{border-color:#15803D'));
+});
+
+test("Barra de progresso do Campo: 'Não se aplica' em grafite #5B6575 (distinto dos pendentes claros); o PC mantém a cor antiga", () => {
+  assert.equal(COR_DO_SEGMENTO_CAMPO["Não se aplica"], "#5B6575");
+  assert.notEqual(COR_DO_SEGMENTO_CAMPO["Não se aplica"], COR_DO_SEGMENTO_CAMPO.Pendente);
+  assert.equal(COR_DO_SEGMENTO["Não se aplica"], "#C3CDD6");
+  assert.equal(COR_DO_SEGMENTO_CAMPO.Conforme, COR_DO_SEGMENTO.Conforme);
+  assert.ok(ler("../components/ChecklistFocoItem.tsx").includes("(campo ? COR_DO_SEGMENTO_CAMPO : COR_DO_SEGMENTO)"));
+});
+
+test("Visitas em janela estreita: abas numa linha sem pílulas, legenda das abas, ⋯ junto de Continuar e sub da empresa sem reticências", () => {
+  const css = ler("../app/globals.css");
+  const tela = ler("../components/pc/PcVisitas.tsx");
+  assert.ok(tela.includes("Contagem de todas as empresas") && tela.includes('curto: "Andamento"'));
+  assert.equal(tela.split("Contagem de todas as empresas").length, 2, "legenda só uma vez");
+  assert.ok(tela.includes('<div className="vis-col-fim">'), "Continuar e ⋯ no mesmo bloco");
+  assert.ok(css.includes(".vis-legenda-abas{margin:0;font-size:15px;line-height:1.3;color:#3D4A5C}"));
+  assert.ok(/.ui-tab-count.is-acao{margin-left:4px;padding:0;border-radius:0;background:transparent/.test(css), "contagem em texto simples");
+  assert.ok(css.includes(".vis-abas-bloco .ui-tab-longo{display:none}") && css.includes(".vis-abas-bloco .ui-tab-curto{display:inline}"));
+  assert.ok(/.vis-grupo-textos .ui-row-sub{overflow:visible;text-overflow:clip;white-space:normal}/.test(css));
+  assert.ok(ler("../components/ui/SegmentedTabs.tsx").includes("ui-tab-curto"));
+});
+
+test("Checklist em janela estreita: respostas dentro do cartão e 'Pular ambiente' na mesma linha do 'Próximo'", () => {
+  const css = ler("../app/globals.css");
+  assert.ok(css.includes('html[data-modo="campo"] .campo-tela .chk-foco-botoes{width:100%;padding:0 1px}'));
+  assert.ok(css.includes('.chk-foco-corpo,html[data-modo="campo"] .campo-tela .chk-foco-botoes{box-sizing:border-box;min-width:0;max-width:100%}'));
+  assert.ok(ler("../components/ChecklistFocoItem.tsx").includes("chk-foco-count-texto"));
 });

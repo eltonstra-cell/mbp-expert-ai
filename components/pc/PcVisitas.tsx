@@ -150,6 +150,7 @@ export default function PcVisitas({ empresaAtiva, visitas, filtro, onFiltro, his
           <span className="vis-conta">▣ {quantidade(visita.evidencias, "evidência", "evidências")}</span>
           <span className={`vis-conta vis-conta--nc${visita.naoConformidades === 0 ? " is-zero" : ""}`}>▲ {visita.naoConformidades} NC</span>
         </div>
+        <div className="vis-col-fim">
         <div className="vis-col-acao">
           {visita.arquivada ? (
             visita.podeArquivar && (
@@ -176,6 +177,7 @@ export default function PcVisitas({ empresaAtiva, visitas, filtro, onFiltro, his
         <div className="vis-col-menu">
           <RowMenu itens={menu} />
         </div>
+        </div>
       </div>
     );
   };
@@ -185,17 +187,20 @@ export default function PcVisitas({ empresaAtiva, visitas, filtro, onFiltro, his
       <h1 className="sr-only">Visitas</h1>
 
       <div className="ui-toolbar vis-toolbar">
+        <div className="vis-abas-bloco">
         <SegmentedTabs<FiltroVisitas>
           rotulo="Situação das visitas"
           valor={filtro}
           onChange={onFiltro}
           abas={[
             { id: "Todas", rotulo: "Todas", contagem: naoArquivadas.length },
-            { id: "Em andamento", rotulo: "Em andamento", contagem: naoArquivadas.filter((v) => v.status === "Em andamento").length },
+            { id: "Em andamento", rotulo: "Em andamento", curto: "Andamento", contagem: naoArquivadas.filter((v) => v.status === "Em andamento").length },
             { id: "Concluída", rotulo: "Concluídas", contagem: naoArquivadas.filter((v) => v.status === "Concluída").length },
             { id: "Arquivadas", rotulo: "Arquivadas", contagem: visitas.filter((v) => v.arquivada).length },
           ]}
         />
+        <p className="vis-legenda-abas">Contagem de todas as empresas</p>
+        </div>
         <span className="vis-toolbar-fim">
           <input
             type="search"

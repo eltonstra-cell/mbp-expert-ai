@@ -21,7 +21,7 @@ test("Guia rápido: nome e subtítulo da marca atual, sem o nome antigo", () => 
 });
 
 test("Guia rápido: rótulos do celular conferem com o app e sem termos antigos", () => {
-  for (const rotulo of ["Início", "Checklist", "Registrar", "Correções", "Mais", "Central da visita", "Ambientes", "Evidências", "POPs da visita", "Relatório", "Visitas", "Trocar empresa", "Ajuda", "Modo de tela", "Sincronizar", "Sair"]) {
+  for (const rotulo of ["Início", "Checklist", "Registrar", "Correções", "Mais", "Ambientes", "Evidências", "POPs da visita", "Relatório", "Visitas", "Empresa ativa", "Tudo enviado", "Ajuda", "Modo de tela", "Sincronizar", "Sair"]) {
     assert.ok(texto.includes(rotulo), `faltou o rótulo ${rotulo}`);
   }
   for (const antigo of ["Plano de ação", "Não conformidades:"]) assert.ok(!texto.includes(antigo), `termo antigo: ${antigo}`);

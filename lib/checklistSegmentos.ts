@@ -9,6 +9,12 @@ export const COR_DO_SEGMENTO: Record<ChecklistStatus, string> = {
   Pendente: "#EEF1F5",
 };
 
+// Barra do Campo (celular): "Não se aplica" em grafite, para não se confundir com os pendentes claros. O PC não muda.
+export const COR_DO_SEGMENTO_CAMPO: Record<ChecklistStatus, string> = {
+  ...COR_DO_SEGMENTO,
+  "Não se aplica": "#5B6575",
+};
+
 const NOME_DO_ESTADO: Record<ChecklistStatus, string> = {
   Conforme: "Conforme",
   "Não Conforme": "Não conforme",
