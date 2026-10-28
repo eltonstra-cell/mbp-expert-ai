@@ -199,7 +199,6 @@ export default function PcVisitas({ empresaAtiva, visitas, filtro, onFiltro, his
             { id: "Arquivadas", rotulo: "Arquivadas", contagem: visitas.filter((v) => v.arquivada).length },
           ]}
         />
-        <p className="vis-legenda-abas">Contagem de todas as empresas</p>
         </div>
         <span className="vis-toolbar-fim">
           <input
@@ -227,7 +226,7 @@ export default function PcVisitas({ empresaAtiva, visitas, filtro, onFiltro, his
           const emAndamento = grupo.itens.filter((visita) => visita.status === "Em andamento").length;
           return (
             <section key={grupo.empresaId} className="vis-grupo" aria-label={`Visitas de ${grupo.empresa}`}>
-              <button type="button" className="vis-grupo-alternar vis-grupo-inteiro" aria-expanded={!recolhido} onClick={() => alternarGrupo(grupo.empresaId)}>
+              <button type="button" className={`vis-grupo-alternar vis-grupo-inteiro${grupo.ativa ? " is-ativa" : ""}`} style={grupo.ativa ? ({ "--emp-cor": primeira.cor } as CSSProperties) : undefined} aria-expanded={!recolhido} aria-current={grupo.ativa ? "true" : undefined} onClick={() => alternarGrupo(grupo.empresaId)}>
                 <span className="ui-avatar ui-avatar--round emp-avatar-cor" style={{ "--emp-cor": primeira.cor } as CSSProperties} aria-hidden="true">
                   {iniciaisDaEmpresa(grupo.empresa)}
                 </span>
@@ -238,7 +237,7 @@ export default function PcVisitas({ empresaAtiva, visitas, filtro, onFiltro, his
                     {emAndamento > 0 ? ` · ${emAndamento} em andamento` : ""}
                   </span>
                 </span>
-                {grupo.ativa && <span className="vis-chip-ativa">Empresa ativa</span>}
+                {grupo.ativa && <span className="sr-only">Empresa ativa</span>}
                 <Chevron aberto={!recolhido} />
               </button>
               {!recolhido && <div className="vis-grupo-lista">{grupo.itens.map(linha)}</div>}

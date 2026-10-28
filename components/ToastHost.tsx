@@ -9,9 +9,11 @@ const SEM_TOAST = () => null;
 export default function ToastHost() {
   const toast = useSyncExternalStore(assinarToast, toastAtual, SEM_TOAST);
   if (!toast) return null;
+  // Aviso que acompanha uma resposta do checklist (tem "tom") sempre usa o ✓; só a cor muda. "!" fica para avisos comuns.
+  const ehOk = toast.tipo === "ok" || Boolean(toast.tom);
   return (
-    <div key={toast.id} className={`pc-toast toast-salvo${toast.tipo === "ok" ? " pc-toast--ok" : " toast-aviso"}`} role="status" aria-live="polite">
-      <span aria-hidden="true">{toast.tipo === "ok" ? "✓" : "!"}</span> {toast.texto}
+    <div key={toast.id} className={`pc-toast toast-salvo${ehOk ? " pc-toast--ok" : " toast-aviso"}${toast.tom ? ` toast-tom--${toast.tom}` : ""}`} role="status" aria-live="polite">
+      <span aria-hidden="true">{ehOk ? "✓" : "!"}</span> {toast.texto}
       {toast.acao && (
         <button
           type="button"

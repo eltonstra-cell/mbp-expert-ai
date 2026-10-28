@@ -53,7 +53,7 @@ test("C2: empresa ativa começa aberta e as outras recolhidas; alternar inverte"
 
 test("C2: lista de visitas sem chip repetido, com contadores e aviso em terra; o limite foi para Administração", () => {
   const tela = ler("../components/pc/PcVisitas.tsx");
-  assert.ok(tela.includes("vis-aviso-terra") && tela.includes("vis-col-contagem") && tela.includes("vis-chip-ativa"));
+  assert.ok(tela.includes("vis-aviso-terra") && tela.includes("vis-col-contagem") && !tela.includes("vis-chip-ativa"));
   assert.ok(!tela.includes("Avisar visita aberta") && !tela.includes("onNovaDaEmpresa"), "o aviso saiu da barra e Nova visita só fica no topo");
   assert.ok(tela.includes("{concluida && <Pill tom=\"ok\">Concluída</Pill>}") && !tela.includes("visita.status}</Pill>"));
   const config = ler("../components/pc/ConfiguracaoDeVisitas.tsx");

@@ -74,8 +74,8 @@ test("Checklist do Campo: busca do PC no cabeçalho, respostas só com texto at�
     ".voz-btn{background:#1F78B4}",
     ".voz-ia{background:#1D5F95}",
     "height:34px;min-height:34px;margin:0;padding:0 12px",
-    "height:84px;min-height:84px",
-    "height:36px;min-height:36px;padding:0 18px",
+    "height:auto;min-height:84px",
+    "height:44px;min-height:44px;padding:0 18px",
     "-webkit-line-clamp:2;grid-column:1",
     "html .campo-bar .campo-register-orb{width:40px;height:40px;margin-top:0;border:0;background:var(--rd-ambar);box-shadow:none}",
   ]) assert.ok(css.includes(regra), regra);
@@ -190,17 +190,20 @@ test("Barra de progresso do Campo: 'Não se aplica' em grafite #5B6575 (distinto
   assert.equal(COR_DO_SEGMENTO_CAMPO["Não se aplica"], "#5B6575");
   assert.notEqual(COR_DO_SEGMENTO_CAMPO["Não se aplica"], COR_DO_SEGMENTO_CAMPO.Pendente);
   assert.equal(COR_DO_SEGMENTO["Não se aplica"], "#C3CDD6");
-  assert.equal(COR_DO_SEGMENTO_CAMPO.Conforme, COR_DO_SEGMENTO.Conforme);
+  assert.equal(COR_DO_SEGMENTO_CAMPO.Conforme, "#1E7A3E");
+  assert.equal(COR_DO_SEGMENTO.Conforme, "#15803D", "o PC não muda");
+  assert.equal(COR_DO_SEGMENTO_CAMPO["Não Conforme"], COR_DO_SEGMENTO["Não Conforme"]);
   assert.ok(ler("../components/ChecklistFocoItem.tsx").includes("(campo ? COR_DO_SEGMENTO_CAMPO : COR_DO_SEGMENTO)"));
 });
 
-test("Visitas em janela estreita: abas numa linha sem pílulas, legenda das abas, ⋯ junto de Continuar e sub da empresa sem reticências", () => {
+test("Visitas em janela estreita: abas numa linha sem pílulas, sem legenda das abas, ⋯ junto de Continuar e sub da empresa sem reticências", () => {
   const css = ler("../app/globals.css");
   const tela = ler("../components/pc/PcVisitas.tsx");
-  assert.ok(tela.includes("Contagem de todas as empresas") && tela.includes('curto: "Andamento"'));
-  assert.equal(tela.split("Contagem de todas as empresas").length, 2, "legenda só uma vez");
+  assert.ok(tela.includes('curto: "Andamento"'));
+  assert.ok(!tela.includes("Contagem de todas as empresas") && !tela.includes("vis-legenda-abas") && !css.includes(".vis-legenda-abas"), "legenda removida");
+  assert.ok(!tela.includes("vis-chip-ativa") && !css.includes(".vis-chip-ativa"), "sem o chip Empresa ativa");
+  assert.ok(tela.includes('aria-current={grupo.ativa ? "true" : undefined}') && tela.includes('<span className="sr-only">Empresa ativa</span>') && css.includes(".vis-grupo-inteiro.is-ativa::before{content:\"\";position:absolute;left:2px;top:8px;bottom:8px;width:4px") && css.includes("forced-colors:active") && !css.includes("box-shadow:inset 4px 0 0 var(--emp-cor"), "marcador discreto e acessível");
   assert.ok(tela.includes('<div className="vis-col-fim">'), "Continuar e ⋯ no mesmo bloco");
-  assert.ok(css.includes(".vis-legenda-abas{margin:0;font-size:15px;line-height:1.3;color:#3D4A5C}"));
   assert.ok(/.ui-tab-count.is-acao{margin-left:4px;padding:0;border-radius:0;background:transparent/.test(css), "contagem em texto simples");
   assert.ok(css.includes(".vis-abas-bloco .ui-tab-longo{display:none}") && css.includes(".vis-abas-bloco .ui-tab-curto{display:inline}"));
   assert.ok(/.vis-grupo-textos .ui-row-sub{overflow:visible;text-overflow:clip;white-space:normal}/.test(css));
@@ -212,4 +215,45 @@ test("Checklist em janela estreita: respostas dentro do cartão e 'Pular ambient
   assert.ok(css.includes('html[data-modo="campo"] .campo-tela .chk-foco-botoes{width:100%;padding:0 1px}'));
   assert.ok(css.includes('.chk-foco-corpo,html[data-modo="campo"] .campo-tela .chk-foco-botoes{box-sizing:border-box;min-width:0;max-width:100%}'));
   assert.ok(ler("../components/ChecklistFocoItem.tsx").includes("chk-foco-count-texto"));
+});
+
+test("Pacote de ajustes: pastel com texto grafite, aviso colorido com Desfazer sublinhado, pergunta e observação sem caixa, apoio sem frase repetida", async () => {
+  const css = ler("../app/globals.css");
+  for (const regra of [
+    ".chk-acao--voz{background:#DCEBFB;border-color:#9CBFE6;color:#1B2433}",
+    ".chk-acao--conforme{background:#E3F5EA;border-color:#9BD3B0;color:#1B2433}",
+    ".toast-salvo.toast-tom--ok{border-color:#1E7A3E;background:#1E7A3E}",
+    ".toast-salvo.toast-tom--na{border-color:#5B6575;background:#5B6575}",
+    ".toast-salvo[class*=\"toast-tom--\"] .toast-acao{color:#fff}",
+    "text-decoration:underline",
+    "html .chk-foco-card,html[data-modo=\"campo\"] .campo-tela .chk-foco-card{border:0;background:transparent;box-shadow:none}",
+    "{padding:0;border:0;background:transparent;box-shadow:none}",
+  ]) assert.ok(css.includes(regra), regra);
+  assert.ok(/\.toast-salvo \.toast-acao\{[^}]*min-height:36px/.test(css), "área de toque de Desfazer >= 34 px");
+  const { mostrarToast, toastAtual, limparToast } = await import("../lib/toast.ts");
+  mostrarToast("Item 2 · Não se aplica", { tom: "na", duracaoMs: 50, acao: { rotulo: "Desfazer", aoClicar() {} } });
+  assert.equal(toastAtual().tom, "na");
+  limparToast();
+  assert.ok(ler("../components/ToastHost.tsx").includes("toast-tom--${toast.tom}"));
+  assert.ok(ler("../components/ToastHost.tsx").includes('const ehOk = toast.tipo === "ok" || Boolean(toast.tom)'), "aviso com tom sempre usa o ✓ (só a cor muda)");
+  const apoio = ler("../components/pc/PcChecklist.tsx");
+  assert.ok(!apoio.includes("Sem material de apoio"), "uma linha só: Fonte não registrada");
+  assert.ok(apoio.includes("linhaDeFonteDoApoio(apoio.fonte, !vazio)"));
+});
+
+test("tomDoStatus: Conforme = ok, Não Conforme = nc, Não se aplica = na (cor do aviso do avanço automático)", async () => {
+  const { tomDoStatus } = await import("../lib/checklistSegmentos.ts");
+  assert.equal(tomDoStatus("Conforme"), "ok");
+  assert.equal(tomDoStatus("Não Conforme"), "nc");
+  assert.equal(tomDoStatus("Não se aplica"), "na");
+  assert.ok(ler("../app/page.tsx").includes("tom: tomDoStatus(status)"));
+});
+
+test("linha de fonte do apoio: com outro material e sem fonte não mostra 'Fonte não registrada'; sem nada mostra uma linha só; fonte real sempre aparece", async () => {
+  const { linhaDeFonteDoApoio } = await import("../lib/fonteDaPergunta.ts");
+  assert.equal(linhaDeFonteDoApoio("", true), "");
+  assert.equal(linhaDeFonteDoApoio("Fonte não registrada", true), "");
+  assert.equal(linhaDeFonteDoApoio("", false), "Fonte não registrada");
+  assert.equal(linhaDeFonteDoApoio("Derivada do Manual, cap. 1, item 2.5", true), "Fonte: Derivada do Manual, cap. 1, item 2.5");
+  assert.equal(linhaDeFonteDoApoio("Derivada do Manual, cap. 1, item 2.5", false), "Fonte: Derivada do Manual, cap. 1, item 2.5");
 });

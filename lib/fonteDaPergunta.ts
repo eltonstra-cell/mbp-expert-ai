@@ -12,6 +12,13 @@ export function rotuloDaFonte(referencia: string | undefined | null): string {
   return fonte === SEM_FONTE ? SEM_FONTE : `Fonte: ${fonte}`;
 }
 
+/** Linha de fonte da coluna de apoio: a fonte real sempre aparece; "Fonte não registrada" só aparece quando não há fonte E nenhum outro material de apoio (uma linha só). */
+export function linhaDeFonteDoApoio(fonte: string | undefined | null, temOutroApoio: boolean): string {
+  const exibida = fonteParaExibir(fonte);
+  if (exibida === SEM_FONTE && temOutroApoio) return "";
+  return rotuloDaFonte(fonte);
+}
+
 export function fonteParaExibir(referencia: string | undefined | null): string {
   const texto = (referencia || "").trim();
   if (!texto) return SEM_FONTE;

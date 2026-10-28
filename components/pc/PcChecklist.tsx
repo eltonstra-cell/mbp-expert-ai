@@ -4,7 +4,7 @@ import { useState, type ReactNode } from "react";
 import FotoAmpliada from "@/components/FotoAmpliada";
 import AmbientesCortina from "@/components/AmbientesCortina";
 import type { InfoAmbiente } from "@/lib/checklistEnvs";
-import { rotuloDaFonte } from "@/lib/fonteDaPergunta";
+import { linhaDeFonteDoApoio } from "@/lib/fonteDaPergunta";
 import { progressoDaCaminhada, textoDaCaminhada } from "@/lib/caminhada";
 import { legendaDaEvidencia, rotuloDoSegmento } from "@/lib/checklistSegmentos";
 import type { ChecklistStatus } from "@/types";
@@ -109,9 +109,10 @@ function PainelDeApoio({ apoio }: { apoio: ApoioDoItem }) {
   const [ampliadaId, setAmpliadaId] = useState<string | null>(null);
   const ampliada = apoio.evidencias.find((evidencia) => evidencia.id === ampliadaId && evidencia.tipo === "Foto");
   const vazio = !apoio.reincidencia && !apoio.orientacao && !apoio.baseLegal && !apoio.pop && !apoio.ultimaVisita && apoio.evidencias.length === 0;
+  const linhaDaFonte = linhaDeFonteDoApoio(apoio.fonte, !vazio);
   return (
     <aside className="chk-apoio" aria-label="Apoio ao item">
-      {apoio.fonte && <p className="chk-apoio-fonte">{rotuloDaFonte(apoio.fonte)}</p>}
+      {linhaDaFonte && <p className="chk-apoio-fonte">{linhaDaFonte}</p>}
       {apoio.reincidencia && (
         <CartaoDeApoio titulo="Reincidência" tom="ambar">
           <p className="chk-apoio-texto">{apoio.reincidencia}</p>
@@ -170,7 +171,6 @@ function PainelDeApoio({ apoio }: { apoio: ApoioDoItem }) {
           </div>
         </CartaoDeApoio>
       )}
-      {vazio && <p className="ui-row-sub">Sem material de apoio para este item.</p>}
       {ampliada && <FotoAmpliada url={ampliada.url} descricao={ampliada.nome} onFechar={() => setAmpliadaId(null)} />}
     </aside>
   );

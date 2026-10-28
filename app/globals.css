@@ -3794,7 +3794,6 @@ html[data-modo="campo"] .chk-foco-amb-pos{font-size:.78rem}
 .vis-rolagem::-webkit-scrollbar-thumb{background:#B4C2CE;border-radius:999px;border:2px solid #EEF1F5}
 .vis-grupo-inteiro{width:100%;flex:none}
 .vis-grupo-inteiro .vis-chevron{flex:none;color:#12202B}
-.vis-chip-ativa{flex:none;padding:2px 10px;border:1px solid #E8B04B;border-radius:999px;background:#FEF6E6;font-size:.84rem;color:#12202B}
 .vis-grupo-lista{display:flex;flex-direction:column;gap:8px;padding-left:8px}
 .vis-linha{display:grid;grid-template-columns:6px minmax(200px,1.5fr) 190px 200px 130px 40px;align-items:center;gap:12px;padding:8px 10px 8px 8px;border:2px solid #B4C2CE;border-radius:14px;background:#fff}
 .vis-linha.is-arquivada{opacity:.7}
@@ -5559,7 +5558,6 @@ html[data-modo="completo"] .pc-offset:has(.ini3)>.ini3{flex:1 1 auto;min-height:
 .ui-screen[aria-label="Visitas técnicas"] .ui-tab{color:var(--rd-ink)}
 .ui-screen[aria-label="Visitas técnicas"] .ui-tab.is-active{background:#fff;box-shadow:0 1px 4px rgba(27,36,51,.16);color:var(--rd-ink)}
 .ui-screen[aria-label="Visitas técnicas"] .ui-tab-count{background:var(--rd-contagem);color:var(--rd-ink)}
-.ui-screen[aria-label="Visitas técnicas"] .vis-chip-ativa{border:0;background:var(--rd-creme);color:var(--rd-ink)}
 .ui-screen[aria-label="Visitas técnicas"] .vis-linha{font-size:15px}
 .ui-screen[aria-label="Visitas técnicas"] .vis-grupo-nome{font-weight:500}
 
@@ -6043,7 +6041,7 @@ html[data-modo="campo"] .campo-tela .chk-resp.is-apagado{opacity:.6}
 html[data-modo="campo"] .campo-tela .chk-resp.is-marcado:disabled{opacity:1}
 
 /* Observação: caixa compacta que começa nos botões Foto, Falar e IA; campo de 84 px que cresce ao digitar */
-html[data-modo="campo"] .campo-tela .chk-foco-obs{flex:none;gap:6px;padding:8px 10px;border-radius:14px}
+html[data-modo="campo"] .campo-tela .chk-foco-obs{flex:1 1 auto;min-height:0;gap:6px;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none}
 html[data-modo="campo"] .campo-tela .voz-linha{display:flex;flex-wrap:nowrap;align-items:center;justify-content:flex-start;gap:8px}
 html[data-modo="campo"] .campo-tela :is(.chk-linha-foto,.voz-btn,.voz-ia){box-sizing:border-box;flex:none;width:auto;height:34px;min-height:34px;margin:0;padding:0 12px;gap:6px;border:0;border-radius:10px;color:#fff;font-size:14px;font-weight:400;line-height:1}
 html[data-modo="campo"] .campo-tela .chk-linha-foto{background:#AF640A}
@@ -6051,21 +6049,21 @@ html[data-modo="campo"] .campo-tela .voz-btn{background:#1F78B4}
 html[data-modo="campo"] .campo-tela .voz-ia{background:#1D5F95}
 html[data-modo="campo"] .campo-tela :is(.chk-linha-foto,.voz-btn) svg{width:16px;height:16px}
 html[data-modo="campo"] .campo-tela .voz-ia>span:first-child{font-size:16px;line-height:1;color:#fff}
-html[data-modo="campo"] .campo-tela .chk-obs-campo{position:relative;flex:none}
-html[data-modo="campo"] .campo-tela .chk-obs-campo .chk-obs-area{box-sizing:border-box;flex:none;width:100%;height:84px;min-height:84px;max-height:40vh;padding:8px 10px;font-size:15px;line-height:1.35}
+html[data-modo="campo"] .campo-tela .chk-obs-campo{position:relative;display:flex;flex:1 1 auto;flex-direction:column;min-height:0}
+html[data-modo="campo"] .campo-tela .chk-obs-campo .chk-obs-area{box-sizing:border-box;flex:1 1 auto;width:100%;height:auto;min-height:84px;max-height:none;padding:8px 10px;font-size:15px;line-height:1.35}
 html[data-modo="campo"] .campo-tela .chk-obs-campo .chk-obs-area::placeholder{color:#596273;opacity:1}
 /* "Limpar resposta" numa linha própria abaixo do campo: nunca cobre o texto digitado */
 html[data-modo="campo"] .chk-obs-limpar{position:static;display:flex;justify-content:flex-end;margin-top:4px}
 html[data-modo="campo"] .chk-obs-limpar .chk-limpar{min-height:34px;padding:0 4px;border:0;border-radius:0;background:transparent;font-size:15px;text-decoration:underline;color:#1B2433}
 
 /* "O que verificar" embaixo, logo acima do rodapé */
-html[data-modo="campo"] .campo-tela .chk-foco-corpo{gap:8px;padding:2px 0 4px}
+html[data-modo="campo"] .campo-tela .chk-foco-corpo{gap:8px;padding:2px 0 0}
 html[data-modo="campo"] .campo-tela .chk-foco-apoio{flex:none;margin:0;padding-top:2px}
 html[data-modo="campo"] .campo-tela .chk-apoio-toggle{min-height:38px;font-size:15px}
 
 /* Rodapé fixo: Anterior à esquerda e Salvar e próximo (verde) à direita, cada um com a largura do próprio conteúdo */
-html[data-modo="campo"] .campo-tela .chk-foco-rodape{justify-content:space-between;gap:8px;padding-top:6px}
-html[data-modo="campo"] .campo-tela .chk-foco-rodape .ui-btn{flex:none;width:auto;max-width:none;height:36px;min-height:36px;padding:0 18px;border-radius:10px;font-size:15px;font-weight:400}
+html[data-modo="campo"] .campo-tela .chk-foco-rodape{justify-content:space-between;gap:8px;padding-top:0}
+html[data-modo="campo"] .campo-tela .chk-foco-rodape .ui-btn{flex:none;width:auto;max-width:none;height:44px;min-height:44px;padding:0 18px;border-radius:10px;font-size:15px;font-weight:400}
 html[data-modo="campo"] .campo-tela .chk-foco-rodape .ui-btn--save:not(:disabled){border:0;background:var(--rd-verde-botao);color:#fff}
 html[data-modo="campo"] .campo-tela .chk-foco-rodape .ui-btn--save:not(:disabled):hover,html[data-modo="campo"] .campo-tela .chk-foco-rodape .ui-btn--save:not(:disabled):active{background:var(--rd-verde-botao-escuro)}
 
@@ -6177,10 +6175,9 @@ html[data-modo="campo"] .campo-mais-cartao:disabled{border-color:#D5DAE3;backgro
   .ui-screen[aria-label="Visitas técnicas"] .vis-toolbar-fim>.ui-btn{flex:0 1 auto;min-height:40px}
 }
 
-/* Visitas: contagem em texto simples, legenda das abas, "Continuar" e "⋯" na mesma linha, sub da empresa sem reticências */
+/* Visitas: contagem em texto simples, "Continuar" e "⋯" na mesma linha, sub da empresa sem reticências */
 .vis-col-fim{display:flex;align-items:center;justify-content:flex-end;gap:8px;grid-column:5/7;margin-left:auto}
-.vis-abas-bloco{display:flex;min-width:0;flex-direction:column;align-items:flex-start;gap:4px}
-.vis-legenda-abas{margin:0;font-size:15px;line-height:1.3;color:#3D4A5C}
+.vis-abas-bloco{display:flex;min-width:0;flex-direction:column;align-items:flex-start;gap:0}
 .ui-tab-curto{display:none}
 .ui-screen[aria-label="Visitas técnicas"] .ui-tab-count,.ui-screen[aria-label="Visitas técnicas"] .ui-tab-count.is-acao{margin-left:4px;padding:0;border-radius:0;background:transparent;font-size:inherit;color:#3D4A5C}
 .ui-screen[aria-label="Visitas técnicas"] .ui-tab.is-active .ui-tab-count{color:var(--rd-ink)}
@@ -6207,3 +6204,44 @@ html[data-modo="campo"] .campo-tela .chk-foco-botoes{width:100%;padding:0 1px}
 html[data-modo="campo"] .campo-tela .chk-resp{max-width:100%;overflow:hidden}
 html[data-modo="campo"] .campo-tela .chk-resp>span:not(.chk-resp-check){min-width:0;overflow:hidden;text-overflow:ellipsis}
 html[data-modo="campo"] .campo-tela .chk-resp.is-marcado{gap:4px}
+
+
+/* ===== Pacote de ajustes (texto x fundo, aviso, pergunta, observação, rodapé, Visitas) ===== */
+/* Padrão único "pastel + texto grafite + borda fina": Ditar o ambiente, Marcar o restante, respostas sem seleção e chip Sincronizado */
+.chk-acao{height:36px;padding:0 14px;border:1px solid transparent;border-radius:10px;font-size:15px;font-weight:400;color:#1B2433}
+.chk-acao--voz{background:#DCEBFB;border-color:#9CBFE6;color:#1B2433}
+.chk-acao--conforme{background:#E3F5EA;border-color:#9BD3B0;color:#1B2433}
+html[data-modo] .chk-resp:not(.is-marcado){border-width:1.5px;border-style:solid;color:#1B2433}
+html[data-modo] .chk-resp:not(.is-marcado) span{color:#1B2433}
+html[data-modo] .chk-resp.chk-resp--ok:not(.is-marcado){border-color:#9BD3B0;background:#E3F5EA}
+html[data-modo] .chk-resp.chk-resp--nc:not(.is-marcado){border-color:#E9A7A2;background:#FBE4E2}
+html[data-modo] .chk-resp.chk-resp--na:not(.is-marcado){border-color:#C5CCDA;background:#EEF1F7}
+html[data-modo="campo"] .campo-tela .chk-resp.chk-resp--ok:not(.is-marcado){border-color:#9BD3B0;background:#E3F5EA;color:#1B2433}
+html[data-modo="campo"] .campo-tela .chk-resp.chk-resp--nc:not(.is-marcado){border-color:#E9A7A2;background:#FBE4E2;color:#1B2433}
+html[data-modo="campo"] .campo-tela .chk-resp.chk-resp--na:not(.is-marcado){border-color:#C5CCDA;background:#EEF1F7;color:#1B2433}
+html .pc-sync-chip.is-ok,html .pc-topbar .pc-sync-chip.is-ok,html .campo-sync:not(.is-pendente):not(.is-sem-sinal):not(.is-erro){background:#E3F5EA;box-shadow:inset 0 0 0 1px #9BD3B0;color:#1B2433;font-weight:400}
+/* Início do PC: o chip volta a ser só texto, sem caixa nem borda */
+html .pc-topbar--inicio .pc-sync-chip.is-ok,html .pc-topbar--inicio .pc-sync-chip{background:transparent;box-shadow:none;border:0;padding:0 4px}
+html .pc-sync-chip.is-ok .pc-sync-dot,html .campo-sync:not(.is-pendente):not(.is-sem-sinal):not(.is-erro) span:first-child{background:#1E7A3E}
+
+/* Aviso com Desfazer: fundo na cor da resposta, texto branco simples, Desfazer sublinhado (branco: o azul da marca não passa de 4,5:1 sobre fundo forte) */
+.toast-salvo.toast-tom--ok{border-color:#1E7A3E;background:#1E7A3E}
+.toast-salvo.toast-tom--nc{border-color:#C9473F;background:#C9473F}
+.toast-salvo.toast-tom--na{border-color:#5B6575;background:#5B6575}
+.toast-salvo[class*="toast-tom--"]{color:#fff;font-weight:400}
+.toast-salvo .toast-acao{display:inline-flex;align-items:center;min-height:36px;padding:0 6px;border:0;background:transparent;font-size:inherit;font-weight:400;text-decoration:underline;text-underline-offset:3px;cursor:pointer;color:#2B54CF}
+.toast-salvo[class*="toast-tom--"] .toast-acao{color:#fff}
+.toast-salvo .toast-acao:focus-visible{outline:3px solid #fff;outline-offset:1px}
+
+/* Título da pergunta: só o texto, sem caixa com borda. No PC o recuo lateral da caixa sai, para o título alinhar com as respostas e com a coluna */
+html .chk-foco-card,html[data-modo="campo"] .campo-tela .chk-foco-card{border:0;background:transparent;box-shadow:none}
+html:not([data-modo="campo"]) .chk-foco-card{padding-left:2px;padding-right:2px}
+
+/* Observação: sem a borda externa; ficam o rótulo, Foto / Falar / IA e o campo de texto com a borda dele */
+html[data-modo] .chk-foco-obs,html[data-modo="campo"] .campo-tela .chk-foco-obs{padding:0;border:0;background:transparent;box-shadow:none}
+
+/* Visitas: empresa ativa só com marcador discreto (barra de 4 px na lateral), sem chip de texto. A barra é um elemento próprio (não some em alto contraste) e leva contorno cinza para aparecer mesmo com cor clara */
+.vis-grupo-inteiro.is-ativa{position:relative;padding-left:16px}
+.vis-grupo-inteiro.is-ativa::before{content:"";position:absolute;left:2px;top:8px;bottom:8px;width:4px;border-radius:2px;background:var(--emp-cor,#AF640A);outline:1px solid #6B7280}
+@media (forced-colors:active){.vis-grupo-inteiro.is-ativa::before{background:Highlight;outline-color:CanvasText;forced-color-adjust:none}}
+.vis-rolagem{margin-top:12px}

@@ -9,9 +9,10 @@ export const COR_DO_SEGMENTO: Record<ChecklistStatus, string> = {
   Pendente: "#EEF1F5",
 };
 
-// Barra do Campo (celular): "Não se aplica" em grafite, para não se confundir com os pendentes claros. O PC não muda.
+// Barra do Campo (celular): "Conforme" no mesmo verde dos botões (#1E7A3E) e "Não se aplica" em grafite, para não se confundir com os pendentes claros. O PC não muda.
 export const COR_DO_SEGMENTO_CAMPO: Record<ChecklistStatus, string> = {
   ...COR_DO_SEGMENTO,
+  Conforme: "#1E7A3E",
   "Não se aplica": "#5B6575",
 };
 
@@ -21,6 +22,13 @@ const NOME_DO_ESTADO: Record<ChecklistStatus, string> = {
   "Não se aplica": "Não se aplica",
   Pendente: "sem resposta",
 };
+
+/** Cor do aviso do avanço automático: acompanha a resposta (Não Conforme = nc, Não se aplica = na, o resto = ok). */
+export function tomDoStatus(status: ChecklistStatus): "ok" | "nc" | "na" {
+  if (status === "Não se aplica") return "na";
+  if (status === "Não Conforme") return "nc";
+  return "ok";
+}
 
 export function rotuloDoSegmento(indice: number, status: ChecklistStatus): string {
   return `Item ${indice + 1}, ${NOME_DO_ESTADO[status]}`;

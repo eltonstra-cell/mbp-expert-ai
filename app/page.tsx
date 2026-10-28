@@ -38,6 +38,7 @@ import { podeGerarDossie } from "@/lib/dossie";
 import { CAPACIDADE_VAZIA, TEXTO_DA_CAPACIDADE, capacidadeDoFormulario, capacidadeParaFormulario, validarCapacidade, type CapacidadeEmTexto } from "@/lib/capacidadeEmpresa";
 import PainelHojeCard, { AtalhosDeRelatorios } from "@/components/PainelHoje";
 import { fonteParaExibir } from "@/lib/fonteDaPergunta";
+import { tomDoStatus } from "@/lib/checklistSegmentos";
 import RelatorioMontadoVista from "@/components/RelatorioMontadoVista";
 import PcRevisaoDoRelatorio from "@/components/pc/PcRevisaoDoRelatorio";
 import PcMapaDeRisco from "@/components/pc/PcMapaDeRisco";
@@ -4895,7 +4896,7 @@ export default function Home() {
     };
     mostrarToast(
       textoDoAvanco({ posNoAmbiente: doAmbiente.findIndex((registro) => registro.id === item.id) + 1, status, proximoAmbiente, fimDaLista: !alvo }),
-      { duracaoMs: DURACAO_DO_AVISO_DO_AVANCO_MS, acao: { rotulo: "Desfazer", aoClicar: desfazer } }
+      { tom: tomDoStatus(status), duracaoMs: DURACAO_DO_AVISO_DO_AVANCO_MS, acao: { rotulo: "Desfazer", aoClicar: desfazer } }
     );
     // Registro honesto: o relatório mostra quantas respostas foram seguidas do avanço automático.
     atualizarChecklistItem(item.id, { avancouSozinho: true });
@@ -7369,7 +7370,7 @@ export default function Home() {
               <button
               type="button"
               onClick={() => void atualizarNuvemManualmente()}
-              className={`rounded-full px-2.5 py-1.5 text-[11px] font-semibold sm:px-3 sm:text-xs ${
+              className={`rounded-full px-2.5 py-1.5 text-[11px] font-normal sm:px-3 sm:text-xs ${
                 syncStatus === "sincronizado"
                   ? "bg-[var(--ok-bg)] text-[color:var(--ink)]"
                   : syncStatus === "conectando"

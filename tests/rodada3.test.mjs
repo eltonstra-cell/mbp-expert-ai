@@ -289,7 +289,7 @@ test("rotuloDaFonte: 'Fonte não registrada' aparece sem o prefixo 'Fonte: ' e o
   assert.equal(rotuloDaFonte("RDC 216/2004 — item 4.7.2"), "Fonte: RDC 216/2004 — item 4.7.2");
   for (const arquivo of ["../components/ChecklistFocoItem.tsx", "../components/pc/PcChecklist.tsx", "../components/pc/PcRelatoriosEmitidos.tsx"]) {
     const codigo = ler(arquivo);
-    assert.ok(codigo.includes("rotuloDaFonte("), arquivo);
+    assert.ok(codigo.includes("rotuloDaFonte(") || codigo.includes("linhaDeFonteDoApoio("), arquivo);
     assert.ok(!/Fonte: \{/.test(codigo), arquivo + " não monta 'Fonte: ' à mão");
   }
 });
