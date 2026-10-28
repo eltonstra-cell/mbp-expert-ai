@@ -61,7 +61,7 @@ test("dossiê: caixas maiores, contagem por item e aviso quando o resultado fica
 test("comprovante: sugestão em cinza e erro com fundo branco (nada de amarelo empilhado)", () => {
   const css = ler("../app/globals.css");
   assert.ok(css.includes(".comp-sugestao{display:flex;flex-wrap:nowrap;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;border:1px solid #B4C2CE;border-radius:10px;background:#EEF1F5"));
-  assert.ok(css.includes(".ui-input.is-invalid{border-color:#D93A3A;background:#fff}"));
+  assert.ok(css.includes(".ui-input.is-invalid{border-color:#B83A33;background:#fff}"));
 });
 
 test("fonte e contraste no PC: rótulos escuros sem maiúsculas, borda #B4C2CE e base de 15 px (celular intacto)", () => {

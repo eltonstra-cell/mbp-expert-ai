@@ -120,7 +120,7 @@ test("barra do topo do Início: título 30 px, busca sem Ctrl K nem Ir, microfon
   assert.match(css, /\.pc-topbar--inicio \.pc-mic\{[^}]*background:#0E7FB8/);
   assert.match(css, /\.pc-topbar--inicio \.pc-sync-chip\{background:transparent/);
   assert.match(css, /\.pc-topbar--inicio \.emp-ativa-caixa\{[^}]*height:44px;padding:0 14px;border:1\.5px solid #2456D6;border-radius:12px;background:#FFFFFF\}/);
-  assert.match(css, /\.pc-topbar--inicio \.emp-ativa-selo\{position:absolute;top:-9px;left:12px;[^}]*background:#FFFFFF;font-size:11px;[^}]*color:#2456D6\}/);
+  assert.match(css, /\.pc-topbar--inicio \.emp-ativa-selo\{position:absolute;top:-9px;left:12px;[^}]*background:#FFFFFF;font-size:15px;[^}]*color:#2456D6\}/);
   assert.match(css, /\.pc-topbar--inicio \.emp-ativa-nome\{[^}]*font-size:16px/);
   const pagina = ler("../app/page.tsx");
   assert.equal(pagina.includes('variante={view === "inicio"'), false, "o Início usa a mesma barra do topo das outras telas (sem variante própria)");

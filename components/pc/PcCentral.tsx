@@ -14,7 +14,7 @@ export type NcAbertaCentral = {
   onAbrir: () => void;
 };
 
-export type PassoCentral = { chave: string; rotulo: string; resumo: string; icone: NavIconName; tom: "ok" | "info" | "nc" | "pend" | "lilas" };
+export type PassoCentral = { chave: string; rotulo: string; resumo: string; /** Explica o escopo do número (title e nome acessível). */ titulo?: string; icone: NavIconName; tom: "ok" | "info" | "nc" | "pend" | "lilas" };
 
 type Props = {
   passos: PassoCentral[];
@@ -41,6 +41,10 @@ type Props = {
   onVerNcs: () => void;
   onEditarAmbientes: (() => void) | null;
   onTodasVisitas: () => void;
+  /** Total de não conformidades abertas da visita (a lista mostra só as primeiras que cabem). */
+  totalNcsAbertas: number;
+  /** "Finalizar visita" no topo; nulo = sem permissão ou visita já concluída. Quem chama escolhe o fluxo de cada modo. */
+  onFinalizar: (() => void) | null;
 };
 
 export default function PcCentral({
@@ -55,6 +59,8 @@ export default function PcCentral({
   onVerNcs,
   onEditarAmbientes,
   onTodasVisitas,
+  totalNcsAbertas,
+  onFinalizar,
 }: Props) {
   const ncsFit = useCabem<HTMLDivElement>(72, 4, 0);
   return (
@@ -65,6 +71,11 @@ export default function PcCentral({
           <p className="ui-subtitle">{detalhe}</p>
         </div>
         <div className="ui-head-actions">
+          {onFinalizar && (
+            <button type="button" className="ui-btn pc-central-finalizar" onClick={onFinalizar}>
+              Finalizar visita
+            </button>
+          )}
           {onEditarAmbientes && (
             <button type="button" className="ui-btn ui-btn--secondary" onClick={onEditarAmbientes}>
               Editar ambientes
@@ -96,7 +107,15 @@ export default function PcCentral({
 
       <div className="pc-steps-row" role="group" aria-label="Próximos passos da visita">
         {passos.map((passo) => (
-          <button key={passo.chave} type="button" className={`pc-step-card pc-step-card--${passo.tom}`} onClick={() => onIrPasso(passo.chave)}>
+          <button
+            key={passo.chave}
+            type="button"
+            data-chave={passo.chave}
+            className={`pc-step-card pc-step-card--${passo.tom}`}
+            title={passo.titulo ?? passo.resumo}
+            aria-label={passo.titulo ? `${passo.rotulo}, ${passo.resumo}. ${passo.titulo}` : undefined}
+            onClick={() => onIrPasso(passo.chave)}
+          >
             <span className="pc-step-tile">
               <NavIcon name={passo.icone} size={20} strokeWidth={1.9} />
             </span>
@@ -104,7 +123,7 @@ export default function PcCentral({
               <span className="pc-step-name">{passo.rotulo}</span>
               <span className="pc-step-sum">{passo.resumo}</span>
             </span>
-            <span className="pc-step-arrow" aria-hidden="true">→</span>
+            <span className="pc-step-arrow" aria-hidden="true">›</span>
           </button>
         ))}
       </div>
@@ -150,7 +169,7 @@ export default function PcCentral({
           <div className="ui-head">
             <h2 className="ui-card-title">Não conformidades em aberto</h2>
             <button type="button" className="pc-link-btn" onClick={onVerNcs}>
-              Ver todas →
+              Ver todas ({totalNcsAbertas}) →
             </button>
           </div>
           <div className="ui-list pc-open-list" ref={ncsFit.ref}>
@@ -160,12 +179,9 @@ export default function PcCentral({
                 faixa="nc"
                 titulo={nc.titulo}
                 secundario={nc.detalhe}
-                pilulas={<Pill tom="nc">{nc.status}</Pill>}
-                acao={
-                  <button type="button" className="ui-btn ui-btn--secondary" onClick={nc.onAbrir}>
-                    Acompanhar →
-                  </button>
-                }
+                pilulas={nc.status !== "Aberta" ? <Pill tom="nc">{nc.status}</Pill> : undefined}
+                onClick={nc.onAbrir}
+                seta
               />
             ))}
           </div>

@@ -13,10 +13,54 @@ test("Central da visita: sem a fileira de 4 números nem o cartão 'Atividade da
   assert.ok(!pagina.includes("indicadores={{") && !pagina.includes("atividade={{"));
 });
 
-test("Central: cada número aparece uma vez, com rótulo que diz o que conta (checklist sem resposta; pendências do relatório; correções abertas da visita)", () => {
-  assert.ok(pagina.includes('qtd(pendentesChecklist, "item sem resposta", "itens sem resposta")'));
-  assert.ok(pagina.includes('"pendência do relatório", "pendências do relatório"'));
-  assert.ok(pagina.includes('qtd(ncsAbertas, "aberta", "abertas")} nesta visita'));
+test("Central: cada cartão tem UMA linha de texto com o número real; o escopo das correções fica no title/aria; sem 'N conformes · N itens sem resposta'", () => {
+  assert.ok(pagina.includes('resumo: `${respondidos} de ${totalChecklist} respondidos`'));
+  assert.ok(!pagina.includes('qtd(conformesChecklist, "conforme", "conformes")'));
+  assert.ok(pagina.includes('qtd(linhasConferenciaRel.filter((linha) => !linha.ok).length, "pendência", "pendências")'));
+  assert.ok(pagina.includes('resumo: qtd(ncsAbertas, "aberta", "abertas")') && pagina.includes("nesta visita (a barra lateral conta só as vencidas da empresa toda)"));
+  assert.ok(pagina.includes('"Nenhum a criar"'));
+  assert.ok(central.includes("aria-label={passo.titulo ?") && central.includes("title={passo.titulo ??"));
+});
+
+test("Central: a faixa de abas NÃO aparece na Central (os cartões são a navegação) e continua nas telas internas; Finalizar visita no topo usa o fluxo da faixa", () => {
+  assert.ok(pagina.includes('modoVisitaNoMenu && visitaAtual && view !== "visita" ? ('));
+  assert.ok(pagina.includes('onFinalizar={visitaAtual.status !== "Concluída" && permitido("visitas.concluir", visitaAtual.empresaId) ? () => (modo === "campo" ? setConfirmaFinalizarCampo(true) : void finalizarInspecao()) : null}'));
+  assert.ok(central.includes("pc-central-finalizar") && central.includes("Finalizar visita") && central.includes("Editar ambientes"));
+  assert.ok(central.indexOf("pc-central-finalizar") < central.indexOf("Editar ambientes"), "Finalizar vem antes de Editar ambientes, na mesma linha do título");
+  assert.ok(css.includes("pc-central-finalizar{border:0;background:#1E7A3E;color:#fff}"));
+});
+
+test("Central: cartões de 84 px com ícone branco em quadrado colorido (cores do DS) e seta '›'; cartão branco com texto grafite", () => {
+  assert.ok(css.includes(".pc-steps-row .pc-step-card{height:84px;min-height:84px;"));
+  for (const [tom, cor] of [["ok", "#2E8B57"], ["info", "#1F78B4"], ["nc", "#B83A33"], ["pend", "#AF640A"], ["lilas", "#55607A"]]) assert.ok(css.includes(`.pc-steps-row .pc-step-card--${tom} .pc-step-tile{background:${cor}}`), tom);
+  assert.ok(central.includes('className="pc-step-arrow" aria-hidden="true">›<'));
+  assert.ok(css.includes(".pc-steps-row .pc-step-name,.pc-steps-row .pc-step-sum{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:400;color:#1B2433}"));
+});
+
+test("Central: lista de não conformidades sem chip 'Aberta' nem 'Acompanhar →'; linha inteira clicável com seta; 'Ver todas (N) →' no topo", () => {
+  assert.ok(!central.includes("Acompanhar →"));
+  assert.ok(central.includes('nc.status !== "Aberta" ?') && central.includes("onClick={nc.onAbrir}") && central.includes("seta"));
+  assert.ok(central.includes("Ver todas ({totalNcsAbertas}) →"));
+  assert.ok(central.indexOf("Ver todas") < central.indexOf("<ListRow"), "o link fica no topo da lista");
+  const linha = ler("../components/ui/ListRow.tsx");
+  assert.ok(linha.includes('role={clicavel ? "button" : undefined}') && linha.includes("ui-row-seta"));
+  assert.ok(css.includes(".pc-open-list .ui-row.is-clickable:focus-visible{outline:3px solid #2B54CF"));
+  assert.ok(pagina.includes("nomeCurtoDoAmbiente(nomeDeExibicaoDoAmbiente(nc.ambiente))"));
+});
+
+test("Nome curto do ambiente: primeiro trecho antes de vírgula, parênteses, barra, ' de ' ou ' e '", async () => {
+  const { nomeCurtoDoAmbiente } = await import("../lib/checklistEnvs.ts");
+  assert.equal(nomeCurtoDoAmbiente("Recebimento de matérias-primas, ingredientes e embalagens"), "Recebimento");
+  assert.equal(nomeCurtoDoAmbiente("Cozinha"), "Cozinha");
+});
+
+test("Seletor 'Empresa ativa': sem avatar com iniciais (Completo, Equilibrado e Campo) e rótulo de 15 px", () => {
+  const topo = ler("../components/AppTopbar.tsx");
+  const campo = ler("../components/campo/CampoTelas.tsx");
+  assert.ok(!topo.includes('className="emp-ativa-avatar"') && !campo.includes('className="emp-ativa-avatar"'));
+  assert.ok(!topo.includes("empresaIniciais") && !campo.includes("empresaIniciais") && !pagina.includes("empresaIniciais"));
+  assert.ok(/.emp-ativa-selo{[^}]*font-size:15px/.test(css));
+  assert.ok(css.includes(".emp-ativa-avatar{display:none!important}"));
 });
 
 test("Correções: a aba da visita conta abertas da visita; a barra lateral conta vencidas da empresa; os dois dizem isso no title e no aria", () => {

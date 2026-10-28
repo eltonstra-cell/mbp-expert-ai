@@ -38,7 +38,7 @@ test("selo de sincronização: texto curto e cor com função", () => {
   );
   const css = ler("../app/globals.css");
   assert.match(css, /\.campo-sync\.is-sem-sinal\{background:#FFD8A8\}/);
-  assert.match(css, /\.campo-sync\.is-erro\{background:#D93A3A;color:#fff\}/);
+  assert.match(css, /\.campo-sync\.is-erro\{background:#B83A33;color:#fff\}/);
 });
 
 test("selo com texto no topo do celular, com o nome da página; a frase do sem sinal aparece ao tocar no selo (sem faixa repetida)", () => {

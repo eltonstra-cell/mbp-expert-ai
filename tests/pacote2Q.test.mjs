@@ -122,7 +122,7 @@ test("etiquetas e cores da linha: Rascunho #FDEBC2, Aguardando #F6C65B, Vigente 
   assert.equal(CORES_DA_SITUACAO.Rascunho.fundo, "#FDEBC2");
   assert.equal(CORES_DA_SITUACAO["Aguardando aprovação"].fundo, "#F6C65B");
   assert.equal(CORES_DA_SITUACAO.Vigente.texto, "#FFFFFF");
-  assert.equal(CORES_DA_SITUACAO["Aguardando aprovação"].faixa, "#E8760A", "barra laranja para aguardando");
+  assert.equal(CORES_DA_SITUACAO["Aguardando aprovação"].faixa, "#AF640A", "barra terracota para aguardando");
   assert.equal(CORES_DA_SITUACAO.Rascunho.faixa, "#E8B04B", "barra âmbar para rascunho");
   assert.match(ler("../app/globals.css"), /\.pgl-etiqueta--atraso\{background:#FDE3E3/);
   // registro atrasado: frequência diária, aprovado há mais de um dia e nenhum registro

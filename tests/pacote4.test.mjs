@@ -123,7 +123,7 @@ test("74. duas barras de blocos na Central; Ambientes e equipamentos é um bloco
 });
 
 test("74. cor e estado de cada POP: atrasado vence rascunho; vigente verde, aguardando azul", () => {
-  assert.deepEqual(COR_DO_ESTADO, { atrasado: "#D93A3A", rascunho: "#E89A0C", aguardando: "#0E7FB8", vigente: "#15803D", pendencia: "#B35A36", neutro: "#B4C2CE" });
+  assert.deepEqual(COR_DO_ESTADO, { atrasado: "#B83A33", rascunho: "#E89A0C", aguardando: "#0E7FB8", vigente: "#15803D", pendencia: "#B35A36", neutro: "#B4C2CE" });
   assert.equal(estadoVisualDaLinha({ situacao: "Rascunho", registroAtrasado: true }), "atrasado");
   assert.equal(estadoVisualDaLinha({ situacao: "Rascunho" }), "rascunho");
   assert.equal(estadoVisualDaLinha({ situacao: "Aguardando aprovação" }), "aguardando");

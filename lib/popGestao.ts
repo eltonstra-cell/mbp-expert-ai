@@ -25,7 +25,7 @@ export function situacaoDeGestao(pop: ProcedimentoOperacionalPadronizado | undef
 export const CORES_DA_SITUACAO: Record<SituacaoDeGestao, { fundo: string; texto: string; faixa: string }> = {
   "Falta criar": { fundo: "#EEF1F5", texto: "#12202B", faixa: "#C9D3DB" },
   Rascunho: { fundo: "#FDEBC2", texto: "#12202B", faixa: "#E8B04B" },
-  "Aguardando aprovação": { fundo: "#F6C65B", texto: "#12202B", faixa: "#E8760A" },
+  "Aguardando aprovação": { fundo: "#F6C65B", texto: "#12202B", faixa: "#AF640A" },
   Vigente: { fundo: "#2E8B57", texto: "#FFFFFF", faixa: "#2E8B57" },
   "Revisão vencida": { fundo: "#B35A36", texto: "#FFFFFF", faixa: "#B35A36" },
   Inativo: { fundo: "#EEF1F5", texto: "#12202B", faixa: "#C9D3DB" },
@@ -408,7 +408,7 @@ export function montarListaDePops(entrada: EntradaDaLista): { conjunto: LinhaCom
 // ===== Lista de POPs em blocos (Central sem caixas): cor do estado, resumo e abertura dos grupos =====
 
 /** Cores do estado visual da linha: moldura e bolinha. "Registro atrasado" vence rascunho e os outros estados. */
-export const COR_DO_ESTADO = { atrasado: "#D93A3A", rascunho: "#E89A0C", aguardando: "#0E7FB8", vigente: "#15803D", pendencia: "#B35A36", neutro: "#B4C2CE" } as const;
+export const COR_DO_ESTADO = { atrasado: "#B83A33", rascunho: "#E89A0C", aguardando: "#0E7FB8", vigente: "#15803D", pendencia: "#B35A36", neutro: "#B4C2CE" } as const;
 export type EstadoVisual = keyof typeof COR_DO_ESTADO;
 
 export function estadoVisualDaLinha(linha: Pick<LinhaDaLista, "situacao" | "registroAtrasado">): EstadoVisual {

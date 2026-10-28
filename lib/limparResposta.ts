@@ -1,15 +1,8 @@
-// Limpar a resposta de um item do checklist, com desfazer, sem apagar a Correção (NC) ligada a ele.
+// Limpar a resposta de um item do checklist, sem apagar a Correção (NC) ligada a ela (ela fica cancelada pelo usuário).
 import { gravidadeSugerida } from "./checklistUi.ts";
 import type { ChecklistItem, NaoConformidade } from "../types/index.ts";
 
 type ItemComMemoria = ChecklistItem & { observacaoNCMemoria?: string };
-
-export type InstantaneoDaResposta = {
-  visitaId: string;
-  item: ChecklistItem;
-  /** Correção como estava antes de limpar; vazio quando o item nunca gerou uma. */
-  nc?: NaoConformidade;
-};
 
 export function idDaNcDoItem(visitaId: string, itemId: string) {
   return `${visitaId}:${itemId}`;
@@ -48,7 +41,7 @@ export function limparResposta(
   visita: { id: string },
   item: ChecklistItem,
   agoraIso: string
-): { item: ChecklistItem; ncs: NaoConformidade[]; instantaneo: InstantaneoDaResposta } {
+): { item: ChecklistItem; ncs: NaoConformidade[] } {
   const idNc = idDaNcDoItem(visita.id, item.id);
   const ncAntes = ncs.find((nc) => nc.id === idNc);
   const limpo: ItemComMemoria = { ...item, status: "Pendente", observacao: "", observacaoNCMemoria: "" };
@@ -59,15 +52,5 @@ export function limparResposta(
   const novasNcs = ncAntes && !ncAntes.inativaNoChecklist
     ? ncs.map((nc) => (nc.id === idNc ? { ...nc, inativaNoChecklist: true, canceladaPeloUsuarioEm: agoraIso } : nc))
     : ncs;
-  return { item: limpo, ncs: novasNcs, instantaneo: { visitaId: visita.id, item: { ...item }, nc: ncAntes ? { ...ncAntes } : undefined } };
-}
-
-/** Restaura o item e a Correção exatamente como estavam antes de limpar. */
-export function desfazerLimpeza(
-  ncs: NaoConformidade[],
-  instantaneo: InstantaneoDaResposta
-): { item: ChecklistItem; ncs: NaoConformidade[] } {
-  const idNc = idDaNcDoItem(instantaneo.visitaId, instantaneo.item.id);
-  const antes = instantaneo.nc;
-  return { item: { ...instantaneo.item }, ncs: antes ? ncs.map((nc) => (nc.id === idNc ? { ...antes } : nc)) : ncs };
+  return { item: limpo, ncs: novasNcs };
 }

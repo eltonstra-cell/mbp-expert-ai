@@ -29,7 +29,7 @@ export const ESTILOS_DE_CAPA: { id: EstiloDeCapa; rotulo: string; descricao: str
 ];
 
 export const CORES_DE_CAPA: { id: CorDeCapa; rotulo: string; hex: string; clara: string; doIcone: string }[] = [
-  { id: "laranja", rotulo: "Laranja", hex: "#E8760A", clara: "#FCEBD7", doIcone: "#12202B" },
+  { id: "laranja", rotulo: "Laranja", hex: "#AF640A", clara: "#FCEBD7", doIcone: "#FFFFFF" },
   { id: "verde", rotulo: "Verde", hex: "#1F8A4C", clara: "#DDF1E5", doIcone: "#1F8A4C" },
   { id: "terra", rotulo: "Terra", hex: "#B5532A", clara: "#F3E1D8", doIcone: "#B5532A" },
   { id: "ambar", rotulo: "Âmbar", hex: "#E8B04B", clara: "#FBF0D5", doIcone: "#12202B" },

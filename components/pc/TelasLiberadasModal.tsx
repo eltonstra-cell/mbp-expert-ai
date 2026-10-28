@@ -21,7 +21,7 @@ const PERFIS: PerfilUsuario[] = ["Administrador", "Consultor/RT", "Cliente Gesto
 
 const GRUPOS: { id: GrupoTela; titulo: string; cor: string }[] = [
   { id: "visita", titulo: "Visita atual", cor: "#2456D6" },
-  { id: "cadastros", titulo: "Cadastros e acervo", cor: "#E8760A" },
+  { id: "cadastros", titulo: "Cadastros e acervo", cor: "#AF640A" },
   { id: "geral", titulo: "Geral", cor: "#0D9488" },
 ];
 
@@ -32,10 +32,10 @@ const MENU_PREVIA: { tela: TelaKey; cor: string }[] = [
   { tela: "central", cor: "#0EA5E9" },
   { tela: "checklist", cor: "#15803D" },
   { tela: "evidencias", cor: "#0EA5E9" },
-  { tela: "correcoes", cor: "#D93A3A" },
+  { tela: "correcoes", cor: "#B83A33" },
   { tela: "popsVisita", cor: "#F5A623" },
   { tela: "relatorio", cor: "#475569" },
-  { tela: "pops", cor: "#E8760A" },
+  { tela: "pops", cor: "#AF640A" },
   { tela: "empresas", cor: "#0D9488" },
   { tela: "ambientes", cor: "#14B8A6" },
   { tela: "guiaRapido", cor: "#0D9488" },

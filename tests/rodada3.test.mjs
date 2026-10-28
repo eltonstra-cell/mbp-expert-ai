@@ -269,7 +269,7 @@ test("fonte da pergunta na tela: derivada/parcial aparecem como estão; textos g
   // o que já cita uma norma (bloco antigo de Recebimento) continua como está: não é validado nem reescrito aqui
   assert.equal(fonteParaExibir("RDC 216/2004 — item 4.7.2"), "RDC 216/2004 — item 4.7.2");
   assert.equal(SEM_FONTE, "Fonte não registrada");
-  assert.ok(ler("../app/page.tsx").includes("fonte: fonteParaExibir(foco.referencia)"));
+  assert.ok(ler("../components/ChecklistFocoItem.tsx").includes("rotuloDaFonte(item.referencia)"), "a fonte vem do helper, logo abaixo do enunciado");
 });
 
 test("rotuloDaFonte: 'Fonte não registrada' aparece sem o prefixo 'Fonte: ' e o dado guardado não muda", async () => {
@@ -280,9 +280,9 @@ test("rotuloDaFonte: 'Fonte não registrada' aparece sem o prefixo 'Fonte: ' e o
   assert.equal(rotuloDaFonte("Boas Práticas — critério operacional"), SEM_FONTE);
   assert.equal(rotuloDaFonte("Derivada do Manual, cap. 1, item 2.5"), "Fonte: Derivada do Manual, cap. 1, item 2.5");
   assert.equal(rotuloDaFonte("RDC 216/2004 — item 4.7.2"), "Fonte: RDC 216/2004 — item 4.7.2");
-  for (const arquivo of ["../components/ChecklistFocoItem.tsx", "../components/pc/PcChecklist.tsx", "../components/pc/PcRelatoriosEmitidos.tsx"]) {
+  for (const arquivo of ["../components/ChecklistFocoItem.tsx", "../components/pc/PcRelatoriosEmitidos.tsx"]) {
     const codigo = ler(arquivo);
-    assert.ok(codigo.includes("rotuloDaFonte(") || codigo.includes("linhaDeFonteDoApoio("), arquivo);
+    assert.ok(codigo.includes("rotuloDaFonte("), arquivo);
     assert.ok(!/Fonte: \{/.test(codigo), arquivo + " não monta 'Fonte: ' à mão");
   }
 });

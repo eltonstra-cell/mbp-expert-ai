@@ -24,6 +24,8 @@ type Props = {
   filhos?: ReactNode;
   /** Linha com checkbox à esquerda. */
   seletor?: ReactNode;
+  /** Seta ">" à direita de uma linha inteira clicável. */
+  seta?: boolean;
 };
 
 // Padrão único "uma linha por item".
@@ -42,6 +44,7 @@ export function ListRow({
   onClick,
   filhos,
   seletor,
+  seta,
 }: Props) {
   const clicavel = Boolean(onClick);
   return (
@@ -73,6 +76,11 @@ export function ListRow({
         </div>
         {meio && <div className="ui-row-mid">{meio}</div>}
         {pilulas && <div className="ui-row-pills">{pilulas}</div>}
+        {seta && (
+          <span className="ui-row-seta" aria-hidden="true">
+            ›
+          </span>
+        )}
         {(acao || menu) && (
           <div className="ui-row-actions" onClick={(evento) => evento.stopPropagation()}>
             {acao}

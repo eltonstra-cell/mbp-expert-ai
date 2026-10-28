@@ -108,7 +108,7 @@ import { calcularCortes } from "@/lib/pdfPaginacao";
 import { cssDoDocumentoImpresso, cssDoRodapeDeImpressao, suportaCaixasDeMargem, type CabecalhoDeImpressao } from "@/lib/printFooter";
 import { sincronizarNcDoItem } from "@/lib/checklistNcs";
 import { visitaDaEmpresaAtiva } from "@/lib/trocarEmpresa";
-import { dadosExtrasDoItem, desfazerLimpeza, limparResposta, listaEmTexto, type InstantaneoDaResposta } from "@/lib/limparResposta";
+import { dadosExtrasDoItem, limparResposta, listaEmTexto } from "@/lib/limparResposta";
 import { ABAS_PADRAO, PASSOS_DA_FAIXA_NO_CAMPO, abasDoCampoDoPerfil, destinoFicaSoNoMais, finalizarComRotulo, type AbaDaBarra } from "@/lib/abasDoCampo";
 import { CampoBarra, CampoCabecalho, CampoCorrecoes, CampoInicio, CampoMais, CampoTelaFixa, type TelaCampo } from "@/components/campo/CampoTelas";
 import ConfirmarFinalizar from "@/components/campo/ConfirmarFinalizar";
@@ -123,7 +123,7 @@ import { construirDestinos, construirDestinosDaVisita, type Destino, type Entrad
 import BuscaNaBarra, { type ContextoDaVoz } from "@/components/BuscaNaBarra";
 import { quantidadeDeAmbientes, resumoAmbientes, vizinhoDoAmbiente } from "@/lib/checklistEnvs";
 import { NavIcon } from "@/components/NavIcons";
-import { iniciaisDaEmpresa, chaveAtiva, itemDoMenu, itensVisiveis, nomeSemNumerosNoInicio, type NavContexto, type NavKey } from "@/lib/navigation";
+import { chaveAtiva, itemDoMenu, itensVisiveis, nomeSemNumerosNoInicio, type NavContexto, type NavKey } from "@/lib/navigation";
 import ManualBaseFields from "@/components/ManualBaseFields";
 import OperationalFlowsFields from "@/components/OperationalFlowsFields";
 import QualityProgramsFields from "@/components/QualityProgramsFields";
@@ -2589,8 +2589,6 @@ export default function Home() {
     const timer = window.setTimeout(() => setEvidenciaMsg(""), 4000);
     return () => window.clearTimeout(timer);
   }, [evidenciaMsg]);
-  const [respostaLimpa, setRespostaLimpa] = useState<InstantaneoDaResposta | null>(null);
-  const respostaLimpaTimerRef = useRef<number | null>(null);
   const opcoesTrocaDeEmpresa = useMemo(
     () => opcoesDeEmpresa(Object.values(db.empresas), usuarioDaSessao, db.empresaAtualId),
     [db.empresas, usuarioDaSessao, db.empresaAtualId]
@@ -4644,26 +4642,6 @@ export default function Home() {
       return { ...o, visitas, ncs: resultado.ncs };
     });
     setItemFocoId(itemId);
-    setRespostaLimpa({ visitaId, item: { ...item }, nc: nc ? { ...nc } : undefined });
-    if (respostaLimpaTimerRef.current) window.clearTimeout(respostaLimpaTimerRef.current);
-    respostaLimpaTimerRef.current = window.setTimeout(() => setRespostaLimpa(null), 6000);
-  }
-
-  function desfazerLimparResposta() {
-    const instantaneo = respostaLimpa;
-    if (!instantaneo) return;
-    if (respostaLimpaTimerRef.current) window.clearTimeout(respostaLimpaTimerRef.current);
-    setRespostaLimpa(null);
-    setDb((o) => {
-      const volta = desfazerLimpeza(o.ncs || [], instantaneo);
-      const visitas = o.visitas.map((v) => {
-        if (v.id !== instantaneo.visitaId) return v;
-        const checklist = (v.checklist || []).map((registro) => (registro.id === instantaneo.item.id ? volta.item : registro));
-        const pct = checklist.length ? Math.round((checklist.filter((i) => i.status !== "Pendente").length / checklist.length) * 100) : 0;
-        return { ...v, checklist, progresso: Math.max(15, Math.min(55, 15 + Math.round(pct * 0.4))) };
-      });
-      return { ...o, visitas, ncs: volta.ncs };
-    });
   }
 
   function abrirAtalhoDaVisita(destino: "checklist" | "evidencias" | "ncs" | "plano" | "relatorio") {
@@ -7078,8 +7056,9 @@ export default function Home() {
   const modoVisitaNoMenu = !!visitaAtual && VISIT_VIEWS.includes(view) && !(view === "correcoes" && correcoesDaEmpresa);
   const chaveMenuAtivo: NavKey | null = modoVisitaNoMenu ? "visitas" : view === "correcoes" ? "ncs" : chaveDaTela;
   // Faixa da visita (só dentro da visita): troca de assunto e "Finalizar visita". No celular reserva a própria altura.
+  // A Central da visita não mostra a faixa: os cartões dela são a navegação e o "Finalizar visita" fica no topo dela.
   const faixaDaVisita = (reservarAltura: boolean, campo = false) =>
-    modoVisitaNoMenu && visitaAtual ? (
+    modoVisitaNoMenu && visitaAtual && view !== "visita" ? (
       <FaixaDaVisita
         passos={passosDaTrilha(dadosTrilha)
           .filter((passo) => telaVisivel(passo.chave === "pops" ? "popsVisita" : (passo.chave as TelaKey)))
@@ -7185,14 +7164,6 @@ export default function Home() {
       {avisoVoz && (
         <div className="pc-toast voz-toast" role="status">
           <span>{avisoVoz}</span>
-        </div>
-      )}
-      {respostaLimpa && (
-        <div className="pc-toast aviso-acima-do-rodape" role="status">
-          <span>Resposta limpa</span>
-          <button type="button" className="pc-link-btn" onClick={desfazerLimparResposta}>
-            Desfazer
-          </button>
         </div>
       )}
       {aviso && (
@@ -7646,7 +7617,6 @@ export default function Home() {
             <CampoCabecalho
               empresa={nomeEmFormatoNatural(atual?.nomeFantasia) || ""}
               empresaCor={atual ? corDaEmpresa(atual) : undefined}
-              empresaIniciais={atual ? iniciaisDaEmpresa(atual.nomeFantasia || "") : ""}
               titulo={TITULO_DA_TELA_NO_CAMPO[view] || ""}
               sincronizacao={{ ...seloAtual, rotulo: view === "campomais" && seloAtual.estado === "ok" ? "Tudo enviado" : seloAtual.rotulo, onClick: tocarNoSelo }}
               menuModo={itensMenuModo}
@@ -7685,7 +7655,6 @@ export default function Home() {
           onPrimeiro={() => (dentroDaVisita ? setView("visita") : navegarPrincipal("visitas"))}
           empresaAtiva={atual ? nomeDeExibicaoDaEmpresa(atual) : null}
           empresaCor={atual ? corDaEmpresa(atual) : undefined}
-          empresaIniciais={atual ? iniciaisDaEmpresa(atual.nomeFantasia || "") : ""}
           iniciais={iniciaisUsuario}
           mostrarTodasVisitas={dentroDaVisita}
           onTodasVisitas={() => navegarPrincipal("visitas")}
@@ -8707,7 +8676,6 @@ export default function Home() {
                 : null;
               const seloDoItem = historicoDoItem ? seloDaReincidencia(historicoDoItem.vezes) : "";
               apoio = {
-                fonte: fonteParaExibir(foco.referencia),
                 reincidencia: seloDoItem ? `${seloDoItem} neste critério. Informe a causa raiz no plano de ação.` : undefined,
                 orientacao: foco.orientacao || undefined,
                 baseLegal: textoDeBaseLegal(foco) ? { referencia: textoDeBaseLegal(foco) } : undefined,
@@ -9371,11 +9339,11 @@ export default function Home() {
         ) : view === "visita" && visitaAtual ? (
           <PcCentral
             passos={([
-              { chave: "checklist", rotulo: "Checklist", resumo: `${qtd(conformesChecklist, "conforme", "conformes")} · ${pendentesChecklist > 0 ? qtd(pendentesChecklist, "item sem resposta", "itens sem resposta") : "tudo respondido"}`, icone: "checklist", tom: "ok" },
+              { chave: "checklist", rotulo: "Checklist", resumo: `${respondidos} de ${totalChecklist} respondidos`, icone: "checklist", tom: "ok" },
               { chave: "evidencias", rotulo: "Evidências", resumo: `${fotosVisita} ${fotosVisita === 1 ? "foto" : "fotos"} · ${audiosVisita} ${audiosVisita === 1 ? "áudio" : "áudios"}`, icone: "evidencias", tom: "info" },
-              { chave: "correcoes", rotulo: "Correções", resumo: `${qtd(ncsAbertas, "aberta", "abertas")} nesta visita`, icone: "ncs", tom: "nc" },
-              { chave: "pops", rotulo: "POPs da visita", resumo: `${resumoPopsVisita.pendentes} a criar ou em rascunho`, icone: "pops", tom: "pend" },
-              { chave: "relatorio", rotulo: "Relatório", resumo: linhasConferenciaRel.filter((linha) => !linha.ok).length > 0 ? qtd(linhasConferenciaRel.filter((linha) => !linha.ok).length, "pendência do relatório", "pendências do relatório") : "Sem pendências do relatório", icone: "relatorio", tom: "lilas" },
+              { chave: "correcoes", rotulo: "Correções", resumo: qtd(ncsAbertas, "aberta", "abertas"), titulo: `${qtd(ncsAbertas, "correção aberta", "correções abertas")} nesta visita (a barra lateral conta só as vencidas da empresa toda)`, icone: "ncs", tom: "nc" },
+              { chave: "pops", rotulo: "POPs da visita", resumo: resumoPopsVisita.pendentes > 0 ? `${resumoPopsVisita.pendentes} a criar` : "Nenhum a criar", titulo: resumoPopsVisita.pendentes > 0 ? `${resumoPopsVisita.pendentes} a criar ou em rascunho` : undefined, icone: "pops", tom: "pend" },
+              { chave: "relatorio", rotulo: "Relatório", resumo: linhasConferenciaRel.filter((linha) => !linha.ok).length > 0 ? qtd(linhasConferenciaRel.filter((linha) => !linha.ok).length, "pendência", "pendências") : "Sem pendências", titulo: "Pendências do relatório desta visita", icone: "relatorio", tom: "lilas" },
             ] as PassoCentral[]).filter((passo) => telaVisivel(passo.chave === "pops" ? "popsVisita" : (passo.chave as TelaKey)))}
             onIrPasso={(chave) => irParaPasso(chave as PassoVisita)}
             empresa={nomeParaExibir(empresaVisita)}
@@ -9418,12 +9386,14 @@ export default function Home() {
                     .map((nc) => ({
                       id: nc.id,
                       titulo: nc.titulo,
-                      detalhe: `${nomeDeExibicaoDoAmbiente(nc.ambiente)} · ${nc.categoria}`,
+                      detalhe: `${nomeCurtoDoAmbiente(nomeDeExibicaoDoAmbiente(nc.ambiente))} · ${nc.categoria}`,
                       status: nc.status,
                       onAbrir: () => { setPlanoNcAbertaId(nc.id); setView("plano"); },
                     }))
                 : null
             }
+            totalNcsAbertas={ncsVisita.filter((nc) => nc.status !== "Resolvida").length}
+            onFinalizar={visitaAtual.status !== "Concluída" && permitido("visitas.concluir", visitaAtual.empresaId) ? () => (modo === "campo" ? setConfirmaFinalizarCampo(true) : void finalizarInspecao()) : null}
             onVerNcs={() => setView("ncs")}
             onEditarAmbientes={permitido("visitas.executar", visitaAtual.empresaId) ? () => abrirAmbientes() : null}
             onTodasVisitas={() => navegarPrincipal("visitas")}

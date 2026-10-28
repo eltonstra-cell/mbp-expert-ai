@@ -4,7 +4,6 @@ import { useState, type ReactNode } from "react";
 import FotoAmpliada from "@/components/FotoAmpliada";
 import AmbientesCortina from "@/components/AmbientesCortina";
 import type { InfoAmbiente } from "@/lib/checklistEnvs";
-import { linhaDeFonteDoApoio } from "@/lib/fonteDaPergunta";
 import { progressoDaCaminhada, textoDaCaminhada } from "@/lib/caminhada";
 import { legendaDaEvidencia, rotuloDoSegmento } from "@/lib/checklistSegmentos";
 import type { ChecklistStatus } from "@/types";
@@ -12,8 +11,6 @@ import type { ChecklistStatus } from "@/types";
 export type ItemDaFila = { id: string; status: ChecklistStatus; /** Reprovou nas últimas visitas. */ reprovou?: boolean; /** Não se aplica em todas as visitas recentes: fica no bloco recolhido. */ recolhido?: boolean };
 
 export type ApoioDoItem = {
-  /** De onde vem a pergunta ("Derivada do Manual, cap. 1, item 2.5", "Parcial: …" ou "Fonte não registrada"). */
-  fonte?: string;
   /** Orientação do item ("O que verificar"). */
   orientacao?: string;
   /** Referência e, se existir nos dados, o trecho da norma. */
@@ -104,15 +101,16 @@ function CartaoDeApoio({ titulo, tom, children }: { titulo: string; tom: string;
   );
 }
 
-// Cada cartão só aparece se houver dado real para ele.
+function apoioVazio(apoio: ApoioDoItem) {
+  return !apoio.reincidencia && !apoio.orientacao && !apoio.baseLegal && !apoio.pop && !apoio.ultimaVisita && apoio.evidencias.length === 0;
+}
+
+// Cada cartão só aparece se houver dado real para ele. A fonte da pergunta não fica aqui: aparece logo abaixo do enunciado (ChecklistFocoItem).
 function PainelDeApoio({ apoio }: { apoio: ApoioDoItem }) {
   const [ampliadaId, setAmpliadaId] = useState<string | null>(null);
   const ampliada = apoio.evidencias.find((evidencia) => evidencia.id === ampliadaId && evidencia.tipo === "Foto");
-  const vazio = !apoio.reincidencia && !apoio.orientacao && !apoio.baseLegal && !apoio.pop && !apoio.ultimaVisita && apoio.evidencias.length === 0;
-  const linhaDaFonte = linhaDeFonteDoApoio(apoio.fonte, !vazio);
   return (
     <aside className="chk-apoio" aria-label="Apoio ao item">
-      {linhaDaFonte && <p className="chk-apoio-fonte">{linhaDaFonte}</p>}
       {apoio.reincidencia && (
         <CartaoDeApoio titulo="Reincidência" tom="ambar">
           <p className="chk-apoio-texto">{apoio.reincidencia}</p>
@@ -181,74 +179,82 @@ export default function PcChecklist({ titulo, subtitulo, ambientes, ambienteAtua
   const caminhada = progressoDaCaminhada(ambientes, ambienteAtual);
   const recolhidos = fila.filter((item) => item.recolhido && item.id !== itemAtualId);
   const textoCaminhada = textoDaCaminhada(caminhada);
+  const temApoio = apoio ? !apoioVazio(apoio) : false;
   return (
     <section className="ui-screen chk-pc" aria-label="Checklist">
       <div className="ui-head">
         <div>
           <h1 className="ui-title">{titulo}</h1>
           <p className="ui-subtitle">{subtitulo}</p>
-          {(ditado || (restanteDoLote && restanteDoLote.quantos > 0)) && (
-            <div className="chk-acoes-ambiente">
-              {ditado}
-              {restanteDoLote && restanteDoLote.quantos > 0 && (
-                <button type="button" className="chk-acao chk-acao--conforme" onClick={restanteDoLote.onMarcar}>
-                  Marcar o restante como Conforme ({restanteDoLote.quantos})
-                </button>
-              )}
-            </div>
-          )}
-          {textoCaminhada && (
-            <p className="chk-caminhada" role="status">
-              {textoCaminhada}
-              {onPularAmbiente && caminhada.nomeDoProximo && (
-                <>
-                  {" · "}
-                  <button type="button" className="pc-link-btn" onClick={() => onPularAmbiente(caminhada.nomeDoProximo as string)}>Pular ambiente</button>
-                </>
-              )}
-            </p>
-          )}
         </div>
         <button type="button" className="ui-btn ui-btn--secondary" onClick={onVoltar}>
           ← Central da visita
         </button>
       </div>
 
-      <div className="chk-pc-linha">
-        <SeletorDeAmbiente
-          ambientes={ambientes}
-          atual={ambienteAtual}
-          posicao={Math.max(1, fila.findIndex((item) => item.id === itemAtualId) + 1)}
-          total={fila.length}
-          onSelecionar={onAmbiente}
-        />
-        <div className="chk-pc-fila" role="group" aria-label="Itens do ambiente">
-          {fila.map((item, indice) =>
-            item.recolhido && !recolhidosAbertos && item.id !== itemAtualId ? null : (
-              <button
-                key={item.id}
-                type="button"
-                className={`chk-pc-num ${CLASSE_DO_STATUS[item.status]}${item.id === itemAtualId ? " is-atual" : ""}${item.reprovou ? " is-reprovou" : ""}`}
-                aria-current={item.id === itemAtualId ? "true" : undefined}
-                aria-label={`${rotuloDoSegmento(indice, item.status)}${item.reprovou ? ". Reprovou nas últimas visitas" : ""}`}
-                title={item.reprovou ? "Reprovou nas últimas visitas" : undefined}
-                onClick={() => onItem(item.id)}
-              >
-                {indice + 1}
-              </button>
-            )
+      <div className={`chk-pc-corpo${temApoio ? "" : " chk-pc-corpo--sem-apoio"}`}>
+        <div className="chk-pc-esq">
+          {(textoCaminhada || ditado || (restanteDoLote && restanteDoLote.quantos > 0)) && (
+            <div className="chk-pc-faixa">
+              {textoCaminhada && (
+                <p className="chk-caminhada" role="status">
+                  {textoCaminhada}
+                  {onPularAmbiente && caminhada.nomeDoProximo && (
+                    <>
+                      {" · "}
+                      <button type="button" className="pc-link-btn" onClick={() => onPularAmbiente(caminhada.nomeDoProximo as string)}>Pular ambiente</button>
+                    </>
+                  )}
+                </p>
+              )}
+              {(ditado || (restanteDoLote && restanteDoLote.quantos > 0)) && (
+                <div className="chk-acoes-ambiente">
+                  {ditado}
+                  {restanteDoLote && restanteDoLote.quantos > 0 && (
+                    <button type="button" className="chk-acao chk-acao--conforme" onClick={restanteDoLote.onMarcar}>
+                      Marcar o restante como Conforme ({restanteDoLote.quantos})
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           )}
-          {recolhidos.length > 0 && (
-            <button type="button" className="pc-link-btn chk-pc-recolhidos" aria-expanded={recolhidosAbertos} onClick={() => setRecolhidosAbertos((aberto) => !aberto)}>
-              {recolhidosAbertos ? "Recolher" : `${recolhidos.length} ${recolhidos.length === 1 ? "item recolhido" : "itens recolhidos"}`} {recolhidosAbertos ? "▴" : "▾"}
-            </button>
-          )}
-        </div>
-      </div>
 
-      <div className={`chk-pc-corpo${apoio ? "" : " chk-pc-corpo--sem-apoio"}`}>
-        <div className="chk-pc-principal">{principal}</div>
-        {apoio && <PainelDeApoio apoio={apoio} />}
+          <div className="chk-pc-linha">
+            <SeletorDeAmbiente
+              ambientes={ambientes}
+              atual={ambienteAtual}
+              posicao={Math.max(1, fila.findIndex((item) => item.id === itemAtualId) + 1)}
+              total={fila.length}
+              onSelecionar={onAmbiente}
+            />
+            <div className="chk-pc-fila" role="group" aria-label="Itens do ambiente">
+              {fila.map((item, indice) =>
+                item.recolhido && !recolhidosAbertos && item.id !== itemAtualId ? null : (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={`chk-pc-num ${CLASSE_DO_STATUS[item.status]}${item.id === itemAtualId ? " is-atual" : ""}${item.reprovou ? " is-reprovou" : ""}`}
+                    aria-current={item.id === itemAtualId ? "true" : undefined}
+                    aria-label={`${rotuloDoSegmento(indice, item.status)}${item.reprovou ? ". Reprovou nas últimas visitas" : ""}`}
+                    title={item.reprovou ? "Reprovou nas últimas visitas" : undefined}
+                    onClick={() => onItem(item.id)}
+                  >
+                    {indice + 1}
+                  </button>
+                )
+              )}
+              {recolhidos.length > 0 && (
+                <button type="button" className="pc-link-btn chk-pc-recolhidos" aria-expanded={recolhidosAbertos} onClick={() => setRecolhidosAbertos((aberto) => !aberto)}>
+                  {recolhidosAbertos ? "Recolher" : `${recolhidos.length} ${recolhidos.length === 1 ? "item recolhido" : "itens recolhidos"}`} {recolhidosAbertos ? "▴" : "▾"}
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="chk-pc-principal">{principal}</div>
+        </div>
+        {temApoio && apoio && <PainelDeApoio apoio={apoio} />}
       </div>
     </section>
   );

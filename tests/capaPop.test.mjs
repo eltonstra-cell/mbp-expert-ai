@@ -71,8 +71,8 @@ test("a capa vem DESLIGADA por padrão: estilo C, laranja, ícone colorido, sem 
   assert.deepEqual(capaCompleta({}), { ativa: false, estilo: "C", cor: "laranja", icone: "colorido" });
   assert.equal(capaCompleta({ estilo: "Z", cor: "roxo", icone: "foto", logotipo: "http://x/y.png", ativa: true }).estilo, "C", "valores inválidos voltam ao padrão");
   assert.equal(capaCompleta({ logotipo: "http://x/y.png" }).logotipo, undefined, "só data URL de PNG ou JPG");
-  assert.equal(CORES_DE_CAPA.find((c) => c.id === "laranja").hex, "#E8760A");
-  assert.deepEqual(CORES_DE_CAPA.map((c) => c.hex), ["#E8760A", "#1F8A4C", "#B5532A", "#E8B04B", "#3A4750", "#12202B"]);
+  assert.equal(CORES_DE_CAPA.find((c) => c.id === "laranja").hex, "#AF640A");
+  assert.deepEqual(CORES_DE_CAPA.map((c) => c.hex), ["#AF640A", "#1F8A4C", "#B5532A", "#E8B04B", "#3A4750", "#12202B"]);
   assert.deepEqual(ESTILOS_DE_CAPA.map((e) => e.id), ["A", "B", "C", "D", "E", "F"]);
 });
 

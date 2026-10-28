@@ -34,14 +34,13 @@ type Chrome = {
 export function CampoCabecalho({
   empresa,
   empresaCor = "#4A5D73",
-  empresaIniciais = "",
   sincronizacao,
   menuModo,
   onTrocarEmpresa,
   onVoltar,
   titulo = "",
   busca = null,
-}: Pick<Chrome, "empresa" | "sincronizacao" | "menuModo"> & { empresaCor?: string; empresaIniciais?: string; onTrocarEmpresa?: () => void; onVoltar?: () => void; /** Nome da página atual, em destaque no topo. */ titulo?: string; /** Busca inteligente (a mesma do PC) logo abaixo da linha do título; só no Checklist. */ busca?: ReactNode }) {
+}: Pick<Chrome, "empresa" | "sincronizacao" | "menuModo"> & { empresaCor?: string; onTrocarEmpresa?: () => void; onVoltar?: () => void; /** Nome da página atual, em destaque no topo. */ titulo?: string; /** Busca inteligente (a mesma do PC) logo abaixo da linha do título; só no Checklist. */ busca?: ReactNode }) {
   return (
     <header className={`campo-head${busca ? " campo-head--busca" : ""}`}>
       <div className="campo-head-linha">
@@ -61,9 +60,6 @@ export function CampoCabecalho({
       </div>
       {busca}
       <div className="emp-ativa" style={{ "--emp-cor": empresaCor } as CSSProperties}>
-        <span className="emp-ativa-avatar" aria-hidden="true">
-          {empresaIniciais}
-        </span>
         <button type="button" className="emp-ativa-caixa" aria-label={`Trocar empresa. Empresa ativa: ${empresa || "nenhuma"}`} onClick={onTrocarEmpresa} disabled={!onTrocarEmpresa}>
           <span className="emp-ativa-selo">Empresa ativa</span>
           <span className="emp-ativa-nome">{empresa || "Nenhuma empresa ativa"}</span>
@@ -283,7 +279,7 @@ const ETAPAS_CAMPO: { chave: EtapaChave; curto: string; tom: string }[] = [
   { chave: "acompanhamento", curto: "Acomp.", tom: "info" },
   { chave: "resolvidas", curto: "Resolvidas", tom: "ok" },
 ];
-const COR_DA_GRAVIDADE_CAMPO: Record<GravidadeNc, string> = { Crítica: "#D93A3A", Importante: "#F5A623", Rotina: "#3AA6D9" };
+const COR_DA_GRAVIDADE_CAMPO: Record<GravidadeNc, string> = { Crítica: "#B83A33", Importante: "#F5A623", Rotina: "#3AA6D9" };
 const GRUPOS_CAMPO: { gravidade: GravidadeNc; rotulo: string }[] = [
   { gravidade: "Crítica", rotulo: "CRÍTICAS" },
   { gravidade: "Importante", rotulo: "IMPORTANTES" },

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { temResposta, dadosExtrasDoItem, limparResposta, desfazerLimpeza, listaEmTexto } from "../lib/limparResposta.ts";
+import { temResposta, dadosExtrasDoItem, limparResposta, listaEmTexto } from "../lib/limparResposta.ts";
 import { sincronizarNcDoItem } from "../lib/checklistNcs.ts";
 
 const visita = { id: "v1", empresaId: "e1" };
@@ -42,11 +42,12 @@ test("limpar apaga marcação, observação e volta a gravidade sugerida", () =>
   assert.equal(limpo.criticidadeSugerida, undefined);
 });
 
-test("desfazer restaura o item exatamente como estava", () => {
+test("limpar devolve só o item e as correções (não há mais desfazer da resposta limpa)", async () => {
+  const modulo = await import("../lib/limparResposta.ts");
+  assert.equal(modulo.desfazerLimpeza, undefined);
   const item = { ...itemBase, status: "Não Conforme", observacao: "sujo", criticidade: "Crítica", criticidadeSugerida: "Rotina" };
-  const { instantaneo, ncs } = limparResposta([], visita, item, AGORA);
-  const volta = desfazerLimpeza(ncs, instantaneo);
-  assert.deepEqual(volta.item, item);
+  const resultado = limparResposta([], visita, item, AGORA);
+  assert.deepEqual(Object.keys(resultado).sort(), ["item", "ncs"]);
 });
 
 test("a Correção ligada fica cancelada pelo usuário, fora das abertas, com o histórico guardado", () => {
@@ -55,7 +56,7 @@ test("a Correção ligada fica cancelada pelo usuário, fora das abertas, com o 
   const plano = comNc.map((nc) => ({ ...nc, acaoCorretiva: "Lavar", prazo: "2026-10-25" }));
   assert.deepEqual(dadosExtrasDoItem(item, [], plano[0]), ["observação", "plano da correção"]);
 
-  const { ncs, instantaneo } = limparResposta(plano, visita, item, AGORA);
+  const { ncs } = limparResposta(plano, visita, item, AGORA);
   assert.equal(ncs.length, 1);
   assert.equal(ncs[0].inativaNoChecklist, true);
   assert.equal(ncs[0].canceladaPeloUsuarioEm, AGORA);
@@ -63,11 +64,6 @@ test("a Correção ligada fica cancelada pelo usuário, fora das abertas, com o 
   assert.equal(ncs[0].status, "Aberta");
   const abertas = ncs.filter((nc) => !nc.inativaNoChecklist && nc.status !== "Resolvida");
   assert.equal(abertas.length, 0);
-
-  const volta = desfazerLimpeza(ncs, instantaneo);
-  assert.equal(volta.ncs[0].inativaNoChecklist, false);
-  assert.equal(volta.ncs[0].canceladaPeloUsuarioEm, undefined);
-  assert.equal(volta.ncs[0].acaoCorretiva, "Lavar");
 });
 
 test("marcar Não conforme de novo reativa a Correção cancelada", () => {

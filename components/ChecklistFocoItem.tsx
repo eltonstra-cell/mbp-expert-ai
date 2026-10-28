@@ -135,7 +135,7 @@ export default function ChecklistFocoItem({
   campo = false,
 }: Props) {
   const [texto, setTexto] = useState(item.observacao || "");
-  // Celular e tablet: a fonte da pergunta fica atrás de um "i" discreto (no PC ela já aparece no painel de apoio).
+  // Celular: o texto inteiro da pergunta fica atrás de um "i" discreto (a fonte aparece sempre, logo abaixo do enunciado).
   const [fonteAberta, setFonteAberta] = useState(false);
   useEffect(() => setFonteAberta(false), [item.id]);
   const areaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -346,16 +346,15 @@ export default function ChecklistFocoItem({
       })()}
       <div className={`chk-foco-card${destaque ? " is-destaque" : ""}`}>
         <h2 className="chk-foco-title" title={campo ? item.titulo : undefined}>{item.titulo}</h2>
-        {mostrarApoio && (
-          <button type="button" className="chk-fonte-i" aria-expanded={fonteAberta} aria-label={campo ? "Pergunta completa e fonte" : "De onde vem esta pergunta"} title={campo ? "Pergunta completa e fonte" : "De onde vem esta pergunta"} onClick={() => setFonteAberta((valor) => !valor)}>
+        {campo && mostrarApoio && (
+          <button type="button" className="chk-fonte-i" aria-expanded={fonteAberta} aria-label="Pergunta completa" title="Pergunta completa" onClick={() => setFonteAberta((valor) => !valor)}>
             i
           </button>
         )}
-        {mostrarApoio && fonteAberta && !campo && <p className="chk-fonte-linha" role="note">{rotuloDaFonte(item.referencia)}</p>}
-        {mostrarApoio && fonteAberta && campo && (
+        <p className="chk-fonte-abaixo">{rotuloDaFonte(item.referencia)}</p>
+        {campo && mostrarApoio && fonteAberta && (
           <div className="chk-fonte-linha chk-fonte-linha--campo" role="note">
             <p className="chk-fonte-pergunta">{item.titulo}</p>
-            <p className="chk-fonte-texto">{rotuloDaFonte(item.referencia)}</p>
           </div>
         )}
       </div>

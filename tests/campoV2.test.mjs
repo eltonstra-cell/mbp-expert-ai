@@ -186,12 +186,13 @@ test("Respostas do checklist: só texto sem seleção; selecionada = ícone ✓ 
   assert.ok(!css.includes('.chk-resp.is-marcado.chk-resp--ok{border-color:#15803D'));
 });
 
-test("Barra de progresso do Campo: 'Não se aplica' em grafite #5B6575 (distinto dos pendentes claros); o PC mantém a cor antiga", () => {
+test("Barra de progresso do Campo: 'Não se aplica' em grafite #5B6575 (distinto dos pendentes claros); Conforme #2E8B57 e Não conforme #B83A33 nos dois", () => {
   assert.equal(COR_DO_SEGMENTO_CAMPO["Não se aplica"], "#5B6575");
   assert.notEqual(COR_DO_SEGMENTO_CAMPO["Não se aplica"], COR_DO_SEGMENTO_CAMPO.Pendente);
   assert.equal(COR_DO_SEGMENTO["Não se aplica"], "#C3CDD6");
-  assert.equal(COR_DO_SEGMENTO_CAMPO.Conforme, "#1E7A3E");
-  assert.equal(COR_DO_SEGMENTO.Conforme, "#15803D", "o PC não muda");
+  assert.equal(COR_DO_SEGMENTO_CAMPO.Conforme, "#2E8B57", "Conforme da fileira: verde ok, não o verde de salvar");
+  assert.equal(COR_DO_SEGMENTO.Conforme, "#2E8B57");
+  assert.equal(COR_DO_SEGMENTO["Não Conforme"], "#B83A33");
   assert.equal(COR_DO_SEGMENTO_CAMPO["Não Conforme"], COR_DO_SEGMENTO["Não Conforme"]);
   assert.ok(ler("../components/ChecklistFocoItem.tsx").includes("(campo ? COR_DO_SEGMENTO_CAMPO : COR_DO_SEGMENTO)"));
 });
@@ -233,27 +234,27 @@ test("Pacote de ajustes: pastel com texto grafite, aviso com ação sublinhada, 
   limparToast();
   assert.ok(!ler("../components/ToastHost.tsx").includes("toast-tom"), "sem tom no aviso");
   const apoio = ler("../components/pc/PcChecklist.tsx");
-  assert.ok(!apoio.includes("Sem material de apoio"), "uma linha só: Fonte não registrada");
-  assert.ok(apoio.includes("linhaDeFonteDoApoio(apoio.fonte, !vazio)"));
+  assert.ok(!apoio.includes("Sem material de apoio"), "sem frase de apoio vazio");
+  assert.ok(!apoio.includes("chk-apoio-fonte") && !apoio.includes("fonteDaPergunta"), "a fonte não é repetida na coluna de apoio");
+  assert.ok(ler("../components/ChecklistFocoItem.tsx").includes('<p className="chk-fonte-abaixo">{rotuloDaFonte(item.referencia)}</p>'), "a fonte fica logo abaixo do enunciado, uma vez");
 });
 
-test("responder o checklist não mostra aviso com Desfazer; lote e 'Resposta limpa' ficam acima do rodapé; tocar na resposta marcada limpa", () => {
+test("responder o checklist não mostra aviso com Desfazer; só o lote tem Desfazer (acima do rodapé); tocar na resposta marcada limpa sem aviso", () => {
   const pagina = ler("../app/page.tsx");
   const trecho = pagina.slice(pagina.indexOf("function avancarAposResponder"), pagina.indexOf("function registrarRapido"));
   assert.ok(!trecho.includes("mostrarToast") && !trecho.includes("Desfazer"));
   assert.ok(pagina.includes('className="lote-desfazer aviso-acima-do-rodape"'));
+  assert.ok(!pagina.includes("Resposta limpa") && !pagina.includes("respostaLimpa") && !pagina.includes("desfazerLimpeza") && !pagina.includes("desfazerLimparResposta"), "sem o aviso Resposta limpa · Desfazer");
   assert.ok(/.aviso-acima-do-rodape{bottom:104px!important}/.test(ler("../app/globals.css")));
   const foco = ler("../components/ChecklistFocoItem.tsx");
   assert.ok(/if \(estado === "marcado"\) \{[\s\S]*?reToqueValido\(Date\.now\(\), marcadoEmRef\.current\)\) onLimpar\?\.\(\);\s*return;/.test(foco));
 });
 
-test("linha de fonte do apoio: com outro material e sem fonte não mostra 'Fonte não registrada'; sem nada mostra uma linha só; fonte real sempre aparece", async () => {
-  const { linhaDeFonteDoApoio } = await import("../lib/fonteDaPergunta.ts");
-  assert.equal(linhaDeFonteDoApoio("", true), "");
-  assert.equal(linhaDeFonteDoApoio("Fonte não registrada", true), "");
-  assert.equal(linhaDeFonteDoApoio("", false), "Fonte não registrada");
-  assert.equal(linhaDeFonteDoApoio("Derivada do Manual, cap. 1, item 2.5", true), "Fonte: Derivada do Manual, cap. 1, item 2.5");
-  assert.equal(linhaDeFonteDoApoio("Derivada do Manual, cap. 1, item 2.5", false), "Fonte: Derivada do Manual, cap. 1, item 2.5");
+test("a fonte da pergunta: sem fonte registrada diz só 'Fonte não registrada'; com fonte real mostra 'Fonte: …'; a função do apoio saiu", async () => {
+  const modulo = await import("../lib/fonteDaPergunta.ts");
+  assert.equal(modulo.linhaDeFonteDoApoio, undefined);
+  assert.equal(modulo.rotuloDaFonte(""), "Fonte não registrada");
+  assert.equal(modulo.rotuloDaFonte("Derivada do Manual, cap. 1, item 2.5"), "Fonte: Derivada do Manual, cap. 1, item 2.5");
 });
 
 test("Pacote de ajustes (parte 2): rodapé de 44 px, cores do DS, faixa fina em 2 linhas, Não conforme do Campo #B83A33 e 'próxima etapa' em até 2 linhas", () => {
@@ -267,6 +268,7 @@ test("Pacote de ajustes (parte 2): rodapé de 44 px, cores do DS, faixa fina em 
   assert.ok(css.includes(".ui-btn--criar{background:#AF640A;color:#fff;font-weight:400}"));
   const semCartaz = css.split("\n").filter((linha) => !/\.cz[-\s{,:]|\.cz--/.test(linha)).join("\n");
   assert.ok(!/#E8760A/i.test(semCartaz), "o laranja forte antigo só resta no cartaz impresso");
+  assert.ok(!/#D93A3A|#C9473F/i.test(css), "um só vermelho de não conforme/perigo: #B83A33");
   assert.ok(/\.faixa-fina\{[^}]*white-space:normal/.test(css) && !/\.faixa-fina\{[^}]*text-overflow/.test(css));
   assert.ok(css.includes('.chk-resp.is-marcado.chk-resp--nc{border-color:#B83A33;background:#B83A33;color:#fff}'));
   assert.ok(!css.includes("chk-resp--nc{border-color:#C9473F"));
@@ -280,4 +282,45 @@ test("re-toque na resposta marcada: ignora toque duplo nos primeiros 700 ms e va
   assert.equal(reToqueValido(1300, 1000), false);
   assert.equal(reToqueValido(1699, 1000), false);
   assert.equal(reToqueValido(1700, 1000), true);
+});
+
+test("Checklist, parte 2: títulos em peso 500 sem espaçamento negativo, fileira de números #2E8B57/#B83A33, respostas apagadas mais legíveis", () => {
+  const css = ler("../app/globals.css");
+  assert.ok(css.includes("h1,h2,h3{letter-spacing:normal}") && !css.includes("h1,h2,h3{letter-spacing:-.025em}"), "o espaçamento negativo global saiu");
+  assert.ok(css.includes("html[data-modo] :is(.ui-title,.ui-card-title,.chk-foco-title,.pc-check-title){font-weight:500;letter-spacing:normal}"));
+  assert.equal(css.split("\n").filter((linha) => linha.startsWith(".chk-pc-num.is-ok{background:#2E8B57;border-color:#2E8B57;color:#fff}")).length, 2);
+  assert.ok(!/\.chk-pc-num\.is-ok\{background:#15803D/.test(css) && !/\.chk-pc-num\.is-nc\{background:#D93A3A/.test(css));
+  assert.ok(css.includes(".chk-pc-num.is-nc{background:#B83A33;border-color:#B83A33;color:#fff}"));
+  assert.ok(css.includes(".chk-resp.is-marcado.chk-resp--nc{background:#B83A33}"), "Não conforme selecionado no PC = #B83A33");
+  const apagado = css.match(/html\[data-modo\] \.chk-resp\.is-apagado,html\[data-modo="campo"\] \.campo-tela \.chk-resp\.is-apagado\{opacity:([\d.]+)\}/);
+  assert.ok(apagado && parseFloat(apagado[1]) >= 0.7 && parseFloat(apagado[1]) < 1, "apagada, mas legível");
+  assert.ok(css.includes("html[data-modo] .chk-resp:not(.is-marcado) span{color:#1B2433}"), "texto grafite nas não selecionadas");
+});
+
+test("Checklist, parte 2: abas da visita sem pílula, fonte abaixo do enunciado, uma coluna só no PC e chips na linha do ambiente", () => {
+  const css = ler("../app/globals.css");
+  for (const regra of [
+    "html[data-modo] .fv .fv-item.is-atual{border-bottom-color:#2B54CF;background:transparent;box-shadow:none;font-weight:500}",
+    ".fv-badge{min-width:0;height:auto;padding:0;border-radius:0;background:transparent;font-size:15px;line-height:1;color:#B83A33}",
+    ".chk-fonte-abaixo{margin:0;font-size:15px;font-weight:400;line-height:22px;letter-spacing:normal;color:#55607A}",
+    ".chk-pc-faixa{display:flex;flex:none;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 16px}",
+    "html .chk-pc-faixa .chk-acao{height:36px;padding:0 14px;font-size:15px;color:#1B2433}",
+  ]) assert.ok(css.includes(regra), regra);
+  assert.match(css, /\.fv-seg,html\[data-modo="campo"\] \.fv--campo \.fv-seg\{[^}]*padding:4px;border-radius:0;background:transparent\}/);
+  assert.match(css, /\.fv-item,html\[data-modo="campo"\] \.fv--campo \.fv-item\{[^}]*border-bottom:3px solid transparent;border-radius:0;background:transparent;box-shadow:none/);
+  const pc = ler("../components/pc/PcChecklist.tsx");
+  assert.ok(pc.includes('className="chk-pc-esq"') && pc.indexOf('className="chk-pc-faixa"') < pc.indexOf('className="chk-pc-linha"') && pc.indexOf('className="chk-pc-linha"') < pc.indexOf('className="chk-pc-principal"'));
+  assert.ok(pc.indexOf("Pular ambiente") < pc.indexOf("Marcar o restante como Conforme ("), "chips depois do texto do ambiente, na mesma faixa");
+  const item = ler("../components/ChecklistFocoItem.tsx");
+  assert.ok(!item.includes("chk-fonte-texto") && !item.includes("De onde vem esta pergunta"), "uma ocorrência da fonte por pergunta");
+});
+
+test("Cores que sobraram: laranja de ação #AF640A na capa, na gestão de POP e nas telas liberadas; vermelho de não conforme #B83A33", async () => {
+  for (const arquivo of ["../lib/capaPop.ts", "../lib/popGestao.ts", "../components/pc/TelasLiberadasModal.tsx", "../lib/checklistSegmentos.ts", "../lib/brand.ts", "../components/campo/CampoTelas.tsx", "../components/pc/PcCorrecoes.tsx"]) {
+    assert.ok(!/#E8760A|#D93A3A|#C9473F/i.test(ler(arquivo)), arquivo);
+  }
+  const css = ler("../app/globals.css");
+  assert.ok(css.includes("--rd-venceu:#B83A33;") && /\.vis-conta--nc\{color:var\(--rd-venceu\)\}/.test(css));
+  const { BRAND_COLORS } = await import("../lib/brand.ts");
+  assert.equal(BRAND_COLORS.nc, "#B83A33");
 });

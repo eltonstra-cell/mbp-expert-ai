@@ -18,7 +18,7 @@ export const BRAND_COLORS = {
   border: "#DDE6EA",
   ok: "#15803D",
   okBg: "#E3F6EA",
-  nc: "#D93A3A",
+  nc: "#B83A33",
   ncBg: "#FDE7E7",
   pend: "#E89A0C",
   pendBg: "#FFF3D6",
