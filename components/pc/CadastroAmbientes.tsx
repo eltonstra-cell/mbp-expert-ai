@@ -12,6 +12,7 @@ import MenuMais from "@/components/pc/MenuMais";
 import { erroDoNovoNome } from "@/lib/renomearAmbiente";
 import { aplicarEscolhaDeSetores, linhaDeContagem } from "@/lib/escolhaEmJanela";
 import { limparVinculos } from "@/lib/ambientesVisita";
+import { agruparAmbientesPorVinculo, notaDosProprios } from "@/lib/agrupamentoDeAmbientes";
 import { perguntasDoAmbiente, perguntasDoSetor } from "@/lib/perguntasDoAmbiente";
 import { bloqueiosDaRetirada, fluxosLigadosAoSetor, reinserirSetor } from "@/lib/estruturaDelta";
 import { descricaoDoSetor, mensagemSemSugestaoDoCnae, nomeExibidoDoSetor } from "@/lib/tiposDeEstabelecimento";
@@ -78,6 +79,9 @@ export default function CadastroAmbientes({ empresa, podeEditar, estado, onGrava
   const proprios = setores.filter((setor) => !eOficial(setor));
   const naoMarcados = SETORES_OFICIAIS_MANUAL.filter((setor) => !setores.includes(setor));
   const dono = `estrutura:${empresa.id}`;
+  // Só exibição: próprio vinculado a setor oficial marcado aparece na linha do oficial.
+  const agrupado = agruparAmbientesPorVinculo(setores, vinculos);
+  const focoDoMenu = (setor: string) => `mais:${agrupado.linhaDoProprio[setor] ?? setor}`;
 
   const [novoAberto, setNovoAberto] = useState(false);
   const [novoNome, setNovoNome] = useState("");
@@ -134,7 +138,7 @@ export default function CadastroAmbientes({ empresa, podeEditar, estado, onGrava
       const atuais = normalizarListaAmbientesReais(atual.setoresManual);
       return { setores: atuais.includes(oficial) ? atuais : [...atuais, oficial], vinculos: { ...limparVinculos(atual.setorOficialDoAmbiente, atuais), [nome]: oficial } };
     });
-    setFoco(`mais:${nome}`);
+    setFoco(`mais:${oficial}`);
   }
 
   function baseDoAmbiente(nome: string): { texto: string; titulo?: string } | null {
@@ -257,7 +261,7 @@ export default function CadastroAmbientes({ empresa, podeEditar, estado, onGrava
     const novo = renomeando.texto.trim();
     if (await onRenomear(renomeando.de, novo)) {
       setRenomeando(null);
-      setFoco(`mais:${novo}`);
+      setFoco(`mais:${agrupado.linhaDoProprio[renomeando.de] ?? novo}`);
     }
   }
 
@@ -270,10 +274,60 @@ export default function CadastroAmbientes({ empresa, podeEditar, estado, onGrava
       return { vinculos: oficial ? { ...resto, [setor]: oficial } : resto };
     });
     setVinculando(null);
-    setFoco(`mais:${setor}`);
+    setFoco(`mais:${oficial || setor}`);
   }
 
   const opcoesDoModal = SETORES_OFICIAIS_MANUAL.map((setor) => ({ id: setor, titulo: nomeExibidoDoSetor(setor), descricao: descricaoDoSetor(setor) || undefined }));
+  /** Opções do ambiente próprio `p` no menu ⋯ (na linha dele ou, se vinculado, na linha do setor oficial, onde o rótulo traz o nome do próprio). */
+  function itensDoProprio(p: string, comNome: boolean) {
+    const oficialVinculado = vinculos[p];
+    const sufixo = comNome ? ` “${p}”` : "";
+    return [
+      { rotulo: `Renomear${sufixo}`, assumeFoco: true, onClick: () => setRenomeando({ de: p, texto: p }) },
+      { rotulo: `${oficialVinculado ? "Trocar vínculo" : "Vincular a setor oficial"}${sufixo}`, assumeFoco: true, desabilitado: oficiaisMarcados.length === 0, titulo: oficiaisMarcados.length === 0 ? "Marque um setor oficial em Escolher setores antes" : undefined, onClick: () => { setVinculando(vinculando === p ? null : p); setFoco(`select:${p}`); } },
+      { rotulo: `Remover${sufixo}`, perigo: true, onClick: () => pedirRemover(p) },
+    ];
+  }
+
+  function editorDeNome(setor: string) {
+    const erroNome = renomeando?.de === setor ? erroDoNovoNome(setor, renomeando.texto, setores) : "";
+    if (!renomeando) return null;
+    return (
+      <span className="cadest-renomear">
+      <input
+        className={`ui-input cad-input${erroNome && renomeando.texto !== setor ? " is-erro" : ""}`}
+        value={renomeando.texto}
+        autoFocus
+        aria-label={`Novo nome de ${setor}`}
+        aria-invalid={Boolean(erroNome)}
+        onChange={(event) => setRenomeando({ de: setor, texto: event.target.value })}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            void confirmarRenomear();
+          } else if (event.key === "Escape") {
+            setRenomeando(null);
+            setFoco(focoDoMenu(setor));
+          }
+        }}
+      />
+      <button type="button" className="cadest-btn cadest-btn--azul" disabled={Boolean(erroNome)} onClick={() => void confirmarRenomear()}>Renomear</button>
+      <button type="button" className="cadest-link" onClick={() => { setRenomeando(null); setFoco(focoDoMenu(setor)); }}>Cancelar</button>
+      {erroNome && renomeando.texto !== setor && <span className="cadest-erro" role="alert">{erroNome}</span>}
+      </span>
+    );
+  }
+
+  function seletorDeVinculo(setor: string) {
+    const oficialVinculado = vinculos[setor];
+    return (
+      <span className="cadest-select-foco" data-foco={`select:${setor}`} tabIndex={-1} onFocus={(evento) => { if (evento.target === evento.currentTarget) evento.currentTarget.querySelector<HTMLElement>("button,select,[tabindex='0']")?.focus(); }}><Select value={oficialVinculado || ""} onChange={(event) => mudarVinculo(setor, event.target.value)} aria-label={`Setor oficial de ${setor}`} className="cadest-select">
+        <option value="">Nenhum (opcional)</option>
+        {oficiaisMarcados.map((oficial) => <option key={oficial} value={oficial}>{oficial}</option>)}
+      </Select></span>
+    );
+  }
+
   const modal = (rotulo: string) => (
     <EscolhaEmJanela
       modo="botao"
@@ -553,47 +607,35 @@ export default function CadastroAmbientes({ empresa, podeEditar, estado, onGrava
         <p className="cadest-vazio">{podeEditar ? "Nenhum ambiente ainda. Escolha os setores ou crie um ambiente próprio." : "Nenhum ambiente marcado."}</p>
       ) : (
         <ul className="cadest-lista">
-          {setores.map((setor) => {
+          {agrupado.linhas.map(({ setor, proprios: vinculadosAqui }) => {
             const proprio = !eOficial(setor);
             const curto = nomeExibidoDoSetor(setor);
             const editandoNome = renomeando?.de === setor;
-            const erroNome = editandoNome ? erroDoNovoNome(setor, renomeando.texto, setores) : "";
             const oficialVinculado = vinculos[setor];
             const parecido = podeEditar && proprio && !editandoNome ? oficialParecido(setor) : null;
-            const base = proprio ? baseDoAmbiente(setor) : null;
+            const base = proprio ? baseDoAmbiente(setor) : baseDoAmbiente(vinculadosAqui[0] || "");
             // Segundo texto só quando há nome oficial diferente do nome curto (ou, no próprio, o estado do questionário).
             const subtexto = proprio ? (oficialVinculado ? `Ambiente próprio · vinculado a ${nomeExibidoDoSetor(oficialVinculado)}` : "Ambiente próprio · questionário básico") : descricaoDoSetor(setor);
+            const nota = notaDosProprios(vinculadosAqui);
+            const renomeandoVinculado = vinculadosAqui.includes(renomeando?.de || "");
+            // Contagem: a do ambiente que a VISITA usa (o próprio vinculado, conforme ambientesParaVisita); oficial e próprio podem diferir (modelo ou questionário do nome próprio), então não se assume igualdade.
+            const contagens = (proprio ? [setor] : vinculadosAqui.length > 0 ? vinculadosAqui : [setor]).map(contaDe);
+            const menor = Math.min(...contagens);
+            const maior = Math.max(...contagens);
+            const textoPerguntas = menor === maior ? `${menor} ${menor === 1 ? "pergunta" : "perguntas"}` : `${menor} a ${maior} perguntas`;
+            const itens = proprio ? itensDoProprio(setor, false) : vinculadosAqui.flatMap((p) => itensDoProprio(p, true));
             return (
               <li key={setor} className="cadest-item">
                 <div className="cadest-item-topo">
                   <div className="cadest-nomes">
                     {editandoNome ? (
-                      <span className="cadest-renomear">
-                        <input
-                          className={`ui-input cad-input${erroNome && renomeando.texto !== setor ? " is-erro" : ""}`}
-                          value={renomeando.texto}
-                          autoFocus
-                          aria-label={`Novo nome de ${setor}`}
-                          aria-invalid={Boolean(erroNome)}
-                          onChange={(event) => setRenomeando({ de: setor, texto: event.target.value })}
-                          onKeyDown={(event) => {
-                            if (event.key === "Enter") {
-                              event.preventDefault();
-                              void confirmarRenomear();
-                            } else if (event.key === "Escape") {
-                              setRenomeando(null);
-                              setFoco(`mais:${setor}`);
-                            }
-                          }}
-                        />
-                        <button type="button" className="cadest-btn cadest-btn--azul" disabled={Boolean(erroNome)} onClick={() => void confirmarRenomear()}>Renomear</button>
-                        <button type="button" className="cadest-link" onClick={() => { setRenomeando(null); setFoco(`mais:${setor}`); }}>Cancelar</button>
-                        {erroNome && renomeando.texto !== setor && <span className="cadest-erro" role="alert">{erroNome}</span>}
-                      </span>
+                      editorDeNome(setor)
                     ) : (
                       <>
                         <span className="cadest-nome" title={setor} tabIndex={-1} data-foco={`oficial:${setor}`}>{rotuloDoSetor(setor, setores)}</span>
                         {subtexto && <span className="cadest-oficial">{subtexto}</span>}
+                        {nota && <span className="cadest-vinculado">{nota}</span>}
+                        {renomeandoVinculado && editorDeNome(renomeando?.de || "")}
                         {parecido && (
                           <span className="cadest-parece" title={`Parece o setor oficial ${parecido}`}>
                             <span className="cadest-parece-texto">Parece o setor oficial {nomeExibidoDoSetor(parecido)} ·</span>
@@ -604,28 +646,20 @@ export default function CadastroAmbientes({ empresa, podeEditar, estado, onGrava
                     )}
                   </div>
                   <div className="cadest-item-direita">
-                    <span className="cadest-perguntas" title="Perguntas que a visita traz para este ambiente">{textoDaConta(setor)}</span>
-                    {podeEditar && proprio && !editandoNome && (
+                    <span className="cadest-perguntas" title="Perguntas que a visita traz para este ambiente">{textoPerguntas}</span>
+                    {podeEditar && itens.length > 0 && !editandoNome && (
                       <MenuMais
-                        rotulo={`Mais ações de ${setor}`}
+                        rotulo={vinculadosAqui.length === 1 ? `Mais ações de ${setor} · ${vinculadosAqui[0]}` : `Mais ações de ${setor}`}
                         dataFoco={`mais:${setor}`}
-                        itens={[
-                          { rotulo: "Renomear", assumeFoco: true, onClick: () => setRenomeando({ de: setor, texto: setor }) },
-                          { rotulo: oficialVinculado ? "Trocar vínculo" : "Vincular a setor oficial", assumeFoco: true, desabilitado: oficiaisMarcados.length === 0, titulo: oficiaisMarcados.length === 0 ? "Marque um setor oficial em Escolher setores antes" : undefined, onClick: () => { setVinculando(vinculando === setor ? null : setor); setFoco(`select:${setor}`); } },
-                          { rotulo: "Remover", perigo: true, onClick: () => pedirRemover(setor) },
-                        ]}
+                        itens={itens}
                         rodape={base?.texto}
                         rodapeTitulo={base?.titulo}
                       />
                     )}
                   </div>
                 </div>
-                {podeEditar && proprio && vinculando === setor && (
-                  <span className="cadest-select-foco" data-foco={`select:${setor}`} tabIndex={-1} onFocus={(evento) => { if (evento.target === evento.currentTarget) evento.currentTarget.querySelector<HTMLElement>("button,select,[tabindex='0']")?.focus(); }}><Select value={oficialVinculado || ""} onChange={(event) => mudarVinculo(setor, event.target.value)} aria-label={`Setor oficial de ${setor}`} className="cadest-select">
-                    <option value="">Nenhum (opcional)</option>
-                    {oficiaisMarcados.map((oficial) => <option key={oficial} value={oficial}>{oficial}</option>)}
-                  </Select></span>
-                )}
+                {podeEditar && proprio && vinculando === setor && seletorDeVinculo(setor)}
+                {podeEditar && vinculadosAqui.filter((p) => vinculando === p).map((p) => <span key={p}>{seletorDeVinculo(p)}</span>)}
               </li>
             );
           })}

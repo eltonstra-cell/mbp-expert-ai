@@ -254,7 +254,7 @@ import ReservaDeAltura from "@/components/ReservaDeAltura";
 import PropostaDeCnpjPainel from "@/components/PropostaDeCnpj";
 import PacoteDoTipoPainel, { type EscolhaDoPacote } from "@/components/PacoteDoTipo";
 import CaixaQueCresce from "@/components/CaixaQueCresce";
-import { camposDaProposta, MENSAGEM_CONSULTA_APLICADA, MENSAGEM_CONSULTA_IGNORADA, mensagemDeFalhaDaConsulta, mensagensDaConsulta, propostaDaConsulta, type PropostaDeCnpj } from "@/lib/cnpjConsulta";
+import { botaoConfirmeiTudoVisivel, camposDaProposta, MENSAGEM_CONSULTA_APLICADA, MENSAGEM_CONSULTA_IGNORADA, mensagemDeFalhaDaConsulta, mensagensDaConsulta, propostaDaConsulta, type PropostaDeCnpj } from "@/lib/cnpjConsulta";
 import { camposAparadosAoSalvar } from "@/lib/textoDeEndereco";
 import { descricaoAoAbrirEmpresa, descricaoAoMudarCodigo } from "@/lib/cnaeOficial";
 import { TIPOS_DE_ESTABELECIMENTO, limiteSugeridoParaEquipamento, OPCAO_SEGUIR_O_CNAE, TIPO_OUTRO_ESCOLHIDO, cnaeBloqueiaSalvar, consultaPodeTrocarOTipo, normalizarCnae, tipoEfetivoDaEmpresa, tipoSugeridoPorCnae, validarCnae, valorDoTipoParaGuardar } from "@/lib/tiposDeEstabelecimento";
@@ -3601,6 +3601,7 @@ export default function Home() {
   // Tipo que vale agora: o ajustado pela pessoa ou, sem ajuste, o do CNAE (principal, depois secundários).
   const tipoDoForm = tipoEfetivoDaEmpresa({ cnae: form.cnae, cnaesSecundarios: cnaesSecundariosForm, tipo: form.tipo });
   const mensagensDaConsultaTela = mensagensDaConsulta({ mensagem: consultaMsg, propostaPendente: Boolean(propostaCnpj), camposPendentes: camposDaConsulta.some((campo) => campo !== "tipo") });
+  const confirmeiTudoVisivel = botaoConfirmeiTudoVisivel({ camposPendentes: camposDaConsulta.some((campo) => campo !== "tipo"), propostaPendente: Boolean(propostaCnpj) });
   const validacaoDoCnae = validarCnae(form.cnae);
   // CNAE que veio da consulta e não está na tabela oficial: só aviso (não bloqueia o salvar).
   const cnaeInexistenteDaConsulta = validacaoDoCnae.situacao === "inexistente" && Boolean(cnaeDaConsulta) && normalizarCnae(form.cnae) === cnaeDaConsulta;
@@ -7488,40 +7489,27 @@ export default function Home() {
               <button
               type="button"
               onClick={() => void atualizarNuvemManualmente()}
-              className={`rounded-full px-2.5 py-1.5 text-[11px] font-normal sm:px-3 sm:text-xs ${
-                syncStatus === "sincronizado"
-                  ? "bg-[#DCEBF7] text-[color:var(--ink)]"
-                  : syncStatus === "conectando"
-                  ? "bg-[var(--brand-soft)] text-[color:var(--ink)]"
-                  : syncStatus === "local"
-                  ? "bg-[var(--pend-bg)] text-[color:var(--ink)]"
-                  : syncStatus === "recuperacao"
-                  ? "bg-[var(--pend-bg)] text-[color:var(--ink)]"
-                  : syncErroVisivel && !estaOnline
-                  ? "bg-[var(--pend-bg)] text-[color:var(--ink)]"
-                  : syncErroVisivel
-                  ? "bg-[var(--nc-bg)] text-[color:var(--ink)]"
-                  : "bg-[var(--brand-soft)] text-[color:var(--ink)]"
-              }`}
+              className={`pc-sync-chip is-${syncStatus === "sincronizado" ? "ok" : syncStatus === "local" || (syncErroVisivel && !estaOnline && syncStatus !== "recuperacao") ? "sem-sinal" : syncStatus === "recuperacao" || syncStatus === "conectando" ? "pendente" : syncErroVisivel ? "erro" : "pendente"}`}
               title={
                 syncAtualizadoEm
                   ? `Última sincronização: ${syncAtualizadoEm}. Clique para atualizar.`
                   : "Clique para atualizar a nuvem."
               }
             >
+              <span className="pc-sync-dot" aria-hidden="true" />
               {syncStatus === "sincronizado"
-                ? "● Sincronizado"
+                ? "Sincronizado"
                 : syncStatus === "conectando"
-                ? "● Conectando"
+                ? "Conectando"
                 : syncStatus === "local"
-                ? "● Somente local"
+                ? "Somente local"
                 : syncStatus === "recuperacao"
-                ? "🛟 Recuperação necessária"
+                ? "Recuperação necessária"
                 : syncErroVisivel && !estaOnline
-                ? "● Modo offline"
+                ? "Modo offline"
                 : syncErroVisivel
-                ? "⚠️ Nuvem indisponível"
-                : "● Conectando"}
+                ? "Nuvem indisponível"
+                : "Conectando"}
               </button>
               <button
                 type="button"
@@ -8277,9 +8265,9 @@ export default function Home() {
                       />
                     )}
 
-                    {mensagensDaConsultaTela.avisoPreenchido && (
+                    {confirmeiTudoVisivel && (
                       <p className="nova-consulta-aviso md:col-span-2" role="status">
-                        <span>Preenchido pela consulta. Confira e edite o que precisar.</span>
+                        {mensagensDaConsultaTela.avisoPreenchido && <span>Preenchido pela consulta. Confira e edite o que precisar.</span>}
                         <button type="button" className="ui-btn ui-btn--secondary" onClick={() => setCamposDaConsulta((atual) => atual.filter((campo) => campo === "tipo"))}>Confirmei tudo</button>
                       </p>
                     )}
@@ -10071,11 +10059,11 @@ export default function Home() {
                       </div>
 
                       <div className="mt-3 flex flex-wrap gap-2">
-                        <span className={`rounded-full px-2.5 py-1 text-[11px] font-extrabold ${
+                        <span className={`rounded-full px-2.5 py-1 text-[15px] font-normal ${
                           nc.criticidade === "Crítica"
-                            ? "bg-[var(--nc-bg)] text-[color:var(--ink)]"
+                            ? "bg-[#B83A33] text-white"
                             : nc.criticidade === "Importante"
-                              ? "bg-[var(--pend-bg)] text-[color:var(--ink)]"
+                              ? "bg-[#F0B429] text-[#1B2433]"
                               : "bg-[var(--na-bg)] text-[color:var(--ink)]"
                         }`}>
                           {nc.criticidade}

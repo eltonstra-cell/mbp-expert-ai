@@ -181,11 +181,11 @@ test("A9: catálogo do autocompletar ganhou quatro nomes (só nome, a validar pe
 });
 
 // ===== A1(c)/A2/A7(a)/(c): estilo =====
-test("estilo: caixinha terracota, pacote em creme com borda terracota, chip Sincronizado e botões", () => {
+test("estilo: caixinha terracota, pacote em creme com borda terracota, chip Sincronizado sem caixa e botões", () => {
   const css = lerFonte("app/globals.css") + lerFonte("app/cadastro-estrutura.css");
   assert.ok(css.includes('.cadest input[type="checkbox"]:checked{border-color:#AF640A;background:#AF640A}'));
   assert.ok(css.includes(".pacote-janela .esc-opcao.is-on{border-color:#AF640A;background:#FFF6E5}"));
-  assert.ok(css.includes("background:#DCEBF7;box-shadow:none;color:#1B2433"));
+  assert.ok(css.includes("html body .pc-sync-chip.pc-sync-chip.pc-sync-chip:is(.is-ok,.is-pendente,.is-sem-sinal,.is-erro)") && css.includes("background:transparent;border:0;border-radius:0;box-shadow:none;padding:0 4px;color:#1B2433;font-size:15px"));
   assert.ok(css.includes("html .pacote-tipo .ui-btn.pacote-tipo-ver{border:2px solid #2B54CF;background:#2B54CF;color:#fff;font-weight:400}"));
   assert.ok(css.includes("html .nova-consulta-aviso .ui-btn.ui-btn--secondary{border:2px solid #8A96AD;background:#fff;color:#1B2433;font-weight:400}"));
   assert.ok(css.includes(".cadest-bloqueio p.cadest-rotulo{color:#55607A}"));

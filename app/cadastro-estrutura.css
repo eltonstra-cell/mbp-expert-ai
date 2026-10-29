@@ -95,6 +95,7 @@ html .cadest .ui-input:focus,html .cadest .ui-input:focus-visible,html .cadest .
 .cadest-nomes{display:flex;flex-direction:column;min-width:0}
 .cadest-nome{font-family:var(--font-display),"Outfit",sans-serif;font-size:18px;font-weight:500;line-height:26px;color:#1B2433;overflow-wrap:anywhere}
 .cadest-oficial{font-size:15px;line-height:22px;color:#55607A;overflow-wrap:anywhere}
+.cadest-vinculado{font-size:15px;line-height:22px;color:#55607A;font-weight:400;overflow-wrap:anywhere}
 .cadest-perguntas{flex:none;font-size:15px;line-height:36px;color:#1B2433;white-space:nowrap}
 .cadest-item-direita{display:flex;flex:none;align-items:flex-start;gap:12px}
 .cadest-nome:focus{outline:none}

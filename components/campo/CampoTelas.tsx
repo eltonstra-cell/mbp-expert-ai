@@ -279,7 +279,7 @@ const ETAPAS_CAMPO: { chave: EtapaChave; curto: string; tom: string }[] = [
   { chave: "acompanhamento", curto: "Acomp.", tom: "info" },
   { chave: "resolvidas", curto: "Resolvidas", tom: "ok" },
 ];
-const COR_DA_GRAVIDADE_CAMPO: Record<GravidadeNc, string> = { Crítica: "#B83A33", Importante: "#F5A623", Rotina: "#3AA6D9" };
+const COR_DA_GRAVIDADE_CAMPO: Record<GravidadeNc, string> = { Crítica: "#B83A33", Importante: "#F0B429", Rotina: "#3AA6D9" };
 const GRUPOS_CAMPO: { gravidade: GravidadeNc; rotulo: string }[] = [
   { gravidade: "Crítica", rotulo: "CRÍTICAS" },
   { gravidade: "Importante", rotulo: "IMPORTANTES" },

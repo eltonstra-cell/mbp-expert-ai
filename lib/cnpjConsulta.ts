@@ -184,3 +184,11 @@ export function mensagensDaConsulta(entrada: { mensagem: string; propostaPendent
   const soRepete = mensagem === MENSAGEM_CONSULTA_IGNORADA || mensagem === MENSAGEM_CONSULTA_APLICADA;
   return { mensagem: soRepete && camposPendentes ? "" : mensagem, avisoPreenchido };
 }
+
+/**
+ * "Confirmei tudo" fica visível sempre que há campos preenchidos pela consulta ainda sem confirmar, mesmo quando a consulta falhou
+ * (a pessoa pode ter preenchido à mão). Só some enquanto há proposta à espera, que tem os próprios botões. Não depende de a mensagem ser de falha.
+ */
+export function botaoConfirmeiTudoVisivel(entrada: { camposPendentes: boolean; propostaPendente: boolean }): boolean {
+  return entrada.camposPendentes && !entrada.propostaPendente;
+}

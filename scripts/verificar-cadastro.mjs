@@ -202,7 +202,7 @@ try {
   await foto("5-setor-sugerido");
   await js(`(()=>{const li=[...document.querySelectorAll("li")].find(x=>x.innerText.includes("Salão")&&x.innerText.includes("Vincular"));[...li.querySelectorAll("button")].find(b=>b.innerText.includes("Vincular")).click()})()`);
   await n.esperar(600);
-  registrar("7c. um toque vincula e marca o setor oficial; o nome próprio continua sendo o exibido", (await js(`[...document.querySelectorAll("li")].some(x=>x.innerText.includes("Salão")&&x.innerText.includes("Ambiente próprio"))`)) && (await js(`[...document.querySelectorAll("li")].some(x=>x.innerText.trim().startsWith("Refeitório"))`)));
+  registrar("7c. um toque vincula e marca o setor oficial; a linha do oficial traz a nota \"vinculado ao ambiente próprio\" e o próprio não tem mais linha separada", (await js(`[...document.querySelectorAll("li")].some(x=>x.innerText.trim().startsWith("Refeitório")&&/vinculado ao ambiente próprio Salão/.test(x.innerText))`)) && !(await js(`[...document.querySelectorAll("li")].some(x=>x.innerText.includes("Salão")&&x.innerText.includes("Ambiente próprio ·"))`)));
   registrar("7d. nome próprio sem palavra reconhecida não recebe sugestão", !/Sala da diretoria/.test(await texto()));
 
   // 8. Equipamentos por setor (aba Equipamentos): lista do setor, adicionar, copiar para outros ambientes com desfazer, limite de temperatura sugerido com fonte.
