@@ -134,18 +134,25 @@ export default function PcVisitas({ empresaAtiva, visitas, filtro, onFiltro, nov
         <div className="vis-col-titulo">
           <span className="vis-titulo-linha">
             <span className="vis-titulo">{`Visita ${visita.numero} · ${visita.data}`}</span>
-            {visita.aviso && <span className="vis-aviso-terra">{visita.aviso}</span>}
             {concluida && <Pill tom="ok">Concluída</Pill>}
             {visita.arquivada && <Pill tom="na">Arquivada</Pill>}
           </span>
-          <span className="ui-row-sub">{visita.responsavel}</span>
+          <span className="ui-row-sub">
+            {visita.responsavel}
+            {visita.aviso && (
+              <>
+                {" · "}
+                <span className="vis-aviso-terra">{visita.aviso}</span>
+              </>
+            )}
+          </span>
         </div>
         <div className="vis-col-barra">
           <ProgressBar percentual={visita.percentual} largura={140} rotulo={`${visita.percentual}% concluída`} />
           <span className="vis-pct">{visita.percentual}%</span>
         </div>
         <div className="vis-col-contagem">
-          <span className="vis-conta">▣ {quantidade(visita.evidencias, "evidência", "evidências")}</span>
+          <span className="vis-conta">{quantidade(visita.evidencias, "evidência", "evidências")}</span>
           <span className={`vis-conta vis-conta--nc${visita.naoConformidades === 0 ? " is-zero" : ""}`}>▲ {visita.naoConformidades} NC</span>
         </div>
         <div className="vis-col-fim">
