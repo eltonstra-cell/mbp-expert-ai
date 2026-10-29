@@ -25,8 +25,8 @@ test("Central: cada cartão tem UMA linha de texto com o número real; o escopo 
 test("Central: a faixa de abas NÃO aparece na Central (os cartões são a navegação) e continua nas telas internas; Finalizar visita no topo usa o fluxo da faixa", () => {
   assert.ok(pagina.includes('modoVisitaNoMenu && visitaAtual && view !== "visita" ? ('));
   assert.ok(pagina.includes('onFinalizar={visitaAtual.status !== "Concluída" && permitido("visitas.concluir", visitaAtual.empresaId) ? () => (modo === "campo" ? setConfirmaFinalizarCampo(true) : void finalizarInspecao()) : null}'));
-  assert.ok(central.includes("pc-central-finalizar") && central.includes("Finalizar visita") && central.includes("Editar ambientes"));
-  assert.ok(central.indexOf("pc-central-finalizar") < central.indexOf("Editar ambientes"), "Finalizar vem antes de Editar ambientes, na mesma linha do título");
+  assert.ok(central.includes("pc-central-finalizar") && central.includes("Finalizar visita") && !central.includes("Editar ambientes"));
+  // "Editar ambientes" foi para o menu ⋯ da tela (rodada 12c)
   assert.ok(css.includes("pc-central-finalizar{border:0;background:#21805B;color:#fff}"));
 });
 
@@ -67,13 +67,13 @@ test("Correções: a aba da visita conta abertas da visita; a barra lateral cont
   const faixa = ler("../components/FaixaDaVisita.tsx");
   const nav = ler("../components/AppNavigation.tsx");
   assert.ok(faixa.includes("nesta visita") && faixa.includes("title={badge > 0"));
-  assert.ok(nav.includes("na empresa, de todas as visitas") && nav.includes("correções vencidas"));
+  assert.ok(nav.includes("na empresa (") && nav.includes("de todas as visitas") && nav.includes("correções abertas"));
   assert.ok(pagina.includes("ncsAbertas={ncsAbertas}") && pagina.includes("vencidas={ncsVencidasDaEmpresa}"));
 });
 
 test("Central: equipamento e programas vazios viram linha compacta; 'Cadastrar ›' só com permissão de editar a empresa", () => {
-  assert.ok(central.includes("pc-vazio-linha") && central.includes("Cadastrar ›") && central.includes("Nenhum programa ativo"));
-  assert.ok(central.includes("equipamentos.onCadastrar &&"));
+  assert.ok(!central.includes("pc-vazio-linha") && !central.includes("Nenhum programa ativo") && central.includes("Nenhum cadastrado"));
+  assert.ok(central.includes("equipamentos.onCadastrar ? ("));
   assert.ok(pagina.includes('"Nenhum equipamento cadastrado"'));
   assert.ok(/onCadastrar: atual && atual\.id === visitaAtual\.empresaId && permitido\("empresas\.editar", atual\.id\) \? \(\) => void abrirSecaoEmpresaPeloMenu\("equipamentos"\) : null/.test(pagina), "Cadastrar leva à aba Equipamentos (Estrutura › Equipamentos)");
   assert.ok(!central.includes("Nenhum programa ativo para esta visita"));
