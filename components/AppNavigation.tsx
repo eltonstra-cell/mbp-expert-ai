@@ -101,7 +101,7 @@ export default function AppNavigation({ contexto, ativa, onSelecionar, vencidas,
         className={`tr-item${ehAtivo ? " is-atual" : ""}`}
         aria-current={ehAtivo ? "page" : undefined}
         aria-label={badge > 0 ? `${rotulo}, ${badge} ${badge === 1 ? "correção aberta" : "correções abertas"} na empresa` : undefined}
-        title={badge > 0 ? `${badge} ${badge === 1 ? "correção vencida" : "correções vencidas"} na empresa, de todas as visitas` : undefined}
+        title={badge > 0 ? `${badge} na empresa (${badge === 1 ? "correção aberta" : "correções abertas"}, de todas as visitas; a Central da visita conta só as da visita)` : undefined}
         onClick={() => {
           setMaisAberto(false);
           onSelecionar(item.key);
