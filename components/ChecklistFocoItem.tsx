@@ -242,13 +242,14 @@ export default function ChecklistFocoItem({
       type="button"
       className={`chk-linha-foto${naoConforme ? " chk-linha-foto--destaque" : ""}${gravando ? " is-apagado" : ""}`}
       disabled={!podeFotografar || salvandoFoto || camera.ativa || gravando || fotosNoItem >= maxFotos}
-      title={fotosNoItem >= maxFotos ? `Este item já tem ${maxFotos} fotos` : undefined}
+      title={fotosNoItem >= maxFotos ? `Este item já tem ${maxFotos} fotos` : "Foto"}
+      aria-label={fotosNoItem > 0 ? `Foto (${fotosNoItem} de ${maxFotos})` : "Foto"}
       onClick={() => {
         setAvisoFoto(null);
         pedirAvisoDeFoto(() => void camera.abrir());
       }}
     >
-      <NavIcon name="registrar" size={18} strokeWidth={1.9} /> <span>{salvandoFoto ? "Salvando..." : fotosNoItem > 0 ? `Foto ${fotosNoItem}/${maxFotos}` : "Foto"}</span>
+      <NavIcon name="registrar" size={18} strokeWidth={1.9} /> <span className="chip-texto">{salvandoFoto ? "Salvando..." : fotosNoItem > 0 ? `${fotosNoItem}/${maxFotos}` : "Foto"}</span>
     </button>
     {recente && miniaturaNoItem && (
       <button type="button" className="chk-foto-mini-botao chk-foto-mini-ao-lado" onClick={() => setAmpliada(true)} aria-label="Ampliar a foto deste item">
