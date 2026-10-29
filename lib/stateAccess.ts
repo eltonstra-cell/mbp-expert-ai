@@ -352,7 +352,7 @@ export function mesclarEstadoPorUsuario(
         // Só quem pode usar a IA (Administrador e Consultor/RT) liberar ou desligar a IA da empresa.
         const comIa = podeMexerNaIa
           ? nova
-          : { ...nova, privacidade: { ...nova.privacidade, iaFotos: gravada?.privacidade?.iaFotos } };
+          : { ...nova, privacidade: { ...nova.privacidade, iaFotos: gravada?.privacidade?.iaFotos, audioIa: gravada?.privacidade?.audioIa } };
         // Só o Administrador escolhe a pessoa de Acessos que é o responsável do estabelecimento (quem aprova os POPs).
         // Só Administrador e RT mudam o questionário por ambiente.
         empresas[empresaId] = {
