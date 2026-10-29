@@ -788,10 +788,10 @@ export function CampoTelaFixa({ className, rotulo, children }: { className: stri
     const medir = () => {
       const barra = document.querySelector<HTMLElement>(".campo-bar");
       if (!barra) return;
-      // O disco do Registrar sobe acima da barra: o conteúdo para 16 px antes dele, para nenhum botão encostar.
+      // O disco do Registrar sobe acima da barra: o conteúdo para 24 px antes dele (20 px livres além do anel branco de 4 px), para nenhum botão encostar.
       const disco = document.querySelector<HTMLElement>(".campo-register-orb");
       const limite = Math.min(barra.getBoundingClientRect().top, disco ? disco.getBoundingClientRect().top : Infinity);
-      const livre = Math.floor(limite - el.getBoundingClientRect().top - 16);
+      const livre = Math.floor(limite - el.getBoundingClientRect().top - 24);
       if (livre > 160) el.style.height = `${livre}px`;
       else el.style.removeProperty("height");
     };
