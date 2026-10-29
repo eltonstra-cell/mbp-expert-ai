@@ -5389,7 +5389,7 @@ button.mr-cartao.is-aberto{outline:3px solid #21A3A3;outline-offset:1px}
 :root{
   --rd-menu:#264A80;
   --rd-acao:#264A80;
-  --rd-acao-hover:#264A80;
+  --rd-acao-hover:#1B3A66;
   --rd-laranja-texto:#263445;
   --rd-ink:#263445;
   --rd-trilho:#E8EBF2;
@@ -6749,7 +6749,7 @@ html:root:root body .ui-screen[aria-label="Central da visita"] .pc-step-card{bac
 html:root:root body .ui-screen[aria-label="Central da visita"] .pc-step-card--ok .pc-step-tile,html:root:root body .ui-screen[aria-label="Central da visita"] .pc-step-card[data-chave="checklist"] .pc-step-tile{background:#21805B}
 html:root:root body .ui-screen[aria-label="Central da visita"] .pc-step-card[data-chave="evidencias"] .pc-step-tile{background:#1F78B4}
 html:root:root body .ui-screen[aria-label="Central da visita"] .pc-step-card[data-chave="correcoes"] .pc-step-tile{background:#C83F45}
-html:root:root body .ui-screen[aria-label="Central da visita"] .pc-step-card[data-chave="pops"] .pc-step-tile{background:#B4491C}
+html:root:root body .ui-screen[aria-label="Central da visita"] .pc-step-card[data-chave="pops"] .pc-step-tile{background:#168080}
 html:root:root body .ui-screen[aria-label="Central da visita"] .pc-step-card[data-chave="relatorio"] .pc-step-tile{background:#526477}
 html:root:root body .ui-screen[aria-label="Central da visita"] .pc-continue .ui-progress-fill{background:#21A3A3}
 html:root:root body .ui-screen[aria-label="Central da visita"] .pc-continue .ui-progress{background:#fff}
@@ -6761,4 +6761,49 @@ html[data-modo="campo"]:root:root body .chk-foco-obs .chk-obs-cabeca .voz-ia{bac
 html[data-modo="campo"]:root:root body .chk-foco-obs .chk-obs-cabeca :is(.chk-linha-foto,.voz-btn) svg{color:#fff}
 html[data-modo="campo"]:root:root body .chk-foco-obs .chk-obs-cabeca .voz-ia .chip-ia-sigla{color:#fff;font-weight:500}
 html:root:root body .ui-screen.pc-cor .pc-cor-card{background:#fff;border:1px solid #D6DCE5}
-html:root:root body .ui-screen.pc-cor .pc-cor-card.is-sel,html:root:root body .ui-screen.pc-cor .pc-cor-card[aria-current="true"],html:root:root body .ui-screen.pc-cor .pc-cor-card[aria-selected="true"]{border-color:#21A3A3;box-shadow:0 0 0 1px #21A3A3}
+
+/* RODADA 12b · Registrar laranja com câmera (PC, tablet e celular) */
+html:root:root body .tr-registrar-disco,html:root:root body .campo-bar .campo-register-orb,html[data-modo="campo"]:root:root body .campo-register-orb{background:#E8591A;color:#fff}
+html:root:root body .tr-registrar-disco svg,html:root:root body .campo-register-orb svg{color:#fff;stroke:currentColor}
+html:root:root body .tr-registrar-disco{box-shadow:none}
+html:root:root body .campo-bar .campo-register-orb,html[data-modo="campo"]:root:root body .campo-register-orb{box-shadow:0 0 0 4px #fff}
+
+/* RODADA 12b · tablet: sem "Ir →" na busca e sem o link "Limpar resposta" (tocar de novo na resposta marcada ainda limpa) */
+@media (min-width:600px){
+  html[data-modo="campo"]:root:root body :is(.campo-head,.campo-head--busca) .pc-go{display:none}
+  html[data-modo="campo"]:root:root body .chk-limpar{display:none}
+}
+
+/* RODADA 12b · Correções (PC) */
+html:root:root body .ui-screen.pc-cor .pc-etapa--nc .pc-etapa-num{color:#C83F45}
+html:root:root body .ui-screen.pc-cor .pc-etapa--pend .pc-etapa-num{color:#8A5A00}
+html:root:root body .ui-screen.pc-cor .pc-etapa--info .pc-etapa-num{color:#1F78B4}
+html:root:root body .ui-screen.pc-cor .pc-etapa--ok .pc-etapa-num{color:#21805B}
+html:root:root body .ui-screen.pc-cor .pc-etapa.is-on{border-bottom-color:#21A3A3}
+html:root:root body .ui-screen.pc-cor .pc-master--corr{grid-template-columns:380px minmax(0,1fr)}
+html:root:root body .ui-screen.pc-cor .pc-cor-card{border:1px solid #D6DCE5;border-left:4px solid var(--grav,#D6DCE5);border-radius:10px;background:#fff;box-shadow:none}
+html:root:root body .ui-screen.pc-cor .pc-cor-card:hover{background:#F6F7FA}
+html:root:root body .ui-screen.pc-cor .pc-cor-card.is-selected,html:root:root body .ui-screen.pc-cor .pc-cor-card.is-selected:hover{background:#fff;border:1.5px solid #21A3A3;border-left:4px solid var(--grav,#21A3A3)}
+html:root:root body .ui-screen.pc-cor .pc-cor-agrupar{font-weight:400;color:#526477}
+html:root:root body .ui-screen.pc-cor .pc-cor-barra [role="tab"][aria-selected="true"],html:root:root body .ui-screen.pc-cor .pc-cor-barra .is-on{background:transparent;box-shadow:none;border-radius:0;border-bottom:2px solid #21A3A3;color:#263445}
+html:root:root body .ui-screen.pc-cor .pc-cor-barra [role="tablist"],html:root:root body .ui-screen.pc-cor .pc-cor-barra .ui-segmented{background:transparent;border:0;gap:12px}
+html:root:root body .ui-screen.pc-cor .pc-detail-title{font-size:24px;font-weight:500}
+html:root:root body .ui-screen.pc-cor .pc-detail-lateral{background:#fff;border:1px solid #B9E0E0;border-top:3px solid #21A3A3;border-radius:10px}
+html:root:root body .ui-screen.pc-cor .pc-bloco-num,html:root:root body .ui-screen.pc-cor .pc-bloco-num.is-azul{background:#168080;border-color:#168080;color:#fff}
+
+/* RODADA 12b · varredura: botões retangulares de raio 10 (sem pílula) e títulos em peso 500 (tela; o papel não muda) */
+@media screen{
+  html:root:root body :is(.nc-empty-state button,.plan-editor-footer button,.plan-empty-state button,.pc-btn-info,.pc-btn-amber,.pc-cmd-status-btn,.pc-photo-wait button,.pc-env-step button,.pc-quick-btn,.ui-chip-btn,.pc-chip-btn,.ev7-btn-ia,.help-back-button,.nc-filter-tabs button,.pc-seg button,.campo-chip-env,.pc-mode-chip,.cad-chip,.esc-chip,.nc-back-button,.plan-back-button,.mbp-voice-button):not(.voz-btn):not(.voz-ia){border-radius:10px!important}
+  html:root:root body :is(h1,h2,h3,h4,[class*="title"],[class*="titulo"]):not([class*="cz-"]):not([class*="pop-folha"]):not([class*="auth-brand"]):not([class*="pacote-grupo"]):not(.sr-only){font-weight:500}
+  html:root:root body .doc-impresso :is(h1,h2,h3,h4,[class*="title"],[class*="titulo"]){font-weight:inherit}
+}
+
+/* RODADA 12b · Campo: se a tela fixa não couber (ex.: 360x640 com Não conforme), ela rola por dentro e o rodapé fica colado embaixo */
+html[data-modo="campo"]:root:root body .campo-tela--fixa{overflow-y:auto}
+html[data-modo="campo"]:root:root body .campo-tela--fixa .chk-foco-rodape{position:sticky;bottom:0;z-index:3;background:#fff;box-shadow:0 -8px 0 0 #fff}
+html[data-modo="campo"]:root:root body .chk-foco-card .chk-foco-title{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
+
+/* RODADA 12b · Correções: lista de 380 px (340 de 1200 a 1299 px, 280 abaixo de 1200 px) */
+@media (max-width:1299px){html:root:root body .ui-screen.pc-cor .pc-master--corr{grid-template-columns:340px minmax(0,1fr)}}
+@media (max-width:1199px){html:root:root body .ui-screen.pc-cor .pc-master--corr{grid-template-columns:280px minmax(0,1fr)}}
+@media (max-width:1000px){html:root:root body .ui-screen.pc-cor .pc-master--corr{grid-template-rows:340px minmax(0,1fr)}}
