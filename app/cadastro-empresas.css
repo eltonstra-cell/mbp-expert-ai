@@ -27,8 +27,8 @@
 .emp-nome{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;font-size:18px;font-weight:500;line-height:24px;color:#263445;overflow-wrap:anywhere}
 .emp-sub{font-size:15px;line-height:22px;color:#526477}
 .emp-prep-linha{display:flex;align-items:center;gap:10px}
-.emp-prep-linha .ui-progress{flex:1;min-width:0;height:8px;background:#D8DDE8}
-.emp-prep-linha .ui-progress-fill{background:#2A4D7C}
+.emp-prep-linha .ui-progress{flex:1;min-width:0;height:8px;background:#D6DCE5}
+.emp-prep-linha .ui-progress-fill{background:#264A80}
 .emp-pct{flex:none;min-width:40px;font-size:15px;line-height:22px;text-align:right;color:#263445}
 .emp-falta{font-size:15px;line-height:22px;color:#526477;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .emp-ativa-texto{display:inline-flex;align-items:center;min-height:40px;padding:0 4px;border:0;background:none;font-size:16px;font-weight:500;color:#21805B}
@@ -59,13 +59,13 @@
 .cemp-cartao.is-ativa{position:relative;border-color:#7F8BA3;background:#FFF6E5;box-shadow:inset 4px 0 0 #21A3A3}
 .cemp-cartao .cemp-sel{min-height:44px;padding:0 14px;font-size:15px}
 .cemp-ativa{display:inline-flex;flex:none;align-items:center;min-height:44px;padding:0 4px;font-size:16px;font-weight:500;color:#21805B}
-.cemp-cartao .cemp-barra{height:8px;border-radius:99px;background:#D8DDE8}
-.cemp-cartao .cemp-barra span{border-radius:99px;background:#2A4D7C}
+.cemp-cartao .cemp-barra{height:8px;border-radius:99px;background:#D6DCE5}
+.cemp-cartao .cemp-barra span{border-radius:99px;background:#264A80}
 .cemp-cartao .cemp-pct{font-size:15px;color:#263445}
 
 /* "Ver arquivadas" e o aviso "Arquivada": texto simples (sem pílula), 15 px; 44 px de toque no Campo */
-.emp-toolbar .pc-quick-btn,.cemp-arquivadas{min-height:36px;padding:0 4px;border:0;border-radius:0;background:transparent;font-size:15px;line-height:22px;color:#2A4D7C;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
-.emp-toolbar .pc-quick-btn:focus-visible,.cemp-arquivadas:focus-visible{outline:3px solid #2A4D7C;outline-offset:2px}
+.emp-toolbar .pc-quick-btn,.cemp-arquivadas{min-height:36px;padding:0 4px;border:0;border-radius:0;background:transparent;font-size:15px;line-height:22px;color:#264A80;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.emp-toolbar .pc-quick-btn:focus-visible,.cemp-arquivadas:focus-visible{outline:3px solid #264A80;outline-offset:2px}
 .emp-nome .ui-pill,.cemp-situacao .ui-pill{padding:0;border-radius:0;background:transparent;font-size:15px;color:#526477}
 .emp-nome .ui-pill{margin-left:8px}
 html[data-modo="campo"] .cemp-arquivadas{display:inline-flex;align-items:center;min-height:44px}
