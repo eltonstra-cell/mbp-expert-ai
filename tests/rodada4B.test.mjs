@@ -17,7 +17,7 @@ test("Central: cada cartão tem UMA linha de texto com o número real; o escopo 
   assert.ok(pagina.includes('resumo: `${respondidos} de ${totalChecklist} ${totalChecklist === 1 ? "item" : "itens"}`'));
   assert.ok(!pagina.includes('qtd(conformesChecklist, "conforme", "conformes")'));
   assert.ok(pagina.includes('qtd(linhasConferenciaRel.filter((linha) => !linha.ok).length, "pendência", "pendências")'));
-  assert.ok(pagina.includes('resumo: qtd(ncsAbertas, "aberta", "abertas")') && pagina.includes("nesta visita (a barra lateral conta só as vencidas da empresa toda)"));
+  assert.ok(pagina.includes('resumo: `${ncsAbertas} ${ncsAbertas === 1 ? "aberta" : "abertas"} nesta visita`') && pagina.includes("nesta visita (o menu conta as abertas da empresa toda)"));
   assert.ok(pagina.includes('"Nenhum a criar"'));
   assert.ok(central.includes("aria-label={passo.titulo ?") && central.includes("title={passo.titulo ??"));
 });
