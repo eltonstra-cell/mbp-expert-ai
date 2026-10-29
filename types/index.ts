@@ -87,6 +87,13 @@ export type PrivacidadeEmpresa = {
     liberadaEm?: string;
     aceite?: boolean;
   };
+  /** Transcrição do áudio das evidências por serviço de IA no exterior: desligada até alguém com permissão registrar o consentimento. */
+  audioIa?: {
+    consentido: boolean;
+    consentidoPorId?: string;
+    consentidoPorNome?: string;
+    consentidoEm?: string;
+  };
   /** Guarda de fotos e áudios, em dias contados da conclusão da visita (padrão sugerido: 180). */
   guardaDias?: number;
 };
