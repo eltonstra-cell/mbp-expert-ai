@@ -87,6 +87,8 @@ export type CorrecaoItem = {
 };
 
 type Props = {
+  /** Dentro da visita a faixa da visita já é uma fileira de abas: as etapas ficam na linha acima da lista, sem empilhar duas fileiras. */
+  etapasNaLista?: boolean;
   empresa: string;
   data: string;
   hoje: string;
@@ -146,6 +148,7 @@ function etapaInicial(itens: CorrecaoItem[], escolhidaId: string): EtapaCorrecao
 }
 
 export default function PcCorrecoes({
+  etapasNaLista = false,
   empresa,
   data,
   hoje,
@@ -252,34 +255,39 @@ export default function PcCorrecoes({
   const etapaAtiva = etapa;
   const filtrosAtivos = Number(rapidos.recorrentes) + Number(rapidos.semResp) + Number(rapidos.atrasadas);
 
+  const etapasEl = (
+    <div className="pc-etapas" role="group" aria-label="Etapas das correções">
+      {ETAPAS.map((passo) => (
+        <button
+          key={passo.chave}
+          type="button"
+          className={`pc-etapa ${passo.classe}${etapaAtiva === passo.chave ? " is-ativa" : ""}${contagem[passo.chave] === 0 ? " is-zero" : ""}${etapa === passo.chave ? " is-on" : ""}`}
+          aria-pressed={etapa === passo.chave}
+          onClick={() => {
+            aposSalvar.current = null;
+            setEtapa(passo.chave);
+          }}
+        >
+          <span className="pc-etapa-label">{passo.rotulo}</span>
+          <span className="pc-etapa-num">{contagem[passo.chave]}</span>
+        </button>
+      ))}
+    </div>
+  );
+
   return (
     <section className="ui-screen pc-cor" aria-label="Correções">
       <h1 className="sr-only">Correções</h1>
       <p className="sr-only">{subtitulo}</p>
 
-      <div className="pc-etapas" role="group" aria-label="Etapas das correções">
-        {ETAPAS.map((passo) => (
-          <button
-            key={passo.chave}
-            type="button"
-            className={`pc-etapa ${passo.classe}${etapaAtiva === passo.chave ? " is-ativa" : ""}${contagem[passo.chave] === 0 ? " is-zero" : ""}${etapa === passo.chave ? " is-on" : ""}`}
-            aria-pressed={etapa === passo.chave}
-            onClick={() => {
-              aposSalvar.current = null;
-              setEtapa(passo.chave);
-            }}
-          >
-            <span className="pc-etapa-label">{passo.rotulo}</span>
-            <span className="pc-etapa-num">{contagem[passo.chave]}</span>
-          </button>
-        ))}
-      </div>
+      {!etapasNaLista && etapasEl}
 
       {itens.length === 0 ? (
         <div className="ui-empty">Nenhuma não conformidade nesta visita. Itens marcados como Não Conforme no checklist aparecem aqui.</div>
       ) : (
         <div className="pc-master pc-master--corr">
           <div className="pc-master-list">
+            {etapasNaLista && etapasEl}
             <div className="pc-cor-barra">
               <span className="pc-cor-agrupar">Agrupar por</span>
               <SegmentedTabs<Agrupar>
