@@ -14,7 +14,8 @@ import { NavIcon, type NavIconName } from "@/components/NavIcons";
 import { RowMenu, type ItemMenu } from "@/components/ui/RowMenu";
 import { ABAS_PADRAO, barraComLarguraIgual, type AbaDaBarra } from "@/lib/abasDoCampo";
 import { acaoPadraoVisivel } from "@/lib/conteudoValidado";
-import { contarEtapas, etapaDaCorrecao, ordenarCorrecoes, prazoSugerido, validarPlano, type EtapaCorrecao, type GravidadeNc } from "@/lib/actionPlan";
+import { contarEtapas, etapaDaCorrecao, ordenarCorrecoes, prazoParaExibir, prazoSugerido, textoDoPrazo, validarPlano, type EtapaCorrecao, type GravidadeNc } from "@/lib/actionPlan";
+import { nomeCurtoDoAmbiente } from "@/lib/checklistEnvs";
 import { NOME_DA_GRAVIDADE, linhaDaCorrecao, mensagemDeFaltas, primeiroCampoComProblema, type CampoDoPlano } from "@/lib/correcaoRotulos";
 
 export type TelaCampo = "inicio" | "visitas" | "checklist" | "correcoes" | "evidencias" | "pops" | "relatorios" | "mais";
@@ -402,13 +403,7 @@ export function CampoCorrecoes({
 
   return (
     <section className="campo-tela campo-tela--lista" aria-label="Correções">
-      <div>
-        <h1 className="campo-h1">Correções</h1>
-        <p className="campo-sub">
-          {abertas} não conformidade{abertas === 1 ? "" : "s"} aberta{abertas === 1 ? "" : "s"} ·{" "}
-          {abertas === 0 ? "nada pendente" : contagem.plano === 0 ? "nenhuma com plano ainda" : `${contagem.plano} com plano`}
-        </p>
-      </div>
+      <h1 className="sr-only">Correções</h1>
 
       {salvoAgora && (
         <div className="campo-salvo" role="status">
@@ -453,19 +448,18 @@ export function CampoCorrecoes({
       </div>
 
       <div className="campo-lista-barra">
-        <span className="campo-sub">Agrupar</span>
-        <SegmentedTabs<"gravidade" | "ambiente">
-          rotulo="Agrupar correções"
-          valor={agrupar}
-          onChange={setAgrupar}
-          abas={[
-            { id: "gravidade", rotulo: "Gravidade" },
-            { id: "ambiente", rotulo: "Ambiente" },
-          ]}
-        />
+        <div className="cc2-agrupar" role="group" aria-label="Agrupar correções">
+          <span className="cc2-agrupar-rotulo">Agrupar</span>
+          {(["gravidade", "ambiente"] as const).map((chave) => (
+            <button key={chave} type="button" className={`cc2-agrupar-opcao${agrupar === chave ? " is-ativa" : ""}`} aria-pressed={agrupar === chave} onClick={() => setAgrupar(chave)}>
+              {chave === "gravidade" ? "Gravidade" : "Ambiente"}
+            </button>
+          ))}
+        </div>
         {podeEditar && (
-          <button type="button" className="pc-chip-btn pc-chip-btn--soft campo-lote" onClick={() => setLote(true)} disabled={abertas === 0}>
-            Definir em lote
+          <button type="button" className="cc2-lote" onClick={() => setLote(true)} disabled={abertas === 0} aria-label="Definir em lote">
+            <span className="cc2-lote-longo">Definir em lote</span>
+            <span className="cc2-lote-curto" aria-hidden="true">Em lote</span>
           </button>
         )}
       </div>
@@ -481,7 +475,7 @@ export function CampoCorrecoes({
           .filter((grupo) => grupo.itens.length > 0)
           .map((grupo) => (
             <div key={grupo.rotulo} className="campo-grupo">
-              <div className="ui-group-title">
+              <div className={`ui-group-title cc2-grupo-titulo${agrupar === "gravidade" ? ` cc2-grupo--${grupo.itens[0].gravidade}` : ""}`}>
                 {grupo.rotulo} · {grupo.itens.length}
               </div>
               {grupo.itens.map((item) => {
@@ -490,23 +484,26 @@ export function CampoCorrecoes({
                   <button
                     key={item.id}
                     type="button"
-                    className="pc-cor-card"
+                    className="cc2-item"
                     style={{ "--grav": COR_DA_GRAVIDADE_CAMPO[item.gravidade] } as CSSProperties}
                     onClick={() => {
                       setSalvoAgora(null);
                       setAberta(item.id);
                     }}
                   >
-                    <span className="pc-cor-topo">
-                      <span className="pc-cor-pino">
-                        <PinoCampo />
-                        {linha.ambiente}
+                    <span className="cc2-item-corpo">
+                      <span className="cc2-item-titulo">{linha.titulo}</span>
+                      <span className="cc2-item-info">
+                        <span className="cc2-item-bolinha" aria-hidden="true" />
+                        <span className="cc2-item-amb">{nomeCurtoDoAmbiente(linha.ambiente)}</span>
+                        <span className="cc2-item-resp"> · {item.responsavelAcao?.trim() || "Sem responsável"}</span>
+                        <span className="cc2-item-prazo"> · {textoDoPrazo(prazoParaExibir(item, hoje).dias, false)}</span>
+                        <span className="cc2-item-prazo-curto"> · {textoDoPrazo(prazoParaExibir(item, hoje).dias, true)}</span>
+                        {item.reincidente && <span className="pc-cor-aviso">Reincidente</span>}
+                        {item.marcadaFeita && item.status !== "Resolvida" && <span className="pc-cor-aviso">Feita, aguardando confirmação</span>}
                       </span>
-                      {item.reincidente && <span className="pc-cor-aviso">Reincidente</span>}
-                      {item.marcadaFeita && item.status !== "Resolvida" && <span className="pc-cor-aviso">Feita, aguardando confirmação</span>}
                     </span>
-                    <span className="pc-cor-titulo">{linha.titulo}</span>
-                    <span className="pc-cor-grav">{NOME_DA_GRAVIDADE[item.gravidade]}</span>
+                    <span className="cc2-item-seta" aria-hidden="true">›</span>
                   </button>
                 );
               })}
