@@ -24,13 +24,13 @@ export function situacaoRevisaoPOP(
     return { label: "Inativo", classe: "bg-slate-100 text-slate-600" };
   }
   if (pop.status === "Rascunho") {
-    return { label: "Em elaboração", classe: "bg-amber-50 text-amber-800" };
+    return { label: "Em elaboração", classe: "bg-[#FFE8A3] text-[color:var(--ink)]" };
   }
   if (pop.status === "Em revisão") {
     return { label: "Em revisão", classe: "bg-blue-50 text-blue-800" };
   }
   if (!pop.proximaRevisao) {
-    return { label: "Revisão não definida", classe: "bg-amber-50 text-amber-800" };
+    return { label: "Revisão não definida", classe: "bg-[#FFE8A3] text-[color:var(--ink)]" };
   }
 
   const hojeData = new Date(`${hoje}T12:00:00`);
@@ -41,7 +41,7 @@ export function situacaoRevisaoPOP(
     return { label: "Revisão vencida", classe: "bg-red-50 text-red-700" };
   }
   if (dias <= 30) {
-    return { label: "Revisão próxima", classe: "bg-amber-50 text-amber-800" };
+    return { label: "Revisão próxima", classe: "bg-[#FFE8A3] text-[color:var(--ink)]" };
   }
   return { label: "Em dia", classe: "bg-emerald-50 text-emerald-800" };
 }

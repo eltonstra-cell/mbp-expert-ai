@@ -26,10 +26,10 @@ test("cartão-resumo: chips dos marcados (0, 2 e mais de 6 com '+N') e a linha '
   assert.ok(janela.includes("quantosChipsCabem") && janela.includes("+{escondidos} ▾") && janela.includes('<span aria-hidden="true">✓</span>'));
   assert.ok(janela.includes('<p className="esc-vazio">{vazio}</p>'));
   const css = ler("../app/globals.css");
-  assert.match(css, /\.esc-chip\{[^}]*min-height:36px[^}]*border:1\.5px solid #E8B04B[^}]*background:#FEF6E6/);
+  assert.match(css, /\.esc-chip\{[^}]*min-height:36px[^}]*border:1\.5px solid #21A3A3[^}]*background:#FFF6E5/);
   assert.match(css, /\.esc-chips\{display:flex;flex-wrap:wrap/);
   assert.match(css, /\.esc-botao\{flex:none;height:38px/);
-  assert.match(css, /\.esc-vazio\{[^}]*color:#51606c/);
+  assert.match(css, /\.esc-vazio\{[^}]*color:#526477/);
 });
 
 // ===== 1.2 / 1.3 Janela =====
@@ -82,9 +82,9 @@ test("janela: estrutura (modal por cima, fundo rgba(18,32,43,.28), página trava
   assert.match(bloco, /\.esc-rodape\{flex:none/);
   assert.match(bloco, /\.esc-opcoes\{display:grid;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
   assert.match(bloco, /@media \(max-width:759px\)\{\.esc-opcoes\{grid-template-columns:minmax\(0,1fr\)\}\}/);
-  assert.match(bloco, /\.esc-opcao\{[^}]*min-height:46px[^}]*border:1\.5px solid #B4C2CE/);
-  assert.match(bloco, /\.esc-opcao\.is-on\{border-color:#E8B04B;background:#FEF6E6\}/);
-  assert.match(bloco, /\.esc-caixa:checked\{border-color:#AF640A;background:#AF640A\}/);
+  assert.match(bloco, /\.esc-opcao\{[^}]*min-height:46px[^}]*border:1\.5px solid #7F8BA3/);
+  assert.match(bloco, /\.esc-opcao\.is-on\{border-color:#21A3A3;background:#FFF6E5\}/);
+  assert.match(bloco, /\.esc-caixa:checked\{border-color:#21A3A3;background:#21A3A3\}/);
   assert.match(bloco, /\.esc-titulo\{[^}]*font-size:20px;font-weight:500/);
   assert.equal(/text-overflow|white-space:nowrap/.test(bloco.slice(bloco.indexOf(".esc-opcao{"))), false, "o nome do setor nunca é cortado");
   assert.ok(janela.includes("Marque somente") === false, "o apoio vem de quem usa a janela");
@@ -123,7 +123,7 @@ test("fluxos: mesma janela; descrição de cada fluxo na opção; título sem 'C
   // os detalhes dos marcados (setor, responsável, descrição, controles) continuam editáveis
   for (const rotulo of ["Setor onde ocorre", "Responsável", "Como acontece nesta empresa?", "Controles e registros usados"]) assert.ok(campos.includes(rotulo));
   const css = ler("../app/globals.css");
-  assert.match(css, /\.esc-opcao-descricao\{font-size:13\.5px;[^}]*color:#51606c\}/);
+  assert.match(css, /\.esc-opcao-descricao\{font-size:13\.5px;[^}]*color:#526477\}/);
   assert.match(css, /\.esc-opcao-titulo\{[^}]*font-weight:500/);
 });
 

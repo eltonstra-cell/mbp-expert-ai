@@ -60,21 +60,21 @@ test("dossiê: caixas maiores, contagem por item e aviso quando o resultado fica
 
 test("comprovante: sugestão em cinza e erro com fundo branco (nada de amarelo empilhado)", () => {
   const css = ler("../app/globals.css");
-  assert.ok(css.includes(".comp-sugestao{display:flex;flex-wrap:nowrap;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;border:1px solid #B4C2CE;border-radius:10px;background:#EEF1F5"));
-  assert.ok(css.includes(".ui-input.is-invalid{border-color:#B83A33;background:#fff}"));
+  assert.ok(css.includes(".comp-sugestao{display:flex;flex-wrap:nowrap;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;border:1px solid #7F8BA3;border-radius:10px;background:#EEF1F7"));
+  assert.ok(css.includes(".ui-input.is-invalid{border-color:#C83F45;background:#fff}"));
 });
 
-test("fonte e contraste no PC: rótulos escuros sem maiúsculas, borda #B4C2CE e base de 15 px (celular intacto)", () => {
+test("fonte e contraste no PC: rótulos escuros sem maiúsculas, borda #7F8BA3 e base de 15 px (celular intacto)", () => {
   const css = ler("../app/globals.css");
-  assert.ok(css.includes(".ui-input,.ui-input--lista{border-color:#B4C2CE}"));
-  assert.ok(css.includes("text-transform:none;color:#12202B}"));
+  assert.ok(css.includes(".ui-input,.ui-input--lista{border-color:#7F8BA3}"));
+  assert.ok(css.includes("text-transform:none;color:#263445}"));
   assert.ok(css.includes(':is(html[data-modo="completo"],html[data-modo="equilibrado"]) .pc-offset{font-size:15px}'));
   assert.ok(!css.includes('html[data-modo="campo"] .pc-offset{font-size:15px}'));
 });
 
 test("seleção em creme com borda dourada; checklist com nome em destaque e contador menor; roteiro sem corte", () => {
   const css = ler("../app/globals.css");
-  assert.ok(css.includes(".pc-env-pill.is-active,.pc-env-cell.is-active,.pc-env-panel .pc-env-cell.is-active,.chk-pc-aba.is-on{border-color:#E8B04B;background:#FEF6E6"));
+  assert.ok(css.includes(".pc-env-pill.is-active,.pc-env-cell.is-active,.pc-env-panel .pc-env-cell.is-active,.chk-pc-aba.is-on{border-color:#21A3A3;background:#FFF6E5"));
   assert.ok(css.includes(".chk-sel-nome{font-family:var(--font-display)") && css.includes(".chk-sel-pos{padding:0 8px;font-family:inherit;font-size:.8rem"));
   assert.ok(css.includes(".pc-route-name{flex:1 1 220px;overflow:visible;text-overflow:clip;white-space:normal"));
   assert.equal(resumoCurtoDosSetores(["Central de gás", "Churrasqueira"]), "1 do modelo · 1 da empresa");

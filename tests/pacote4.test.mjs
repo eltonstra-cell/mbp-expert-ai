@@ -111,14 +111,14 @@ test("74. duas barras na Central; Ambientes, Equipamentos e Fluxos são abas sep
   assert.deepEqual(subabasDaBarra(["ambientes", "equipamentos", "fluxos"]), ["ambientes", "equipamentos", "fluxos"]);
   assert.equal(blocoAtivoDaBarra("equipamentos"), "equipamentos");
   const css = ler("../app/globals.css");
-  assert.match(css, /\.cen-barra\{display:inline-flex;align-items:stretch;height:40px;border-radius:12px;background:#EEF1F5\}/);
+  assert.match(css, /\.cen-barra\{display:inline-flex;align-items:stretch;height:40px;border-radius:12px;background:#EEF1F7\}/);
   assert.match(css, /\.cen-bloco \+ \.cen-bloco::before\{[^}]*background:#CBD5E1\}/);
-  assert.match(css, /\.cen-bloco\.is-ativa\{border-radius:9px;background:#BFDDF7;color:#12202B\}/);
+  assert.match(css, /\.cen-bloco\.is-ativa\{border-radius:9px;background:#BFDDF7;color:#263445\}/);
   assert.match(css, /\.pgg-conta-num\{font-family:var\(--font-display\),"Outfit",sans-serif;font-size:22px/);
   assert.match(css, /\.pgg-faixa--norma\{background:#D6E7F8\}/);
   assert.match(css, /\.pgg-faixa--outros\{background:#FFEBCB\}/);
-  assert.match(css, /\.pgl-adicionar-botao\{height:44px;[^}]*background:#FFB35C/);
-  assert.match(css, /\.pgl-aprovar\{height:40px;[^}]*background:#FFB35C/);
+  assert.match(css, /\.pgl-adicionar-botao\{height:44px;[^}]*background:#2A4D7C/);
+  assert.match(css, /\.pgl-aprovar\{height:40px;[^}]*background:#2A4D7C/);
   assert.ok(ler("../components/AppTopbar.tsx").includes("!ocultarChipDeModo"));
 });
 

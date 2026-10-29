@@ -48,14 +48,14 @@ test("ambientes: o agrupamento não altera a entrada e a visita continua com um 
   assert.deepEqual(ambientesParaVisita(setores, vinculos), ["Cozinha do Chico"]);
 });
 
-test("ambientes: a tela usa o agrupamento, mostra a nota em #55607A e o menu do oficial traz as opções do próprio", () => {
+test("ambientes: a tela usa o agrupamento, mostra a nota em #526477 e o menu do oficial traz as opções do próprio", () => {
   const tela = lerFonte("components/pc/CadastroAmbientes.tsx");
   assert.ok(tela.includes("agruparAmbientesPorVinculo(setores, vinculos)") && tela.includes("notaDosProprios(vinculadosAqui)"));
   assert.ok(tela.includes("vinculadosAqui.flatMap((p) => itensDoProprio(p, true))"));
   assert.ok(tela.includes('`Renomear${sufixo}`') && tela.includes('"Trocar vínculo" : "Vincular a setor oficial"') && tela.includes('`Remover${sufixo}`'));
   // A contagem continua com os dados reais (todos os setores e todos os próprios).
   assert.ok(tela.includes("linhaDeContagem(oficiaisMarcados.length, SETORES_OFICIAIS_MANUAL.length") && tela.includes("quantidade(proprios.length"));
-  assert.ok(lerFonte("app/cadastro-estrutura.css").includes(".cadest-vinculado{font-size:15px;line-height:22px;color:#55607A;font-weight:400"));
+  assert.ok(lerFonte("app/cadastro-estrutura.css").includes(".cadest-vinculado{font-size:15px;line-height:22px;color:#526477;font-weight:400"));
 });
 
 // ===== 4: "Confirmei tudo" =====
@@ -73,31 +73,31 @@ test("consulta: 'Confirmei tudo' fica visível com campos pendentes, mesmo com a
 });
 
 // ===== 1: chip Sincronizado sem caixa =====
-test("chip Sincronizado: sem fundo, sem borda, ponto na cor do estado e texto #1B2433 de 15 px", () => {
+test("chip Sincronizado: sem fundo, sem borda, ponto na cor do estado e texto #263445 de 15 px", () => {
   const css = lerFonte("app/globals.css");
-  assert.ok(css.includes("background:transparent;border:0;border-radius:0;box-shadow:none;padding:0 4px;color:#1B2433;font-size:15px;font-weight:400"));
-  assert.ok(css.includes("html body .pc-sync-chip.pc-sync-chip.is-ok .pc-sync-dot,html body .campo-sync.campo-sync.is-ok span:first-child{background:#2E8B57}"));
-  assert.ok(css.includes("is-erro .pc-sync-dot,html body .campo-sync.campo-sync.is-erro span:first-child{background:#B83A33}"));
+  assert.ok(css.includes("background:transparent;border:0;border-radius:0;box-shadow:none;padding:0 4px;color:#263445;font-size:15px;font-weight:400"));
+  assert.ok(css.includes("html body .pc-sync-chip.pc-sync-chip.is-ok .pc-sync-dot,html body .campo-sync.campo-sync.is-ok span:first-child{background:#21805B}"));
+  assert.ok(css.includes("is-erro .pc-sync-dot,html body .campo-sync.campo-sync.is-erro span:first-child{background:#C83F45}"));
   const page = lerFonte("app/page.tsx");
   assert.equal(page.includes("bg-[#DCEBF7]"), false);
 });
 
 // ===== 2: gravidade =====
-test("gravidade: Importante em âmbar #F0B429 com texto #1B2433; Crítica #B83A33 com texto branco; Leve não muda", () => {
+test("gravidade: Importante em âmbar #E0A800 com texto #263445; Crítica #C83F45 com texto branco; Leve não muda", () => {
   const css = lerFonte("app/globals.css");
-  assert.ok(css.includes(".chk-grav--amber.is-on{background:#F0B429;color:#1B2433}"));
-  assert.ok(css.includes(".chk-grav--nc.is-on{background:#B83A33;color:#fff}"));
-  assert.ok(css.includes(".chk-grav-linha .chk-grav--leve{--grav:#1E7FB8}"));
-  assert.ok(css.includes(".chk-grav.is-on.chk-grav--amber .chk-grav-sug{color:#1B2433}"));
+  assert.ok(css.includes(".chk-grav--amber.is-on{background:#E0A800;color:#263445}"));
+  assert.ok(css.includes(".chk-grav--nc.is-on{background:#C83F45;color:#fff}"));
+  assert.ok(css.includes(".chk-grav-linha .chk-grav--leve{--grav:#1F78B4}"));
+  assert.ok(css.includes(".chk-grav.is-on.chk-grav--amber .chk-grav-sug{color:#263445}"));
   for (const arquivo of ["components/pc/PcCorrecoes.tsx", "components/campo/CampoTelas.tsx"]) {
     const texto = lerFonte(arquivo);
-    assert.ok(texto.includes('Importante: "#F0B429"') && texto.includes('Crítica: "#B83A33"') && texto.includes('Rotina: "#3AA6D9"'), arquivo);
+    assert.ok(texto.includes('Importante: "#E0A800"') && texto.includes('Crítica: "#C83F45"') && texto.includes('Rotina: "#1F78B4"'), arquivo);
   }
-  assert.ok(lerFonte("app/page.tsx").includes('"bg-[#F0B429] text-[#1B2433]"'));
+  assert.ok(lerFonte("app/page.tsx").includes('"before:bg-[#E0A800]"'));
 });
 
 // ===== revisão da rodada 10 =====
-test("revisão 10: gravidade não selecionada branca com borda da cor, selecionada preenchida; sem #F5A623 de gravidade", () => {
+test("revisão 10: gravidade não selecionada branca com borda da cor, selecionada preenchida; sem #E0A800 de gravidade", () => {
   const css = lerFonte("app/globals.css");
   assert.ok(css.includes(".chk-grav-linha .chk-grav{min-height:40px;padding:0 14px;border:2px solid var(--grav);"));
   assert.ok(css.includes("background:var(--grav);border-color:var(--grav);color:#fff}"));

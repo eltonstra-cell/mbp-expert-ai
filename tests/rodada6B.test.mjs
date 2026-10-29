@@ -293,11 +293,11 @@ test("Ambientes: textos, botões e salvamento ao marcar, sem botão Salvar", () 
   assert.ok(!amb.includes(">Salvar<"), "sem botão Salvar");
   assert.ok(amb.includes("perguntasDoAmbiente"), "a contagem de perguntas é a real, do modelo do setor");
   const css = ler("../app/cadastro-estrutura.css");
-  assert.match(css, /\.cadest-faixa\{[^}]*background:#FFF3DC/);
-  assert.match(css, /\.cadest-setor\.is-sel\{[^}]*border-color:#AF640A;background:#FFF6E5/);
-  assert.match(css, /\.cadest-btn--azul[^{]*\{[^}]*background:#2B54CF[^}]*color:#fff/);
-  assert.match(css, /\.cen-barras \.cen-barra--sub \.cen-bloco\.is-ativa\{[^}]*border-bottom-color:#2B54CF/);
-  assert.ok(!/#[0-9A-Fa-f]{6}/.test(css.replace(/#(1B2433|55607A|8A96AD|D8DDE8|2B54CF|B83A33|FFF6E5|FFF3DC|AF640A|1E7A3E|fff|F6F7FA|E8EBF2|2448B5|186632|BFDDF7|FBE4E2|EEF1F7)/gi, "")), "só as cores do desenho");
+  assert.match(css, /\.cadest-faixa\{[^}]*background:#FFF6E5/);
+  assert.match(css, /\.cadest-setor\.is-sel\{[^}]*border-color:#21A3A3;background:#FFF6E5/);
+  assert.match(css, /\.cadest-btn--azul[^{]*\{[^}]*background:#2A4D7C[^}]*color:#fff/);
+  assert.match(css, /\.cen-barras \.cen-barra--sub \.cen-bloco\.is-ativa\{[^}]*border-bottom-color:#21A3A3/);
+  assert.ok(!/#[0-9A-Fa-f]{6}/.test(css.replace(/#(263445|526477|7F8BA3|D8DDE8|2A4D7C|C83F45|FFF6E5|21A3A3|21805B|fff|F6F7FA|E8EBF2|1D3557|1B6B4B|BFDDF7|FBE4E2|EEF1F7|E0A800)/gi, "")), "só as cores do desenho");
   assert.ok(!/purple|violet|#7c3aed|#8b5cf6/i.test(css), "nunca roxo");
 });
 

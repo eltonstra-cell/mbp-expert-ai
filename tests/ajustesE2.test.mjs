@@ -34,7 +34,7 @@ test("2.1 linha de equipamento recolhida por padrão, sem o campo Ambiente repet
   assert.equal(c.includes("Observação e ambiente"), false);
   assert.ok(c.includes('className="cad-conta"'));
   const css = ler("../app/globals.css");
-  assert.match(css, /\.cad-grupo-titulo\{[^}]*font-size:16px;font-weight:500;color:#12202B\}/);
+  assert.match(css, /\.cad-grupo-titulo\{[^}]*font-size:16px;font-weight:500;color:#263445\}/);
   assert.match(css, /\.cad-linha select\.cad-input,select\.cad-input\{background-color:#fff;padding-right:32px\}/);
   assert.equal(/\.cad-input,\.cad-linha select\.cad-input\{[^}]*background:#fff/.test(css), false, "o fundo não apaga a seta ▾");
 });

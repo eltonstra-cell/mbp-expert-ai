@@ -107,5 +107,5 @@ test("4.2 tela: linha de conferência com ✓ confirmar e ✕ corrigir; nada é 
   assert.ok(voz.includes("onTextoDitado"));
   const lib = ler("../lib/vozEquipamentos.ts");
   assert.equal(/fetch\(|openai|\/api\//i.test(lib), false, "interpretador local: sem chamada externa");
-  assert.match(ler("../app/globals.css"), /\.vz-ok\{border:0;background:#15803D;color:#fff\}/);
+  assert.match(ler("../app/globals.css"), /\.vz-ok\{border:0;background:#21805B;color:#fff\}/);
 });

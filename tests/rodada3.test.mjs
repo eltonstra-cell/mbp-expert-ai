@@ -241,7 +241,7 @@ test("Início do celular: 'Hoje precisa de você' sem os atalhos de relatório, 
   assert.equal(principal.includes("Resumo de uma página") || principal.includes("Dossiê") || principal.includes("Lembrete ao responsável"), false);
   const campo = ler("../components/campo/CampoTelas.tsx");
   assert.ok(campo.includes("visitaAtiva.empresa !== empresa"));
-  assert.ok(ler("../app/globals.css").includes(".campo-btn--brand{background:#AF640A;color:#fff}"), "Continuar checklist é terracota com texto branco (nunca escuro)");
+  assert.ok(ler("../app/globals.css").includes(".campo-btn--brand{background:#2A4D7C;color:#fff}"), "Continuar checklist é azul com texto branco (nunca escuro)");
 });
 
 test("Evidências: UM aviso fino no topo; o rótulo do modo de tela é claro", () => {

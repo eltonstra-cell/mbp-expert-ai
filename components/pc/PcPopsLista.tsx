@@ -83,7 +83,7 @@ function Linha({ linha, podeEditar, onAbrirFicha, onCriarDoModelo, menu }: { lin
         <span className="pgl-estado">
           {linha.registroAtrasado && <span className="pgl-estado-atraso">Registro atrasado · </span>}
           {revisar && <span className="pgl-estado-revisar" title={MENSAGEM_NORMA_ALTERADA}>Revisar · </span>}
-          <span className="pgl-estado-situacao" style={{ color: estado === "neutro" ? "#51606c" : cor }}>{ROTULO_DO_ESTADO_TEXTO[linha.situacao] || linha.situacao}</span>
+          <span className="pgl-estado-situacao" style={{ color: estado === "neutro" ? "#526477" : cor }}>{ROTULO_DO_ESTADO_TEXTO[linha.situacao] || linha.situacao}</span>
           {naoConferido && <span className="pgl-estado-cinza" title={ROTULO_NAO_CONFERIDO}> · {ROTULO_CURTO_NAO_CONFERIDO}</span>}
           {linha.detalhe ? <span className="pgl-estado-cinza"> · {linha.detalhe}</span> : null}
         </span>

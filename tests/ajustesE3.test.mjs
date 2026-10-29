@@ -90,8 +90,8 @@ test("3.1 topo do POP: Próxima ação na linha dos botões, abas de 36 px, selo
   assert.ok(editor.includes("Notas do modelo") && editor.includes('aria-expanded={aberto}'));
   const css = ler("../app/globals.css");
   assert.match(css, /\.ficha-aba\{min-height:36px\}/);
-  assert.match(css, /\.pop-notas-painel\{[^}]*background:#EEF1F5/);
-  assert.match(css, /\.pop-nota--pendencia\{border:1\.5px solid #E8B04B;background:#FEF6E6\}/);
+  assert.match(css, /\.pop-notas-painel\{[^}]*background:#EEF1F7/);
+  assert.match(css, /\.pop-nota--pendencia\{border:1\.5px solid #21A3A3;background:#FFF6E5\}/);
   assert.match(css, /\.pdoc-proxima\{flex:1 1 280px/);
 });
 

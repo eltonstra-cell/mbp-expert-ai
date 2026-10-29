@@ -117,10 +117,10 @@ test("barra do topo do Início: título 30 px, busca sem Ctrl K nem Ir, microfon
   const css = ler("../app/globals.css");
   assert.match(css, /\.pc-topbar--inicio \.pc-crumb-current\{[^}]*font-size:30px;font-weight:500/);
   assert.match(css, /\.pc-topbar--inicio \.pc-smartbar\{border:0;box-shadow:none;background:#F5F7FA;border-radius:14px;height:46px\}/);
-  assert.match(css, /\.pc-topbar--inicio \.pc-mic\{[^}]*background:#0E7FB8/);
+  assert.match(css, /\.pc-topbar--inicio \.pc-mic\{[^}]*background:#1F78B4/);
   assert.match(css, /\.pc-topbar--inicio \.pc-sync-chip\{background:transparent/);
-  assert.match(css, /\.pc-topbar--inicio \.emp-ativa-caixa\{[^}]*height:44px;padding:0 14px;border:1\.5px solid #2456D6;border-radius:12px;background:#FFFFFF\}/);
-  assert.match(css, /\.pc-topbar--inicio \.emp-ativa-selo\{position:absolute;top:-9px;left:12px;[^}]*background:#FFFFFF;font-size:15px;[^}]*color:#2456D6\}/);
+  assert.match(css, /\.pc-topbar--inicio \.emp-ativa-caixa\{[^}]*height:44px;padding:0 14px;border:1\.5px solid #2A4D7C;border-radius:12px;background:#FFFFFF\}/);
+  assert.match(css, /\.pc-topbar--inicio \.emp-ativa-selo\{position:absolute;top:-9px;left:12px;[^}]*background:#FFFFFF;font-size:15px;[^}]*color:#2A4D7C\}/);
   assert.match(css, /\.pc-topbar--inicio \.emp-ativa-nome\{[^}]*font-size:16px/);
   const pagina = ler("../app/page.tsx");
   assert.equal(pagina.includes('variante={view === "inicio"'), false, "o Início usa a mesma barra do topo das outras telas (sem variante própria)");

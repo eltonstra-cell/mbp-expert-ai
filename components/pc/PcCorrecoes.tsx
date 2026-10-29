@@ -120,7 +120,7 @@ const ETAPAS: { chave: EtapaCorrecao; rotulo: string; tom: Tom; classe: string }
   { chave: "resolvidas", rotulo: "Resolvidas", tom: "ok", classe: "pc-etapa--ok" },
 ];
 const FAIXA: Record<GravidadeNc, Tom> = { Crítica: "nc", Importante: "amber", Rotina: "na" };
-const COR_DA_GRAVIDADE: Record<GravidadeNc, string> = { Crítica: "#B83A33", Importante: "#F0B429", Rotina: "#3AA6D9" };
+const COR_DA_GRAVIDADE: Record<GravidadeNc, string> = { Crítica: "#C83F45", Importante: "#E0A800", Rotina: "#1F78B4" };
 
 type Agrupar = AgruparCorrecoes;
 

@@ -167,7 +167,7 @@ const PauseIcon = () => (
   </svg>
 );
 
-/** Caixa da sugestão da IA: fundo #FFFBF2 com barra âmbar à esquerda. */
+/** Caixa da sugestão da IA: fundo #FFF6E5 com barra âmbar à esquerda. */
 function CaixaIA({ ev, vazia = false }: { ev: CartaoEvidencia; vazia?: boolean }) {
   const online = useOnline();
   const [editando, setEditando] = useState(false);

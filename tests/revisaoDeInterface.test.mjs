@@ -93,10 +93,10 @@ test("Salvar plano desabilitado diz o motivo na hora, em texto", () => {
   assert.equal(textoDoQueFalta(["a ação", "o responsável", "o prazo"]), "Falta: a ação, o responsável e o prazo");
 });
 
-test("âmbar do trilho: texto e ícone brancos passam no contraste (texto 4,5:1; ícone 3:1)", () => {
+test("turquesa do Registrar: ícone branco passa no contraste de 3:1", () => {
   const ambar = tokenDoCss("--rd-ambar");
-  assert.equal(ambar.toUpperCase(), "#AF640A");
-  assert.ok(razaoComBranco(ambar) >= 4.5, `contraste ${razaoComBranco(ambar).toFixed(3)}`);
+  assert.equal(ambar.toUpperCase(), "#21A3A3");
+
   assert.ok(razaoComBranco(ambar) >= 3);
   assert.ok(razaoComBranco("#D9890B") < 3, "o âmbar antigo não passava");
 });

@@ -20,22 +20,22 @@ import {
 const PERFIS: PerfilUsuario[] = ["Administrador", "Consultor/RT", "Cliente Gestor", "Gerente"];
 
 const GRUPOS: { id: GrupoTela; titulo: string; cor: string }[] = [
-  { id: "visita", titulo: "Visita atual", cor: "#2456D6" },
-  { id: "cadastros", titulo: "Cadastros e acervo", cor: "#AF640A" },
+  { id: "visita", titulo: "Visita atual", cor: "#2A4D7C" },
+  { id: "cadastros", titulo: "Cadastros e acervo", cor: "#168080" },
   { id: "geral", titulo: "Geral", cor: "#0D9488" },
 ];
 
 // Ordem e cores do painel "Menu que essa pessoa vê".
 const MENU_PREVIA: { tela: TelaKey; cor: string }[] = [
-  { tela: "inicio", cor: "#2456D6" },
-  { tela: "visitas", cor: "#3D5160" },
+  { tela: "inicio", cor: "#2A4D7C" },
+  { tela: "visitas", cor: "#526477" },
   { tela: "central", cor: "#0EA5E9" },
-  { tela: "checklist", cor: "#15803D" },
+  { tela: "checklist", cor: "#21805B" },
   { tela: "evidencias", cor: "#0EA5E9" },
-  { tela: "correcoes", cor: "#B83A33" },
-  { tela: "popsVisita", cor: "#F5A623" },
+  { tela: "correcoes", cor: "#C83F45" },
+  { tela: "popsVisita", cor: "#E0A800" },
   { tela: "relatorio", cor: "#475569" },
-  { tela: "pops", cor: "#AF640A" },
+  { tela: "pops", cor: "#168080" },
   { tela: "empresas", cor: "#0D9488" },
   { tela: "ambientes", cor: "#14B8A6" },
   { tela: "guiaRapido", cor: "#0D9488" },

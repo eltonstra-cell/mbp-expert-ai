@@ -61,7 +61,7 @@ test("C2: lista de visitas sem chip repetido, com contadores e aviso em terra; o
   const pagina = ler("../app/page.tsx");
   assert.ok(pagina.includes("<ConfiguracaoDeVisitas") && pagina.includes('perfil === "Administrador"'));
   const css = ler("../app/globals.css");
-  assert.ok(css.includes(".vis-aviso-terra{padding:1px 10px;border-radius:999px;background:#B35A36") && css.includes(".vis-rolagem::-webkit-scrollbar"));
+  assert.ok(css.includes(".vis-aviso-terra{padding:1px 10px;border-radius:999px;background:#E0A800") && css.includes(".vis-rolagem::-webkit-scrollbar"));
 });
 
 test("C1: Documento tem leitura com Imprimir/PDF e Editar, e edição em três colunas com rodapé fixo", () => {
@@ -76,9 +76,9 @@ test("C1: Documento tem leitura com Imprimir/PDF e Editar, e edição em três c
 
 test("D: regras globais de rótulo pequeno, caixas de marcar e seletores; botões de criar/gerar fora do azul", () => {
   const css = ler("../app/globals.css");
-  assert.ok(css.includes(".ui-eyebrow,.ui-group-title,.pgl-secao") && css.includes("text-transform:none;color:#12202B}"));
-  assert.ok(css.includes('input[type="checkbox"]:checked{border-color:#E8B04B;background:#FEF6E6}'));
-  assert.ok(css.includes("select{appearance:none") && css.includes(".ui-btn--primary{background:#AF640A"));
+  assert.ok(css.includes(".ui-eyebrow,.ui-group-title,.pgl-secao") && css.includes("text-transform:none;color:#263445}"));
+  assert.ok(css.includes('input[type="checkbox"]:checked{border-color:#21A3A3;background:#FFF6E5}'));
+  assert.ok(css.includes("select{appearance:none") && css.includes(".ui-btn--primary{background:#2A4D7C"));
   assert.ok(ler("../components/pc/PcPopsLista.tsx").includes('className="ui-btn ui-btn--secondary" onClick={() => onCriarDoModelo'));
   assert.ok(ler("../app/page.tsx").includes('className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => irParaSubaba("dados")}'));
   assert.ok(!ler("../components/PopsFields.tsx").includes("bg-[var(--brand)] px-4 py-3"));

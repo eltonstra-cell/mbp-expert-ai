@@ -59,7 +59,7 @@ test("'+ Adicionar POP' fica à direita dos contadores, laranja médio de 44 px;
   assert.match(lista, /temConjunto && faltamCriar > 0 && \(\s*<button type="button" className="ui-btn ui-btn--secondary"/);
   assert.equal(lista.includes("Os POPs do modelo já foram criados"), false, "sem o texto solto quando o conjunto já foi criado");
   const css = ler("../app/globals.css");
-  assert.match(css, /\.pgl-adicionar-botao\{height:44px;[^}]*background:#FFB35C/);
+  assert.match(css, /\.pgl-adicionar-botao\{height:44px;[^}]*background:#2A4D7C/);
   // abre DIRETO o painel de modelos
   assert.match(lista, /onClick=\{\(\) => \(onCriarDeModelo \? setDeModelo\(true\) : setAdicionando\(true\)\)\}/);
 });
@@ -102,12 +102,12 @@ test("voltar: volta uma tela pelo histórico; sem histórico vai ao nível acima
   assert.equal(mostrarVoltar({ view: "pops", popId: "abc" }), true);
 });
 
-test("botão '←': cinza #EEF1F5, 36 px, aria-label 'Voltar', antes do caminho, ligado na página", () => {
+test("botão '←': cinza #EEF1F7, 36 px, aria-label 'Voltar', antes do caminho, ligado na página", () => {
   const topo = ler("../components/AppTopbar.tsx");
   assert.match(topo, /aria-label="Voltar"/);
   assert.ok(topo.indexOf("pc-voltar") < topo.indexOf('aria-label="Caminho"'));
   const css = ler("../app/globals.css");
-  assert.match(css, /\.pc-voltar\{[^}]*width:36px;height:36px[^}]*background:#EEF1F5/);
+  assert.match(css, /\.pc-voltar\{[^}]*width:36px;height:36px[^}]*background:#EEF1F7/);
   const pagina = ler("../app/page.tsx");
   assert.ok(pagina.includes("onVoltar={mostrarVoltar(localDaTela) ? () => void voltarUmaTela() : undefined}"));
   assert.ok(pagina.includes("voltarUma(pilhaDeTelasRef.current)") && pagina.includes("nivelAcima(localDaTela)"));
@@ -189,8 +189,8 @@ test("enviar incompleto: 'Falta: …' em âmbar, seção marcada na lista e a pr
   assert.match(editor, /tentouEnviar && secoesQueFaltam\.some\(\(falta\) => falta\.id === item\.id\) \? " is-falta"/);
   assert.ok(editor.includes('className="pdoc-falta" role="alert"'));
   const css = ler("../app/globals.css");
-  assert.match(css, /\.pdoc-falta\{[^}]*background:#FFF3D6/);
-  assert.match(css, /\.pdoc-item\.is-falta\{border-color:#E8B04B/);
+  assert.match(css, /\.pdoc-falta\{[^}]*background:#FFE8A3/);
+  assert.match(css, /\.pdoc-item\.is-falta\{border-color:#21A3A3/);
 });
 
 test("comp-13: chip informativo 'Será preciso conferir os itens de segurança antes de aprovar' e bloqueio mantido", () => {
@@ -237,7 +237,7 @@ test("bloco conferido: cinza neutro, recolhido, 'Conferido por [nome], [cargo], 
   assert.equal(/<details[^>]*\bopen\b/.test(ficha), false, "recolhido por padrão");
   assert.ok(ficha.includes("ficha-conferir-marca"));
   const css = ler("../app/globals.css");
-  assert.match(css, /\.ficha-conferir--feito\{[^}]*background:#EEF1F5/);
+  assert.match(css, /\.ficha-conferir--feito\{[^}]*background:#EEF1F7/);
 });
 
 test("pendências: ação clara, sem números do material original nem verbos de auditoria", () => {
@@ -265,7 +265,7 @@ test("chip 'Modelo não conferido': curto, título completo no atributo title; n
   assert.equal(lista.includes("pop-nao-conferido"), false, "na lista não há pílula");
   const css = ler("../app/globals.css");
   assert.match(css, /\.pop-nao-conferido\{white-space:nowrap/);
-  assert.match(css, /\.pgl-estado-cinza\{color:#51606c\}/);
+  assert.match(css, /\.pgl-estado-cinza\{color:#526477\}/);
 });
 
 test("'Outros POPs' em ordem de código (POP-05, POP-06…), não de urgência", () => {

@@ -67,12 +67,12 @@ test("Checklist do Campo: busca do PC no cabeçalho, respostas só com texto at�
   for (const regra of [
     "height:46px;margin:0;padding:0 6px 0 6px",
     "height:38px;min-height:38px;padding:0 2px",
-    "chk-resp--ok:not(.is-marcado){border-color:#8A96AD;background:#fff;color:#1B2433}",
+    "chk-resp--ok:not(.is-marcado){border-color:#7F8BA3;background:#fff;color:#263445}",
     "border-color:#E9A7A2;background:#FBE4E2",
     "border-color:#C5CCDA;background:#EEF1F7",
-    ".chk-linha-foto{background:#AF640A}",
+    ".chk-linha-foto{background:#fff}",
     ".voz-btn{background:#1F78B4}",
-    ".voz-ia{background:#1D5F95}",
+    ".voz-ia{background:#2A4D7C}",
     "height:40px;min-height:40px;margin:0;padding:0 12px",
     "height:auto;min-height:84px",
     "height:44px;min-height:44px;padding:0 18px",
@@ -143,9 +143,9 @@ test("finalizarInspecao({ jaConfirmado }) pula SOMENTE o confirmar final; permis
   assert.ok(pagina.includes("onFinalizar={() => (campo ? setConfirmaFinalizarCampo(true) : void finalizarInspecao())}"), "PC sem o parâmetro");
 });
 
-test("Verde dos botões de Finalizar e Salvar e próximo no Campo: #1E7A3E (o #2E8B57 continua nos outros usos e na faixa do PC)", () => {
+test("Verde dos botões de Finalizar e Salvar e próximo no Campo: #21805B (o #21805B continua nos outros usos e na faixa do PC)", () => {
   const css = ler("../app/globals.css");
-  assert.ok(css.includes("--rd-verde-botao:#1E7A3E;") && css.includes("--rd-verde-acao:#2E8B57;"));
+  assert.ok(css.includes("--rd-verde-botao:#21805B;") && css.includes("--rd-verde-acao:#21805B;"));
   assert.ok(css.includes('html[data-modo="campo"] .fv--campo .fv-finalizar{background:var(--rd-verde-botao)}'));
   assert.ok(/\.fv-finalizar\{[^}]*background:var\(--rd-verde-acao\)/.test(css), "a faixa do PC não mudou");
   assert.ok(css.includes(".chk-foco-rodape .ui-btn--save:not(:disabled){border:0;background:var(--rd-verde-botao);color:#fff}"));
@@ -162,37 +162,36 @@ test("Janela de finalizar (faltam itens): título 'Faltam N itens' (sem a linha 
   assert.ok(janela.includes("{ressalvas.length > 0 && ("), "grupo de ressalvas só quando há ressalvas");
   assert.ok(ler("../app/page.tsx").includes("semResposta={semRespostaPorAmbiente(checklistAtual)}"));
   const css = ler("../app/globals.css");
-  assert.ok(css.includes(".cf-sub--impede{color:#B83A33}") && css.includes(".cf-sub--ressalva{color:#AF640A}") && css.includes(".cf-corpo{display:flex;min-height:0;flex:1 1 auto;flex-direction:column;gap:12px;overflow-y:auto;"));
+  assert.ok(css.includes(".cf-sub--impede{color:#C83F45}") && css.includes(".cf-sub--ressalva{color:#526477}") && css.includes(".cf-corpo{display:flex;min-height:0;flex:1 1 auto;flex-direction:column;gap:12px;overflow-y:auto;"));
 });
 
 test("Ajustes de janela estreita: '+ Nova' no azul padrão, Próxima etapa sem reticências, Visitas sem estourar e Checklist compacto", () => {
   const css = ler("../app/globals.css");
-  assert.ok(/\.campo-mais-nova\{[^}]*color:#2B54CF/.test(css));
+  assert.ok(/\.campo-mais-nova\{[^}]*color:#2A4D7C/.test(css));
   assert.ok(/\.campo-proxima-amb\{[^}]*white-space:normal/.test(css) && !/\.campo-proxima-amb\{[^}]*text-overflow:ellipsis/.test(css));
   assert.ok(/\.pc-next-title\{[^}]*white-space:normal/.test(css) && !/\.pc-next-title\{[^}]*text-overflow:ellipsis/.test(css));
   assert.ok(css.includes("@media (max-width:899px){\n  .ui-screen[aria-label=\"Visitas técnicas\"] .vis-toolbar{flex-wrap:wrap;") || css.includes("@media (max-width:899px){\r\n  .ui-screen[aria-label=\"Visitas técnicas\"] .vis-toolbar{flex-wrap:wrap;"));
   assert.ok(css.includes('html[data-modo="campo"] .campo-head--busca{display:grid;') && css.includes('html[data-modo="campo"] .campo-tela .chk-foco-topo{display:grid;'));
 });
 
-test("Respostas do checklist: só texto sem seleção; selecionada = ícone ✓ de 16 px nos três, nunca o ×; cores #1E7A3E, vermelho e grafite #5B6575", () => {
+test("Respostas do checklist: só texto sem seleção; selecionada = ícone ✓ de 16 px nos três, nunca o ×; cores #21805B, vermelho e grafite #526477", () => {
   const item = ler("../components/ChecklistFocoItem.tsx");
   assert.ok(item.includes('estado === "marcado" && ('), "ícone só quando selecionada");
   assert.ok(item.includes('className="chk-resp-check" width="16" height="16"') && item.includes('stroke="currentColor"'));
   assert.ok(!item.includes('"×"') && !item.includes("simbolo"), "sem × nem símbolo fixo");
   assert.ok(item.includes("aria-pressed={estado === \"marcado\"}"));
   const css = ler("../app/globals.css");
-  assert.ok(css.includes(".chk-resp.is-marcado.chk-resp--ok{background:#1E7A3E}") && css.includes(".chk-resp.is-marcado.chk-resp--na{background:#5B6575}"));
-  assert.ok(css.includes('.chk-resp.is-marcado.chk-resp--ok{border-color:#1E7A3E;background:#1E7A3E}') && css.includes('.chk-resp.is-marcado.chk-resp--na{border-color:#5B6575;background:#5B6575}'));
-  assert.ok(!css.includes('.chk-resp.is-marcado.chk-resp--ok{border-color:#15803D'));
+  assert.ok(css.includes(".chk-resp.is-marcado.chk-resp--ok{background:#21805B}") && css.includes(".chk-resp.is-marcado.chk-resp--na{background:#526477}"));
+  assert.ok(css.includes('.chk-resp.is-marcado.chk-resp--ok{border-color:#21805B;background:#21805B}') && css.includes('.chk-resp.is-marcado.chk-resp--na{border-color:#526477;background:#526477}'));
 });
 
-test("Barra de progresso do Campo: 'Não se aplica' em grafite #5B6575 (distinto dos pendentes claros); Conforme #278050 e Não conforme #B83A33 nos dois", () => {
-  assert.equal(COR_DO_SEGMENTO_CAMPO["Não se aplica"], "#5B6575");
+test("Barra de progresso do Campo: 'Não se aplica' em grafite #526477 (distinto dos pendentes claros); Conforme #21805B e Não conforme #C83F45 nos dois", () => {
+  assert.equal(COR_DO_SEGMENTO_CAMPO["Não se aplica"], "#526477");
   assert.notEqual(COR_DO_SEGMENTO_CAMPO["Não se aplica"], COR_DO_SEGMENTO_CAMPO.Pendente);
   assert.equal(COR_DO_SEGMENTO["Não se aplica"], "#C3CDD6");
-  assert.equal(COR_DO_SEGMENTO_CAMPO.Conforme, "#278050", "Conforme da fileira: verde ok, não o verde de salvar");
-  assert.equal(COR_DO_SEGMENTO.Conforme, "#278050");
-  assert.equal(COR_DO_SEGMENTO["Não Conforme"], "#B83A33");
+  assert.equal(COR_DO_SEGMENTO_CAMPO.Conforme, "#21805B", "Conforme da fileira: verde ok, não o verde de salvar");
+  assert.equal(COR_DO_SEGMENTO.Conforme, "#21805B");
+  assert.equal(COR_DO_SEGMENTO["Não Conforme"], "#C83F45");
   assert.equal(COR_DO_SEGMENTO_CAMPO["Não Conforme"], COR_DO_SEGMENTO["Não Conforme"]);
   assert.ok(ler("../components/ChecklistFocoItem.tsx").includes("(campo ? COR_DO_SEGMENTO_CAMPO : COR_DO_SEGMENTO)"));
 });
@@ -221,8 +220,8 @@ test("Checklist em janela estreita: respostas dentro do cartão e 'Pular ambient
 test("Pacote de ajustes: pastel com texto grafite, aviso com ação sublinhada, pergunta e observação sem caixa, apoio sem frase repetida", async () => {
   const css = ler("../app/globals.css");
   for (const regra of [
-    ".chk-acao--voz{background:#DCEBFB;border-color:#9CBFE6;color:#1B2433}",
-    ".chk-acao--conforme{background:#E3F5EA;border-color:#9BD3B0;color:#1B2433}",
+    ".chk-acao--voz{background:#DCEBFB;border-color:#9CBFE6;color:#263445}",
+    ".chk-acao--conforme{background:#E3F5EA;border-color:#9BD3B0;color:#263445}",
     "text-decoration:underline",
     "html .chk-foco-card,html[data-modo=\"campo\"] .campo-tela .chk-foco-card{border:0;background:transparent;box-shadow:none}",
     "{padding:0;border:0;background:transparent;box-shadow:none}",
@@ -257,23 +256,23 @@ test("a fonte da pergunta: sem fonte registrada diz só 'Fonte não registrada';
   assert.equal(modulo.rotuloDaFonte("Derivada do Manual, cap. 1, item 2.5"), "Fonte: Derivada do Manual, cap. 1, item 2.5");
 });
 
-test("Pacote de ajustes (parte 2): rodapé de 44 px, cores do DS, faixa fina em 2 linhas, Não conforme do Campo #B83A33 e 'próxima etapa' em até 2 linhas", () => {
+test("Pacote de ajustes (parte 2): rodapé de 44 px, cores do DS, faixa fina em 2 linhas, Não conforme do Campo #C83F45 e 'próxima etapa' em até 2 linhas", () => {
   const css = ler("../app/globals.css");
   assert.ok(css.includes("html .chk-foco-rodape .ui-btn{height:44px!important;min-height:44px!important"));
   assert.ok(css.includes("html .chk-foco-rodape{padding-top:0}"));
-  assert.ok(css.includes(".chk-linha-foto{background:#AF640A;cursor:pointer}"));
+  assert.ok(css.includes(".chk-linha-foto{background:#fff;cursor:pointer}"));
   assert.ok(css.includes(".voz-btn{background:#1F78B4;cursor:pointer}"));
-  assert.ok(css.includes("border:0;background:#1D5F95;color:#fff;font-weight:400}"));
-  assert.ok(css.includes(".ui-btn--primary{background:#AF640A;color:#fff}"));
-  assert.ok(css.includes(".ui-btn--criar{background:#AF640A;color:#fff;font-weight:400}"));
+  assert.ok(css.includes("border:0;background:#2A4D7C;color:#fff;font-weight:400}"));
+  assert.ok(css.includes(".ui-btn--primary{background:#2A4D7C;color:#fff}"));
+  assert.ok(css.includes(".ui-btn--criar{background:#2A4D7C;color:#fff;font-weight:400}"));
   const semCartaz = css.split("\n").filter((linha) => !/\.cz[-\s{,:]|\.cz--/.test(linha)).join("\n");
   assert.ok(!/#E8760A/i.test(semCartaz), "o laranja forte antigo só resta no cartaz impresso");
-  assert.ok(!/#D93A3A|#C9473F/i.test(css), "um só vermelho de não conforme/perigo: #B83A33");
+  assert.ok(!/#D93A3A|#C9473F/i.test(css), "um só vermelho de não conforme/perigo: #C83F45");
   assert.ok(/\.faixa-fina\{[^}]*white-space:normal/.test(css) && !/\.faixa-fina\{[^}]*text-overflow/.test(css));
-  assert.ok(css.includes('.chk-resp.is-marcado.chk-resp--nc{border-color:#B83A33;background:#B83A33;color:#fff}'));
+  assert.ok(css.includes('.chk-resp.is-marcado.chk-resp--nc{border-color:#C83F45;background:#C83F45;color:#fff}'));
   assert.ok(!css.includes("chk-resp--nc{border-color:#C9473F"));
   assert.ok(/\.ini3-cartao-sub\{[^}]*white-space:normal/.test(css) && !/\.ini3-cartao-sub\{[^}]*text-overflow/.test(css));
-  assert.ok(ler("../lib/brand.ts").includes('"--count": "#AF640A"'));
+  assert.ok(ler("../lib/brand.ts").includes('"--count": "#E0A800"'));
 });
 
 test("re-toque na resposta marcada: ignora toque duplo nos primeiros 700 ms e vale depois", async () => {
@@ -284,30 +283,30 @@ test("re-toque na resposta marcada: ignora toque duplo nos primeiros 700 ms e va
   assert.equal(reToqueValido(1700, 1000), true);
 });
 
-test("Checklist, parte 2: títulos em peso 500 sem espaçamento negativo, fileira de números #278050 (PC) e #B83A33, respostas apagadas mais legíveis", () => {
+test("Checklist, parte 2: títulos em peso 500 sem espaçamento negativo, fileira de números #21805B (PC) e #C83F45, respostas apagadas mais legíveis", () => {
   const css = ler("../app/globals.css");
   assert.ok(css.includes("h1,h2,h3{letter-spacing:normal}") && !css.includes("h1,h2,h3{letter-spacing:-.025em}"), "o espaçamento negativo global saiu");
   assert.ok(css.includes("html[data-modo] :is(.ui-title,.ui-card-title,.chk-foco-title,.pc-check-title){font-weight:500;letter-spacing:normal}"));
-  assert.equal(css.split("\n").filter((linha) => linha.startsWith(".chk-pc-num.is-ok{background:#278050;border-color:#278050;color:#fff}")).length, 2);
-  assert.ok(!/\.chk-pc-num\.is-ok\{background:#15803D/.test(css) && !/\.chk-pc-num\.is-nc\{background:#D93A3A/.test(css));
-  assert.ok(css.includes(".chk-pc-num.is-nc{background:#B83A33;border-color:#B83A33;color:#fff}"));
-  assert.ok(css.includes(".chk-resp.is-marcado.chk-resp--nc{background:#B83A33}"), "Não conforme selecionado no PC = #B83A33");
+  assert.equal(css.split("\n").filter((linha) => linha.startsWith(".chk-pc-num.is-ok{background:#21805B;border-color:#21805B;color:#fff}")).length, 2);
+  assert.ok(!/.chk-pc-num.is-nc{background:#D93A3A/.test(css));
+  assert.ok(css.includes(".chk-pc-num.is-nc{background:#C83F45;border-color:#C83F45;color:#fff}"));
+  assert.ok(css.includes(".chk-resp.is-marcado.chk-resp--nc{background:#C83F45}"), "Não conforme selecionado no PC = #C83F45");
   const apagado = css.match(/html\[data-modo\] \.chk-resp\.is-apagado,html\[data-modo="campo"\] \.campo-tela \.chk-resp\.is-apagado\{opacity:([\d.]+)\}/);
   assert.ok(apagado && parseFloat(apagado[1]) >= 0.7 && parseFloat(apagado[1]) < 1, "apagada, mas legível");
-  assert.ok(css.includes("html[data-modo] .chk-resp:not(.is-marcado) span{color:#1B2433}"), "texto grafite nas não selecionadas");
+  assert.ok(css.includes("html[data-modo] .chk-resp:not(.is-marcado) span{color:#263445}"), "texto grafite nas não selecionadas");
 });
 
 test("Checklist, parte 2: abas da visita sem pílula, fonte abaixo do enunciado, uma coluna só no PC e chips na linha do ambiente", () => {
   const css = ler("../app/globals.css");
   for (const regra of [
-    "html[data-modo] .fv .fv-item.is-atual{border-bottom-color:#2B54CF;background:transparent;box-shadow:none;font-weight:500}",
-    ".fv-badge{min-width:0;height:auto;padding:0;border-radius:0;background:transparent;font-size:15px;line-height:1;color:#B83A33}",
-    ".chk-fonte-abaixo{margin:0;font-size:15px;font-weight:400;line-height:22px;letter-spacing:normal;color:#55607A}",
+    "html[data-modo] .fv .fv-item.is-atual{color:#263445;border-bottom-color:#21A3A3;background:transparent;box-shadow:none;font-weight:500}",
+    ".fv-badge{min-width:0;height:auto;padding:0;border-radius:0;background:transparent;font-size:15px;line-height:1;color:#C83F45}",
+    ".chk-fonte-abaixo{margin:0;font-size:15px;font-weight:400;line-height:22px;letter-spacing:normal;color:#526477}",
     ".chk-pc-faixa{display:flex;flex:none;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 16px}",
-    "html .chk-pc-faixa .chk-acao{height:36px;padding:0 14px;font-size:15px;color:#1B2433}",
+    "html .chk-pc-faixa .chk-acao{height:36px;padding:0 14px;font-size:15px;color:#263445}",
   ]) assert.ok(css.includes(regra), regra);
   assert.match(css, /\.fv-seg,html\[data-modo="campo"\] \.fv--campo \.fv-seg\{[^}]*padding:4px;border-radius:0;background:transparent\}/);
-  assert.match(css, /\.fv-item,html\[data-modo="campo"\] \.fv--campo \.fv-item\{[^}]*border-bottom:3px solid transparent;border-radius:0;background:transparent;box-shadow:none/);
+  assert.match(css, /\.fv-item,html\[data-modo="campo"\] \.fv--campo \.fv-item\{[^}]*border-bottom:2px solid transparent;border-radius:0;background:transparent;box-shadow:none/);
   const pc = ler("../components/pc/PcChecklist.tsx");
   assert.ok(pc.includes('className="chk-pc-esq"') && pc.indexOf('className="chk-pc-faixa"') < pc.indexOf('className="chk-pc-linha"') && pc.indexOf('className="chk-pc-linha"') < pc.indexOf('className="chk-pc-principal"'));
   assert.ok(pc.indexOf("Pular ambiente") < pc.indexOf("Marcar o restante como Conforme ("), "chips depois do texto do ambiente, na mesma faixa");
@@ -315,12 +314,12 @@ test("Checklist, parte 2: abas da visita sem pílula, fonte abaixo do enunciado,
   assert.ok(!item.includes("chk-fonte-texto") && !item.includes("De onde vem esta pergunta"), "uma ocorrência da fonte por pergunta");
 });
 
-test("Cores que sobraram: laranja de ação #AF640A na capa, na gestão de POP e nas telas liberadas; vermelho de não conforme #B83A33", async () => {
+test("Cores que sobraram: laranja de ação #AF640A na capa, na gestão de POP e nas telas liberadas; vermelho de não conforme #C83F45", async () => {
   for (const arquivo of ["../lib/capaPop.ts", "../lib/popGestao.ts", "../components/pc/TelasLiberadasModal.tsx", "../lib/checklistSegmentos.ts", "../lib/brand.ts", "../components/campo/CampoTelas.tsx", "../components/pc/PcCorrecoes.tsx"]) {
     assert.ok(!/#E8760A|#D93A3A|#C9473F/i.test(ler(arquivo)), arquivo);
   }
   const css = ler("../app/globals.css");
-  assert.ok(css.includes("--rd-venceu:#B83A33;") && /\.vis-conta--nc\{color:var\(--rd-venceu\)\}/.test(css));
+  assert.ok(css.includes("--rd-venceu:#C83F45;") && /\.vis-conta--nc\{color:var\(--rd-venceu\)\}/.test(css));
   const { BRAND_COLORS } = await import("../lib/brand.ts");
-  assert.equal(BRAND_COLORS.nc, "#B83A33");
+  assert.equal(BRAND_COLORS.nc, "#C83F45");
 });

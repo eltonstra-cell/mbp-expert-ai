@@ -38,7 +38,7 @@ test("selo de sincronização: texto curto e cor com função", () => {
   );
   const css = ler("../app/globals.css");
   assert.match(css, /\.campo-sync\.is-sem-sinal\{background:#FFD8A8\}/);
-  assert.match(css, /\.campo-sync\.is-erro\{background:#B83A33;color:#fff\}/);
+  assert.match(css, /\.campo-sync\.is-erro\{background:#C83F45;color:#fff\}/);
 });
 
 test("selo com texto no topo do celular, com o nome da página; a frase do sem sinal aparece ao tocar no selo (sem faixa repetida)", () => {
@@ -112,7 +112,7 @@ test("PC: ações do ambiente são botões de 40 px, trilho azul de 104 px com p
   const css = ler("../app/globals.css");
   assert.ok(css.includes('.chk-acao{display:inline-flex;align-items:center;justify-content:center;height:40px'));
   assert.ok(css.includes('display:none;position:fixed;z-index:50;top:0;bottom:0;left:0;width:104px') && css.includes('background:var(--rd-menu)') && css.includes('clamp('), "um só trilho azul de 104 px (PC e tablet)");
-  assert.ok(css.includes('.tr-ladrilho.is-ativo{background:var(--rd-ambar)}'), "página atual: ladrilho âmbar");
+  assert.ok(css.includes('.tr-ladrilho.is-ativo{background:#168080}'), "página atual: ladrilho âmbar");
   assert.equal(css.includes('.pc-rail') || css.includes('.pc-side'), false, "as regras do menu largo e do trilho claro foram removidas");
   assert.ok(css.includes('html .pc-topbar .emp-ativa{flex:0 0 auto;width:auto;min-width:240px'));
   assert.ok(ler("../lib/screenMode.ts").includes('if (larguraDaTela < 1100) return "equilibrado"'));

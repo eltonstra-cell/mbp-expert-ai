@@ -27,14 +27,14 @@ test("Central: a faixa de abas NÃO aparece na Central (os cartões são a naveg
   assert.ok(pagina.includes('onFinalizar={visitaAtual.status !== "Concluída" && permitido("visitas.concluir", visitaAtual.empresaId) ? () => (modo === "campo" ? setConfirmaFinalizarCampo(true) : void finalizarInspecao()) : null}'));
   assert.ok(central.includes("pc-central-finalizar") && central.includes("Finalizar visita") && central.includes("Editar ambientes"));
   assert.ok(central.indexOf("pc-central-finalizar") < central.indexOf("Editar ambientes"), "Finalizar vem antes de Editar ambientes, na mesma linha do título");
-  assert.ok(css.includes("pc-central-finalizar{border:0;background:#1E7A3E;color:#fff}"));
+  assert.ok(css.includes("pc-central-finalizar{border:0;background:#21805B;color:#fff}"));
 });
 
 test("Central: cartões de 84 px com ícone branco em quadrado colorido (cores do DS) e seta '›'; cartão branco com texto grafite", () => {
   assert.ok(css.includes(".pc-steps-row .pc-step-card{height:84px;min-height:84px;"));
-  for (const [tom, cor] of [["ok", "#2E8B57"], ["info", "#1F78B4"], ["nc", "#B83A33"], ["pend", "#AF640A"], ["lilas", "#55607A"]]) assert.ok(css.includes(`.pc-steps-row .pc-step-card--${tom} .pc-step-tile{background:${cor}}`), tom);
+  for (const [tom, cor] of [["ok", "#21805B"], ["info", "#1F78B4"], ["nc", "#C83F45"], ["pend", "#168080"], ["lilas", "#526477"]]) assert.ok(css.includes(`.pc-steps-row .pc-step-card--${tom} .pc-step-tile{background:${cor}}`), tom);
   assert.ok(central.includes('className="pc-step-arrow" aria-hidden="true">›<'));
-  assert.ok(css.includes(".pc-steps-row .pc-step-name,.pc-steps-row .pc-step-sum{min-width:0;overflow:visible;text-overflow:clip;white-space:normal;overflow-wrap:break-word;font-weight:400;color:#1B2433}"), "sem reticências nos cartões da Central");
+  assert.ok(css.includes(".pc-steps-row .pc-step-name,.pc-steps-row .pc-step-sum{min-width:0;overflow:visible;text-overflow:clip;white-space:normal;overflow-wrap:break-word;font-weight:400;color:#263445}"), "sem reticências nos cartões da Central");
 });
 
 test("Central: lista de não conformidades sem chip 'Aberta' nem 'Acompanhar →'; linha inteira clicável com seta; 'Ver todas (N) →' no topo", () => {
@@ -44,7 +44,7 @@ test("Central: lista de não conformidades sem chip 'Aberta' nem 'Acompanhar →
   assert.ok(central.indexOf("Ver todas") < central.indexOf("<ListRow"), "o link fica no topo da lista");
   const linha = ler("../components/ui/ListRow.tsx");
   assert.ok(linha.includes('role={clicavel ? "button" : undefined}') && linha.includes("ui-row-seta"));
-  assert.ok(css.includes(".pc-open-list .ui-row.is-clickable:focus-visible{outline:3px solid #2B54CF"));
+  assert.ok(css.includes(".pc-open-list .ui-row.is-clickable:focus-visible{outline:3px solid #2A4D7C"));
   assert.ok(pagina.includes("nomeCurtoDoAmbiente(nomeDeExibicaoDoAmbiente(nc.ambiente))"));
 });
 
@@ -98,7 +98,7 @@ test("Caminho do topo dentro da visita é só 'Visita N' (sem empresa nem nome d
 
 test("Visitas: abas em texto com sublinhado na ativa (sem pílula), sem chip 'Em andamento' nem 'Empresa ativa' nas linhas, um só título", () => {
   const visitas = ler("../components/pc/PcVisitas.tsx");
-  assert.ok(css.includes('.ui-screen[aria-label="Visitas técnicas"] .ui-tab.is-active{border-bottom-color:#AF640A;background:transparent;box-shadow:none}'));
+  assert.ok(css.includes('.ui-screen[aria-label="Visitas técnicas"] .ui-tab.is-active{border-bottom-color:#21A3A3;background:transparent;box-shadow:none}'));
   assert.ok(!visitas.includes('<Pill tom="brand">') && !/<Pill[^>]*>Em andamento<\/Pill>/.test(visitas) && !/<Pill[^>]*>Empresa ativa<\/Pill>/.test(visitas));
   assert.ok(visitas.includes('<h1 className="sr-only">Visitas</h1>') && !visitas.includes("Visitas técnicas</h1>"));
 });
@@ -107,7 +107,7 @@ test("Checklist: rótulo da observação em grafite 15 px sem maiúsculas; Foto,
   const item = ler("../components/ChecklistFocoItem.tsx");
   assert.ok(item.includes('<span className="chk-obs-rotulo">') && !item.includes('<span className="ui-eyebrow">{naoConforme'));
   assert.ok(css.includes('html:not([data-modo="campo"]) .chk-pc .chk-obs-campo .chk-obs-area{min-height:56px}'));
-  assert.ok(css.includes(".chk-obs-rotulo{font-size:15px;font-weight:400;line-height:22px;letter-spacing:0;text-transform:none;color:#1B2433}"));
+  assert.ok(css.includes(".chk-obs-rotulo{font-size:15px;font-weight:400;line-height:22px;letter-spacing:0;text-transform:none;color:#263445}"));
   assert.ok(css.includes("html[data-modo] .chk-foco-obs :is(.chk-linha-foto,.voz-btn,.voz-ia,.voz-barra){font-size:15px}"));
   assert.ok(css.includes('html:not([data-modo="campo"]) .chk-pc .chk-obs-campo .chk-obs-area{flex:none;min-height:84px;max-height:40vh'));
   assert.ok(item.includes("area.style.height = `${area.scrollHeight + 2}px`"));

@@ -106,7 +106,7 @@ export default function ConfigCapaDoPop({ dados, iconeAutomatico, iconeEscolhido
                   <legend>Cor</legend>
                   {CORES_DE_CAPA.map((cor) => (
                     <button key={cor.id} type="button" className={`ccp-chip${capa.cor === cor.id ? " is-ativo" : ""}`} aria-pressed={capa.cor === cor.id} onClick={() => mudar({ cor: cor.id })}>
-                      <i style={{ background: cor.id === "pb" ? "#fff" : cor.hex, borderColor: cor.id === "pb" ? "#12202B" : "rgba(18,32,43,.25)" }} aria-hidden="true" />
+                      <i style={{ background: cor.id === "pb" ? "#fff" : cor.hex, borderColor: cor.id === "pb" ? "#263445" : "rgba(18,32,43,.25)" }} aria-hidden="true" />
                       {cor.rotulo}
                     </button>
                   ))}

@@ -42,10 +42,10 @@ test("menu de seção: teclado (Enter/Esc/setas), fecha ao clicar fora, creme co
   const nav = ler("../components/pc/CentralEmpresaNav.tsx");
   assert.ok(nav.includes("cen-barra") && nav.includes("cen-bloco"), "duas barras de blocos: grupos e seções");
   const css = ler("../app/globals.css");
-  assert.match(css, /\.sec-menu-botao\{[^}]*border:1\.5px solid #E8B04B[^}]*background:#FEF6E6/);
-  assert.match(css, /\.sec-menu-item\.is-atual\{background:#FEF6E6\}/);
-  assert.match(css, /\.cen-bloco\.is-ativa\{border-radius:9px;background:#BFDDF7;color:#12202B\}/);
-  assert.match(css, /\.cen-barra\{display:inline-flex;align-items:stretch;height:40px;border-radius:12px;background:#EEF1F5\}/);
+  assert.match(css, /\.sec-menu-botao\{[^}]*border:1\.5px solid #21A3A3[^}]*background:#FFF6E5/);
+  assert.match(css, /\.sec-menu-item\.is-atual\{background:#FFF6E5\}/);
+  assert.match(css, /\.cen-bloco\.is-ativa\{border-radius:9px;background:#BFDDF7;color:#263445\}/);
+  assert.match(css, /\.cen-barra\{display:inline-flex;align-items:stretch;height:40px;border-radius:12px;background:#EEF1F7\}/);
   assert.match(css, /\.cen-divisor\{[^}]*height:1px[^}]*background:#D5DCE3\}/);
 });
 
@@ -65,7 +65,7 @@ test("'Criar POPs da norma': texto de apoio com o N real; desligado em laranja c
   assert.ok(lista.includes("temConjunto && faltamCriar > 0"), "o botão desligado cinza saiu: só aparece quando falta criar");
   assert.ok(lista.includes("textoDoCriarDaNorma(faltamCriar)"));
   const css = ler("../app/globals.css");
-  assert.match(css, /\.pgl-adicionar-botao\{height:44px;[^}]*background:#FFB35C;[^}]*color:#12202B/);
+  assert.match(css, /\.pgl-adicionar-botao\{height:44px;[^}]*background:#2A4D7C;[^}]*color:#fff/);
 });
 
 // ===== 1.4 Filtro por chip =====
@@ -99,7 +99,7 @@ test("filtro por chip: só no cliente (estado da tela, nada guardado), 'Todos' l
   assert.ok(lista.includes("setFiltro(item.id === null ? null : filtro === item.id ? null : item.id)") && lista.includes("aria-pressed={ativo}"));
   assert.equal(/persistir\(.*filtro|setItem\([^)]*filtro/.test(lista), false, "o filtro não é guardado (só o estado aberto dos grupos fica no aparelho)");
   assert.ok(lista.includes('rotulo: "todos"'));
-  assert.match(ler("../app/globals.css"), /\.pgg-conta\.is-ativo\{border-bottom-color:#AF640A;color:#12202B\}/);
+  assert.match(ler("../app/globals.css"), /\.pgg-conta\.is-ativo\{border-bottom-color:#21A3A3;color:#263445\}/);
 });
 
 // ===== 1.7 Linha =====
@@ -137,9 +137,9 @@ test("etiquetas e cores da linha: Rascunho #FDEBC2, Aguardando #F6C65B, Vigente 
 test("linha de POP: fundo branco, moldura de 1,5 px na cor do estado, raio 12, 8 px entre linhas, a linha inteira abre o POP", () => {
   const css = ler("../app/globals.css");
   const bloco = css.slice(css.indexOf("/* ===== Pacote 4 · Central sem caixas"));
-  assert.match(bloco, /\.pgl \.pgl-linha\{display:flex;flex-wrap:nowrap;[^}]*min-height:60px[^}]*border:1\.5px solid var\(--cor-do-estado,#B4C2CE\);border-radius:12px;background:#fff;box-shadow:none\}/);
+  assert.match(bloco, /\.pgl \.pgl-linha\{display:flex;flex-wrap:nowrap;[^}]*min-height:60px[^}]*border:1\.5px solid var\(--cor-do-estado,#7F8BA3\);border-radius:12px;background:#fff;box-shadow:none\}/);
   assert.match(bloco, /\.pgl-grupo-corpo\{display:flex;flex-direction:column;gap:8px\}/);
-  assert.match(bloco, /\.pgl-bolinha\{[^}]*background:var\(--cor-do-estado,#B4C2CE\)\}/);
+  assert.match(bloco, /\.pgl-bolinha\{[^}]*background:var\(--cor-do-estado,#7F8BA3\)\}/);
   const lista = ler("../components/pc/PcPopsLista.tsx");
   assert.ok(lista.includes('role={abre ? "link" : undefined}') && lista.includes("onClick={abre ? () => onAbrirFicha(linha.pop!.id) : undefined}"), "sem botão Abrir: a linha inteira abre");
   assert.equal(/>s*Abrirs*</.test(lista), false, "nenhum botão Abrir");
@@ -152,11 +152,11 @@ test("próxima ação: a frase completa vai ao topo da ficha (sem duplicar no Re
   assert.ok(ficha.indexOf("Próxima ação:") < ficha.indexOf('className="ficha-abas"'));
 });
 
-test("espaços: ~74 px entre o bloco do topo e 'Conjunto da norma'; cabeçalhos de seção 14,5 px #51606c com 24 px acima e 10 abaixo", () => {
+test("espaços: ~74 px entre o bloco do topo e 'Conjunto da norma'; cabeçalhos de seção 14,5 px #526477 com 24 px acima e 10 abaixo", () => {
   const css = ler("../app/globals.css");
   assert.match(css, /\.pgl-cabeca\{[^}]*gap:16px;margin-bottom:40px\}/);
   assert.match(css, /\.pgl-secao-linha\{[^}]*margin:18px 0 4px\}/);
-  assert.match(css, /\.pgl-secao\{margin:0;font-family:inherit;font-size:14\.5px;font-weight:500;letter-spacing:0;text-transform:none;color:#51606c\}/);
+  assert.match(css, /\.pgl-secao\{margin:0;font-family:inherit;font-size:14\.5px;font-weight:500;letter-spacing:0;text-transform:none;color:#526477\}/);
   // 16 (gap do .pgl) + 40 + 18 = 74; 6 (gap da lista) + 18 = 24 acima; 4 + 6 = 10 abaixo
   assert.equal(16 + 40 + 18, 74);
 });

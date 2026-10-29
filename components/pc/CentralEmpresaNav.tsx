@@ -15,7 +15,7 @@ type Props = {
 };
 
 // Duas linhas, uma sob a outra: 1) Empresa | Estrutura | Documentos; 2) as sub-abas do grupo aberto. As duas em texto com sublinhado:
-// a atual com peso 500 e sublinhado azul #2B54CF de 3 px; as outras em cinza #55607A (Ambientes, Equipamentos e Fluxos são abas separadas). Sem pílulas.
+// a atual com peso 500 e sublinhado azul #2A4D7C de 3 px; as outras em cinza #526477 (Ambientes, Equipamentos e Fluxos são abas separadas). Sem pílulas.
 export default function CentralEmpresaNav({ grupos, subaba, onSubaba, contagens, direita }: Props) {
   const grupoAtual = grupoDaSubaba(subaba);
   const doGrupo = grupos.find((grupo) => grupo.id === grupoAtual);

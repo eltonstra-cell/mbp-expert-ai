@@ -332,7 +332,7 @@ test("janela e editor: Estilo em chips com os 5 nomes, prévia sempre colorida, 
   assert.equal(/roxo|lilas|ui-btn--primary/i.test(d), false);
   const css = ler("../app/globals.css");
   assert.equal(css.includes("ccz-apagada"), false);
-  assert.match(css, /\.ccp-chip\.is-ativo\{border-color:#E8B04B;background:#FEF6E6\}|\.ccp-estilo\.is-ativo,\.ccp-chip\.is-ativo\{border-color:#E8B04B;background:#FEF6E6\}/);
+  assert.match(css, /\.ccp-chip\.is-ativo\{border-color:#21A3A3;background:#FFF6E5\}|\.ccp-estilo\.is-ativo,\.ccp-chip\.is-ativo\{border-color:#21A3A3;background:#FFF6E5\}/);
   assert.match(css, /\.pdoc-previa-acoes\{display:flex;flex-wrap:wrap/);
   const editor = ler("../components/pc/PcPopEditor.tsx");
   const titulo = editor.indexOf('<h2 className="pdoc-lista-titulo">Pré-visualização da folha</h2>');

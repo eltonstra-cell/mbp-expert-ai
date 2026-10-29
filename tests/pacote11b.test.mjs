@@ -8,12 +8,12 @@ const ler = (caminho) => readFileSync(new URL(caminho, import.meta.url), "utf8")
 const css = ler("../app/globals.css");
 
 test("B: cores por estado dos segmentos e quadradinhos", () => {
-  assert.equal(COR_DO_SEGMENTO.Conforme, "#278050");
-  assert.equal(COR_DO_SEGMENTO["Não Conforme"], "#B83A33");
+  assert.equal(COR_DO_SEGMENTO.Conforme, "#21805B");
+  assert.equal(COR_DO_SEGMENTO["Não Conforme"], "#C83F45");
   assert.equal(COR_DO_SEGMENTO["Não se aplica"], "#C3CDD6");
-  assert.equal(COR_DO_SEGMENTO.Pendente, "#EEF1F5");
+  assert.equal(COR_DO_SEGMENTO.Pendente, "#EEF1F7");
   assert.ok(css.includes(".chk-pc-num.is-na{background:#C3CDD6"));
-  assert.ok(css.includes(".chk-pc-num.is-atual{border-color:#2456D6;box-shadow:0 0 0 3px #DCE6FB}"));
+  assert.ok(css.includes(".chk-pc-num.is-atual{border-color:#2A4D7C;box-shadow:0 0 0 3px #DCE6FB}"));
   assert.ok(css.includes(".chk-pc-num{width:40px;height:40px;border:2px solid transparent;border-radius:10px"));
   assert.ok(css.includes(".chk-seg{position:relative;flex:1 1 0;min-width:0;height:10px;padding:0;border:0;border-radius:5px"));
 });

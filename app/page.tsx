@@ -7613,8 +7613,8 @@ export default function Home() {
       )}
 
       {recuperacaoPendente && (
-        <div className="border-b border-amber-300 bg-[var(--pend-bg)] pc-offset">
-          <div className="mx-auto max-w-7xl px-4 py-4 text-amber-950">
+        <div className="border-b border-[#E0A800] bg-[var(--pend-bg)] pc-offset">
+          <div className="mx-auto max-w-7xl px-4 py-4 text-[color:var(--ink)]">
             <div className="font-extrabold">
               Encontramos registros neste computador que não estão na nuvem.
             </div>
@@ -7626,7 +7626,7 @@ export default function Home() {
               type="button"
               disabled={recuperandoDados}
               onClick={() => void confirmarRecuperacaoLocal()}
-              className="mt-3 rounded-xl bg-[var(--orange)] px-4 py-2 font-normal text-white disabled:opacity-60"
+              className="mt-3 rounded-xl bg-[#2A4D7C] px-4 py-2 font-normal text-white disabled:opacity-60"
             >
               {recuperandoDados
                 ? "Recuperando..."
@@ -7647,8 +7647,8 @@ export default function Home() {
 
       <ReservaDeAltura>
       {sessaoDoEstadoExpirou && (
-        <div className="border-b border-amber-300 bg-[var(--pend-bg)] pc-offset">
-          <div className="mx-auto max-w-7xl px-4 py-3 text-amber-950">
+        <div className="border-b border-[#E0A800] bg-[var(--pend-bg)] pc-offset">
+          <div className="mx-auto max-w-7xl px-4 py-3 text-[color:var(--ink)]">
             <div className="font-extrabold">Sua sessão expirou.</div>
             <p className="mt-1 text-sm">O que você fez continua guardado neste aparelho e nada foi descartado. Entre de novo para enviar.</p>
             <button type="button" onClick={() => window.location.assign("/auth/sign-in")} className="mt-3 rounded-xl bg-[var(--brand)] px-4 py-2 font-bold text-white">Entrar de novo</button>
@@ -7657,7 +7657,7 @@ export default function Home() {
       )}
 
       {armazenamentoNaoGarantido && (
-        <div className="border-b border-amber-300 bg-[var(--pend-bg)] pc-offset">
+        <div className="border-b border-[#E0A800] bg-[var(--pend-bg)] pc-offset">
           <div className="faixa-fina" title="O navegador não garantiu o armazenamento deste aparelho: ele pode apagar o que está guardado se faltar espaço. Envie o que está pendente assim que tiver sinal.">
             Armazenamento não garantido pelo navegador · envie os pendentes quando tiver sinal
           </div>
@@ -7685,8 +7685,8 @@ export default function Home() {
       )}
 
       {armazenamentoLocalIndisponivel && (
-        <div className="border-b border-amber-300 bg-[var(--pend-bg)] pc-offset">
-          <div className="mx-auto max-w-7xl px-4 py-3 text-amber-950">
+        <div className="border-b border-[#E0A800] bg-[var(--pend-bg)] pc-offset">
+          <div className="mx-auto max-w-7xl px-4 py-3 text-[color:var(--ink)]">
             <div className="font-extrabold">
               O armazenamento local deste aparelho está cheio ou indisponível.
             </div>
@@ -8334,8 +8334,8 @@ export default function Home() {
                       const cargoDoUsuario = limparTextoDePessoa(vinculado?.cargo);
                       const podeVincular = !usuarioDaSessao || usuarioDaSessao.perfil === "Administrador";
                       return (
-                        <fieldset className={editingEmpresaId ? "md:col-span-2 rounded-xl border border-slate-200 p-3" : "nova-resp md:col-span-2 rounded-xl border border-slate-200 p-3"}>
-                          <legend className="px-1 text-xs font-bold text-slate-500">Responsável do estabelecimento</legend>
+                        <fieldset className={editingEmpresaId ? "md:col-span-2 rounded-xl p-3" : "nova-resp md:col-span-2 rounded-xl p-3"}>
+                          <legend className="px-1 text-[15px] font-normal text-[color:var(--ink-2)]">Responsável do estabelecimento</legend>
                           {!editingEmpresaId && !vinculado && (
                             <button type="button" className="ui-btn ui-btn--secondary nova-resp-botao" aria-expanded={respNovaAberta} onClick={() => setRespNovaAberta((aberta) => !aberta)}>
                               {respNovaAberta ? "Recolher responsável" : "Informar responsável (opcional)"}
@@ -8388,8 +8388,8 @@ export default function Home() {
                       );
                     })()}
                     {editingEmpresaId && (
-                      <fieldset className="md:col-span-2 rounded-xl border border-slate-200 p-3">
-                        <legend className="px-1 text-xs font-bold text-slate-500">Capacidade e turnos</legend>
+                      <fieldset className="md:col-span-2 rounded-xl p-3">
+                        <legend className="px-1 text-[15px] font-normal text-[color:var(--ink-2)]">Capacidade e turnos</legend>
                         <p className="mb-2 text-xs text-slate-500">{TEXTO_DA_CAPACIDADE}</p>
                         <div className="grid gap-3 md:grid-cols-3">
                           {(
@@ -9697,7 +9697,7 @@ export default function Home() {
 
 
               {pendentesVisita > 0 && (
-                <div className="mt-5 rounded-xl border border-amber-200 bg-[var(--pend-bg)] p-4 text-sm text-[color:var(--ink)]">
+                <div className="mt-5 rounded-xl border border-[#E0A800] bg-[var(--pend-bg)] p-4 text-sm text-[color:var(--ink)]">
                   <strong>Atenção:</strong> ainda {pal(pendentesVisita, "existe", "existem")} {qtd(pendentesVisita, "item pendente", "itens pendentes")}{" "}
                   no checklist. O relatório pode ser revisado, mas a
                   inspeção ainda não está totalmente preenchida.
@@ -9742,8 +9742,8 @@ export default function Home() {
                   <div className="mt-1 text-2xl font-extrabold text-red-950">{ncsCriticasVisita}</div>
                 </div>
                 <div className="rounded-xl bg-[var(--pend-bg)] p-4">
-                  <div className="text-xs font-extrabold uppercase text-amber-700">NCs importantes</div>
-                  <div className="mt-1 text-2xl font-extrabold text-amber-950">{ncsImportantesVisita}</div>
+                  <div className="text-xs font-extrabold uppercase text-[color:var(--ink)]">NCs importantes</div>
+                  <div className="mt-1 text-2xl font-extrabold text-[color:var(--ink)]">{ncsImportantesVisita}</div>
                 </div>
                 <div className="rounded-xl bg-[var(--info-bg)] p-4">
                   <div className="text-xs font-extrabold uppercase text-sky-700">NCs leves</div>
@@ -9760,7 +9760,7 @@ export default function Home() {
               </div>
 
               {!relatorioProntoParaEncerrar && (
-                <div className="mt-4 rounded-xl border border-amber-200 bg-[var(--pend-bg)] p-4 text-sm text-[color:var(--ink)]">
+                <div className="mt-4 rounded-xl border border-[#E0A800] bg-[var(--pend-bg)] p-4 text-sm text-[color:var(--ink)]">
                   <div className="font-extrabold">Pendências para um fechamento completo</div>
                   <div className="mt-1">
                     {pendentesVisita > 0 && <span>{qtd(pendentesVisita, "item de checklist pendente", "itens de checklist pendentes")}. </span>}
@@ -9897,7 +9897,7 @@ export default function Home() {
                   </div>
                 </div>
                 <div className="rounded-xl bg-[var(--pend-bg)] p-4">
-                  <div className="text-xs font-extrabold uppercase text-amber-700">
+                  <div className="text-xs font-extrabold uppercase text-[color:var(--ink)]">
                     Pendente
                   </div>
                   <div className="mt-1 text-2xl font-extrabold">
@@ -10059,12 +10059,12 @@ export default function Home() {
                       </div>
 
                       <div className="mt-3 flex flex-wrap gap-2">
-                        <span className={`rounded-full px-2.5 py-1 text-[15px] font-normal ${
+                        <span className={`inline-flex items-center gap-2 text-[15px] font-normal text-[color:var(--ink)] before:h-2.5 before:w-2.5 before:rounded-full before:content-[''] ${
                           nc.criticidade === "Crítica"
-                            ? "bg-[#B83A33] text-white"
+                            ? "before:bg-[#C83F45]"
                             : nc.criticidade === "Importante"
-                              ? "bg-[#F0B429] text-[#1B2433]"
-                              : "bg-[var(--na-bg)] text-[color:var(--ink)]"
+                              ? "before:bg-[#E0A800]"
+                              : "before:bg-[#1F78B4]"
                         }`}>
                           {nc.criticidade}
                         </span>
@@ -10238,7 +10238,7 @@ export default function Home() {
               <h2 className="mt-1 text-xl font-extrabold">
                 Síntese da inspeção
               </h2>
-              <div className={`mt-3 rounded-xl border p-3 text-sm font-extrabold ${visitaAtual.status === "Concluída" ? "border-emerald-200 bg-[var(--ok-bg)] text-[color:var(--ink)]" : "border-amber-200 bg-[var(--pend-bg)] text-[color:var(--ink)]"}`}>
+              <div className={`mt-3 rounded-xl border p-3 text-sm font-extrabold ${visitaAtual.status === "Concluída" ? "border-emerald-200 bg-[var(--ok-bg)] text-[color:var(--ink)]" : "border-[#E0A800] bg-[var(--pend-bg)] text-[color:var(--ink)]"}`}>
                 Status da inspeção: {visitaAtual.status}
               </div>
 
@@ -10262,7 +10262,7 @@ export default function Home() {
                 </div>
 
                 <div className="rounded-xl bg-[var(--pend-bg)] p-4">
-                  <div className="text-xs font-extrabold uppercase text-amber-700">
+                  <div className="text-xs font-extrabold uppercase text-[color:var(--ink)]">
                     Em tratamento
                   </div>
                   <div className="mt-1 text-xl font-extrabold">
@@ -10520,7 +10520,7 @@ export default function Home() {
                 { valor: visitasDoMes.length, rotulo: "Visitas este mês", cor: "bg-[var(--brand-soft)] text-[color:var(--brand)]", icone: "▣" },
                 { valor: visitasDoMes.filter((v) => v.status === "Concluída").length, rotulo: "Concluídas este mês", cor: "bg-[var(--ok-bg)] text-[color:var(--ink)]", icone: "✓" },
                 { valor: visitas.filter((v) => v.status === "Em andamento").length, rotulo: "Em andamento agora", cor: "bg-[var(--pend-bg)] text-[color:var(--ink)]", icone: "◷" },
-                { valor: empresasVisiveis.length, rotulo: "Empresas ativas", cor: "bg-[#EEF1F5] text-[color:var(--ink)]", icone: "□" },
+                { valor: empresasVisiveis.length, rotulo: "Empresas ativas", cor: "bg-[#EEF1F7] text-[color:var(--ink)]", icone: "□" },
               ].map((indicador) => (
                 <div key={indicador.rotulo} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                   <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl text-base font-extrabold ${indicador.cor}`}>{indicador.icone}</div>
@@ -10669,7 +10669,7 @@ export default function Home() {
               </div>
 
               {ncsEmpresaForaDoHistorico > 0 && (
-                <div className="mt-4 rounded-xl border border-amber-200 bg-[var(--pend-bg)] p-3 text-sm text-[color:var(--ink)]">
+                <div className="mt-4 rounded-xl border border-[#E0A800] bg-[var(--pend-bg)] p-3 text-sm text-[color:var(--ink)]">
                   <span className="font-extrabold">Dados anteriores preservados:</span>{" "}
                   {qtd(ncsEmpresaForaDoHistorico, "registro", "registros")} de não conformidade da empresa {pal(ncsEmpresaForaDoHistorico, "não está", "não estão")}
                   vinculado{ncsEmpresaForaDoHistorico === 1 ? "" : "s"} a uma visita atualmente existente. Eles foram excluídos dos indicadores
@@ -10748,10 +10748,10 @@ export default function Home() {
                     <div className="mt-1 text-3xl font-extrabold text-red-950">{comparacaoVisitas.novas.length}</div>
                     <p className="mt-1 text-xs text-red-800">Não apareciam na visita anterior.</p>
                   </div>
-                  <div className="rounded-2xl border border-amber-100 bg-[var(--pend-bg)] p-4">
-                    <div className="text-xs font-extrabold uppercase text-amber-700">Reincidências</div>
-                    <div className="mt-1 text-3xl font-extrabold text-amber-950">{comparacaoVisitas.reincidentes.length}</div>
-                    <p className="mt-1 text-xs text-amber-800">Persistiram como não conformes.</p>
+                  <div className="rounded-2xl border border-[#E0A800] bg-[var(--pend-bg)] p-4">
+                    <div className="text-xs font-extrabold uppercase text-[color:var(--ink)]">Reincidências</div>
+                    <div className="mt-1 text-3xl font-extrabold text-[color:var(--ink)]">{comparacaoVisitas.reincidentes.length}</div>
+                    <p className="mt-1 text-xs text-[color:var(--ink)]">Persistiram como não conformes.</p>
                   </div>
                   <div className="rounded-2xl border border-emerald-100 bg-[var(--ok-bg)] p-4">
                     <div className="text-xs font-extrabold uppercase text-emerald-700">Itens corrigidos</div>
@@ -10772,12 +10772,12 @@ export default function Home() {
                     <h3 className="text-lg font-extrabold">Leitura da evolução</h3>
                     <div className="mt-4 grid gap-4 lg:grid-cols-3">
                       <div>
-                        <div className="text-xs font-extrabold uppercase text-amber-700">Reincidências</div>
+                        <div className="text-xs font-extrabold uppercase text-[color:var(--ink)]">Reincidências</div>
                         <div className="mt-2 space-y-2">
                           {comparacaoVisitas.reincidentes.length ? comparacaoVisitas.reincidentes.slice(0, 5).map((nc) => (
                             <div key={nc.id} className="rounded-xl bg-[var(--pend-bg)] p-3 text-sm">
                               <div className="font-extrabold">{nc.titulo}</div>
-                              <div className="mt-1 text-xs text-amber-800">{nomeDeExibicaoDoAmbiente(nc.ambiente)}</div>
+                              <div className="mt-1 text-xs text-[color:var(--ink)]">{nomeDeExibicaoDoAmbiente(nc.ambiente)}</div>
                             </div>
                           )) : <div className="text-sm text-slate-500">Nenhuma reincidência.</div>}
                         </div>
@@ -10909,14 +10909,14 @@ export default function Home() {
                             </div>
                           </div>
                           <div className="rounded-xl bg-[var(--pend-bg)] p-3">
-                            <div className="text-xs font-extrabold uppercase text-amber-700">
+                            <div className="text-xs font-extrabold uppercase text-[color:var(--ink)]">
                               Em aberto
                             </div>
-                            <div className="mt-1 text-2xl font-extrabold text-amber-950">
+                            <div className="mt-1 text-2xl font-extrabold text-[color:var(--ink)]">
                               {abertas}
                             </div>
                           </div>
-                          <div className="rounded-xl bg-[#EEF1F5] p-3">
+                          <div className="rounded-xl bg-[#EEF1F7] p-3">
                             <div className="text-xs font-extrabold uppercase text-[color:var(--ink-2)]">
                               Evidências
                             </div>

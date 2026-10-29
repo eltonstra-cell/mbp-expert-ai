@@ -201,7 +201,7 @@ test("configuração: interruptor desligado, 6 miniaturas, 6 cores, ícone, logo
   assert.equal(/ui-btn--primary|roxo|lilas/i.test(c), false);
   const css = ler("../app/globals.css");
   assert.match(css, /\.ccp-corpo\{display:grid;grid-template-columns:minmax\(0,1fr\) 280px/);
-  assert.match(css, /\.ccp-estilo\.is-ativo,\.ccp-chip\.is-ativo\{border-color:#E8B04B;background:#FEF6E6\}/);
+  assert.match(css, /\.ccp-estilo\.is-ativo,\.ccp-chip\.is-ativo\{border-color:#21A3A3;background:#FFF6E5\}/);
   assert.match(css, /\.ccp-chip\{[^}]*min-height:34px/);
   const page = ler("../app/page.tsx");
   assert.ok(page.includes("capaDosPops: anterior.capaDosPops"), "salvar a empresa não apaga a capa");

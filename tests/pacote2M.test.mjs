@@ -50,8 +50,8 @@ test("busca: ao abrir um destino o texto digitado é limpo e o painel fecha; só
   const escolher = busca.slice(busca.indexOf("function escolher("), busca.indexOf("function aoTeclar"));
   assert.ok(escolher.includes('setConsulta("")') && escolher.includes("fechar()") && escolher.includes("onEscolher(resultado.destino)") && escolher.includes("setTextoDaVoz(null)"));
   const css = ler("../app/globals.css");
-  assert.ok(css.includes(".pc-bolt{background:#FEF6E6;border:1.5px solid #E8B04B;color:#12202B}"));
-  assert.ok(css.includes(".pc-busca-painel .pc-cmd-foot{font-size:.875rem;color:#12202B}"));
+  assert.ok(css.includes(".pc-bolt{background:#FFF6E5;border:1.5px solid #21A3A3;color:#263445}"));
+  assert.ok(css.includes(".pc-busca-painel .pc-cmd-foot{font-size:.875rem;color:#263445}"));
 });
 
 test("fim de fala: 1 s de silêncio depois de começar a falar; silêncio antes da fala não conta; limite de 8 s", () => {
@@ -145,7 +145,7 @@ test("Próxima ação de leitura: sem os nomes e com 'Ver quem falta' que leva a
   const ficha = ler("../components/pc/PcFichaPop.tsx");
   assert.ok(ficha.includes('document.getElementById("ficha-quem-nao-leu")') && ficha.includes("scrollIntoView") && ficha.includes("onClick={() => irParaOBotao()}"));
   assert.ok(ler("../components/pc/QuemAindaNaoLeu.tsx").includes('id="ficha-quem-nao-leu"'));
-  assert.match(ler("../app/globals.css"), /\.ficha-cartao-rotulo\{font-size:\.875rem;color:#12202B\}/);
+  assert.match(ler("../app/globals.css"), /\.ficha-cartao-rotulo\{font-size:\.875rem;color:#263445\}/);
 });
 
 test("tarja do comprovante fica dentro do cartão (filhos do ListRow), com fio de 1 px e sem borda própria", () => {
@@ -154,7 +154,7 @@ test("tarja do comprovante fica dentro do cartão (filhos do ListRow), com fio d
   assert.ok(i > 0 && tela.indexOf('className="comp-tarja"', i) > i, "a tarja é passada em filhos");
   assert.ok(!tela.includes('className="comp-item"'), "sem o invólucro que deixava a tarja fora do cartão");
   const css = ler("../app/globals.css");
-  assert.ok(css.includes(".ui-row-extra > .comp-tarja{margin:0;padding:6px 14px 6px 18px;border:0;border-top:1px solid #E8B04B;border-radius:0;background:#FFF3D6}"));
+  assert.ok(css.includes(".ui-row-extra > .comp-tarja{margin:0;padding:6px 14px 6px 18px;border:0;border-top:1px solid #21A3A3;border-radius:0;background:#FFE8A3}"));
   assert.ok(ler("../components/ui/ListRow.tsx").includes('<div className="ui-row-extra">{filhos}</div>'));
 });
 
