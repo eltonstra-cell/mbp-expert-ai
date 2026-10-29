@@ -44,7 +44,7 @@ test("Central: lista de não conformidades sem chip 'Aberta' nem 'Acompanhar →
   assert.ok(central.indexOf("Ver todas") < central.indexOf("<ListRow"), "o link fica no topo da lista");
   const linha = ler("../components/ui/ListRow.tsx");
   assert.ok(linha.includes('role={clicavel ? "button" : undefined}') && linha.includes("ui-row-seta"));
-  assert.ok(css.includes(".pc-open-list .ui-row.is-clickable:focus-visible{outline:3px solid #2A4D7C"));
+  assert.ok(css.includes(".pc-open-list .ui-row.is-clickable:focus-visible{outline:3px solid #264A80"));
   assert.ok(pagina.includes("nomeCurtoDoAmbiente(nomeDeExibicaoDoAmbiente(nc.ambiente))"));
 });
 
