@@ -72,7 +72,7 @@ test("Checklist do Campo: busca do PC no cabeçalho, respostas só com texto at�
     "border-color:#C5CCDA;background:#EEF1F7",
     ".chk-linha-foto{background:#fff}",
     ".voz-btn{background:#1F78B4}",
-    ".voz-ia{background:#2A4D7C}",
+    ".voz-ia{background:#264A80}",
     "height:40px;min-height:40px;margin:0;padding:0 12px",
     "height:auto;min-height:84px",
     "height:44px;min-height:44px;padding:0 18px",
@@ -167,7 +167,7 @@ test("Janela de finalizar (faltam itens): título 'Faltam N itens' (sem a linha 
 
 test("Ajustes de janela estreita: '+ Nova' no azul padrão, Próxima etapa sem reticências, Visitas sem estourar e Checklist compacto", () => {
   const css = ler("../app/globals.css");
-  assert.ok(/\.campo-mais-nova\{[^}]*color:#2A4D7C/.test(css));
+  assert.ok(/\.campo-mais-nova\{[^}]*color:#264A80/.test(css));
   assert.ok(/\.campo-proxima-amb\{[^}]*white-space:normal/.test(css) && !/\.campo-proxima-amb\{[^}]*text-overflow:ellipsis/.test(css));
   assert.ok(/\.pc-next-title\{[^}]*white-space:normal/.test(css) && !/\.pc-next-title\{[^}]*text-overflow:ellipsis/.test(css));
   assert.ok(css.includes("@media (max-width:899px){\n  .ui-screen[aria-label=\"Visitas técnicas\"] .vis-toolbar{flex-wrap:wrap;") || css.includes("@media (max-width:899px){\r\n  .ui-screen[aria-label=\"Visitas técnicas\"] .vis-toolbar{flex-wrap:wrap;"));
@@ -263,9 +263,9 @@ test("Pacote de ajustes (parte 2): rodapé de 44 px, cores do DS, faixa fina em 
   assert.ok(css.includes("html .chk-foco-rodape{padding-top:0}"));
   assert.ok(css.includes(".chk-linha-foto{background:#fff;cursor:pointer}"));
   assert.ok(css.includes(".voz-btn{background:#1F78B4;cursor:pointer}"));
-  assert.ok(css.includes("border:0;background:#2A4D7C;color:#fff;font-weight:400}"));
-  assert.ok(css.includes(".ui-btn--primary{background:#2A4D7C;color:#fff}"));
-  assert.ok(css.includes(".ui-btn--criar{background:#2A4D7C;color:#fff;font-weight:400}"));
+  assert.ok(css.includes("border:0;background:#264A80;color:#fff;font-weight:400}"));
+  assert.ok(css.includes(".ui-btn--primary{background:#264A80;color:#fff}"));
+  assert.ok(css.includes(".ui-btn--criar{background:#264A80;color:#fff;font-weight:400}"));
   const semCartaz = css.split("\n").filter((linha) => !/\.cz[-\s{,:]|\.cz--/.test(linha)).join("\n");
   assert.ok(!/#E8760A/i.test(semCartaz), "o laranja forte antigo só resta no cartaz impresso");
   assert.ok(!/#D93A3A|#C9473F/i.test(css), "um só vermelho de não conforme/perigo: #C83F45");
