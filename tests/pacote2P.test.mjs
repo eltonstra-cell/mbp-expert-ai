@@ -59,7 +59,7 @@ test("'+ Adicionar POP' fica à direita dos contadores, laranja médio de 44 px;
   assert.match(lista, /temConjunto && faltamCriar > 0 && \(\s*<button type="button" className="ui-btn ui-btn--secondary"/);
   assert.equal(lista.includes("Os POPs do modelo já foram criados"), false, "sem o texto solto quando o conjunto já foi criado");
   const css = ler("../app/globals.css");
-  assert.match(css, /\.pgl-adicionar-botao\{height:44px;[^}]*background:#2A4D7C/);
+  assert.match(css, /\.pgl-adicionar-botao\{height:44px;[^}]*background:#264A80/);
   // abre DIRETO o painel de modelos
   assert.match(lista, /onClick=\{\(\) => \(onCriarDeModelo \? setDeModelo\(true\) : setAdicionando\(true\)\)\}/);
 });
