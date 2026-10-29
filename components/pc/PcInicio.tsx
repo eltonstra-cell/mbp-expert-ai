@@ -1,98 +1,135 @@
 "use client";
 
-import type { ItemDoPainel } from "@/lib/painelHoje";
-import { partesDoContador, subDaLinhaDoPainel, LIMITE_DE_LINHAS_DO_PAINEL, quadradoDoVencimento, textoDoPrazoEm, type ItemDaEsquerda, type ItemDeVencimento, type VencidosPorOrigem } from "@/lib/inicio";
+import { useEffect, useState } from "react";
+import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
+import type { CorrecaoDoInicio } from "@/lib/inicio";
 
-export type CaixaDoInicio = {
-  chave: string;
-  titulo: string;
-  subtitulo: string;
-  tipo: "visita" | "pop" | "comprovantes";
-  onAbrir: () => void;
-  /** Só visita: título curto ("Visita 3"), data e % do checklist (anel de progresso). */
-  rotulo?: string;
-  data?: string;
-  percentual?: number;
+export type CartaoDoInicio = {
+  /** "Visita 3" */
+  rotulo: string;
+  data: string;
+  percentual: number;
+  /** "Próxima etapa: Recebimento" */
+  proxima: string;
+  onContinuar: () => void;
 };
 
 type Props = {
   nome: string;
   /** Aviso para o RT (norma alterada nos POPs aprovados): uma linha, só quando existe. Não faz parte do desenho; foi mantido por ser aviso regulatório. */
   avisoPops?: string | null;
-  /** Até 3 caixas do "Continuar de onde parei". Sem visita em andamento o cartão vira "Comece por aqui" (com o botão Nova visita); as caixas de outras telas continuam. */
-  caixas: CaixaDoInicio[];
+  /** A visita em andamento mais recente (menos de 100%). Nula: sem cartão de visita. */
+  cartao: CartaoDoInicio | null;
+  /** Quantas visitas existem além do cartão (link "Outras visitas (N)"). */
+  outrasVisitas: number;
+  onOutrasVisitas: () => void;
   /** "Nova visita" do cartão sem visita em andamento; ausente = quem não cria visita não vê o botão. */
   onNovaVisita?: (() => void) | null;
   /** "Configuração da empresa: X de Y · faltam …": só enquanto estiver incompleta. */
   configuracao: { feitos: number; total: number; faltam: { id: string; titulo: string; onAbrir: () => void }[]; onGuia: () => void } | null;
   /** Links do rodapé (só gestor): Resumo de uma página, Evolução, Relatórios emitidos, Dossiê. */
   atalhos?: { onResumo?: () => void; onEvolucao?: () => void; onEmitidos?: () => void; onDossie?: () => void } | null;
-  /** Só gestor (quem vê o painel Hoje); sem ele, só o cartão. */
-  colunas: {
-    precisa: ItemDaEsquerda[];
-    vencidos: number;
-    vencidosPorOrigem: VencidosPorOrigem;
-    aguardando: number;
-    semPrazo: number;
-    semResponsavel: number;
-    vencendo: ItemDeVencimento[];
-    onAbrirPendencia: (item: ItemDaEsquerda) => void;
-    onAbrirVencimento: (item: ItemDeVencimento) => void;
-    onLembrete?: () => void;
+  /** Só gestor (quem vê o painel Hoje); sem ele, só o cartão. Todas as correções abertas da empresa, vencidas primeiro. */
+  correcoes: {
+    itens: CorrecaoDoInicio[];
+    onAbrirItem: (id: string) => void;
+    onAbrirCorrecoes: () => void;
+    vencimentos: number;
     onTodosVencimentos: () => void;
-    /** Abre a lista completa de correções abertas (vencidas, aguardando aprovação e sem prazo, nessa ordem). */
-    onVerTodasCorrecoes: () => void;
+    onLembrete?: () => void;
   } | null;
 };
 
-const TIPO: Record<ItemDoPainel["origem"], string> = { correcao: "Correção", comprovante: "Comprovante", capacitacao: "Capacitação", pop: "Aprovação" };
+/** Quantas correções o Início mostra antes do link "Ver todas as correções". */
+export const LINHAS_DE_CORRECAO = 3;
 
-const LINHAS_DE_CORRECAO = 5;
-const maiuscula = (texto: string) => texto.charAt(0).toLocaleUpperCase("pt-BR") + texto.slice(1);
+type FiltroDaGaveta = "Todas" | "Vencidas" | "Abertas";
 
-const IconeVisita = () => (
-  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M9 4h6a1 1 0 0 1 1 1v1H8V5a1 1 0 0 1 1-1z" /><rect x="5" y="6" width="14" height="15" rx="2" /><path d="M9 12l2 2 4-4" />
-  </svg>
-);
-const IconePop = () => (
-  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M6 3h9l4 4v14H6z" /><path d="M15 3v5h4M9 13h6M9 17h6" />
-  </svg>
-);
-const IconeComprovante = () => (
-  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z" /><path d="M9 12l2 2 4-4" />
-  </svg>
-);
+function LinhasDeCorrecao({ itens, onAbrir }: { itens: CorrecaoDoInicio[]; onAbrir: (id: string) => void }) {
+  return (
+    <>
+      {itens.map((item) => (
+        <button key={item.id} type="button" className={`ini3-linha ini3-linha--${item.vencida ? "vencida" : "aberta"}`} onClick={() => onAbrir(item.id)}>
+          <span className="ini3-faixa" aria-hidden="true" />
+          <span className="ini3-linha-textos">
+            <span className="ini3-linha-titulo">{item.titulo}</span>
+            <span className="ini3-linha-sub">{item.linhaDeBaixo}</span>
+          </span>
+        </button>
+      ))}
+    </>
+  );
+}
 
-/** Anel de progresso de 60 px (traço 6): laranja sobre trilho claro; sem porcentagem (outras telas) mostra o ícone da tela. */
-function Anel({ percentual, tipo }: { percentual?: number; tipo: CaixaDoInicio["tipo"] }) {
+/** "Hoje precisa de você" completo: painel à direita no PC, folha de baixo no tablet e no celular. A lista rola por dentro; título, abas e botão ficam fixos. */
+function GavetaDeCorrecoes({ itens, onAbrirItem, onAbrirCorrecoes, onFechar }: { itens: CorrecaoDoInicio[]; onAbrirItem: (id: string) => void; onAbrirCorrecoes: () => void; onFechar: () => void }) {
+  const [filtro, setFiltro] = useState<FiltroDaGaveta>("Todas");
+  const vencidas = itens.filter((item) => item.vencida);
+  const abertas = itens.filter((item) => !item.vencida);
+  const lista = filtro === "Vencidas" ? vencidas : filtro === "Abertas" ? abertas : itens;
+
+  useEffect(() => {
+    const aoTeclar = (evento: KeyboardEvent) => {
+      if (evento.key === "Escape") onFechar();
+    };
+    window.addEventListener("keydown", aoTeclar);
+    return () => window.removeEventListener("keydown", aoTeclar);
+  }, [onFechar]);
+
+  return (
+    <div className="ini-gaveta-camada" role="dialog" aria-modal="true" aria-label="Todas as correções abertas">
+      <button type="button" className="ini-gaveta-fundo" aria-label="Fechar" onClick={onFechar} />
+      <div className="ini-gaveta">
+        <header className="ini-gaveta-topo">
+          <h2 className="ini-gaveta-titulo">Hoje precisa de você</h2>
+          <button type="button" className="ini-gaveta-fechar" aria-label="Fechar" onClick={onFechar}>×</button>
+        </header>
+        <SegmentedTabs<FiltroDaGaveta>
+          rotulo="Situação das correções"
+          valor={filtro}
+          onChange={setFiltro}
+          abas={[
+            { id: "Todas", rotulo: "Todas", contagem: itens.length, tom: "todas" },
+            { id: "Vencidas", rotulo: "Vencidas", contagem: vencidas.length, tom: "vencidas" },
+            { id: "Abertas", rotulo: "Abertas", contagem: abertas.length, tom: "andamento" },
+          ]}
+        />
+        <div className="ini-gaveta-lista">
+          {lista.length === 0 ? <p className="ini-gaveta-vazio">Nenhuma correção nesta aba.</p> : <LinhasDeCorrecao itens={lista} onAbrir={onAbrirItem} />}
+        </div>
+        <footer className="ini-gaveta-rodape">
+          <button type="button" className="ini3-botao ini-gaveta-abrir" onClick={onAbrirCorrecoes}>Abrir Correções →</button>
+        </footer>
+      </div>
+    </div>
+  );
+}
+
+/** Anel de progresso de 60 px (traço 6): laranja sobre trilho claro. */
+function Anel({ percentual }: { percentual: number }) {
   const raio = 27;
   const volta = 2 * Math.PI * raio;
-  const valor = Math.max(0, Math.min(100, percentual ?? 0));
+  const valor = Math.max(0, Math.min(100, percentual));
   return (
-    <span className="ini3-anel" role={percentual === undefined ? undefined : "img"} aria-label={percentual === undefined ? undefined : `${valor}% do checklist respondido`}>
+    <span className="ini3-anel" role="img" aria-label={`${valor}% do checklist respondido`}>
       <svg width="60" height="60" viewBox="0 0 60 60" aria-hidden="true">
         <circle cx="30" cy="30" r={raio} fill="none" stroke="var(--rd-trilho)" strokeWidth="6" />
-        {percentual !== undefined && <circle cx="30" cy="30" r={raio} fill="none" stroke="var(--rd-ambar)" strokeWidth="6" strokeLinecap="round" strokeDasharray={`${(valor / 100) * volta} ${volta}`} transform="rotate(-90 30 30)" />}
+        <circle cx="30" cy="30" r={raio} fill="none" stroke="var(--rd-ambar)" strokeWidth="6" strokeLinecap="round" strokeDasharray={`${(valor / 100) * volta} ${volta}`} transform="rotate(-90 30 30)" />
       </svg>
-      <span className="ini3-anel-centro">{percentual !== undefined ? `${valor}%` : tipo === "pop" ? <IconePop /> : tipo === "comprovantes" ? <IconeComprovante /> : <IconeVisita />}</span>
+      <span className="ini3-anel-centro">{`${valor}%`}</span>
     </span>
   );
 }
 
-// Início (PC): "Olá", cartões do "Continuar de onde parei" com anel de progresso, correções que pedem ação e os links de sempre.
-// Visual do redesign (azul de ação, laranja só no anel); conteúdo e lógica são os de antes. A barra do topo é a do app (AppTopbar).
-export default function PcInicio({ nome, avisoPops = null, caixas, onNovaVisita = null, configuracao, atalhos = null, colunas }: Props) {
-  const linhas = colunas ? colunas.precisa : [];
-  const mostrar = linhas.slice(0, LINHAS_DE_CORRECAO);
-  const faltaMostrar = linhas.length > mostrar.length;
-  const temVisita = caixas.some((caixa) => caixa.tipo === "visita");
-  const mostrarCartao = temVisita || caixas.length > 0 || Boolean(onNovaVisita);
-  const semPendencias = linhas.length === 0;
-  const partes = colunas ? partesDoContador(colunas) : [];
-  const semVencimentos = colunas ? colunas.vencendo.length === 0 : true;
+// Início (desenho 27–35): "Olá", UM cartão "Continuar de onde parei" com a visita em andamento mais recente e "Hoje precisa de você" com até 3 correções.
+export default function PcInicio({ nome, avisoPops = null, cartao, outrasVisitas, onOutrasVisitas, onNovaVisita = null, configuracao, atalhos = null, correcoes }: Props) {
+  const [gavetaAberta, setGavetaAberta] = useState(false);
+  const itens = correcoes ? correcoes.itens : [];
+  const mostrar = itens.slice(0, LINHAS_DE_CORRECAO);
+  const vencidas = itens.filter((item) => item.vencida).length;
+  const abertas = itens.length - vencidas;
+  const semVencimentos = correcoes ? correcoes.vencimentos === 0 : true;
+  const mostrarCartao = Boolean(cartao) || Boolean(onNovaVisita) || outrasVisitas > 0;
 
   const linhaDeConfiguracao = configuracao && (
     <p className="ini3-config" role="status">
@@ -111,13 +148,17 @@ export default function PcInicio({ nome, avisoPops = null, caixas, onNovaVisita 
     ...(atalhos?.onEvolucao ? [{ rotulo: "Evolução", onClick: atalhos.onEvolucao }] : []),
     ...(atalhos?.onEmitidos ? [{ rotulo: "Relatórios emitidos", onClick: atalhos.onEmitidos }] : []),
     ...(atalhos?.onDossie ? [{ rotulo: "Dossiê", onClick: atalhos.onDossie }] : []),
-    ...(colunas && !semVencimentos ? [{ rotulo: `Vencimentos em 30 dias (${colunas.vencendo.length})`, onClick: colunas.onTodosVencimentos }] : []),
-    ...(colunas?.onLembrete ? [{ rotulo: "Lembrete ao responsável", onClick: colunas.onLembrete }] : []),
+    ...(correcoes && !semVencimentos ? [{ rotulo: `Vencimentos em 30 dias (${correcoes.vencimentos})`, onClick: correcoes.onTodosVencimentos }] : []),
+    ...(correcoes?.onLembrete ? [{ rotulo: "Lembrete ao responsável", onClick: correcoes.onLembrete }] : []),
     ...(configuracao ? [{ rotulo: "Guia de uso em Ajuda e guias", onClick: configuracao.onGuia }] : []),
   ];
 
+  const outras = outrasVisitas > 0 && (
+    <button type="button" className="ini2-link ini4-outras" onClick={onOutrasVisitas}>{`Outras visitas (${outrasVisitas})`}</button>
+  );
+
   return (
-    <section className="ui-screen ini2 ini3" aria-label="Início">
+    <section className="ui-screen ini2 ini3 ini4" aria-label="Início">
       <h1 className="ini3-ola">Olá, {nome}</h1>
 
       {avisoPops && (
@@ -127,79 +168,70 @@ export default function PcInicio({ nome, avisoPops = null, caixas, onNovaVisita 
       )}
 
       {mostrarCartao && (
-        <section className="ini3-secao" aria-label="Continuar de onde parei">
-          <h2 className="ini3-rotulo">{temVisita ? "CONTINUAR DE ONDE PARAREI" : "COMECE POR AQUI"}</h2>
-          {!temVisita && (
-            <div className="ini2-sem-visita">
-              <p className="ini2-sem-visita-texto">Nenhuma visita em andamento.</p>
-              {onNovaVisita && (
-                <button type="button" className="ini3-botao" onClick={onNovaVisita}>
-                  Nova visita
-                </button>
-              )}
+        <section className="ini4-cartao" aria-label="Continuar de onde parei">
+          <h2 className="ini4-cartao-titulo">Continuar de onde parei</h2>
+          {cartao ? (
+            <div className="ini4-cartao-corpo">
+              <div className="ini4-cartao-visita">
+                <Anel percentual={cartao.percentual} />
+                <div className="ini3-cartao-textos">
+                  <h3 className="ini3-cartao-titulo">{`${cartao.rotulo} · ${cartao.data}`}</h3>
+                  <span className="ini3-cartao-sub">{cartao.proxima}</span>
+                </div>
+              </div>
+              <div className="ini4-cartao-acoes">
+                <button type="button" className="ini3-botao ini4-continuar" onClick={cartao.onContinuar}>Continuar →</button>
+                {outras}
+              </div>
             </div>
-          )}
-          {caixas.length > 0 && (
-            <div className="ini3-cartoes">
-              {caixas.map((caixa, indice) => (
-                <article key={caixa.chave} className={`ini3-cartao${indice === 0 ? " is-primeiro" : ""}`}>
-                  <div className="ini3-cartao-topo">
-                    <Anel percentual={caixa.tipo === "visita" ? caixa.percentual : undefined} tipo={caixa.tipo} />
-                    <div className="ini3-cartao-textos">
-                      <h3 className="ini3-cartao-titulo" title={caixa.titulo}>{caixa.rotulo || caixa.titulo}</h3>
-                      {caixa.data && <span className="ini3-cartao-data">{caixa.data}</span>}
-                      {caixa.subtitulo && <span className="ini3-cartao-sub">{caixa.subtitulo}</span>}
-                    </div>
-                  </div>
-                  <button type="button" className="ini3-botao ini3-botao--cartao" onClick={caixa.onAbrir}>
-                    Continuar →
-                  </button>
-                </article>
-              ))}
+          ) : (
+            <div className="ini2-sem-visita">
+              <p className="ini2-sem-visita-texto">Nenhuma visita para continuar.</p>
+              {onNovaVisita && <button type="button" className="ini3-botao" onClick={onNovaVisita}>Nova visita</button>}
+              {outras}
             </div>
           )}
         </section>
       )}
 
-      {colunas && semPendencias && (
+      {correcoes && itens.length === 0 && (
         <section className="ini2-tudo-em-dia" aria-label="Tudo em dia">
           <h2 className="ini2-tudo-titulo">Tudo em dia</h2>
-          <p className="ini2-tudo-sub">{semVencimentos ? "Nada vencido e nada vencendo nos próximos 30 dias." : "Nada vencido."}</p>
+          <p className="ini2-tudo-sub">{semVencimentos ? "Nenhuma correção aberta e nada vencendo nos próximos 30 dias." : "Nenhuma correção aberta."}</p>
         </section>
       )}
 
-      {colunas && !semPendencias && (
-        <div className="ini3-colunas is-uma">
-          {!semPendencias && (
-            <section className="ini3-secao ini3-correcoes" aria-labelledby="ini3-pendencias-titulo">
-              <p className="ini3-rotulo">PENDÊNCIAS</p>
-              <h2 id="ini3-pendencias-titulo" className="ini3-titulo">Hoje precisa de você</h2>
-              <div className="ini3-resumo">
-                <span className="ini3-partes">{partes.map((parte) => <span key={parte.texto} className={`ini3-parte${parte.urgente ? " ini3-parte--urgente" : ""}`}>{parte.texto}</span>)}</span>
-                {colunas.semResponsavel > 0 && <span className="ini3-semresp">{colunas.semResponsavel} sem responsável</span>}
-              </div>
-              <div className="ini3-lista">
-                {mostrar.map((item) => (
-                  <button key={item.id} type="button" className={`ini3-linha ini3-linha--${item.situacao === "vencido" ? "vencida" : "aberta"}`} onClick={() => colunas.onAbrirPendencia(item)}>
-                    <span className="ini3-faixa" aria-hidden="true" />
-                    <span className="ini3-linha-textos">
-                      <span className="ini3-linha-titulo">{item.titulo}</span>
-                      <span className="ini3-linha-sub">{subDaLinhaDoPainel(item, TIPO[item.origem])}</span>
-                    </span>
-                    <span className={`ini3-tag ini3-tag--${item.situacao === "vencido" ? "venceu" : item.situacao === "aguardando" ? "aguardando" : "aberta"}`}>
-                      {item.situacao === "vencido" ? maiuscula(item.prazo) : item.situacao === "aguardando" ? "Aguardando" : "Aberta"}
-                    </span>
-                  </button>
-                ))}
-              </div>
-              {faltaMostrar && (
-                <div className="ini3-rodape-lista">
-                  <button type="button" className="ini2-link" onClick={colunas.onVerTodasCorrecoes}>Ver todas ({linhas.length})</button>
-                </div>
-              )}
-            </section>
-          )}
-        </div>
+      {correcoes && itens.length > 0 && (
+        <section className="ini3-secao ini3-correcoes ini4-hoje" aria-labelledby="ini3-pendencias-titulo">
+          <div className="ini4-hoje-topo">
+            <h2 id="ini3-pendencias-titulo" className="ini3-titulo">Hoje precisa de você</h2>
+            <span className="ini3-partes">
+              {vencidas > 0 && <span className="ini3-parte ini3-parte--urgente">{`${vencidas} ${vencidas === 1 ? "vencida" : "vencidas"}`}</span>}
+              {abertas > 0 && <span className="ini3-parte ini4-parte-aberta">{`${abertas} ${abertas === 1 ? "aberta" : "abertas"}`}</span>}
+            </span>
+          </div>
+          <div className="ini3-lista">
+            <LinhasDeCorrecao itens={mostrar} onAbrir={correcoes.onAbrirItem} />
+          </div>
+          <div className="ini3-rodape-lista">
+            <button type="button" className="ini2-link" onClick={() => setGavetaAberta(true)}>{`Ver todas as correções (${itens.length})`}</button>
+          </div>
+        </section>
+      )}
+
+      {correcoes && gavetaAberta && (
+        <GavetaDeCorrecoes
+          itens={itens}
+          onAbrirItem={(id) => {
+            setGavetaAberta(false);
+            correcoes.onAbrirItem(id);
+          }}
+          onAbrirCorrecoes={() => {
+            setGavetaAberta(false);
+            correcoes.onAbrirCorrecoes();
+          }}
+          onFechar={() => setGavetaAberta(false)}
+        />
       )}
 
       {(links.length > 0 || linhaDeConfiguracao) && (
