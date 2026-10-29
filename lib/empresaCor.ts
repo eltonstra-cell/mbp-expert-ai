@@ -3,7 +3,7 @@
 // sem cor guardada, ela é derivada do id, sempre a mesma em qualquer aparelho.
 
 export const PALETA_EMPRESA = [
-  { nome: "Turquesa", hex: "#188585" },
+  { nome: "Turquesa", hex: "#168080" },
   { nome: "Azul", hex: "#264A80" },
   { nome: "Ferrugem", hex: "#B4491C" },
   { nome: "Grafite", hex: "#526477" },
