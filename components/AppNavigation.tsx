@@ -9,7 +9,7 @@ type Props = {
   contexto: NavContexto;
   ativa: NavKey | null;
   onSelecionar: (key: NavKey) => void;
-  /** Correções vencidas da empresa ativa (número vermelho do item Correções). */
+  /** Correções abertas da empresa ativa (número do item Correções). */
   vencidas: number;
   sincronizacao: { estado: "ok" | "erro" | "pendente" | "sem-sinal"; rotulo: string; onClick: () => void };
   onSair: () => void;
@@ -100,7 +100,7 @@ export default function AppNavigation({ contexto, ativa, onSelecionar, vencidas,
         data-chave={item.key}
         className={`tr-item${ehAtivo ? " is-atual" : ""}`}
         aria-current={ehAtivo ? "page" : undefined}
-        aria-label={badge > 0 ? `${rotulo}, ${badge} ${badge === 1 ? "correção vencida" : "correções vencidas"} na empresa` : undefined}
+        aria-label={badge > 0 ? `${rotulo}, ${badge} ${badge === 1 ? "correção aberta" : "correções abertas"} na empresa` : undefined}
         title={badge > 0 ? `${badge} ${badge === 1 ? "correção vencida" : "correções vencidas"} na empresa, de todas as visitas` : undefined}
         onClick={() => {
           setMaisAberto(false);
@@ -125,9 +125,7 @@ export default function AppNavigation({ contexto, ativa, onSelecionar, vencidas,
         {temRegistrar && (
           <button type="button" className="tr-registrar" onClick={() => onSelecionar("registrar")}>
             <span className="tr-registrar-disco">
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-                <path d="M12 5v14M5 12h14" />
-              </svg>
+              <NavIcon name="registrar" size={26} strokeWidth={2} />
             </span>
             <span className="tr-rotulo">Registrar</span>
           </button>
