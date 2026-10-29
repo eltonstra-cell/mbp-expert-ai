@@ -52,6 +52,6 @@ test("9B B1/B2/B4/B5: estilos", () => {
   assert.ok(!css.includes('.chk-grav-sug::before'));
   assert.ok(css.includes("chk-resp--ok:not(.is-marcado),html[data-modo] .chk-resp.is-apagado.chk-resp--ok:not(.is-marcado)"));
   assert.ok(css.includes(".amb-linha.is-completo .amb-barra span{background:#21805B}") && css.includes(".amb-check{color:#21805B}"));
-  assert.ok(css.includes('.ui-screen[aria-label="Visitas técnicas"] .ui-btn.ui-btn--criar{background:#2A4D7C;color:#fff;font-weight:400}'));
+  assert.ok(css.includes('.ui-screen[aria-label="Visitas técnicas"] .ui-btn.ui-btn--criar{background:#264A80;color:#fff;font-weight:400}'));
   assert.ok(css.includes(".amb-selo,html[data-modo=\"campo\"] .amb-selo{display:block;min-width:0;width:auto;overflow:hidden;padding:0;border-radius:0;background:transparent;color:#C83F45"));
 });
