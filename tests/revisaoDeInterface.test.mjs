@@ -137,7 +137,7 @@ test("'Mais' do trilho é a página atual nos destinos que ele guarda, e só nel
 
 test("Início: 'Hoje precisa de você' é o h2 da seção; o rótulo PENDÊNCIAS não é título", () => {
   const inicio = ler("../components/pc/PcInicio.tsx");
-  assert.ok(inicio.includes('<p className="ini3-rotulo">PENDÊNCIAS</p>'));
+  assert.ok(!inicio.includes("PENDÊNCIAS"), "Rodada 12d: sem o título repetido PENDÊNCIAS");
   assert.ok(!inicio.includes("CORREÇÕES"));
   assert.ok(inicio.includes('<h2 id="ini3-pendencias-titulo" className="ini3-titulo">Hoje precisa de você</h2>'));
   assert.ok(inicio.includes('aria-labelledby="ini3-pendencias-titulo"') && !inicio.includes('aria-label="Hoje precisa de você"'));
