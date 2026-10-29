@@ -255,7 +255,7 @@ import PropostaDeCnpjPainel from "@/components/PropostaDeCnpj";
 import PacoteDoTipoPainel, { type EscolhaDoPacote } from "@/components/PacoteDoTipo";
 import CaixaQueCresce from "@/components/CaixaQueCresce";
 import { camposDaProposta, mensagemDeFalhaDaConsulta, propostaDaConsulta, type PropostaDeCnpj } from "@/lib/cnpjConsulta";
-import { TIPOS_DE_ESTABELECIMENTO, limiteSugeridoParaEquipamento, tipoSugeridoPorCnae } from "@/lib/tiposDeEstabelecimento";
+import { TIPOS_DE_ESTABELECIMENTO, limiteSugeridoParaEquipamento, OPCAO_SEGUIR_O_CNAE, TIPO_OUTRO_ESCOLHIDO, cnaeBloqueiaSalvar, consultaPodeTrocarOTipo, normalizarCnae, tipoEfetivoDaEmpresa, tipoSugeridoPorCnae, validarCnae, valorDoTipoParaGuardar } from "@/lib/tiposDeEstabelecimento";
 import { equipamentosDoPacote } from "@/lib/equipamentosCadastro";
 import { linhasDeTemperaturaDoRelatorio } from "@/lib/limitesDeTemperatura";
 import type { PropostaDeVoz } from "@/lib/vozDoAmbiente";
@@ -1061,6 +1061,10 @@ export default function Home() {
   const [consultaMsg, setConsultaMsg] = useState("");
   const [camposDaConsulta, setCamposDaConsulta] = useState<string[]>([]);
   const [tipoSugerido, setTipoSugerido] = useState(false);
+  // O código do CNAE mudou e a descrição que veio da consulta foi limpa: o campo avisa até a pessoa consultar de novo ou digitar a descrição.
+  const [descricaoDoCnaeLimpa, setDescricaoDoCnaeLimpa] = useState(false);
+  // A descrição original fica guardada (com o código a que pertence) e volta se o código voltar ao que era; nunca é gravada com outro código.
+  const [descricaoGuardada, setDescricaoGuardada] = useState<{ digitos: string; texto: string } | null>(null);
   // UF que não veio da consulta (deduzida pelo CEP ou vazia): o campo avisa, sem bloquear.
   const [avisoUf, setAvisoUf] = useState("");
   // Consulta sem nome fantasia / sem e-mail: o campo diz isso (nada é inventado) e oferece o atalho quando cabe.
@@ -3591,13 +3595,22 @@ export default function Home() {
     }
   }
 
+  // Tipo que vale agora: o ajustado pela pessoa ou, sem ajuste, o do CNAE (principal, depois secundários).
+  const tipoDoForm = tipoEfetivoDaEmpresa({ cnae: form.cnae, cnaesSecundarios: cnaesSecundariosForm, tipo: form.tipo });
+  const validacaoDoCnae = validarCnae(form.cnae);
+  const tipoLegado = Boolean(form.tipo) && form.tipo !== "Outro" && form.tipo !== TIPO_OUTRO_ESCOLHIDO && !TIPOS_DE_ESTABELECIMENTO.some((tipo) => tipo.rotulo === form.tipo);
+  const valorDoSelectDoTipo = form.tipo === TIPO_OUTRO_ESCOLHIDO ? TIPO_OUTRO_ESCOLHIDO : tipoDoForm.ajustado ? tipoDoForm.rotulo : tipoLegado ? form.tipo : OPCAO_SEGUIR_O_CNAE;
+
   function usarPropostaDoCnpj() {
     if (!propostaCnpj) return;
     const { valores, campos } = camposDaProposta(propostaCnpj);
     const tipo = tipoSugeridoPorCnae(propostaCnpj.cnaePrincipal.codigo, propostaCnpj.cnaesSecundarios);
-    const trocaTipo = tipo.correspondencia || !form.tipo || form.tipo === "Outro";
+    // Só troca o tipo se nada foi ajustado pela pessoa ("Outro" ou vazio = segue o CNAE); o ajuste dela nunca é apagado.
+    const trocaTipo = tipo.correspondencia && consultaPodeTrocarOTipo(form.tipo);
     // MEI/empresário individual: a razão social é o nome da pessoa e NÃO é guardada; também não deixa a de uma consulta anterior misturada.
-    setForm((atual) => ({ ...atual, ...valores, ...(propostaCnpj.titularPessoaFisica ? { razaoSocial: "" } : {}), ...(trocaTipo ? { tipo: tipo.rotulo } : {}) }));
+    setForm((atual) => ({ ...atual, ...valores, ...(propostaCnpj.titularPessoaFisica ? { razaoSocial: "" } : {}), }));
+    setDescricaoDoCnaeLimpa(false);
+    setDescricaoGuardada(null);
     setCamposDaConsulta(trocaTipo ? [...campos, "tipo"] : campos);
     setTipoSugerido(trocaTipo);
     setCnaesSecundariosForm(propostaCnpj.cnaesSecundarios);
@@ -3610,6 +3623,24 @@ export default function Home() {
   }
 
   function mudarCampoDaEmpresa(campo: string, valor: string) {
+    // Código novo: a descrição que veio da consulta já não corresponde a ele. Ela fica guardada aqui (não é gravada com o código errado) e volta se o código voltar.
+    if (campo === "cnae" && normalizarCnae(valor) !== normalizarCnae(form.cnae)) {
+      const digitosNovos = normalizarCnae(valor);
+      if (descricaoGuardada && digitosNovos === descricaoGuardada.digitos && !form.cnaeDescricao.trim()) {
+        setForm((atual) => ({ ...atual, cnae: valor, cnaeDescricao: descricaoGuardada.texto }));
+        setDescricaoGuardada(null);
+        setDescricaoDoCnaeLimpa(false);
+        return;
+      }
+      if (form.cnaeDescricao.trim()) {
+        setDescricaoGuardada({ digitos: normalizarCnae(form.cnae), texto: form.cnaeDescricao });
+        setDescricaoDoCnaeLimpa(true);
+        setForm((atual) => ({ ...atual, cnae: valor, cnaeDescricao: "" }));
+        setCamposDaConsulta((atual) => atual.filter((item) => item !== "cnae" && item !== "cnaeDescricao"));
+        return;
+      }
+    }
+    if (campo === "cnaeDescricao") setDescricaoDoCnaeLimpa(false);
     if (campo === "uf") setAvisoUf("");
     if (campo === "nomeFantasia" && valor.trim()) setSemFantasiaNaReceita(false);
     setForm((atual) => ({ ...atual, [campo]: valor }));
@@ -3650,6 +3681,9 @@ export default function Home() {
     if (!exigirPermissao("empresas.editar")) return;
     setTentouSalvarEmpresa(true);
     const faltasDaEmpresa = pendenciasParaSalvarEmpresa(form, Boolean(editingEmpresaId));
+    // Só bloqueia o CNAE fora do formato em empresa nova ou quando o código foi MUDADO; empresa antiga com o CNAE intacto mostra o aviso e salva.
+    const cnaeSalvo = editingEmpresaId ? db.empresas[editingEmpresaId]?.cnae : undefined;
+    if (cnaeBloqueiaSalvar(form.cnae, cnaeSalvo, !editingEmpresaId)) faltasDaEmpresa.push("Corrija o CNAE: ele precisa ter 7 dígitos.");
     if (faltasDaEmpresa.length) {
       setMsg(faltasDaEmpresa.join(" "));
       return;
@@ -3947,6 +3981,8 @@ export default function Home() {
     setConsultaMsg("");
     setCamposDaConsulta([]);
     setTipoSugerido(false);
+    setDescricaoGuardada(null);
+    setDescricaoDoCnaeLimpa(false);
     setCnaesSecundariosForm(empresa.cnaesSecundarios || []);
     setAvisoUf("");
     setConsultaEmForm(empresa.consultaCnpjEm || "");
@@ -4831,6 +4867,8 @@ export default function Home() {
     setConsultaMsg("");
     setCamposDaConsulta([]);
     setTipoSugerido(false);
+    setDescricaoGuardada(null);
+    setDescricaoDoCnaeLimpa(false);
     setCnaesSecundariosForm([]);
     setAvisoUf("");
     setSemFantasiaNaReceita(false);
@@ -8248,9 +8286,11 @@ export default function Home() {
                     </span>
                     {k === "tipo" ? (
                       <span className="tipo-estab">
-                        <Select className="w-full rounded-xl border p-3" value={form.tipo || "Outro"} onChange={(e) => { mudarCampoDaEmpresa("tipo", e.target.value); setTipoSugerido(false); }} aria-label="Tipo de estabelecimento">
-                          {TIPOS_DE_ESTABELECIMENTO.map((tipo) => <option key={tipo.id} value={tipo.rotulo}>{tipo.rotulo}</option>)}
-                          {form.tipo && !TIPOS_DE_ESTABELECIMENTO.some((tipo) => tipo.rotulo === form.tipo) && <option value={form.tipo}>{form.tipo}</option>}
+                        <Select className="w-full rounded-xl border p-3" value={valorDoSelectDoTipo} onChange={(e) => { mudarCampoDaEmpresa("tipo", valorDoTipoParaGuardar(e.target.value, tipoDoForm.doCnae.tipo)); setTipoSugerido(false); }} aria-label="Tipo de estabelecimento">
+                          <option value={OPCAO_SEGUIR_O_CNAE}>{`Seguir o CNAE (${tipoDoForm.doCnae.correspondencia ? tipoDoForm.doCnae.rotulo : "sem tipo reconhecido"})`}</option>
+                          {TIPOS_DE_ESTABELECIMENTO.map((tipo) => <option key={tipo.id} value={tipo.id === "outro" ? TIPO_OUTRO_ESCOLHIDO : tipo.rotulo}>{tipo.rotulo}</option>)}
+                          {tipoLegado && <option value={form.tipo}>{form.tipo}</option>}
+                          
                         </Select>
                         {tipoSugerido && <button type="button" className="ui-btn ui-btn--secondary pacote-confirmar-tipo" onClick={() => { setTipoSugerido(false); setCamposDaConsulta((atual) => atual.filter((item) => item !== "tipo")); }}>Confirmar tipo</button>}
                       </span>
@@ -8263,14 +8303,19 @@ export default function Home() {
                     ) : (
                       <input
                         type="text"
-                        className={`w-full rounded-xl border p-3${camposDaConsulta.includes(k) ? " is-da-consulta" : ""}`}
+                        className={`w-full rounded-xl border p-3${camposDaConsulta.includes(k) ? " is-da-consulta" : ""}${k === "cnae" && validacaoDoCnae.situacao === "formato" ? " cnae-invalido" : ""}`}
                         value={form[k]}
+                        inputMode={k === "cnae" ? "numeric" : undefined}
+                        aria-describedby={k === "cnae" && validacaoDoCnae.mensagem ? "empresa-cnae-aviso" : undefined}
                         placeholder={k === "horarioFuncionamento" ? "Ex.: Seg a sáb, 11h às 23h" : k === "nomeFantasia" && semFantasiaNaReceita ? "Sem nome fantasia na Receita" : undefined}
                         aria-invalid={k === "nomeFantasia" && (tocouNomeEmpresa || tentouSalvarEmpresa) && Boolean(erroDoNomeDaEmpresa(form.nomeFantasia, form.razaoSocial))}
                         onBlur={k === "nomeFantasia" ? () => setTocouNomeEmpresa(true) : undefined}
                         onChange={(e) => mudarCampoDaEmpresa(k, e.target.value)}
                       />
                     )}
+                    {k === "cnae" && validacaoDoCnae.situacao === "formato" && <span id="empresa-cnae-aviso" className="cnae-erro" role="alert">{validacaoDoCnae.mensagem}</span>}
+                    {k === "cnae" && validacaoDoCnae.situacao === "fora-da-tabela" && <span id="empresa-cnae-aviso" className="cnae-nota" role="status">{validacaoDoCnae.mensagem}</span>}
+                    {k === "cnaeDescricao" && descricaoDoCnaeLimpa && !form.cnaeDescricao.trim() && <span className="cnae-nota" role="status">Descrição não corresponde ao código; use {editingEmpresaId ? "Consultar de novo" : "Buscar"}</span>}
                     {k === "uf" && avisoUf && <span className="cnpj-uf-aviso" role="status">{avisoUf}</span>}
                     {k === "nomeFantasia" && semFantasiaNaReceita && !form.nomeFantasia.trim() && form.razaoSocial.trim() && (
                       <button type="button" className="ui-btn ui-btn--secondary nova-usar-razao" onClick={() => mudarCampoDaEmpresa("nomeFantasia", form.razaoSocial)}>Usar a razão social</button>
@@ -8280,7 +8325,7 @@ export default function Home() {
                   </label>
                     ))}
                     <PacoteDoTipoPainel
-                      tipo={form.tipo || "Outro"}
+                      tipo={tipoDoForm.rotulo}
                       ambientesDaEmpresa={setoresEmpresa}
                       equipamentosDaEmpresa={equipamentosEmpresa.map((item) => `${item.setor}|${item.nome.toLocaleLowerCase("pt-BR")}`)}
                       fluxosAplicaveis={fluxosEmpresa.filter((fluxo) => fluxo.aplicavel).map((fluxo) => fluxo.tipo)}
@@ -8419,7 +8464,7 @@ export default function Home() {
                         return `${resultado.preenchidos.length === 1 ? "1 campo preenchido" : `${resultado.preenchidos.length} campos preenchidos`}.${faltam ? ` ${faltam === 1 ? "1 campo continua vazio" : `${faltam} campos continuam vazios`}: não há esse dado no cadastro.` : ""} Salve para guardar.`;
                       }}
                     />
-                    <ManualBaseFields tipoDoEstabelecimento={form.tipo} responsabilidades={responsabilidadesEmpresa} onResponsabilidadesChange={setResponsabilidadesEmpresa} setores={setoresEmpresa} onSetoresChange={setSetoresEmpresa} equipamentos={equipamentosEmpresa} onEquipamentosChange={setEquipamentosEmpresa} modo="responsabilidades" />
+                    <ManualBaseFields tipoDoEstabelecimento={tipoDoForm.rotulo} responsabilidades={responsabilidadesEmpresa} onResponsabilidadesChange={setResponsabilidadesEmpresa} setores={setoresEmpresa} onSetoresChange={setSetoresEmpresa} equipamentos={equipamentosEmpresa} onEquipamentosChange={setEquipamentosEmpresa} modo="responsabilidades" />
                   </div>
                 )}
 
@@ -8431,6 +8476,7 @@ export default function Home() {
                     estado={syncStatus === "erro" && syncErroVisivel ? "erro" : estadoEstrutura}
                     onGravar={(entrada) => gravarEstrutura(entrada, editingEmpresaId)}
                     onRenomear={renomearAmbienteAgora}
+                    ambientesEmVisitas={db.visitas.filter((visita) => visita.empresaId === editingEmpresaId).flatMap((visita) => visita.ambientes || [])}
                     onIrParaDados={() => irParaSubaba("dados")}
                   />
                 )}

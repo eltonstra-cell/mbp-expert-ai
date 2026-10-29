@@ -98,7 +98,12 @@ html .cadest .ui-input:focus,html .cadest .ui-input:focus-visible,html .cadest .
 .cadest-perguntas{flex:none;font-size:15px;line-height:36px;color:#1B2433;white-space:nowrap}
 .cadest-item-direita{display:flex;flex:none;align-items:flex-start;gap:12px}
 .cadest-nome:focus{outline:none}
-.cadest-parece{font-size:15px;line-height:22px;color:#1B2433}
+.cadest-parece{display:flex;align-items:center;gap:6px;min-width:0;font-size:15px;line-height:22px;color:#1B2433;white-space:nowrap}
+.cadest-parece-texto{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.cadest-parece .cadest-link{flex:none}
+.cadest-vinc-lista{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.cadest-vinc-linha{display:flex;flex-wrap:wrap;align-items:center;gap:4px 16px}
+.cadest-vinc-linha .cadest-lote-quest-item{flex:1 1 240px}
 .cadest-parece .cadest-link{min-height:22px;padding:0}
 .cadest-erro .cadest-link{min-height:28px}
 .cadest-semsugestao{display:flex;flex-wrap:wrap;align-items:center;gap:0 12px;margin:0;font-size:15px;line-height:22px;color:#55607A}

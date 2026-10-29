@@ -235,14 +235,14 @@ test("CNAE formatado: 5611201 vira 5611-2/01; texto fora do padrão não é inve
   assert.equal(formatarCnae(undefined), "");
 });
 
-test("sugestão pelo CNAE PRINCIPAL: mostra o CNAE e a descrição do cadastro e os ambientes do pacote do tipo", () => {
+test("sugestão pelo CNAE PRINCIPAL: mostra o CNAE e o nome do tipo (tabela) e os ambientes do pacote do tipo", () => {
   const s = sugestaoPorCnae({ cnae: "5611-2/01", cnaeDescricao: "Restaurantes e similares", cnaesSecundarios: [] });
   assert.equal(s.situacao, "ok");
   assert.equal(s.origem, "principal");
   assert.equal(s.codigo, "5611-2/01");
   assert.equal(s.descricao, "Restaurantes e similares");
   assert.deepEqual(s.ambientes, pacoteDoTipo("restaurante").ambientes);
-  assert.equal(tituloDaSugestao(s), "Sugestão pelo CNAE 5611-2/01 · Restaurantes e similares");
+  assert.equal(tituloDaSugestao(s), "Sugestões para Restaurantes e similares · CNAE 5611-2/01");
   assert.ok(s.equipamentos.length > 0 && s.equipamentos.every((i) => s.ambientes.includes(i.ambiente)), "equipamentos do pacote ficam para a aba Equipamentos");
 });
 
@@ -253,7 +253,7 @@ test("sugestão pelo CNAE SECUNDÁRIO: usa o secundário e diz isso; principal s
   assert.equal(s.codigo, "4722-9/01");
   assert.equal(s.descricao, "Comércio varejista de carnes - açougues", "descrição do secundário, não a do principal");
   assert.deepEqual(s.ambientes, pacoteDoTipo("acougue").ambientes);
-  assert.equal(tituloDaSugestao(s), "Sugestão pelo CNAE 4722-9/01 · Comércio varejista de carnes - açougues (CNAE secundário)");
+  assert.equal(tituloDaSugestao(s), "Sugestões para Comércio varejista de carnes - açougues · CNAE 4722-9/01 (CNAE secundário)");
   // o principal vale primeiro quando tem correspondência, mesmo havendo secundário que também corresponde
   const p = sugestaoPorCnae({ cnae: "5611203", cnaeDescricao: "Lanchonetes", cnaesSecundarios: [{ codigo: "4722901", descricao: "Açougues" }] });
   assert.equal(p.origem, "principal");
@@ -333,7 +333,7 @@ test("página: grava na hora, bloqueio de revisão com alteração não salva, C
 test("Ambientes: setor oficial sugerido (com fonte) e vínculo de questionário em lote continuam na aba nova, usando as mesmas regras", () => {
   const fonte = readFileSync(new URL("../components/pc/CadastroAmbientes.tsx", import.meta.url), "utf8");
   // Rodada 7A: a linha da Portaria saiu da lista; a sugestão vira "Parece o setor oficial X · Vincular" e a base legal vai para o menu ⋯.
-  assert.ok(fonte.includes("sugerirSetorOficial") && fonte.includes("Parece o setor oficial {parecido}") && fonte.includes("baseDoSetorOficial") && fonte.includes("rodape={base?.texto}"));
+  assert.ok(fonte.includes("sugerirSetorOficial") && fonte.includes("Parece o setor oficial {nomeCurtoDoSetor(parecido)}") && fonte.includes("baseDoSetorOficial") && fonte.includes("rodape={base?.texto}"));
   assert.ok(ler("../lib/setorOficialSugerido.ts").includes("conferido em"), "a data de conferência continua a mesma fonte");
   assert.ok(fonte.includes("vincularQuestionarioEmLote") && fonte.includes("ambientesSemQuestionario") && fonte.includes("Vincular a um setor oficial"));
   assert.ok(fonte.includes("oficialParecido(novoNome.trim())"), "a sugestão aparece já ao digitar o nome em + Ambiente próprio");

@@ -192,8 +192,8 @@ try {
   await clicar("Cadastros");
   await esperar(async () => /Ambientes/.test(await texto()), 15000);
   await clicarContendo("Ambientes");
-  const veioSugestao = await esperar(async () => /Parece o setor oficial Refeitório e salão de consumação/.test(await texto()), 15000);
-  registrar("7a. 'Salão' sugere o setor oficial 'Refeitório e salão de consumação' na terceira linha ('Parece o setor oficial … · Vincular')", veioSugestao && !(await texto()).includes("Portaria SES/RS"));
+  const veioSugestao = await esperar(async () => /Parece o setor oficial Refeitório\s*·/.test(await texto()), 15000);
+  registrar("7a. 'Salão' sugere o setor oficial pelo nome curto, 'Refeitório', na terceira linha ('Parece o setor oficial Refeitório · Vincular')", veioSugestao && !(await texto()).includes("Portaria SES/RS"));
   await js(`document.querySelector('[aria-label="Mais ações de Salão"]')?.click()`);
   await n.esperar(300);
   registrar("7b. a base legal (Portaria SES/RS 799/2023, item e data de conferência) fica no menu ⋯ do ambiente, na linha 'Base: …'", (await texto()).includes("Base: Portaria SES/RS nº 799/2023, item 3.21 · conferido em"));

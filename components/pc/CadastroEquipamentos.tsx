@@ -10,7 +10,13 @@ import { desfazerSoma, reinserirEquipamentoNaPosicao } from "@/lib/estruturaDelt
 import { copiarDeOutraEmpresa, type EquipamentoDeOrigem } from "@/lib/copiaEquipamentos";
 import {
   adicionarEquipamentoNoSetor,
+  acumularAdicao,
   adicionarSugestoesEmLote,
+  botaoDoLote,
+  type GrupoDeAdicoes,
+  mostrarQuantidadeNaLinha,
+  normalizarNomeDeEquipamento,
+  textoDoAvisoDeAdicoes,
   avisoDeNomeCurto,
   MENSAGEM_DE_NOME_CURTO,
   avisoDeNomeRepetido,
@@ -36,12 +42,12 @@ import {
 import { sugerirNomesDeEquipamento } from "@/lib/autocompletarEquipamento";
 import { LIMITES_DE_TEMPERATURA, baseDoLimite, limiteDoTipo, textoDoLimite } from "@/lib/limitesDeTemperatura";
 import { rotuloDoSetor } from "@/lib/nomesDeAmbiente";
-import { SETORES_OFICIAIS_MANUAL, normalizarListaAmbientesReais, normalizarSetorManual } from "@/lib/manualBase";
+import { SETORES_OFICIAIS_MANUAL, normalizarListaAmbientesReais } from "@/lib/manualBase";
 import { quantidade } from "@/lib/plural";
 import { limparVinculos } from "@/lib/ambientesVisita";
-import { avisoQuandoNaoHaSugestao, equipamentosSugeridosParaSetor, sugestaoPorCnae } from "@/lib/sugestaoPorCnae";
-import { limiteSugeridoParaEquipamento, nomeCurtoDoSetor } from "@/lib/tiposDeEstabelecimento";
-import { fecharToastDe, mostrarToast } from "@/lib/toast";
+import { avisoQuandoNaoHaSugestao, equipamentosSugeridosParaSetor, oficialExatoDoSetor, sugestaoPorCnae, tituloDaSugestao } from "@/lib/sugestaoPorCnae";
+import { limiteSugeridoParaEquipamento, mensagemSemSugestaoDoCnae } from "@/lib/tiposDeEstabelecimento";
+import { fecharToastDe, mostrarToast, toastAtual } from "@/lib/toast";
 import { nomeJaExistente } from "@/lib/ambientesVisita";
 import { interpretarEquipamentos, podeConfirmar } from "@/lib/vozEquipamentos";
 import type { Empresa, EquipamentoSetor } from "@/types";
@@ -120,6 +126,11 @@ export default function CadastroEquipamentos({ empresa, podeEditar, estado, onGr
   // Itens falados esperando conferência (nada entra no quadro sem confirmar) e cópia deste setor para outros setores da própria empresa.
   const [falados, setFalados] = useState<ItemParaConferir[]>([]);
   const [copiandoSetor, setCopiandoSetor] = useState<string[] | null>(null);
+  // "Ver sugestões do tipo de estabelecimento" aberto, para o setor em que foi aberto (trocar de setor fecha).
+  const [verSugestoes, setVerSugestoes] = useState("");
+  // Adições de um toque em sequência viram um aviso só (janela de 8 s) com Desfazer de todas.
+  const grupoRapido = useRef<GrupoDeAdicoes | null>(null);
+  const avisoRapidoId = useRef(-1);
 
   const campoRef = useRef<HTMLInputElement | null>(null);
   const tituloRef = useRef<HTMLHeadingElement | null>(null);
@@ -127,7 +138,12 @@ export default function CadastroEquipamentos({ empresa, podeEditar, estado, onGr
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   // Um "Desfazer" não sobrevive à tela nem à empresa que o criou.
-  useEffect(() => () => fecharToastDe(dono), [dono]);
+  useEffect(() => {
+    // Troca de empresa: o grupo de adições de um toque da empresa anterior não continua.
+    grupoRapido.current = null;
+    avisoRapidoId.current = -1;
+    return () => fecharToastDe(dono);
+  }, [dono]);
 
   // Cada setor guarda os seus equipamentos pelo nome COMPLETO do ambiente (único em setoresManual): "Cozinha" próprio e "Cozinha / Produção" nunca se misturam,
   // mesmo mostrando o mesmo nome curto na lista (o próprio ganha "(próprio)").
@@ -139,7 +155,10 @@ export default function CadastroEquipamentos({ empresa, podeEditar, estado, onGr
   const avisoCurto = avisoDeNomeCurto(nome, tentou);
   const podeAdicionar = podeEditar && podeAdicionarEquipamento(nome, repetido, escolha);
   const sugeridosDoSetor = equipamentosSugeridosParaSetor(sugestao, selecionado, doSetor.map((item) => item.nome), mesmoNomeOuSinonimo, vinculos);
-  const proprioSemVinculo = !(SETORES_OFICIAIS_MANUAL as readonly string[]).includes(selecionado) && !vinculos[selecionado] && normalizarSetorManual(selecionado) === selecionado;
+  // Ambiente próprio que não casa EXATAMENTE com nenhum setor oficial: sem sugestões até vincular.
+  const proprioSemVinculo = !(SETORES_OFICIAIS_MANUAL as readonly string[]).includes(selecionado) && !oficialExatoDoSetor(selecionado, vinculos);
+  const todasDoSetor = equipamentosSugeridosParaSetor(sugestao, selecionado, [], mesmoNomeOuSinonimo, vinculos);
+  const verAberto = verSugestoes === selecionado;
   const semSugestao = avisoQuandoNaoHaSugestao(sugestao, sugeridosDoSetor);
   const opcoesDeNome = sugerirNomesDeEquipamento(nome, equipamentos.map((item) => item.nome));
   const listaVisivel = listaAberta && opcoesDeNome.length > 0;
@@ -218,14 +237,15 @@ export default function CadastroEquipamentos({ empresa, podeEditar, estado, onGr
       const limite = limiteSugeridoParaEquipamento(nome)?.id;
       const nomeDigitado = nome;
       if (!alterar((lista, atuais) => (atuais.includes(setorAlvo) ? adicionarEquipamentoNoSetor(lista, { id, setor: setorAlvo, nome: nomeDigitado, quantidade: quantidadeDigitada, limiteTemperaturaId: limite }).equipamentos : null))) return;
-      const nomeGravado = nomeDigitado.trim().replace(/\s+/g, " ");
+      const nomeGravado = normalizarNomeDeEquipamento(nomeDigitado);
       aviso8s(`✓ ${nomeGravado} ${concordar(nomeGravado, "adicionad")} em ${curto}`, () => void alterar((lista) => removerEquipamento(lista, id)));
     }
     limparFormulario();
     campoRef.current?.focus();
   }
 
-  // Sugestão de um toque: entra com Qtd 1 (e o limite sugerido, como no adicionar normal) e mostra "X adicionado em <setor> · Desfazer".
+  // Sugestão de um toque: entra com Qtd 1 (e o limite sugerido, como no adicionar normal). Toques em sequência (menos de 8 s) viram UM aviso
+  // "N itens adicionados · Desfazer" que desfaz todos; com um item só: "X adicionado em <setor> · Desfazer".
   function adicionarSugestaoRapida(nomeSugerido: string) {
     if (!podeEditar || !selecionado) return;
     const setorAlvo = selecionado;
@@ -234,7 +254,15 @@ export default function CadastroEquipamentos({ empresa, podeEditar, estado, onGr
     const naoGravou = () => mostrarToast(`${nomeSugerido} não foi adicionado: já existe neste setor ou o setor não está mais marcado.`, { tipo: "aviso", duracaoMs: 5000, dono });
     if (equipamentoParecidoNoSetor(equipamentos, setorAlvo, nomeSugerido)) return naoGravou();
     if (!alterar((lista, atuais) => (atuais.includes(setorAlvo) && !equipamentoParecidoNoSetor(lista, setorAlvo, nomeSugerido) ? adicionarEquipamentoNoSetor(lista, { id, setor: setorAlvo, nome: nomeSugerido, quantidade: 1, limiteTemperaturaId: limite }).equipamentos : null))) return naoGravou();
-    aviso8s(`${nomeSugerido} ${concordar(nomeSugerido, "adicionad")} em ${curto}`, () => void alterar((lista) => removerEquipamento(lista, id)));
+    const avisoAindaNaTela = toastAtual() !== null && toastAtual()?.id === avisoRapidoId.current;
+    const grupo = acumularAdicao(grupoRapido.current, { id, nome: normalizarNomeDeEquipamento(nomeSugerido), setor: setorAlvo }, Date.now(), avisoAindaNaTela);
+    grupoRapido.current = grupo;
+    const ids = grupo.ids;
+    aviso8s(textoDoAvisoDeAdicoes(grupo, (setor) => rotuloDoSetor(setor, setores)), () => {
+      grupoRapido.current = null;
+      void alterar((lista) => desfazerCopia(lista, ids));
+    });
+    avisoRapidoId.current = toastAtual()?.id ?? -1;
   }
 
   function adicionarLote() {
@@ -246,6 +274,7 @@ export default function CadastroEquipamentos({ empresa, podeEditar, estado, onGr
     if (previa.criados.length === 0) return;
     if (!alterar((lista, atuais) => (atuais.includes(setorAlvo) ? adicionarSugestoesEmLote(lista, setorAlvo, itens, novoId()).equipamentos : null))) return;
     setLote({ setor: setorAlvo, marcados: [], qtds: {} });
+    setVerSugestoes("");
     aviso8s(`✓ ${quantidade(previa.criados.length, "item adicionado", "itens adicionados")} em ${curto}`, () => void alterar((lista) => desfazerCopia(lista, previa.criados)));
   }
 
@@ -571,17 +600,43 @@ export default function CadastroEquipamentos({ empresa, podeEditar, estado, onGr
             </div>
           )}
 
-          {podeEditar && doSetor.length > 0 && sugeridosDoSetor.length > 0 && (
+          {podeEditar && doSetor.length > 0 && todasDoSetor.length > 0 && (
             <p className="cadest-sugestoes" title="Sugestão genérica pelo tipo de empresa; o RT confirma">
-              Sugestões (genéricas, o RT confirma):{" "}
-              {sugeridosDoSetor.slice(0, 6).map((item) => (
-                <button key={item.nome} type="button" className="cadest-link" onClick={() => adicionarSugestaoRapida(item.nome)}>+ {item.nome}</button>
-              ))}
+              {sugeridosDoSetor.length > 0 && (
+                <>
+                  Sugestões (genéricas, o RT confirma):{" "}
+                  {sugeridosDoSetor.slice(0, 6).map((item) => (
+                    <button key={item.nome} type="button" className="cadest-link" onClick={() => adicionarSugestaoRapida(item.nome)}>+ {item.nome}</button>
+                  ))}
+                </>
+              )}
+              <button type="button" className="cadest-link" aria-expanded={verAberto} aria-controls="cadest-eq-lote" onClick={() => setVerSugestoes(verAberto ? "" : selecionado)}>
+                {verAberto ? "Ocultar sugestões do tipo de estabelecimento" : "Ver sugestões do tipo de estabelecimento"}
+              </button>
             </p>
           )}
 
+          {podeEditar && doSetor.length > 0 && verAberto && todasDoSetor.length > 0 && sugeridosDoSetor.length === 0 && (
+            <p id="cadest-eq-lote" className="cadest-semsugestao" role="status">Todas as sugestões já foram cadastradas</p>
+          )}
+
           {doSetor.length === 0 ? (
-            <p className="cadest-vazio">Nenhum equipamento neste setor ainda.</p>
+            !podeEditar ? (
+              <p className="cadest-vazio">Nenhum equipamento neste setor ainda.</p>
+            ) : semSugestao === "sem-cnae" ? (
+              <p className="cadest-semsugestao" role="status">
+                Nenhum equipamento neste setor <span aria-hidden="true">·</span> Preencha o CNAE no cadastro para receber sugestões
+                <button type="button" className="cadest-link" onClick={onIrParaDados}>Ir para a aba Empresa</button>
+              </p>
+            ) : semSugestao === "sem-sugestao-do-setor" ? (
+              <p className="cadest-semsugestao" role="status">
+                Nenhum equipamento neste setor <span aria-hidden="true">·</span>{" "}
+                {proprioSemVinculo ? "Vincule este ambiente a um setor oficial para receber sugestões" : sugestao.situacao === "sem-sugestao" ? mensagemSemSugestaoDoCnae(sugestao.codigo) : "sem sugestões para este tipo de empresa"}
+                {proprioSemVinculo && <button type="button" className="cadest-link" onClick={onIrParaAmbientes}>Vincular</button>}
+              </p>
+            ) : (
+              <p className="cadest-vazio">Nenhum equipamento neste setor ainda.</p>
+            )
           ) : (
             <ul className="cadest-eq-lista">
               {doSetor.map((item) => {
@@ -694,26 +749,9 @@ export default function CadastroEquipamentos({ empresa, podeEditar, estado, onGr
             </ul>
           )}
 
-          {podeEditar && doSetor.length === 0 && semSugestao === "sem-cnae" && (
-            <p className="cadest-semsugestao" role="status">
-              Preencha o CNAE no cadastro para receber sugestões
-              <button type="button" className="cadest-link" onClick={onIrParaDados}>Ir para a aba Empresa</button>
-            </p>
-          )}
-          {podeEditar && doSetor.length === 0 && semSugestao === "sem-sugestao-do-setor" && (
-            <p className="cadest-semsugestao" role="status">
-              {proprioSemVinculo ? "Vincule este ambiente a um setor oficial para receber sugestões" : "Sem sugestões para este setor"}
-              {proprioSemVinculo && <button type="button" className="cadest-link" onClick={onIrParaAmbientes}>Vincular</button>}
-              <span aria-hidden="true">·</span>
-              <button type="button" className="cadest-link" aria-haspopup="dialog" onClick={() => setCopiando(true)}>Copiar de outra empresa</button>
-            </p>
-          )}
-
-          {podeEditar && doSetor.length === 0 && sugeridosDoSetor.length > 0 && sugestao.situacao === "ok" && (
-            <div className="cadest-lote" role="region" aria-label={`Sugestões para ${sugestao.descricao || sugestao.tipoRotulo}`}>
-              <p className="cadest-lote-titulo">
-                Sugestões para {sugestao.descricao || sugestao.tipoRotulo} · CNAE {sugestao.codigo}{sugestao.origem === "secundario" ? " (secundário)" : ""}
-              </p>
+          {podeEditar && (doSetor.length === 0 || verAberto) && sugeridosDoSetor.length > 0 && sugestao.situacao === "ok" && (
+            <div id="cadest-eq-lote" className="cadest-lote" role="region" aria-label={`Sugestões para ${sugestao.nomeDoTipo}`}>
+              <p className="cadest-lote-titulo">{tituloDaSugestao(sugestao)}</p>
               <p className="cadest-lote-nota">Sugestão genérica — o RT confirma.</p>
               <ul className="cadest-lote-lista">
                 {sugeridosDoSetor.map((item) => {
@@ -725,14 +763,14 @@ export default function CadastroEquipamentos({ empresa, podeEditar, estado, onGr
                         <input type="checkbox" checked={marcado} onChange={() => setLote({ setor: selecionado, qtds: loteAtual.qtds, marcados: marcado ? loteAtual.marcados.filter((outro) => outro !== item.nome) : [...loteAtual.marcados, item.nome] })} />
                         <span>{item.nome}</span>
                       </label>
-                      <Quantidade valor={quantidadeValida(valor)} onChange={(novo) => setLote({ setor: selecionado, marcados: loteAtual.marcados, qtds: { ...loteAtual.qtds, [item.nome]: novo } })} rotulo={`Quantidade de ${item.nome}`} />
+                      {mostrarQuantidadeNaLinha(marcado) && <Quantidade valor={quantidadeValida(valor)} onChange={(novo) => setLote({ setor: selecionado, marcados: loteAtual.marcados, qtds: { ...loteAtual.qtds, [item.nome]: novo } })} rotulo={`Quantidade de ${item.nome}`} />}
                     </li>
                   );
                 })}
               </ul>
               <div className="cadest-lote-acoes">
-                <button type="button" className="cadest-btn cadest-btn--azul" disabled={loteAtual.marcados.length === 0} onClick={adicionarLote}>
-                  Adicionar {loteAtual.marcados.length} {loteAtual.marcados.length === 1 ? "item" : "itens"}
+                <button type="button" className="cadest-btn cadest-btn--azul" disabled={!botaoDoLote(loteAtual.marcados.length).habilitado} onClick={adicionarLote}>
+                  {botaoDoLote(loteAtual.marcados.length).rotulo}
                 </button>
                 <button type="button" className="cadest-link" onClick={() => setLote({ setor: selecionado, qtds: loteAtual.qtds, marcados: loteAtual.marcados.length === sugeridosDoSetor.length ? [] : sugeridosDoSetor.map((item) => item.nome) })}>
                   {loteAtual.marcados.length === sugeridosDoSetor.length ? "Desmarcar todos" : "Marcar todos"}

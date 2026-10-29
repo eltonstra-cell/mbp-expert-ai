@@ -8,7 +8,6 @@ export const GRUPOS_DE_SINONIMOS: string[][] = [
   ["Balcão refrigerado", "Balcão frigorífico", "Expositor refrigerado"],
   ["Forno micro-ondas", "Micro-ondas", "Microondas", "Forno de micro-ondas"],
   ["Fritadeira", "Fritador"],
-  ["Estufa", "Balcão térmico", "Estufa / balcão térmico"],
 ];
 
 /** Sem acento, sem diferença de maiúscula e sem pontuação: "Micro-ondas" e "microondas" têm a mesma chave. */

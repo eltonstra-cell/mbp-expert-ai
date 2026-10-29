@@ -77,7 +77,8 @@ test("A1: Churrascaria do Chico: setor Cozinha oficial, legado/migrado ou apelid
     const itens = equipamentosSugeridosParaSetor(sugestao, setor, [], mesmo);
     assert.ok(itens.some((i) => i.nome === "Fogão"), `setor "${setor}" recebe as sugestões`);
   }
-  assert.ok(equipamentosSugeridosParaSetor(sugestao, "Copa", [], mesmo).length > 0, "apelido do catálogo");
+  assert.equal(equipamentosSugeridosParaSetor(sugestao, "Copa", [], mesmo).length, 0, "Copa é ambiente próprio (rodada 8, A4): só recebe sugestões com vínculo explícito");
+  assert.ok(equipamentosSugeridosParaSetor(sugestao, "Copa", [], mesmo, { Copa: COZINHA }).length > 0, "Copa vinculada à Cozinha / Produção recebe");
   assert.equal(equipamentosSugeridosParaSetor(sugestao, "Cozinha da frente", [], mesmo).length, 0, "próprio de verdade sem vínculo");
   assert.ok(equipamentosSugeridosParaSetor(sugestao, "Cozinha da frente", [], mesmo, { "Cozinha da frente": COZINHA }).length > 0, "com vínculo");
   assert.equal(avisoQuandoNaoHaSugestao(sugestao, equipamentosSugeridosParaSetor(sugestao, "Cozinha da frente", [], mesmo)), "sem-sugestao-do-setor");

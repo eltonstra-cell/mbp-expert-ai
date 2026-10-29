@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import EscolhaEmJanela from "@/components/EscolhaEmJanela";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
 import Select from "@/components/Select";
@@ -14,8 +14,9 @@ import { aplicarEscolhaDeSetores, linhaDeContagem } from "@/lib/escolhaEmJanela"
 import { limparVinculos } from "@/lib/ambientesVisita";
 import { perguntasDoAmbiente, perguntasDoSetor } from "@/lib/perguntasDoAmbiente";
 import { bloqueiosDaRetirada, fluxosLigadosAoSetor, reinserirSetor } from "@/lib/estruturaDelta";
-import { nomeCurtoDoSetor } from "@/lib/tiposDeEstabelecimento";
-import { sugestaoPorCnae, tituloDaSugestao } from "@/lib/sugestaoPorCnae";
+import { mensagemSemSugestaoDoCnae, nomeCurtoDoSetor } from "@/lib/tiposDeEstabelecimento";
+import { faixaDeAmbientesVisivel, listaComPontoFinal, sugestaoPorCnae, tituloDaSugestao } from "@/lib/sugestaoPorCnae";
+import { aplicarVinculosEmLote, desfazerVinculosEmLote, setoresOficiaisEmUso, textoDosVinculados, vinculosSugeridos } from "@/lib/vinculoEmLote";
 import { fecharToastDe, mostrarToast } from "@/lib/toast";
 import { quantidade } from "@/lib/plural";
 import type { Empresa, EquipamentoSetor } from "@/types";
@@ -49,6 +50,8 @@ type Props = {
   /** Renomeia um ambiente próprio com cascata (quem chama confirma e grava). */
   onRenomear: (de: string, para: string) => Promise<boolean>;
   onIrParaDados: () => void;
+  /** Nomes de ambiente que já aparecem em visitas desta empresa (um setor oficial marcado pelo vínculo em lote não sai do Desfazer se estiver aqui). */
+  ambientesEmVisitas?: string[];
 };
 
 const eOficial = (setor: string) => (SETORES_OFICIAIS_MANUAL as readonly string[]).includes(setor);
@@ -66,7 +69,7 @@ export function StatusDeSalvamento({ estado }: { estado: EstadoDoSalvamento }) {
   return mexeu ? <span className="cadest-status" role="status" aria-live="polite">✓ Alterações salvas</span> : <span className="cadest-status" role="status" aria-live="polite" />;
 }
 
-export default function CadastroAmbientes({ empresa, podeEditar, estado, onGravar, onRenomear, onIrParaDados }: Props) {
+export default function CadastroAmbientes({ empresa, podeEditar, estado, onGravar, onRenomear, onIrParaDados, ambientesEmVisitas = [] }: Props) {
   const setores = normalizarListaAmbientesReais(empresa.setoresManual);
   const equipamentos = empresa.equipamentosSetores || [];
   const vinculos = limparVinculos(empresa.setorOficialDoAmbiente, setores);
@@ -88,6 +91,11 @@ export default function CadastroAmbientes({ empresa, podeEditar, estado, onGrava
   const [loteSelecionados, setLoteSelecionados] = useState<string[]>([]);
   const [loteModelo, setLoteModelo] = useState("");
   const [foco, setFoco] = useState<string | null>(null);
+  // "Vincular os sugeridos": lista para revisão (nada é gravado antes de confirmar).
+  const [vincAberto, setVincAberto] = useState(false);
+  const painelVincRef = useRef<HTMLDivElement | null>(null);
+  const [anuncioVinc, setAnuncioVinc] = useState("");
+  const [linhasVinc, setLinhasVinc] = useState<{ ambiente: string; oficial: string; marcado: boolean }[]>([]);
   const semQuestionario = ambientesSemQuestionario(setores, SETORES_OFICIAIS_MANUAL, modelos, vinculos);
 
   // Um "Desfazer" não sobrevive à tela nem à empresa que o criou.
@@ -279,7 +287,55 @@ export default function CadastroAmbientes({ empresa, podeEditar, estado, onGrava
       onAplicar={aplicarSetores}
     />
   );
-  const mostrarFaixa = podeEditar && oficiaisMarcados.length === 0;
+  // A faixa só existe para a empresa sem NENHUM ambiente (oficial ou próprio): com ambientes, "Aceitar" duplicaria tudo.
+  const mostrarFaixa = faixaDeAmbientesVisivel(podeEditar, setores);
+  const sugeridosParaVincular = podeEditar ? vinculosSugeridos(setores, vinculos) : [];
+
+  function abrirVinculosSugeridos() {
+    if (vincAberto) {
+      setVincAberto(false);
+      return;
+    }
+    const porAmbiente = new Map(sugeridosParaVincular.map((linha) => [linha.ambiente, linha]));
+    setLinhasVinc(proprios.filter((ambiente) => !vinculos[ambiente]).map((ambiente) => ({ ambiente, oficial: porAmbiente.get(ambiente)?.oficial || "", marcado: Boolean(porAmbiente.get(ambiente)?.exato) })));
+    setVincAberto(true);
+  }
+
+  // Foco no painel ao abrir; o contador de marcados é anunciado (aria-live) a cada mudança.
+  useEffect(() => {
+    if (vincAberto) painelVincRef.current?.focus();
+  }, [vincAberto]);
+  useEffect(() => {
+    if (!vincAberto) return;
+    const n = linhasVinc.filter((linha) => linha.marcado && linha.oficial).length;
+    setAnuncioVinc(n === 1 ? "1 ambiente marcado para vincular" : n + " ambientes marcados para vincular");
+  }, [vincAberto, linhasVinc]);
+
+  function aplicarVinculosSugeridos() {
+    const escolhas = linhasVinc.filter((linha) => linha.marcado && linha.oficial).map((linha) => ({ ambiente: linha.ambiente, oficial: linha.oficial }));
+    if (aplicarVinculosEmLote(setores, vinculos, escolhas).vinculados.length === 0) return;
+    // O resultado REAL (sobre a empresa de agora) é o que vale para a mensagem e para o Desfazer.
+    let feito: ReturnType<typeof aplicarVinculosEmLote> | null = null;
+    const gravou = onGravar((atual) => {
+      const atuais = normalizarListaAmbientesReais(atual.setoresManual);
+      const resultado = aplicarVinculosEmLote(atuais, limparVinculos(atual.setorOficialDoAmbiente, atuais), escolhas);
+      if (resultado.vinculados.length === 0) return null;
+      feito = resultado;
+      return { setores: resultado.setores, vinculos: resultado.vinculos };
+    });
+    const real = feito as ReturnType<typeof aplicarVinculosEmLote> | null;
+    if (!gravou || !real) return;
+    setVincAberto(false);
+    setFoco("titulo");
+    avisoComDesfazer(textoDosVinculados(real.vinculados.length), () =>
+      void onGravar((atual) => {
+        const atuais = normalizarListaAmbientesReais(atual.setoresManual);
+        const protegidos = setoresOficiaisEmUso(real.adicionados, { equipamentos: atual.equipamentosSetores || [], modelos: atual.modelosQuestionarioAmbientes, fluxos: atual.fluxosOperacionais, ambientesEmVisitas });
+        const desfeito = desfazerVinculosEmLote(atuais, limparVinculos(atual.setorOficialDoAmbiente, atuais), atual.equipamentosSetores || [], real, protegidos);
+        return { setores: desfeito.setores, vinculos: desfeito.vinculos };
+      })
+    );
+  }
 
   return (
     <section className="cadest" aria-labelledby="cadest-amb-titulo">
@@ -292,6 +348,11 @@ export default function CadastroAmbientes({ empresa, podeEditar, estado, onGrava
         </div>
         {podeEditar && (
           <div className="cadest-acoes">
+            {sugeridosParaVincular.length > 0 && (
+              <button type="button" className="cadest-btn" aria-expanded={vincAberto} aria-controls="cadest-vinc" onClick={abrirVinculosSugeridos}>
+                Vincular os sugeridos ({sugeridosParaVincular.length})
+              </button>
+            )}
             <button type="button" className="cadest-btn" data-foco="novo" aria-expanded={novoAberto} aria-controls="cadest-novo" onClick={() => setNovoAberto((aberto) => !aberto)}>
               + Ambiente próprio
             </button>
@@ -304,7 +365,7 @@ export default function CadastroAmbientes({ empresa, podeEditar, estado, onGrava
         <div className="cadest-faixa" role="region" aria-label="Sugestão pelo CNAE">
           <p className="cadest-faixa-titulo">{tituloDaSugestao(sugestao)}</p>
           <p className="cadest-faixa-texto">
-            Para esse tipo de empresa, os setores mais comuns são: {sugestao.ambientes.map(nomeCurtoDoSetor).join(", ")}. Você ajusta depois em Escolher setores.
+            Para esse tipo de empresa, os setores mais comuns são: {listaComPontoFinal(sugestao.ambientes.map(nomeCurtoDoSetor))} Você ajusta depois em Escolher setores.
           </p>
           <p className="cadest-faixa-nota">Sugestão genérica pelo tipo de empresa; o RT confirma. Os equipamentos sugeridos aparecem na aba Equipamentos.</p>
           <div className="cadest-faixa-botoes">
@@ -323,7 +384,7 @@ export default function CadastroAmbientes({ empresa, podeEditar, estado, onGrava
       )}
       {mostrarFaixa && sugestao.situacao === "sem-sugestao" && (
         <p className="cadest-faixa cadest-faixa--linha">
-          O CNAE {sugestao.codigo}{sugestao.descricao ? ` · ${sugestao.descricao}` : ""} ainda não tem sugestão pronta. Use Escolher setores.
+          {mensagemSemSugestaoDoCnae(sugestao.codigo)}. Use Escolher setores.
         </p>
       )}
 
@@ -398,6 +459,32 @@ export default function CadastroAmbientes({ empresa, podeEditar, estado, onGrava
         </div>
       )}
 
+      {vincAberto && podeEditar && (
+        <div id="cadest-vinc" ref={painelVincRef} tabIndex={-1} className="cadest-bloqueio cadest-lote-quest" role="group" aria-label="Vincular os ambientes sugeridos">
+          <p className="cadest-rotulo">Revise os vínculos. Só vêm marcados os que casam exatamente; nada é gravado antes de confirmar.</p>
+          <p className="cadest-rotulo" role="status" aria-live="polite">{anuncioVinc}</p>
+          <ul className="cadest-vinc-lista">
+            {linhasVinc.map((linha) => (
+              <li key={linha.ambiente} className="cadest-vinc-linha">
+                <label className="cadest-lote-quest-item">
+                  <input type="checkbox" checked={linha.marcado && Boolean(linha.oficial)} disabled={!linha.oficial} onChange={() => setLinhasVinc((atuais) => atuais.map((outra) => (outra.ambiente === linha.ambiente ? { ...outra, marcado: !outra.marcado } : outra)))} />
+                  <span>{linha.ambiente}</span>
+                </label>
+                <Select value={linha.oficial} onChange={(event) => setLinhasVinc((atuais) => atuais.map((outra) => (outra.ambiente === linha.ambiente ? { ...outra, oficial: event.target.value, marcado: Boolean(event.target.value) } : outra)))} aria-label={`Setor oficial de ${linha.ambiente}`} className="cadest-select">
+                  {!linha.oficial && <option value="" disabled>Escolher o setor oficial…</option>}
+                  {SETORES_OFICIAIS_MANUAL.map((oficial) => <option key={oficial} value={oficial}>{nomeCurtoDoSetor(oficial)}</option>)}
+                </Select>
+              </li>
+            ))}
+          </ul>
+          <div className="cadest-bloqueio-acoes">
+            <button type="button" className="cadest-btn cadest-btn--azul" disabled={!linhasVinc.some((linha) => linha.marcado && linha.oficial)} onClick={aplicarVinculosSugeridos}>
+              Vincular {linhasVinc.filter((linha) => linha.marcado && linha.oficial).length}
+            </button>
+            <button type="button" className="cadest-link" onClick={() => setVincAberto(false)}>Cancelar</button>
+          </div>
+        </div>
+      )}
       {podeEditar && semQuestionario.length > 0 && (
         <p className="cadest-aviso cadest-aviso--linha" role="status">
           {quantidade(semQuestionario.length, "ambiente próprio está", "ambientes próprios estão")} com o questionário básico.
@@ -508,8 +595,8 @@ export default function CadastroAmbientes({ empresa, podeEditar, estado, onGrava
                         <span className="cadest-nome" title={setor} tabIndex={-1} data-foco={`oficial:${setor}`}>{rotuloDoSetor(setor, setores)}</span>
                         {subtexto && <span className="cadest-oficial">{subtexto}</span>}
                         {parecido && (
-                          <span className="cadest-parece">
-                            Parece o setor oficial {parecido} ·{" "}
+                          <span className="cadest-parece" title={`Parece o setor oficial ${parecido}`}>
+                            <span className="cadest-parece-texto">Parece o setor oficial {nomeCurtoDoSetor(parecido)} ·</span>
                             <button type="button" className="cadest-link" title={oficiaisMarcados.includes(parecido) ? undefined : "Marca também o setor oficial"} onClick={() => vincularAoParecido(setor, parecido)}>Vincular</button>
                           </span>
                         )}

@@ -14,7 +14,24 @@ export function moverEquipamento(equipamentos: EquipamentoSetor[], id: string, d
   return equipamentos.map((equipamento) => (equipamento.id === id ? { ...equipamento, setor: destino } : equipamento));
 }
 
-const chaveDoNome = (nome: string) => nome.normalize("NFD").replace(/[̀-ͯ]/g, "").toLocaleLowerCase("pt-BR").replace(/\s+/g, " ").trim();
+const chaveDoNome = (nome: string) => nome.normalize("NFD").replace(/[̀-ͯ]/g, "").toLocaleLowerCase("pt-BR").replace(/\s+/g, " ").trim().replace(/[\s.]+$/, "");
+
+/**
+ * Nome do equipamento como é GRAVADO (novo e edição): sem espaços nas pontas nem repetidos, sem ponto final e com a primeira letra maiúscula.
+ * Só se aplica ao salvar; itens que já existem não são reformatados até serem editados.
+ */
+export function normalizarNomeDeEquipamento(nome: string): string {
+  let limpo = String(nome ?? "").trim().replace(/\s+/g, " ");
+  const final = limpo.match(/^(.*?)\s*\.+$/);
+  if (final) {
+    // Ponto final de abreviatura fica ("Câmara vert."): nome com mais de uma palavra cuja última tem até 4 letras. Fora isso o ponto sai.
+    const base = final[1].trimEnd();
+    const ultima = base.split(" ").pop() || "";
+    const letrasDaUltima = (ultima.match(/\p{L}/gu) || []).length;
+    limpo = base.includes(" ") && letrasDaUltima > 0 && letrasDaUltima <= 4 ? `${base}.` : base;
+  }
+  return limpo.charAt(0).toLocaleUpperCase("pt-BR") + limpo.slice(1);
+}
 
 /** Dois nomes são o mesmo equipamento quando só diferem em acento, caixa ou espaços repetidos. */
 export const mesmoNomeDeEquipamento = (a: string, b: string): boolean => {
@@ -84,7 +101,7 @@ export function adicionarEquipamentoNoSetor(
   const criado: EquipamentoSetor = {
     id: novo.id,
     setor: novo.setor,
-    nome: novo.nome.trim().replace(/\s+/g, " "),
+    nome: normalizarNomeDeEquipamento(novo.nome),
     quantidade: quantidadeValida(novo.quantidade),
     estado: "Não avaliado",
     observacao: "",
@@ -104,8 +121,11 @@ export function removerEquipamento(equipamentos: EquipamentoSetor[], id: string)
 }
 
 export function mudarNomeEQuantidade(equipamentos: EquipamentoSetor[], id: string, nome: string, quantidade: number): EquipamentoSetor[] {
-  const limpo = nome.trim().replace(/\s+/g, " ");
-  if (!limpo || !nomeDeEquipamentoValido(limpo)) return equipamentos;
+  const atual = equipamentos.find((item) => item.id === id);
+  // Nome que a pessoa não mexeu fica exatamente como estava (abrir a edição e mudar só a quantidade não reformata o que já existe).
+  const editado = !atual || nome.trim() !== atual.nome.trim();
+  const limpo = editado ? normalizarNomeDeEquipamento(nome) : atual.nome;
+  if (!limpo || (editado && !nomeDeEquipamentoValido(limpo))) return equipamentos;
   return equipamentos.map((item) => (item.id === id ? { ...item, nome: limpo, quantidade: quantidadeValida(quantidade) } : item));
 }
 
@@ -270,4 +290,39 @@ export function confirmarItensFalados(
     }
   }
   return { equipamentos: atual, criados, somados };
+}
+
+// ---- Sugestões em lote (quadro creme com caixas) ----
+
+/** A quantidade (− / +) só aparece na linha MARCADA; a desmarcada mostra só a caixa e o nome. */
+export const mostrarQuantidadeNaLinha = (marcada: boolean): boolean => marcada;
+
+/** Botão azul do quadro: "Adicionar N itens" com N maior que zero; sem nenhum marcado fica desabilitado. */
+export function botaoDoLote(marcados: number): { rotulo: string; habilitado: boolean } {
+  if (marcados <= 0) return { rotulo: "Adicionar itens", habilitado: false };
+  return { rotulo: `Adicionar ${marcados} ${marcados === 1 ? "item" : "itens"}`, habilitado: true };
+}
+
+// ---- Sugestões de um toque em sequência ----
+
+export const JANELA_DE_AGRUPAMENTO_MS = 8000;
+
+export type GrupoDeAdicoes = { ids: string[]; nomes: string[]; setores: string[]; ultimaEm: number };
+
+/**
+ * Junta as adições de um toque feitas em sequência num só aviso "N itens adicionados · Desfazer": cada nova adição continua o grupo se a anterior foi
+ * há menos de 8 s e o aviso ainda está na tela (outro aviso por cima começa um grupo novo). O Desfazer do grupo tira TODOS os ids do grupo.
+ */
+export function acumularAdicao(grupo: GrupoDeAdicoes | null, nova: { id: string; nome: string; setor: string }, agora: number, avisoAindaVisivel = true): GrupoDeAdicoes {
+  const continua = grupo !== null && avisoAindaVisivel && agora - grupo.ultimaEm < JANELA_DE_AGRUPAMENTO_MS;
+  const base: GrupoDeAdicoes = continua && grupo ? grupo : { ids: [], nomes: [], setores: [], ultimaEm: agora };
+  return { ids: [...base.ids, nova.id], nomes: [...base.nomes, nova.nome], setores: [...base.setores, nova.setor], ultimaEm: agora };
+}
+
+/** Um item: "Coifa adicionada em Cozinha"; vários: "3 itens adicionados em Cozinha" (sem o setor se vieram de setores diferentes). Sem ✓ (o aviso já põe o seu). */
+export function textoDoAvisoDeAdicoes(grupo: GrupoDeAdicoes, rotuloDoSetor: (setor: string) => string): string {
+  const n = grupo.ids.length;
+  const mesmoSetor = grupo.setores.every((setor) => setor === grupo.setores[0]);
+  if (n === 1) return `${grupo.nomes[0]} ${concordar(grupo.nomes[0], "adicionad")} em ${rotuloDoSetor(grupo.setores[0])}`;
+  return `${n} itens adicionados${mesmoSetor ? ` em ${rotuloDoSetor(grupo.setores[0])}` : ""}`;
 }

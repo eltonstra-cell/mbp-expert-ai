@@ -1,7 +1,8 @@
-// Autocompletar do campo "Equipamento ou móvel": a partir de 2 letras, até 6 nomes do catálogo dos pacotes por tipo (lib/tiposDeEstabelecimento.ts),
-// dos equipamentos que a empresa já tem cadastrados e dos nomes da lista de sinônimos. Só ajuda a digitar: escolher um nome apenas preenche o campo.
-import { TODOS_OS_NOMES_COM_SINONIMO, chaveDeEquipamento } from "./sinonimosEquipamentos.ts";
-import { nomesDeEquipamentoDoCatalogo } from "./tiposDeEstabelecimento.ts";
+// Autocompletar do campo "Equipamento ou móvel": a partir de 2 letras, até 6 nomes do catálogo de nomes (lib/catalogoNomesEquipamentos.ts, lista a validar
+// pela RT) e dos equipamentos que a PRÓPRIA empresa já tem cadastrados (nunca de outras empresas). Só ajuda a digitar: escolher um nome apenas preenche o
+// campo; o catálogo não gera sugestão em lote nem limite de temperatura.
+import { CATALOGO_DE_NOMES_DE_EQUIPAMENTOS } from "./catalogoNomesEquipamentos.ts";
+import { chaveDeEquipamento } from "./sinonimosEquipamentos.ts";
 
 export const MINIMO_DE_LETRAS_PARA_SUGERIR = 2;
 export const MAXIMO_DE_SUGESTOES = 6;
@@ -15,7 +16,7 @@ const letras = (texto: string) => (String(texto ?? "").match(/\p{L}/gu) || []).l
 export function sugerirNomesDeEquipamento(
   digitado: string,
   jaCadastrados: string[] = [],
-  catalogo: string[] = [...nomesDeEquipamentoDoCatalogo(), ...TODOS_OS_NOMES_COM_SINONIMO],
+  catalogo: readonly string[] = CATALOGO_DE_NOMES_DE_EQUIPAMENTOS,
   maximo: number = MAXIMO_DE_SUGESTOES
 ): string[] {
   if (letras(digitado) < MINIMO_DE_LETRAS_PARA_SUGERIR) return [];

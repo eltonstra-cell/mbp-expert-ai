@@ -6397,3 +6397,8 @@ html[data-modo="campo"] .fv--campo .fv-item{padding:0 3px;gap:3px}
 /* Campo: a linha do "Limpar resposta" fica reservada (38 + 6 + 34 px) para o bloco não pular ao limpar ou responder */
 html[data-modo="campo"] .campo-tela .chk-foco-botoes{min-height:78px;align-content:start}
 @media (max-height:660px){html[data-modo="campo"] .campo-tela .chk-foco-botoes{min-height:74px}}
+
+/* CNAE na aba Empresa (rodada 8A): validação na hora, 15 px, perigo #B83A33 */
+.cnae-erro{display:block;margin-top:4px;font-size:15px;line-height:22px;color:#B83A33}
+.cnae-nota{display:block;margin-top:4px;font-size:15px;line-height:22px;color:#55607A}
+input.cnae-invalido{border-color:#B83A33!important}
