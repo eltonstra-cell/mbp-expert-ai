@@ -224,7 +224,7 @@ test("34/41. cartão Primeiros passos no Início, na ordem de uso, com o vídeo"
 test("24/25/26/28. IA com cor viva, menu de escolha no lugar do select, 40 px e fundos claros", () => {
   const css = ler("../app/globals.css");
   const pacote = css.slice(css.indexOf("/* ===== Pacote 3: menu de escolha"));
-  assert.match(pacote, /\.voz-ia,\.field-assist-ai,\.pc-ai-btn,\.ev7-btn-ia,\.ui-btn--ai\{border:0;background:#2A4D7C;color:#fff;font-weight:400\}/);
+  assert.match(pacote, /\.voz-ia,\.field-assist-ai,\.pc-ai-btn,\.ev7-btn-ia,\.ui-btn--ai\{border:0;background:#264A80;color:#fff;font-weight:400\}/);
   assert.match(pacote, /\.sel-opcao\.is-marcada\{background:#FFF6E5\}/);
   assert.match(pacote, /\.sel-botao\{[^}]*height:40px;min-height:40px/);
   assert.match(pacote, /\.ui-btn,\.ui-btn--small,[^{]*\{min-height:40px/);
