@@ -3990,7 +3990,7 @@ html[data-modo="equilibrado"] .pc-busca,html[data-modo="completo"] .pc-busca{dis
 .pend-link:hover{background:#FFF6E5}
 
 /* Linha do topo em janela estreita. Prioridade: nome da página, empresa ativa, busca, status.
-   As larguras abaixo são as de lib/topoCompacto.ts (1100, 1400 e 1500 px). */
+   As larguras abaixo são as de lib/topoCompacto.ts (1100 e 1500 px). */
 .pc-topbar{flex-wrap:nowrap}
 .pc-crumbs{flex:0 0 auto}
 .pc-crumb-wrap{flex:none}
@@ -4007,7 +4007,7 @@ html[data-modo="equilibrado"] .pc-busca,html[data-modo="completo"] .pc-busca{dis
   .pc-mode-chip{padding:0;width:26px;height:26px;display:inline-grid;place-items:center}
   .pc-mode-icone{display:inline}
 }
-/* Busca compacta (abaixo de 1400 px): gatilho com lupa e "Ctrl K"; o campo vai para o topo do painel */
+/* Busca compacta (abaixo de 1100 px): gatilho com lupa e "Ctrl K"; o campo vai para o topo do painel */
 .pc-busca-gatilho{display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 12px;border:2px solid #7F8BA3;border-radius:12px;background:#fff;color:#263445;cursor:pointer}
 .pc-busca-gatilho.is-aberta{border-color:#21A3A3}
 .pc-topbar .pc-busca--compacta{flex:0 0 auto;min-width:0;width:auto}
@@ -4015,7 +4015,7 @@ html[data-modo="equilibrado"] .pc-busca,html[data-modo="completo"] .pc-busca{dis
 .pc-smartbar-campos{display:flex;flex:1;align-items:center;gap:8px;min-width:0}
 .pc-smartbar--no-painel{display:flex;border:2px solid #21A3A3;border-radius:14px;box-shadow:none;margin-bottom:4px}
 .pc-busca-abrindo{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;border:1px solid #21A3A3;border-radius:10px;background:#FFF6E5;font-size:.94rem;color:#263445}
-@media (min-width:1400px){.pc-topbar .pc-busca:not(.pc-busca--compacta){min-width:360px}}
+@media (min-width:1100px){.pc-topbar .pc-busca:not(.pc-busca--compacta){min-width:360px}}
 /* Busca: um só laranja na barra (o "Ir →"); o raio fica em creme com borda dourada; rodapé do painel legível */
 .pc-bolt{background:#FFF6E5;border:1.5px solid #21A3A3;color:#263445}
 .pc-busca-painel .pc-cmd-foot{font-size:.875rem;color:#263445}
@@ -6806,4 +6806,92 @@ html[data-modo="campo"]:root:root body .chk-foco-card .chk-foco-title{display:-w
 /* RODADA 12b · Correções: lista de 380 px (340 de 1200 a 1299 px, 280 abaixo de 1200 px) */
 @media (max-width:1299px){html:root:root body .ui-screen.pc-cor .pc-master--corr{grid-template-columns:340px minmax(0,1fr)}}
 @media (max-width:1199px){html:root:root body .ui-screen.pc-cor .pc-master--corr{grid-template-columns:280px minmax(0,1fr)}}
-@media (max-width:1000px){html:root:root body .ui-screen.pc-cor .pc-master--corr{grid-template-rows:340px minmax(0,1fr)}}
+@media (max-width:1000px){html:root:root body .ui-screen.pc-cor .pc-master--corr{grid-template-rows:376px minmax(0,1fr)}}
+
+/* RODADA 12c · barra de baixo branca e flutuante (celular 5 itens, tablet 7), ícones coloridos por assunto, selo vermelho */
+html[data-modo="campo"]:root:root body .campo-bar{background:#fff;border:1.5px solid #A3B0C5;border-radius:28px;box-shadow:0 4px 14px rgba(38,52,69,.16)}
+html[data-modo="campo"]:root:root body .campo-tab,html[data-modo="campo"]:root:root body .campo-register{color:#263445}
+html[data-modo="campo"]:root:root body .campo-tab-label{color:#263445;font-weight:400}
+html[data-modo="campo"]:root:root body .campo-tab.is-on{border-radius:20px}
+html[data-modo="campo"]:root:root body .campo-tab[data-aba="inicio"] .campo-tab-icon{color:#264A80}
+html[data-modo="campo"]:root:root body .campo-tab[data-aba="visitas"] .campo-tab-icon{color:#21805B}
+html[data-modo="campo"]:root:root body .campo-tab[data-aba="correcoes"] .campo-tab-icon{color:#C83F45}
+html[data-modo="campo"]:root:root body .campo-tab[data-aba="pops"] .campo-tab-icon{color:#168080}
+html[data-modo="campo"]:root:root body .campo-tab[data-aba="relatorios"] .campo-tab-icon,html[data-modo="campo"]:root:root body .campo-tab[data-aba="mais"] .campo-tab-icon{color:#526477}
+html[data-modo="campo"]:root:root body .campo-tab[data-aba="checklist"] .campo-tab-icon{color:#21805B}
+html[data-modo="campo"]:root:root body .campo-tab[data-aba="evidencias"] .campo-tab-icon{color:#1F78B4}
+html[data-modo="campo"]:root:root body .campo-tab.is-on[data-aba="inicio"]{background:#E4EAF4}
+html[data-modo="campo"]:root:root body .campo-tab.is-on[data-aba="visitas"],html[data-modo="campo"]:root:root body .campo-tab.is-on[data-aba="checklist"]{background:#E1F1EA}
+html[data-modo="campo"]:root:root body .campo-tab.is-on[data-aba="correcoes"]{background:#FAE6E7}
+html[data-modo="campo"]:root:root body .campo-tab.is-on[data-aba="pops"]{background:#DDF0F0}
+html[data-modo="campo"]:root:root body .campo-tab.is-on[data-aba="relatorios"],html[data-modo="campo"]:root:root body .campo-tab.is-on[data-aba="mais"]{background:#E8ECF1}
+html[data-modo="campo"]:root:root body .campo-tab.is-on[data-aba="evidencias"]{background:#E1EEF8}
+html[data-modo="campo"]:root:root body .campo-tab.is-on .campo-tab-icon{background:transparent}
+html[data-modo="campo"]:root:root body .campo-tab-count{border:0;background:#C83F45;color:#fff;font-weight:400}
+
+/* RODADA 12c · Central da visita (celular e tablet) */
+html[data-modo="campo"]:root:root body .cc{gap:16px;padding:0 0 12px}
+html[data-modo="campo"]:root:root body .cc-proxima{gap:8px;padding:14px 16px}
+html[data-modo="campo"]:root:root body .cc-continuar{height:36px;padding:0 16px;font-size:15px;width:auto}
+html[data-modo="campo"]:root:root body .cc-linha{height:48px}
+html[data-modo="campo"]:root:root body .cc-valor{font-size:15px}
+html[data-modo="campo"]:root:root body .cc-linha[data-chave="checklist"] .cc-valor{color:#168080}
+html[data-modo="campo"]:root:root body .cc-linha[data-chave="evidencias"] .cc-valor{color:#1F78B4}
+html[data-modo="campo"]:root:root body .cc-linha[data-chave="correcoes"] .cc-valor{color:#C83F45}
+html[data-modo="campo"]:root:root body .cc-linha[data-chave="pops"] .cc-valor{color:#526477}
+html[data-modo="campo"]:root:root body .cc-linha--equip .cc-valor{color:#B4491C}
+html[data-modo="campo"]:root:root body .cc-linha[data-chave="relatorio"] .cc-valor{color:#8A5A00}
+html[data-modo="campo"]:root:root body .cc-nc{border:1px solid #F0C4C7;border-left:4px solid #C83F45;border-radius:12px;background:#fff}
+html[data-modo="campo"]:root:root body .cc-finalizar,html[data-modo="campo"]:root:root body .cc-finalizar.is-completa{position:static;align-self:flex-end;width:auto;height:39px;margin-top:auto;padding:0 18px;border:0;border-radius:10px;background:#21805B;color:#fff;font-size:17px;box-shadow:none}
+@media (max-width:599.98px){
+  html[data-modo="campo"]:root:root body .cc{gap:14px}
+  html[data-modo="campo"]:root:root body .cc-continuar{width:auto;align-self:flex-end}
+  html[data-modo="campo"]:root:root body .cc-linha{height:48px}
+}
+
+/* RODADA 12c · Checklist: "← Anterior" sem seta repetida (a versão curta só no celular do Campo) */
+html:root:root body .chk-rot-curto{display:none}
+
+/* RODADA 12c · busca: sem "Ir →" em nenhuma tela; microfone laranja como o Falar */
+html:root:root body .pc-go{display:none}
+html:root:root body .pc-mic{background:#B4491C;color:#fff}
+html:root:root body .pc-mic svg{color:#fff;stroke:currentColor}
+
+/* RODADA 12c · Checklist no PC: três respostas iguais de 48 px; ações do ambiente só texto com ícone */
+html:not([data-modo="campo"]):root:root body .chk-foco-botoes{display:grid;grid-template-columns:repeat(3,minmax(0,200px)) auto;justify-content:start;align-items:center;gap:12px}
+html:not([data-modo="campo"]):root:root body .chk-foco-botoes .chk-resp{width:100%;height:48px;min-height:48px;max-width:none}
+html:root:root body .chk-pc-faixa .chk-acao,html:root:root body .chk-pc-faixa .chk-acao--voz,html:root:root body .chk-pc-faixa .chk-acao--conforme{display:inline-flex;align-items:center;gap:6px;border:0;background:transparent;padding:0 6px;color:#264A80}
+html:root:root body .chk-pc-faixa .chk-acao--conforme{color:#21805B}
+
+/* RODADA 12c · Correções na visita: etapas na linha acima da lista */
+html:root:root body .ui-screen.pc-cor .pc-master-list > .pc-etapas{display:flex;flex-wrap:wrap;gap:4px 14px;margin:0 0 8px;padding:0 0 4px;border-bottom:1px solid #D6DCE5}
+
+/* RODADA 12c · Empresas: um só botão principal; "Nova visita" em contorno */
+html:root:root body .emp-c-visita .ui-btn{border:1.5px solid #264A80;background:#fff;color:#264A80}
+html:root:root body .emp-prep-linha .ui-progress-fill{background:#21A3A3}
+html[data-modo="campo"]:root:root body .chk-limpar{display:none}
+html[data-modo="campo"]:root:root body .cc-ambiente{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+html[data-modo="campo"]:root:root body .cc{padding-bottom:0}
+@media (max-width:599.98px){html[data-modo="campo"]:root:root body .cc{gap:12px}}
+html:root:root body .ui-screen.pc-cor .pc-master-list > .pc-etapas{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:0 0 10px}
+html:root:root body .ui-screen.pc-cor .pc-master-list > .pc-etapas .pc-etapa{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:0;min-width:0;padding:4px 2px 6px;line-height:1.15;text-align:center}
+html:root:root body .ui-screen.pc-cor .pc-master-list > .pc-etapas .pc-etapa-label{font-size:13px}
+html:root:root body .ui-screen.pc-cor .pc-master-list > .pc-etapas .pc-etapa-num{font-size:15px}
+html:root:root body .ui-screen.pc-cor .pc-master-list > .pc-etapas .pc-etapa-label{white-space:normal;overflow-wrap:anywhere;font-size:12.5px}
+html:root:root body .ui-screen[aria-label="Central da visita"] .pc-central-finalizar,html:root:root body .ui-screen[aria-label="Central da visita"] .pc-central-finalizar:hover{height:39px;min-height:39px;padding:0 18px;border:0;border-radius:10px;background:#21805B;color:#fff;font-size:17px;font-weight:400}
+html:root:root body .ui-screen.pc-cor .pc-master-list > .pc-etapas{flex:none;height:auto;align-content:start;align-items:start}
+html:root:root body .ui-screen.pc-cor .pc-master-list > .pc-etapas .pc-etapa{height:auto;min-height:0;flex:none}
+html:not([data-modo="campo"]):root:root body .chk-foco-botoes .chk-limpar{justify-self:start;margin:0}
+@media (max-width:1000px){
+  html:root:root body .ui-screen.pc-cor .pc-master-list:has(>.pc-etapas){grid-template-rows:auto auto minmax(0,1fr)}
+  html:root:root body .ui-screen.pc-cor .pc-master-list>.pc-etapas{grid-column:1 / -1;grid-row:1;margin-bottom:0}
+  html:root:root body .ui-screen.pc-cor .pc-master-list:has(>.pc-etapas)>:is(.pc-cor-barra,.pc-cor-rodape){grid-row:2}
+  html:root:root body .ui-screen.pc-cor .pc-master-list:has(>.pc-etapas)>.ui-scroll{grid-row:3}
+}
+@media (max-width:1000px){
+  html:root:root body .ui-screen.pc-cor .pc-master-list>.pc-etapas{display:flex;flex-wrap:nowrap;gap:14px;overflow-x:auto;padding-bottom:2px}
+  html:root:root body .ui-screen.pc-cor .pc-master-list>.pc-etapas .pc-etapa{flex-direction:row;align-items:baseline;gap:5px;padding:2px 0 4px;white-space:nowrap}
+  html:root:root body .ui-screen.pc-cor .pc-master-list>.pc-etapas .pc-etapa-label{white-space:nowrap;font-size:13px}
+}
+html:root:root body .ui-screen.pc-cor .pc-master-list > .pc-etapas{grid-template-columns:repeat(4,auto);justify-content:space-between}
+html:root:root body .ui-screen.pc-cor .pc-master-list > .pc-etapas .pc-etapa-label{overflow-wrap:normal;word-break:normal;font-size:12px}
