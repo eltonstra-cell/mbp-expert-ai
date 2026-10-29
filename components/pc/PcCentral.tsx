@@ -65,7 +65,6 @@ export default function PcCentral({
   programas,
   ncsAbertas,
   onVerNcs,
-  onEditarAmbientes,
   onTodasVisitas,
   totalNcsAbertas,
   onFinalizar,
@@ -126,14 +125,6 @@ export default function PcCentral({
               <span className="cc-seta" aria-hidden="true">›</span>
             </button>
           )}
-          {programas && (
-            <button type="button" className="cc-linha cc-linha--prog" onClick={programas.onAbrir}>
-              <span className="cc-icone"><NavIcon name="checklist" size={20} strokeWidth={1.9} /></span>
-              <span className="cc-nome">Programas de Controle</span>
-              <span className="cc-valor">{programas.texto}</span>
-              <span className="cc-seta" aria-hidden="true">›</span>
-            </button>
-          )}
           {relatorio.map(linhaDoPasso)}
         </div>
 
@@ -174,11 +165,6 @@ export default function PcCentral({
           {onFinalizar && (
             <button type="button" className="ui-btn pc-central-finalizar" onClick={onFinalizar}>
               Finalizar visita
-            </button>
-          )}
-          {onEditarAmbientes && (
-            <button type="button" className="ui-btn ui-btn--secondary" onClick={onEditarAmbientes}>
-              Editar ambientes
             </button>
           )}
         </div>
@@ -228,33 +214,19 @@ export default function PcCentral({
         ))}
       </div>
 
-      {(equipamentos.vazio || !programas) && (
-        <div className="pc-vazios">
-          {equipamentos.vazio && (
-            <p className="pc-vazio-linha">
-              <span>{equipamentos.textoVazio}</span>
-              {equipamentos.onCadastrar && (
-                <>
-                  <span aria-hidden="true"> · </span>
-                  <button type="button" className="pc-link-btn" onClick={equipamentos.onCadastrar}>
-                    Cadastrar ›
-                  </button>
-                </>
-              )}
-            </p>
-          )}
-          {!programas && <p className="pc-vazio-linha">Nenhum programa ativo</p>}
-        </div>
-      )}
-
-      {(!equipamentos.vazio || programas) && (
+      {(!equipamentos.vazio || programas || equipamentos.onCadastrar) && (
         <div className="pc-three">
-          {!equipamentos.vazio && (
+          {!equipamentos.vazio ? (
             <button type="button" className="ui-card pc-card-btn" disabled={equipamentos.desabilitado} onClick={equipamentos.onAbrir}>
               <span className="ui-eyebrow">Equipamentos e móveis</span>
               <span className="ui-row-sub">{equipamentos.texto}</span>
             </button>
-          )}
+          ) : equipamentos.onCadastrar ? (
+            <button type="button" className="ui-card pc-card-btn" onClick={equipamentos.onCadastrar}>
+              <span className="ui-eyebrow">Equipamentos e móveis</span>
+              <span className="ui-row-sub">Nenhum cadastrado</span>
+            </button>
+          ) : null}
           {programas && (
             <button type="button" className="ui-card pc-card-btn" onClick={programas.onAbrir}>
               <span className="ui-eyebrow">Programas de Controle</span>
