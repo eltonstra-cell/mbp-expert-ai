@@ -34,7 +34,7 @@ import {
 type StatusNc = "Aberta" | "Em tratamento" | "Resolvida";
 
 /** "O que será feito" cresce com o texto até esta altura (px); depois rola por dentro. */
-const LIMITE_DA_CAIXA_DA_ACAO = 160;
+const LIMITE_DA_CAIXA_DA_ACAO = 176;
 
 export type CorrecaoItem = {
   id: string;
@@ -693,7 +693,25 @@ function Detalhe({
                 {!bloqueado && (
                   <div ref={linhaDaAcaoRef} className="pc-acao-linha">
                     <span className="ui-field-tools">
-                      <FieldVoiceTools fieldKey={`acao-${nc.id}`} value={acao} onChange={setAcao} rotuloIa="Sugerir com IA" contexto="Ação corretiva para uma não conformidade em segurança dos alimentos." />
+                      <FieldVoiceTools fieldKey={`acao-${nc.id}`} value={acao} onChange={setAcao} variante="linha" rotuloIa="Sugerir com IA" linhaInicio={botoes.foto ? () => (
+                        <>
+                          <input
+                            ref={entradaFoto}
+                            type="file"
+                            accept="image/*"
+                            capture="environment"
+                            hidden
+                            onChange={(evento) => {
+                              const arquivo = evento.target.files?.[0];
+                              evento.target.value = "";
+                              if (arquivo) onFotoDepois?.(nc.id, arquivo);
+                            }}
+                          />
+                          <button type="button" className="chk-linha-foto" aria-label={nc.par ? "Foto do depois" : "Foto"} title={nc.par ? "Foto do depois" : "Foto"} onClick={pedirFoto}>
+                            <NavIcon name="registrar" size={18} strokeWidth={1.9} />
+                          </button>
+                        </>
+                      ) : undefined} contexto="Ação corretiva para uma não conformidade em segurança dos alimentos." />
                     </span>
                     {funcionouVisivel && (
                       <button ref={chipFuncionouRef} type="button" className={`pc-chip-btn pc-chip-btn--soft pc-chip-funcionou${chipNaBarra ? "" : " is-oculto"}`} title={nc.acaoQueFuncionou} aria-hidden={chipNaBarra ? undefined : true} tabIndex={chipNaBarra ? undefined : -1} onClick={() => escolherAcao(nc.acaoQueFuncionou as string)}>
@@ -833,35 +851,12 @@ function Detalhe({
             <h3 className="pc-bloco-titulo">
               <span className="pc-bloco-num" aria-hidden="true">3</span>
               <span>Provas</span> <span className="pc-bloco-opcional">· opcional</span>
+              {botoes.atualizacao && (
+                <button type="button" className="pc-prova-botao pc-prova-registrar" onClick={() => setRegistrando(true)}>
+                  {rotuloDeRegistrarAtualizacao(resolvida)}
+                </button>
+              )}
             </h3>
-            {(botoes.foto || botoes.atualizacao) && (
-              <div className="pc-provas-botoes">
-                {botoes.foto && (
-                  <>
-                    <input
-                      ref={entradaFoto}
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      hidden
-                      onChange={(evento) => {
-                        const arquivo = evento.target.files?.[0];
-                        evento.target.value = "";
-                        if (arquivo) onFotoDepois?.(nc.id, arquivo);
-                      }}
-                    />
-                    <button type="button" className="pc-prova-botao" aria-label={nc.par ? "Adicionar foto do depois" : "Adicionar foto"} onClick={pedirFoto}>
-                      + Foto
-                    </button>
-                  </>
-                )}
-                {botoes.atualizacao && (
-                  <button type="button" className="pc-prova-botao" onClick={() => setRegistrando(true)}>
-                    {rotuloDeRegistrarAtualizacao(resolvida)}
-                  </button>
-                )}
-              </div>
-            )}
             {mostrarEvidencias && (
               <section className="pc-detail-secao" aria-label="Evidências">
                 <div className="pc-detail-secao-titulo">
