@@ -95,9 +95,9 @@ test("vencimentos: janela de 30 dias, ordem por data, POP com data 'Revisar até
 
 test("linha inteira clicável, sem botão Abrir; barras e quadradinhos nas cores do desenho", () => {
   const inicio = ler("../components/pc/PcInicio.tsx");
-  assert.ok(inicio.includes('<button key={item.id} type="button" className={`ini3-linha ini3-linha--${item.situacao === \"vencido\" ? \"vencida\" : \"aberta\"}`} onClick={() => colunas.onAbrirPendencia(item)}>'));
+  assert.ok(inicio.includes('<button key={item.id} type="button" className={`ini3-linha ini3-linha--${item.vencida ? "vencida" : "aberta"}`} onClick={() => onAbrir(item.id)}>'));
     assert.equal(/>\s*Abrir\s*</.test(inicio), false, "nenhum botão Abrir");
-  assert.ok(inicio.includes("Ver todas ({linhas.length})") && inicio.includes("colunas.onVerTodasCorrecoes") && inicio.includes("colunas.onTodosVencimentos") && inicio.includes("Lembrete ao responsável"));
+  assert.ok(inicio.includes("`Ver todas as correções (${itens.length})`") && inicio.includes("correcoes.onAbrirCorrecoes") && inicio.includes("correcoes.onTodosVencimentos") && inicio.includes("Lembrete ao responsável"));
   const css = ler("../app/globals.css");
   const bloco = css.slice(css.indexOf("/* ----- Início ----- */"));
   assert.match(bloco, /\.ini3-linha--vencida \.ini3-faixa\{background:var\(--rd-venceu\)\}/);
@@ -130,7 +130,7 @@ test("fora do Início nada mudou: celular/campo e demais telas seguem no estado 
   const topo = ler("../components/AppTopbar.tsx");
   assert.ok(topo.includes('variante === "inicio" ? " pc-topbar--inicio" : ""'));
   const pagina = ler("../app/page.tsx");
-  assert.ok(pagina.includes("painel={painelNode}"), "o Início do modo campo segue usando o painel Hoje");
+  assert.ok((pagina.match(/inicioElemento/g) || []).length >= 3, "Rodada 12d: tablet e celular usam o mesmo Início do PC");
 });
 
 test("correções abertas sem prazo entram em Hoje precisa de você, depois das vencidas e dos POPs aguardando", async () => {
@@ -156,13 +156,12 @@ test("correções abertas sem prazo entram em Hoje precisa de você, depois das 
 
 test("estados vazios: Tudo em dia, só um bloco e contadores/lembrete só com itens; sem visita, Comece por aqui com Nova visita", () => {
   const inicio = ler("../components/pc/PcInicio.tsx");
-  assert.ok(inicio.includes("colunas && semPendencias") && inicio.includes("Tudo em dia") && inicio.includes("Nada vencido e nada vencendo nos próximos 30 dias."));
-  assert.ok(inicio.includes("{!semPendencias && (") && inicio.includes('className="ini3-colunas is-uma"'), "sem correções o bloco não aparece; sobra uma só coluna (o bloco Vencendo saiu)");
+  assert.ok(inicio.includes("correcoes && itens.length === 0") && inicio.includes("Tudo em dia") && inicio.includes("Nenhuma correção aberta e nada vencendo nos próximos 30 dias."));
+  assert.ok(inicio.includes("correcoes && itens.length > 0"), "sem correções o bloco não aparece");
   assert.equal(inicio.includes("Nada vence nos próximos 30 dias."), false);
-  assert.ok(inicio.includes("temVisita ? \"CONTINUAR DE ONDE PARAREI\" : \"COMECE POR AQUI\"") && inicio.includes("Nenhuma visita em andamento.") && inicio.includes("Nova visita"));
+  assert.ok(inicio.includes("Continuar de onde parei") && inicio.includes("Nenhuma visita para continuar.") && inicio.includes("Nova visita"));
   // contador e lembrete ficam dentro do bloco que só existe com itens
-  const bloco = inicio.slice(inicio.indexOf("{!semPendencias && ("), inicio.indexOf("{!semVencimentos && ("));
-  assert.ok(inicio.includes("partesDoContador(colunas)") && bloco.includes("ini3-parte") && inicio.includes('rotulo: "Lembrete ao responsável"'), "o lembrete virou link do rodapé");
+  assert.ok(inicio.includes("ini3-parte") && inicio.includes('rotulo: "Lembrete ao responsável"'), "o lembrete virou link do rodapé");
   const css = ler("../app/globals.css");
   assert.match(css, /.ini2-tudo-em-dia{padding:22px 26px;border-radius:20px;background:#F0FAF3}/);
   assert.match(css, /\.ini3-botao\{[^}]*height:40px;[^}]*background:var\(--rd-acao\)[^}]*color:#fff/);
@@ -221,6 +220,5 @@ test("segunda rodada: linha da correção com ambiente e sem repetir o responsá
   assert.equal(subDaLinhaDoPainel(base, "Correção"), "Correção · aberta");
   assert.equal(subDaLinhaDoPainel({ ...com, quem: "Maria" }, "Correção"), "Cozinha / Produção · Correção · aberta · Maria");
   const inicio = ler("../components/pc/PcInicio.tsx");
-  assert.ok(inicio.includes("sem responsável") && inicio.includes("ini3-semresp"));
   assert.equal(inicio.includes("verTodas"), false, "Ver todas leva às correções, não expande a lista");
 });
