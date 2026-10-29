@@ -36,5 +36,5 @@ export function nivelAcima(local: LocalDeTela): LocalDeTela {
   return { view: "inicio" };
 }
 
-/** O botão "←" aparece em toda tela interna: tudo, menos o Início. */
-export const mostrarVoltar = (local: LocalDeTela): boolean => local.view !== "inicio";
+/** O botão "←" aparece em toda tela interna: tudo, menos Início e Visitas (as duas telas de entrada). */
+export const mostrarVoltar = (local: LocalDeTela): boolean => local.view !== "inicio" && local.view !== "visitas";
