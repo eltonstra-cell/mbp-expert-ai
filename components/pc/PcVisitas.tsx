@@ -198,10 +198,10 @@ export default function PcVisitas({ empresaAtiva, visitas, filtro, onFiltro, nov
           valor={filtro}
           onChange={onFiltro}
           abas={[
-            { id: "Todas", rotulo: "Todas", contagem: naoArquivadas.length },
-            { id: "Em andamento", rotulo: "Em andamento", curto: "Andamento", contagem: naoArquivadas.filter((v) => v.status === "Em andamento").length },
-            { id: "Concluída", rotulo: "Concluídas", contagem: naoArquivadas.filter((v) => v.status === "Concluída").length },
-            { id: "Arquivadas", rotulo: "Arquivadas", contagem: visitas.filter((v) => v.arquivada).length },
+            { id: "Todas", rotulo: "Todas", contagem: naoArquivadas.length, tom: "todas" },
+            { id: "Em andamento", rotulo: "Em andamento", curto: "Andamento", contagem: naoArquivadas.filter((v) => v.status === "Em andamento").length, tom: "andamento" },
+            { id: "Concluída", rotulo: "Concluídas", contagem: naoArquivadas.filter((v) => v.status === "Concluída").length, tom: "concluida" },
+            { id: "Arquivadas", rotulo: "Arquivadas", contagem: visitas.filter((v) => v.arquivada).length, tom: "arquivada" },
           ]}
         />
         </div>
