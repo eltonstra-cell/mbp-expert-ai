@@ -1,6 +1,8 @@
 // Início (PC): regras puras da tela (sem JSX): visitas recentes, visitas paradas, configuração da empresa e o guia de primeiros passos.
 import { diasDeVisitaAberta } from "./visitasLista.ts";
 import { palavra, quantidade } from "./plural.ts";
+import { correcoesAbertasDaEmpresa } from "./correcoesVencidas.ts";
+import { nomeCurtoDoAmbiente } from "./checklistEnvs.ts";
 import type { Empresa, Visita } from "../types/index.ts";
 
 export const DIAS_DE_VISITA_PARADA = 30;
@@ -275,3 +277,57 @@ export function quadradoDoVencimento(validade: string, dias: number): { dia: str
 export const textoDoPrazoEm = (dias: number): string => (dias <= 0 ? "vence hoje" : dias === 1 ? "em 1 dia" : `em ${dias} dias`);
 
 export const LIMITE_DE_LINHAS_DO_PAINEL = 6;
+
+// ===== Início do desenho 27–35: "Hoje precisa de você" lista só as correções abertas da empresa =====
+
+export type CorrecaoDoInicio = {
+  id: string;
+  titulo: string;
+  /** Ambiente curto ("Recebimento"); vazio quando a correção não tem ambiente. */
+  ambiente: string;
+  vencida: boolean;
+  /** "venceu há 60 dias", "vence hoje", "vence em 3 dias" ou "aberta" (sem prazo). */
+  prazoTexto: string;
+  /** "Recebimento · venceu há 60 dias" (a linha de baixo do cartão). */
+  linhaDeBaixo: string;
+};
+
+export function textoDoPrazoDaCorrecaoDoInicio(prazo: string | undefined, hoje: string): { vencida: boolean; texto: string; dias: number } {
+  const limpo = (prazo || "").trim();
+  if (!limpo) return { vencida: false, texto: "aberta", dias: Number.MAX_SAFE_INTEGER };
+  const emMs = (iso: string) => {
+    const [ano, mes, dia] = iso.slice(0, 10).split("-").map(Number);
+    return Date.UTC(ano, (mes || 1) - 1, dia || 1);
+  };
+  const dias = Math.round((emMs(limpo) - emMs(hoje)) / 86400000);
+  if (dias < 0) return { vencida: true, texto: `venceu há ${quantidade(-dias, "dia", "dias")}`, dias };
+  if (dias === 0) return { vencida: false, texto: "vence hoje", dias };
+  return { vencida: false, texto: `vence em ${quantidade(dias, "dia", "dias")}`, dias };
+}
+
+type NcParaOInicio = Pick<NaoConformidade, "id" | "empresaId" | "status" | "prazo" | "inativaNoChecklist" | "canceladaPeloUsuarioEm" | "titulo" | "ambiente">;
+
+/**
+ * Todas as correções abertas da empresa, vencidas primeiro (a mais atrasada antes), depois as com prazo (a mais próxima antes), depois as sem prazo.
+ * O total é o mesmo número do selo de Correções no menu e na barra.
+ */
+export function correcoesDoInicio(ncs: NcParaOInicio[] | undefined, empresaId: string, hoje: string): CorrecaoDoInicio[] {
+  return correcoesAbertasDaEmpresa(ncs, empresaId)
+    .map((nc) => {
+      const prazo = textoDoPrazoDaCorrecaoDoInicio(nc.prazo, hoje);
+      const ambiente = nc.ambiente?.trim() ? nomeCurtoDoAmbiente(nc.ambiente.trim()) : "";
+      return {
+        ordem: prazo.dias,
+        item: {
+          id: nc.id,
+          titulo: (nc.titulo || "").trim() || "Correção",
+          ambiente,
+          vencida: prazo.vencida,
+          prazoTexto: prazo.texto,
+          linhaDeBaixo: ambiente ? `${ambiente} · ${prazo.texto}` : prazo.texto,
+        } satisfies CorrecaoDoInicio,
+      };
+    })
+    .sort((a, b) => a.ordem - b.ordem || a.item.titulo.localeCompare(b.item.titulo, "pt-BR"))
+    .map((par) => par.item);
+}
