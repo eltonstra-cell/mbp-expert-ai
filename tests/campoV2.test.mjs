@@ -56,12 +56,12 @@ test("Checklist do Campo: busca do PC no cabeçalho, respostas só com texto at�
   const busca = ler("../components/BuscaNaBarra.tsx");
   assert.ok(busca.includes('variante?: "inicio" | "campo"') && busca.includes('variante !== "campo" && <kbd'));
   const pagina = ler("../app/page.tsx");
-  assert.ok(pagina.includes('variante="campo"') && pagina.includes("semBusca={modo === \"campo\"}"));
+  assert.ok(pagina.includes('variante="campo"') && pagina.includes("semBusca={modo === \"campo\" || view === \"empresas\"}"));
   assert.ok(/onAvancar=\{\(\) => avancarAposResponder\(foco\)\}\s*campo\s*\/>/.test(pagina));
   const item = ler("../components/ChecklistFocoItem.tsx").replace(/\r\n/g, "\n");
   assert.ok(item.includes("{estado === \"marcado\" && ("), "ícone ✓ só na resposta escolhida (Campo e PC)");
   assert.ok(item.includes('{!campo && <span className="chk-obs-rotulo">'), "sem o rótulo 'Observação (opcional)' no Campo");
-  assert.ok(item.includes('campo ? "Observação" : ""'));
+  assert.ok(item.includes('campo ? "Ex.: termômetro a 9 °C" : ""'));
   assert.ok(item.includes("Observação (opcional)"), "o PC mantém o rótulo");
   const css = ler("../app/globals.css");
   for (const regra of [
