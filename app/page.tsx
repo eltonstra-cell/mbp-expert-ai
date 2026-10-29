@@ -14,12 +14,17 @@ import {
   guardaDaEmpresa,
   iaJaFoiLiberada,
   iaLiberada,
+  consentirAudio,
   liberarIa,
   MENSAGEM_IA_DESLIGADA,
+  retirarConsentimentoDeAudio,
+  textoDeConsentimentoDeAudio,
   textoDeLiberacao,
+  transcricaoDeAudioLiberada,
   visitasComGuardaVencendo,
 } from "@/lib/privacidadeEmpresa";
 import PcPrivacidadeEmpresa from "@/components/pc/PcPrivacidadeEmpresa";
+import { transcreverAudioDeEvidencia } from "@/lib/transcricaoDeEvidencia";
 import PcNormaAplicavel, { type DadosDaNorma } from "@/components/pc/PcNormaAplicavel";
 import { normasDaEmpresa } from "@/lib/normas";
 import PopLeituraFolha from "@/components/PopLeituraFolha";
@@ -6522,7 +6527,7 @@ export default function Home() {
   }
 
   // Privacidade da empresa: vale na hora e fica no histórico (quem liberou e quando). Não passa pelo "Salvar empresa".
-  function alterarPrivacidadeDaEmpresa(empresaId: string, mudanca: "ia" | "desligar" | "guarda", extra: { aceite?: boolean; dias?: number } = {}) {
+  function alterarPrivacidadeDaEmpresa(empresaId: string, mudanca: "ia" | "desligar" | "guarda" | "audio" | "audio-retirar", extra: { aceite?: boolean; dias?: number } = {}) {
     const alvo = db.empresas[empresaId];
     if (!alvo) return;
     if (mudanca === "guarda" ? !exigirPermissao("empresas.editar", empresaId) : !exigirPermissao("ia.analisar", empresaId)) return;
@@ -6535,6 +6540,15 @@ export default function Home() {
         privacidade = liberarIa(privacidade, { id: usuarioDaSessao?.id || "local", nome: usuarioDaSessao?.nome || "Usuário local" }, Boolean(extra.aceite), agora);
         acao = "empresa.ia_fotos_liberada";
         detalhes = `${alvo.nomeFantasia} • IA nas fotos liberada por ${usuarioDaSessao?.nome || "usuário local"}.`;
+      } else if (mudanca === "audio") {
+        if (!iaLiberada(alvo)) throw new Error("Ligue antes a IA nas fotos desta empresa.");
+        privacidade = consentirAudio(privacidade, { id: usuarioDaSessao?.id || "local", nome: usuarioDaSessao?.nome || "Usuário local" }, agora);
+        acao = "empresa.audio_ia_consentido";
+        detalhes = `${alvo.nomeFantasia} • consentimento para transcrever o áudio das evidências por serviço de IA no exterior, registrado por ${usuarioDaSessao?.nome || "usuário local"}.`;
+      } else if (mudanca === "audio-retirar") {
+        privacidade = retirarConsentimentoDeAudio(privacidade);
+        acao = "empresa.audio_ia_retirado";
+        detalhes = `${alvo.nomeFantasia} • consentimento de transcrição do áudio das evidências retirado.`;
       } else if (mudanca === "desligar") {
         privacidade = desligarIa(privacidade);
         acao = "empresa.ia_fotos_desligada";
@@ -8549,6 +8563,10 @@ export default function Home() {
                       concluidaTexto: formatarData(linha.concluidaEm),
                       venceTexto: formatarData(linha.venceEm),
                     }))}
+                    audioConsentido={transcricaoDeAudioLiberada(empresaGerenciada)}
+                    textoConsentimentoAudio={textoDeConsentimentoDeAudio(empresaGerenciada)}
+                    onConsentirAudio={() => alterarPrivacidadeDaEmpresa(empresaGerenciada.id, "audio")}
+                    onRetirarAudio={() => alterarPrivacidadeDaEmpresa(empresaGerenciada.id, "audio-retirar")}
                     onLiberarIa={(aceite) => alterarPrivacidadeDaEmpresa(empresaGerenciada.id, "ia", { aceite })}
                     onDesligarIa={() => alterarPrivacidadeDaEmpresa(empresaGerenciada.id, "desligar")}
                     onSalvarGuarda={(dias) => alterarPrivacidadeDaEmpresa(empresaGerenciada.id, "guarda", { dias })}
@@ -8672,6 +8690,10 @@ export default function Home() {
           <PcEvidencias
             empresa={nomeParaExibir(empresaVisita)}
             rotuloDaVisita={`Visita ${numeroVisitaPorId.get(visitaAtual.id) || ""}`.trim()}
+            transcricao={{
+              disponivel: transcricaoDeAudioLiberada(empresaVisita) && permitido("ia.analisar", visitaAtual.empresaId),
+              onTranscrever: (arquivo, duracao) => transcreverAudioDeEvidencia(arquivo, visitaAtual.empresaId, duracao),
+            }}
             data={fdata(visitaAtual.data)}
             totais={{ evidencias: evidenciasVisita.length, fotos: fotosVisita, audios: audiosVisita, revisar: analisesIAPendentes }}
             podeAdicionar={permitido("evidencias.adicionar", visitaAtual.empresaId)}
