@@ -186,7 +186,7 @@ test("estilo: caixinha terracota, pacote em creme com borda terracota, chip Sinc
   assert.ok(css.includes('.cadest input[type="checkbox"]:checked{border-color:#21A3A3;background:#21A3A3}'));
   assert.ok(css.includes(".pacote-janela .esc-opcao.is-on{border-color:#21A3A3;background:#FFF6E5}"));
   assert.ok(css.includes("html body .pc-sync-chip.pc-sync-chip.pc-sync-chip:is(.is-ok,.is-pendente,.is-sem-sinal,.is-erro)") && css.includes("background:transparent;border:0;border-radius:0;box-shadow:none;padding:0 4px;color:#263445;font-size:15px"));
-  assert.ok(css.includes("html .pacote-tipo .ui-btn.pacote-tipo-ver{border:2px solid #2A4D7C;background:#2A4D7C;color:#fff;font-weight:400}"));
+  assert.ok(css.includes("html .pacote-tipo .ui-btn.pacote-tipo-ver{border:2px solid #264A80;background:#264A80;color:#fff;font-weight:400}"));
   assert.ok(css.includes("html .nova-consulta-aviso .ui-btn.ui-btn--secondary{border:2px solid #7F8BA3;background:#fff;color:#263445;font-weight:400}"));
   assert.ok(css.includes(".cadest-bloqueio p.cadest-rotulo{color:#526477}"));
   assert.ok(css.includes(".cadest-semsugestao--colada{margin-top:-12px;font-size:15px;line-height:22px;color:#263445}"));
