@@ -20,14 +20,14 @@ import {
 const PERFIS: PerfilUsuario[] = ["Administrador", "Consultor/RT", "Cliente Gestor", "Gerente"];
 
 const GRUPOS: { id: GrupoTela; titulo: string; cor: string }[] = [
-  { id: "visita", titulo: "Visita atual", cor: "#2A4D7C" },
+  { id: "visita", titulo: "Visita atual", cor: "#264A80" },
   { id: "cadastros", titulo: "Cadastros e acervo", cor: "#168080" },
   { id: "geral", titulo: "Geral", cor: "#0D9488" },
 ];
 
 // Ordem e cores do painel "Menu que essa pessoa vê".
 const MENU_PREVIA: { tela: TelaKey; cor: string }[] = [
-  { tela: "inicio", cor: "#2A4D7C" },
+  { tela: "inicio", cor: "#264A80" },
   { tela: "visitas", cor: "#526477" },
   { tela: "central", cor: "#0EA5E9" },
   { tela: "checklist", cor: "#21805B" },
