@@ -49,8 +49,7 @@ test("razão social em formato de título só na exibição", () => {
 });
 
 test("visitas: placeholder da busca cabe sem corte; Início: Hoje com 'Ver todos (N)' e lista que rola por dentro", () => {
-  assert.ok(ler("../components/pc/PcVisitas.tsx").includes('placeholder="Buscar empresa ou responsável"'));
-  assert.match(ler("../app/globals.css"), /\.vis-toolbar-fim \.pc-search\{width:300px/);
+  assert.ok(!ler("../components/pc/PcVisitas.tsx").includes("Buscar empresa ou responsável"), "Rodada 12d: Visitas só tem a busca do topo");
   const painel = ler("../components/PainelHoje.tsx");
   assert.ok(painel.includes("Ver todos (") && painel.includes("ITENS_INICIAIS"));
   assert.match(ler("../app/globals.css"), /\.hoje-lista\{max-height:min\(38vh,300px\)\}/);
