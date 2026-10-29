@@ -254,7 +254,9 @@ import ReservaDeAltura from "@/components/ReservaDeAltura";
 import PropostaDeCnpjPainel from "@/components/PropostaDeCnpj";
 import PacoteDoTipoPainel, { type EscolhaDoPacote } from "@/components/PacoteDoTipo";
 import CaixaQueCresce from "@/components/CaixaQueCresce";
-import { camposDaProposta, mensagemDeFalhaDaConsulta, propostaDaConsulta, type PropostaDeCnpj } from "@/lib/cnpjConsulta";
+import { camposDaProposta, MENSAGEM_CONSULTA_APLICADA, MENSAGEM_CONSULTA_IGNORADA, mensagemDeFalhaDaConsulta, mensagensDaConsulta, propostaDaConsulta, type PropostaDeCnpj } from "@/lib/cnpjConsulta";
+import { camposAparadosAoSalvar } from "@/lib/textoDeEndereco";
+import { descricaoAoAbrirEmpresa, descricaoAoMudarCodigo } from "@/lib/cnaeOficial";
 import { TIPOS_DE_ESTABELECIMENTO, limiteSugeridoParaEquipamento, OPCAO_SEGUIR_O_CNAE, TIPO_OUTRO_ESCOLHIDO, cnaeBloqueiaSalvar, consultaPodeTrocarOTipo, normalizarCnae, tipoEfetivoDaEmpresa, tipoSugeridoPorCnae, validarCnae, valorDoTipoParaGuardar } from "@/lib/tiposDeEstabelecimento";
 import { equipamentosDoPacote } from "@/lib/equipamentosCadastro";
 import { linhasDeTemperaturaDoRelatorio } from "@/lib/limitesDeTemperatura";
@@ -1062,8 +1064,9 @@ export default function Home() {
   const [camposDaConsulta, setCamposDaConsulta] = useState<string[]>([]);
   const [tipoSugerido, setTipoSugerido] = useState(false);
   // O código do CNAE mudou e a descrição que veio da consulta foi limpa: o campo avisa até a pessoa consultar de novo ou digitar a descrição.
-  const [descricaoDoCnaeLimpa, setDescricaoDoCnaeLimpa] = useState(false);
   // A descrição original fica guardada (com o código a que pertence) e volta se o código voltar ao que era; nunca é gravada com outro código.
+  // CNAE (só dígitos) aplicado pela consulta de CNPJ: se não existir na tabela oficial vira aviso e não bloqueia o salvar (dado fiscal real).
+  const [cnaeDaConsulta, setCnaeDaConsulta] = useState("");
   const [descricaoGuardada, setDescricaoGuardada] = useState<{ digitos: string; texto: string } | null>(null);
   // UF que não veio da consulta (deduzida pelo CEP ou vazia): o campo avisa, sem bloquear.
   const [avisoUf, setAvisoUf] = useState("");
@@ -3597,7 +3600,10 @@ export default function Home() {
 
   // Tipo que vale agora: o ajustado pela pessoa ou, sem ajuste, o do CNAE (principal, depois secundários).
   const tipoDoForm = tipoEfetivoDaEmpresa({ cnae: form.cnae, cnaesSecundarios: cnaesSecundariosForm, tipo: form.tipo });
+  const mensagensDaConsultaTela = mensagensDaConsulta({ mensagem: consultaMsg, propostaPendente: Boolean(propostaCnpj), camposPendentes: camposDaConsulta.some((campo) => campo !== "tipo") });
   const validacaoDoCnae = validarCnae(form.cnae);
+  // CNAE que veio da consulta e não está na tabela oficial: só aviso (não bloqueia o salvar).
+  const cnaeInexistenteDaConsulta = validacaoDoCnae.situacao === "inexistente" && Boolean(cnaeDaConsulta) && normalizarCnae(form.cnae) === cnaeDaConsulta;
   const tipoLegado = Boolean(form.tipo) && form.tipo !== "Outro" && form.tipo !== TIPO_OUTRO_ESCOLHIDO && !TIPOS_DE_ESTABELECIMENTO.some((tipo) => tipo.rotulo === form.tipo);
   const valorDoSelectDoTipo = form.tipo === TIPO_OUTRO_ESCOLHIDO ? TIPO_OUTRO_ESCOLHIDO : tipoDoForm.ajustado ? tipoDoForm.rotulo : tipoLegado ? form.tipo : OPCAO_SEGUIR_O_CNAE;
 
@@ -3609,8 +3615,8 @@ export default function Home() {
     const trocaTipo = tipo.correspondencia && consultaPodeTrocarOTipo(form.tipo);
     // MEI/empresário individual: a razão social é o nome da pessoa e NÃO é guardada; também não deixa a de uma consulta anterior misturada.
     setForm((atual) => ({ ...atual, ...valores, ...(propostaCnpj.titularPessoaFisica ? { razaoSocial: "" } : {}), }));
-    setDescricaoDoCnaeLimpa(false);
     setDescricaoGuardada(null);
+    setCnaeDaConsulta(campos.includes("cnae") ? normalizarCnae(valores.cnae) : "");
     setCamposDaConsulta(trocaTipo ? [...campos, "tipo"] : campos);
     setTipoSugerido(trocaTipo);
     setCnaesSecundariosForm(propostaCnpj.cnaesSecundarios);
@@ -3618,29 +3624,26 @@ export default function Home() {
     setSemFantasiaNaReceita(!propostaCnpj.nomeFantasia && !propostaCnpj.titularPessoaFisica);
     setSemEmailNaConsulta(!propostaCnpj.email);
     setConsultaEmForm(new Date().toISOString());
-    setConsultaMsg(propostaCnpj.titularPessoaFisica ? "Dados aplicados. Informe o nome do estabelecimento: o nome do titular não é guardado." : "Dados aplicados. Confira e edite o que precisar.");
+    setConsultaMsg(propostaCnpj.titularPessoaFisica ? "Dados aplicados. Informe o nome do estabelecimento: o nome do titular não é guardado." : MENSAGEM_CONSULTA_APLICADA);
     setPropostaCnpj(null);
   }
 
   function mudarCampoDaEmpresa(campo: string, valor: string) {
-    // Código novo: a descrição que veio da consulta já não corresponde a ele. Ela fica guardada aqui (não é gravada com o código errado) e volta se o código voltar.
+    // Código novo: a descrição vem da tabela oficial do IBGE (campo somente leitura). Se o código não existe (ou está incompleto), a descrição fica vazia;
+    // a que estava no formulário fica guardada em memória e volta se o código voltar (ao salvo ou ao que a consulta trouxe). Nada é gravado com descrição de outro código.
     if (campo === "cnae" && normalizarCnae(valor) !== normalizarCnae(form.cnae)) {
-      const digitosNovos = normalizarCnae(valor);
-      if (descricaoGuardada && digitosNovos === descricaoGuardada.digitos && !form.cnaeDescricao.trim()) {
-        setForm((atual) => ({ ...atual, cnae: valor, cnaeDescricao: descricaoGuardada.texto }));
-        setDescricaoGuardada(null);
-        setDescricaoDoCnaeLimpa(false);
-        return;
-      }
-      if (form.cnaeDescricao.trim()) {
-        setDescricaoGuardada({ digitos: normalizarCnae(form.cnae), texto: form.cnaeDescricao });
-        setDescricaoDoCnaeLimpa(true);
-        setForm((atual) => ({ ...atual, cnae: valor, cnaeDescricao: "" }));
-        setCamposDaConsulta((atual) => atual.filter((item) => item !== "cnae" && item !== "cnaeDescricao"));
-        return;
-      }
+      const decisao = descricaoAoMudarCodigo({
+        codigoNovo: valor,
+        codigoAtual: form.cnae,
+        descricaoAtual: form.cnaeDescricao,
+        salva: editingEmpresaId ? db.empresas[editingEmpresaId] : undefined,
+        guardada: descricaoGuardada,
+      });
+      setDescricaoGuardada(decisao.guardada);
+      setForm((atual) => ({ ...atual, cnae: valor, cnaeDescricao: decisao.descricao }));
+      setCamposDaConsulta((atual) => atual.filter((item) => item !== "cnae" && item !== "cnaeDescricao"));
+      return;
     }
-    if (campo === "cnaeDescricao") setDescricaoDoCnaeLimpa(false);
     if (campo === "uf") setAvisoUf("");
     if (campo === "nomeFantasia" && valor.trim()) setSemFantasiaNaReceita(false);
     setForm((atual) => ({ ...atual, [campo]: valor }));
@@ -3683,7 +3686,7 @@ export default function Home() {
     const faltasDaEmpresa = pendenciasParaSalvarEmpresa(form, Boolean(editingEmpresaId));
     // Só bloqueia o CNAE fora do formato em empresa nova ou quando o código foi MUDADO; empresa antiga com o CNAE intacto mostra o aviso e salva.
     const cnaeSalvo = editingEmpresaId ? db.empresas[editingEmpresaId]?.cnae : undefined;
-    if (cnaeBloqueiaSalvar(form.cnae, cnaeSalvo, !editingEmpresaId)) faltasDaEmpresa.push("Corrija o CNAE: ele precisa ter 7 dígitos.");
+    if (cnaeBloqueiaSalvar(form.cnae, cnaeSalvo, !editingEmpresaId, Boolean(cnaeDaConsulta) && normalizarCnae(form.cnae) === cnaeDaConsulta)) faltasDaEmpresa.push("Corrija o CNAE: ele precisa ter 7 dígitos e existir na tabela oficial.");
     if (faltasDaEmpresa.length) {
       setMsg(faltasDaEmpresa.join(" "));
       return;
@@ -3694,6 +3697,8 @@ export default function Home() {
     }
     const id = editingEmpresaId || form.cnpj.replace(/\D/g, "") || crypto.randomUUID();
     const anterior = editingEmpresaId ? db.empresas[editingEmpresaId] : undefined;
+    // Campos de texto editados nesta sessão: sem espaços nas pontas nem repetidos (o que não mudou não é tocado).
+    const formParaGravar = { ...form, ...camposAparadosAoSalvar(form as unknown as Record<string, unknown>, anterior as unknown as Record<string, unknown> | undefined) };
     // Responsável do estabelecimento: fonte única em Dados. Só o Administrador escolhe a pessoa de Acessos (o servidor repete a regra).
     const vinculoResponsavel = !usuarioDaSessao || usuarioDaSessao.perfil === "Administrador" ? usuarioResponsavelForm || undefined : anterior?.responsavelEstabelecimento?.usuarioId;
     // Com acesso vinculado, nome e cargo vêm do usuário (se ele não tiver cargo, vale o que foi informado aqui).
@@ -3702,9 +3707,9 @@ export default function Home() {
     const cargoResponsavel = limparTextoDePessoa(limparTextoDePessoa(usuarioVinculado?.cargo) || form.cargoResponsavel);
     const emp: Empresa = {
       id,
-      ...form,
+      ...formParaGravar,
       cnpj: editingEmpresaId ? (anterior?.cnpj || form.cnpj) : form.cnpj,
-      nomeFantasia: form.nomeFantasia || form.razaoSocial || "Sem nome",
+      nomeFantasia: formParaGravar.nomeFantasia || formParaGravar.razaoSocial || "Sem nome",
       horariosFuncionamento: anterior?.horariosFuncionamento,
       capacidade: capacidadeDoFormulario(capacidadeForm),
       responsabilidadesManual: normalizarResponsabilidades(responsabilidadesEmpresa),
@@ -3923,7 +3928,7 @@ export default function Home() {
       razaoSocial: empresa.razaoSocial || "",
       situacao: empresa.situacao || "",
       cnae: empresa.cnae || "",
-      cnaeDescricao: empresa.cnaeDescricao || "",
+      cnaeDescricao: descricaoAoAbrirEmpresa(empresa.cnae, empresa.cnaeDescricao),
       tipo: empresa.tipo || "Outro",
       logradouro: empresa.logradouro || "",
       numero: empresa.numero || "",
@@ -3982,7 +3987,7 @@ export default function Home() {
     setCamposDaConsulta([]);
     setTipoSugerido(false);
     setDescricaoGuardada(null);
-    setDescricaoDoCnaeLimpa(false);
+    setCnaeDaConsulta("");
     setCnaesSecundariosForm(empresa.cnaesSecundarios || []);
     setAvisoUf("");
     setConsultaEmForm(empresa.consultaCnpjEm || "");
@@ -4868,7 +4873,7 @@ export default function Home() {
     setCamposDaConsulta([]);
     setTipoSugerido(false);
     setDescricaoGuardada(null);
-    setDescricaoDoCnaeLimpa(false);
+    setCnaeDaConsulta("");
     setCnaesSecundariosForm([]);
     setAvisoUf("");
     setSemFantasiaNaReceita(false);
@@ -7485,7 +7490,7 @@ export default function Home() {
               onClick={() => void atualizarNuvemManualmente()}
               className={`rounded-full px-2.5 py-1.5 text-[11px] font-normal sm:px-3 sm:text-xs ${
                 syncStatus === "sincronizado"
-                  ? "bg-[var(--ok-bg)] text-[color:var(--ink)]"
+                  ? "bg-[#DCEBF7] text-[color:var(--ink)]"
                   : syncStatus === "conectando"
                   ? "bg-[var(--brand-soft)] text-[color:var(--ink)]"
                   : syncStatus === "local"
@@ -8259,7 +8264,7 @@ export default function Home() {
                           {loading ? "..." : editingEmpresaId ? "Consultar de novo" : "Buscar"}
                         </button>
                       </div>
-                      {consultaMsg && <span className="cnpj-consulta-msg" role="status">{consultaMsg}</span>}
+                      {mensagensDaConsultaTela.mensagem && <span className="cnpj-consulta-msg" role="status">{mensagensDaConsultaTela.mensagem}</span>}
                       {!editingEmpresaId && (tocouCnpjEmpresa || tentouSalvarEmpresa || form.cnpj.replace(/D/g, "").length >= 14) && erroDoCnpj(form.cnpj) && <span className="ui-field-error" role="alert">{erroDoCnpj(form.cnpj)}</span>}
                     </label>
 
@@ -8268,11 +8273,11 @@ export default function Home() {
                         proposta={propostaCnpj}
                         vaiTrocar={camposDaProposta(propostaCnpj).campos.filter((campo) => String((form as Record<string, unknown>)[campo] || "").trim() && String((form as Record<string, unknown>)[campo]) !== camposDaProposta(propostaCnpj).valores[campo]).map((campo) => labels[campo as keyof typeof labels] || campo)}
                         onUsar={usarPropostaDoCnpj}
-                        onIgnorar={() => { setPropostaCnpj(null); setConsultaMsg("Consulta ignorada. Preencha à mão ou consulte de novo."); }}
+                        onIgnorar={() => { setPropostaCnpj(null); setConsultaMsg(MENSAGEM_CONSULTA_IGNORADA); }}
                       />
                     )}
 
-                    {camposDaConsulta.some((campo) => campo !== "tipo") && (
+                    {mensagensDaConsultaTela.avisoPreenchido && (
                       <p className="nova-consulta-aviso md:col-span-2" role="status">
                         <span>Preenchido pela consulta. Confira e edite o que precisar.</span>
                         <button type="button" className="ui-btn ui-btn--secondary" onClick={() => setCamposDaConsulta((atual) => atual.filter((campo) => campo === "tipo"))}>Confirmei tudo</button>
@@ -8298,12 +8303,14 @@ export default function Home() {
                       <CaixaQueCresce
                         className="w-full resize-none rounded-xl border p-3 nova-descricao"
                         value={form[k]}
-                        onChange={(e) => mudarCampoDaEmpresa(k, e.target.value)}
+                        readOnly
+                        aria-readonly="true"
+                        placeholder="Preenchida a partir do código do CNAE"
                       />
                     ) : (
                       <input
                         type="text"
-                        className={`w-full rounded-xl border p-3${camposDaConsulta.includes(k) ? " is-da-consulta" : ""}${k === "cnae" && validacaoDoCnae.situacao === "formato" ? " cnae-invalido" : ""}`}
+                        className={`w-full rounded-xl border p-3${camposDaConsulta.includes(k) ? " is-da-consulta" : ""}${k === "cnae" && (validacaoDoCnae.situacao === "formato" || (validacaoDoCnae.situacao === "inexistente" && !cnaeInexistenteDaConsulta)) ? " cnae-invalido" : ""}`}
                         value={form[k]}
                         inputMode={k === "cnae" ? "numeric" : undefined}
                         aria-describedby={k === "cnae" && validacaoDoCnae.mensagem ? "empresa-cnae-aviso" : undefined}
@@ -8313,9 +8320,9 @@ export default function Home() {
                         onChange={(e) => mudarCampoDaEmpresa(k, e.target.value)}
                       />
                     )}
-                    {k === "cnae" && validacaoDoCnae.situacao === "formato" && <span id="empresa-cnae-aviso" className="cnae-erro" role="alert">{validacaoDoCnae.mensagem}</span>}
-                    {k === "cnae" && validacaoDoCnae.situacao === "fora-da-tabela" && <span id="empresa-cnae-aviso" className="cnae-nota" role="status">{validacaoDoCnae.mensagem}</span>}
-                    {k === "cnaeDescricao" && descricaoDoCnaeLimpa && !form.cnaeDescricao.trim() && <span className="cnae-nota" role="status">Descrição não corresponde ao código; use {editingEmpresaId ? "Consultar de novo" : "Buscar"}</span>}
+                    {k === "cnae" && (validacaoDoCnae.situacao === "formato" || (validacaoDoCnae.situacao === "inexistente" && !cnaeInexistenteDaConsulta)) && <span id="empresa-cnae-aviso" className="cnae-erro" role="alert">{validacaoDoCnae.mensagem}</span>}
+                    {k === "cnae" && cnaeInexistenteDaConsulta && <span id="empresa-cnae-aviso" className="cnae-nota" role="status">{validacaoDoCnae.mensagem}. Veio da consulta e não impede salvar.</span>}
+                    {k === "cnae" && validacaoDoCnae.situacao === "sem-sugestao" && <span id="empresa-cnae-aviso" className="cnae-nota" role="status">{validacaoDoCnae.mensagem}</span>}
                     {k === "uf" && avisoUf && <span className="cnpj-uf-aviso" role="status">{avisoUf}</span>}
                     {k === "nomeFantasia" && semFantasiaNaReceita && !form.nomeFantasia.trim() && form.razaoSocial.trim() && (
                       <button type="button" className="ui-btn ui-btn--secondary nova-usar-razao" onClick={() => mudarCampoDaEmpresa("nomeFantasia", form.razaoSocial)}>Usar a razão social</button>

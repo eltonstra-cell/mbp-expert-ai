@@ -3,6 +3,7 @@
 // As PERGUNTAS do questionário NÃO mudam por tipo (são sempre as padrão); este módulo não gera nem sugere perguntas.
 // A tabela CNAE → tipo usa os códigos e nomes da CNAE 2.x do IBGE (API de CNAE do IBGE, conferida em 2026-10-24).
 import { limiteSugerido, type LimiteDeTemperatura } from "./limitesDeTemperatura.ts";
+import { cnaeExisteNaTabelaOficial, descricaoOficialLegivelDoCnae } from "./cnaeOficial.ts";
 import { SETORES_OFICIAIS_MANUAL } from "./manualBase.ts";
 import { sinonimosDe } from "./sinonimosEquipamentos.ts";
 import type { TipoFluxoOperacional } from "../types/index.ts";
@@ -56,7 +57,7 @@ const CNAE_PARA_TIPO: Record<string, { tipo: IdDoTipo; descricao: string }> = {
 export const normalizarCnae = (valor: unknown): string => String(valor ?? "").replace(/\D/g, "");
 
 /** Descrição da CNAE do IBGE para um código da tabela (usada só quando o cadastro não trouxe a descrição). */
-export const descricaoDoCnaeDaTabela = (codigo: string): string => CNAE_PARA_TIPO[normalizarCnae(codigo)]?.descricao || "";
+export const descricaoDoCnaeDaTabela = (codigo: string): string => descricaoOficialLegivelDoCnae(codigo) || CNAE_PARA_TIPO[normalizarCnae(codigo)]?.descricao || "";
 
 /** Tipo sugerido pelo CNAE principal; se não houver correspondência, pelos secundários; senão "Outro". Nunca bloqueia. Vale com ou sem pontuação. */
 export function tipoSugeridoPorCnae(principal: string | undefined, secundarios: { codigo: string }[] = []): { tipo: IdDoTipo; rotulo: string; codigo: string; correspondencia: boolean } {
@@ -74,26 +75,39 @@ export function tipoSugeridoPorCnae(principal: string | undefined, secundarios: 
  */
 export const cnaeReconhecido = (codigo: unknown): boolean => Boolean(CNAE_PARA_TIPO[normalizarCnae(codigo)]);
 
-export type ValidacaoDoCnae = { situacao: "vazio" | "formato" | "fora-da-tabela" | "ok"; digitos: number; mensagem: string };
+/**
+ * "formato" = não tem 7 dígitos; "inexistente" = 7 dígitos que NÃO estão na tabela oficial; "sem-sugestao" = existe na tabela oficial mas não é um tipo de alimentação
+ * do app; "ok" = existe e tem tipo no app.
+ */
+export type ValidacaoDoCnae = { situacao: "vazio" | "formato" | "inexistente" | "sem-sugestao" | "ok"; digitos: number; mensagem: string };
 
-/** Formato inválido (não tem 7 dígitos). */
+/** Formato inválido ou código inexistente na tabela oficial. */
 export const MENSAGEM_CNAE_NAO_RECONHECIDO = "CNAE não reconhecido · sem sugestões";
-/** Código com 7 dígitos que o app não tem na tabela de sugestões. */
-export const MENSAGEM_CNAE_SEM_SUGESTOES = "CNAE sem sugestões neste app";
+/** Código que existe na tabela oficial, mas o app não tem sugestões para ele. */
+export const MENSAGEM_CNAE_SEM_SUGESTOES = "CNAE reconhecido · sem sugestões neste app";
+/** Código de 7 dígitos que não existe na tabela oficial (validação na hora, no campo). */
+export const MENSAGEM_CNAE_INEXISTENTE = "CNAE não encontrado na tabela oficial";
 
-/** Mensagem de "sem sugestão" conforme o código: 7 dígitos = só não está na tabela do app; qualquer outra coisa = formato inválido. */
-export const mensagemSemSugestaoDoCnae = (codigo: unknown): string => (normalizarCnae(codigo).length === 7 ? MENSAGEM_CNAE_SEM_SUGESTOES : MENSAGEM_CNAE_NAO_RECONHECIDO);
+/** Mensagem de "sem sugestão" conforme o código: existe na tabela oficial = "reconhecido"; formato inválido ou inexistente = "não reconhecido". */
+export const mensagemSemSugestaoDoCnae = (codigo: unknown): string => (cnaeExisteNaTabelaOficial(codigo) ? MENSAGEM_CNAE_SEM_SUGESTOES : MENSAGEM_CNAE_NAO_RECONHECIDO);
 
-/** Validação na hora, no campo: exatamente 7 dígitos (a pontuação não conta; só letras também é inválido). Código com 7 dígitos fora da tabela do app vale, mas não gera sugestão. */
+/** Validação na hora, no campo: 7 dígitos (a pontuação não conta; só letras também é inválido) e que o código exista na tabela oficial do IBGE. */
 export function validarCnae(valor: unknown): ValidacaoDoCnae {
   const bruto = String(valor ?? "").trim();
   const digitos = normalizarCnae(valor).length;
   if (!bruto) return { situacao: "vazio", digitos, mensagem: "" };
   if (digitos === 0) return { situacao: "formato", digitos, mensagem: "O CNAE só tem números (7 dígitos)." };
   if (digitos !== 7) return { situacao: "formato", digitos, mensagem: `O CNAE tem 7 dígitos (você digitou ${digitos}).` };
-  if (!cnaeReconhecido(valor)) return { situacao: "fora-da-tabela", digitos, mensagem: MENSAGEM_CNAE_SEM_SUGESTOES };
+  if (!cnaeExisteNaTabelaOficial(valor)) return { situacao: "inexistente", digitos, mensagem: MENSAGEM_CNAE_INEXISTENTE };
+  if (!cnaeReconhecido(valor)) return { situacao: "sem-sugestao", digitos, mensagem: MENSAGEM_CNAE_SEM_SUGESTOES };
   return { situacao: "ok", digitos, mensagem: "" };
 }
+
+/** CNAE que não pode ser gravado: fora do formato ou inexistente na tabela oficial. */
+export const cnaeInvalido = (valor: unknown): boolean => {
+  const situacao = validarCnae(valor).situacao;
+  return situacao === "formato" || situacao === "inexistente";
+};
 
 /** Valor gravado em Empresa.tipo quando a pessoa escolhe "Outro" de propósito (o "Outro" simples, que é o padrão, significa seguir o CNAE). */
 export const TIPO_OUTRO_ESCOLHIDO = "Outro (escolhido)";
@@ -103,12 +117,12 @@ export const OPCAO_SEGUIR_O_CNAE = "__seguir_o_cnae__";
 /**
  * Tipo que vale para a empresa: o que o usuário ajustou ou, sem ajuste, o do CNAE (principal, depois secundários).
  * Empresa.tipo "Outro", vazio ou texto antigo fora da lista = segue o CNAE; um tipo da lista diferente do CNAE = ajuste; "Outro (escolhido)" = "Outro" de propósito
- * (só vale quando o CNAE tem tipo; com CNAE desconhecido não há o que forçar).
+ * (vale como ajuste também com CNAE sem tipo no app).
  */
 export function tipoEfetivoDaEmpresa(empresa: { cnae?: string; cnaesSecundarios?: { codigo: string }[]; tipo?: string }): { id: IdDoTipo; rotulo: string; ajustado: boolean; escolhidoOutro: boolean; doCnae: ReturnType<typeof tipoSugeridoPorCnae> } {
   const doCnae = tipoSugeridoPorCnae(empresa.cnae, empresa.cnaesSecundarios || []);
   const escolhidoOutro = empresa.tipo === TIPO_OUTRO_ESCOLHIDO;
-  if (escolhidoOutro) return { id: "outro", rotulo: rotuloDoTipo("outro"), ajustado: doCnae.correspondencia, escolhidoOutro: true, doCnae };
+  if (escolhidoOutro) return { id: "outro", rotulo: rotuloDoTipo("outro"), ajustado: true, escolhidoOutro: true, doCnae };
   const gravado = TIPOS_DE_ESTABELECIMENTO.some((tipo) => tipo.rotulo === empresa.tipo || tipo.id === empresa.tipo) ? idDoTipo(empresa.tipo) : "outro";
   const ajustado = gravado !== "outro" && gravado !== doCnae.tipo;
   const id = ajustado ? gravado : doCnae.tipo;
@@ -149,6 +163,37 @@ const NOME_CURTO_DO_SETOR: Record<string, string> = {
   [CLI_M]: "Banheiro clientes masc.",
 };
 export const nomeCurtoDoSetor = (nome: string): string => NOME_CURTO_DO_SETOR[nome] || nome;
+
+/**
+ * Nome EXIBIDO nas telas de cadastro: por extenso curto, sem "fem.", "masc." nem "colab.". É só apresentação: o identificador gravado
+ * (nome oficial completo em setoresManual) nunca muda, e os equipamentos continuam ligados a ele. `nomeCurtoDoSetor` segue existindo para comparar nomes.
+ */
+const NOME_EXIBIDO_DO_SETOR: Record<string, string> = {
+  [VEST_F]: "Vestiário feminino",
+  [BAN_F]: "Banheiro feminino · colaboradores",
+  [VEST_M]: "Vestiário masculino",
+  [BAN_M]: "Banheiro masculino · colaboradores",
+  [CLI_F]: "Banheiro feminino · clientes",
+  [CLI_M]: "Banheiro masculino · clientes",
+};
+export const nomeExibidoDoSetor = (nome: string): string => NOME_EXIBIDO_DO_SETOR[nome] || nomeCurtoDoSetor(nome);
+
+const palavrasDoNome = (texto: string): string[] =>
+  texto.normalize("NFD").replace(/\p{M}/gu, "").toLocaleLowerCase("pt-BR").split(/[^a-z0-9]+/).filter(Boolean);
+
+/**
+ * Segunda linha do setor oficial (o nome oficial completo) SÓ quando acrescenta algo: se repete o nome exibido (mesmas palavras, com até 2 a mais,
+ * como "de"), fica vazia. Setor sem nome oficial diferente (ex.: Central de gás) também fica sem segunda linha: o catálogo (manualBase) não traz descrição.
+ */
+export function descricaoDoSetor(nome: string): string {
+  const exibido = nomeExibidoDoSetor(nome);
+  if (exibido === nome) return "";
+  const dele = palavrasDoNome(exibido);
+  const dela = palavrasDoNome(nome);
+  const radical = (palavra: string) => palavra.slice(0, 6);
+  const contidas = dele.every((palavra) => dela.some((outra) => radical(outra) === radical(palavra)));
+  return contidas && dela.length - dele.length <= 2 ? "" : nome;
+}
 
 /** Quem usa o setor: agrupa a lista do pacote (colaboradores, depois clientes). */
 export const publicoDoSetor = (nome: string): "Produção e apoio" | "Colaboradores" | "Clientes" =>
@@ -236,10 +281,12 @@ export function limiteSugeridoParaEquipamento(nome: string): LimiteDeTemperatura
 /** As perguntas do questionário são sempre as padrão: nenhum tipo, CNAE ou pacote muda as perguntas. */
 export const PERGUNTAS_SEMPRE_PADRAO = true as const;
 
-/** Salvar a empresa só é bloqueado por CNAE fora do formato quando a empresa é nova ou o código foi MUDADO em relação ao salvo; empresa antiga com o CNAE intacto só mostra o aviso. */
-export function cnaeBloqueiaSalvar(cnaeDoFormulario: string | undefined, cnaeSalvo: string | undefined, empresaNova: boolean): boolean {
-  if (validarCnae(cnaeDoFormulario).situacao !== "formato") return false;
-  return empresaNova || String(cnaeDoFormulario ?? "").trim() !== String(cnaeSalvo ?? "").trim();
+/** Salvar a empresa só é bloqueado por CNAE inválido (fora do formato ou inexistente na tabela oficial) quando a empresa é nova ou o código foi MUDADO em relação ao salvo; empresa antiga com o CNAE intacto só mostra o aviso e salva os outros campos. */
+export function cnaeBloqueiaSalvar(cnaeDoFormulario: string | undefined, cnaeSalvo: string | undefined, empresaNova: boolean, veioDaConsulta = false): boolean {
+  if (!cnaeInvalido(cnaeDoFormulario)) return false;
+  // Código que veio da consulta de CNPJ (dado fiscal real) e só não está na tabela oficial: vira aviso, não bloqueia; só o formato inválido bloqueia.
+  if (veioDaConsulta && validarCnae(cnaeDoFormulario).situacao === "inexistente") return false;
+  return empresaNova || normalizarCnae(cnaeDoFormulario) !== normalizarCnae(cnaeSalvo);
 }
 
 /** A consulta de CNPJ só decide o tipo se a pessoa não ajustou nada ("Outro" ou vazio gravado); o ajuste dela nunca é apagado. */

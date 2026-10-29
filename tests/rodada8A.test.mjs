@@ -113,7 +113,7 @@ test("A3: o autocompletar usa só o catálogo de nomes e os equipamentos da PRÓ
   assert.ok(sugerirNomesDeEquipamento("bat", ["Batedeira planetária"]).includes("Batedeira planetária"), "equipamento já cadastrado na empresa");
   // nomes que só existiam nos pacotes por tipo ou nos sinônimos não aparecem mais
   assert.equal(sugerirNomesDeEquipamento("mass", []).length, 0, "Masseira era só do pacote da padaria");
-  assert.equal(sugerirNomesDeEquipamento("estu", []).length, 0, "Estufa / balcão térmico era só do pacote");
+  assert.deepEqual(sugerirNomesDeEquipamento("estu", []), ["Estufa"], "Estufa entrou no catálogo (rodada 9A); \"Estufa / balcão térmico\" continua sendo só do pacote");
   assert.equal(sugerirNomesDeEquipamento("cong", []).length, 0, "Congelador era só sinônimo");
   const fonte = lerFonte("lib/autocompletarEquipamento.ts");
   assert.equal(/from "\.\/tiposDeEstabelecimento/.test(fonte), false, "não depende do pacote por tipo");
@@ -228,7 +228,7 @@ test("A6(b): vínculos sugeridos: marcados por padrão só quando o casamento é
 
 test("A6(c)(d): 'Parece o setor oficial <nome curto> · Vincular' em uma linha; a frase da faixa não termina em dois pontos", () => {
   const tela = lerFonte("components/pc/CadastroAmbientes.tsx");
-  assert.ok(tela.includes("Parece o setor oficial {nomeCurtoDoSetor(parecido)} ·"));
+  assert.ok(tela.includes("Parece o setor oficial {nomeExibidoDoSetor(parecido)} ·"));
   assert.ok(lerFonte("app/cadastro-estrutura.css").includes(".cadest-parece{display:flex") && lerFonte("app/cadastro-estrutura.css").includes("white-space:nowrap"));
   assert.equal(listaComPontoFinal(["Recebimento", "Banheiro clientes masc."]), "Recebimento, Banheiro clientes masc.");
   assert.equal(listaComPontoFinal(["Recebimento", "Cozinha"]), "Recebimento, Cozinha.");
@@ -246,24 +246,28 @@ test("A7(a): o CNAE precisa ter exatamente 7 dígitos (a pontuação não conta)
   assert.deepEqual([validarCnae("5611-2/0").situacao, validarCnae("5611-2/0").digitos], ["formato", 6]);
   assert.equal(validarCnae("5611-2/0").mensagem, "O CNAE tem 7 dígitos (você digitou 6).");
   assert.equal(validarCnae("56112011").situacao, "formato");
-  // 7 dígitos fora da tabela do app (que tem só os códigos de alimentação): formato vale, existência não é verificada
-  assert.equal(validarCnae("8650-0/04").situacao, "fora-da-tabela");
-  assert.equal(validarCnae("8650-0/04").mensagem, "CNAE sem sugestões neste app");
+  // 7 dígitos que existem na tabela oficial do IBGE, mas não são tipo de alimentação do app: vale, sem sugestões
+  assert.equal(validarCnae("8650-0/04").situacao, "sem-sugestao");
+  assert.equal(validarCnae("8650-0/04").mensagem, "CNAE reconhecido · sem sugestões neste app");
+  // 7 dígitos que NÃO existem na tabela oficial
+  assert.equal(validarCnae("9999999").situacao, "inexistente");
+  assert.equal(validarCnae("9999999").mensagem, "CNAE não encontrado na tabela oficial");
   assert.equal(validarCnae("abcdefg").situacao, "formato", "só letras é inválido, não vazio");
   assert.equal(validarCnae("   ").situacao, "vazio");
   assert.equal(cnaeReconhecido("8650004"), false);
   assert.equal(cnaeReconhecido("5611-2/01"), true);
   assert.equal(MENSAGEM_CNAE_NAO_RECONHECIDO, "CNAE não reconhecido · sem sugestões");
-  assert.equal(mensagemSemSugestaoDoCnae("8650004"), "CNAE sem sugestões neste app", "7 dígitos fora da tabela");
+  assert.equal(mensagemSemSugestaoDoCnae("8650004"), "CNAE reconhecido · sem sugestões neste app", "existe na tabela oficial");
+  assert.equal(mensagemSemSugestaoDoCnae("9999999"), MENSAGEM_CNAE_NAO_RECONHECIDO, "7 dígitos que não existem");
   assert.equal(mensagemSemSugestaoDoCnae("123"), MENSAGEM_CNAE_NAO_RECONHECIDO, "formato inválido");
 });
 
-test("A7(b): ao mudar o código a descrição é guardada e limpa, volta se o código voltar, com o aviso para consultar de novo", () => {
+test("A7(b): ao mudar o código a descrição vem da tabela oficial (campo somente leitura) e volta ao original se o código voltar", () => {
   const pagina = lerFonte("app/page.tsx");
   assert.ok(pagina.includes('campo === "cnae" && normalizarCnae(valor) !== normalizarCnae(form.cnae)'));
-  assert.ok(pagina.includes("setDescricaoGuardada({ digitos: normalizarCnae(form.cnae), texto: form.cnaeDescricao })"), "a original fica guardada");
-  assert.ok(pagina.includes("cnaeDescricao: descricaoGuardada.texto"), "e volta se o código voltar");
-  assert.ok(pagina.includes("Descrição não corresponde ao código; use"));
+  assert.ok(pagina.includes("setDescricaoGuardada(decisao.guardada)"), "a original fica guardada");
+  assert.ok(pagina.includes("descricaoAoMudarCodigo({") && pagina.includes("cnaeDescricao: decisao.descricao"), "descrição da tabela ou a original do mesmo código (função pura)");
+  assert.equal(pagina.includes("Descrição não corresponde ao código"), false, "o aviso antigo saiu");
 });
 
 test("A7(a) revisão: CNAE fora do formato só bloqueia o salvar em empresa nova ou com o código mudado", () => {
@@ -273,7 +277,7 @@ test("A7(a) revisão: CNAE fora do formato só bloqueia o salvar em empresa nova
   assert.equal(cnaeBloqueiaSalvar("5611201", "123", false), false, "agora válido");
   assert.equal(cnaeBloqueiaSalvar("", undefined, true), false, "vazio não bloqueia");
   assert.equal(cnaeBloqueiaSalvar("abc", undefined, true), true, "só letras");
-  assert.ok(lerFonte("app/page.tsx").includes("cnaeBloqueiaSalvar(form.cnae, cnaeSalvo, !editingEmpresaId)"));
+  assert.ok(lerFonte("app/page.tsx").includes("cnaeBloqueiaSalvar(form.cnae, cnaeSalvo, !editingEmpresaId,"));
 });
 
 test("revisão 2 e 4: o Manual recebe o tipo efetivo; a consulta de CNPJ não apaga o ajuste do usuário", () => {
@@ -338,7 +342,10 @@ test("A7(e): CNAE desconhecido ou inválido não gera sugestão e é recalculado
   assert.deepEqual(sozinho.ambientes, pacoteDoTipo("lanchonete").ambientes);
   assert.equal(tituloDaSugestao(sozinho), "Sugestões para Lanchonete");
   assert.equal(sugestaoPorCnae({ cnae: "8650004", tipo: "Outro" }).situacao, "sem-sugestao", "sem ajuste e sem CNAE reconhecido: nada");
-  assert.equal(sugestaoPorCnae({ cnae: "8650004", tipo: TIPO_OUTRO_ESCOLHIDO }).situacao, "sem-sugestao", "Outro escolhido não força pacote sem CNAE conhecido");
+  // Rodada 9A: "Outro (escolhido)" é ajuste efetivo também com CNAE sem tipo no app
+  const forcado = sugestaoPorCnae({ cnae: "8650004", tipo: TIPO_OUTRO_ESCOLHIDO });
+  assert.equal(forcado.situacao, "ok");
+  assert.deepEqual(forcado.ambientes, pacoteDoTipo("outro").ambientes);
 });
 
 // ===== A8: uma linha só no setor vazio sem sugestão =====

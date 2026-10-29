@@ -31,3 +31,25 @@ export function textoDeEndereco(valor: string | undefined | null): string {
   if (/[a-zà-ÿ]/.test(texto)) return texto;
   return texto.split(" ").map((palavra, indice) => palavraDeEndereco(palavra, indice === 0)).join(" ");
 }
+
+/** Campos de texto livre do cadastro da empresa que são aparados ao salvar (nunca CNPJ, e-mail, telefone, CNAE nem CEP). */
+export const CAMPOS_DE_TEXTO_DA_EMPRESA = ["nomeFantasia", "razaoSocial", "logradouro", "numero", "complemento", "bairro", "municipio", "cargoResponsavel"] as const;
+
+/** Apara as pontas e junta espaços repetidos ("SALA  23C" vira "SALA 23C"). Não muda maiúsculas nem acentos. */
+export const compactarEspacos = (texto: string): string => texto.replace(/\s+/g, " ").trim();
+
+/**
+ * Ao salvar: só os campos EDITADOS nesta sessão (valor diferente do salvo; empresa nova = todos) são aparados e compactados.
+ * Devolve só o que mudou; campo igual ao salvo nunca é tocado (dados existentes não são alterados em lote).
+ */
+export function camposAparadosAoSalvar(form: Record<string, unknown>, salvo: Record<string, unknown> | undefined, campos: readonly string[] = CAMPOS_DE_TEXTO_DA_EMPRESA): Record<string, string> {
+  const mudou: Record<string, string> = {};
+  for (const campo of campos) {
+    const atual = form[campo];
+    if (typeof atual !== "string") continue;
+    if (salvo && atual === salvo[campo]) continue;
+    const limpo = compactarEspacos(atual);
+    if (limpo !== atual) mudou[campo] = limpo;
+  }
+  return mudou;
+}

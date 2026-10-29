@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Select from "@/components/Select";
-import { nomeCurtoDoSetor, pacoteDoTipo, publicoDoSetor, rotuloDoTipo } from "@/lib/tiposDeEstabelecimento";
+import { nomeExibidoDoSetor, pacoteDoTipo, publicoDoSetor, rotuloDoTipo } from "@/lib/tiposDeEstabelecimento";
 import { DEFINICOES_FLUXOS_OPERACIONAIS, PERGUNTAS_POR_FLUXO } from "@/lib/operationalFlows";
 import {
   ESTADO_INICIAL_DO_PACOTE,
@@ -15,7 +15,6 @@ import {
   chaveDeAmbiente,
   chaveDeEquipamento,
   chaveDeFluxo,
-  contagemDoGrupo,
   equipamentoBloqueado,
   estaMarcado,
   linhaDoResumoDeFluxos,
@@ -249,7 +248,7 @@ function JanelaDoPacote({ tipo, ambientesDaEmpresa, ambientes, equipamentos, flu
         <header className="esc-cabeca">
           <div className="pacote-titulo-linha">
             <h2 id="pacote-titulo" className="esc-titulo">
-              Pacote de {rotuloDoTipo(tipo)} · {contar(ambientes.length, "ambiente", "ambientes")}, {contar(equipamentos.length, "equipamento", "equipamentos")}, {contar(fluxos.length, "fluxo", "fluxos")}
+              Pacote de {rotuloDoTipo(tipo)}
             </h2>
             {aviso && <p className="pacote-aviso" role="status">{aviso}</p>}
           </div>
@@ -265,7 +264,6 @@ function JanelaDoPacote({ tipo, ambientesDaEmpresa, ambientes, equipamentos, flu
         <div className="esc-corpo" role="tabpanel">
           <div className="pacote-grupo-topo">
             <h3 className="pacote-grupo-titulo">{atual.titulo}</h3>
-            <span className="pacote-grupo-conta">{contagemDoGrupo(atual.marcados, atual.total)}</span>
             {atual.total > 0 && (
               <button type="button" className="ui-btn ui-btn--secondary pacote-marcar-todos" onClick={() => marcarTodos(aba, !tudoMarcado)}>
                 {tudoMarcado ? "Desmarcar todos" : "Marcar todos"}
@@ -279,7 +277,7 @@ function JanelaDoPacote({ tipo, ambientesDaEmpresa, ambientes, equipamentos, flu
               <div key={grupo.grupo} className="pacote-sub-grupo">
                 <h4 className="pacote-subtitulo">{grupo.grupo}</h4>
                 <ul className="esc-opcoes">
-                  {grupo.ambientes.map((ambiente) => opcao(chaveDeAmbiente(ambiente), nomeCurtoDoSetor(ambiente), ambiente, estaMarcado(estado, chaveDeAmbiente(ambiente)), () => mudarAmbiente(ambiente)))}
+                  {grupo.ambientes.map((ambiente) => opcao(chaveDeAmbiente(ambiente), nomeExibidoDoSetor(ambiente), ambiente, estaMarcado(estado, chaveDeAmbiente(ambiente)), () => mudarAmbiente(ambiente)))}
                 </ul>
               </div>
             ))}
@@ -291,12 +289,12 @@ function JanelaDoPacote({ tipo, ambientesDaEmpresa, ambientes, equipamentos, flu
                 <div key={grupo.ambiente} className="pacote-eq-grupo">
                   {recolhido ? (
                     <div className="pacote-eq-recolhido">
-                      <span title={grupo.ambiente}>{nomeCurtoDoSetor(grupo.ambiente)} · ambiente desmarcado</span>
-                      <button type="button" className="ui-btn ui-btn--secondary" onClick={() => mudarAmbiente(grupo.ambiente)}>Marcar {nomeCurtoDoSetor(grupo.ambiente)}</button>
+                      <span title={grupo.ambiente}>{nomeExibidoDoSetor(grupo.ambiente)} · ambiente desmarcado</span>
+                      <button type="button" className="ui-btn ui-btn--secondary" onClick={() => mudarAmbiente(grupo.ambiente)}>Marcar {nomeExibidoDoSetor(grupo.ambiente)}</button>
                     </div>
                   ) : (
                     <>
-                      <h4 className="pacote-eq-ambiente" title={grupo.ambiente}>{nomeCurtoDoSetor(grupo.ambiente)}</h4>
+                      <h4 className="pacote-eq-ambiente" title={grupo.ambiente}>{nomeExibidoDoSetor(grupo.ambiente)}</h4>
                       <ul className="esc-opcoes">
                         {grupo.itens.map((item) => opcao(chaveDeEquipamento(item), item.nome, undefined, estaMarcado(estado, chaveDeEquipamento(item)), () => setEstado(alternarItem(estado, chaveDeEquipamento(item)))))}
                       </ul>
@@ -334,7 +332,7 @@ function JanelaDoPacote({ tipo, ambientesDaEmpresa, ambientes, equipamentos, flu
                         onChange={(evento) => setSetorEscolhido((atualEscolha) => ({ ...atualEscolha, [fluxo]: evento.target.value }))}
                       >
                         <option value="">Escolha o setor deste fluxo</option>
-                        {opcoesDeSetor.map((opcaoDeSetor) => <option key={opcaoDeSetor} value={opcaoDeSetor}>{nomeCurtoDoSetor(opcaoDeSetor)}</option>)}
+                        {opcoesDeSetor.map((opcaoDeSetor) => <option key={opcaoDeSetor} value={opcaoDeSetor}>{nomeExibidoDoSetor(opcaoDeSetor)}</option>)}
                       </Select>
                     </li>
                   );

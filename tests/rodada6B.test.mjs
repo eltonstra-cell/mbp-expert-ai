@@ -303,7 +303,7 @@ test("Ambientes: textos, botões e salvamento ao marcar, sem botão Salvar", () 
 
 test("Equipamentos: painel, nome repetido na hora, menu ⋯, mover e desfazer", () => {
   const equip = ler("../components/pc/CadastroEquipamentos.tsx");
-  for (const texto of ["Adicionar em ", "Copiar de outra empresa", "Nenhum equipamento neste setor ainda.", "Cadastrar como outro item", "Editar nome e quantidade", "Mover para outro setor ›", "Remover", "+ Digitar outro equipamento", "Marcar todos", "Sugestão genérica — o RT confirma.", "Copiado: ", "Desfazer", "aria-live=\"polite\"", "aria-describedby=\"cadest-eq-repetido\""]) {
+  for (const texto of ["Adicionar em ", "Copiar de outra empresa", "Nenhum equipamento neste setor ainda.", "Cadastrar como outro item", "Editar nome e quantidade", "Mover para outro setor ›", "Remover", "+ Digitar outro equipamento", "Marcar todos", "Sugestão genérica — a RT confirma.", "Copiado: ", "Desfazer", "aria-live=\"polite\"", "aria-describedby=\"cadest-eq-repetido\""]) {
     assert.ok(equip.includes(texto), texto);
   }
   assert.ok(equip.includes("Somar {quantidadeValida(qtd)} ao existente"));
@@ -333,7 +333,7 @@ test("página: grava na hora, bloqueio de revisão com alteração não salva, C
 test("Ambientes: setor oficial sugerido (com fonte) e vínculo de questionário em lote continuam na aba nova, usando as mesmas regras", () => {
   const fonte = readFileSync(new URL("../components/pc/CadastroAmbientes.tsx", import.meta.url), "utf8");
   // Rodada 7A: a linha da Portaria saiu da lista; a sugestão vira "Parece o setor oficial X · Vincular" e a base legal vai para o menu ⋯.
-  assert.ok(fonte.includes("sugerirSetorOficial") && fonte.includes("Parece o setor oficial {nomeCurtoDoSetor(parecido)}") && fonte.includes("baseDoSetorOficial") && fonte.includes("rodape={base?.texto}"));
+  assert.ok(fonte.includes("sugerirSetorOficial") && fonte.includes("Parece o setor oficial {nomeExibidoDoSetor(parecido)}") && fonte.includes("baseDoSetorOficial") && fonte.includes("rodape={base?.texto}"));
   assert.ok(ler("../lib/setorOficialSugerido.ts").includes("conferido em"), "a data de conferência continua a mesma fonte");
   assert.ok(fonte.includes("vincularQuestionarioEmLote") && fonte.includes("ambientesSemQuestionario") && fonte.includes("Vincular a um setor oficial"));
   assert.ok(fonte.includes("oficialParecido(novoNome.trim())"), "a sugestão aparece já ao digitar o nome em + Ambiente próprio");

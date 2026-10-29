@@ -165,3 +165,22 @@ export function mensagemDeFalhaDaConsulta(online: boolean): string {
     ? "Não consegui consultar o CNPJ agora. Preencha à mão; você pode consultar de novo depois."
     : "Sem sinal: preencha à mão. Quando o sinal voltar, consulte o CNPJ de novo; os dados chegam como proposta para você aceitar ou ignorar.";
 }
+
+export const MENSAGEM_CONSULTA_IGNORADA = "Consulta ignorada. Preencha à mão ou consulte de novo.";
+export const MENSAGEM_CONSULTA_APLICADA = "Dados aplicados. Confira e edite o que precisar.";
+
+/**
+ * Uma só mensagem sobre a consulta, a que corresponde ao estado real (nunca duas que se contradizem):
+ * - "Consultando…", "Encontrei dados…" (proposta à espera) e falhas descrevem a última ação e aparecem sozinhas; com proposta pendente, consultando ou falha, o aviso "Preenchido pela consulta" não aparece.
+ * - Enquanto há campos preenchidos pela consulta ainda sem confirmar, o aviso "Preenchido pela consulta" é a verdade sobre os campos: as mensagens "Dados aplicados" e "Consulta ignorada" (que só repetem ou contradizem esse estado) saem.
+ * - Sem campos pendentes, "Dados aplicados" e "Consulta ignorada" valem como estavam.
+ */
+export function mensagensDaConsulta(entrada: { mensagem: string; propostaPendente: boolean; camposPendentes: boolean }): { mensagem: string; avisoPreenchido: boolean } {
+  const { mensagem, propostaPendente, camposPendentes } = entrada;
+  const consultando = mensagem.startsWith("Consultando");
+  // Falha (ou erro de CNPJ) é o resultado da última ação: aparece sozinha, sem o aviso "Preenchido pela consulta" ao lado.
+  const falha = Boolean(mensagem) && !consultando && !mensagem.startsWith("Encontrei") && !mensagem.startsWith("Dados aplicados") && mensagem !== MENSAGEM_CONSULTA_IGNORADA;
+  const avisoPreenchido = camposPendentes && !propostaPendente && !consultando && !falha;
+  const soRepete = mensagem === MENSAGEM_CONSULTA_IGNORADA || mensagem === MENSAGEM_CONSULTA_APLICADA;
+  return { mensagem: soRepete && camposPendentes ? "" : mensagem, avisoPreenchido };
+}

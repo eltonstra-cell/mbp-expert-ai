@@ -19,7 +19,7 @@ import { limiteSugeridoParaEquipamento, pacoteDoTipo } from "@/lib/tiposDeEstabe
 import { sugerirSetorOficial } from "@/lib/setorOficialSugerido";
 import { textoCurtoDaResponsabilidade, textoDosAtivos } from "@/lib/manualIdentificacao";
 import EscolhaEmJanela from "@/components/EscolhaEmJanela";
-import { nomeCurtoDoSetor } from "@/lib/tiposDeEstabelecimento";
+import { descricaoDoSetor, nomeExibidoDoSetor } from "@/lib/tiposDeEstabelecimento";
 import { perguntasDoAmbiente, perguntasDoSetor } from "@/lib/perguntasDoAmbiente";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
 import VozEquipamentosConferencia, { type ItemParaConferir } from "@/components/VozEquipamentosConferencia";
@@ -178,7 +178,7 @@ export default function ManualBaseFields({
     const vinculadosAosRetirados = Object.entries(vinculos).filter(([nome, oficial]) => retirados.includes(oficial) && setores.includes(nome));
     setAvisoDePerguntas(
       vinculadosAosRetirados
-        .map(([nome, oficial]) => `“${nome}” está vinculado a “${nomeCurtoDoSetor(oficial)}” e mantém as ${perguntasDoSetor(oficial)} perguntas desse setor; o setor oficial sai da lista. Para o ambiente passar ao questionário básico, tire o vínculo.`)
+        .map(([nome, oficial]) => `“${nome}” está vinculado a “${nomeExibidoDoSetor(oficial)}” e mantém as ${perguntasDoSetor(oficial)} perguntas desse setor; o setor oficial sai da lista. Para o ambiente passar ao questionário básico, tire o vínculo.`)
         .join(" ")
     );
     const comEquipamentos = retirados.find((setor) => bloqueioDeExcluirAmbiente(setor, equipamentos).bloqueado);
@@ -332,7 +332,7 @@ export default function ManualBaseFields({
                 modo="botao"
                 titulo="Setores do estabelecimento"
                 apoio="Marque somente os setores que realmente existem nesta empresa."
-                opcoes={SETORES_OFICIAIS_MANUAL.map((setor) => ({ id: setor, titulo: nomeCurtoDoSetor(setor), descricao: nomeCurtoDoSetor(setor) === setor ? undefined : setor }))}
+                opcoes={SETORES_OFICIAIS_MANUAL.map((setor) => ({ id: setor, titulo: nomeExibidoDoSetor(setor), descricao: descricaoDoSetor(setor) || undefined }))}
                 marcadas={oficiaisMarcados}
                 palavra="setores marcados"
                 rotuloDoBotao="Escolher setores"
@@ -421,7 +421,7 @@ export default function ManualBaseFields({
                             value={vinculos[setor] || ""}
                             onChange={(event) => {
                               const { [setor]: _removido, ...resto } = vinculos;
-                              if (vinculos[setor] && !event.target.value) setAvisoDePerguntas(`“${setor}” sem vínculo: perde as ${perguntasDoSetor(vinculos[setor])} perguntas de “${nomeCurtoDoSetor(vinculos[setor])}” e fica com o questionário básico (${textoDaConta(setor)}).`);
+                              if (vinculos[setor] && !event.target.value) setAvisoDePerguntas(`“${setor}” sem vínculo: perde as ${perguntasDoSetor(vinculos[setor])} perguntas de “${nomeExibidoDoSetor(vinculos[setor])}” e fica com o questionário básico (${textoDaConta(setor)}).`);
                               else setAvisoDePerguntas("");
                               onVinculosChange(event.target.value ? { ...resto, [setor]: event.target.value } : resto);
                             }}
@@ -664,7 +664,7 @@ export default function ManualBaseFields({
               return (
                 <div key={grupo.setor} className="cad-grupo">
                   <div className="cad-grupo-titulo">
-                    <span title={grupo.setor}>{nomeCurtoDoSetor(grupo.setor)}</span>
+                    <span title={grupo.setor}>{nomeExibidoDoSetor(grupo.setor)}</span>
                     <span className="cad-conta" aria-label={`${grupo.itens.length} itens`}>{grupo.itens.length}</span>
                     {setoresParaEquipamentos.length > 1 && grupo.itens.length > 0 && (
                       <button type="button" className="cad-copiar" onClick={() => setCopiando({ origem: grupo.setor, destinos: [] })}>Copiar para outros ambientes</button>

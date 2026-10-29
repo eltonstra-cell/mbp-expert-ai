@@ -2,7 +2,7 @@
 // O vínculo de um equipamento com o ambiente é o nome COMPLETO gravado em setoresManual (único na lista), então "Cozinha" (próprio) e
 // "Cozinha / Produção" (oficial) são dois setores distintos mesmo mostrando o mesmo nome curto; este módulo só cuida do texto.
 import { SETORES_OFICIAIS_MANUAL, normalizarSetorManual } from "./manualBase.ts";
-import { nomeCurtoDoSetor } from "./tiposDeEstabelecimento.ts";
+import { nomeCurtoDoSetor, nomeExibidoDoSetor } from "./tiposDeEstabelecimento.ts";
 
 /** Sem acento, sem diferença de maiúscula e com espaços normalizados. */
 export const chaveDeNomeDeAmbiente = (nome: string): string =>
@@ -33,7 +33,7 @@ export type ConflitoDeNome = { tipo: "oficial"; setor: string; marcado: boolean 
 export function conflitoDeNomeNovo(nome: string, setores: string[]): ConflitoDeNome | null {
   const chave = chaveDeNomeDeAmbiente(nome);
   if (!chave) return null;
-  const oficial = SETORES_OFICIAIS_MANUAL.find((setor) => chaveDeNomeDeAmbiente(setor) === chave || chaveDeNomeDeAmbiente(nomeCurtoDoSetor(setor)) === chave) || oficialPorApelido(nome);
+  const oficial = SETORES_OFICIAIS_MANUAL.find((setor) => chaveDeNomeDeAmbiente(setor) === chave || chaveDeNomeDeAmbiente(nomeCurtoDoSetor(setor)) === chave || chaveDeNomeDeAmbiente(nomeExibidoDoSetor(setor)) === chave) || oficialPorApelido(nome);
   if (oficial && setores.includes(oficial)) return { tipo: "oficial", setor: oficial, marcado: true };
   const proprio = setores.find((setor) => !ehSetorOficial(setor) && chaveDeNomeDeAmbiente(setor) === chave);
   if (proprio) return { tipo: "proprio", setor: proprio };
@@ -52,8 +52,8 @@ export function mensagemDoConflito(conflito: ConflitoDeNome | null): string {
  * cujo nome curto é "Cozinha"), o próprio ganha "(próprio)". O oficial nunca muda.
  */
 export function rotuloDoSetor(setor: string, setores: string[]): string {
-  const curto = nomeCurtoDoSetor(setor);
+  const curto = nomeExibidoDoSetor(setor);
   if (ehSetorOficial(setor)) return curto;
-  const repete = setores.some((outro) => outro !== setor && chaveDeNomeDeAmbiente(nomeCurtoDoSetor(outro)) === chaveDeNomeDeAmbiente(curto));
+  const repete = setores.some((outro) => outro !== setor && chaveDeNomeDeAmbiente(nomeExibidoDoSetor(outro)) === chaveDeNomeDeAmbiente(curto));
   return repete ? `${curto} (próprio)` : curto;
 }

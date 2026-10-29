@@ -151,8 +151,9 @@ test("A7(a): menos de 3 letras bloqueia Adicionar e mostra a mensagem na hora", 
   assert.equal(nomeDeEquipamentoValido("Réa"), true);
   assert.equal(podeAdicionarEquipamento("Re", undefined, null), false, "'Re' + Enter não cadastra 're'");
   assert.equal(podeAdicionarEquipamento("Rei", undefined, null), true);
-  assert.equal(MENSAGEM_DE_NOME_CURTO, "Digite o nome do equipamento (mínimo 3 letras)");
-  assert.equal(avisoDeNomeCurto("Re", false), MENSAGEM_DE_NOME_CURTO, "enquanto digita");
+  assert.equal(MENSAGEM_DE_NOME_CURTO, "Digite ao menos 3 letras");
+  assert.equal(avisoDeNomeCurto("Re", false), "", "enquanto digita: nada");
+  assert.equal(avisoDeNomeCurto("Re", true), MENSAGEM_DE_NOME_CURTO, "depois de Enter ou de sair do campo");
   assert.equal(avisoDeNomeCurto("", false), "", "campo vazio e sem tentativa: sem mensagem");
   assert.equal(avisoDeNomeCurto("", true), MENSAGEM_DE_NOME_CURTO, "Enter com o campo vazio");
   assert.equal(avisoDeNomeCurto("Coifa", true), "");

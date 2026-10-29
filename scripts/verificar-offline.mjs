@@ -1732,7 +1732,7 @@ detalhes:{chipDaAcaoNaBarra:chipVisivel,sobrepostos,pessoas:pessoas.map((c)=>c.t
     const voltou23 = ((await empresa23()).equipamentosSetores || []).filter((i) => i.nome === "Refrigerador").length === 1;
     registrar("23m. Remover não abre janela de confirmação: remove, mostra '✓ Refrigerador removido · Desfazer' (link azul #2B54CF sublinhado, sem botão escuro) e o Desfazer devolve o item", removeu23 && !dialogo23 && /removido · Desfazer/.test(toastRem23) && linkDesfazer23 && linkDesfazer23.cor === "rgb(43, 84, 207)" && /underline/.test(linkDesfazer23.sub) && /^rgba\(0, 0, 0, 0\)$|transparent/.test(linkDesfazer23.fundo) && voltou23, JSON.stringify({ toastRem23, linkDesfazer23, voltou23 }));
 
-    // 23n. Sugestões em lote no setor vazio (do pacote do tipo; 'sugestão genérica — o RT confirma') e adicionar N itens.
+    // 23n. Sugestões em lote no setor vazio (do pacote do tipo; 'sugestão genérica — a RT confirma') e adicionar N itens.
     // Setor-alvo: o primeiro setor marcado que HOJE não tem equipamento nenhum e para o qual o pacote do tipo traz sugestões.
     const equipamentosAgora23 = (await empresa23()).equipamentosSetores || [];
     const pacote23 = pacoteDoTipo("restaurante").equipamentos;
@@ -1741,7 +1741,7 @@ detalhes:{chipDaAcaoNaBarra:chipVisivel,sobrepostos,pessoas:pessoas.map((c)=>c.t
     await n.esperar(500);
     const lote23 = JSON.parse(await js(`JSON.stringify((()=>{const l=document.querySelector(".cadest-lote");return {existe:!!l,titulo:l&&l.querySelector(".cadest-lote-titulo").innerText.trim(),nota:l&&l.querySelector(".cadest-lote-nota").innerText.trim(),itens:l?[...l.querySelectorAll(".cadest-lote-item")].map((x)=>x.querySelector(".cadest-lote-marca").innerText.trim()):[],links:l?[...l.querySelectorAll(".cadest-link")].map((b)=>b.innerText.trim()):[],botao:l?[...l.querySelectorAll(".cadest-btn")].map((b)=>b.innerText.trim()+(b.disabled?"|off":"")):[]}})())`));
     const esperados23 = pacote23.filter((i) => i.ambiente === alvoLote23).map((i) => i.nome);
-    registrar("23n. Setor vazio: faixa 'Sugestões para Restaurantes e similares · CNAE 5611-2/01' com os itens do pacote para o setor, 'Sugestão genérica — o RT confirma.', 'Marcar todos', 'Adicionar itens' desligado e '+ Digitar outro equipamento'", lote23.existe && lote23.titulo === "Sugestões para Restaurantes e similares · CNAE 5611-2/01" && lote23.nota === "Sugestão genérica — o RT confirma." && JSON.stringify(lote23.itens) === JSON.stringify(esperados23) && lote23.links.includes("Marcar todos") && lote23.links.includes("+ Digitar outro equipamento") && lote23.botao.includes("Adicionar itens|off"), JSON.stringify({ lote23, esperados23 }));
+    registrar("23n. Setor vazio: faixa 'Sugestões para Restaurantes e similares · CNAE 5611-2/01' com os itens do pacote para o setor, 'Sugestão genérica — a RT confirma.', 'Marcar todos', 'Adicionar itens' desligado e '+ Digitar outro equipamento'", lote23.existe && lote23.titulo === "Sugestões para Restaurantes e similares · CNAE 5611-2/01" && lote23.nota === "Sugestão genérica — a RT confirma." && JSON.stringify(lote23.itens) === JSON.stringify(esperados23) && lote23.links.includes("Marcar todos") && lote23.links.includes("+ Digitar outro equipamento") && lote23.botao.includes("Adicionar itens|off"), JSON.stringify({ lote23, esperados23 }));
     await clicarTexto23(".cadest-lote .cadest-link", "Marcar todos");
     await n.esperar(200);
     await clicarTexto23(".cadest-lote .cadest-btn", `Adicionar ${esperados23.length} ${esperados23.length === 1 ? "item" : "itens"}`);

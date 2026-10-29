@@ -14,9 +14,11 @@ import {
   adicionarSugestoesEmLote,
   botaoDoLote,
   type GrupoDeAdicoes,
+  linhaDeSugestoesRapidasVisivel,
   mostrarQuantidadeNaLinha,
   normalizarNomeDeEquipamento,
   textoDoAvisoDeAdicoes,
+  acusarNomeCurtoAoSair,
   avisoDeNomeCurto,
   MENSAGEM_DE_NOME_CURTO,
   avisoDeNomeRepetido,
@@ -161,7 +163,8 @@ export default function CadastroEquipamentos({ empresa, podeEditar, estado, onGr
   const verAberto = verSugestoes === selecionado;
   const semSugestao = avisoQuandoNaoHaSugestao(sugestao, sugeridosDoSetor);
   const opcoesDeNome = sugerirNomesDeEquipamento(nome, equipamentos.map((item) => item.nome));
-  const listaVisivel = listaAberta && opcoesDeNome.length > 0;
+  // Com o erro de nome curto à vista, a lista de autocompletar fecha (ela cobriria a mensagem).
+  const listaVisivel = listaAberta && opcoesDeNome.length > 0 && !avisoCurto;
   const loteAtual = lote.setor === selecionado ? lote : { setor: selecionado, marcados: [], qtds: {} as Record<string, number> };
   const outrosSetores = setores.filter((setor) => setor !== selecionado);
   // Renomear para um nome que já existe no setor: avisa na hora e bloqueia (o item que está sendo editado não conta contra si mesmo).
@@ -511,9 +514,9 @@ export default function CadastroEquipamentos({ empresa, podeEditar, estado, onGr
                     ref={campoRef}
                     id="cadest-eq-nome"
                     value={nome}
-                    onChange={(evento) => { setNome(evento.target.value); setEscolha(null); setListaAberta(true); setOpcaoAtiva(-1); }}
+                    onChange={(evento) => { setNome(evento.target.value); setEscolha(null); setTentou(false); setListaAberta(true); setOpcaoAtiva(-1); }}
                     onKeyDown={aoTeclarNoNome}
-                    onBlur={() => { setListaAberta(false); setOpcaoAtiva(-1); }}
+                    onBlur={() => { setListaAberta(false); setOpcaoAtiva(-1); if (acusarNomeCurtoAoSair(nome)) setTentou(true); }}
                     placeholder="Ex.: Refrigerador"
                     role="combobox"
                     aria-autocomplete="list"
@@ -542,7 +545,7 @@ export default function CadastroEquipamentos({ empresa, podeEditar, estado, onGr
                     </ul>
                   )}
                   <span className="ui-field-tools cad-mic">
-                    <FieldVoiceTools fieldKey="novo-equipamento" value={nome} onChange={(texto) => { setNome(texto); setEscolha(null); setListaAberta(false); }} onTextoDitado={tratarFala} contexto="Nome curto de um equipamento ou móvel de estabelecimento de alimentos." somenteVoz soIcone />
+                    <FieldVoiceTools fieldKey="novo-equipamento" value={nome} onChange={(texto) => { setNome(texto); setEscolha(null); setTentou(false); setListaAberta(false); }} onTextoDitado={tratarFala} contexto="Nome curto de um equipamento ou móvel de estabelecimento de alimentos." somenteVoz soIcone />
                   </span>
                 </span>
               </label>
@@ -601,10 +604,10 @@ export default function CadastroEquipamentos({ empresa, podeEditar, estado, onGr
           )}
 
           {podeEditar && doSetor.length > 0 && todasDoSetor.length > 0 && (
-            <p className="cadest-sugestoes" title="Sugestão genérica pelo tipo de empresa; o RT confirma">
-              {sugeridosDoSetor.length > 0 && (
+            <p className="cadest-sugestoes" title="Sugestão genérica pelo tipo de empresa; a RT confirma">
+              {linhaDeSugestoesRapidasVisivel(verAberto, sugeridosDoSetor.length) && (
                 <>
-                  Sugestões (genéricas, o RT confirma):{" "}
+                  Sugestões (genéricas, a RT confirma):{" "}
                   {sugeridosDoSetor.slice(0, 6).map((item) => (
                     <button key={item.nome} type="button" className="cadest-link" onClick={() => adicionarSugestaoRapida(item.nome)}>+ {item.nome}</button>
                   ))}
@@ -617,7 +620,7 @@ export default function CadastroEquipamentos({ empresa, podeEditar, estado, onGr
           )}
 
           {podeEditar && doSetor.length > 0 && verAberto && todasDoSetor.length > 0 && sugeridosDoSetor.length === 0 && (
-            <p id="cadest-eq-lote" className="cadest-semsugestao" role="status">Todas as sugestões já foram cadastradas</p>
+            <p id="cadest-eq-lote" className="cadest-semsugestao cadest-semsugestao--colada" role="status">Todas as sugestões já foram cadastradas</p>
           )}
 
           {doSetor.length === 0 ? (
@@ -752,7 +755,7 @@ export default function CadastroEquipamentos({ empresa, podeEditar, estado, onGr
           {podeEditar && (doSetor.length === 0 || verAberto) && sugeridosDoSetor.length > 0 && sugestao.situacao === "ok" && (
             <div id="cadest-eq-lote" className="cadest-lote" role="region" aria-label={`Sugestões para ${sugestao.nomeDoTipo}`}>
               <p className="cadest-lote-titulo">{tituloDaSugestao(sugestao)}</p>
-              <p className="cadest-lote-nota">Sugestão genérica — o RT confirma.</p>
+              <p className="cadest-lote-nota">Sugestão genérica — a RT confirma.</p>
               <ul className="cadest-lote-lista">
                 {sugeridosDoSetor.map((item) => {
                   const marcado = loteAtual.marcados.includes(item.nome);

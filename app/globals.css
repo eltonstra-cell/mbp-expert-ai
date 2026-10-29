@@ -5269,7 +5269,7 @@ html .pc-topbar .pc-busca{flex:1 1 180px;min-width:120px;max-width:380px}
 .pacote-janela .esc-opcoes{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
 @media (max-width:759px){.pacote-janela .esc-opcoes{grid-template-columns:minmax(0,1fr)}}
 .pacote-janela .esc-opcao{align-items:center;height:auto;min-height:40px;padding:4px 10px;border:1.5px solid #D5DEE6;border-radius:10px;background:#F4F6F8}
-.pacote-janela .esc-opcao.is-on{border-color:#B4C2CE;background:#fff}
+.pacote-janela .esc-opcao.is-on{border-color:#AF640A;background:#FFF6E5}
 .pacote-janela .esc-opcao-titulo{font-size:.95rem}
 .pacote-janela .pacote-marcar-todos{margin-left:auto;height:40px;padding:0 14px;border:1.5px solid #B4C2CE;background:#fff;color:#12202B;font-size:.95rem;font-weight:600;text-decoration:none}
 .pacote-sub-grupo{margin-bottom:6px}
@@ -5396,7 +5396,7 @@ button.mr-cartao.is-aberto{outline:3px solid #E8B04B;outline-offset:1px}
   --rd-trilho:#E8EBF2;
   --rd-creme:#FFF3DC;
   --rd-creme-2:#FFF8EA;
-  --rd-sync:#DDF1E3;
+  --rd-sync:#DCEBF7;
   --rd-verde:#2E7D4F;
   --rd-azul-claro:#DCEBFB;
   --rd-faixa-aberta:#E0A12E;
@@ -6214,10 +6214,10 @@ html[data-modo] .chk-resp.chk-resp--na:not(.is-marcado){border-color:#C5CCDA;bac
 html[data-modo="campo"] .campo-tela .chk-resp.chk-resp--ok:not(.is-marcado){border-color:#9BD3B0;background:#E3F5EA;color:#1B2433}
 html[data-modo="campo"] .campo-tela .chk-resp.chk-resp--nc:not(.is-marcado){border-color:#E9A7A2;background:#FBE4E2;color:#1B2433}
 html[data-modo="campo"] .campo-tela .chk-resp.chk-resp--na:not(.is-marcado){border-color:#C5CCDA;background:#EEF1F7;color:#1B2433}
-html .pc-sync-chip.is-ok,html .pc-topbar .pc-sync-chip.is-ok,html .campo-sync:not(.is-pendente):not(.is-sem-sinal):not(.is-erro){background:#E3F5EA;box-shadow:inset 0 0 0 1px #9BD3B0;color:#1B2433;font-weight:400}
-/* Início do PC: o chip volta a ser só texto, sem caixa nem borda */
-html .pc-topbar--inicio .pc-sync-chip.is-ok,html .pc-topbar--inicio .pc-sync-chip{background:transparent;box-shadow:none;border:0;padding:0 4px}
-html .pc-sync-chip.is-ok .pc-sync-dot,html .campo-sync:not(.is-pendente):not(.is-sem-sinal):not(.is-erro) span:first-child{background:#1E7A3E}
+html .pc-sync-chip.is-ok,html .pc-topbar .pc-sync-chip.is-ok,html .campo-sync:not(.is-pendente):not(.is-sem-sinal):not(.is-erro){background:#DCEBF7;box-shadow:none;color:#1B2433;font-weight:400}
+/* Chip Sincronizado: igual em todas as telas (fundo #DCEBF7, texto #1B2433, ponto #2E8B57, sem borda verde) */
+html .pc-topbar--inicio .pc-sync-chip.is-ok{background:#DCEBF7;box-shadow:none;border:0;padding:5px 12px}
+html .pc-sync-chip.is-ok .pc-sync-dot,html .campo-sync:not(.is-pendente):not(.is-sem-sinal):not(.is-erro) span:first-child{background:#2E8B57}
 
 /* Aviso com ação (Desfazer): fundo claro, ação sublinhada em azul */
 .toast-salvo .toast-acao{display:inline-flex;align-items:center;min-height:36px;padding:0 6px;border:0;background:transparent;font-size:inherit;font-weight:400;text-decoration:underline;text-underline-offset:3px;cursor:pointer;color:#2B54CF}
@@ -6402,3 +6402,12 @@ html[data-modo="campo"] .campo-tela .chk-foco-botoes{min-height:78px;align-conte
 .cnae-erro{display:block;margin-top:4px;font-size:15px;line-height:22px;color:#B83A33}
 .cnae-nota{display:block;margin-top:4px;font-size:15px;line-height:22px;color:#55607A}
 input.cnae-invalido{border-color:#B83A33!important}
+
+/* Rodada 9A: janela do pacote por tipo — caixinha terracota com check branco simples; botões coloridos em peso 400 */
+.pacote-janela .esc-caixa:checked::after{width:auto;height:auto;margin:0;border:0;transform:none;font-weight:400}
+.pacote-janela .ui-btn,.pacote-janela .esc-botao,.pacote-tipo .ui-btn{font-weight:400}
+
+/* Rodada 9A: "Ver e escolher" (faixa de sugestões pelo tipo) em azul #2B54CF com texto branco, peso 400; "Confirmei tudo" branco com borda #8A96AD */
+html .pacote-tipo .ui-btn.pacote-tipo-ver{border:2px solid #2B54CF;background:#2B54CF;color:#fff;font-weight:400}
+html .pacote-tipo .ui-btn.pacote-tipo-ver:hover{background:#2448B5;border-color:#2448B5;color:#fff}
+html .nova-consulta-aviso .ui-btn.ui-btn--secondary{border:2px solid #8A96AD;background:#fff;color:#1B2433;font-weight:400}

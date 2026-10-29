@@ -177,7 +177,8 @@ html .cadest .ui-input:focus,html .cadest .ui-input:focus-visible,html .cadest .
 .cadest-lote-titulo{margin:0;font-family:var(--font-display),"Outfit",sans-serif;font-size:17px;font-weight:500;line-height:24px}
 .cadest-lote-nota{margin:0;font-size:15px;line-height:22px;color:#55607A}
 .cadest-lote-lista{list-style:none;margin:4px 0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 32px}
-.cadest-lote-item{display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0}
+.cadest-lote-item{display:grid;grid-template-columns:minmax(0,220px) 148px;justify-content:start;align-items:center;gap:12px;min-width:0}
+.cadest-lote-item>.cadest-qtd{grid-column:2;justify-self:start}
 .cadest-lote-marca{display:flex;align-items:center;gap:10px;min-height:44px;min-width:0;font-size:15px;color:#1B2433;overflow-wrap:anywhere}
 .cadest-lote-marca input{width:20px;height:20px;flex:none;accent-color:#2B54CF}
 .cadest-lote-acoes{display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px}
@@ -235,3 +236,14 @@ html[data-modo="campo"] .cadest-qtd-botao{width:44px}
 html[data-modo="campo"] .cadest-sugestao .cadest-link,html[data-modo="campo"] .cadest-sugestoes .cadest-link{min-height:44px}
 html[data-modo="campo"] .cadest-campo--nome,html[data-modo="campo"] .cadest-novo .cadest-campo{flex-basis:100%;max-width:none}
 html[data-modo="campo"] .cadest-menu{min-width:0;width:calc(100vw - 48px)}
+
+/* ---------- Rodada 9A: caixinha marcada em terracota com check branco (sem a borda amarelada) ---------- */
+.cadest input[type="checkbox"]:checked{border-color:#AF640A;background:#AF640A}
+.cadest input[type="checkbox"]:checked::after{border-left-color:#fff;border-bottom-color:#fff}
+.cadest-semsugestao--colada{margin-top:-12px;font-size:15px;line-height:22px;color:#1B2433}
+
+/* Rodada 9A: na janela de escolha de setores, linhas sem descrição (ex.: Central de gás) ficam do mesmo tamanho, com o texto centralizado (sem vazio embaixo) */
+.esc-opcao{align-items:center}
+
+/* Rodada 9A: texto de instrução do painel de vínculos em cinza #55607A (vermelho só para erro de verdade) */
+.cadest-bloqueio p.cadest-rotulo{color:#55607A}

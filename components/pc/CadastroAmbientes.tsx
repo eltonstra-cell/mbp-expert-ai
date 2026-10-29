@@ -14,7 +14,7 @@ import { aplicarEscolhaDeSetores, linhaDeContagem } from "@/lib/escolhaEmJanela"
 import { limparVinculos } from "@/lib/ambientesVisita";
 import { perguntasDoAmbiente, perguntasDoSetor } from "@/lib/perguntasDoAmbiente";
 import { bloqueiosDaRetirada, fluxosLigadosAoSetor, reinserirSetor } from "@/lib/estruturaDelta";
-import { mensagemSemSugestaoDoCnae, nomeCurtoDoSetor } from "@/lib/tiposDeEstabelecimento";
+import { descricaoDoSetor, mensagemSemSugestaoDoCnae, nomeExibidoDoSetor } from "@/lib/tiposDeEstabelecimento";
 import { faixaDeAmbientesVisivel, listaComPontoFinal, sugestaoPorCnae, tituloDaSugestao } from "@/lib/sugestaoPorCnae";
 import { aplicarVinculosEmLote, desfazerVinculosEmLote, setoresOficiaisEmUso, textoDosVinculados, vinculosSugeridos } from "@/lib/vinculoEmLote";
 import { fecharToastDe, mostrarToast } from "@/lib/toast";
@@ -176,7 +176,7 @@ export default function CadastroAmbientes({ empresa, podeEditar, estado, onGrava
     const vinculadosAosRetirados = Object.entries(vinculos).filter(([nome, oficial]) => retirados.includes(oficial) && setores.includes(nome));
     setAviso(
       vinculadosAosRetirados
-        .map(([nome, oficial]) => `“${nome}” está vinculado a “${nomeCurtoDoSetor(oficial)}” e mantém as ${perguntasDoSetor(oficial)} perguntas desse setor; o setor oficial sai da lista. Para o ambiente passar ao questionário básico, tire o vínculo.`)
+        .map(([nome, oficial]) => `“${nome}” está vinculado a “${nomeExibidoDoSetor(oficial)}” e mantém as ${perguntasDoSetor(oficial)} perguntas desse setor; o setor oficial sai da lista. Para o ambiente passar ao questionário básico, tire o vínculo.`)
         .join(" ")
     );
     // TODO setor retirado que tem equipamento fica protegido, cada um com o seu bloqueio.
@@ -263,7 +263,7 @@ export default function CadastroAmbientes({ empresa, podeEditar, estado, onGrava
 
   function mudarVinculo(setor: string, oficial: string) {
     const anterior = vinculos[setor];
-    if (anterior && !oficial) setAviso(`“${setor}” sem vínculo: perde as ${perguntasDoSetor(anterior)} perguntas de “${nomeCurtoDoSetor(anterior)}” e fica com o questionário básico (${textoDaConta(setor)}).`);
+    if (anterior && !oficial) setAviso(`“${setor}” sem vínculo: perde as ${perguntasDoSetor(anterior)} perguntas de “${nomeExibidoDoSetor(anterior)}” e fica com o questionário básico (${textoDaConta(setor)}).`);
     else setAviso("");
     onGravar((atual) => {
       const { [setor]: _removido, ...resto } = limparVinculos(atual.setorOficialDoAmbiente, normalizarListaAmbientesReais(atual.setoresManual));
@@ -273,7 +273,7 @@ export default function CadastroAmbientes({ empresa, podeEditar, estado, onGrava
     setFoco(`mais:${setor}`);
   }
 
-  const opcoesDoModal = SETORES_OFICIAIS_MANUAL.map((setor) => ({ id: setor, titulo: nomeCurtoDoSetor(setor), descricao: nomeCurtoDoSetor(setor) === setor ? undefined : setor }));
+  const opcoesDoModal = SETORES_OFICIAIS_MANUAL.map((setor) => ({ id: setor, titulo: nomeExibidoDoSetor(setor), descricao: descricaoDoSetor(setor) || undefined }));
   const modal = (rotulo: string) => (
     <EscolhaEmJanela
       modo="botao"
@@ -365,9 +365,9 @@ export default function CadastroAmbientes({ empresa, podeEditar, estado, onGrava
         <div className="cadest-faixa" role="region" aria-label="Sugestão pelo CNAE">
           <p className="cadest-faixa-titulo">{tituloDaSugestao(sugestao)}</p>
           <p className="cadest-faixa-texto">
-            Para esse tipo de empresa, os setores mais comuns são: {listaComPontoFinal(sugestao.ambientes.map(nomeCurtoDoSetor))} Você ajusta depois em Escolher setores.
+            Para esse tipo de empresa, os setores mais comuns são: {listaComPontoFinal(sugestao.ambientes.map(nomeExibidoDoSetor))} Você ajusta depois em Escolher setores.
           </p>
-          <p className="cadest-faixa-nota">Sugestão genérica pelo tipo de empresa; o RT confirma. Os equipamentos sugeridos aparecem na aba Equipamentos.</p>
+          <p className="cadest-faixa-nota">Sugestão genérica pelo tipo de empresa; a RT confirma. Os equipamentos sugeridos aparecem na aba Equipamentos.</p>
           <div className="cadest-faixa-botoes">
             <button type="button" className="cadest-btn cadest-btn--azul" onClick={() => aplicarSetores([...oficiaisMarcados, ...sugestao.ambientes])}>
               Aceitar {sugestao.ambientes.length} {sugestao.ambientes.length === 1 ? "setor" : "setores"}
@@ -472,7 +472,7 @@ export default function CadastroAmbientes({ empresa, podeEditar, estado, onGrava
                 </label>
                 <Select value={linha.oficial} onChange={(event) => setLinhasVinc((atuais) => atuais.map((outra) => (outra.ambiente === linha.ambiente ? { ...outra, oficial: event.target.value, marcado: Boolean(event.target.value) } : outra)))} aria-label={`Setor oficial de ${linha.ambiente}`} className="cadest-select">
                   {!linha.oficial && <option value="" disabled>Escolher o setor oficial…</option>}
-                  {SETORES_OFICIAIS_MANUAL.map((oficial) => <option key={oficial} value={oficial}>{nomeCurtoDoSetor(oficial)}</option>)}
+                  {SETORES_OFICIAIS_MANUAL.map((oficial) => <option key={oficial} value={oficial}>{nomeExibidoDoSetor(oficial)}</option>)}
                 </Select>
               </li>
             ))}
@@ -485,7 +485,7 @@ export default function CadastroAmbientes({ empresa, podeEditar, estado, onGrava
           </div>
         </div>
       )}
-      {podeEditar && semQuestionario.length > 0 && (
+      {podeEditar && !vincAberto && semQuestionario.length > 0 && (
         <p className="cadest-aviso cadest-aviso--linha" role="status">
           {quantidade(semQuestionario.length, "ambiente próprio está", "ambientes próprios estão")} com o questionário básico.
           <button type="button" className="cadest-link" aria-expanded={loteAberto} onClick={() => abrirLote(semQuestionario)}>Vincular a um setor oficial</button>
@@ -555,14 +555,14 @@ export default function CadastroAmbientes({ empresa, podeEditar, estado, onGrava
         <ul className="cadest-lista">
           {setores.map((setor) => {
             const proprio = !eOficial(setor);
-            const curto = nomeCurtoDoSetor(setor);
+            const curto = nomeExibidoDoSetor(setor);
             const editandoNome = renomeando?.de === setor;
             const erroNome = editandoNome ? erroDoNovoNome(setor, renomeando.texto, setores) : "";
             const oficialVinculado = vinculos[setor];
             const parecido = podeEditar && proprio && !editandoNome ? oficialParecido(setor) : null;
             const base = proprio ? baseDoAmbiente(setor) : null;
             // Segundo texto só quando há nome oficial diferente do nome curto (ou, no próprio, o estado do questionário).
-            const subtexto = proprio ? (oficialVinculado ? `Ambiente próprio · vinculado a ${nomeCurtoDoSetor(oficialVinculado)}` : "Ambiente próprio · questionário básico") : curto === setor ? "" : setor;
+            const subtexto = proprio ? (oficialVinculado ? `Ambiente próprio · vinculado a ${nomeExibidoDoSetor(oficialVinculado)}` : "Ambiente próprio · questionário básico") : descricaoDoSetor(setor);
             return (
               <li key={setor} className="cadest-item">
                 <div className="cadest-item-topo">
@@ -596,7 +596,7 @@ export default function CadastroAmbientes({ empresa, podeEditar, estado, onGrava
                         {subtexto && <span className="cadest-oficial">{subtexto}</span>}
                         {parecido && (
                           <span className="cadest-parece" title={`Parece o setor oficial ${parecido}`}>
-                            <span className="cadest-parece-texto">Parece o setor oficial {nomeCurtoDoSetor(parecido)} ·</span>
+                            <span className="cadest-parece-texto">Parece o setor oficial {nomeExibidoDoSetor(parecido)} ·</span>
                             <button type="button" className="cadest-link" title={oficiaisMarcados.includes(parecido) ? undefined : "Marca também o setor oficial"} onClick={() => vincularAoParecido(setor, parecido)}>Vincular</button>
                           </span>
                         )}
@@ -611,7 +611,7 @@ export default function CadastroAmbientes({ empresa, podeEditar, estado, onGrava
                         dataFoco={`mais:${setor}`}
                         itens={[
                           { rotulo: "Renomear", assumeFoco: true, onClick: () => setRenomeando({ de: setor, texto: setor }) },
-                          { rotulo: "Vincular a setor oficial", assumeFoco: true, desabilitado: oficiaisMarcados.length === 0, titulo: oficiaisMarcados.length === 0 ? "Marque um setor oficial em Escolher setores antes" : undefined, onClick: () => { setVinculando(vinculando === setor ? null : setor); setFoco(`select:${setor}`); } },
+                          { rotulo: oficialVinculado ? "Trocar vínculo" : "Vincular a setor oficial", assumeFoco: true, desabilitado: oficiaisMarcados.length === 0, titulo: oficiaisMarcados.length === 0 ? "Marque um setor oficial em Escolher setores antes" : undefined, onClick: () => { setVinculando(vinculando === setor ? null : setor); setFoco(`select:${setor}`); } },
                           { rotulo: "Remover", perigo: true, onClick: () => pedirRemover(setor) },
                         ]}
                         rodape={base?.texto}
@@ -633,7 +633,7 @@ export default function CadastroAmbientes({ empresa, podeEditar, estado, onGrava
       )}
 
       <footer className="cadest-rodape">
-        {naoMarcados.length > 0 ? <p className="cadest-naomarcados">Não marcados nesta empresa: {naoMarcados.map(nomeCurtoDoSetor).join(" · ")}</p> : <span />}
+        {naoMarcados.length > 0 ? <p className="cadest-naomarcados">Não marcados nesta empresa: {naoMarcados.map(nomeExibidoDoSetor).join(" · ")}</p> : <span />}
         {podeEditar && <StatusDeSalvamento key={empresa.id} estado={estado} />}
       </footer>
     </section>

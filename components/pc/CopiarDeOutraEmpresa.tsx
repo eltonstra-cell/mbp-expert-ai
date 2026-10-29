@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { nomeCurtoDoSetor } from "@/lib/tiposDeEstabelecimento";
+import { nomeExibidoDoSetor } from "@/lib/tiposDeEstabelecimento";
 import { quantidade } from "@/lib/plural";
 import type { EquipamentoDeOrigem } from "@/lib/copiaEquipamentos";
 
@@ -155,10 +155,10 @@ export default function CopiarDeOutraEmpresa({ destinoId, setoresDoDestino, onCo
               {copiaveis.map((setor) => (
                 <label key={setor} className="cadest-copiar-opcao">
                   <input type="checkbox" checked={escolhidos.includes(setor)} onChange={() => setEscolhidos((atuais) => (atuais.includes(setor) ? atuais.filter((item) => item !== setor) : [...atuais, setor]))} />
-                  <span>{nomeCurtoDoSetor(setor)} · {quantidade(porSetor[setor], "item", "itens")}</span>
+                  <span>{nomeExibidoDoSetor(setor)} · {quantidade(porSetor[setor], "item", "itens")}</span>
                 </label>
               ))}
-              {foraDoDestino.length > 0 && <p className="cadest-dica">Não marcados nesta empresa (não serão copiados): {foraDoDestino.map(nomeCurtoDoSetor).join(" · ")}</p>}
+              {foraDoDestino.length > 0 && <p className="cadest-dica">Não marcados nesta empresa (não serão copiados): {foraDoDestino.map(nomeExibidoDoSetor).join(" · ")}</p>}
             </fieldset>
           )}
         </div>

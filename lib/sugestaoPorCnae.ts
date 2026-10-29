@@ -2,7 +2,7 @@
 // pacotes de lib/tiposDeEstabelecimento.ts (nenhum segundo mecanismo). É sugestão genérica: o RT confirma; nada aqui afirma norma.
 import { SETORES_OFICIAIS_MANUAL } from "./manualBase.ts";
 import { chaveDeEquipamento } from "./sinonimosEquipamentos.ts";
-import { descricaoDoCnaeDaTabela, nomeCurtoDoSetor, normalizarCnae, pacoteDoTipo, tipoEfetivoDaEmpresa, type EquipamentoSugerido } from "./tiposDeEstabelecimento.ts";
+import { descricaoDoCnaeDaTabela, nomeCurtoDoSetor, nomeExibidoDoSetor, normalizarCnae, pacoteDoTipo, tipoEfetivoDaEmpresa, type EquipamentoSugerido } from "./tiposDeEstabelecimento.ts";
 
 /** "5611201" -> "5611-2/01". Texto que não tem 7 dígitos volta como veio (sem inventar formato). */
 export function formatarCnae(codigo: string | undefined): string {
@@ -14,7 +14,7 @@ type EmpresaComCnae = { cnae?: string; cnaeDescricao?: string; tipo?: string; cn
 
 export type SugestaoPorCnae =
   | { situacao: "sem-cnae" }
-  /** CNAE preenchido, mas fora da tabela do app (ou com formato inválido): nenhuma sugestão. */
+  /** CNAE preenchido, mas sem tipo de alimentação no app (existe ou não na tabela oficial) ou com formato inválido: nenhuma sugestão. */
   | { situacao: "sem-sugestao"; codigo: string; descricao: string }
   | {
       situacao: "ok";
@@ -55,7 +55,7 @@ export function sugestaoPorCnae(empresa: EmpresaComCnae): SugestaoPorCnae {
   };
 }
 
-/** Linha de cima da faixa: "Sugestões para Restaurantes e similares · CNAE 5611-2/01" (secundário avisa na própria linha). Usa o nome do tipo, nunca a descrição digitada. */
+/** Linha de cima da faixa: "Sugestões para Restaurantes e similares · CNAE 5611-2/01" (secundário avisa na própria linha). Usa o nome do tipo ou a descrição OFICIAL do código (tabela do IBGE), nunca a descrição digitada. */
 export function tituloDaSugestao(sugestao: Extract<SugestaoPorCnae, { situacao: "ok" }>): string {
   return `Sugestões para ${sugestao.nomeDoTipo}${sugestao.codigo ? ` · CNAE ${sugestao.codigo}` : ""}${sugestao.origem === "secundario" ? " (CNAE secundário)" : ""}`;
 }
@@ -88,7 +88,7 @@ export function oficialExatoDoSetor(setorDaEmpresa: string, vinculos?: Record<st
   if (vinculado && (SETORES_OFICIAIS_MANUAL as readonly string[]).includes(vinculado)) return vinculado;
   const chave = chaveDeEquipamento(setorDaEmpresa);
   if (!chave) return null;
-  return SETORES_OFICIAIS_MANUAL.find((oficial) => [oficial, nomeCurtoDoSetor(oficial), ...(MESMO_SETOR[oficial] || [])].some((nome) => chaveDeEquipamento(nome) === chave)) ?? null;
+  return SETORES_OFICIAIS_MANUAL.find((oficial) => [oficial, nomeCurtoDoSetor(oficial), nomeExibidoDoSetor(oficial), ...(MESMO_SETOR[oficial] || [])].some((nome) => chaveDeEquipamento(nome) === chave)) ?? null;
 }
 
 /** O setor da empresa casa EXATAMENTE com este setor oficial? (ver `oficialExatoDoSetor`). */

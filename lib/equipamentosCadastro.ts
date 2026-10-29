@@ -71,7 +71,7 @@ export function avisoDeNomeRepetido(repetido: EquipamentoSetor | undefined, nome
 }
 
 export const MINIMO_DE_LETRAS_DO_NOME = 3;
-export const MENSAGEM_DE_NOME_CURTO = `Digite o nome do equipamento (mínimo ${MINIMO_DE_LETRAS_DO_NOME} letras)`;
+export const MENSAGEM_DE_NOME_CURTO = `Digite ao menos ${MINIMO_DE_LETRAS_DO_NOME} letras`;
 
 /** Letras do nome (sem contar espaços, números nem pontuação). */
 export const letrasDoNome = (nome: string): number => (String(nome ?? "").match(/\p{L}/gu) || []).length;
@@ -79,13 +79,16 @@ export const letrasDoNome = (nome: string): number => (String(nome ?? "").match(
 export const nomeDeEquipamentoValido = (nome: string): boolean => letrasDoNome(nome) >= MINIMO_DE_LETRAS_DO_NOME;
 
 /**
- * Mensagem na hora, abaixo do campo: aparece enquanto há texto com menos de 3 letras, ou depois de tentar adicionar (Enter ou botão) com o campo vazio.
- * Campo vazio e sem tentativa: sem mensagem (a tela não grita ao abrir).
+ * Mensagem abaixo do campo (e borda vermelha): só DEPOIS de Enter/Adicionar ou ao sair do campo com texto curto (`mostrar`), nunca enquanto a pessoa digita.
+ * Campo vazio ao sair do campo não acusa nada (a tela não grita ao abrir).
  */
-export function avisoDeNomeCurto(nome: string, tentouAdicionar: boolean): string {
+export function avisoDeNomeCurto(nome: string, mostrar: boolean): string {
   if (nomeDeEquipamentoValido(nome)) return "";
-  return nome.trim() !== "" || tentouAdicionar ? MENSAGEM_DE_NOME_CURTO : "";
+  return mostrar ? MENSAGEM_DE_NOME_CURTO : "";
 }
+
+/** Ao sair do campo: só acusa se há texto (curto demais); vazio não. */
+export const acusarNomeCurtoAoSair = (nome: string): boolean => nome.trim() !== "" && !nomeDeEquipamentoValido(nome);
 
 /** O botão Adicionar só liga com nome de ao menos 3 letras e, se o nome repete, depois de a pessoa escolher "Somar" ou "Cadastrar como outro item". */
 export function podeAdicionarEquipamento(nome: string, repetido: EquipamentoSetor | undefined, escolha: "somar" | "outro" | null): boolean {
@@ -296,6 +299,8 @@ export function confirmarItensFalados(
 
 /** A quantidade (− / +) só aparece na linha MARCADA; a desmarcada mostra só a caixa e o nome. */
 export const mostrarQuantidadeNaLinha = (marcada: boolean): boolean => marcada;
+// Com o quadro de sugestões em lote aberto, a linha "+ Nome" repetiria os mesmos itens: fica escondida.
+export const linhaDeSugestoesRapidasVisivel = (quadroAberto: boolean, quantasSugestoes: number): boolean => !quadroAberto && quantasSugestoes > 0;
 
 /** Botão azul do quadro: "Adicionar N itens" com N maior que zero; sem nenhum marcado fica desabilitado. */
 export function botaoDoLote(marcados: number): { rotulo: string; habilitado: boolean } {

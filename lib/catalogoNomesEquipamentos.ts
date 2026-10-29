@@ -27,4 +27,8 @@ export const CATALOGO_DE_NOMES_DE_EQUIPAMENTOS: readonly string[] = [
   "Freezer",
   "Refrigerador",
   "Câmara fria",
+  "Geladeira",
+  "Forno micro-ondas",
+  "Balcão refrigerado",
+  "Estufa",
 ];
