@@ -65,7 +65,7 @@ test("'Criar POPs da norma': texto de apoio com o N real; desligado em laranja c
   assert.ok(lista.includes("temConjunto && faltamCriar > 0"), "o botão desligado cinza saiu: só aparece quando falta criar");
   assert.ok(lista.includes("textoDoCriarDaNorma(faltamCriar)"));
   const css = ler("../app/globals.css");
-  assert.match(css, /\.pgl-adicionar-botao\{height:44px;[^}]*background:#2A4D7C;[^}]*color:#fff/);
+  assert.match(css, /\.pgl-adicionar-botao\{height:44px;[^}]*background:#264A80;[^}]*color:#fff/);
 });
 
 // ===== 1.4 Filtro por chip =====
