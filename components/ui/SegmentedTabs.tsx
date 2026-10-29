@@ -1,4 +1,4 @@
-export type AbaSegmentada<T extends string> = { id: T; rotulo: string; contagem?: number; /** Rótulo encurtado, usado só em janela estreita (o CSS escolhe qual aparece). */ curto?: string; /** Laranja só quando a contagem pede uma ação da pessoa. */ acao?: boolean };
+export type AbaSegmentada<T extends string> = { id: T; rotulo: string; contagem?: number; /** Rótulo encurtado, usado só em janela estreita (o CSS escolhe qual aparece). */ curto?: string; /** Laranja só quando a contagem pede uma ação da pessoa. */ acao?: boolean; /** Cor do contador (ex.: "andamento", "concluida"); o CSS escolhe a cor. */ tom?: string };
 
 // Abas pequenas em fundo bege; a ativa fica branca.
 export function SegmentedTabs<T extends string>({
@@ -31,7 +31,7 @@ export function SegmentedTabs<T extends string>({
           ) : (
             aba.rotulo
           )}
-          {aba.contagem !== undefined && <span className={`ui-tab-count${aba.acao && aba.contagem > 0 ? " is-acao" : ""}`}>{aba.contagem}</span>}
+          {aba.contagem !== undefined && <span className={`ui-tab-count${aba.acao && aba.contagem > 0 ? " is-acao" : ""}`} data-tom={aba.tom}>{aba.contagem}</span>}
         </button>
       ))}
     </div>
