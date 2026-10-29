@@ -117,8 +117,8 @@ test("74. duas barras na Central; Ambientes, Equipamentos e Fluxos são abas sep
   assert.match(css, /\.pgg-conta-num\{font-family:var\(--font-display\),"Outfit",sans-serif;font-size:22px/);
   assert.match(css, /\.pgg-faixa--norma\{background:#D6E7F8\}/);
   assert.match(css, /\.pgg-faixa--outros\{background:#FFEBCB\}/);
-  assert.match(css, /\.pgl-adicionar-botao\{height:44px;[^}]*background:#2A4D7C/);
-  assert.match(css, /\.pgl-aprovar\{height:40px;[^}]*background:#2A4D7C/);
+  assert.match(css, /\.pgl-adicionar-botao\{height:44px;[^}]*background:#264A80/);
+  assert.match(css, /\.pgl-aprovar\{height:40px;[^}]*background:#264A80/);
   assert.ok(ler("../components/AppTopbar.tsx").includes("!ocultarChipDeModo"));
 });
 
