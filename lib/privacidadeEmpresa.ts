@@ -3,6 +3,12 @@ import type { PrivacidadeEmpresa } from "../types/index.ts";
 
 export const MENSAGEM_IA_DESLIGADA = "IA desligada nesta empresa. Peça ao Consultor/RT para liberar em Empresas › Privacidade.";
 
+export const MENSAGEM_AUDIO_SEM_CONSENTIMENTO = "A transcrição do áudio não está liberada nesta empresa. Peça ao Consultor/RT para registrar o consentimento em Empresas › Privacidade.";
+/** Texto do consentimento específico de áudio, exatamente como aparece na tela de Privacidade. */
+export const TEXTO_CONSENTIMENTO_AUDIO = "Permito enviar o áudio das evidências para transcrição por serviço de IA no exterior (OpenAI)";
+/** Aviso mostrado junto ao botão Transcrever. */
+export const AVISO_ANTES_DE_TRANSCREVER = "Ao transcrever, o áudio é enviado a um serviço de IA no exterior (OpenAI). Evite enquadrar rostos, crachás e documentos pessoais.";
+
 export const GUARDA_PADRAO_DIAS = 180;
 export const GUARDA_OPCOES = [90, 180] as const;
 export const GUARDA_MINIMA_DIAS = 30;
@@ -16,6 +22,32 @@ type EmpresaComPrivacidade = { privacidade?: PrivacidadeEmpresa } | null | undef
 /** IA nas fotos: padrão DESLIGADA. Só vale `liberada === true`. */
 export function iaLiberada(empresa: EmpresaComPrivacidade): boolean {
   return empresa?.privacidade?.iaFotos?.liberada === true;
+}
+
+/** Consentimento específico de áudio: padrão AUSENTE (desligado). Só vale `consentido === true`. */
+export function consentimentoDeAudio(empresa: EmpresaComPrivacidade): boolean {
+  return empresa?.privacidade?.audioIa?.consentido === true;
+}
+
+/** A transcrição só existe com a IA liberada na empresa E o consentimento de áudio registrado. */
+export function transcricaoDeAudioLiberada(empresa: EmpresaComPrivacidade): boolean {
+  return iaLiberada(empresa) && consentimentoDeAudio(empresa);
+}
+
+export function consentirAudio(privacidade: PrivacidadeEmpresa | undefined, quem: { id: string; nome: string }, agora: string): PrivacidadeEmpresa {
+  return { ...privacidade, audioIa: { consentido: true, consentidoPorId: quem.id, consentidoPorNome: quem.nome, consentidoEm: agora } };
+}
+
+export function retirarConsentimentoDeAudio(privacidade: PrivacidadeEmpresa | undefined): PrivacidadeEmpresa {
+  return { ...privacidade, audioIa: { ...privacidade?.audioIa, consentido: false } };
+}
+
+/** "Consentido por Ana em 20/10/2026" ou vazio. */
+export function textoDeConsentimentoDeAudio(empresa: EmpresaComPrivacidade): string {
+  const audio = empresa?.privacidade?.audioIa;
+  if (!audio?.consentido || !audio.consentidoEm) return "";
+  const data = new Date(audio.consentidoEm).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
+  return `Consentido por ${audio.consentidoPorNome || "pessoa não identificada"} em ${data}`;
 }
 
 /** Já foi liberada alguma vez (a janela de aceite aparece só na primeira). */
@@ -124,6 +156,18 @@ export function visitasComGuardaVencendo(
 
 export function textoDaFaixaDeGuarda(quantidade: number): string {
   return `${quantidade} ${quantidade === 1 ? "visita com fotos vence" : "visitas com fotos vencem"} nos próximos 30 dias`;
+}
+
+/** Decisão do servidor para transcrever o áudio de uma evidência: IA liberada e consentimento de áudio da empresa. */
+export function decidirTranscricaoDeAudio(
+  data: { empresas?: Record<string, EmpresaComPrivacidade> } | null | undefined,
+  empresaId: string | undefined
+): { ok: true } | { ok: false; motivo: string; codigo: string } {
+  if (!empresaId || !data?.empresas?.[empresaId]) return { ok: false, motivo: "Empresa da evidência não encontrada.", codigo: "empresa-nao-encontrada" };
+  const empresa = data.empresas[empresaId];
+  if (!iaLiberada(empresa)) return { ok: false, motivo: MENSAGEM_IA_DESLIGADA, codigo: "ia-desligada-na-empresa" };
+  if (!consentimentoDeAudio(empresa)) return { ok: false, motivo: MENSAGEM_AUDIO_SEM_CONSENTIMENTO, codigo: "audio-sem-consentimento" };
+  return { ok: true };
 }
 
 /** Decisão do servidor para a IA em foto: a empresa precisa ter liberado. */
