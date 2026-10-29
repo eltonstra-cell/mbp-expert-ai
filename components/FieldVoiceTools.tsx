@@ -292,20 +292,20 @@ export default function FieldVoiceTools({
               </button>
             </div>
           ) : (
-            <button type="button" className={`voz-falar voz-btn${!online ? " is-sem-sinal" : ""}`} onClick={iniciarOuParar} disabled={estado.falar.desativado} title={!online ? "Sem sinal: digite a observação" : "Falar a observação"}>
+            <button type="button" className={`voz-falar voz-btn${!online ? " is-sem-sinal" : ""}`} onClick={iniciarOuParar} disabled={estado.falar.desativado} aria-label="Falar" title={!online ? "Sem sinal: digite a observação" : "Falar a observação"}>
               <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="9" y="3" width="6" height="11" rx="3" />
                 <path d="M6 10a6 6 0 0 0 12 0" />
                 <path d="M12 16v5M9 21h6" />
               </svg>
-              <span>{transcrevendo ? "Transcrevendo" : rotuloVoz}</span>
+              <span className="chip-texto">{transcrevendo ? "Transcrevendo" : rotuloVoz}</span>
               {!online && <span className="voz-semsinal" aria-hidden="true">🔒</span>}
             </button>
           )}
           {!somenteVoz && (
-            <button type="button" className={`voz-ia${estado.ia.apagado || !online ? " is-apagado is-sem-sinal" : ""}`} onClick={melhorar} disabled={estado.ia.desativado} title={!online ? "Sem sinal: a IA volta com a conexão" : "Melhorar texto com IA"}>
-              <span aria-hidden="true">✦</span>
-              <span>{melhorando ? "Ajustando" : rotuloIa}</span>
+            <button type="button" className={`voz-ia${estado.ia.apagado || !online ? " is-apagado is-sem-sinal" : ""}`} onClick={melhorar} disabled={estado.ia.desativado} aria-label="Sugerir com IA" title={!online ? "Sem sinal: a IA volta com a conexão" : "Melhorar texto com IA"}>
+              <span className="chip-ia-sigla" aria-hidden="true">IA</span>
+              <span className="chip-texto">{melhorando ? "Ajustando" : rotuloIa}</span>
               {!online && <span className="voz-semsinal" aria-hidden="true">🔒</span>}
             </button>
           )}
