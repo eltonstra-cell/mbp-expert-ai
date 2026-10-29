@@ -10,7 +10,7 @@ import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import { avisar } from "@/lib/dialogos";
 import { dependenciasDoNavegador, validarFotoEscolhida } from "@/lib/fotoCompressao";
 import { formatarTempo, restanteDoLimite, useCapturaAudio, useCapturaCamera } from "@/components/useCapturaMidia";
-import { MENSAGEM_IA_DESLIGADA } from "@/lib/privacidadeEmpresa";
+import { AVISO_ANTES_DE_TRANSCREVER, MENSAGEM_IA_DESLIGADA } from "@/lib/privacidadeEmpresa";
 // Texto curto único da tela (as frases soltas antigas foram juntadas aqui).
 const AVISO_FINO_IA_LIGADA = "A IA só sugere; nada vira NC sem a sua confirmação. Evite enquadrar rostos, crachás e documentos pessoais.";
 const AVISO_FINO_IA_DESLIGADA = "IA desligada nesta empresa: peça ao Consultor/RT para liberar em Empresas › Privacidade. Evite enquadrar rostos, crachás e documentos pessoais.";
@@ -107,6 +107,8 @@ type Props = {
   /** Quantas evidências estão na fila de envio do aparelho; o chip abre a Fila de envio. */
   pendentesNaFila?: number;
   onAbrirFila?: () => void;
+  /** Transcrição do áudio gravado para a Descrição: só existe com `disponivel` (IA e consentimento de áudio da empresa). */
+  transcricao?: { disponivel: boolean; onTranscrever: (arquivo: File, duracaoSeg?: number) => Promise<string> };
 };
 
 type Aba = "todas" | "fotos" | "audios" | "revisar";
@@ -388,6 +390,7 @@ export default function PcEvidencias({
   onLimparMensagem,
   pendentesNaFila,
   onAbrirFila,
+  transcricao,
 }: Props) {
   const [aba, setAba] = useState<Aba>("todas");
   const [filtroAmbiente, setFiltroAmbiente] = useState("");
@@ -413,6 +416,9 @@ export default function PcEvidencias({
   const [celular, setCelular] = useState(false);
   const [duasColunas, setDuasColunas] = useState(false);
   const [etapa, setEtapa] = useState<1 | 2>(1);
+  const [transcrevendo, setTranscrevendo] = useState(false);
+  const [erroTranscricao, setErroTranscricao] = useState("");
+  const online = useOnline();
 
   const pedirAvisoDeFoto = useAvisoAntesDeFotografar();
   const camera = useCapturaCamera({
@@ -564,6 +570,7 @@ export default function PcEvidencias({
     const anterior = pendente && !removendo ? pendente : null;
     camera.setAviso("");
     audio.setAviso("");
+    setErroTranscricao("");
     setRemovendo(false);
     setPendente(novo);
     if (!anterior) {
@@ -572,6 +579,21 @@ export default function PcEvidencias({
     }
     const texto = novo.tipo === "Áudio" ? "Áudio regravado." : novo.origem === "arquivo" ? "Arquivo trocado." : "Foto trocada.";
     avisarComDesfazer(texto, () => setPendente(anterior));
+  }
+
+  // Só roda quando a pessoa toca em "Transcrever". O texto entra na Descrição e continua editável.
+  async function transcrever() {
+    if (!transcricao?.disponivel || !pendente || pendente.tipo !== "Áudio" || transcrevendo) return;
+    setErroTranscricao("");
+    setTranscrevendo(true);
+    try {
+      const texto = await transcricao.onTranscrever(pendente.arquivo, pendente.duracao);
+      onDescricao(descricao.trim() ? `${descricao.trim()}\n${texto}` : texto);
+    } catch (error) {
+      setErroTranscricao(error instanceof Error ? error.message : "Não foi possível transcrever o áudio.");
+    } finally {
+      setTranscrevendo(false);
+    }
   }
 
   async function escolherArquivo(arquivo: File | undefined) {
@@ -960,6 +982,10 @@ export default function PcEvidencias({
                         )}
                       </div>
                     )}
+                    {pendente.tipo === "Áudio" && transcricao?.disponivel && (
+                      <p className="ev7-transcrever-aviso" role="note">{AVISO_ANTES_DE_TRANSCREVER}</p>
+                    )}
+                    {pendente.tipo === "Áudio" && erroTranscricao && <p className="ev7-transcrever-erro" role="alert">{erroTranscricao}</p>}
                     <div className="ev7-anexo-acoes">
                       {pendente.tipo === "Foto" ? (
                         pendente.origem === "arquivo" ? (
@@ -972,9 +998,22 @@ export default function PcEvidencias({
                           </button>
                         )
                       ) : (
-                        <button type="button" className="ev7-mini-btn" onClick={() => void gravarAudio()}>
-                          Gravar de novo
-                        </button>
+                        <>
+                          <button type="button" className="ev7-mini-btn" onClick={() => void gravarAudio()}>
+                            Gravar de novo
+                          </button>
+                          {transcricao?.disponivel && (
+                            <button
+                              type="button"
+                              className="ev7-mini-btn ev7-transcrever"
+                              disabled={transcrevendo || !online}
+                              title={!online ? "Sem sinal: a transcrição volta com a conexão" : undefined}
+                              onClick={() => void transcrever()}
+                            >
+                              {transcrevendo ? "Transcrevendo..." : "Transcrever"}
+                            </button>
+                          )}
+                        </>
                       )}
                       <button type="button" className="ev7-mini-btn" onClick={removerAnexo}>
                         Remover
