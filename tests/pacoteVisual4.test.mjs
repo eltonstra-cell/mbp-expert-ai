@@ -12,7 +12,7 @@ test("número do trilho: correções abertas da empresa, pela mesma função da 
   assert.ok(pagina.includes('permitido("ncs.acompanhar", atual.id) ? correcoesAbertas(db.ncs, { empresaId: atual.id }) : 0'));
   assert.ok(pagina.includes("return correcoesAbertasDaEmpresa(db.ncs, visitaAtual.empresaId);"), "a lista da empresa usa a mesma função de base");
   assert.ok(pagina.includes("vencidas={ncsVencidasDaEmpresa}"));
-  assert.ok(ler("../components/pc/PcInicio.tsx").includes("partesDoContador(colunas)"), "o Início escreve um número por tipo");
+  assert.ok(pagina.includes("correcoesDoInicio(db.ncs, atual.id, hojeISO())"), "Rodada 12d: o Início lista as mesmas correções abertas que o número do trilho conta");
 });
 
 test("topo: dentro da visita o título é só 'Visita N'; o Início usa a mesma barra das outras telas", () => {
