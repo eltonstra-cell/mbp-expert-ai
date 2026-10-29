@@ -7245,8 +7245,8 @@ export default function Home() {
           return !["visitas", "ncs", "pops", "relatorios"].includes(chave) || itensVisiveis(contextoMenu).some((item) => item.key === chave);
         })
       : abasDoCampo;
-  // O número vermelho do trilho em Correções conta SÓ correções vencidas, o mesmo conjunto da lista de Correções da empresa (`correcoesVencidasDaEmpresa`); sem a permissão de acompanhar, não há número.
-  const ncsVencidasDaEmpresa = atual && permitido("ncs.acompanhar", atual.id) ? correcoesVencidasDaEmpresa(db.ncs, atual.id, hojeISO()).length : 0;
+  // O número do trilho em Correções conta as correções ABERTAS da empresa ativa (a mesma função da Central, com o escopo da empresa); sem a permissão de acompanhar, não há número.
+  const ncsVencidasDaEmpresa = atual && permitido("ncs.acompanhar", atual.id) ? correcoesAbertas(db.ncs, { empresaId: atual.id }) : 0;
   // Central da Empresa: "← Central da Empresa › Documentos ▾". O menu troca de seção e substitui os três botões que ficavam numa linha própria.
   const naCentralComMenu =
     !dentroDaVisita && !!atual && ((view === "pops" && (telaVisivel("pops") || ehFiscal)) || (view === "empresas" && showEmpresaForm && !!editingEmpresaId && permitido("empresas.editar")));
@@ -9533,7 +9533,7 @@ export default function Home() {
             passos={([
               { chave: "checklist", rotulo: "Checklist", resumo: `${respondidos} de ${totalChecklist} ${totalChecklist === 1 ? "item" : "itens"}`, icone: "checklist", tom: "ok" },
               { chave: "evidencias", rotulo: "Evidências", resumo: `${fotosVisita} ${fotosVisita === 1 ? "foto" : "fotos"} · ${audiosVisita} ${audiosVisita === 1 ? "áudio" : "áudios"}`, icone: "evidencias", tom: "info" },
-              { chave: "correcoes", rotulo: "Correções", resumo: qtd(ncsAbertas, "aberta", "abertas"), titulo: `${qtd(ncsAbertas, "correção aberta", "correções abertas")} nesta visita (a barra lateral conta só as vencidas da empresa toda)`, icone: "ncs", tom: "nc" },
+              { chave: "correcoes", rotulo: "Correções", resumo: `${ncsAbertas} ${ncsAbertas === 1 ? "aberta" : "abertas"} nesta visita`, titulo: `${qtd(ncsAbertas, "correção aberta", "correções abertas")} nesta visita (o menu conta as abertas da empresa toda)`, icone: "ncs", tom: "nc" },
               { chave: "pops", rotulo: "POPs da visita", resumo: resumoPopsVisita.pendentes > 0 ? `${resumoPopsVisita.pendentes} a criar` : "Nenhum a criar", titulo: resumoPopsVisita.pendentes > 0 ? `${resumoPopsVisita.pendentes} a criar ou em rascunho` : undefined, icone: "pops", tom: "pend" },
               { chave: "relatorio", rotulo: "Relatório", resumo: linhasConferenciaRel.filter((linha) => !linha.ok).length > 0 ? qtd(linhasConferenciaRel.filter((linha) => !linha.ok).length, "pendência", "pendências") : "Sem pendências", titulo: "Pendências do relatório desta visita", icone: "relatorio", tom: "lilas" },
             ] as PassoCentral[]).filter((passo) => telaVisivel(passo.chave === "pops" ? "popsVisita" : (passo.chave as TelaKey)))}
