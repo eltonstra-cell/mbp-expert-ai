@@ -34,6 +34,8 @@ export type LinhaEmpresa = {
 export type Props = {
   empresas: LinhaEmpresa[];
   totalClientes: number;
+  /** Mostra o microfone da busca (Campo); o PC não usa. */
+  micDisponivel?: boolean;
   busca: string;
   onBusca: (valor: string) => void;
   podeCriar: boolean;
