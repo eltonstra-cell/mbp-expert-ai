@@ -67,7 +67,7 @@ test("Checklist do Campo: busca do PC no cabeçalho, respostas só com texto at�
   for (const regra of [
     "height:46px;margin:0;padding:0 6px 0 6px",
     "height:38px;min-height:38px;padding:0 2px",
-    "border-color:#9BD3B0;background:#E3F5EA",
+    "chk-resp--ok:not(.is-marcado){border-color:#8A96AD;background:#fff;color:#1B2433}",
     "border-color:#E9A7A2;background:#FBE4E2",
     "border-color:#C5CCDA;background:#EEF1F7",
     ".chk-linha-foto{background:#AF640A}",

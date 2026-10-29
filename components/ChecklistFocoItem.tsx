@@ -434,7 +434,7 @@ export default function ChecklistFocoItem({
                 onClick={() => onGravidade(nivel)}
               >
                 {NOME_GRAVIDADE[nivel]}
-                {sugerida === nivel && <span className="chk-grav-sug">sugerida</span>}
+                {sugerida === nivel && <span className="chk-grav-sug"><span>·</span>sugerida</span>}
               </button>
             ))}
           </div>

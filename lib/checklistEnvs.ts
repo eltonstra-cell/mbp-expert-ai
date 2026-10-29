@@ -1,4 +1,6 @@
 // Faixa de ambientes do checklist: ordem fixa (a da visita) e situação só por cálculo.
+import { SETORES_OFICIAIS_MANUAL } from "./manualBase.ts";
+import { nomeExibidoDoSetor } from "./nomesDeSetor.ts";
 
 export type SituacaoAmbiente = "nc" | "avaliacao" | "pendente" | "concluido";
 
@@ -53,6 +55,15 @@ export function nomeDeExibicaoDoAmbiente(nome: string): string {
 export function nomeCurtoDoAmbiente(nome: string): string {
   const curto = nome.split(/\s*[,(/]\s*|\s+de\s+|\s+e\s+/)[0].trim();
   return curto && curto.length >= 3 ? curto : nome;
+}
+
+/**
+ * Nome para a lista do seletor de ambientes: setor oficial pelo nome exibido curto ("Recebimento", "Cozinha", "Banheiro feminino · clientes"), os demais pelo
+ * nome curto do ambiente. Só apresentação (os valores gravados não mudam). Se dois nomes curtos ficarem iguais, esses usam o nome completo para não confundir.
+ */
+export function rotulosCurtosDosAmbientes(rotulos: string[]): string[] {
+  const curtos = rotulos.map((rotulo) => ((SETORES_OFICIAIS_MANUAL as readonly string[]).includes(rotulo) ? nomeExibidoDoSetor(rotulo) : nomeCurtoDoAmbiente(rotulo)));
+  return curtos.map((curto, indice) => (curtos.filter((outro) => outro === curto).length > 1 ? rotulos[indice] : curto));
 }
 
 export function resumoAmbientes(

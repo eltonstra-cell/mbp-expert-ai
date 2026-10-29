@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import type { InfoAmbiente } from "@/lib/checklistEnvs";
+import { rotulosCurtosDosAmbientes, type InfoAmbiente } from "@/lib/checklistEnvs";
 
 type Props = {
   ambientes: InfoAmbiente[];
@@ -18,6 +18,7 @@ export default function AmbientesCortina({ ambientes, atual, onSelecionar, rende
   const [aberto, setAberto] = useState(false);
   const raizRef = useRef<HTMLDivElement | null>(null);
   const cortinaRef = useRef<HTMLDivElement | null>(null);
+  const nomesCurtos = rotulosCurtosDosAmbientes(ambientes.map((ambiente) => ambiente.rotulo));
 
   // A cortina nunca passa do espaço que existe: sem rolagem para 12 ambientes quando couber.
   useLayoutEffect(() => {
@@ -64,7 +65,7 @@ export default function AmbientesCortina({ ambientes, atual, onSelecionar, rende
             </button>
           </div>
           <ul className="amb-lista">
-            {ambientes.map((ambiente) => {
+            {ambientes.map((ambiente, posicao) => {
               const percentual = ambiente.total ? Math.round((ambiente.respondidos / ambiente.total) * 100) : 0;
               const completo = ambiente.total > 0 && ambiente.respondidos >= ambiente.total;
               return (
@@ -78,7 +79,7 @@ export default function AmbientesCortina({ ambientes, atual, onSelecionar, rende
                       onSelecionar(ambiente.nome);
                     }}
                   >
-                    <span className="amb-nome">{ambiente.rotulo}</span>
+                    <span className="amb-nome" title={ambiente.rotulo}>{nomesCurtos[posicao]}</span>
                     <span className="amb-barra" aria-hidden="true">
                       <span style={{ width: `${percentual}%` }} />
                     </span>
@@ -93,7 +94,8 @@ export default function AmbientesCortina({ ambientes, atual, onSelecionar, rende
                     </span>
                     {ambiente.naoConformes > 0 ? (
                       <span className="amb-selo">
-                        {ambiente.naoConformes} NC{ambiente.naoConformes === 1 ? "" : "s"}
+                        <span aria-hidden="true">▲ {ambiente.naoConformes} NC</span>
+                        <span className="sr-only">{ambiente.naoConformes === 1 ? "1 não conformidade" : `${ambiente.naoConformes} não conformidades`}</span>
                       </span>
                     ) : (
                       <span className="amb-vazio"><span className="sr-only">sem não conformidades</span></span>
