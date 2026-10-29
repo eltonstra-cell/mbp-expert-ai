@@ -3,14 +3,11 @@
 // sem cor guardada, ela é derivada do id, sempre a mesma em qualquer aparelho.
 
 export const PALETA_EMPRESA = [
-  { nome: "Verde", hex: "#2E7D4F" },
-  { nome: "Coral", hex: "#AE5836" },
-  { nome: "Azul", hex: "#2F6DB5" },
-  { nome: "Âmbar", hex: "#9A6500" },
-  { nome: "Rosa", hex: "#B04A82" },
-  { nome: "Turquesa", hex: "#0F7F86" },
-  { nome: "Grafite", hex: "#4A5D73" },
-  { nome: "Oliva", hex: "#6B7A1F" },
+  { nome: "Turquesa", hex: "#188585" },
+  { nome: "Azul", hex: "#2A4D7C" },
+  { nome: "Ferrugem", hex: "#B4491C" },
+  { nome: "Grafite", hex: "#526477" },
+  { nome: "Verde", hex: "#21805B" },
 ] as const;
 
 type ComCor = { id: string; cor?: string };

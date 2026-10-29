@@ -47,3 +47,6 @@ export function destinoFicaSoNoMais(destino: "pops" | "relatorios", abasNaBarra:
 export function finalizarComRotulo(total: number, pendentes: number): boolean {
   return total > 0 && pendentes === 0;
 }
+
+/** Barra de baixo do celular (abaixo de 600 px): 5 destinos com o Registrar no centro; POPs e Relatórios passam para "Mais". */
+export const ABAS_CELULAR: AbaDaBarra[] = ["inicio", "visitas", "registrar", "correcoes", "mais"];

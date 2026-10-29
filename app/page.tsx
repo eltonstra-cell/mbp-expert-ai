@@ -109,7 +109,8 @@ import { cssDoDocumentoImpresso, cssDoRodapeDeImpressao, suportaCaixasDeMargem, 
 import { sincronizarNcDoItem } from "@/lib/checklistNcs";
 import { visitaDaEmpresaAtiva } from "@/lib/trocarEmpresa";
 import { dadosExtrasDoItem, limparResposta, listaEmTexto } from "@/lib/limparResposta";
-import { ABAS_PADRAO, PASSOS_DA_FAIXA_NO_CAMPO, abasDoCampoDoPerfil, destinoFicaSoNoMais, finalizarComRotulo, type AbaDaBarra } from "@/lib/abasDoCampo";
+import { useIsCelular } from "@/components/useIsCelular";
+import { ABAS_CELULAR, ABAS_PADRAO, PASSOS_DA_FAIXA_NO_CAMPO, abasDoCampoDoPerfil, destinoFicaSoNoMais, finalizarComRotulo, type AbaDaBarra } from "@/lib/abasDoCampo";
 import { CampoBarra, CampoCabecalho, CampoCorrecoes, CampoInicio, CampoMais, CampoTelaFixa, type TelaCampo } from "@/components/campo/CampoTelas";
 import ConfirmarFinalizar from "@/components/campo/ConfirmarFinalizar";
 import FiscalInicio from "@/components/FiscalInicio";
@@ -614,6 +615,7 @@ export default function Home() {
   const modo = telaModo.modo;
   // Completo e Equilibrado usam o kit de telas do PC; Campo tem apresentação própria.
   const ehPC = modo !== "campo";
+  const ehCelular = useIsCelular();
   const ComponenteEmpresas = ehPC ? PcEmpresas : CampoEmpresas;
   // Evidências, Ambientes, Ajuda, Empresas e Visitas usam as mesmas telas compactas no celular (cabem numa tela, a lista rola por dentro).
   const telaEmLista = true;
@@ -7229,7 +7231,7 @@ export default function Home() {
         ncsAbertas={ncsAbertas}
         onIrPasso={irParaPasso}
         onFinalizar={() => (campo ? setConfirmaFinalizarCampo(true) : void finalizarInspecao())}
-        podeFinalizar={visitaAtual.status !== "Concluída" && permitido("visitas.concluir", visitaAtual.empresaId)}
+        podeFinalizar={!campo && visitaAtual.status !== "Concluída" && permitido("visitas.concluir", visitaAtual.empresaId)}
         reservarAltura={reservarAltura}
         campo={campo}
         comRotulo={campo && finalizarComRotulo(checklistAtual.length, pendentesVisita)}
@@ -7238,7 +7240,7 @@ export default function Home() {
   // Barra de baixo do Campo: o padrão filtrado pelo que o perfil vê (também decide o que "Mais" ainda precisa mostrar).
   const abasNaBarraDoCampo: AbaDaBarra[] =
     abasDoCampo === ABAS_PADRAO
-      ? ABAS_PADRAO.filter((aba) => {
+      ? (ehCelular ? ABAS_CELULAR : ABAS_PADRAO).filter((aba) => {
           const chave = aba === "correcoes" ? "ncs" : aba;
           return !["visitas", "ncs", "pops", "relatorios"].includes(chave) || itensVisiveis(contextoMenu).some((item) => item.key === chave);
         })
@@ -7273,6 +7275,11 @@ export default function Home() {
     ? usuarioDaSessao.nome.split(" ").filter(Boolean).slice(0, 2).map((parte) => parte[0]).join("").toUpperCase()
     : null;
 
+  // Itens do ⋯ que são da tela aberta: "Editar ambientes" (Central da visita, tablet e celular) e "Histórico da empresa" (lista de Visitas).
+  const itensDaTela: ItemMenu[] = [
+    ...(view === "visita" && visitaAtual && modo === "campo" && permitido("visitas.executar", visitaAtual.empresaId) ? [{ rotulo: "Editar ambientes", onClick: () => abrirAmbientes() }] : []),
+    ...(view === "visitas" && modo !== "campo" ? [{ rotulo: "Histórico da empresa", onClick: () => setView("historico"), desabilitado: !atual }] : []),
+  ];
   const itensMenuModo: ItemMenu[] = [
     ...(Object.keys(ROTULO_DE_USO) as Array<keyof typeof ROTULO_DE_USO>).map((opcao): ItemMenu => ({
       rotulo: `${modo === opcao ? "● " : "○ "}${ROTULO_DE_USO[opcao]}`,
@@ -7766,9 +7773,10 @@ export default function Home() {
             <CampoCabecalho
               empresa={nomeEmFormatoNatural(atual?.nomeFantasia) || ""}
               empresaCor={atual ? corDaEmpresa(atual) : undefined}
-              titulo={TITULO_DA_TELA_NO_CAMPO[view] || ""}
+              titulo={view === "visita" && visitaAtual ? `Visita ${numeroVisitaPorId.get(visitaAtual.id) || ""}`.trim() : TITULO_DA_TELA_NO_CAMPO[view] || ""}
+              subtitulo={modoVisitaNoMenu && visitaAtual ? (view === "visita" ? "" : `Visita ${numeroVisitaPorId.get(visitaAtual.id) || ""}`.trim()) : null}
               sincronizacao={{ ...seloAtual, rotulo: view === "campomais" && seloAtual.estado === "ok" ? "Tudo enviado" : seloAtual.rotulo, onClick: tocarNoSelo }}
-              menuModo={itensMenuModo}
+              menuModo={[...itensDaTela, ...itensMenuModo]}
               onTrocarEmpresa={() => setTrocarEmpresaAberto(true)}
               onVoltar={mostrarVoltar(localDaTela) ? () => void voltarUmaTela() : undefined}
               busca={
@@ -7822,6 +7830,7 @@ export default function Home() {
           onVoltarAoAutomatico={telaModo.voltarAoAutomatico}
           onAbrirConfigModo={() => setView("modotela")}
           onTrocarEmpresa={() => setTrocarEmpresaAberto(true)}
+          itensExtras={itensDaTela}
           atalhos={atalhosDaBarra}
           onVoltar={mostrarVoltar(localDaTela) ? () => void voltarUmaTela() : undefined}
           ocultarChipDeModo={Boolean(secaoDoTopo)}
@@ -9519,6 +9528,8 @@ export default function Home() {
           </section>
         ) : view === "visita" && visitaAtual ? (
           <PcCentral
+            campo={modo === "campo"}
+            dataDaVisita={fdata(visitaAtual.data)}
             passos={([
               { chave: "checklist", rotulo: "Checklist", resumo: `${respondidos} de ${totalChecklist} ${totalChecklist === 1 ? "item" : "itens"}`, icone: "checklist", tom: "ok" },
               { chave: "evidencias", rotulo: "Evidências", resumo: `${fotosVisita} ${fotosVisita === 1 ? "foto" : "fotos"} · ${audiosVisita} ${audiosVisita === 1 ? "áudio" : "áudios"}`, icone: "evidencias", tom: "info" },
@@ -9546,7 +9557,7 @@ export default function Home() {
               vazio: equipamentosDaVisita.length === 0,
               textoVazio: (empresaVisita?.equipamentosSetores || []).length === 0 ? "Nenhum equipamento cadastrado" : "Nenhum equipamento nos ambientes desta visita",
               onCadastrar: atual && atual.id === visitaAtual.empresaId && permitido("empresas.editar", atual.id) ? () => void abrirSecaoEmpresaPeloMenu("equipamentos") : null,
-              texto: `${equipamentosDaVisita.length} tipos · ${totalUnidadesEquipamentos} unidades`,
+              texto: `${qtd(equipamentosDaVisita.length, "tipo", "tipos")} · ${qtd(totalUnidadesEquipamentos, "unidade", "unidades")}`,
               desabilitado: (visitaAtual.ambientes || []).length === 0,
               onAbrir: () => abrirChecklistNoAmbiente(equipamentosDaVisita[0]?.setor || (visitaAtual.ambientes || [])[0]),
             }}
@@ -10945,9 +10956,7 @@ export default function Home() {
             empresaAtiva={atual ? nomeParaExibir(atual) : "nenhuma"}
             filtro={filtroListaVisitas}
             onFiltro={setFiltroListaVisitas}
-            historicoDesabilitado={!atual}
             novaDesabilitada={!atual || !permitido("visitas.criar", atual.id)}
-            onHistorico={() => setView("historico")}
             onNova={novaVisita}
             onArquivar={arquivarVisita}
             onContinuar={(id) => continuar(id)}

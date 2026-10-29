@@ -22,10 +22,9 @@ export const ROTULO_DO_MODO: Record<ModoTela, string> = {
   completo: "Completo",
 };
 
-/** Automático: < 768 px Campo; 768 a 1099 Equilibrado (menu lateral recolhido em ícones); >= 1100 Completo. */
+/** Automático: < 1100 px Campo (celular e tablet, sem barra lateral; o layout se ajusta em 600 px); >= 1100 Completo. O Equilibrado continua como escolha manual. */
 export function modoAutomatico(larguraDaTela: number): ModoTela {
-  if (larguraDaTela < 768) return "campo";
-  if (larguraDaTela < 1100) return "equilibrado";
+  if (larguraDaTela < 1100) return "campo";
   return "completo";
 }
 

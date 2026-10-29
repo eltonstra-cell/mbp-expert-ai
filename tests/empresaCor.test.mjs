@@ -12,9 +12,9 @@ const matiz = (hex) => {
   return (h * 60 + 360) % 360;
 };
 
-test("a paleta tem de 8 a 10 cores, todas com contraste de 4,5 ou mais com texto branco", () => {
-  assert.ok(PALETA_EMPRESA.length >= 8 && PALETA_EMPRESA.length <= 10);
-  for (const { nome, hex } of PALETA_EMPRESA) assert.ok(contrasteComBranco(hex) >= 4.5, `${nome} ${hex} ${contrasteComBranco(hex).toFixed(2)}`);
+test("a paleta tem 5 cores, todas com contraste de 4,4 ou mais com texto branco (o turquesa #188585 pedido dá 4,44)", () => {
+  assert.ok(PALETA_EMPRESA.length === 5);
+  for (const { nome, hex } of PALETA_EMPRESA) assert.ok(contrasteComBranco(hex) >= 4.4, `${nome} ${hex} ${contrasteComBranco(hex).toFixed(2)}`);
 });
 
 test("nenhuma cor da paleta lembra o vermelho de não conforme", () => {
@@ -30,7 +30,7 @@ test("sem cor guardada, a cor vem do id e é sempre a mesma; cor guardada vale",
   const a = corDaEmpresa({ id: "44150273000191" });
   assert.equal(a, corDaEmpresa({ id: "44150273000191" }));
   assert.ok(corValida(a));
-  assert.equal(corDaEmpresa({ id: "x", cor: "#2f6db5" }), "#2F6DB5");
+  assert.equal(corDaEmpresa({ id: "x", cor: "#2a4d7c" }), "#2A4D7C");
   assert.equal(corDaEmpresa({ id: "x", cor: "#ff0000" }), corDaEmpresa({ id: "x" }));
   assert.equal(corValida("#D93A3A"), false);
 });

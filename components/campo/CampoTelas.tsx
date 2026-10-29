@@ -39,10 +39,13 @@ export function CampoCabecalho({
   onTrocarEmpresa,
   onVoltar,
   titulo = "",
+  subtitulo = null,
   busca = null,
-}: Pick<Chrome, "empresa" | "sincronizacao" | "menuModo"> & { empresaCor?: string; onTrocarEmpresa?: () => void; onVoltar?: () => void; /** Nome da página atual, em destaque no topo. */ titulo?: string; /** Busca inteligente (a mesma do PC) logo abaixo da linha do título; só no Checklist. */ busca?: ReactNode }) {
+}: Pick<Chrome, "empresa" | "sincronizacao" | "menuModo"> & {
+  /** Dentro da visita: "Visita N" (ou vazio quando o título já é "Visita N"). No celular vira "Empresa · Visita N ▾" e a caixa "Empresa ativa" sai; no tablet a caixa fica. */
+  subtitulo?: string | null; empresaCor?: string; onTrocarEmpresa?: () => void; onVoltar?: () => void; /** Nome da página atual, em destaque no topo. */ titulo?: string; /** Busca inteligente (a mesma do PC) logo abaixo da linha do título; só no Checklist. */ busca?: ReactNode }) {
   return (
-    <header className={`campo-head${busca ? " campo-head--busca" : ""}`}>
+    <header className={`campo-head${busca ? " campo-head--busca" : ""}${subtitulo !== null ? " campo-head--visita" : ""}`}>
       <div className="campo-head-linha">
       {onVoltar && (
         // Mesma pilha de telas do PC; no celular a área de toque é de 44 px.
@@ -50,7 +53,21 @@ export function CampoCabecalho({
           <span aria-hidden="true">←</span>
         </button>
       )}
-      {titulo && <h1 className="campo-head-pagina">{titulo}</h1>}
+      {titulo && (
+        <div className="campo-head-titulo">
+          <h1 className="campo-head-pagina">{titulo}</h1>
+          {subtitulo !== null && (
+            <button type="button" className="campo-head-subtitulo" aria-label={`Trocar empresa. Empresa ativa: ${empresa || "nenhuma"}`} onClick={onTrocarEmpresa} disabled={!onTrocarEmpresa}>
+              <span className="campo-head-sub-emp">{empresa}</span>
+              <span className="campo-head-sub-resto">
+                {subtitulo && <span className="campo-head-sub-sep"> · </span>}
+                {subtitulo}
+                <span className="campo-head-sub-seta" aria-hidden="true"> ▾</span>
+              </span>
+            </button>
+          )}
+        </div>
+      )}
       <div className="campo-head-espaco" />
       <button type="button" className={`campo-sync is-${sincronizacao.estado}`} aria-label={sincronizacao.rotulo} title={sincronizacao.rotulo} onClick={sincronizacao.onClick}>
         <span aria-hidden="true" />
@@ -771,7 +788,10 @@ export function CampoTelaFixa({ className, rotulo, children }: { className: stri
     const medir = () => {
       const barra = document.querySelector<HTMLElement>(".campo-bar");
       if (!barra) return;
-      const livre = Math.floor(barra.getBoundingClientRect().top - el.getBoundingClientRect().top - 8);
+      // O disco do Registrar sobe acima da barra: o conteúdo para 16 px antes dele, para nenhum botão encostar.
+      const disco = document.querySelector<HTMLElement>(".campo-register-orb");
+      const limite = Math.min(barra.getBoundingClientRect().top, disco ? disco.getBoundingClientRect().top : Infinity);
+      const livre = Math.floor(limite - el.getBoundingClientRect().top - 16);
       if (livre > 160) el.style.height = `${livre}px`;
       else el.style.removeProperty("height");
     };
@@ -779,7 +799,7 @@ export function CampoTelaFixa({ className, rotulo, children }: { className: stri
     const observador = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(medir);
     const observados = new Set<Element>();
     const observarFaixas = () => {
-      for (const seletor of [".campo-head", ".fv", ".campo-bar"]) {
+      for (const seletor of [".campo-head", ".fv", ".campo-bar", ".campo-register-orb"]) {
         const alvo = document.querySelector(seletor);
         if (alvo && !observados.has(alvo)) {
           observados.add(alvo);
@@ -800,7 +820,10 @@ export function CampoTelaFixa({ className, rotulo, children }: { className: stri
     if (pai) mutacoes?.observe(pai, { childList: true });
     window.addEventListener("resize", medir);
     void document.fonts?.ready.then(medir);
+    // O topo ainda pode mudar de altura depois da primeira pintura (fontes, selo de sincronização, faixa da visita): mede de novo logo em seguida.
+    const tardios = [120, 500, 1500].map((espera) => window.setTimeout(medir, espera));
     return () => {
+      tardios.forEach((id) => window.clearTimeout(id));
       observador?.disconnect();
       mutacoes?.disconnect();
       window.removeEventListener("resize", medir);

@@ -45,7 +45,7 @@ test("selo com texto no topo do celular, com o nome da página; a frase do sem s
   const page = ler("../app/page.tsx");
   assert.equal(page.includes('<div className="faixa-fina" role="status">Sem sinal'), false, "a faixa que repetia o selo saiu");
   assert.ok(page.includes("Sem sinal · alterações guardadas neste aparelho. Elas são enviadas quando a conexão voltar."));
-  assert.ok(page.includes("titulo={TITULO_DA_TELA_NO_CAMPO[view] || \"\"}"));
+  assert.ok(page.includes("TITULO_DA_TELA_NO_CAMPO[view] || \"\""));
   const campo = ler("../components/campo/CampoTelas.tsx");
   assert.ok(campo.includes("campo-head-pagina") && campo.includes("campo-sync-texto"));
 });
@@ -115,7 +115,7 @@ test("PC: ações do ambiente são botões de 40 px, trilho azul de 104 px com p
   assert.ok(css.includes('.tr-ladrilho.is-ativo{background:#168080}'), "página atual: ladrilho âmbar");
   assert.equal(css.includes('.pc-rail') || css.includes('.pc-side'), false, "as regras do menu largo e do trilho claro foram removidas");
   assert.ok(css.includes('html .pc-topbar .emp-ativa{flex:0 0 auto;width:auto;min-width:240px'));
-  assert.ok(ler("../lib/screenMode.ts").includes('if (larguraDaTela < 1100) return "equilibrado"'));
+  assert.ok(ler("../lib/screenMode.ts").includes("if (larguraDaTela < 1100) return \"campo\""));
 });
 
 test("campo de observação: um só texto (sem rótulo repetido no placeholder) e miniatura da foto ao lado do botão Foto", () => {

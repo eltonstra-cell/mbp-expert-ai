@@ -193,7 +193,8 @@ test("Barra de progresso do Campo: 'Não se aplica' em grafite #526477 (distinto
   assert.equal(COR_DO_SEGMENTO.Conforme, "#21805B");
   assert.equal(COR_DO_SEGMENTO["Não Conforme"], "#C83F45");
   assert.equal(COR_DO_SEGMENTO_CAMPO["Não Conforme"], COR_DO_SEGMENTO["Não Conforme"]);
-  assert.ok(ler("../components/ChecklistFocoItem.tsx").includes("(campo ? COR_DO_SEGMENTO_CAMPO : COR_DO_SEGMENTO)"));
+  const foco = ler("../components/ChecklistFocoItem.tsx");
+  assert.ok(foco.includes("COR_DO_SEGMENTO[outro.status]") && foco.includes("chk-seg--num"), "no Campo os números levam a cor pela classe; fora dele, o segmento usa COR_DO_SEGMENTO");
 });
 
 test("Visitas em janela estreita: abas numa linha sem pílulas, sem legenda das abas, ⋯ junto de Continuar e sub da empresa sem reticências", () => {

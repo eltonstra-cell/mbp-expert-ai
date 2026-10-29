@@ -46,9 +46,7 @@ type Props = {
   visitas: LinhaVisita[];
   filtro: FiltroVisitas;
   onFiltro: (filtro: FiltroVisitas) => void;
-  historicoDesabilitado: boolean;
   novaDesabilitada: boolean;
-  onHistorico: () => void;
   onNova: () => void;
   onContinuar: (id: string) => void;
   onConcluir: (id: string) => void;
@@ -70,7 +68,7 @@ function Chevron({ aberto }: { aberto: boolean }) {
   );
 }
 
-export default function PcVisitas({ empresaAtiva, visitas, filtro, onFiltro, historicoDesabilitado, novaDesabilitada, onHistorico, onNova, onContinuar, onConcluir, onReabrir, onRelatorio, onArquivar, onExcluir }: Props) {
+export default function PcVisitas({ empresaAtiva, visitas, filtro, onFiltro, novaDesabilitada, onNova, onContinuar, onConcluir, onReabrir, onRelatorio, onArquivar, onExcluir }: Props) {
   const [busca, setBusca] = useState("");
   const [alternados, setAlternados] = useState<string[]>(() => lerGruposAlternados());
 
@@ -209,9 +207,6 @@ export default function PcVisitas({ empresaAtiva, visitas, filtro, onFiltro, his
             value={busca}
             onChange={(evento) => setBusca(evento.target.value)}
           />
-          <button type="button" className="ui-btn ui-btn--secondary" onClick={onHistorico} disabled={historicoDesabilitado}>
-            Histórico da empresa
-          </button>
           <button type="button" className="ui-btn ui-btn--criar" onClick={onNova} disabled={novaDesabilitada}>
             + Nova visita
           </button>

@@ -14,7 +14,7 @@ import type { ResultadoDaTemperatura } from "@/lib/limitesDeTemperatura";
 import { progressoDaCaminhada, textoDaCaminhada } from "@/lib/caminhada";
 import { NavIcon } from "@/components/NavIcons";
 import type { InfoAmbiente } from "@/lib/checklistEnvs";
-import { COR_DO_SEGMENTO, COR_DO_SEGMENTO_CAMPO, rotuloDoSegmento } from "@/lib/checklistSegmentos";
+import { COR_DO_SEGMENTO, rotuloDoSegmento } from "@/lib/checklistSegmentos";
 import { useCapturaCamera } from "@/components/useCapturaMidia";
 import { estadosDosBotoes, gravidadeSugerida } from "@/lib/checklistUi";
 import { textoDeBaseLegal } from "@/lib/conteudoValidado";
@@ -80,6 +80,7 @@ type Props = {
 };
 
 const NOME_GRAVIDADE: Record<string, string> = { Crítica: "Crítica", Importante: "Importante", Rotina: "Leve" };
+const CLASSE_DO_SEGMENTO: Record<string, string> = { Conforme: "ok", "Não Conforme": "nc", "Não se aplica": "na", Pendente: "pend" };
 const CLASSE_GRAVIDADE: Record<string, string> = { Crítica: "nc", Importante: "amber", Rotina: "leve" };
 
 // Linha recolhível: o texto abre sobre o checklist, sem criar rolagem nem ficar atrás do rodapé.
@@ -138,6 +139,8 @@ export default function ChecklistFocoItem({
   // Celular: o texto inteiro da pergunta fica atrás de um "i" discreto (a fonte aparece sempre, logo abaixo do enunciado).
   const [fonteAberta, setFonteAberta] = useState(false);
   useEffect(() => setFonteAberta(false), [item.id]);
+  const [nomeAberto, setNomeAberto] = useState(false);
+  useEffect(() => setNomeAberto(false), [item.ambiente]);
   const areaRef = useRef<HTMLTextAreaElement | null>(null);
   const primeiraRespostaRef = useRef<HTMLButtonElement | null>(null);
   const caixaRef = useRef<HTMLDivElement | null>(null);
@@ -301,18 +304,33 @@ export default function ChecklistFocoItem({
             {respondidosAmbiente}/{totalAmbiente} respondidos
           </span>
         );
+        // Campo: "N de M respondidas · P%" dentro da caixa do ambiente (no lugar da barra pontilhada).
+        const respondidasDoAmbiente = campo ? (
+          <span className="chk-foco-amb-resp" aria-label={`${respondidosAmbiente} de ${totalAmbiente} respondidas neste ambiente`}>
+            {respondidosAmbiente} de {totalAmbiente} respondidas · {totalAmbiente ? Math.round((respondidosAmbiente / totalAmbiente) * 100) : 0}%
+          </span>
+        ) : null;
         const corpo = (aberto: boolean, alternar?: () => void) => (
           <div className="chk-foco-amb">
             {alternar ? (
-              <button type="button" className="chk-foco-amb-top chk-foco-amb-botao" aria-haspopup="dialog" aria-expanded={aberto} onClick={alternar}>
-                <span className="chk-foco-amb-nome">{ambienteRotulo}</span>
-                {posicaoNoAmbiente}
-                <span className="chk-foco-amb-seta" aria-hidden="true">▾</span>
-              </button>
+              <div className="chk-foco-amb-top chk-foco-amb-botao">
+                <div className="chk-foco-amb-textos">
+                  {/* Tocar no nome mostra o nome inteiro (no celular ele fica em uma linha); o ▾ ao lado troca de ambiente. */}
+                  <button type="button" className="chk-foco-amb-nome-btn" aria-expanded={nomeAberto} onClick={() => setNomeAberto((valor) => !valor)}>
+                    <span className={`chk-foco-amb-nome${nomeAberto ? " is-aberto" : ""}`}>{ambienteRotulo}</span>
+                  </button>
+                  {!campo && posicaoNoAmbiente}
+                  {respondidasDoAmbiente}
+                </div>
+                <button type="button" className="chk-foco-amb-seta-btn" aria-label="Trocar de ambiente" aria-haspopup="dialog" aria-expanded={aberto} onClick={alternar}>
+                  <span className="chk-foco-amb-seta" aria-hidden="true">▾</span>
+                </button>
+              </div>
             ) : (
               <div className="chk-foco-amb-top">
                 <span className="chk-foco-amb-nome">{ambienteRotulo}</span>
-                {posicaoNoAmbiente}
+                {!campo && posicaoNoAmbiente}
+                {respondidasDoAmbiente}
               </div>
             )}
             {fila && onItem ? (
@@ -321,12 +339,14 @@ export default function ChecklistFocoItem({
                   <button
                     key={outro.id}
                     type="button"
-                    className={`chk-seg${outro.id === item.id ? " is-atual" : ""}`}
-                    style={{ background: (campo ? COR_DO_SEGMENTO_CAMPO : COR_DO_SEGMENTO)[outro.status] }}
+                    className={`chk-seg${outro.id === item.id ? " is-atual" : ""}${campo ? ` chk-seg--num chk-seg--${CLASSE_DO_SEGMENTO[outro.status] || "pend"}` : ""}`}
+                    style={campo ? undefined : { background: COR_DO_SEGMENTO[outro.status] }}
                     aria-label={rotuloDoSegmento(indice, outro.status)}
                     aria-current={outro.id === item.id ? "true" : undefined}
                     onClick={() => onItem(outro.id)}
-                  />
+                  >
+                    {campo ? indice + 1 : null}
+                  </button>
                 ))}
               </div>
             ) : (
@@ -334,7 +354,7 @@ export default function ChecklistFocoItem({
                 <span style={{ width: `${totalAmbiente ? Math.round((respondidosAmbiente / totalAmbiente) * 100) : 0}%` }} />
               </div>
             )}
-            <span className="chk-foco-count">
+            {!campo && <span className="chk-foco-count">
               <span className="chk-foco-count-texto">{textoCaminhada || `Item ${posicao} de ${total} na visita`}</span>
               {caminhada?.nomeDoProximo && onAmbiente && (
                 <>
@@ -344,7 +364,7 @@ export default function ChecklistFocoItem({
                   </button>
                 </>
               )}
-            </span>
+            </span>}
           </div>
         );
         return ambientes && onAmbiente ? (
@@ -422,7 +442,13 @@ export default function ChecklistFocoItem({
 
       {naoConforme && (
         <div className="chk-grav-bloco" role="group" aria-label="Quão grave é?">
-          <span className="chk-grav-titulo">Quão grave é?</span>
+          <span className="chk-grav-titulo">{campo ? "Gravidade" : "Quão grave é?"}</span>
+          {campo && sugerida && (
+            <span className="chk-grav-sugestao">
+              <span className="chk-sug-tablet">Sugestão do app: {NOME_GRAVIDADE[sugerida]}</span>
+              <span className="chk-sug-celular"> · sugestão do app: {NOME_GRAVIDADE[sugerida]}</span>
+            </span>
+          )}
           <div className="chk-grav-linha">
             {(["Rotina", "Importante", "Crítica"] as const).map((nivel) => (
               <button
@@ -434,7 +460,7 @@ export default function ChecklistFocoItem({
                 onClick={() => onGravidade(nivel)}
               >
                 {NOME_GRAVIDADE[nivel]}
-                {sugerida === nivel && <span className="chk-grav-sug"><span>·</span>sugerida</span>}
+                {!campo && sugerida === nivel && <span className="chk-grav-sug"><span>·</span>sugerida</span>}
               </button>
             ))}
           </div>
@@ -442,6 +468,7 @@ export default function ChecklistFocoItem({
       )}
 
       <div className="chk-foco-obs" ref={caixaRef}>
+        {campo && <span className="chk-obs-rotulo chk-obs-rotulo--campo">Observação (opcional)</span>}
         <div className="chk-obs-cabeca">
           {!campo && <span className="chk-obs-rotulo">{naoConforme ? "Registrar a não conformidade" : "Observação (opcional)"}</span>}
           {podeEditar ? (
@@ -573,13 +600,15 @@ export default function ChecklistFocoItem({
         <button
           type="button"
           className="ui-btn ui-btn--secondary"
+          aria-label="Anterior"
           disabled={!temAnterior}
           onClick={() => {
             salvarTexto();
             onAnterior();
           }}
         >
-          ← Anterior
+          <span className="chk-rot-longo">← Anterior</span>
+          <span className="chk-rot-curto" aria-hidden="true">←</span>
         </button>
         <button
           type="button"

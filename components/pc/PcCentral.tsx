@@ -4,7 +4,9 @@ import { NavIcon, type NavIconName } from "@/components/NavIcons";
 import { useCabem } from "@/components/useFit";
 import { ListRow } from "@/components/ui/ListRow";
 import { Pill } from "@/components/ui/Pill";
-import { SegmentedProgress } from "@/components/ui/ProgressBar";
+import { ProgressBar, SegmentedProgress } from "@/components/ui/ProgressBar";
+import { confirmar } from "@/lib/dialogos";
+import { CampoTelaFixa } from "@/components/campo/CampoTelas";
 
 export type NcAbertaCentral = {
   id: string;
@@ -17,6 +19,10 @@ export type NcAbertaCentral = {
 export type PassoCentral = { chave: string; rotulo: string; resumo: string; /** Explica o escopo do número (title e nome acessível). */ titulo?: string; icone: NavIconName; tom: "ok" | "info" | "nc" | "pend" | "lilas" };
 
 type Props = {
+  /** Tablet e celular (modo Campo): o título "Visita N" já está no cabeçalho; lista única, Finalizar no fim. */
+  campo?: boolean;
+  /** Data da visita, no cartão "Próxima etapa · data". */
+  dataDaVisita?: string;
   passos: PassoCentral[];
   onIrPasso: (chave: string) => void;
   empresa: string;
@@ -48,6 +54,8 @@ type Props = {
 };
 
 export default function PcCentral({
+  campo = false,
+  dataDaVisita = "",
   passos,
   onIrPasso,
   empresa,
@@ -63,6 +71,98 @@ export default function PcCentral({
   onFinalizar,
 }: Props) {
   const ncsFit = useCabem<HTMLDivElement>(72, 4, 0);
+  if (campo) {
+    const linhaDoPasso = (passo: PassoCentral) => (
+      <button key={passo.chave} type="button" data-chave={passo.chave} className={`cc-linha cc-linha--${passo.tom}`} title={passo.titulo ?? passo.resumo} aria-label={passo.titulo ? `${passo.rotulo}, ${passo.resumo}. ${passo.titulo}` : undefined} onClick={() => onIrPasso(passo.chave)}>
+        <span className="cc-icone"><NavIcon name={passo.icone} size={20} strokeWidth={1.9} /></span>
+        <span className="cc-nome">{passo.rotulo}</span>
+        <span className="cc-valor">{passo.resumo}</span>
+        <span className="cc-seta" aria-hidden="true">›</span>
+      </button>
+    );
+    const antes = passos.filter((passo) => passo.chave !== "relatorio");
+    const relatorio = passos.filter((passo) => passo.chave === "relatorio");
+    const completa = proxima.total > 0 && proxima.respondidos >= proxima.total;
+    const finalizar = () => {
+      if (!onFinalizar) return;
+      if (proxima.respondidos === 0) {
+        void confirmar("Nenhum item do checklist foi respondido nesta visita. Quer finalizar mesmo assim?", { titulo: "Finalizar sem respostas?", confirmarRotulo: "Finalizar", cancelarRotulo: "Voltar" }).then((sim) => { if (sim) onFinalizar(); });
+        return;
+      }
+      onFinalizar();
+    };
+    return (
+      <CampoTelaFixa className="ui-screen cc" rotulo="Central da visita">
+        <div className="cc-proxima">
+          <div className="cc-proxima-topo">
+            <div className="cc-proxima-textos">
+              <div className="cc-eyebrow">Próxima etapa{dataDaVisita ? ` · ${dataDaVisita}` : ""}</div>
+              <div className="cc-ambiente">{proxima.titulo}</div>
+            </div>
+            <button type="button" className="cc-continuar" disabled={proxima.desabilitado} onClick={proxima.onContinuar}>
+              {proxima.botao}
+            </button>
+          </div>
+          <ProgressBar percentual={proxima.percentual} rotulo="Progresso do checklist" />
+          <div className="cc-resp">
+            {proxima.respondidos} de {proxima.total} respondidas · {proxima.percentual}%
+          </div>
+        </div>
+
+        <div className="cc-lista" role="group" aria-label="Assuntos da visita">
+          {antes.map(linhaDoPasso)}
+          {equipamentos.vazio ? (
+            <button type="button" className="cc-linha cc-linha--equip" disabled={!equipamentos.onCadastrar} onClick={() => equipamentos.onCadastrar?.()}>
+              <span className="cc-icone"><NavIcon name="ambientes" size={20} strokeWidth={1.9} /></span>
+              <span className="cc-nome">Equipamentos<span className="cc-nome-resto"> e móveis</span></span>
+              <span className="cc-valor">Nenhum cadastrado</span>
+              <span className="cc-seta" aria-hidden="true">›</span>
+            </button>
+          ) : (
+            <button type="button" className="cc-linha cc-linha--equip" disabled={equipamentos.desabilitado} onClick={equipamentos.onAbrir}>
+              <span className="cc-icone"><NavIcon name="ambientes" size={20} strokeWidth={1.9} /></span>
+              <span className="cc-nome">Equipamentos<span className="cc-nome-resto"> e móveis</span></span>
+              <span className="cc-valor">{equipamentos.texto}</span>
+              <span className="cc-seta" aria-hidden="true">›</span>
+            </button>
+          )}
+          {programas && (
+            <button type="button" className="cc-linha cc-linha--prog" onClick={programas.onAbrir}>
+              <span className="cc-icone"><NavIcon name="checklist" size={20} strokeWidth={1.9} /></span>
+              <span className="cc-nome">Programas de Controle</span>
+              <span className="cc-valor">{programas.texto}</span>
+              <span className="cc-seta" aria-hidden="true">›</span>
+            </button>
+          )}
+          {relatorio.map(linhaDoPasso)}
+        </div>
+
+        {ncsAbertas && ncsAbertas.length > 0 && (
+          <div className="cc-ncs">
+            <div className="cc-ncs-cab">
+              <h2 className="cc-ncs-titulo">Não conformidades em aberto</h2>
+              <button type="button" className="pc-link-btn" onClick={onVerNcs}>Ver todas ({totalNcsAbertas}) →</button>
+            </div>
+            {ncsAbertas.slice(0, 2).map((nc, indice) => (
+              <button key={nc.id} type="button" className={`cc-nc${indice > 0 ? " cc-nc--tablet" : ""}`} onClick={nc.onAbrir}>
+                <span className="cc-nc-textos">
+                  <span className="cc-nc-titulo">{nc.titulo}</span>
+                  <span className="cc-nc-sub">{nc.detalhe}</span>
+                </span>
+                <span className="cc-seta" aria-hidden="true">›</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {onFinalizar && (
+          <button type="button" className={`cc-finalizar${completa ? " is-completa" : ""}`} onClick={finalizar}>
+            Finalizar visita
+          </button>
+        )}
+      </CampoTelaFixa>
+    );
+  }
   return (
     <section className="ui-screen" aria-label="Central da visita">
       <div className="ui-head">

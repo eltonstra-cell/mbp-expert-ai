@@ -55,6 +55,8 @@ type Props = {
   variante?: "inicio";
   /** Modo Campo (celular): a busca fica no cabeçalho do Campo (CampoCabecalho), então esta barra, escondida por CSS, não a repete. */
   semBusca?: boolean;
+  /** Itens do ⋯ que pertencem à tela aberta (vão antes dos do modo de tela). */
+  itensExtras?: ItemMenu[];
 };
 
 export default function AppTopbar({
@@ -86,10 +88,12 @@ export default function AppTopbar({
   ocultarChipDeModo = false,
   variante,
   semBusca = false,
+  itensExtras = [],
 }: Props) {
   const itensModo: ItemMenu[] =
     modo && onEscolherModo
       ? [
+          ...itensExtras,
           ...(Object.keys(ROTULO_DE_USO) as ModoTela[]).map((opcao): ItemMenu => ({
             rotulo: `${modo === opcao ? "● " : "○ "}${ROTULO_DE_USO[opcao]}`,
             onClick: () => onEscolherModo(opcao),

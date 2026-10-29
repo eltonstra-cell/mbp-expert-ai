@@ -31,10 +31,10 @@ test("escolher aplica e fecha; Esc e toque fora fecham; sem botão Salvar", () =
   assert.ok(!/Salvar/.test(janela));
 });
 
-test("cada bolinha tem nome acessível e a paleta tem 8 cores nomeadas", () => {
+test("cada bolinha tem nome acessível e a paleta tem 5 cores nomeadas", () => {
   assert.deepEqual(
     PALETA_EMPRESA.map((cor) => cor.nome),
-    ["Verde", "Coral", "Azul", "Âmbar", "Rosa", "Turquesa", "Grafite", "Oliva"]
+    ["Turquesa", "Azul", "Ferrugem", "Grafite", "Verde"]
   );
   const janela = ler("../components/CorDaEmpresa.tsx");
   assert.ok(janela.includes("aria-label={opcao.nome}") && janela.includes("aria-pressed={marcada}"));
