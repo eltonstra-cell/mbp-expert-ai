@@ -79,7 +79,7 @@ import { maisRecentesPrimeiro, visitaPadraoParaRegistro } from "@/lib/registerTa
 import { listaSemArquivadas, marcarArquivada } from "@/lib/menuActions";
 import { adicionarSugestaoPop, criarRascunhosFaltantes, popsDaVisita } from "@/lib/pops";
 import UpdateNotice from "@/components/UpdateNotice";
-import { alteracoesEmLote, contarNcsPorGravidade, resumoDoPlano } from "@/lib/actionPlan";
+import { alteracoesEmLote, contarEtapas, contarNcsPorGravidade, resumoDoPlano } from "@/lib/actionPlan";
 import PcEvidencias from "@/components/pc/PcEvidencias";
 import PcAmbientes from "@/components/pc/PcAmbientes";
 import PcCentral, { type PassoCentral } from "@/components/pc/PcCentral";
@@ -111,6 +111,7 @@ import { visitaDaEmpresaAtiva } from "@/lib/trocarEmpresa";
 import { dadosExtrasDoItem, limparResposta, listaEmTexto } from "@/lib/limparResposta";
 import { useIsCelular } from "@/components/useIsCelular";
 import { ABAS_CELULAR, ABAS_PADRAO, PASSOS_DA_FAIXA_NO_CAMPO, abasDoCampoDoPerfil, destinoFicaSoNoMais, finalizarComRotulo, type AbaDaBarra } from "@/lib/abasDoCampo";
+import BuscaDeEmpresas from "@/components/campo/BuscaDeEmpresas";
 import { CampoBarra, CampoCabecalho, CampoCorrecoes, CampoInicio, CampoMais, CampoTelaFixa, type TelaCampo } from "@/components/campo/CampoTelas";
 import ConfirmarFinalizar from "@/components/campo/ConfirmarFinalizar";
 import FiscalInicio from "@/components/FiscalInicio";
@@ -3168,6 +3169,8 @@ export default function Home() {
   });
   const ncsVisita = (db.ncs || []).filter((nc) => nc.visitaId === visitaAtual?.id && !nc.inativaNoChecklist);
   const ncsAbertas = correcoesAbertas(ncsVisita);
+  // Barra de baixo do Campo: o mesmo total do contador "Identificadas" da lista de Correções (dentro de uma visita).
+  const identificadasNaBarra = visitaAtual ? contarEtapas(ncsVisita).identificadas : ncsAbertas;
   const ncsVisiveis = ncsVisita.filter((nc) => {
     if (filtroNcs === "Todas") return true;
     if (filtroNcs === "Abertas") return nc.status !== "Resolvida";
@@ -7228,7 +7231,7 @@ export default function Home() {
           .filter((passo) => telaVisivel(passo.chave === "pops" ? "popsVisita" : (passo.chave as TelaKey)))
           .filter((passo) => !campo || (PASSOS_DA_FAIXA_NO_CAMPO as readonly string[]).includes(passo.chave))}
         atual={passoAtualDaTrilha}
-        ncsAbertas={ncsAbertas}
+        ncsAbertas={campo && view === "correcoes" ? 0 : ncsAbertas}
         onIrPasso={irParaPasso}
         onFinalizar={() => (campo ? setConfirmaFinalizarCampo(true) : void finalizarInspecao())}
         podeFinalizar={false}
@@ -7774,13 +7777,15 @@ export default function Home() {
               empresa={nomeEmFormatoNatural(atual?.nomeFantasia) || ""}
               empresaCor={atual ? corDaEmpresa(atual) : undefined}
               titulo={view === "visita" && visitaAtual ? `Visita ${numeroVisitaPorId.get(visitaAtual.id) || ""}`.trim() : TITULO_DA_TELA_NO_CAMPO[view] || ""}
-              subtitulo={modoVisitaNoMenu && visitaAtual ? (view === "visita" ? "" : `Visita ${numeroVisitaPorId.get(visitaAtual.id) || ""}`.trim()) : null}
+              subtitulo={modoVisitaNoMenu && visitaAtual ? (view === "visita" ? "" : `Visita ${numeroVisitaPorId.get(visitaAtual.id) || ""}`.trim()) : view === "empresas" ? "" : null}
               sincronizacao={{ ...seloAtual, rotulo: view === "campomais" && seloAtual.estado === "ok" ? "Tudo enviado" : seloAtual.rotulo, onClick: tocarNoSelo }}
               menuModo={[...itensDaTela, ...itensMenuModo]}
               onTrocarEmpresa={() => setTrocarEmpresaAberto(true)}
               onVoltar={mostrarVoltar(localDaTela) ? () => void voltarUmaTela() : undefined}
               busca={
-                view === "checklist" && visitaAtual ? (
+                view === "empresas" ? (
+                  <BuscaDeEmpresas className="emp-busca--cabecalho" valor={buscaEmpresas} onChange={setBuscaEmpresas} placeholder="Buscar empresa" micDisponivel={deveExibirRecursosDeIa(usuarioDaSessao)} />
+                ) : (view === "checklist" || view === "evidencias" || view === "correcoes") && visitaAtual ? (
                   <BuscaNaBarra
                     variante="campo"
                     destinos={destinosCaixa}
@@ -7798,7 +7803,7 @@ export default function Home() {
             {faixaDaVisita(true, true)}
             <CampoBarra
               tela={view === "inicio" ? "inicio" : abasDoCampo.includes("visitas") && modoVisitaNoMenu ? "visitas" : view === "visitas" ? "visitas" : view === "pops" || view === "popsvisita" ? "pops" : ["relatoriosemitidos", "resumo", "dossie", "evolucao"].includes(view) ? "relatorios" : view === "checklist" ? "checklist" : view === "correcoes" ? "correcoes" : view === "evidencias" ? "evidencias" : view === "campomais" || view === "empresas" ? "mais" : null}
-              correcoesAbertas={ncsAbertas}
+              correcoesAbertas={identificadasNaBarra}
               podeRegistrar={permitido("evidencias.adicionar") || permitido("visitas.executar")}
               onIr={irParaTelaCampo}
               abas={abasNaBarraDoCampo}
@@ -8666,6 +8671,7 @@ export default function Home() {
         ) : view === "evidencias" && visitaAtual ? (
           <PcEvidencias
             empresa={nomeParaExibir(empresaVisita)}
+            rotuloDaVisita={`Visita ${numeroVisitaPorId.get(visitaAtual.id) || ""}`.trim()}
             data={fdata(visitaAtual.data)}
             totais={{ evidencias: evidenciasVisita.length, fotos: fotosVisita, audios: audiosVisita, revisar: analisesIAPendentes }}
             podeAdicionar={permitido("evidencias.adicionar", visitaAtual.empresaId)}
@@ -10628,6 +10634,7 @@ export default function Home() {
             arquivadasTotal={empresasVisiveis.filter((e) => e.arquivada).length}
             mostrarArquivadas={mostrarEmpresasArquivadas}
             onMostrarArquivadas={setMostrarEmpresasArquivadas}
+            micDisponivel={deveExibirRecursosDeIa(usuarioDaSessao)}
             empresas={empresasFiltradas.map((e) => {
               const prep = preparacaoDaEmpresa(e);
               return {
