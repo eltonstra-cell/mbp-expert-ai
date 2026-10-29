@@ -7,9 +7,9 @@ import { PADRAO_DO_PERFIL, podeVerTela } from "../lib/screenAccess.ts";
 
 const ler = (c) => readFileSync(new URL(c, import.meta.url), "utf8");
 
-test("número vermelho do trilho: só correções vencidas, pela função única da lista de Correções, com a permissão de acompanhar", () => {
+test("número do trilho: correções abertas da empresa, pela mesma função da Central (escopo é o único parâmetro), com a permissão de acompanhar", () => {
   const pagina = ler("../app/page.tsx");
-  assert.match(pagina, /ncs\.acompanhar[^;]*correcoesVencidasDaEmpresa\(/);
+  assert.ok(pagina.includes('permitido("ncs.acompanhar", atual.id) ? correcoesAbertas(db.ncs, { empresaId: atual.id }) : 0'));
   assert.ok(pagina.includes("return correcoesAbertasDaEmpresa(db.ncs, visitaAtual.empresaId);"), "a lista da empresa usa a mesma função de base");
   assert.ok(pagina.includes("vencidas={ncsVencidasDaEmpresa}"));
   assert.ok(ler("../components/pc/PcInicio.tsx").includes("partesDoContador(colunas)"), "o Início escreve um número por tipo");
