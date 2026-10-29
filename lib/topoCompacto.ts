@@ -2,7 +2,7 @@
 // Estas larguras (da janela, em px) valem também no CSS (app/globals.css); um teste confere que as duas pontas combinam.
 
 /** Abaixo disso a busca vira lupa + "Ctrl K" e o campo de digitação passa para dentro do painel. */
-export const LARGURA_DA_BUSCA_LARGA = 1400;
+export const LARGURA_DA_BUSCA_LARGA = 1100;
 /** Abaixo disso "Sincronizado" e "Computador · Completo" viram só ícone com dica. */
 export const LARGURA_DO_STATUS_POR_EXTENSO = 1500;
 /** Só abaixo disso o nome da página aceita reticências; de 1100 para cima ele nunca é cortado. */
