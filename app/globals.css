@@ -7074,3 +7074,7 @@ html:root:root body .ui-tab-count[data-tom="arquivada"]{color:#526477}
 html:root:root body .chk-pc-faixa{flex-wrap:nowrap;gap:8px 16px}
 html:root:root body .chk-pc-ambiente{flex:1 1 0;min-width:0}
 html:root:root body .chk-pc-faixa .chk-acoes-ambiente{flex:none;flex-wrap:nowrap}
+
+/* RODADA 12d · transcrição do áudio (desligada por padrão) */
+html:root:root body .ev7-transcrever-aviso{margin:0;font-size:15px;line-height:1.35;color:#55607A;font-weight:400}
+html:root:root body .ev7-transcrever-erro{margin:0;font-size:15px;line-height:1.35;color:#B83A33;font-weight:400}
