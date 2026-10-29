@@ -10,8 +10,8 @@ test("E: Mais mostra Empresas com etiqueta novo e a tela do celular tem busca, +
   assert.ok(pagina.includes('rotulo: "Empresas"') && !pagina.includes('detalhe: "Cadastro, cor e seleção"') && !pagina.includes('etiqueta: "novo"'), "o Mais enxuto não tem subtítulos");
   assert.ok(pagina.includes("ehPC ? PcEmpresas : CampoEmpresas"));
   const tela = ler("../components/campo/CampoEmpresas.tsx");
-  assert.ok(tela.includes("Buscar por nome, CNPJ ou município") && tela.includes("+ Nova"));
-  assert.ok(tela.includes("Selecionar") && tela.includes("✓ Ativa") && tela.includes("menuDaEmpresa"));
+  assert.ok(tela.includes("Nome, CNPJ ou município") && tela.includes("+ Nova"));
+  assert.ok(tela.includes('cemp-ativa">Ativa') && !tela.includes("cemp-sel") && tela.includes("onSelecionar(empresa.id)") && tela.includes("menuDaEmpresa"), "rodada 12d: sem botão Selecionar; tocar na linha torna a empresa ativa");
   assert.ok(css.includes(".cemp-avatar-btn{width:44px;height:44px}"));
 });
 

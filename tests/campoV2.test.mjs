@@ -60,7 +60,7 @@ test("Checklist do Campo: busca do PC no cabeçalho, respostas só com texto at�
   assert.ok(/onAvancar=\{\(\) => avancarAposResponder\(foco\)\}\s*campo\s*\/>/.test(pagina));
   const item = ler("../components/ChecklistFocoItem.tsx").replace(/\r\n/g, "\n");
   assert.ok(item.includes("{estado === \"marcado\" && ("), "ícone ✓ só na resposta escolhida (Campo e PC)");
-  assert.ok(item.includes('{!campo && <span className="chk-obs-rotulo">'), "sem o rótulo 'Observação (opcional)' no Campo");
+  assert.ok(item.includes('<span className={`chk-obs-rotulo${campo ? " chk-obs-rotulo--campo" : ""}`}>Observação (opcional)</span>'), "rodada 12d: o rótulo 'Observação (opcional)' fica acima da caixa em todos os modos");
   assert.ok(item.includes('campo ? "Ex.: termômetro a 9 °C" : ""'));
   assert.ok(item.includes("Observação (opcional)"), "o PC mantém o rótulo");
   const css = ler("../app/globals.css");
@@ -236,7 +236,7 @@ test("Pacote de ajustes: pastel com texto grafite, aviso com ação sublinhada, 
   const apoio = ler("../components/pc/PcChecklist.tsx");
   assert.ok(!apoio.includes("Sem material de apoio"), "sem frase de apoio vazio");
   assert.ok(!apoio.includes("chk-apoio-fonte") && !apoio.includes("fonteDaPergunta"), "a fonte não é repetida na coluna de apoio");
-  assert.ok(ler("../components/ChecklistFocoItem.tsx").includes('<p className="chk-fonte-abaixo">{rotuloDaFonte(item.referencia)}</p>'), "a fonte fica logo abaixo do enunciado, uma vez");
+  assert.ok(ler("../components/ChecklistFocoItem.tsx").includes('{rotuloDaFonte(item.referencia)}</p>') && ler("../components/ChecklistFocoItem.tsx").includes('<p className={`chk-fonte-abaixo'), "a fonte fica logo abaixo do enunciado, uma vez");
 });
 
 test("responder o checklist não mostra aviso com Desfazer; só o lote tem Desfazer (acima do rodapé); tocar na resposta marcada limpa sem aviso", () => {

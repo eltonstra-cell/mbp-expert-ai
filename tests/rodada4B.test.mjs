@@ -68,7 +68,7 @@ test("Correções: a aba da visita conta abertas da visita; a barra lateral cont
   const nav = ler("../components/AppNavigation.tsx");
   assert.ok(faixa.includes("nesta visita") && faixa.includes("title={badge > 0"));
   assert.ok(nav.includes("na empresa (") && nav.includes("de todas as visitas") && nav.includes("correções abertas"));
-  assert.ok(pagina.includes("ncsAbertas={ncsAbertas}") && pagina.includes("vencidas={ncsVencidasDaEmpresa}"));
+  assert.ok(pagina.includes('ncsAbertas={campo && view === "correcoes" ? 0 : ncsAbertas}') && pagina.includes("vencidas={ncsVencidasDaEmpresa}"));
 });
 
 test("Central: equipamento e programas vazios viram linha compacta; 'Cadastrar ›' só com permissão de editar a empresa", () => {
@@ -105,7 +105,7 @@ test("Visitas: abas em texto com sublinhado na ativa (sem pílula), sem chip 'Em
 
 test("Checklist: rótulo da observação em grafite 15 px sem maiúsculas; Foto, Falar e IA com 15 px; campo começa com 2 linhas e cresce", () => {
   const item = ler("../components/ChecklistFocoItem.tsx");
-  assert.ok(item.includes('<span className="chk-obs-rotulo">') && !item.includes('<span className="ui-eyebrow">{naoConforme'));
+  assert.ok(item.includes("chk-obs-rotulo") && !item.includes('<span className="ui-eyebrow">{naoConforme'));
   assert.ok(css.includes('html:not([data-modo="campo"]) .chk-pc .chk-obs-campo .chk-obs-area{min-height:56px}'));
   assert.ok(css.includes(".chk-obs-rotulo{font-size:15px;font-weight:400;line-height:22px;letter-spacing:0;text-transform:none;color:#263445}"));
   assert.ok(css.includes("html[data-modo] .chk-foco-obs :is(.chk-linha-foto,.voz-btn,.voz-ia,.voz-barra){font-size:15px}"));
