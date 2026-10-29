@@ -86,6 +86,8 @@ export type GrupoDeAmbiente = {
 type Props = {
   empresa: string;
   data: string;
+  /** "Visita 3": aparece no cabeçalho do formulário em tela cheia (celular). */
+  rotuloDaVisita?: string;
   totais: { evidencias: number; fotos: number; audios: number; revisar: number };
   evidencias: CartaoEvidencia[];
   podeAdicionar: boolean;
@@ -367,6 +369,7 @@ function Cartao({ ev, onAmpliar }: { ev: CartaoEvidencia; onAmpliar: (id: string
 
 export default function PcEvidencias({
   empresa,
+  rotuloDaVisita,
   data,
   totais,
   evidencias,
@@ -761,6 +764,7 @@ export default function PcEvidencias({
       <span className="ui-field-tools">
         <FieldVoiceTools
           fieldKey="evidencia-descricao"
+          semVoz
           value={descricao}
           onChange={onDescricao}
           contexto="Descrição curta de uma evidência registrada durante inspeção de Boas Práticas."
@@ -795,11 +799,12 @@ export default function PcEvidencias({
                 </Icone>
               </button>
               <div className="ev7-campo-titulos">
-                <span className="ev7-campo-sub">Visita de {data}</span>
-                <span className="ev7-campo-titulo">Nova evidência</span>
+                <span className="ev7-campo-titulo">Evidências</span>
+                <span className="ev7-campo-sub">{rotuloDaVisita ? `${empresa} · ${rotuloDaVisita}` : `Visita de ${data}`}</span>
               </div>
             </div>
 
+            <div className="ev7-cartao">
             <div className="ev7-cabeca">
               <span className="ev7-eyebrow">
                 <span className="ev7-ey-pc">Nova evidência</span>
@@ -1065,6 +1070,7 @@ export default function PcEvidencias({
                 </button>
               </div>
             </div>
+            </div>
           </div>
         )}
 
@@ -1087,7 +1093,7 @@ export default function PcEvidencias({
                 { id: "todas", rotulo: "Todas", contagem: contagens.evidencias },
                 { id: "fotos", rotulo: "Fotos", contagem: contagens.fotos },
                 { id: "audios", rotulo: "Áudios", contagem: contagens.audios },
-                { id: "revisar", rotulo: celular ? "IA p/ revisar" : "IA para revisar", contagem: contagens.revisar, acao: true },
+                ...(duasColunas || contagens.revisar > 0 ? [{ id: "revisar" as const, rotulo: "IA p/ revisar", contagem: contagens.revisar, acao: true }] : []),
               ]}
             />
             <div className={`ev7-filtro${filtroAmbiente ? " is-ativo" : ""}`}>
