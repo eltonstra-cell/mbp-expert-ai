@@ -4,7 +4,7 @@
 
 export const PALETA_EMPRESA = [
   { nome: "Turquesa", hex: "#188585" },
-  { nome: "Azul", hex: "#2A4D7C" },
+  { nome: "Azul", hex: "#264A80" },
   { nome: "Ferrugem", hex: "#B4491C" },
   { nome: "Grafite", hex: "#526477" },
   { nome: "Verde", hex: "#21805B" },
