@@ -2,11 +2,11 @@
 import { ncAtrasada } from "./actionPlan.ts";
 import type { NaoConformidade } from "../types/index.ts";
 
-type NcDaEmpresa = Pick<NaoConformidade, "empresaId" | "status" | "prazo" | "inativaNoChecklist">;
+type NcDaEmpresa = Pick<NaoConformidade, "empresaId" | "status" | "prazo" | "inativaNoChecklist" | "canceladaPeloUsuarioEm">;
 
 /** Correções abertas (não resolvidas, ativas no checklist) da empresa, de qualquer visita: o que a lista de Correções da empresa mostra. */
 export function correcoesAbertasDaEmpresa<T extends NcDaEmpresa>(ncs: T[] | undefined, empresaId: string): T[] {
-  return (ncs || []).filter((nc) => nc.empresaId === empresaId && !nc.inativaNoChecklist && nc.status !== "Resolvida");
+  return (ncs || []).filter((nc) => nc.empresaId === empresaId && !nc.inativaNoChecklist && !nc.canceladaPeloUsuarioEm && nc.status !== "Resolvida");
 }
 
 /** Dessas, as de prazo anterior a hoje (hoje = AAAA-MM-DD de America/Sao_Paulo, de `hojeLocalISO`): as "Atrasadas" da lista. */
