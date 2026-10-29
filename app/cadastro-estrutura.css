@@ -1,5 +1,5 @@
 /* Central da Empresa › Estrutura: sub-abas em texto com sublinhado turquesa, estado de revisão à direita, Ambientes e Equipamentos.
-   Paleta: texto #263445, cinza #526477, borda #7F8BA3 / suave #D8DDE8, azul #2A4D7C, perigo #C83F45, creme #FFF6E5 com borda turquesa #21A3A3,
+   Paleta: texto #263445, cinza #526477, borda #7F8BA3 / suave #D6DCE5, azul #264A80, perigo #C83F45, creme #FFF6E5 com borda turquesa #21A3A3,
    verde #21805B só no salvar. Fonte mínima de 15 px; sem rolagem lateral (no celular as colunas empilham). */
 
 /* ---------- Linha das sub-abas ---------- */
@@ -8,23 +8,23 @@
 .cen-barras .cen-barra--sub{height:auto;gap:28px;border-radius:0;background:transparent}
 .cen-barras .cen-barra--sub .cen-bloco{height:44px;padding:0 2px;border-radius:0;border-bottom:2px solid transparent;background:transparent;font-size:16px;font-weight:400;color:#526477}
 .cen-barras .cen-barra--sub .cen-bloco::before{display:none}
-.cen-barras .cen-barra--sub .cen-bloco:hover:not(.is-ativa){background:transparent;border-bottom-color:#D8DDE8}
+.cen-barras .cen-barra--sub .cen-bloco:hover:not(.is-ativa){background:transparent;border-bottom-color:#D6DCE5}
 .cen-barras .cen-barra--sub .cen-bloco.is-ativa{border-radius:0;border-bottom-color:#21A3A3;background:transparent;font-weight:500;color:#263445}
 .cen-subdireita{min-width:0;margin-left:auto}
 /* Empresa | Estrutura | Documentos: texto com sublinhado (sem pílula cinza nem fundo azul claro); a atual com peso 500 e sublinhado azul de 3 px, as outras em cinza */
 .cen-barras .cen-barra--grupos{height:auto;gap:28px;border-radius:0;background:transparent}
 .cen-barras .cen-barra--grupos .cen-bloco{height:44px;padding:0 2px;border-radius:0;border-bottom:2px solid transparent;background:transparent;font-size:16px;font-weight:400;color:#526477}
 .cen-barras .cen-barra--grupos .cen-bloco::before{display:none}
-.cen-barras .cen-barra--grupos .cen-bloco:hover:not(.is-ativa){background:transparent;border-bottom-color:#D8DDE8;color:#263445}
+.cen-barras .cen-barra--grupos .cen-bloco:hover:not(.is-ativa){background:transparent;border-bottom-color:#D6DCE5;color:#263445}
 .cen-barras .cen-barra--grupos .cen-bloco.is-ativa{border-radius:0;border-bottom-color:#21A3A3;background:transparent;font-weight:500;color:#263445}
-.cen-barras .cen-bloco:focus-visible{outline:3px solid #2A4D7C;outline-offset:2px}
+.cen-barras .cen-bloco:focus-visible{outline:3px solid #264A80;outline-offset:2px}
 
 /* Estado de revisão da aba atual */
 .cadrev{display:flex;flex-wrap:wrap;align-items:center;gap:2px 8px;min-height:44px;font-size:15px;color:#263445}
 .cadrev-ponto{color:#E0A800}
-.cadrev-link{min-height:36px;padding:0 2px;border:0;background:transparent;font-size:15px;color:#2A4D7C;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.cadrev-link{min-height:36px;padding:0 2px;border:0;background:transparent;font-size:15px;color:#264A80;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 .cadrev-link[aria-disabled="true"]{color:#526477;cursor:default}
-.cadrev-link:focus-visible{outline:3px solid #2A4D7C;outline-offset:2px}
+.cadrev-link:focus-visible{outline:3px solid #264A80;outline-offset:2px}
 .cadrev-erro{flex-basis:100%;font-size:15px;color:#C83F45}
 
 /* ---------- Base ---------- */
@@ -47,13 +47,13 @@
 .cadest-btn,.cadest .esc-botao{display:inline-flex;align-items:center;justify-content:center;min-height:38px;height:auto;padding:0 16px;border:1.5px solid #7F8BA3;border-radius:10px;background:#fff;font-family:var(--font-display),"Outfit",sans-serif;font-size:15px;font-weight:400;line-height:22px;color:#263445;cursor:pointer}
 .cadest-btn:hover:not(:disabled),.cadest .esc-botao:hover{background:#F6F7FA}
 .cadest-btn.is-sel{border-color:#21A3A3;background:#FFF6E5}
-.cadest-btn--azul,.cadest-azul .esc-botao{border-color:#2A4D7C;background:#2A4D7C;color:#fff}
-.cadest-btn--azul:hover:not(:disabled),.cadest-azul .esc-botao:hover{border-color:#2A4D7C;background:#1D3557;color:#fff}
+.cadest-btn--azul,.cadest-azul .esc-botao{border-color:#264A80;background:#264A80;color:#fff}
+.cadest-btn--azul:hover:not(:disabled),.cadest-azul .esc-botao:hover{border-color:#264A80;background:#1B3A66;color:#fff}
 .cadest-btn--verde{border-color:#21805B;background:#21805B;color:#fff}
 .cadest-btn--verde:hover:not(:disabled){background:#1B6B4B;color:#fff}
-.cadest-btn:disabled{border-color:#D8DDE8;background:#E8EBF2;color:#526477;cursor:default}
-.cadest-btn:focus-visible,.cadest .esc-botao:focus-visible,.cadest-link:focus-visible,.cadest-setor:focus-visible,.cadest-mais:focus-visible,.cadest-menu-item:focus-visible,.cadest-qtd-botao:focus-visible{outline:3px solid #2A4D7C;outline-offset:2px}
-.cadest-link{min-height:36px;padding:0 4px;border:0;background:transparent;font-size:15px;color:#2A4D7C;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.cadest-btn:disabled{border-color:#D6DCE5;background:#E8EBF2;color:#526477;cursor:default}
+.cadest-btn:focus-visible,.cadest .esc-botao:focus-visible,.cadest-link:focus-visible,.cadest-setor:focus-visible,.cadest-mais:focus-visible,.cadest-menu-item:focus-visible,.cadest-qtd-botao:focus-visible{outline:3px solid #264A80;outline-offset:2px}
+.cadest-link{min-height:36px;padding:0 4px;border:0;background:transparent;font-size:15px;color:#264A80;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 .cadest-link--perigo{color:#C83F45}
 .cadest-btn--perigo{border-color:#C83F45;color:#C83F45}
 .cadest-btn--perigo:hover:not(:disabled){background:#FBE4E2}
@@ -63,7 +63,7 @@
 /* As regras globais de campo têm especificidade alta: aqui o vermelho do erro vence com certeza (campo e foco). */
 html .cadest input.is-erro,html .cadest input[aria-invalid="true"],html .cadest input.is-erro:focus,html .cadest input[aria-invalid="true"]:focus{border:2px solid #C83F45!important;border-color:#C83F45!important;box-shadow:none!important;outline:none!important}
 /* Foco: borda azul fina de 2 px, sem laranja. O erro vermelho (regra acima, mais específica) tem prioridade sobre o foco. */
-html .cadest .ui-input:focus,html .cadest .ui-input:focus-visible,html .cadest .cad-input:focus,html .cadest .cad-input:focus-visible,html .cadest textarea:focus{border:2px solid #2A4D7C!important;border-color:#2A4D7C!important;box-shadow:none!important;outline:none!important}
+html .cadest .ui-input:focus,html .cadest .ui-input:focus-visible,html .cadest .cad-input:focus,html .cadest .cad-input:focus-visible,html .cadest textarea:focus{border:2px solid #264A80!important;border-color:#264A80!important;box-shadow:none!important;outline:none!important}
 
 /* Sugestão de setor oficial para ambiente próprio (mesmo visual de antes) e vínculo em lote */
 /* Sugestão de setor oficial: texto simples dentro do item (sem caixa, sem fundo e sem borda azul); botão como link de 15 px */
@@ -74,7 +74,7 @@ html .cadest .ui-input:focus,html .cadest .ui-input:focus-visible,html .cadest .
 .cadest-lote-quest{gap:12px}
 .cadest-lote-quest-lista{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 32px}
 .cadest-lote-quest-item{display:flex;align-items:center;flex-wrap:wrap;gap:4px 10px;min-height:44px;font-size:15px;color:#263445}
-.cadest-lote-quest-item input{width:20px;height:20px;flex:none;accent-color:#2A4D7C}
+.cadest-lote-quest-item input{width:20px;height:20px;flex:none;accent-color:#264A80}
 
 /* ---------- Ambientes ---------- */
 .cadest-faixa{display:flex;flex-direction:column;gap:6px;padding:16px 20px;border-radius:12px;background:#FFF6E5;color:#263445}
@@ -86,11 +86,11 @@ html .cadest .ui-input:focus,html .cadest .ui-input:focus-visible,html .cadest .
 .cadest-novo{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px 16px}
 .cadest-novo .cadest-campo{flex:1 1 280px;max-width:520px}
 .cadest-novo .cadest-erro,.cadest-novo .cadest-dica{flex-basis:100%}
-.cadest-bloqueio{display:flex;flex-direction:column;gap:10px;padding:14px 0;border-top:1px solid #D8DDE8;border-bottom:1px solid #D8DDE8}
+.cadest-bloqueio{display:flex;flex-direction:column;gap:10px;padding:14px 0;border-top:1px solid #D6DCE5;border-bottom:1px solid #D6DCE5}
 .cadest-bloqueio p{margin:0;font-size:15px;line-height:22px;color:#C83F45}
 .cadest-bloqueio-acoes{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px}
 .cadest-lista{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 40px}
-.cadest-item{display:flex;flex-direction:column;gap:6px;min-width:0;padding:12px 0;border-bottom:1px solid #D8DDE8}
+.cadest-item{display:flex;flex-direction:column;gap:6px;min-width:0;padding:12px 0;border-bottom:1px solid #D6DCE5}
 .cadest-item-topo{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
 .cadest-nomes{display:flex;flex-direction:column;min-width:0}
 .cadest-nome{font-family:var(--font-display),"Outfit",sans-serif;font-size:18px;font-weight:500;line-height:26px;color:#263445;overflow-wrap:anywhere}
@@ -138,12 +138,12 @@ html .cadest .ui-input:focus,html .cadest .ui-input:focus-visible,html .cadest .
 .cadest-repetido{flex-basis:100%;display:flex;flex-direction:column;gap:8px;min-width:0}
 .cadest-repetido:empty{display:none}
 .cadest-repetido-botoes{display:flex;flex-wrap:wrap;gap:12px}
-.cadest-qtd:focus-within{outline:3px solid #2A4D7C;outline-offset:2px}
+.cadest-qtd:focus-within{outline:3px solid #264A80;outline-offset:2px}
 .cadest-qtd{display:inline-flex;align-items:center;height:40px;border:1.5px solid #7F8BA3;border-radius:10px;background:#fff;overflow:hidden}
 .cadest-qtd-botao{width:40px;height:100%;border:0;background:transparent;font-size:20px;line-height:1;color:#263445;cursor:pointer}
 .cadest-qtd-botao:hover:not(:disabled){background:#F6F7FA}
 .cadest-qtd-botao:disabled{color:#526477;cursor:default}
-.cadest-qtd-campo{width:52px;height:100%;border:0;border-left:1px solid #D8DDE8;border-right:1px solid #D8DDE8;background:#fff;font-size:15px;text-align:center;color:#263445;-moz-appearance:textfield}
+.cadest-qtd-campo{width:52px;height:100%;border:0;border-left:1px solid #D6DCE5;border-right:1px solid #D6DCE5;background:#fff;font-size:15px;text-align:center;color:#263445;-moz-appearance:textfield}
 .cadest-qtd-campo::-webkit-outer-spin-button,.cadest-qtd-campo::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .cadest-sugestoes{display:flex;flex-wrap:wrap;align-items:center;gap:0 12px;margin:0;font-size:15px;line-height:22px;color:#526477}
 .cadest-sugestoes .cadest-link{min-height:40px;display:inline-flex;align-items:center;font-size:15px}
@@ -153,7 +153,7 @@ html .cadest .ui-input:focus,html .cadest .ui-input:focus-visible,html .cadest .
 .cadest-opcao:hover,.cadest-opcao.is-sel{background:#FFF6E5}
 .cadest-opcao.is-sel{box-shadow:inset 0 0 0 2px #21A3A3}
 .cadest-eq-lista{list-style:none;margin:0;padding:0}
-.cadest-eq-item{display:flex;flex-direction:column;gap:4px;padding:8px 0;border-bottom:1px solid #D8DDE8}
+.cadest-eq-item{display:flex;flex-direction:column;gap:4px;padding:8px 0;border-bottom:1px solid #D6DCE5}
 .cadest-eq-linha{display:flex;align-items:center;gap:16px;min-height:44px}
 .cadest-eq-nome{flex:1 1 auto;min-width:0;font-size:16px;font-weight:500;color:#263445;overflow-wrap:anywhere}
 .cadest-eq-qtd{flex:none;font-size:15px;color:#263445}
@@ -161,7 +161,7 @@ html .cadest .ui-input:focus,html .cadest .ui-input:focus-visible,html .cadest .
 .cadest-eq-nota .cadest-link{min-height:22px;padding:0}
 .cadest-menuwrap{position:relative;flex:none}
 .cadest-mais{width:36px;height:36px;border:0;border-radius:10px;background:#EEF1F7;font-size:20px;line-height:1;color:#263445;cursor:pointer}
-.cadest-mais:hover,.cadest-mais[aria-expanded="true"]{background:#D8DDE8}
+.cadest-mais:hover,.cadest-mais[aria-expanded="true"]{background:#D6DCE5}
 .cadest-menu{position:absolute;right:0;top:calc(100% + 2px);z-index:40;display:flex;flex-direction:column;min-width:min(260px,calc(100vw - 32px));max-width:min(360px,calc(100vw - 32px));max-height:min(70dvh,420px);overflow-y:auto;padding:6px;border:1px solid #7F8BA3;border-radius:12px;background:#fff;box-shadow:0 10px 28px rgba(27,36,51,.18)}
 .cadest-menu-titulo{margin:0;padding:8px 12px 4px;font-size:15px;color:#526477}
 .cadest-menu-item{display:flex;align-items:center;min-height:44px;padding:0 12px;border:0;border-radius:8px;background:transparent;font-size:15px;font-weight:400;text-align:left;color:#263445;cursor:pointer}
@@ -170,7 +170,7 @@ html .cadest .ui-input:focus,html .cadest .ui-input:focus-visible,html .cadest .
 .cadest-menu-item[aria-disabled="true"]:hover{background:transparent}
 .cadest-menu-item--perigo{color:#C83F45}
 .cadest-select-foco{display:block;outline:none}
-.cadest-menu-base{margin:4px 0 0;padding:8px 12px 6px;border-top:1px solid #D8DDE8;font-size:15px;line-height:22px;color:#526477}
+.cadest-menu-base{margin:4px 0 0;padding:8px 12px 6px;border-top:1px solid #D6DCE5;font-size:15px;line-height:22px;color:#526477}
 .cadest-edicao{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px 16px;padding:8px 0 4px}
 .cadest-edicao .cadest-erro{flex-basis:100%}
 .cadest-edicao-botoes{display:flex;flex-wrap:wrap;align-items:center;gap:12px;flex-basis:100%}
@@ -181,7 +181,7 @@ html .cadest .ui-input:focus,html .cadest .ui-input:focus-visible,html .cadest .
 .cadest-lote-item{display:grid;grid-template-columns:minmax(0,220px) 148px;justify-content:start;align-items:center;gap:12px;min-width:0}
 .cadest-lote-item>.cadest-qtd{grid-column:2;justify-self:start}
 .cadest-lote-marca{display:flex;align-items:center;gap:10px;min-height:44px;min-width:0;font-size:15px;color:#263445;overflow-wrap:anywhere}
-.cadest-lote-marca input{width:20px;height:20px;flex:none;accent-color:#2A4D7C}
+.cadest-lote-marca input{width:20px;height:20px;flex:none;accent-color:#264A80}
 .cadest-lote-acoes{display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px}
 
 /* Janela "Copiar de outra empresa" */
@@ -192,7 +192,7 @@ html .cadest .ui-input:focus,html .cadest .ui-input:focus-visible,html .cadest .
 .cad-copiar-destino{font-size:15px}
 .cadest-copiar-opcao{display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:10px;font-size:16px;color:#263445;cursor:pointer}
 .cadest-copiar-opcao.is-sel{background:#FFF6E5;box-shadow:inset 0 0 0 2px #21A3A3}
-.cadest-copiar-opcao input{width:20px;height:20px;flex:none;accent-color:#2A4D7C}
+.cadest-copiar-opcao input{width:20px;height:20px;flex:none;accent-color:#264A80}
 
 /* ---------- Tablet (768–1099 px): mesma lógica, colunas mais estreitas ---------- */
 @media (max-width:1099px){
