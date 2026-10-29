@@ -26,7 +26,7 @@ test("Conjunto da norma em POPs e documentos: criar do modelo em laranja e Outro
   assert.ok(tela.includes("pgl-adicionar-botao") && tela.includes("ui-btn ui-btn--secondary"));
   assert.ok(!tela.includes("Sugeridos pelo Manual de Boas Práticas"));
   assert.ok(!tela.includes('STATUS: StatusPOP[] = ["Rascunho", "Em revisão", "Aprovado"'));
-  assert.ok(ler("../app/globals.css").includes(".ui-btn--criar{background:#2A4D7C;color:#fff;font-weight:400}"));
+  assert.ok(ler("../app/globals.css").includes(".ui-btn--criar{background:#264A80;color:#fff;font-weight:400}"));
 });
 
 test("POP em campos: documento e histórico, blocos extras, faixa do texto-base e rodapé com Salvar rascunho", () => {
