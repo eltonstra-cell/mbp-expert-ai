@@ -18,10 +18,10 @@ import {
 
 const ler = (c) => readFileSync(new URL(c, import.meta.url), "utf8");
 
-test("topo: busca compacta abaixo de 1400 px, status em ícone abaixo de 1500 px, nome da página sem corte de 1100 px para cima", () => {
-  assert.equal(modoDaBusca(1399), "compacta");
-  assert.equal(modoDaBusca(1200), "compacta");
-  assert.equal(modoDaBusca(1400), "larga");
+test("topo: busca compacta abaixo de 1100 px, status em ícone abaixo de 1500 px, nome da página sem corte de 1100 px para cima", () => {
+  assert.equal(modoDaBusca(1099), "compacta");
+  assert.equal(modoDaBusca(1100), "larga");
+  assert.equal(modoDaBusca(1280), "larga");
   assert.equal(modoDaBusca(1920), "larga");
   assert.equal(modoDoStatus(1499), "por-extenso", "o chip de sincronização sempre traz o texto");
   assert.equal(modoDoStatus(1500), "por-extenso");
