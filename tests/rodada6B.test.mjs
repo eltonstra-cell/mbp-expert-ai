@@ -295,9 +295,9 @@ test("Ambientes: textos, botões e salvamento ao marcar, sem botão Salvar", () 
   const css = ler("../app/cadastro-estrutura.css");
   assert.match(css, /\.cadest-faixa\{[^}]*background:#FFF6E5/);
   assert.match(css, /\.cadest-setor\.is-sel\{[^}]*border-color:#21A3A3;background:#FFF6E5/);
-  assert.match(css, /\.cadest-btn--azul[^{]*\{[^}]*background:#2A4D7C[^}]*color:#fff/);
+  assert.match(css, /\.cadest-btn--azul[^{]*\{[^}]*background:#264A80[^}]*color:#fff/);
   assert.match(css, /\.cen-barras \.cen-barra--sub \.cen-bloco\.is-ativa\{[^}]*border-bottom-color:#21A3A3/);
-  assert.ok(!/#[0-9A-Fa-f]{6}/.test(css.replace(/#(263445|526477|7F8BA3|D8DDE8|2A4D7C|C83F45|FFF6E5|21A3A3|21805B|fff|F6F7FA|E8EBF2|1D3557|1B6B4B|BFDDF7|FBE4E2|EEF1F7|E0A800)/gi, "")), "só as cores do desenho");
+  assert.ok(!/#[0-9A-Fa-f]{6}/.test(css.replace(/#(263445|526477|7F8BA3|D8DDE8|D6DCE5|1B3A66|264A80|2A4D7C|FFFFFF|C83F45|FFF6E5|21A3A3|21805B|fff|F6F7FA|E8EBF2|1D3557|1B6B4B|BFDDF7|FBE4E2|EEF1F7|E0A800)/gi, "")), "só as cores do desenho");
   assert.ok(!/purple|violet|#7c3aed|#8b5cf6/i.test(css), "nunca roxo");
 });
 
