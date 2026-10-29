@@ -12,9 +12,9 @@ const matiz = (hex) => {
   return (h * 60 + 360) % 360;
 };
 
-test("a paleta tem 5 cores, todas com contraste de 4,4 ou mais com texto branco (o turquesa #188585 pedido dá 4,44)", () => {
+test("a paleta tem 5 cores, todas com contraste de 4,5 ou mais com texto branco", () => {
   assert.ok(PALETA_EMPRESA.length === 5);
-  for (const { nome, hex } of PALETA_EMPRESA) assert.ok(contrasteComBranco(hex) >= 4.4, `${nome} ${hex} ${contrasteComBranco(hex).toFixed(2)}`);
+  for (const { nome, hex } of PALETA_EMPRESA) assert.ok(contrasteComBranco(hex) >= 4.5, `${nome} ${hex} ${contrasteComBranco(hex).toFixed(2)}`);
 });
 
 test("nenhuma cor da paleta lembra o vermelho de não conforme", () => {
