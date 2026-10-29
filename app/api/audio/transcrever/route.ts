@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { autorizaAcaoServidor, obterAcessoServidor } from "@/lib/serverAccess";
 import { corpoExcedeLimite } from "@/lib/requestLimits";
+import { decidirTranscricaoDeAudio } from "@/lib/privacidadeEmpresa";
 import { INSTRUCAO_DE_TRANSCRICAO, MENSAGEM_SEM_FALA, avaliarTranscricao } from "@/lib/transcricao";
 import { empresasDoUsuarioParaVocabulario, ehEcoDoPromptDaBusca, montarPromptDaBusca } from "@/lib/vocabularioDeVoz";
 
@@ -84,6 +85,20 @@ export async function POST(request: Request) {
     }
 
     const form = await request.formData();
+
+    // Áudio de evidência: além da permissão de IA, a empresa precisa ter a IA liberada E o consentimento específico de áudio.
+    // Sem o estado para conferir, nega. Nada disso é decidido pelo navegador.
+    if (form.get("contexto") === "evidencia") {
+      const empresaIdInformada = form.get("empresaId");
+      const empresaId = typeof empresaIdInformada === "string" ? empresaIdInformada : "";
+      if (!acesso.data || !autorizaAcaoServidor(acesso, "ia.analisar", empresaId)) {
+        return NextResponse.json({ error: "Seu perfil não permite transcrever o áudio desta empresa." }, { status: 403 });
+      }
+      const decisao = decidirTranscricaoDeAudio(acesso.data, empresaId);
+      if (!decisao.ok) {
+        return NextResponse.json({ error: decisao.motivo, codigo: decisao.codigo }, { status: 403 });
+      }
+    }
     const audio = form.get("audio");
     if (!(audio instanceof File)) {
       return NextResponse.json({ error: "Áudio não informado." }, { status: 400 });
