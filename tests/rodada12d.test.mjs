@@ -38,12 +38,12 @@ test("Evidências: sem o botão Falar na descrição (só IA), Áudio grava e gu
   assert.ok(css.includes("background:#2874DB;color:#fff;font-size:15px"), "IA em #2874DB");
 });
 
-test("Correções (Campo): contadores coloridos, sem título repetido e sem número duplicado na aba; barra de baixo = Identificadas", () => {
+test("Correções (Campo): contadores coloridos, sem título repetido e sem número duplicado na aba; barra de baixo = total da empresa", () => {
   const campo = ler("../components/campo/CampoTelas.tsx");
   assert.ok(campo.includes('<h1 className="sr-only">Correções</h1>') && !campo.includes("nenhuma com plano ainda"));
   assert.ok(campo.includes("textoDoPrazo(prazoParaExibir(item, hoje).dias, false)") && campo.includes("nomeCurtoDoAmbiente(linha.ambiente)"));
   const pagina = ler("../app/page.tsx");
-  assert.ok(pagina.includes("contarEtapas(ncsVisita).identificadas") && pagina.includes("correcoesAbertas={identificadasNaBarra}"));
+  assert.ok(pagina.includes("correcoesAbertas={ncsVencidasDaEmpresa}"), "Rodada 12d parte 2: o número da barra é o total de correções abertas da empresa, o mesmo do menu e de \"Ver todas\"");
   const css = ler("../app/globals.css");
   for (const cor of ["#C83F45", "#8A5A00", "#2874DB", "#21805B"]) assert.ok(css.includes(`.campo-fluxo-item--${{ "#C83F45": "nc", "#8A5A00": "pend", "#2874DB": "info", "#21805B": "ok" }[cor]}{color:${cor}}`), cor);
 });
