@@ -89,10 +89,10 @@ export function CampoCabecalho({
 
 export function CampoBarra({ tela, correcoesAbertas, podeRegistrar, onIr, onRegistrar, abas = ABAS_PADRAO }: Pick<Chrome, "tela" | "correcoesAbertas" | "podeRegistrar" | "onIr" | "onRegistrar"> & { abas?: AbaDaBarra[] }) {
   const botao = (chave: TelaCampo, rotulo: string, icone: NavIconName, contador = 0) => (
-    <button key={chave} type="button" className={`campo-tab${tela === chave ? " is-on" : ""}`} aria-current={tela === chave ? "page" : undefined} onClick={() => onIr(chave)}>
+    <button key={chave} type="button" data-aba={chave} className={`campo-tab${tela === chave ? " is-on" : ""}`} aria-current={tela === chave ? "page" : undefined} onClick={() => onIr(chave)}>
       <span className="campo-tab-icon">
         <NavIcon name={icone} size={22} strokeWidth={1.9} />
-        {contador > 0 && <span className="campo-tab-count">{contador > 99 ? "99+" : contador}</span>}
+        {contador > 0 && <span className="campo-tab-count" aria-hidden="true">{contador > 99 ? "99+" : contador}</span>}
       </span>
       <span className="campo-tab-label">{rotulo}</span>
     </button>
