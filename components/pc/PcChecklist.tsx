@@ -2,9 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import FotoAmpliada from "@/components/FotoAmpliada";
-import AmbientesCortina from "@/components/AmbientesCortina";
 import type { InfoAmbiente } from "@/lib/checklistEnvs";
-import { progressoDaCaminhada, textoDaCaminhada } from "@/lib/caminhada";
 import { legendaDaEvidencia, rotuloDoSegmento } from "@/lib/checklistSegmentos";
 import type { ChecklistStatus } from "@/types";
 
@@ -58,40 +56,6 @@ const SITUACAO_DO_POP: Record<string, string> = {
   rascunho: "em rascunho",
   aprovado: "aprovado",
 };
-
-// Um único seletor ("Recebimento 9/12 ▾") que abre a cortina com uma linha por ambiente.
-function SeletorDeAmbiente({
-  ambientes,
-  atual,
-  posicao,
-  total,
-  onSelecionar,
-}: {
-  ambientes: InfoAmbiente[];
-  atual: string;
-  posicao: number;
-  total: number;
-  onSelecionar: (nome: string) => void;
-}) {
-  const info = ambientes.find((ambiente) => ambiente.nome === atual);
-  return (
-    <AmbientesCortina
-      ambientes={ambientes}
-      atual={atual}
-      onSelecionar={onSelecionar}
-      classe="amb-seletor--pc"
-      renderBotao={({ aberto, alternar }) => (
-        <button type="button" className="chk-sel-botao" aria-haspopup="dialog" aria-expanded={aberto} onClick={alternar}>
-          <span className="chk-sel-nome">{info?.rotulo || atual}</span>
-          <span className="chk-sel-pos">
-            {info ? `${info.respondidos}/${info.total}` : `${posicao}/${total}`} respondidos
-          </span>
-          <span aria-hidden="true">▾</span>
-        </button>
-      )}
-    />
-  );
-}
 
 function CartaoDeApoio({ titulo, tom, children }: { titulo: string; tom: string; children: ReactNode }) {
   return (
@@ -177,11 +141,14 @@ function PainelDeApoio({ apoio }: { apoio: ApoioDoItem }) {
   );
 }
 
-export default function PcChecklist({ titulo, subtitulo, ambientes, ambienteAtual, onAmbiente, fila, itemAtualId, onItem, principal, apoio, colunaDeApoio, onPularAmbiente, restanteDoLote, ditado }: Props) {
+export default function PcChecklist({ titulo, subtitulo, ambientes, ambienteAtual, onAmbiente, fila, itemAtualId, onItem, principal, apoio, colunaDeApoio, restanteDoLote, ditado }: Props) {
   const [recolhidosAbertos, setRecolhidosAbertos] = useState(false);
-  const caminhada = progressoDaCaminhada(ambientes, ambienteAtual);
+  const infoAtual = ambientes.find((ambiente) => ambiente.nome === ambienteAtual);
+  const respondidasAtual = infoAtual?.respondidos ?? 0;
+  const totalAtual = infoAtual?.total ?? fila.length;
+  const percentualAtual = totalAtual > 0 ? Math.round((respondidasAtual / totalAtual) * 100) : 0;
+  const secoes = ambientes;
   const recolhidos = fila.filter((item) => item.recolhido && item.id !== itemAtualId);
-  const textoCaminhada = textoDaCaminhada(caminhada);
   // A coluna de apoio é decidida pela visita (colunaDeApoio), nunca pelo item: a pergunta e a observação não mudam de largura ao avançar.
   const temApoio = Boolean(apoio) && (colunaDeApoio ?? !apoioVazio(apoio as ApoioDoItem));
   return (
@@ -194,42 +161,50 @@ export default function PcChecklist({ titulo, subtitulo, ambientes, ambienteAtua
       </div>
 
       <div className={`chk-pc-corpo${temApoio ? "" : " chk-pc-corpo--sem-apoio"}`}>
+        <nav className="chk-secoes" aria-label="Seções do checklist">
+          <h2 className="chk-secoes-titulo">Seções</h2>
+          {secoes.map((ambiente) => {
+            const completa = ambiente.total > 0 && ambiente.respondidos >= ambiente.total;
+            return (
+              <button
+                key={ambiente.nome}
+                type="button"
+                className={`chk-secao${ambiente.nome === ambienteAtual ? " is-atual" : ""}${completa ? " is-completa" : ""}`}
+                aria-current={ambiente.nome === ambienteAtual ? "true" : undefined}
+                title={ambiente.nome}
+                onClick={() => onAmbiente(ambiente.nome)}
+              >
+                <span className="chk-secao-nome">{ambiente.rotulo}</span>
+                <span className="chk-secao-conta">
+                  {completa ? <span aria-hidden="true">✓ </span> : null}
+                  {ambiente.respondidos} de {ambiente.total}
+                </span>
+              </button>
+            );
+          })}
+        </nav>
         <div className="chk-pc-esq">
-          {(textoCaminhada || ditado || (restanteDoLote && restanteDoLote.quantos > 0)) && (
-            <div className="chk-pc-faixa">
-              {textoCaminhada && (
-                <p className="chk-caminhada" role="status">
-                  {textoCaminhada}
-                  {onPularAmbiente && caminhada.nomeDoProximo && (
-                    <>
-                      {" · "}
-                      <button type="button" className="pc-link-btn" onClick={() => onPularAmbiente(caminhada.nomeDoProximo as string)}>Pular ambiente</button>
-                    </>
-                  )}
-                </p>
-              )}
-              {(ditado || (restanteDoLote && restanteDoLote.quantos > 0)) && (
-                <div className="chk-acoes-ambiente">
-                  {ditado}
-                  {restanteDoLote && restanteDoLote.quantos > 0 && (
-                    <button type="button" className="chk-acao chk-acao--conforme" onClick={restanteDoLote.onMarcar}>
-                      <span aria-hidden="true">✓</span>
-                      Marcar o restante como Conforme ({restanteDoLote.quantos})
-                    </button>
-                  )}
-                </div>
-              )}
+          <div className="chk-pc-faixa">
+            <div className="chk-pc-ambiente">
+              <h2 className="chk-pc-ambiente-nome">{infoAtual?.rotulo || ambienteAtual}</h2>
+              <p className="chk-pc-ambiente-conta" role="status">
+                {respondidasAtual} de {totalAtual} respondidas · {percentualAtual}%
+              </p>
             </div>
-          )}
+            {(ditado || (restanteDoLote && restanteDoLote.quantos > 0)) && (
+              <div className="chk-acoes-ambiente">
+                {ditado}
+                {restanteDoLote && restanteDoLote.quantos > 0 && (
+                  <button type="button" className="chk-acao chk-acao--conforme" onClick={restanteDoLote.onMarcar}>
+                    <span aria-hidden="true">✓</span>
+                    Marcar o restante como Conforme ({restanteDoLote.quantos})
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
 
           <div className="chk-pc-linha">
-            <SeletorDeAmbiente
-              ambientes={ambientes}
-              atual={ambienteAtual}
-              posicao={Math.max(1, fila.findIndex((item) => item.id === itemAtualId) + 1)}
-              total={fila.length}
-              onSelecionar={onAmbiente}
-            />
             <div className="chk-pc-fila" role="group" aria-label="Itens do ambiente">
               {fila.map((item, indice) =>
                 item.recolhido && !recolhidosAbertos && item.id !== itemAtualId ? null : (
