@@ -8,7 +8,7 @@ const ler = (caminho) => readFileSync(new URL(caminho, import.meta.url), "utf8")
 const css = ler("../app/globals.css");
 
 test("B: cores por estado dos segmentos e quadradinhos", () => {
-  assert.equal(COR_DO_SEGMENTO.Conforme, "#2E8B57");
+  assert.equal(COR_DO_SEGMENTO.Conforme, "#278050");
   assert.equal(COR_DO_SEGMENTO["Não Conforme"], "#B83A33");
   assert.equal(COR_DO_SEGMENTO["Não se aplica"], "#C3CDD6");
   assert.equal(COR_DO_SEGMENTO.Pendente, "#EEF1F5");

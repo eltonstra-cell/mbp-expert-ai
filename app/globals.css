@@ -2432,7 +2432,6 @@ html[data-modo="equilibrado"] .pc-topbar-end{flex:1 1 auto;justify-content:flex-
 /* ===== Pacote 4 · Bloco 3: "Quão grave é?" sem contorno preto; gravidade sugerida ===== */
 .chk-grav-linha .chk-grav,.chk-grav-linha .chk-grav.is-on{box-shadow:none;outline:0}
 .chk-grav-linha .chk-grav:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
-.chk-grav-sug{margin-left:6px;font-size:.72rem;opacity:.85}
 
 /* ===== Pacote 4 · Bloco 3: caixa de cor forte (laranja) = texto branco, simples ===== */
 .ui-btn--orange,.pc-orange-btn,.campo-btn--orange,.pc-capture--photo,.pc-capture--photo *{color:#fff;font-weight:400}
@@ -2630,24 +2629,25 @@ html[data-modo="campo"] .pc-toast{bottom:calc(92px + env(safe-area-inset-bottom)
 .amb-cortina{position:absolute;z-index:70;top:calc(100% + 6px);left:0;right:0;display:flex;flex-direction:column;overflow-y:auto;padding:8px;border:1px solid var(--border);border-radius:16px;background:#fff;box-shadow:0 14px 36px rgba(18,32,43,.28)}
 .amb-lista{display:flex;flex:1 1 auto;flex-direction:column;gap:6px;min-height:0;margin:0;padding:0;list-style:none}
 .amb-item{display:flex;flex:1 1 50px}
-.amb-linha{display:grid;flex:1;grid-template-columns:minmax(0,1fr) 110px auto auto;align-items:center;gap:12px;min-height:0;padding:2px 12px;border:1px solid #DDE6EA;border-radius:12px;background:#fff;text-align:left;color:var(--ink);cursor:pointer}
+.amb-linha{display:grid;flex:1;grid-template-columns:minmax(0,1fr) 110px 176px 76px;align-items:center;gap:12px;min-height:0;padding:2px 12px;border:1px solid #DDE6EA;border-radius:12px;background:#fff;text-align:left;color:var(--ink);cursor:pointer}
 .amb-linha.is-atual{border:2px solid #E8B04B;background:#FEF6E6}
 .amb-linha:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
 .amb-nome{min-width:0;overflow-wrap:anywhere;font-size:.95rem;line-height:1.2;white-space:normal}
 .amb-barra{display:block;height:8px;overflow:hidden;border-radius:999px;background:#E6ECF0}
 .amb-barra span{display:block;height:100%;border-radius:999px;background:#2456D6}
 .amb-linha.is-completo .amb-barra span{background:#15803D}
-.amb-cnt{display:inline-flex;align-items:center;gap:4px;font-size:.84rem;white-space:nowrap;color:var(--ink)}
+.amb-cnt{display:inline-flex;min-width:0;overflow:hidden;align-items:center;justify-content:flex-end;gap:4px;font-size:15px;white-space:nowrap;color:var(--ink)}
+@media (max-width:520px){.amb-linha{grid-template-columns:minmax(0,1fr) 30px 84px 58px;gap:8px}.amb-cnt-longo{display:none}.amb-selo{min-width:0;width:58px;padding:2px 0}}
 .amb-check{color:#15803D}
-.amb-selo{display:inline-flex;min-width:56px;align-items:center;justify-content:center;padding:2px 10px;border-radius:999px;background:#B83A33;color:#fff;font-size:.8rem;font-weight:400;white-space:nowrap}
-.amb-sem{display:inline-flex;min-width:56px;justify-content:center;font-size:.8rem;color:#6B7A90;white-space:nowrap}
+.amb-selo{display:inline-flex;min-width:56px;align-items:center;justify-content:center;padding:2px 10px;border-radius:999px;background:#B83A33;color:#fff;font-size:15px;font-weight:400;white-space:nowrap}
+.amb-vazio{display:block;min-width:56px}
 @media (max-height:860px){.amb-item{flex-basis:44px}.amb-lista{gap:3px}}
 @media (max-height:800px){.amb-lista{gap:2px}}
 html[data-modo="campo"] .amb-cortina{padding:6px}
-html[data-modo="campo"] .amb-linha{grid-template-columns:minmax(0,1fr) 30px auto 48px;gap:8px;padding:2px 10px}
+html[data-modo="campo"] .amb-linha{grid-template-columns:minmax(0,1fr) 30px 84px 58px;gap:8px;padding:2px 10px}
 html[data-modo="campo"] .amb-item{flex-basis:44px}
 html[data-modo="campo"] .amb-cnt-longo{display:none}
-html[data-modo="campo"] .amb-selo,html[data-modo="campo"] .amb-sem{min-width:0;width:48px;padding:2px 0;font-size:.74rem}
+html[data-modo="campo"] .amb-selo{min-width:0;width:58px;padding:2px 0;font-size:15px}
 html[data-modo="campo"] .amb-lista{gap:4px}
 @media (max-height:700px){html[data-modo="campo"] .amb-item{flex-basis:38px}html[data-modo="campo"] .amb-lista{gap:2px}}
 .chk-foco-amb-botao{width:100%;border:0;background:transparent;padding:0;text-align:left;color:inherit;cursor:pointer}
@@ -5102,10 +5102,10 @@ html[data-modo="campo"] .aviso-acima-do-rodape{bottom:calc(168px + env(safe-area
 html[data-modo] .chk-resp{height:40px;min-height:40px;padding:0 6px;font-size:.9rem;white-space:nowrap}
 /* Gravidade: contorno, preenchimento só na opção escolhida */
 .chk-grav{min-height:40px;padding:0 14px;border:2px solid #B4C2CE;background:#fff;color:#12202B;font-size:.9rem;opacity:1}
-.chk-grav--leve{border-color:#1E7FB8}.chk-grav--amber{border-color:#D97706}.chk-grav--nc{border-color:#B83A33}
-.chk-grav--leve.is-on{background:#1E7FB8;color:#fff}.chk-grav--amber.is-on{background:#D97706;color:#fff}.chk-grav--nc.is-on{background:#B83A33;color:#fff}
+.chk-grav--leve{border-color:#1E7FB8}.chk-grav--amber{border-color:#AF640A}.chk-grav--nc{border-color:#B83A33}
+.chk-grav--leve.is-on{background:#1E7FB8;color:#fff}.chk-grav--amber.is-on{background:#AF640A;color:#fff}.chk-grav--nc.is-on{background:#B83A33;color:#fff}
 .chk-grav.is-on{box-shadow:none}
-.chk-grav-sug{margin-left:6px;font-size:.72rem;opacity:.85}
+.chk-grav-sug{margin-left:6px;font-size:15px;font-weight:400;opacity:1}
 .chk-grav-titulo{font-size:.9rem;font-weight:400}
 /* Segmento atual da barra de progresso: azul, nada escuro */
 .chk-seg.is-atual{outline:3px solid #2A6BD1;outline-offset:1px;box-shadow:none;border-color:#2A6BD1}
@@ -5129,7 +5129,7 @@ html[data-modo] .chk-resp{font-size:.84rem;gap:4px;padding:0 4px}
 .campo-head-espaco{display:none}.campo-head-linha .campo-sync{margin-left:auto}
 
 .chk-grav-linha .chk-grav{min-height:40px;padding:0 14px;border:2px solid var(--grav);background:#fff;color:#12202B;font-size:.9rem;opacity:1;box-shadow:none}
-.chk-grav-linha .chk-grav--leve{--grav:#1E7FB8}.chk-grav-linha .chk-grav--amber{--grav:#D97706}.chk-grav-linha .chk-grav--nc{--grav:#B83A33}
+.chk-grav-linha .chk-grav--leve{--grav:#1E7FB8}.chk-grav-linha .chk-grav--amber{--grav:#AF640A}.chk-grav-linha .chk-grav--nc{--grav:#B83A33}
 .chk-grav-linha .chk-grav:not(.is-on){background:#fff;color:#12202B}
 .chk-grav-linha .chk-grav.is-on,.chk-grav-linha .chk-grav.is-on.chk-grav--leve,.chk-grav-linha .chk-grav.is-on.chk-grav--amber,.chk-grav-linha .chk-grav.is-on.chk-grav--nc{background:var(--grav);border-color:var(--grav);color:#fff}
 .campo-tela .chk-foco-count{display:block;font-size:.78rem;line-height:1.2}

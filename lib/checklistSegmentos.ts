@@ -3,13 +3,13 @@ import { formatarHora } from "./dataLocal.ts";
 
 // Cores da evolução do ambiente: um segmento (celular) ou quadradinho (PC e tablet) por item.
 export const COR_DO_SEGMENTO: Record<ChecklistStatus, string> = {
-  Conforme: "#2E8B57",
+  Conforme: "#278050",
   "Não Conforme": "#B83A33",
   "Não se aplica": "#C3CDD6",
   Pendente: "#EEF1F5",
 };
 
-// Barra do Campo (celular): como o PC, Conforme #2E8B57 e Não conforme #B83A33; "Não se aplica" em grafite, para não se confundir com os pendentes claros.
+// Barra do Campo (celular): como o PC, Conforme #278050 (igual ao dos números do checklist) e Não conforme #B83A33; "Não se aplica" em grafite, para não se confundir com os pendentes claros.
 export const COR_DO_SEGMENTO_CAMPO: Record<ChecklistStatus, string> = {
   ...COR_DO_SEGMENTO,
   "Não se aplica": "#5B6575",

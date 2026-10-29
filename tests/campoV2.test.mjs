@@ -186,12 +186,12 @@ test("Respostas do checklist: só texto sem seleção; selecionada = ícone ✓ 
   assert.ok(!css.includes('.chk-resp.is-marcado.chk-resp--ok{border-color:#15803D'));
 });
 
-test("Barra de progresso do Campo: 'Não se aplica' em grafite #5B6575 (distinto dos pendentes claros); Conforme #2E8B57 e Não conforme #B83A33 nos dois", () => {
+test("Barra de progresso do Campo: 'Não se aplica' em grafite #5B6575 (distinto dos pendentes claros); Conforme #278050 e Não conforme #B83A33 nos dois", () => {
   assert.equal(COR_DO_SEGMENTO_CAMPO["Não se aplica"], "#5B6575");
   assert.notEqual(COR_DO_SEGMENTO_CAMPO["Não se aplica"], COR_DO_SEGMENTO_CAMPO.Pendente);
   assert.equal(COR_DO_SEGMENTO["Não se aplica"], "#C3CDD6");
-  assert.equal(COR_DO_SEGMENTO_CAMPO.Conforme, "#2E8B57", "Conforme da fileira: verde ok, não o verde de salvar");
-  assert.equal(COR_DO_SEGMENTO.Conforme, "#2E8B57");
+  assert.equal(COR_DO_SEGMENTO_CAMPO.Conforme, "#278050", "Conforme da fileira: verde ok, não o verde de salvar");
+  assert.equal(COR_DO_SEGMENTO.Conforme, "#278050");
   assert.equal(COR_DO_SEGMENTO["Não Conforme"], "#B83A33");
   assert.equal(COR_DO_SEGMENTO_CAMPO["Não Conforme"], COR_DO_SEGMENTO["Não Conforme"]);
   assert.ok(ler("../components/ChecklistFocoItem.tsx").includes("(campo ? COR_DO_SEGMENTO_CAMPO : COR_DO_SEGMENTO)"));

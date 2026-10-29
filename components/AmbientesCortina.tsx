@@ -96,7 +96,7 @@ export default function AmbientesCortina({ ambientes, atual, onSelecionar, rende
                         {ambiente.naoConformes} NC{ambiente.naoConformes === 1 ? "" : "s"}
                       </span>
                     ) : (
-                      <span className="amb-sem">Sem NCs</span>
+                      <span className="amb-vazio"><span className="sr-only">sem não conformidades</span></span>
                     )}
                   </button>
                 </li>

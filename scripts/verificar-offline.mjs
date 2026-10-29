@@ -1496,7 +1496,7 @@ detalhes:{chipDaAcaoNaBarra:chipVisivel,sobrepostos,pessoas:pessoas.map((c)=>c.t
     await clicarResposta("Conforme");
     await n.esperar(1300);
     const corSeg = await js(`getComputedStyle([...document.querySelectorAll(".chk-seg")][${indiceCampo}]).backgroundColor`);
-    registrar("22m. Fileira de segmentos do Campo: item respondido Conforme = #2E8B57 (rgb(46, 139, 87))", corSeg === "rgb(46, 139, 87)", corSeg);
+    registrar("22m. Fileira de segmentos do Campo: item respondido Conforme = #278050 (rgb(39, 128, 80))", corSeg === "rgb(39, 128, 80)", corSeg);
     await js(`[...document.querySelectorAll(".chk-seg")][${indiceCampo}].click()`);
     await n.esperar(900);
     const apagadoCampo = await apagadoLegivel();
