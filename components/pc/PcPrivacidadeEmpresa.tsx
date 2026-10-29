@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Pill } from "@/components/ui/Pill";
 import {
   GUARDA_PADRAO_DIAS,
+  TEXTO_CONSENTIMENTO_AUDIO,
   erroDaGuarda,
   textoDaFaixaDeGuarda,
   type VisitaComGuardaVencendo,
@@ -23,6 +24,11 @@ type Props = {
   somenteLeitura: boolean;
   guardaDias: number;
   vencendo: LinhaDeGuarda[];
+  /** Consentimento específico de áudio (transcrição no exterior). */
+  audioConsentido: boolean;
+  textoConsentimentoAudio: string;
+  onConsentirAudio: () => void;
+  onRetirarAudio: () => void;
   onLiberarIa: (aceite: boolean) => void;
   onDesligarIa: () => void;
   onSalvarGuarda: (dias: number) => void;
@@ -39,12 +45,17 @@ export default function PcPrivacidadeEmpresa({
   somenteLeitura,
   guardaDias,
   vencendo,
+  audioConsentido,
+  textoConsentimentoAudio,
+  onConsentirAudio,
+  onRetirarAudio,
   onLiberarIa,
   onDesligarIa,
   onSalvarGuarda,
 }: Props) {
   const [janelaAberta, setJanelaAberta] = useState(false);
   const [aceite, setAceite] = useState(false);
+  const [marcouAudio, setMarcouAudio] = useState(false);
   const ehOutro = guardaDias !== 90 && guardaDias !== 180;
   const [escolha, setEscolha] = useState<"90" | "180" | "outro">(ehOutro ? "outro" : (String(guardaDias) as "90" | "180"));
   const [outro, setOutro] = useState(ehOutro ? String(guardaDias) : "");
@@ -94,6 +105,49 @@ export default function PcPrivacidadeEmpresa({
           )
         ) : (
           <p className="ui-row-sub priv-texto">Só Administrador e Consultor/RT liberam a IA.</p>
+        )}
+      </article>
+
+      <article className="ui-card priv-cartao">
+        <div className="pc-card-head">
+          <h2 className="ui-card-title">Transcrição do áudio das evidências</h2>
+          <Pill tom={audioConsentido ? "ok" : "na"}>{audioConsentido ? "Ligada" : "Desligada"}</Pill>
+        </div>
+        <p className="ui-row-sub priv-texto">
+          Desligada por padrão. Sem o consentimento, o botão Áudio só grava e guarda o arquivo. Com ele, quem toca em “Transcrever” envia aquele áudio a um serviço de IA no exterior, que devolve o texto para a Descrição. A transcrição precisa também da IA ligada nesta empresa.
+        </p>
+        {audioConsentido && textoConsentimentoAudio && <p className="ui-row-sub priv-texto">{textoConsentimentoAudio}</p>}
+        {somenteLeitura ? (
+          <p className="ui-row-sub priv-texto">Alterar no computador.</p>
+        ) : !podeLiberarIa ? (
+          <p className="ui-row-sub priv-texto">Só Administrador e Consultor/RT registram este consentimento.</p>
+        ) : audioConsentido ? (
+          <div className="priv-acoes">
+            <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={onRetirarAudio}>
+              Retirar o consentimento
+            </button>
+          </div>
+        ) : (
+          <>
+            <label className="pc-check priv-aceite">
+              <input type="checkbox" checked={marcouAudio} disabled={!iaLiberada} onChange={(evento) => setMarcouAudio(evento.target.checked)} />
+              <span>{TEXTO_CONSENTIMENTO_AUDIO}</span>
+            </label>
+            {!iaLiberada && <p className="ui-row-sub priv-texto">Ligue antes a IA nas fotos desta empresa.</p>}
+            <div className="priv-acoes">
+              <button
+                type="button"
+                className="ui-btn ui-btn--criar ui-btn--small"
+                disabled={!iaLiberada || !marcouAudio}
+                onClick={() => {
+                  onConsentirAudio();
+                  setMarcouAudio(false);
+                }}
+              >
+                Registrar o consentimento
+              </button>
+            </div>
+          </>
         )}
       </article>
 
