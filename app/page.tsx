@@ -7633,7 +7633,7 @@ export default function Home() {
               type="button"
               disabled={recuperandoDados}
               onClick={() => void confirmarRecuperacaoLocal()}
-              className="mt-3 rounded-xl bg-[#2A4D7C] px-4 py-2 font-normal text-white disabled:opacity-60"
+              className="mt-3 rounded-xl bg-[#264A80] px-4 py-2 font-normal text-white disabled:opacity-60"
             >
               {recuperandoDados
                 ? "Recuperando..."
