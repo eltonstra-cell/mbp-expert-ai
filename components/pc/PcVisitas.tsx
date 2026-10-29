@@ -8,7 +8,7 @@ import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import { RowMenu, type ItemMenu } from "@/components/ui/RowMenu";
 import { acoesDaVisita } from "@/lib/menuActions";
 import { iniciaisDaEmpresa } from "@/lib/navigation";
-import { agruparPorEmpresa, gravarGruposAlternados, grupoRecolhido, lerGruposAlternados } from "@/lib/visitasLista";
+import { agruparPorEmpresa, gravarGruposAlternados, grupoRecolhido, lerGruposAlternados, rotuloDoBotaoDaVisita, situacaoDaLinhaDeVisita } from "@/lib/visitasLista";
 import { quantidade } from "@/lib/plural";
 
 export type LinhaVisita = {
@@ -27,6 +27,8 @@ export type LinhaVisita = {
   naoConformidades: number;
   /** "Aberta há 5 dias" quando passou do limite; vazio caso contrário. */
   aviso: string;
+  /** Dias desde a data da visita (regra fixa de 60 dias). */
+  diasAberta: number;
   status: "Em andamento" | "Concluída";
   arquivada: boolean;
   podeContinuar: boolean;
@@ -56,10 +58,6 @@ type Props = {
   onExcluir: (id: string) => void;
 };
 
-function normalizar(texto: string) {
-  return texto.normalize("NFD").replace(/[̀-ͯ]/g, "").toLocaleLowerCase("pt-BR");
-}
-
 function Chevron({ aberto }: { aberto: boolean }) {
   return (
     <svg className="vis-chevron" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
@@ -69,7 +67,6 @@ function Chevron({ aberto }: { aberto: boolean }) {
 }
 
 export default function PcVisitas({ empresaAtiva, visitas, filtro, onFiltro, novaDesabilitada, onNova, onContinuar, onConcluir, onReabrir, onRelatorio, onArquivar, onExcluir }: Props) {
-  const [busca, setBusca] = useState("");
   const [alternados, setAlternados] = useState<string[]>(() => lerGruposAlternados());
 
   const doFiltro = useMemo(
@@ -81,8 +78,7 @@ export default function PcVisitas({ empresaAtiva, visitas, filtro, onFiltro, nov
       }),
     [visitas, filtro]
   );
-  const termo = normalizar(busca.trim());
-  const visiveis = useMemo(() => (termo ? doFiltro.filter((visita) => normalizar(`${visita.empresa} ${visita.responsavel}`).includes(termo)) : doFiltro), [doFiltro, termo]);
+  const visiveis = doFiltro;
   const grupos = useMemo(
     () =>
       agruparPorEmpresa(visiveis).map((grupo) => ({
@@ -128,9 +124,16 @@ export default function PcVisitas({ empresaAtiva, visitas, filtro, onFiltro, nov
       }
     });
     const concluida = visita.status === "Concluída" && !visita.arquivada;
+    const situacao = situacaoDaLinhaDeVisita({ status: visita.status, percentual: visita.percentual, diasAberta: visita.diasAberta });
+    const faixa = visita.arquivada ? "pend" : situacao === "pronta" || situacao === "concluida" ? "ok" : situacao === "atrasada" ? "atrasada" : "pend";
+    const textoDaSituacao = visita.arquivada ? "" : situacao === "pronta" ? "pronta para finalizar" : situacao === "atrasada" ? `aberta há ${quantidade(visita.diasAberta, "dia", "dias")}` : "";
+    const rotuloDoBotao = rotuloDoBotaoDaVisita(situacao, visita.percentual);
+    const emAndamento = !visita.arquivada && visita.status === "Em andamento";
+    const aoToque = situacao === "pronta" ? () => onConcluir(visita.id) : () => onContinuar(visita.id);
+    const podeAgir = situacao === "pronta" ? visita.podeConcluir : visita.podeContinuar;
     return (
-      <div key={visita.id} className={`vis-linha${visita.arquivada ? " is-arquivada" : ""}`}>
-        <span className={`vis-faixa vis-faixa--${visita.status === "Concluída" ? "ok" : "pend"}`} aria-hidden="true" />
+      <div key={visita.id} className={`vis-linha vis-linha--${visita.arquivada ? "arquivada" : situacao}${visita.arquivada ? " is-arquivada" : ""}`}>
+        <span className={`vis-faixa vis-faixa--${faixa}`} aria-hidden="true" />
         <div className="vis-col-titulo">
           <span className="vis-titulo-linha">
             <span className="vis-titulo">{`Visita ${visita.numero} · ${visita.data}`}</span>
@@ -139,16 +142,23 @@ export default function PcVisitas({ empresaAtiva, visitas, filtro, onFiltro, nov
           </span>
           <span className="ui-row-sub">
             {visita.responsavel}
-            {visita.aviso && (
+            {textoDaSituacao ? (
               <>
                 {" · "}
-                <span className="vis-aviso-terra">{visita.aviso}</span>
+                <span className={`vis-situacao vis-situacao--${situacao}`}>{textoDaSituacao}</span>
               </>
+            ) : (
+              visita.aviso && (
+                <>
+                  {" · "}
+                  <span className="vis-aviso-terra">{visita.aviso}</span>
+                </>
+              )
             )}
           </span>
         </div>
         <div className="vis-col-barra">
-          <ProgressBar percentual={visita.percentual} largura={140} rotulo={`${visita.percentual}% concluída`} />
+          <ProgressBar percentual={visita.percentual} largura={140} tom={situacao === "pronta" || situacao === "concluida" ? "ok" : "brand"} rotulo={`${visita.percentual}% concluída`} />
           <span className="vis-pct">{visita.percentual}%</span>
         </div>
         <div className="vis-col-contagem">
@@ -164,9 +174,9 @@ export default function PcVisitas({ empresaAtiva, visitas, filtro, onFiltro, nov
               </button>
             )
           ) : visita.status === "Em andamento" ? (
-            visita.podeContinuar && (
-              <button type="button" className="ui-btn ui-btn--criar ui-btn--small" onClick={() => onContinuar(visita.id)}>
-                Continuar →
+            podeAgir && (
+              <button type="button" className="ui-btn ui-btn--criar ui-btn--small vis-botao-linha" onClick={aoToque}>
+                {rotuloDoBotao}
               </button>
             )
           ) : visita.podeReabrir ? (
@@ -183,6 +193,12 @@ export default function PcVisitas({ empresaAtiva, visitas, filtro, onFiltro, nov
           <RowMenu itens={menu} />
         </div>
         </div>
+        {emAndamento && podeAgir && (
+          <>
+            <button type="button" className="vis-abrir-linha" onClick={aoToque} aria-label={`${rotuloDoBotao} a visita ${visita.numero}`} />
+            <span className="vis-seta" aria-hidden="true">›</span>
+          </>
+        )}
       </div>
     );
   };
@@ -206,14 +222,6 @@ export default function PcVisitas({ empresaAtiva, visitas, filtro, onFiltro, nov
         />
         </div>
         <span className="vis-toolbar-fim">
-          <input
-            type="search"
-            className="ui-input pc-search"
-            placeholder="Buscar empresa ou responsável"
-            aria-label="Buscar visitas por empresa ou responsável"
-            value={busca}
-            onChange={(evento) => setBusca(evento.target.value)}
-          />
           <button type="button" className="ui-btn ui-btn--criar" onClick={onNova} disabled={novaDesabilitada}>
             + Nova visita
           </button>
@@ -222,8 +230,7 @@ export default function PcVisitas({ empresaAtiva, visitas, filtro, onFiltro, nov
 
       <div className="ui-scroll vis-rolagem">
         {grupos.map((grupo) => {
-          // Buscando, os grupos com resultado ficam abertos para mostrar o que foi achado.
-          const recolhido = termo ? false : grupoRecolhido(grupo.ativa, alternados.includes(grupo.empresaId));
+          const recolhido = grupoRecolhido(grupo.ativa, alternados.includes(grupo.empresaId));
           const primeira = grupo.itens[0];
           const emAndamento = grupo.itens.filter((visita) => visita.status === "Em andamento").length;
           return (
