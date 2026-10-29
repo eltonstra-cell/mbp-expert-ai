@@ -160,7 +160,7 @@ test("Telas: o painel só aparece para o gestor, o lembrete abre no e-mail da pe
   const page = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
   assert.ok(page.includes("podeVerPainel(usuarioDaSessao)"));
   assert.ok(page.includes("podeEnviarLembrete(usuarioDaSessao) ? () => setLembreteAberto(true) : undefined"));
-  assert.ok(page.includes("painel={painelNode}"));
+  assert.ok(page.includes("correcoes={colunasDoInicioPc}"), "o painel Hoje (correções) só existe para quem tem as colunas do gestor");
   const lembrete = readFileSync(new URL("../components/pc/PcLembrete.tsx", import.meta.url), "utf8");
   assert.ok(lembrete.includes("Abrir no meu e-mail") && !lembrete.includes("Enviar lembrete"));
   const resumo = readFileSync(new URL("../components/pc/PcResumo.tsx", import.meta.url), "utf8");
