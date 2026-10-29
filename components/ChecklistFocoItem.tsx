@@ -381,7 +381,7 @@ export default function ChecklistFocoItem({
             i
           </button>
         )}
-        <p className="chk-fonte-abaixo">{rotuloDaFonte(item.referencia)}</p>
+        <p className={`chk-fonte-abaixo${naoConforme && rotuloDaFonte(item.referencia) === "Fonte não registrada" ? " chk-fonte-abaixo--vazia" : ""}`}>{rotuloDaFonte(item.referencia)}</p>
         {campo && mostrarApoio && fonteAberta && (
           <div className="chk-fonte-linha chk-fonte-linha--campo" role="note">
             <p className="chk-fonte-pergunta">{item.titulo}</p>
@@ -443,7 +443,7 @@ export default function ChecklistFocoItem({
 
       {naoConforme && (
         <div className="chk-grav-bloco" role="group" aria-label="Quão grave é?">
-          <span className="chk-grav-titulo">{campo ? "Gravidade" : "Quão grave é?"}</span>
+          <span className="chk-grav-titulo">{campo ? "Gravidade" : `Gravidade${sugerida ? ` · sugestão do app: ${NOME_GRAVIDADE[sugerida]}` : ""}`}</span>
           {campo && sugerida && (
             <span className="chk-grav-sugestao">
               <span className="chk-sug-tablet">Sugestão do app: {NOME_GRAVIDADE[sugerida]}</span>
@@ -461,7 +461,6 @@ export default function ChecklistFocoItem({
                 onClick={() => onGravidade(nivel)}
               >
                 {NOME_GRAVIDADE[nivel]}
-                {!campo && sugerida === nivel && <span className="chk-grav-sug"><span>·</span>sugerida</span>}
               </button>
             ))}
           </div>
@@ -469,9 +468,8 @@ export default function ChecklistFocoItem({
       )}
 
       <div className="chk-foco-obs" ref={caixaRef}>
-        {campo && <span className="chk-obs-rotulo chk-obs-rotulo--campo">Observação (opcional)</span>}
+        <span className={`chk-obs-rotulo${campo ? " chk-obs-rotulo--campo" : ""}`}>Observação (opcional)</span>
         <div className="chk-obs-cabeca">
-          {!campo && <span className="chk-obs-rotulo">{naoConforme ? "Registrar a não conformidade" : "Observação (opcional)"}</span>}
           {podeEditar ? (
             <FieldVoiceTools
               variante="linha"
