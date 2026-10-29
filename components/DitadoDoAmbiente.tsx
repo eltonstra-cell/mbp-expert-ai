@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { NavIcon } from "@/components/NavIcons";
 import Select from "@/components/Select";
 import { useIaPermitida } from "@/components/IaPermissionContext";
 import { useOnline } from "@/components/useOnline";
@@ -59,6 +60,7 @@ export default function DitadoDoAmbiente({ ambienteRotulo, itens, equipamentos, 
   return (
     <>
       <button type="button" className="chk-acao chk-acao--voz" onClick={() => setAberto(true)}>
+        <NavIcon name="microfone" size={16} />
         Ditar o ambiente
       </button>
       {aberto && (
