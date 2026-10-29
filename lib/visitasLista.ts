@@ -128,3 +128,24 @@ export function gravarGruposAlternados(ids: string[], armazem: Armazem | null = 
     /* sem armazenamento: só não lembra */
   }
 }
+
+// ===== Situação da linha de Visitas (desenho aprovado): pronta, atrasada ou em andamento =====
+
+/** Visita em andamento há mais de 60 dias fica vermelha. Regra fixa; não é o "Avisar visita aberta após X dias". */
+export const DIAS_DA_VISITA_ATRASADA = 60;
+
+export type SituacaoDaLinhaDeVisita = "nova" | "andamento" | "atrasada" | "pronta" | "concluida";
+
+/** 0% = nova (sem barra, "Iniciar"); 100% em andamento = pronta ("Finalizar"); aberta há mais de 60 dias = atrasada; senão andamento. */
+export function situacaoDaLinhaDeVisita(dados: { status: "Em andamento" | "Concluída"; percentual: number; diasAberta: number }): SituacaoDaLinhaDeVisita {
+  if (dados.status === "Concluída") return "concluida";
+  if (dados.percentual >= 100) return "pronta";
+  if (dados.diasAberta > DIAS_DA_VISITA_ATRASADA) return "atrasada";
+  return dados.percentual <= 0 ? "nova" : "andamento";
+}
+
+/** Rótulo do botão da linha: Iniciar (0%), Continuar (1–99%), Finalizar (100%). */
+export function rotuloDoBotaoDaVisita(situacao: SituacaoDaLinhaDeVisita, percentual: number): string {
+  if (situacao === "pronta") return "Finalizar";
+  return percentual <= 0 ? "Iniciar" : "Continuar";
+}
