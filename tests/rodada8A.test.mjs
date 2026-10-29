@@ -63,7 +63,7 @@ test("A1: a quantidade só aparece na linha marcada; o botão 'Adicionar N itens
   assert.deepEqual(botaoDoLote(5), { rotulo: "Adicionar 5 itens", habilitado: true });
   const tela = lerFonte("components/pc/CadastroEquipamentos.tsx");
   assert.ok(tela.includes("mostrarQuantidadeNaLinha(marcado) &&") && tela.includes("botaoDoLote(loteAtual.marcados.length)"), "a tela usa as regras");
-  assert.ok(lerFonte("app/cadastro-estrutura.css").includes(".cadest-btn--azul,.cadest-azul .esc-botao{border-color:#2A4D7C;background:#2A4D7C;color:#fff}"), "azul #2A4D7C com texto branco");
+  assert.ok(lerFonte("app/cadastro-estrutura.css").includes(".cadest-btn--azul,.cadest-azul .esc-botao{border-color:#264A80;background:#264A80;color:#fff}"), "azul #264A80 com texto branco");
 });
 
 // ===== A2: o grupo Estufa = Balcão térmico saiu =====
