@@ -105,6 +105,28 @@ export function prazoSugerido(gravidade: GravidadeNc, hoje: string): { dias: num
   return { dias, data: somarDias(hoje, dias) };
 }
 
+/**
+ * Prazo mostrado na lista de correções: o prazo gravado, contado em dias a partir de hoje, ou, quando ainda não há
+ * plano com data, o prazo sugerido pela gravidade (`prazoSugerido`: Crítica 7, Importante 15, Rotina 30 dias).
+ */
+export function prazoParaExibir(nc: { prazo?: string; gravidade: GravidadeNc }, hoje: string): { dias: number; sugerido: boolean } {
+  const prazo = (nc.prazo || "").trim();
+  if (!prazo) return { dias: prazoSugerido(nc.gravidade, hoje).dias, sugerido: true };
+  const emMs = (iso: string) => {
+    const [ano, mes, dia] = iso.split("-").map(Number);
+    return Date.UTC(ano, (mes || 1) - 1, dia || 1);
+  };
+  return { dias: Math.round((emMs(prazo) - emMs(hoje)) / 86400000), sugerido: false };
+}
+
+/** "prazo em 7 dias" (tablet) ou "7 dias" (celular); vencido vira "vencido há N dias". */
+export function textoDoPrazo(dias: number, curto: boolean): string {
+  if (dias < 0) return `vencido há ${-dias} ${dias === -1 ? "dia" : "dias"}`;
+  if (dias === 0) return curto ? "hoje" : "prazo hoje";
+  const quantos = `${dias} ${dias === 1 ? "dia" : "dias"}`;
+  return curto ? quantos : `prazo em ${quantos}`;
+}
+
 type NcComCriterio = {
   id: string;
   empresaId: string;
