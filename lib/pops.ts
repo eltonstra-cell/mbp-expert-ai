@@ -1,4 +1,4 @@
-import type { ProcedimentoOperacionalPadronizado } from "@/types";
+import type { MotivoDeMudancaDoPop, ProcedimentoOperacionalPadronizado } from "@/types";
 import { hojeLocalISO } from "./dataLocal.ts";
 import { CONJUNTO_DA_NORMA, popDoConjunto, popSugeridoParaNcDoConjunto, type DefinicaoPopDoConjunto } from "./popsNorma.ts";
 
@@ -261,25 +261,43 @@ export function duplicarPop(
 ): ProcedimentoOperacionalPadronizado[] {
   const origem = pops.find((pop) => pop.id === id);
   if (!origem) return pops;
+  // Dois POPs do mesmo modelo não são permitidos: o POP de modelo (ou do conjunto da norma) não se duplica.
+  if (origem.origemModelo || origem.catalogoId) return pops;
+  // A cópia nasce Rascunho e NÃO leva aprovação, versões, assinatura, conferência feita nem a revisão da origem.
+  const { aprovacao: _aprovacao, versoes: _versoes, versaoCatalogoAprovada: _catalogo, motivoDaVersao: _motivo, conferencia: _conferencia, arquivamento: _arquivamento, inativacao: _inativacao, catalogoId: _catalogoId, ...semHistorico } = origem;
   const copia: ProcedimentoOperacionalPadronizado = {
-    ...origem,
+    ...semHistorico,
     id: novoId,
     codigo: "",
     titulo: `${origem.titulo} (cópia)`,
     versao: "1.0",
     status: "Rascunho",
+    proximaRevisao: "",
     arquivado: false,
+    ...(origem.origemModelo ? { conferencia: { conferido: false }, itensAConferir: (origem.itensAConferir || []).map((item) => ({ ...item, feito: false })) } : {}),
   };
   const posicao = pops.findIndex((pop) => pop.id === id);
   return [...pops.slice(0, posicao + 1), copia, ...pops.slice(posicao + 1)];
 }
 
+/** Um POP do mesmo modelo (catálogo de modelos ou conjunto da norma) já existe na empresa, sem contar o arquivado. */
+export function jaTemOutroDoMesmoModelo(pops: ProcedimentoOperacionalPadronizado[], pop: ProcedimentoOperacionalPadronizado): boolean {
+  const mesmo = (outro: ProcedimentoOperacionalPadronizado) =>
+    outro.id !== pop.id && !outro.arquivado && ((pop.origemModelo && outro.origemModelo?.id === pop.origemModelo.id) || (pop.catalogoId && outro.catalogoId === pop.catalogoId));
+  return pops.some((outro) => Boolean(mesmo(outro)));
+}
+
+export const AVISO_JA_TEM_DO_MODELO = "Já existe um POP deste modelo nesta empresa. Abra o que existe em vez de criar outro.";
+
+/** Arquivar exige motivo, autor e data (ficam em `arquivamento`); sem motivo nada muda. Desarquivar mantém o registro do arquivamento. */
 export function arquivarPop(
   pops: ProcedimentoOperacionalPadronizado[],
   id: string,
-  arquivado: boolean
+  arquivado: boolean,
+  mudanca?: MotivoDeMudancaDoPop
 ): ProcedimentoOperacionalPadronizado[] {
-  return pops.map((pop) => (pop.id === id ? { ...pop, arquivado } : pop));
+  if (arquivado && !(mudanca?.motivo || "").trim()) return pops;
+  return pops.map((pop) => (pop.id === id ? { ...pop, arquivado, ...(arquivado && mudanca ? { arquivamento: { ...mudanca, motivo: mudanca.motivo.trim() } } : {}) } : pop));
 }
 
 export function popsAtivos(pops: ProcedimentoOperacionalPadronizado[]): ProcedimentoOperacionalPadronizado[] {

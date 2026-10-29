@@ -73,7 +73,9 @@ test("duplicar e arquivar POP preservam os originais", () => {
   assert.equal(dup[1].titulo, "Higienização (cópia)");
   assert.equal(dup[1].codigo, "");
   assert.equal(dup[1].status, "Rascunho");
-  const arq = arquivarPop(dup, "p1", true);
+  assert.deepEqual(arquivarPop(dup, "p1", true), dup, "arquivar sem motivo não muda nada");
+  const arq = arquivarPop(dup, "p1", true, { motivo: "Não é mais usado", porNome: "Ana", em: "2026-10-29T12:00:00.000Z" });
+  assert.equal(arq.find((p) => p.id === "p1").arquivamento.motivo, "Não é mais usado");
   assert.equal(arq.length, 2, "nada é apagado");
   assert.equal(popsAtivos(arq).length, 1);
   assert.equal(arquivarPop(arq, "p1", false).find((p) => p.id === "p1").arquivado, false);

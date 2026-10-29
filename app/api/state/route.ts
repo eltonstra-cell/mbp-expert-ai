@@ -16,6 +16,8 @@ import {
 } from "@/lib/stateValidation";
 import { acessoVigente } from "@/lib/validadeDeAcesso";
 import { validarAprovacoesDePop } from "@/lib/popsNorma";
+import { unirAuditoriaSemApagar } from "@/lib/auditoriaNaoApagavel";
+import { restaurarRegistrosEmGuarda } from "@/lib/guardaDeRegistros";
 import { preservarEvidenciasEmRelatorio } from "@/lib/relatorioEmitido";
 import type { AppDB, UsuarioSistema } from "@/types";
 
@@ -247,10 +249,13 @@ export async function PUT(request: Request) {
       dadosParaGravar = {
         ...dadosParaGravar,
         empresas: aprovacoes.empresas,
-        registrosAuditoria: [
+        // Registro de execução de POP em guarda não some, nem por quem grava o estado inteiro.
+        registrosPop: restaurarRegistrosEmGuarda(estadoAtual.registrosPop, dadosParaGravar.registrosPop, (empresaId) => (estadoAtual.empresas || {})[empresaId]?.uf, new Date().toISOString()),
+        // Auditoria só cresce: nem o Administrador apaga ou altera o que o servidor já guardou.
+        registrosAuditoria: unirAuditoriaSemApagar(estadoAtual.registrosAuditoria, [
           ...(dadosParaGravar.registrosAuditoria || []),
           ...aprovacoes.registros.map((registro) => ({ ...registro, id: crypto.randomUUID() })),
-        ],
+        ]),
       };
     }
 

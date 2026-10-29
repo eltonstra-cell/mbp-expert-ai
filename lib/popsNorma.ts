@@ -16,6 +16,7 @@ import { acessoVigente } from "./validadeDeAcesso.ts";
 import { hojeLocalISO } from "./dataLocal.ts";
 import { limparTextoDePessoa, nomeECargo } from "./nomeCargo.ts";
 import { bloqueioDeAprovacao } from "./popConferencia.ts";
+import { jsonEstavel, sha256Hex } from "./sha256.ts";
 import { SECOES_DE_LISTA, gruposParaTexto, itensParaTexto, definicoesParaTexto } from "./popConteudoModelo.ts";
 
 export type BlocoExtraDoPop = "higienizacao" | "pragas" | "manipuladores";
@@ -355,6 +356,11 @@ export function versaoDoCatalogoUsada(pop: ProcedimentoOperacionalPadronizado, e
   return Object.fromEntries(ids.map((id) => [id, catalogo.find((norma) => norma.id === id)?.versaoCatalogo || ""]).filter(([, versao]) => versao));
 }
 
+/** Hash SHA-256 do conteúdo aprovado (JSON de chaves em ordem fixa): prova de que o texto aprovado não mudou depois. */
+export function hashDoConteudoDoPop(conteudo: ConteudoPop | undefined): string {
+  return sha256Hex(jsonEstavel(conteudo ?? {}));
+}
+
 /** "Aprovar e assinar": grava nome, cargo, data e versão da PESSOA responsável; guarda a versão aprovada. */
 export function aprovarPop(
   pop: ProcedimentoOperacionalPadronizado,
@@ -375,6 +381,7 @@ export function aprovarPop(
     usuarioId: usuario.id,
     em: agora,
     versao: pop.versao,
+    hashDoConteudo: hashDoConteudoDoPop(pop.conteudo),
   };
   const catalogoUsado = versaoDoCatalogoUsada(pop, empresa, catalogo);
   const snapshot: VersaoPop = {
@@ -392,7 +399,11 @@ export function aprovarPop(
     status: "Aprovado",
     aprovacao,
     versaoCatalogoAprovada: catalogoUsado,
-    versoes: [...(pop.versoes || []).filter((versao) => versao.versao !== pop.versao), snapshot],
+    // A versão aprovada que esta substitui continua guardada, agora como "Substituída".
+    versoes: [
+      ...(pop.versoes || []).filter((versao) => versao.versao !== pop.versao).map((versao): VersaoPop => (versao.status === "Aprovado" ? { ...versao, status: "Substituída", substituidaEm: agora } : versao)),
+      snapshot,
+    ],
   };
 }
 
@@ -505,6 +516,23 @@ type EmpresasPorId = Record<string, Empresa>;
 
 const ID_DE_AUDITORIA = (empresaId: string, popId: string, versao: string) => `pop-aprovado:${empresaId}:${popId}:${versao}`;
 
+/**
+ * Versões guardadas são prova de auditoria: texto, assinatura e hash aprovados NUNCA mudam por uma gravação (nem do Administrador).
+ * A única mudança aceita é Aprovada → Substituída (quando uma versão nova é aprovada). Versão guardada que não veio some? Volta.
+ */
+export function mesclarVersoesGuardadas(guardadas: VersaoPop[], recebidas: VersaoPop[]): VersaoPop[] {
+  const doServidor = new Map(guardadas.map((versao) => [versao.versao, versao]));
+  const vistas = new Set<string>();
+  const resultado = recebidas.map((versao) => {
+    vistas.add(versao.versao);
+    const g = doServidor.get(versao.versao);
+    if (!g || !g.aprovacao) return versao;
+    const substituida = g.status === "Substituída" || (g.status === "Aprovado" && versao.status === "Substituída");
+    return { ...g, status: substituida ? ("Substituída" as const) : g.status, ...(substituida ? { substituidaEm: g.substituidaEm || versao.substituidaEm } : {}) };
+  });
+  return [...guardadas.filter((versao) => !vistas.has(versao.versao)), ...resultado];
+}
+
 function mesmaAprovacao(a: AprovacaoPop | undefined, b: AprovacaoPop | undefined): boolean {
   return !!a && !!b && a.usuarioId === b.usuarioId && a.em === b.em && a.versao === b.versao;
 }
@@ -541,6 +569,9 @@ export function validarAprovacoesDePop(
           const aguardava = anterior?.status === "Aguardando aprovação" || anterior?.status === "Em revisão";
           const valida = podeAprovar && aguardava && !bloqueioDeAprovacao(pop) &&anterior?.versao === pop.versao && pop.aprovacao?.usuarioId === usuario.id;
           if (valida) {
+            // O hash do conteúdo é calculado AQUI, no servidor: o que o navegador mandou não vale.
+            const aprovacaoDoServidor: AprovacaoPop = { ...pop.aprovacao!, hashDoConteudo: hashDoConteudoDoPop(pop.conteudo) };
+            final = { ...pop, aprovacao: aprovacaoDoServidor, versoes: (pop.versoes || []).map((versao) => (versao.versao === pop.versao && versao.aprovacao ? { ...versao, aprovacao: aprovacaoDoServidor } : versao)) };
             registros.push({
               criadoEm: agora,
               usuarioId: usuario.id,
@@ -561,10 +592,7 @@ export function validarAprovacoesDePop(
       }
       // As versões aprovadas já guardadas nunca desaparecem.
       const guardadas = anterior?.versoes || [];
-      if (guardadas.length) {
-        const nomes = new Set((final.versoes || []).map((versao) => versao.versao));
-        final = { ...final, versoes: [...guardadas.filter((versao) => !nomes.has(versao.versao)), ...(final.versoes || [])] };
-      }
+      if (guardadas.length) final = { ...final, versoes: mesclarVersoesGuardadas(guardadas, final.versoes || []) };
       return final;
     });
     // Responsável do estabelecimento: só mudar o vínculo com a pessoa quem já podia (Administrador) — ver mesclarEstadoPorUsuario.

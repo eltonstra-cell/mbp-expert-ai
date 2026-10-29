@@ -178,7 +178,9 @@ test("Aprovar e assinar: só o responsável do estabelecimento; grava nome, carg
   assert.throws(() => aprovarPop(comPassos(), resp, empresa, AGORA), /aguardando aprovação/);
   const aprovado = aprovarPop(aguardando, resp, empresa, AGORA);
   assert.equal(aprovado.status, "Aprovado");
-  assert.deepEqual(aprovado.aprovacao, { nome: "Carla Dona", cargo: "Proprietária", usuarioId: "u-resp", em: AGORA, versao: "1.0" });
+  assert.match(aprovado.aprovacao.hashDoConteudo, /^[0-9a-f]{64}$/, "a aprovação grava o hash do conteúdo aprovado");
+  const { hashDoConteudo: _hash, ...assinatura } = aprovado.aprovacao;
+  assert.deepEqual(assinatura, { nome: "Carla Dona", cargo: "Proprietária", usuarioId: "u-resp", em: AGORA, versao: "1.0" });
   assert.equal(aprovado.versoes.length, 1);
   assert.equal(aprovado.versoes[0].versao, "1.0");
   assert.deepEqual(aprovado.versaoCatalogoAprovada, versoesDoCatalogo());

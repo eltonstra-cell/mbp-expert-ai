@@ -5,6 +5,8 @@ import { CONJUNTO_DA_NORMA, conjuntoDaEmpresa, hojeISO, popDoConjunto, popPrecis
 import { diasEntre, leituraDaVersao, situacaoDaValidade } from "./registrosEmpresa.ts";
 import { palavra } from "./plural.ts";
 import { dataISOLocal, formatarDataCurta } from "./dataLocal.ts";
+import { diasDaFrequenciaDoPop } from "./popFrequencia.ts";
+import { etapaDoPop, textoDaEtapa } from "./popCiclo.ts";
 
 export type SituacaoDeGestao = "Falta criar" | "Rascunho" | "Aguardando aprovação" | "Vigente" | "Revisão vencida" | "Inativo";
 
@@ -139,7 +141,8 @@ export function correcoesAtrasadasDoPop(
 export function registroAtrasado(pop: ProcedimentoOperacionalPadronizado, registros: RegistroPop[] | undefined, hoje: string = hojeISO()): boolean {
   const vigente = popVigente(pop);
   if (!vigente) return false;
-  const dias = diasDaFrequencia(vigente.conteudo?.frequencia);
+  // Rodada 12e: o cálculo usa a frequência ESTRUTURADA (ou a lida do texto antigo); "outra" só conta se o texto for uma periodicidade conhecida.
+  const dias = diasDaFrequenciaDoPop(vigente.conteudo, diasDaFrequencia);
   if (!dias) return false;
   const doPop = (registros || []).filter((registro) => registro.popId === pop.id);
   const ultimo = doPop.map((registro) => dataISOLocal(registro.dataHora)).sort().pop();
@@ -316,6 +319,9 @@ export function detalheDaLinha(
   ultimo: RegistroPop | undefined
 ): string {
   if (!pop) return "sem versão";
+  // Rodada 12e: a linha mostra a etapa do ciclo ("Etapa 2 de 6 · Conferir") no lugar de "modelo não conferido · v1.0".
+  const etapa = textoDaEtapa(etapaDoPop(pop, { equipe: leitura && leitura.total > 0 ? { total: leitura.total, confirmadas: leitura.lidos } : undefined }));
+  if (etapa) return etapa;
   const partes = [`v${pop.versao || "—"}`];
   if (leitura && leitura.total > 0 && popVigente(pop)) partes.push(`leram ${leitura.lidos} de ${leitura.total}`);
   if (ultimo) partes.push(`último registro ${dataCurta(ultimo.dataHora)}`);
