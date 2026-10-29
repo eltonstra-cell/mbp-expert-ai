@@ -231,7 +231,7 @@ export default function BuscaNaBarra({ destinos, atalhos, usuarioId, onAtiva, on
       ref={campoRef}
       type="text"
       className="pc-busca-input"
-      placeholder={PLACEHOLDER}
+      placeholder={variante === "campo" ? "Diga o que fazer" : PLACEHOLDER}
       aria-label="Busca inteligente: diga o que quer fazer ou para onde quer ir"
       role="combobox"
       aria-expanded={aberto}
