@@ -30,7 +30,7 @@ test("sem cor guardada, a cor vem do id e é sempre a mesma; cor guardada vale",
   const a = corDaEmpresa({ id: "44150273000191" });
   assert.equal(a, corDaEmpresa({ id: "44150273000191" }));
   assert.ok(corValida(a));
-  assert.equal(corDaEmpresa({ id: "x", cor: "#2a4d7c" }), "#2A4D7C");
+  assert.equal(corDaEmpresa({ id: "x", cor: "#264A80" }), "#264A80");
   assert.equal(corDaEmpresa({ id: "x", cor: "#ff0000" }), corDaEmpresa({ id: "x" }));
   assert.equal(corValida("#D93A3A"), false);
 });
