@@ -196,6 +196,16 @@ export type ProgramaControleQualidade = {
 
 export type StatusPOP = "Rascunho" | "Aguardando aprovação" | "Em revisão" | "Aprovado" | "Inativo";
 
+/** Estado de uma versão guardada: a aprovada que uma versão mais nova substituiu vira "Substituída" (continua guardada). */
+export type StatusDaVersao = StatusPOP | "Substituída";
+
+/** Frequência do POP em campo estruturado (rodada 12e). "outra" guarda o texto original. */
+export type TipoDeFrequencia = "diaria" | "semanal" | "mensal" | "outra";
+export type FrequenciaDoPop = { tipo: TipoDeFrequencia; texto?: string };
+
+/** Quem fez uma mudança de estado do POP e por quê (arquivar e inativar exigem motivo, autor e data). */
+export type MotivoDeMudancaDoPop = { motivo: string; porNome: string; porId?: string; em: string };
+
 /** Quem aprovou e assinou uma versão do POP (dado pessoal: só aparece para quem tem acesso à empresa). */
 export type AprovacaoPop = {
   nome: string;
@@ -203,6 +213,8 @@ export type AprovacaoPop = {
   usuarioId: string;
   em: string;
   versao: string;
+  /** SHA-256 (hex) do conteúdo aprovado: prova de que o texto aprovado não mudou depois. Ausente nas aprovações antigas. */
+  hashDoConteudo?: string;
 };
 
 /** `tabela`: id de uma tabela do POP (ConteudoPop.tabelas) que a folha imprime logo depois deste passo. */
@@ -236,6 +248,8 @@ export type ConteudoPop = {
    */
   responsavelManual?: boolean;
   frequencia?: string;
+  /** Frequência estruturada (rodada 12e). Ausente em POP antigo: lê-se do texto de `frequencia`. */
+  frequenciaEstruturada?: FrequenciaDoPop;
   passos?: PassoPop[];
   acaoCorretiva?: string;
   registroProva?: string;
@@ -290,7 +304,9 @@ export type CapaDosPops = {
 
 export type VersaoPop = {
   versao: string;
-  status: StatusPOP;
+  status: StatusDaVersao;
+  /** Quando uma versão mais nova foi aprovada e esta passou a "Substituída". */
+  substituidaEm?: string;
   criadaEm: string;
   conteudo?: ConteudoPop;
   aprovacao?: AprovacaoPop;
@@ -314,6 +330,10 @@ export type ProcedimentoOperacionalPadronizado = {
   proximaRevisao: string;
   /** Arquivado: sai da lista principal, mas continua guardado. */
   arquivado?: boolean;
+  /** Motivo, autor e data do último arquivamento (opcional; POP arquivado antes não tem). */
+  arquivamento?: MotivoDeMudancaDoPop;
+  /** Motivo, autor e data da inativação (POP aprovado tirado de uso; volta como nova versão em rascunho). */
+  inativacao?: MotivoDeMudancaDoPop;
   /** POP do conjunto da norma (id do catálogo em lib/popsNorma.ts). */
   catalogoId?: string;
   /** Veio do texto-base: normas e itens citados e a versão do catálogo usada. */
@@ -620,6 +640,11 @@ export type RegistroPop = {
   descricao: string;
   ambiente?: string;
   corrigeRegistroId?: string;
+  /** Verificação do que foi feito (quem conferiu e como): texto livre (opcional). */
+  verificacao?: string;
+  /** Houve desvio da regra do POP; então a ação corretiva é pedida. */
+  desvio?: boolean;
+  acaoCorretiva?: string;
   criadoEm: string;
 };
 
@@ -688,6 +713,8 @@ export type LeituraPop = {
   /** AAAA-MM-DD */
   data: string;
   registradoPorId?: string;
+  /** Confirmada pelo próprio colaborador com PIN (rodada 12e). Só pessoa, versão, data e hora (criadoEm). */
+  viaPin?: boolean;
   criadoEm: string;
 };
 
