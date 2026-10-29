@@ -213,6 +213,7 @@ export default function PcChecklist({ titulo, subtitulo, ambientes, ambienteAtua
                   {ditado}
                   {restanteDoLote && restanteDoLote.quantos > 0 && (
                     <button type="button" className="chk-acao chk-acao--conforme" onClick={restanteDoLote.onMarcar}>
+                      <span aria-hidden="true">✓</span>
                       Marcar o restante como Conforme ({restanteDoLote.quantos})
                     </button>
                   )}
