@@ -550,7 +550,7 @@ export default function ChecklistFocoItem({
             className="ui-input chk-obs-area"
             value={texto}
             disabled={!podeEditar}
-            placeholder={estadoVoz === "gravando" ? "Ouvindo… fale a observação" : ehItemDeTemperatura(item.titulo) ? "Ex.: termômetro a 9 °C" : campo ? "Observação" : ""}
+            placeholder={estadoVoz === "gravando" ? "Ouvindo… fale a observação" : ehItemDeTemperatura(item.titulo) || campo ? "Ex.: termômetro a 9 °C" : ""}
             rows={2}
             aria-label="Observação do item"
             onChange={(evento) => {
