@@ -1,7 +1,7 @@
 // UMA fonte para cada número que aparece em mais de uma tela. As telas só mostram o que estes seletores devolvem.
 
 type ItemComStatus = { status: string };
-type NcContavel = { visitaId: string; empresaId?: string; status: string; inativaNoChecklist?: boolean };
+type NcContavel = { visitaId: string; empresaId?: string; status: string; inativaNoChecklist?: boolean; canceladaPeloUsuarioEm?: string };
 type EvidenciaContavel = { tipo: string };
 
 const plural = (n: number, singular: string, pluralTexto: string) => `${n} ${n === 1 ? singular : pluralTexto}`;
@@ -35,11 +35,12 @@ export function itensNaoConformes(checklist: ItemComStatus[] | undefined): numbe
   return (checklist || []).filter((item) => item.status === "Não Conforme").length;
 }
 
-/** Correções abertas: ativas no checklist e ainda não resolvidas. Sem filtro, conta todas as recebidas. */
+/** Correções abertas: ativas no checklist, não canceladas e ainda não resolvidas (a mesma regra da lista de Visitas). Sem filtro, conta todas as recebidas. Menu e Central usam esta função; só o escopo (empresa ou visita) muda. */
 export function correcoesAbertas<N extends NcContavel>(ncs: N[] | undefined, filtro: { visitaId?: string; empresaId?: string; visitaIds?: Set<string> } = {}): number {
   return (ncs || []).filter(
     (nc) =>
       !nc.inativaNoChecklist &&
+      !nc.canceladaPeloUsuarioEm &&
       nc.status !== "Resolvida" &&
       (filtro.visitaId === undefined || nc.visitaId === filtro.visitaId) &&
       (filtro.empresaId === undefined || nc.empresaId === filtro.empresaId) &&
