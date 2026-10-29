@@ -7231,7 +7231,7 @@ export default function Home() {
         ncsAbertas={ncsAbertas}
         onIrPasso={irParaPasso}
         onFinalizar={() => (campo ? setConfirmaFinalizarCampo(true) : void finalizarInspecao())}
-        podeFinalizar={!campo && visitaAtual.status !== "Concluída" && permitido("visitas.concluir", visitaAtual.empresaId)}
+        podeFinalizar={false}
         reservarAltura={reservarAltura}
         campo={campo}
         comRotulo={campo && finalizarComRotulo(checklistAtual.length, pendentesVisita)}
@@ -7277,7 +7277,7 @@ export default function Home() {
 
   // Itens do ⋯ que são da tela aberta: "Editar ambientes" (Central da visita, tablet e celular) e "Histórico da empresa" (lista de Visitas).
   const itensDaTela: ItemMenu[] = [
-    ...(view === "visita" && visitaAtual && modo === "campo" && permitido("visitas.executar", visitaAtual.empresaId) ? [{ rotulo: "Editar ambientes", onClick: () => abrirAmbientes() }] : []),
+    ...(view === "visita" && visitaAtual && permitido("visitas.executar", visitaAtual.empresaId) ? [{ rotulo: "Editar ambientes", onClick: () => abrirAmbientes() }] : []),
     ...(view === "visitas" && modo !== "campo" ? [{ rotulo: "Histórico da empresa", onClick: () => setView("historico"), desabilitado: !atual }] : []),
   ];
   const itensMenuModo: ItemMenu[] = [
@@ -7823,7 +7823,7 @@ export default function Home() {
           contextoDaVoz={contextoDaVoz}
           micDisponivel={deveExibirRecursosDeIa(usuarioDaSessao)}
           modo={modo}
-          semBusca={modo === "campo"}
+          semBusca={modo === "campo" || view === "empresas"}
           sincronizacao={{ ...seloAtual, onClick: tocarNoSelo }}
           automatico={telaModo.preferencia.automatico}
           onEscolherModo={telaModo.escolherModo}
@@ -8776,6 +8776,7 @@ export default function Home() {
         ) : view === "correcoes" && visitaAtual ? (
             <PcCorrecoes
               key={`${visitaAtual.empresaId}:${usuarioDaSessao?.id || "sem-usuario"}`}
+              etapasNaLista={!correcoesDaEmpresa}
               onLembrete={podeEnviarLembrete(usuarioDaSessao) ? () => setLembreteAberto(true) : undefined}
               empresa={nomeParaExibir(empresaVisita)}
               data={correcoesDaEmpresa ? "todas as visitas" : fdata(visitaAtual.data)}
