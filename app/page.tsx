@@ -84,14 +84,14 @@ import { maisRecentesPrimeiro, visitaPadraoParaRegistro } from "@/lib/registerTa
 import { listaSemArquivadas, marcarArquivada } from "@/lib/menuActions";
 import { adicionarSugestaoPop, criarRascunhosFaltantes, popsDaVisita } from "@/lib/pops";
 import UpdateNotice from "@/components/UpdateNotice";
-import { alteracoesEmLote, contarEtapas, contarNcsPorGravidade, resumoDoPlano } from "@/lib/actionPlan";
+import { alteracoesEmLote, contarNcsPorGravidade, resumoDoPlano } from "@/lib/actionPlan";
 import PcEvidencias from "@/components/pc/PcEvidencias";
 import PcAmbientes from "@/components/pc/PcAmbientes";
 import PcCentral, { type PassoCentral } from "@/components/pc/PcCentral";
 import PcPops from "@/components/pc/PcPops";
 import PcVisitas, { type FiltroVisitas } from "@/components/pc/PcVisitas";
 import ConfiguracaoDeVisitas from "@/components/pc/ConfiguracaoDeVisitas";
-import { avisoDeVisitaAberta, limiteDeDiasDaVisita, motivoParaNaoExcluirVisita, textoDeProgressoDaVisita } from "@/lib/visitasLista";
+import { avisoDeVisitaAberta, diasDeVisitaAberta, limiteDeDiasDaVisita, motivoParaNaoExcluirVisita, textoDeProgressoDaVisita } from "@/lib/visitasLista";
 import PcEmpresas from "@/components/pc/PcEmpresas";
 import CampoEmpresas from "@/components/campo/CampoEmpresas";
 import { useScreenMode } from "@/components/useScreenMode";
@@ -117,7 +117,7 @@ import { dadosExtrasDoItem, limparResposta, listaEmTexto } from "@/lib/limparRes
 import { useIsCelular } from "@/components/useIsCelular";
 import { ABAS_CELULAR, ABAS_PADRAO, PASSOS_DA_FAIXA_NO_CAMPO, abasDoCampoDoPerfil, destinoFicaSoNoMais, finalizarComRotulo, type AbaDaBarra } from "@/lib/abasDoCampo";
 import BuscaDeEmpresas from "@/components/campo/BuscaDeEmpresas";
-import { CampoBarra, CampoCabecalho, CampoCorrecoes, CampoInicio, CampoMais, CampoTelaFixa, type TelaCampo } from "@/components/campo/CampoTelas";
+import { CampoBarra, CampoCabecalho, CampoCorrecoes, CampoMais, CampoTelaFixa, type TelaCampo } from "@/components/campo/CampoTelas";
 import ConfirmarFinalizar from "@/components/campo/ConfirmarFinalizar";
 import FiscalInicio from "@/components/FiscalInicio";
 import { AvisoFotoProvider, useAvisoAntesDeFotografar } from "@/components/AvisoAntesDeFotografar";
@@ -140,7 +140,7 @@ import { niveisDoCaminho } from "@/lib/caminhoDaFicha";
 import { assinaturaComEstrutura, assinaturaEdicaoEmpresa, temAlteracoesNaoSalvas } from "@/lib/estadoNaoSalvo";
 import { renomearAmbiente, resumoDaRenomeacao, textoDoResumo } from "@/lib/renomearAmbiente";
 import { correcoesAbertasDaEmpresa, correcoesVencidasDaEmpresa } from "@/lib/correcoesVencidas";
-import { caixasDoContinuar, colunasDoInicio, comAmbienteDasCorrecoes, correcoesSemPrazo, passosDeConfiguracao, resumoDaConfiguracao } from "@/lib/inicio";
+import { colunasDoInicio, correcoesDoInicio, correcoesSemPrazo, ordenarRecentes, passosDeConfiguracao, resumoDaConfiguracao } from "@/lib/inicio";
 import { ePaginaDeCadastro, marcarComoRevisado } from "@/lib/revisaoDeCadastros";
 import RevisaoCompacta from "@/components/pc/RevisaoCompacta";
 import CadastroAmbientes, { type EntradaDeEstrutura, type EstadoDoSalvamento, type MudancaDeEstrutura } from "@/components/pc/CadastroAmbientes";
@@ -3175,7 +3175,6 @@ export default function Home() {
   const ncsVisita = (db.ncs || []).filter((nc) => nc.visitaId === visitaAtual?.id && !nc.inativaNoChecklist);
   const ncsAbertas = correcoesAbertas(ncsVisita);
   // Barra de baixo do Campo: o mesmo total do contador "Identificadas" da lista de Correções (dentro de uma visita).
-  const identificadasNaBarra = visitaAtual ? contarEtapas(ncsVisita).identificadas : ncsAbertas;
   const ncsVisiveis = ncsVisita.filter((nc) => {
     if (filtroNcs === "Todas") return true;
     if (filtroNcs === "Abertas") return nc.status !== "Resolvida";
@@ -7090,27 +7089,23 @@ export default function Home() {
     const visita = db.visitas.find((item) => item.id === id);
     return (visita?.checklist || []).find((item) => item.status === "Pendente")?.ambiente || ((visita?.ambientes || []).length ? "Revisar a inspeção" : "Definir os ambientes da visita");
   };
-  const caixasDoInicio = caixasDoContinuar({
-    telas: telasRecentes,
-    visitas: visitasSemArquivadas.filter((visita) => visita.empresaId === atual?.id),
-    pops: atual?.pops || [],
-    numeroDaVisita: (id) => numeroVisitaPorId.get(id),
-    formatarData: fdata,
-    proximaEtapa: proximaEtapaDaVisitaNoInicio,
-  }).map((caixa) => {
-    // Cartão de visita: título curto, data, subtítulo (próxima etapa) e anel com o % do checklist; as outras telas seguem como antes.
-    const visitaDaCaixa = caixa.tela.tipo === "visita" ? db.visitas.find((item) => item.id === caixa.tela.id) : undefined;
-    return {
-      chave: caixa.chave,
-      titulo: caixa.titulo,
-      subtitulo: visitaDaCaixa ? `próxima etapa: ${proximaEtapaDaVisitaNoInicio(visitaDaCaixa.id)}` : caixa.subtitulo,
-      tipo: caixa.tela.tipo,
-      onAbrir: () => abrirTelaRecente(caixa.tela),
-      ...(visitaDaCaixa
-        ? { rotulo: `Visita ${numeroVisitaPorId.get(visitaDaCaixa.id) ?? ""}`.trim(), data: fdata(visitaDaCaixa.data), percentual: progressoDoChecklist(visitaDaCaixa.checklist).percentual }
-        : {}),
-    };
-  });
+  // Cartão único do Início: a visita em andamento mais recente da empresa ativa que ainda não chegou a 100%.
+  const emAndamentoDaEmpresa = ordenarRecentes(visitasSemArquivadas.filter((visita) => visita.empresaId === atual?.id && visita.status === "Em andamento"));
+  const visitaDoCartao = emAndamentoDaEmpresa.find((visita) => progressoDoChecklist(visita.checklist).percentual < 100);
+  const listaDoCartao = visitaDoCartao?.checklist || [];
+  const ordemDoCartao = visitaDoCartao?.ambientes?.length ? visitaDoCartao.ambientes : [...new Set(listaDoCartao.map((item) => item.ambiente))];
+  const itemDoCartao = visitaDoCartao ? primeiroItemSemResposta(listaDoCartao, ordemDoCartao) : undefined;
+  const cartaoDoInicio = visitaDoCartao
+    ? {
+        rotulo: `Visita ${numeroVisitaPorId.get(visitaDoCartao.id) ?? ""}`.trim(),
+        data: fdata(visitaDoCartao.data),
+        percentual: progressoDoChecklist(visitaDoCartao.checklist).percentual,
+        proxima: `Próxima etapa: ${nomeCurtoDoAmbiente(proximaEtapaDaVisitaNoInicio(visitaDoCartao.id))}`,
+        // PC abre a Central da visita (como o cartão sempre fez); tablet e celular vão direto ao próximo item.
+        onContinuar: () => (ehPC ? abrirTelaRecente({ tipo: "visita", id: visitaDoCartao.id, rotulo: "" }) : continuar(visitaDoCartao.id, true, itemDoCartao)),
+      }
+    : null;
+  const outrasVisitasDoInicio = emAndamentoDaEmpresa.filter((visita) => visita.id !== visitaDoCartao?.id).length;
   const abrirPassoDoGuia = (chave: string) => {
     if (chave === "perfil") setPerfilAberto(true);
     else if (chave === "empresa") void abrirSecaoEmpresaPeloMenu("dados");
@@ -7124,23 +7119,34 @@ export default function Home() {
       ? { feitos: resumoDoGuia.feitos, total: resumoDoGuia.total, faltam: resumoDoGuia.faltam.map((passo) => ({ id: passo.chave, titulo: passo.titulo, onAbrir: () => abrirPassoDoGuia(passo.chave) })), onGuia: () => setView("ajuda") }
       : null;
   const dadosDasColunas = painelHoje && atual && !ehExecutor ? colunasDoInicio(painelHoje.itens, atual.pops || [], hojeISO(), permitido("ncs.acompanhar", atual.id) ? correcoesSemPrazo(db.ncs, atual.id) : []) : null;
-  const colunasDoInicioPc = dadosDasColunas
+  // "Hoje precisa de você": todas as correções abertas da empresa (o mesmo total do número em Correções no menu e na barra).
+  const colunasDoInicioPc = dadosDasColunas && atual
     ? {
-        ...dadosDasColunas,
-        precisa: comAmbienteDasCorrecoes(dadosDasColunas.precisa, db.ncs),
-        onVerTodasCorrecoes: abrirCorrecoesDaEmpresa,
-        onAbrirPendencia: acaoDoPainel,
-        onAbrirVencimento: (item: { id: string; origem: string }) => {
-          if (item.origem === "pop-revisao") abrirFichaDoPop(item.id.replace("revisao:", ""));
-          else {
-            const original = painelHoje?.itens.find((candidato) => candidato.id === item.id);
-            if (original) acaoDoPainel(original);
-          }
+        itens: correcoesDoInicio(db.ncs, atual.id, hojeISO()),
+        onAbrirItem: (id: string) => {
+          const original = painelHoje?.itens.find((candidato) => candidato.id === `correcao:${id}`);
+          if (original) acaoDoPainel(original);
+          else abrirCorrecoesDaEmpresa();
         },
-        onLembrete: podeEnviarLembrete(usuarioDaSessao) ? () => setLembreteAberto(true) : undefined,
+        onAbrirCorrecoes: abrirCorrecoesDaEmpresa,
+        vencimentos: dadosDasColunas.vencendo.length,
         onTodosVencimentos: () => setView("resumo"),
+        onLembrete: podeEnviarLembrete(usuarioDaSessao) ? () => setLembreteAberto(true) : undefined,
       }
     : null;
+  const inicioElemento = (
+    <PcInicio
+      nome={usuarioDaSessao?.nome.split(" ").filter(Boolean)[0] || "bem-vindo"}
+      avisoPops={avisoPopsDoInicio}
+      cartao={cartaoDoInicio}
+      outrasVisitas={outrasVisitasDoInicio}
+      onOutrasVisitas={() => irParaMenu("visitas")}
+      onNovaVisita={atual && permitido("visitas.criar", atual.id) && !ehExecutor ? novaVisita : null}
+      configuracao={configuracaoDoInicio}
+      atalhos={colunasDoInicioPc ? { onResumo: () => setView("resumo"), onEvolucao: () => setView("evolucao"), onEmitidos: () => setView("relatoriosemitidos"), onDossie: podeGerarDossie(usuarioDaSessao) ? () => setView("dossie") : undefined } : null}
+      correcoes={colunasDoInicioPc}
+    />
+  );
   const conjuntoDaVisita = conjuntoDaEmpresa(empresaVisita);
   const resumoPopsVisita = popsDaVisita(
     ncsVisita.map((nc, indice) => ({ numero: indice + 1, categoria: nc.categoria, popCatalogoId: nc.popCatalogoId })),
@@ -7791,7 +7797,7 @@ export default function Home() {
               empresa={nomeEmFormatoNatural(atual?.nomeFantasia) || ""}
               empresaCor={atual ? corDaEmpresa(atual) : undefined}
               titulo={view === "visita" && visitaAtual ? `Visita ${numeroVisitaPorId.get(visitaAtual.id) || ""}`.trim() : TITULO_DA_TELA_NO_CAMPO[view] || ""}
-              subtitulo={modoVisitaNoMenu && visitaAtual ? (view === "visita" ? "" : `Visita ${numeroVisitaPorId.get(visitaAtual.id) || ""}`.trim()) : view === "empresas" ? "" : null}
+              subtitulo={modoVisitaNoMenu && visitaAtual ? (view === "visita" ? "" : `Visita ${numeroVisitaPorId.get(visitaAtual.id) || ""}`.trim()) : view === "empresas" || view === "inicio" || view === "visitas" ? "" : null}
               sincronizacao={{ ...seloAtual, rotulo: view === "campomais" && seloAtual.estado === "ok" ? "Tudo enviado" : seloAtual.rotulo, onClick: tocarNoSelo }}
               menuModo={[...itensDaTela, ...itensMenuModo]}
               onTrocarEmpresa={() => setTrocarEmpresaAberto(true)}
@@ -7799,7 +7805,7 @@ export default function Home() {
               busca={
                 view === "empresas" ? (
                   <BuscaDeEmpresas className="emp-busca--cabecalho" valor={buscaEmpresas} onChange={setBuscaEmpresas} placeholder="Buscar empresa" micDisponivel={deveExibirRecursosDeIa(usuarioDaSessao)} />
-                ) : (view === "checklist" || view === "evidencias" || view === "correcoes") && visitaAtual ? (
+                ) : view === "inicio" || view === "visitas" || ((view === "checklist" || view === "evidencias" || view === "correcoes") && visitaAtual) ? (
                   <BuscaNaBarra
                     variante="campo"
                     destinos={destinosCaixa}
@@ -7817,7 +7823,7 @@ export default function Home() {
             {faixaDaVisita(true, true)}
             <CampoBarra
               tela={view === "inicio" ? "inicio" : abasDoCampo.includes("visitas") && modoVisitaNoMenu ? "visitas" : view === "visitas" ? "visitas" : view === "pops" || view === "popsvisita" ? "pops" : ["relatoriosemitidos", "resumo", "dossie", "evolucao"].includes(view) ? "relatorios" : view === "checklist" ? "checklist" : view === "correcoes" ? "correcoes" : view === "evidencias" ? "evidencias" : view === "campomais" || view === "empresas" ? "mais" : null}
-              correcoesAbertas={identificadasNaBarra}
+              correcoesAbertas={ncsVencidasDaEmpresa}
               podeRegistrar={permitido("evidencias.adicionar") || permitido("visitas.executar")}
               onIr={irParaTelaCampo}
               abas={abasNaBarraDoCampo}
@@ -7976,70 +7982,7 @@ export default function Home() {
             })()}
           />
         ) : modo === "campo" && view === "inicio" && !ehFiscal ? (
-          (() => {
-            const alvo = visitaEmAndamentoDestaque;
-            const lista = alvo?.checklist || [];
-            const ordemAmbientes = alvo?.ambientes?.length ? alvo.ambientes : [...new Set(lista.map((item) => item.ambiente))];
-            const proximoItem = primeiroItemSemResposta(lista, ordemAmbientes);
-            const itensDoAmbiente = proximoItem ? lista.filter((item) => item.ambiente === proximoItem.ambiente) : [];
-            const ncsAbertasDoAlvo = alvo ? (db.ncs || []).filter((nc) => nc.visitaId === alvo.id && !nc.inativaNoChecklist && nc.status !== "Resolvida") : [];
-            const abertasNaEmpresa = atual
-              ? correcoesAbertas(db.ncs, { empresaId: atual.id, visitaIds: new Set(visitas.filter((visita) => visita.empresaId === atual.id).map((visita) => visita.id)) })
-              : 0;
-            const progressoDoAlvo = progressoDoChecklist(lista);
-            const divergenciaDoAlvo = alvo && !ehExecutor ? avisoDeDivergencia(conciliarNcs(lista, (db.ncs || []).filter((nc) => nc.visitaId === alvo.id && !nc.inativaNoChecklist))) : null;
-            const etapaDoAlvo = alvo ? proximaEtapaDaVisita(lista.filter((item) => item.status === "Pendente").length, ncsAbertasDoAlvo) : null;
-            return (
-              <CampoInicio
-                usuario={usuarioDaSessao?.nome || ""}
-                empresa={atual ? nomeParaExibir(atual) : ""}
-                visitaAtiva={alvo ? { empresa: nomeParaExibir(db.empresas[alvo.empresaId]), data: fdata(alvo.data) } : null}
-                respondidos={progressoDoAlvo.respondidos}
-                total={progressoDoAlvo.total}
-                naoConformes={itensNaoConformes(lista)}
-                correcoesAbertas={abertasNaEmpresa}
-                divergencia={divergenciaDoAlvo}
-                somenteCampo={ehExecutor}
-                avisoPops={avisoPopsDoInicio}
-                painel={painelNode}
-                outras={db.visitas
-                  .filter((visita) => visita.status === "Em andamento" && visita.id !== alvo?.id && podeAbrirVisita(visita.empresaId))
-                  .map((visita) => ({ id: visita.id, rotulo: `${nomeParaExibir(db.empresas[visita.empresaId])} · ${fdata(visita.data)}` }))}
-                podeRegistrar={permitido("evidencias.adicionar", alvo?.empresaId) || permitido("visitas.executar", alvo?.empresaId)}
-                onContinuar={() => alvo && continuar(alvo.id, true, proximoItem)}
-                onRegistrar={() => setRegistrarAberto(true)}
-                onCorrecoes={abrirCorrecoesDaEmpresa}
-                onAbrirVisita={(id) => continuar(id, true)}
-                onVisitas={() => irParaMenu("visitas")}
-                onIniciar={permitido("visitas.criar", atual?.id) && atual ? novaVisita : undefined}
-                proxima={
-                  etapaDoAlvo && !ehExecutor && mostrarCartaoProximaEtapa(etapaDoAlvo)
-                    ? {
-                        titulo: etapaDoAlvo.titulo,
-                        detalhe:
-                          etapaDoAlvo.tipo === "checklist" && proximoItem
-                            ? `${infosAmbientes.find((info) => info.nome === proximoItem.ambiente)?.rotulo || proximoItem.ambiente} · Item ${itensDoAmbiente.findIndex((item) => item.id === proximoItem.id) + 1} de ${itensDoAmbiente.length}: ${proximoItem.titulo}`
-                            : etapaDoAlvo.tipo === "correcoes"
-                              ? "Defina ação, responsável e prazo de cada uma."
-                              : "Checklist e correções em dia. Falta o relatório.",
-                      }
-                    : null
-                }
-                onProxima={() => {
-                  if (!alvo || !etapaDoAlvo) return;
-                  if (etapaDoAlvo.tipo === "checklist") {
-                    if (proximoItem) continuar(alvo.id, true, proximoItem);
-                  } else if (etapaDoAlvo.tipo === "correcoes") {
-                    irParaTelaCampo("correcoes");
-                  } else {
-                    setDb((estado) => ({ ...estado, empresaAtualId: alvo.empresaId }));
-                    setVisitaAtualId(alvo.id);
-                    setView("relatorio");
-                  }
-                }}
-              />
-            );
-          })()
+          inicioElemento
         ) : modo === "campo" && view === "checklist" && visitaAtual ? (
           (() => {
             const lista = itensEmOrdem();
@@ -10494,15 +10437,7 @@ export default function Home() {
           />
         ) : view === "inicio" ? (
           ehPC ? (
-            <PcInicio
-              nome={usuarioDaSessao?.nome.split(" ").filter(Boolean)[0] || "bem-vindo"}
-              avisoPops={avisoPopsDoInicio}
-              caixas={caixasDoInicio}
-              onNovaVisita={atual && permitido("visitas.criar", atual.id) && !ehExecutor ? novaVisita : null}
-              configuracao={configuracaoDoInicio}
-              atalhos={colunasDoInicioPc ? { onResumo: () => setView("resumo"), onEvolucao: () => setView("evolucao"), onEmitidos: () => setView("relatoriosemitidos"), onDossie: podeGerarDossie(usuarioDaSessao) ? () => setView("dossie") : undefined } : null}
-              colunas={colunasDoInicioPc}
-            />
+            inicioElemento
           ) : (
           <div className="space-y-4">
             <section className="grid gap-3 lg:grid-cols-[minmax(0,1.08fr)_minmax(360px,0.92fr)] lg:gap-4">
@@ -11011,6 +10946,7 @@ export default function Home() {
                 evidencias: nEvidencias,
                 naoConformidades: nNcs,
                 aviso: avisoDeVisitaAberta(v.status, v.data, hojeISO(), limiteDeDiasDaVisita(db.configuracaoVisitas?.diasAvisoVisitaAberta)),
+                diasAberta: diasDeVisitaAberta(v.data, hojeISO()),
                 arquivada: Boolean(v.arquivada),
                 podeArquivar: permitido("visitas.concluir", v.empresaId),
                 podeCriarNesta: permitido("visitas.criar", v.empresaId),
