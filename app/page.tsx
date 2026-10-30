@@ -1101,6 +1101,8 @@ export default function Home() {
   const [assinaturaEmpresaSalva, setAssinaturaEmpresaSalva] = useState("");
   // Ambientes e Equipamentos gravam na hora (sem o Salvar da barra de baixo): "Salvando…" / "✓ Alterações salvas".
   const [estadoEstrutura, setEstadoEstrutura] = useState<EstadoDoSalvamento>("salvo");
+  // Salvar da Central em Documentos: "Salvando…" por um instante, depois "✓ Tudo salvo" (e o botão apagado até nova alteração).
+  const [salvandoDocumentos, setSalvandoDocumentos] = useState(false);
   const assinaturaEmpresaAtual = assinaturaEdicaoEmpresa({
     form,
     responsabilidades: responsabilidadesEmpresa,
@@ -2440,6 +2442,11 @@ export default function Home() {
         } else if (response.status === 503) {
           setSyncStatus("local");
         } else {
+          // Limite de texto recusado pelo servidor (nome, cargo ou registro): diz qual foi, em vez de só falhar a sincronização.
+          if (response.status === 400) {
+            const corpo = await response.json().catch(() => null);
+            if (corpo?.detalhe === "limite-de-texto" && typeof corpo.error === "string") mostrarToast(corpo.error, { tipo: "aviso", duracaoMs: 6000 });
+          }
           registrarFalhaSincronizacao();
         }
       } catch {
@@ -8607,12 +8614,25 @@ export default function Home() {
                 {!editingEmpresaId && msg && <span className="cen-salvar-aviso">{msg}</span>}
                 {editingEmpresaId && (
                   <span className="cen-salvar-aviso" role="status">
-                    <span className="cen-salvar-marca" aria-hidden="true">{estadoDaBarraDeSalvar(empresaTemAlteracoes).marca}</span>
-                    {estadoDaBarraDeSalvar(empresaTemAlteracoes).texto}
+                    <span className="cen-salvar-marca" aria-hidden="true">{salvandoDocumentos ? "…" : estadoDaBarraDeSalvar(empresaTemAlteracoes).marca}</span>
+                    {salvandoDocumentos ? "Salvando…" : estadoDaBarraDeSalvar(empresaTemAlteracoes).texto}
                   </span>
                 )}
-                <button type="button" onClick={salvarEmpresa} className={`ui-btn ui-btn--save${editingEmpresaId && !empresaTemAlteracoes ? " is-apagado" : ""}`}>
-                  {editingEmpresaId ? "Salvar" : "Salvar e abrir a Central"}
+                <button
+                  type="button"
+                  disabled={salvandoDocumentos}
+                  onClick={() => {
+                    if (!editingEmpresaId) {
+                      salvarEmpresa();
+                      return;
+                    }
+                    setSalvandoDocumentos(true);
+                    salvarEmpresa();
+                    window.setTimeout(() => setSalvandoDocumentos(false), 700);
+                  }}
+                  className={`ui-btn ui-btn--save${editingEmpresaId && !empresaTemAlteracoes && !salvandoDocumentos ? " is-apagado" : ""}`}
+                >
+                  {editingEmpresaId ? (salvandoDocumentos ? "Salvando…" : "Salvar") : "Salvar e abrir a Central"}
                 </button>
               </div>
             )}

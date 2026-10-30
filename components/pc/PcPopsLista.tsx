@@ -183,6 +183,9 @@ export default function PcPopsLista({
       });
   }
 
+  // A contagem é a mesma do índice (POPs sem os arquivados); com "Ver arquivados" ligado, os arquivados vêm separados.
+  const arquivadosNaLista = linhasDosPops.filter((linha) => linha.pop?.arquivado).length;
+  const popsAtivos = linhasDosPops.length - arquivadosNaLista;
   // Menu ⋯ do cabeçalho: criar o que falta do conjunto da norma, ver arquivados e trocar o responsável (os POPs que faltam não ocupam linha na lista).
   const itensDoMenu: ItemDoMenuMais[] = [];
   if (podeEditar && temConjunto) {
@@ -281,7 +284,8 @@ export default function PcPopsLista({
         <div className="pgl-cab-textos">
           <h2 className="pgl-cab-titulo">POPs</h2>
           <p className="pgl-cab-sub">
-            {linhasDosPops.length} {linhasDosPops.length === 1 ? "POP" : "POPs"} · Responsável: <strong>{nomeDoResponsavel || "ainda não definido"}</strong>
+            {popsAtivos} {popsAtivos === 1 ? "POP" : "POPs"}
+            {verArquivados && arquivadosNaLista > 0 ? ` · ${arquivadosNaLista} ${arquivadosNaLista === 1 ? "arquivado" : "arquivados"}` : ""} · Responsável: <strong>{nomeDoResponsavel || "ainda não definido"}</strong>
           </p>
         </div>
         {podeEditar && (

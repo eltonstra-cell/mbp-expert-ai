@@ -7694,3 +7694,56 @@ html:root:root body .cen-doc .ui-btn--save.is-apagado{background:#1E7A3E;color:#
 @media (max-width:599px){html:root:root body .pess-linha-p{height:auto;min-height:88px;align-items:center;row-gap:0;padding:10px 0}html:root:root body .pess-linha-p .pess-estado{order:3;flex-basis:100%;padding-left:54px;margin-top:-8px}html:root:root body .pess-linha-p .pess-textos{flex:1;min-width:0}}
 /* F6: Registros e Histórico no tablet e no celular rolam por dentro, nunca a página. */
 @media (max-width:1099px){html:root:root body .pop-registros-area{min-height:220px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;padding-right:4px}}
+/* RODADA 4: consistência de Documentos, Pessoas e interface */
+html:root:root body .cen-indice-conta{color:#526477}
+html:root:root body .cen-doc .cdoc-lista{padding-right:12px}
+html:root:root body .cdoc-sub-toque{display:none}
+@media (max-width:1099px){html:root:root body .cdoc-sub-pc{display:none}html:root:root body .cdoc-sub-toque{display:inline}}
+html:root:root body .prog-linha{min-height:64px;padding:0;gap:14px}
+html:root:root body .prog-titulo{line-height:22px}
+html:root:root body .prog-descricao{line-height:20px}
+html:root:root body .man-cab{min-height:72px;padding:12px 0}
+html:root:root body .man-cab-textos{gap:3px}
+html:root:root body .man-apoio{line-height:1.35;padding-bottom:2px}
+html:root:root body .man-sec{border-bottom:1px solid #D6DCE5}
+html:root:root body .man-grade{gap:8px 18px}
+html:root:root body .man-corpo{gap:8px;padding-top:0}
+html:root:root body .man-campo{gap:3px}
+html:root:root body .man-rotulo{line-height:20px}
+html:root:root body input.ui-input.is-data-vazia::-webkit-datetime-edit,html:root:root body input.ui-input.is-data-vazia::-webkit-datetime-edit-fields-wrapper{color:#7A8499 !important}
+html:root:root body .ui-input.is-data-vazia:focus::-webkit-datetime-edit{color:#1B2433}
+html:root:root body .man-liga{position:relative;overflow:visible}
+html:root:root body .man-liga::after{content:"";position:absolute;inset:-7px}
+html:root:root body .man-resp-linha{min-height:56px}
+html:root:root body .jan-fechar{width:40px;height:40px}
+html:root:root body .cen-salvar .ui-btn--save:disabled{background:#1E7A3E;color:#fff;opacity:.85;border:0}
+html:root:root body .pess-linha-p .cadest-mais{border:0;background:transparent;box-shadow:none}
+html:root:root body .pess-linha-p .cadest-mais:hover{background:#F1F3F7}
+/* C2: o formulário de Comprovantes não rola junto com a lista: título e botões ficam à vista. */
+html:root:root body .cdoc-lista .comp-form.is-aberto{padding-top:0;padding-bottom:0}
+html:root:root body .cdoc-lista .comp-form.is-aberto>.ui-card-title{position:sticky;top:0;z-index:2;margin:0;padding:14px 0 10px;background:#fff}
+html:root:root body .cdoc-lista .comp-form.is-aberto>.comp-form-acoes{position:sticky;bottom:0;z-index:2;margin:0;padding:12px 0 14px;background:#fff;border-top:1px solid #E3E8EE}
+/* B: Pessoas (rodada 4) */
+html:root:root body .pess-vazio{display:flex;flex-direction:column;align-items:flex-start;gap:14px;padding:18px 0}
+html:root:root body .pess-vazio-texto{margin:0;font-size:16px;color:#55607A}
+html:root:root body .pess-ver-inativos{align-self:flex-start;margin:10px 0 4px;padding:8px 0;border:0;background:transparent;font-size:15px;color:#264A80;text-decoration:underline;cursor:pointer}
+html:root:root body .pess-estado--inativa{color:#55607A}
+html:root:root body .jan-titulo{font-weight:500}
+/* C1: interruptor das Responsabilidades com área de toque de 40 px (o círculo visível continua de 28 px) */
+html:root:root body .man-liga{width:40px;height:40px;border:0;background:transparent;position:relative;overflow:visible}
+html:root:root body .man-liga::after{content:none}
+html:root:root body .man-liga::before{content:"";position:absolute;inset:6px;border:2px solid #7F8BA3;border-radius:50%;background:#fff}
+html:root:root body .man-liga.is-ligada::before{border-color:#21805B;background:#21805B}
+html:root:root body .man-liga>*{position:relative}
+html:root:root body .man-corpo{padding-bottom:4px}
+html:root:root body .man-grade{gap:6px 18px}
+html:root:root body .man-preencher{gap:10px}
+html:root:root body .man-cab{padding:8px 0}
+/* Revisões da rodada 4 */
+html:root:root body .man-sec{flex:none}
+html:root:root body .man-sec:has(.man-corpo){flex:1 1 0;min-height:0}
+html:root:root body .man-lista{padding-bottom:8px}
+html:root:root body .man-adicionar{margin-top:4px}
+html:root:root body .jan-rodape .ui-btn--save:disabled,html:root:root body .jan-rodape .ui-btn--save.is-apagado{background:#1E7A3E;color:#fff;opacity:.5;border:0}
+html:root:root body .jan-caixa .ui-field-error{font-size:15px}
+html:root:root body .pess-linha-p.is-inativa .pess-nome,html:root:root body .man-resp.is-desligada .man-resp-texto{color:#55607A}

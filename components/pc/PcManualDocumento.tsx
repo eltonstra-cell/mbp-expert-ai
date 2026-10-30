@@ -75,7 +75,7 @@ export default function PcManualDocumento({ valores, rotulos, doPerfil, onChange
       </div>
 
       <div className={`man-sec${aberta === "identificacao" ? " is-aberta" : ""}`}>
-        <button type="button" className="man-cab" aria-expanded={aberta === "identificacao"} aria-controls="man-id" onClick={() => alternar("identificacao")}>
+        <button type="button" className="man-cab" aria-expanded={aberta === "identificacao"} aria-controls={aberta === "identificacao" ? "man-id" : undefined} onClick={() => alternar("identificacao")}>
           <span className="man-cab-textos">
             <span className="man-titulo">Identificação complementar</span>
             <span className="man-apoio">Dados técnicos, elaboração, revisão e aprovação.</span>
@@ -108,7 +108,7 @@ export default function PcManualDocumento({ valores, rotulos, doPerfil, onChange
                     </span>
                     <input
                       type={campo === "dataElaboracaoManual" ? "date" : "text"}
-                      className={`ui-input${erro ? " is-invalid" : ""}`}
+                      className={`ui-input${erro ? " is-invalid" : ""}${campo === "dataElaboracaoManual" && !valores[campo] ? " is-data-vazia" : ""}`}
                       value={valores[campo]}
                       inputMode={campo === "consultorCpfCnpj" ? "numeric" : campo === "consultorTelefone" ? "tel" : undefined}
                       maxLength={campo === "dataElaboracaoManual" ? undefined : LIMITE_DA_IDENTIFICACAO[campo]}
@@ -132,7 +132,7 @@ export default function PcManualDocumento({ valores, rotulos, doPerfil, onChange
         const idCorpo = `man-resp-${papel === "Proprietário" ? "p" : "c"}`;
         return (
           <div key={papel} className={`man-sec${ehAberta ? " is-aberta" : ""}`}>
-            <button type="button" className="man-cab" aria-expanded={ehAberta} aria-controls={idCorpo} onClick={() => alternar(papel)}>
+            <button type="button" className="man-cab" aria-expanded={ehAberta} aria-controls={ehAberta ? idCorpo : undefined} onClick={() => alternar(papel)}>
               <span className="man-cab-textos">
                 <span className="man-titulo">Responsabilidades · {papel}</span>
                 <span className="man-apoio">Textos-base. Marque as que valem para este cliente.</span>

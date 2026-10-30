@@ -39,7 +39,7 @@ export default function QualityProgramsFields({ programas, onChange }: Props) {
         <div>
           <h2 className="cdoc-h">Programas</h2>
           <p className="cdoc-sub">Capítulo 3 · Programas de Controle de Qualidade · {resumoDosProgramas(programas)}</p>
-          <p className="cdoc-sub">Toque no nome para completar os dados.</p>
+          <p className="cdoc-sub"><span className="cdoc-sub-pc">Clique no nome para completar os dados.</span><span className="cdoc-sub-toque">Toque no nome para completar os dados.</span></p>
         </div>
       </div>
 

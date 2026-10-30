@@ -31,7 +31,6 @@ export default function CentralEmpresaNav({ grupos, subaba, onSubaba, contagens,
     return (
       <>
         <nav className="cen-indice" aria-label={`Seções de ${doGrupo.rotulo}`}>
-          <span className="cen-indice-titulo">{doGrupo.rotulo}</span>
           {blocos.map((id) => (
             <button key={id} type="button" className={`cen-indice-item${id === ativo ? " is-ativa" : ""}`} aria-current={id === ativo ? "page" : undefined} onClick={() => onSubaba(id)}>
               <span>{ROTULO_DA_SUBABA[id]}</span>

@@ -97,7 +97,7 @@ test("filtro por chip: só no cliente (estado da tela, nada guardado), 'Todos' l
   // rodada 13: os contadores "N todos · N rascunhos" saíram do cabeçalho; as funções de contagem seguem testadas acima
   const lista = ler("../components/pc/PcPopsLista.tsx");
   assert.ok(!lista.includes("setFiltro") && !lista.includes("pgg-conta"));
-  assert.ok(lista.includes("{linhasDosPops.length} {linhasDosPops.length === 1 ? \"POP\" : \"POPs\"}"));
+  assert.ok(lista.includes("{popsAtivos} {popsAtivos === 1 ? \"POP\" : \"POPs\"}"));
 });
 
 // ===== 1.7 Linha =====

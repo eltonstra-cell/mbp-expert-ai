@@ -4,6 +4,7 @@ import { protegerCarimboDasEvidencias } from "./fotosDoItem.ts";
 import { preservarEvidenciasEmRelatorio } from "./relatorioEmitido.ts";
 import { podeEditarQuestionario } from "./questionarioAmbiente.ts";
 import { popComoVigente } from "./popsNorma.ts";
+import { semDadosDoConsultor, semNomesDeAprovacao } from "./dadosPorPerfil.ts";
 import { comPerfilProprio } from "./userManagement.ts";
 import { permissoesEfetivas } from "./screenAccess.ts";
 import { acessoVigente } from "./validadeDeAcesso.ts";
@@ -82,7 +83,7 @@ export function filtrarEstadoPorUsuario(
     const somenteAprovados = Object.fromEntries(
       Object.entries(empresas).map(([id, empresa]) => [
         id,
-        { ...empresa, pops: (empresa.pops || []).flatMap((pop) => popComoVigente(pop) ?? []) },
+        { ...semDadosDoConsultor(empresa), pops: (empresa.pops || []).flatMap((pop) => popComoVigente(pop) ?? []) },
       ])
     );
     return {
@@ -115,7 +116,7 @@ export function filtrarEstadoPorUsuario(
   return {
     ...data,
     empresas: semPops
-      ? Object.fromEntries(Object.entries(empresas).map(([id, empresa]) => [id, { ...empresa, pops: (empresa.pops || []).flatMap((pop) => popComoVigente(pop) ?? []) }]))
+      ? Object.fromEntries(Object.entries(empresas).map(([id, empresa]) => [id, { ...semDadosDoConsultor(empresa), pops: (empresa.pops || []).flatMap((pop) => popComoVigente(pop) ?? []).map(semNomesDeAprovacao) }]))
       : empresas,
     empresaAtualId:
       data.empresaAtualId && empresaIds.has(data.empresaAtualId)
@@ -355,8 +356,13 @@ export function mesclarEstadoPorUsuario(
           : { ...nova, privacidade: { ...nova.privacidade, iaFotos: gravada?.privacidade?.iaFotos, audioIa: gravada?.privacidade?.audioIa } };
         // Só o Administrador escolhe a pessoa de Acessos que é o responsável do estabelecimento (quem aprova os POPs).
         // Só Administrador e RT mudam o questionário por ambiente.
+        // Executor e Fiscal recebem uma visão filtrada (só POPs vigentes, sem dados do consultor): o que o servidor guarda não é trocado por ela.
+        const visaoFiltrada = usuario.perfil === "Executor de campo" || usuario.perfil === "Fiscal";
         empresas[empresaId] = {
           ...comIa,
+          ...(visaoFiltrada && gravada
+            ? { pops: gravada.pops, consultorCpfCnpj: gravada.consultorCpfCnpj, consultorEndereco: gravada.consultorEndereco, consultorTelefone: gravada.consultorTelefone }
+            : {}),
           questionarios: podeEditarQuestionario(efetivo) ? comIa.questionarios : gravada?.questionarios,
           // Os passos de "Colocar a empresa em dia" só nascem com a empresa (Administrador): quem edita não liga nem desliga.
           implantacao: gravada?.implantacao,
@@ -368,7 +374,8 @@ export function mesclarEstadoPorUsuario(
     });
   } else {
     // Quem não edita empresas mas é o responsável do estabelecimento só pode aprovar POP que aguarda aprovação.
-    const comAprovacao = aplicarSomenteAprovacoes(atual.empresas, recebido.empresas, usuario, empresaIds);
+    // (Executor e Fiscal veem POPs sem os nomes de aprovação: nunca se copia aprovação ou versões dessa visão filtrada.)
+    const comAprovacao = usuario.perfil === "Executor de campo" || usuario.perfil === "Fiscal" ? null : aplicarSomenteAprovacoes(atual.empresas, recebido.empresas, usuario, empresaIds);
     if (comAprovacao) empresas = comAprovacao;
   }
 

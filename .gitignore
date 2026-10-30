@@ -29,3 +29,6 @@ catalogo-pops-modelos.json
 # conteúdo privado: o Manual de Boas Práticas (Word) e a proposta de rastreabilidade ficam só no computador; os guias de conteudo-privado/guias continuam versionados
 conteudo-privado/*.docx
 conteudo-privado/rastreabilidade-proposta.md
+
+# Desenhos de referência (não commitar)
+docs/desenhos-pops/

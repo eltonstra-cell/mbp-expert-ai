@@ -1,3 +1,4 @@
+import { validarLimitesDeTexto } from "@/lib/limitesDoServidor";
 import { NextResponse } from "next/server";
 import { isAccessControlActive } from "@/lib/accessMode";
 import { neon } from "@neondatabase/serverless";
@@ -195,10 +196,13 @@ export async function PUT(request: Request) {
     await ensureTable(sql);
     const atualAntesDaGravacao = await currentState(sql);
     let dadosParaGravar = data as AppDB;
+    // Conflito (409): o estado devolvido passa pelo mesmo filtro do GET, nunca cru.
+    let filtroDoConflito: (dados: unknown) => unknown = (dados) => dados;
 
     if (isAccessControlActive(process.env)) {
       const estadoAtual = atualAntesDaGravacao.data as AppDB | null;
       const acesso = await usuarioDaRequisicao(estadoAtual);
+      if (acesso) filtroDoConflito = (dados) => (dados ? filtrarEstadoPorUsuario(dados as AppDB, acesso.usuario) : dados);
       if (!acesso || !estadoAtual) {
         return NextResponse.json(
           { error: "Usuário sem permissão para salvar dados." },
@@ -226,6 +230,10 @@ export async function PUT(request: Request) {
         }
         // Chaves de topo desconhecidas são descartadas; o restante é gravado.
         dadosParaGravar = forma.estado as unknown as AppDB;
+      }
+      const limites = validarLimitesDeTexto(estadoAtual, dadosParaGravar);
+      if (!limites.ok) {
+        return NextResponse.json({ error: limites.mensagem, detalhe: "limite-de-texto" }, { status: 400 });
       }
       if (acesso.usuario.perfil === "Administrador") {
         // Excluir usuário só vale para quem nunca entrou nem registrou nada (nunca Administrador nem o próprio).
@@ -300,7 +308,7 @@ export async function PUT(request: Request) {
           ok: false,
           conflict: true,
           configured: true,
-          data: atual.data,
+          data: filtroDoConflito(atual.data),
           updatedAt: atual.updatedAt,
         },
         { status: 409 }
@@ -334,7 +342,7 @@ export async function PUT(request: Request) {
         ok: false,
         conflict: true,
         configured: true,
-        data: atual.data,
+        data: filtroDoConflito(atual.data),
         updatedAt: atual.updatedAt,
       },
       { status: 409 }

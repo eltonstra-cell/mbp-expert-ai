@@ -18,7 +18,7 @@ export type TreinamentoDaPessoa = { id: "em-dia" | "pendente" | "vencido" | "sem
 
 /** Estado do treinamento da pessoa a partir das capacitações vigentes dela (as mesmas contas da aba Capacitação). */
 export function treinamentoDaPessoa(pessoa: { id: string; ativo: boolean }, capacitacoes: Capacitacao[], hoje: string): TreinamentoDaPessoa {
-  if (!pessoa.ativo) return { id: "inativa", texto: "Inativa" };
+  if (!pessoa.ativo) return { id: "inativa", texto: "Inativo" };
   const dela = capacitacoesVigentes(capacitacoes.filter((item) => item.colaboradorId === pessoa.id));
   if (dela.length === 0) return { id: "sem-registro", texto: "Treinamento sem registro" };
   const situacoes = dela.map((item) => situacaoDaValidade(item.venceEm, hoje));
@@ -85,13 +85,15 @@ export function cpfValido(valor: string): boolean {
   return digito(d.slice(0, 9)) === Number(d[9]) && digito(d.slice(0, 10)) === Number(d[10]);
 }
 
+const dígitosQueFaltam = (quantos: number) => (quantos === 1 ? "Falta 1 dígito" : `Faltam ${quantos} dígitos`);
+
 /** Vazio = sem erro. */
 export function erroDoCpfCnpj(valor: string): string {
   const d = soDigitos(valor);
   if (!d) return "";
-  if (d.length < 11) return `Faltam ${11 - d.length} dígitos no CPF ou ${14 - d.length} no CNPJ.`;
+  if (d.length < 11) return `${dígitosQueFaltam(11 - d.length)} no CPF ou ${14 - d.length} no CNPJ.`;
   if (d.length === 11) return cpfValido(d) ? "" : "CPF inválido: confira os números.";
-  if (d.length < 14) return `Faltam ${14 - d.length} dígitos no CNPJ.`;
+  if (d.length < 14) return `${dígitosQueFaltam(14 - d.length)} no CNPJ.`;
   return cnpjValido(d) ? "" : "CNPJ inválido: confira os números.";
 }
 
