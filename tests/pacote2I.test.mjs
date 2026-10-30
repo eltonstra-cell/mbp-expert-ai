@@ -115,7 +115,7 @@ test("Alterar POP vinculado: troca sem apagar o comprovante e registra no histó
 
 test("lista de POPs: filtros em uma linha, a próxima ação só no title da linha (nunca 'Criar do modelo e revisar' no texto) e linha com altura mínima", () => {
   const lista = ler("../components/pc/PcPopsLista.tsx");
-  assert.ok(lista.includes("pgg-contadores") && !lista.includes("pgl-filtros"));
+  assert.ok(lista.includes("pgl-cab-sub") && !lista.includes("pgg-contadores") && !lista.includes("pgl-filtros"));
   assert.ok(lista.includes('title={linha.situacao !== "Falta criar" ? linha.acao.texto : undefined}') && !lista.includes('<div className="pgl-acao">'));
   assert.ok(!ler("../components/pc/CentralEmpresaNav.tsx").includes("cen-acoes-slot"));
   assert.match(ler("../app/globals.css"), /\.pgl \.pgl-linha\{display:flex;flex-wrap:nowrap;[^}]*min-height:60px/);

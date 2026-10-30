@@ -21,8 +21,9 @@ test("Norma aplicável: textos, avisos do RS e confirmação do RT", () => {
 
 test("Conjunto da norma em POPs e documentos: criar do modelo em laranja e Outros POPs mantido", () => {
   const tela = ler("../components/pc/PcPopsLista.tsx");
-  assert.ok(tela.includes("Conjunto da norma") && tela.includes("Criar do modelo") && tela.includes("Outros POPs e documentos da empresa"));
-  assert.ok(tela.includes("vigentes") && tela.includes("falta criar") && tela.includes("aguardando aprovação") && tela.includes("com pendência"));
+  // rodada 13: lista única (sem "Conjunto da norma" e "Outros"); o que falta criar do conjunto sai do menu ⋯
+  assert.ok(tela.includes("Criar do modelo") && !tela.includes("Outros POPs e documentos da empresa") && tela.includes("MenuMais"));
+  assert.ok(tela.includes("onCriarDoModelo(linha.definicao!.catalogoId)") && tela.includes("Criar os ${faltantes.length} POPs da norma"));
   assert.ok(tela.includes("pgl-adicionar-botao") && tela.includes("ui-btn ui-btn--secondary"));
   assert.ok(!tela.includes("Sugeridos pelo Manual de Boas Práticas"));
   assert.ok(!tela.includes('STATUS: StatusPOP[] = ["Rascunho", "Em revisão", "Aprovado"'));
@@ -31,7 +32,7 @@ test("Conjunto da norma em POPs e documentos: criar do modelo em laranja e Outro
 
 test("POP em campos: documento e histórico, blocos extras, faixa do texto-base e rodapé com Salvar rascunho", () => {
   const editor = ler("../components/pc/PcPopEditor.tsx");
-  for (const texto of ["Histórico do POP", "Documento do POP", "Motivo", "Salvar rascunho", "Enviar para aprovação", "Aprovar e assinar", "Editar (cria nova versão)", "Comparação de versões"]) {
+  for (const texto of ["Histórico do POP", "Documento do POP", "Motivo", "Salvar rascunho", "Ir para Conferir", "Aprovar e assinar", "Editar (cria nova versão)", "Comparação de versões"]) {
     assert.ok(editor.includes(texto), texto);
   }
   for (const texto of ["Objetivo", "Campo de aplicação", "Responsável pela execução", "Ação corretiva", "Registro que prova a execução", "Exigido na SES 799/2023, Anexo II, 13.2.", "vem da norma", "Comprovante da empresa especializada", "Princípio ativo", "Tempo de contato", "Nunca o laudo"]) {

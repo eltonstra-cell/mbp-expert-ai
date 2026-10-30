@@ -77,7 +77,7 @@ test("3.2 'Aprovar' da lista abre o POP na pendência (conferência) quando não
   assert.ok(pops.includes("destinoDoAprovar(alvoPop)") && pops.includes("alvoInicial={alvoInicial}"));
   const editor = ler("../components/pc/PcPopEditor.tsx");
   assert.ok(editor.includes("pdoc-bloqueio pdoc-bloqueio--link") && editor.includes("onClick={onIrParaConferencia}"), "o aviso do botão é clicável");
-  assert.ok(editor.includes("pdoc-chip-conferir pdoc-chip-conferir--link"));
+  assert.ok(editor.includes("pdoc-chip-conferir pdoc-chip-conferir--link") && editor.includes("pdoc-ir-conferir"));
   const ficha = ler("../components/pc/PcFichaPop.tsx");
   const resumo = ler("../components/pc/PcResumoDoPop.tsx");
   assert.ok(resumo.includes('id="ficha-conferir"') && resumo.includes("is-destaque") && ficha.includes("irParaAConferencia"));

@@ -12,6 +12,14 @@ type Props = {
   renderBotao: (estado: { aberto: boolean; alternar: () => void }) => ReactNode;
   /** Classe extra na raiz do seletor. */
   classe?: string;
+  /** Sem a caixa de busca (listas curtas, como as seções de um POP). */
+  semBusca?: boolean;
+  /** Mostra o rótulo inteiro, sem abreviar nomes parecidos. */
+  semAbreviar?: boolean;
+  /** Nome da lista para o leitor de tela (padrão "Ambientes"). */
+  nomeDaLista?: string;
+  /** O que vai à direita da linha quando o item não está completo (padrão: "respondidas/total"). */
+  conta?: (ambiente: InfoAmbiente) => ReactNode;
 };
 
 type Posicao = { top: number; left: number; width: number; maxHeight: number };
@@ -22,7 +30,7 @@ type Posicao = { top: number; left: number; width: number; maxHeight: number };
  * Sem painel lateral, sem sombra na tela e sem escurecer o resto. Fecha ao escolher, ao clicar fora ou com Esc; setas, Enter e Esc funcionam no teclado.
  * Fica num portal (posição fixa, calculada pela caixa) para não ser cortada por quem a chama.
  */
-export default function AmbientesCortina({ ambientes, atual, onSelecionar, renderBotao, classe = "" }: Props) {
+export default function AmbientesCortina({ ambientes, atual, onSelecionar, renderBotao, classe = "", semBusca = false, semAbreviar = false, nomeDaLista = "Ambientes", conta }: Props) {
   const [aberto, setAberto] = useState(false);
   const [busca, setBusca] = useState("");
   const [pronto, setPronto] = useState(false);
@@ -37,7 +45,7 @@ export default function AmbientesCortina({ ambientes, atual, onSelecionar, rende
 
   const visiveis = filtrarAmbientes(ambientes, busca);
   const nomesCurtos = rotulosCurtosDosAmbientes(ambientes.map((ambiente) => ambiente.rotulo));
-  const nomeCurtoDe = (nome: string) => nomesCurtos[ambientes.findIndex((ambiente) => ambiente.nome === nome)] || nome;
+  const nomeCurtoDe = (nome: string) => (semAbreviar ? ambientes.find((ambiente) => ambiente.nome === nome)?.rotulo || nome : nomesCurtos[ambientes.findIndex((ambiente) => ambiente.nome === nome)] || nome);
 
   const fechar = (devolverFoco = true) => {
     setAberto(false);
@@ -137,7 +145,7 @@ export default function AmbientesCortina({ ambientes, atual, onSelecionar, rende
 
   const lista = posicao && (
     <div className="amb-lista" ref={listaRef} style={{ top: posicao.top, left: posicao.left, width: posicao.width, maxHeight: posicao.maxHeight }} onKeyDown={aoTeclarNaLista}>
-      <label className="amb-lista-busca">
+      {!semBusca && <label className="amb-lista-busca">
         <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true" focusable="false">
           <circle cx="8" cy="8" r="5.2" />
           <path d="M12 12l3.6 3.6" />
@@ -154,8 +162,8 @@ export default function AmbientesCortina({ ambientes, atual, onSelecionar, rende
           value={busca}
           onChange={(evento) => setBusca(evento.target.value)}
         />
-      </label>
-      <ul className="amb-lista-opcoes" id="amb-lista-opcoes" role="listbox" aria-label="Ambientes">
+      </label>}
+      <ul className="amb-lista-opcoes" id="amb-lista-opcoes" role="listbox" aria-label={nomeDaLista}>
         {visiveis.length === 0 ? (
           <li className="amb-lista-vazio" role="presentation">Nenhum ambiente encontrado</li>
         ) : (
@@ -176,6 +184,8 @@ export default function AmbientesCortina({ ambientes, atual, onSelecionar, rende
                 <span className="amb-lista-nome">{nomeCurtoDe(ambiente.nome)}</span>
                 {completo ? (
                   <span className="amb-lista-feito" aria-label="concluído">✓</span>
+                ) : conta ? (
+                  conta(ambiente)
                 ) : (
                   <span className="amb-lista-conta">
                     {ambiente.respondidos}/{ambiente.total}

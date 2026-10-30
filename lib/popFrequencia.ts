@@ -1,4 +1,4 @@
-// Frequência do POP em campo estruturado (rodada 12e): diária, semanal, mensal ou outra (texto).
+// Frequência do POP em campo estruturado (rodada 12e; semestral e anual na 13): diária, semanal, mensal, semestral, anual ou outra (texto).
 // POP antigo só tem o texto em `conteudo.frequencia`: lê-se dele SEM regravar nada. Só vira "diária/semanal/mensal" quando o texto é
 // reconhecido por inteiro; qualquer outro texto (quinzenal, trimestral, "a cada turno"...) fica como "outra" com o texto original.
 import type { ConteudoPop, FrequenciaDoPop, TipoDeFrequencia } from "../types/index.ts";
@@ -7,10 +7,12 @@ export const OPCOES_DE_FREQUENCIA: { tipo: TipoDeFrequencia; rotulo: string }[] 
   { tipo: "diaria", rotulo: "Diária" },
   { tipo: "semanal", rotulo: "Semanal" },
   { tipo: "mensal", rotulo: "Mensal" },
+  { tipo: "semestral", rotulo: "Semestral" },
+  { tipo: "anual", rotulo: "Anual" },
   { tipo: "outra", rotulo: "Outra" },
 ];
 
-const DIAS_DO_TIPO: Record<Exclude<TipoDeFrequencia, "outra">, number> = { diaria: 1, semanal: 7, mensal: 30 };
+const DIAS_DO_TIPO: Record<Exclude<TipoDeFrequencia, "outra">, number> = { diaria: 1, semanal: 7, mensal: 30, semestral: 182, anual: 365 };
 
 const sem = (texto: string) =>
   texto
@@ -26,6 +28,8 @@ export function tipoReconhecidoNoTexto(texto: string | undefined): Exclude<TipoD
   if (["diaria", "diario", "todo dia", "todos os dias", "cada dia"].includes(t)) return "diaria";
   if (["semanal", "toda semana", "todas as semanas", "uma vez por semana"].includes(t)) return "semanal";
   if (["mensal", "todo mes", "todos os meses", "uma vez por mes"].includes(t)) return "mensal";
+  if (["semestral", "a cada seis meses", "a cada 6 meses"].includes(t)) return "semestral";
+  if (["anual", "todo ano", "todos os anos", "uma vez por ano"].includes(t)) return "anual";
   return null;
 }
 

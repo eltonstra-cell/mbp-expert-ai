@@ -2,7 +2,7 @@
 
 import CapaDoPop from "@/components/CapaDoPop";
 import type { ModeloDaCapa } from "@/lib/capaPop";
-import type { BlocoDaFolha, FolhaDoPop, TabelaDaFolha } from "@/lib/popDocumento";
+import { FREQUENCIA_A_DEFINIR, type BlocoDaFolha, type FolhaDoPop, type TabelaDaFolha } from "@/lib/popDocumento";
 
 type Props = {
   folha: FolhaDoPop;
@@ -91,7 +91,7 @@ export default function PopFolha({ folha, modo, id, capa = null, assinatura = nu
           ) : (
             bloco.linhas.map((linha, indice) => (
               <div key={`${indice}-${linha}`} className="pfolha-item">
-                <p className="pfolha-linha">{linha}</p>
+                <p className="pfolha-linha">{linha.endsWith(FREQUENCIA_A_DEFINIR) ? <>{linha.slice(0, linha.length - FREQUENCIA_A_DEFINIR.length)}<span className="pfolha-definir">{FREQUENCIA_A_DEFINIR}</span></> : linha}</p>
                 {bloco.tabelas?.[indice] && <Tabela tabela={bloco.tabelas[indice]!} />}
               </div>
             ))

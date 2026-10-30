@@ -12,9 +12,12 @@ import { responsavelDaExecucao, type NomeECargo } from "./responsavelDoPop.ts";
 
 export type IdDaSecao = "identificacao" | "objetivo" | "referencias" | "responsavel" | "passos" | "acao" | "extra" | "extra2" | "modelo";
 
-export type SecaoDoEditor = { id: IdDaSecao; titulo: string; preenchida: boolean };
+export type SecaoDoEditor = { id: IdDaSecao; titulo: string; preenchida: boolean; /** O que falta, em poucas palavras (só quando não está preenchida). */ falta?: string };
 
 const escrito = (valor: string | undefined | null) => Boolean((valor || "").trim());
+
+/** Texto da folha de pré-visualização quando falta a frequência (a tela pinta de âmbar). */
+export const FREQUENCIA_A_DEFINIR = "frequência a definir";
 
 /** Seções na ordem do editor. "Preenchida" só olha os campos que a pessoa escreve; Referências vêm da norma. */
 export function secoesDoEditor(pop: Pick<ProcedimentoOperacionalPadronizado, "codigo" | "titulo" | "conteudo"> & Partial<Pick<ProcedimentoOperacionalPadronizado, "origemModelo">>, definicao?: Pick<DefinicaoPopDoConjunto, "bloco" | "eReservatorio">, dados?: NomeECargo): SecaoDoEditor[] {
@@ -24,7 +27,7 @@ export function secoesDoEditor(pop: Pick<ProcedimentoOperacionalPadronizado, "co
     { id: "identificacao", titulo: "Identificação", preenchida: escrito(pop.titulo) },
     { id: "objetivo", titulo: "Objetivo e aplicação", preenchida: escrito(c.objetivo) },
     { id: "referencias", titulo: "Referências", preenchida: true },
-    { id: "responsavel", titulo: "Responsável e frequência", preenchida: escrito(executor.nome) && escrito(executor.cargo) && escrito(c.frequencia) },
+    { id: "responsavel", titulo: "Responsável e frequência", preenchida: escrito(executor.nome) && escrito(executor.cargo) && escrito(c.frequencia), falta: faltaDoResponsavel(escrito(executor.nome) && escrito(executor.cargo), escrito(c.frequencia)) },
     { id: "passos", titulo: "Passos", preenchida: (c.passos || []).some((passo) => escrito(passo.texto)) && (c.passos || []).every((passo) => escrito(passo.texto)) },
     { id: "acao", titulo: "Ação corretiva e registro", preenchida: escrito(c.acaoCorretiva) },
   ];
@@ -43,6 +46,12 @@ export function secoesDoEditor(pop: Pick<ProcedimentoOperacionalPadronizado, "co
   // POP criado de modelo: as listas do modelo (materiais, EPIs, cuidados…) ganham uma seção própria no editor.
   if (pop.origemModelo) secoes.push({ id: "modelo", titulo: "Conteúdo do modelo", preenchida: true });
   return secoes;
+}
+
+function faltaDoResponsavel(temResponsavel: boolean, temFrequencia: boolean): string | undefined {
+  if (temResponsavel && temFrequencia) return undefined;
+  if (!temResponsavel && !temFrequencia) return "falta definir o responsável e a frequência";
+  return temResponsavel ? "falta definir a frequência" : "falta definir o responsável";
 }
 
 /** "5 de 7 preenchidas" */
@@ -232,7 +241,10 @@ export function folhaDoPop(
   // Fonte única: o POP que acompanha Dados mostra e imprime o responsável de Dados na hora; o digitado à mão vale como está.
   const doExecutor = responsavelDaExecucao(c, opcoes.responsavel);
   const executor = nomeECargo(doExecutor.nome, doExecutor.cargo) || nomeECargo(opcoes.responsavel?.nome, opcoes.responsavel?.cargo);
-  bloco("Responsável e frequência", "texto", [executor, (c.frequencia || "").trim()].filter(Boolean).join(" · ") ? [[executor, (c.frequencia || "").trim()].filter(Boolean).join(" · ")] : []);
+  const frequenciaDoTexto = (c.frequencia || "").trim();
+  // Na pré-visualização, sem frequência a folha avisa "frequência a definir" (âmbar na tela); o texto impresso não leva o aviso.
+  const frequenciaNaFolha = frequenciaDoTexto || (opcoes.marcarBranco && executor ? FREQUENCIA_A_DEFINIR : "");
+  bloco("Responsável e frequência", "texto", [executor, frequenciaNaFolha].filter(Boolean).join(" · ") ? [[executor, frequenciaNaFolha].filter(Boolean).join(" · ")] : []);
   const doModelo = (chave: (typeof SECOES_DE_LISTA)[number]["chave"]) => blocoDeItens(SECOES_DE_LISTA.find((secao) => secao.chave === chave)!.titulo, c[chave]);
   SECOES_ANTES_DOS_PASSOS.forEach(doModelo);
   const subtitulosDosPassos = subtitulosEmVigor(c.passos || []);

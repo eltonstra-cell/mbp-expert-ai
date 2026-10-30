@@ -61,8 +61,8 @@ test("'Criar POPs da norma': texto de apoio com o N real; desligado em laranja c
   assert.equal(textoDoCriarDaNorma(7), "Cria os 7 POPs da norma que ainda não existem.");
   assert.equal(textoDoCriarDaNorma(1), "Cria o POP da norma que ainda não existe.");
   const lista = ler("../components/pc/PcPopsLista.tsx");
-  assert.ok(lista.includes("Criar POPs da norma") && !lista.includes("Criar POPs de uma vez") && !lista.includes("de uma vez"));
-  assert.ok(lista.includes("temConjunto && faltamCriar > 0"), "o botão desligado cinza saiu: só aparece quando falta criar");
+  assert.ok(lista.includes("POPs da norma") && !lista.includes("Criar POPs de uma vez") && !lista.includes("de uma vez"));
+  assert.ok(lista.includes("faltantes.length > 1"), "só aparece quando falta criar (no menu ⋯)");
   assert.ok(lista.includes("textoDoCriarDaNorma(faltamCriar)"));
   const css = ler("../app/globals.css");
   assert.match(css, /\.pgl-adicionar-botao\{height:44px;[^}]*background:#264A80;[^}]*color:#fff/);
@@ -94,12 +94,10 @@ test("filtro por chip: cada chip mostra exatamente a sua contagem; 'Todos' (null
 });
 
 test("filtro por chip: só no cliente (estado da tela, nada guardado), 'Todos' limpa e clicar de novo no chip ativo também", () => {
+  // rodada 13: os contadores "N todos · N rascunhos" saíram do cabeçalho; as funções de contagem seguem testadas acima
   const lista = ler("../components/pc/PcPopsLista.tsx");
-  assert.ok(lista.includes("useState<FiltroDaLista | null>(null)") && lista.includes("setFiltro(item.id === null ? null"));
-  assert.ok(lista.includes("setFiltro(item.id === null ? null : filtro === item.id ? null : item.id)") && lista.includes("aria-pressed={ativo}"));
-  assert.equal(/persistir\(.*filtro|setItem\([^)]*filtro/.test(lista), false, "o filtro não é guardado (só o estado aberto dos grupos fica no aparelho)");
-  assert.ok(lista.includes('rotulo: "todos"'));
-  assert.match(ler("../app/globals.css"), /\.pgg-conta\.is-ativo\{border-bottom-color:#21A3A3;color:#263445\}/);
+  assert.ok(!lista.includes("setFiltro") && !lista.includes("pgg-conta"));
+  assert.ok(lista.includes("{linhasDosPops.length} {linhasDosPops.length === 1 ? \"POP\" : \"POPs\"}"));
 });
 
 // ===== 1.7 Linha =====
@@ -167,9 +165,9 @@ test("Responsável: sai a faixa 'Dados diz … e os POPs trazem …' e a linha s
   assert.equal(pagina.includes("Dados diz"), false);
   assert.equal(pagina.includes("Responsável do estabelecimento: <strong>"), false);
   const lista = ler("../components/pc/PcPopsLista.tsx");
-  assert.ok(lista.includes("Responsável: <strong>") && lista.includes("alterar em Dados") && lista.includes("pgl-resp-link"));
-  const inicio = lista.indexOf("Conjunto da norma");
-  assert.ok(lista.indexOf("respostaDoResponsavel", inicio) > inicio && lista.indexOf("respostaDoResponsavel", inicio) < lista.indexOf("Outros POPs e documentos da empresa"));
+  // rodada 13: o responsável vai para o subtítulo "N POPs · Responsável: nome"; "alterar em Dados" fica no menu ⋯
+  assert.ok(lista.includes("Responsável: <strong>") && lista.includes("Alterar o responsável em Dados"));
+  assert.ok(!lista.includes("Outros POPs e documentos da empresa") && !lista.includes("Conjunto da norma"));
   assert.match(ler("../app/globals.css"), /\.pgl-resp-linha strong\{font-weight:500/);
 });
 

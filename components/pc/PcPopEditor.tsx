@@ -32,7 +32,7 @@ import { AVISO_SECAO_VAZIA, folhaDoPop, secoesDoEditor, textoDasSecoes } from "@
 import type { CabecalhoDeImpressao } from "@/lib/printFooter";
 import { MENSAGEM_APROVAR_NAO_CONFERIDO, bloqueioDeAprovacao, exigenciaDeAprovacao } from "@/lib/popConferencia";
 import { SECOES_DO_MODELO, itensParaTexto, limparConteudoDoModelo, secoesDoModeloComConteudo, sugestaoDeFrequencia, textoParaItens, type IdDaSecaoDoModelo } from "@/lib/popConteudoModelo";
-import { avisoDeConferenciaObrigatoria, secoesQueFaltamParaEnviar, textoDaFalta } from "@/lib/popEnvio";
+import { avisoDeConferenciaObrigatoria } from "@/lib/popEnvio";
 import { numerosDosPassos, semSubtitulosVazios } from "@/lib/popPassos";
 import { popNaoConferido } from "@/lib/popConferencia";
 import { conteudoComResponsavelEfetivo, diferencaComDados, marcaManualApos, responsavelDaExecucao } from "@/lib/responsavelDoPop";
@@ -46,6 +46,9 @@ import { createPortal } from "react-dom";
 import { conteudoDoCartaz, eDeLavagemDeMaos, podeGerarOCartaz, popAprovadoParaOCartaz, rodapeDoCartaz, estiloDoCartaz as estiloValido, type DadosDoCartaz, type EstiloDoCartaz } from "@/lib/cartazLavagem";
 import { capaInicialDoDialogo, comIconeDeCapa, eIconeConhecido, iconeDoPop, modeloDaCapa, type CapaCompleta, type ModeloDaCapa } from "@/lib/capaPop";
 import { itensDasNotas, totalDePendencias, type AlvoDaPendencia, type ItemDasNotas } from "@/lib/popPendencias";
+import AmbientesCortina from "@/components/AmbientesCortina";
+import type { InfoAmbiente } from "@/lib/checklistEnvs";
+import { CAMPOS_GUIADOS, campoGuiadoDaHigienizacao, textoDoCampoGuiado, type CampoGuiado } from "@/lib/popModelosGuiados";
 
 type Secao = "identificacao" | "objetivo" | "referencias" | "responsavel" | "passos" | "acao" | "registro" | "extra" | "extra2" | "modelo";
 
@@ -93,7 +96,7 @@ function SecaoRecolhivel({ titulo, aberta, children }: { id: Secao; titulo: stri
   );
 }
 
-function Campo({ rotulo, valor, onChange, linhas, desabilitado, erro, tipo = "texto", dica }: { rotulo: string; valor: string; onChange: (valor: string) => void; linhas?: number; desabilitado?: boolean; erro?: string; tipo?: "texto" | "data"; dica?: string }) {
+function Campo({ rotulo, valor, onChange, linhas, desabilitado, erro, tipo = "texto", dica, guia }: { rotulo: string; valor: string; onChange: (valor: string) => void; linhas?: number; desabilitado?: boolean; erro?: string; tipo?: "texto" | "data"; dica?: string; guia?: CampoGuiado | null }) {
   return (
     <label className="pc-field">
       <span className="ui-eyebrow">{rotulo}</span>
@@ -102,7 +105,7 @@ function Campo({ rotulo, valor, onChange, linhas, desabilitado, erro, tipo = "te
       ) : (
         <input type={tipo === "data" ? "date" : "text"} className={`ui-input${erro ? " is-invalid" : ""}`} value={valor} disabled={desabilitado} onChange={(evento) => onChange(evento.target.value)} aria-invalid={Boolean(erro)} />
       )}
-      {erro ? <span className="ui-field-error">{erro}</span> : dica ? <span className="ui-row-sub">{dica}</span> : null}
+      {erro ? <span className="ui-field-error">{erro}</span> : guia ? <span className="ui-row-sub pop-guia">{textoDoCampoGuiado(guia)} <span className="pop-conferir">conferir</span></span> : dica ? <span className="ui-row-sub">{dica}</span> : null}
     </label>
   );
 }
@@ -251,7 +254,7 @@ function horaCerta(): string {
 }
 
 // Documento (editor em painéis) e Histórico (versões, aprovações e motivo) do POP. O cabeçalho e as abas ficam na ficha (PcFichaPop).
-export default function PcPopEditor({ pop, empresa, usuario, podeEditar, responsavelDoEstabelecimento, onImprimir, onSalvarRascunho, onEnviar, onAprovar, onNovaVersao, onDescartar, mensagem, proximaAcao, onIrParaConferencia, capaDaEmpresa, onSalvarCapa, onTrocarIconeDeCapa, estiloDoCartaz, onSalvarCartaz, parte = "documento", pedidoDeImpressao }: Props) {
+export default function PcPopEditor({ pop, empresa, usuario, podeEditar, responsavelDoEstabelecimento, onImprimir, onSalvarRascunho, onAprovar, onNovaVersao, onDescartar, mensagem, proximaAcao, onIrParaConferencia, capaDaEmpresa, onSalvarCapa, onTrocarIconeDeCapa, estiloDoCartaz, onSalvarCartaz, parte = "documento", pedidoDeImpressao }: Props) {
   // Mais de um passo em branco vira um só logo ao abrir.
   const [rascunho, setRascunho] = useState<ProcedimentoOperacionalPadronizado>(() => (pop.conteudo?.passos ? { ...pop, conteudo: { ...pop.conteudo, passos: juntarPassosEmBrancoRepetidos(pop.conteudo.passos) } } : pop));
   const [motivoDaNovaVersao, setMotivoDaNovaVersao] = useState("");
@@ -263,7 +266,7 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
   const [passosTocados, setPassosTocados] = useState<Record<string, boolean>>({});
   const [salvoEm, setSalvoEm] = useState("");
   const [confirmandoAprovacao, setConfirmandoAprovacao] = useState(false);
-  const [lado, setLado] = useState<"editar" | "previa">("editar");
+  const [verFolha, setVerFolha] = useState(false);
   const [versaoA, setVersaoA] = useState("");
   const [versaoB, setVersaoB] = useState("");
   const [escolhendoImpressao, setEscolhendoImpressao] = useState(false);
@@ -283,8 +286,6 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
   const [cartazNoPapel, setCartazNoPapel] = useState<DadosDoCartaz | null>(null);
   // Seções do modelo visíveis: as que já têm conteúdo e as que a pessoa adicionou por "+ Adicionar seção".
   const [secoesDoModeloAbertas, setSecoesDoModeloAbertas] = useState<IdDaSecaoDoModelo[]>(() => secoesDoModeloComConteudo(pop.conteudo || {}));
-  // Depois de tocar em "Enviar para aprovação" sem estar pronto: mostra "Falta: …" ao lado do botão e marca a seção na lista.
-  const [tentouEnviar, setTentouEnviar] = useState(false);
 
   const definicao = CONJUNTO_DA_NORMA.find((item) => item.catalogoId === rascunho.catalogoId);
   const conteudo: ConteudoPop = rascunho.conteudo || conteudoEmBranco(definicao || CONJUNTO_DA_NORMA[0], []);
@@ -321,7 +322,6 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
       return;
     }
     setSecao("modelo");
-    setLado("editar");
     setSecoesDoModeloAbertas((atuais) => (atuais.includes("quemRealiza") ? atuais : [...atuais, "quemRealiza"]));
     setDestaqueDoModelo("quemRealiza");
     setTimeout(() => {
@@ -337,9 +337,6 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
     <span className="pdoc-proxima"><span className="pdoc-proxima-rotulo">Próxima ação:</span> {proximaAcao}</span>
   ) : null;
   const sugestaoDaFrequencia = sugestaoDeFrequencia(conteudo.frequenciaDetalhe);
-  const secoesQueFaltam = secoesQueFaltamParaEnviar(rascunho, dadosDoResponsavel);
-  const textoFalta = textoDaFalta(secoesQueFaltam);
-  const avisoDeConferencia = avisoDeConferenciaObrigatoria(pop);
   const numerosDosPassosNaTela = numerosDosPassos(passos);
 
   function mudar(alteracao: Partial<ConteudoPop>) {
@@ -381,20 +378,15 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
     return { ...atual, conteudo: { ...limpoDoModelo, passos: limparPassosEmBranco(limpoDoModelo.passos) } };
   };
   const alternar = (id: Secao) => setSecao(id);
-  // Nunca fica sem resposta: se falta algo, o botão mostra “Falta: …” (âmbar), marca a seção na lista e abre a primeira incompleta.
-  function enviarParaAprovar() {
-    setTocado(true);
-    if (secoesQueFaltam.length > 0 || faltas.length > 0 || erroTitulo) {
-      setTentouEnviar(true);
-      const primeira = secoesQueFaltam[0];
-      if (primeira) setSecao(primeira.id);
-      return;
-    }
-    setTentouEnviar(false);
-    onEnviar(comConferenciaAtual(limpoParaGravar(rascunho)));
-  }
   const modoLeitura = parte === "documento" && !editavel;
   const secoesDaLista = secoesDoEditor(rascunho, definicao, dadosDoResponsavel);
+  const avisoDeConferencia = avisoDeConferenciaObrigatoria(pop);
+  const secoesFeitas = secoesDaLista.filter((item) => item.preenchida).length;
+  const posicaoDaSecao = Math.max(0, secoesDaLista.findIndex((item) => item.id === secao));
+  const secaoAtualNaLista = secoesDaLista[posicaoDaSecao];
+  const secoesComoAmbientes: InfoAmbiente[] = secoesDaLista.map((item) => ({ nome: item.id, rotulo: item.titulo, total: 1, respondidos: item.preenchida ? 1 : 0, naoConformes: 0, situacao: item.preenchida ? "concluido" : "pendente", geral: false } as InfoAmbiente));
+  const primeiraQueFalta = secoesDaLista.find((item) => !item.preenchida && item.falta);
+  const textoDaFaltaNaLinha = primeiraQueFalta ? `Falta ${primeiraQueFalta.falta!.replace(/^falta (definir )?(a |o )?/, "a ")}` : "";
   // O documento (folha, PDF) leva a razão social em formato de título; o nome de exibição vale só para as telas.
   const dadosDaEmpresa = { nome: razaoSocialTitulo(nomeSemNumerosNoInicio(empresa.razaoSocial || empresa.nomeFantasia || "")), cnpj: (empresa.cnpj || "").trim() };
   const opcoesDaFolha = { responsavel: responsavelDoEstabelecimento, exigeAcaoCorretiva: exigeAcaoCorretivaSes };
@@ -521,32 +513,67 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
         </div>
       )}
 
-      {parte === "documento" && !modoLeitura && (proximaAcaoNaBarra || notasNaBarra) && (
-        <div className="pdoc-barra pdoc-barra--edicao">
-          {proximaAcaoNaBarra}
-          {notasNaBarra}
-        </div>
-      )}
       {parte === "documento" && !modoLeitura && (
-        <div className={`pdoc pdoc--${lado}`}>
-          <div className="pdoc-lados" role="tablist" aria-label="Editar ou ver a folha">
-            <button type="button" role="tab" aria-selected={lado === "editar"} className={`rel-aba${lado === "editar" ? " is-ativa" : ""}`} onClick={() => setLado("editar")}>
-              Editar
-            </button>
-            <button type="button" role="tab" aria-selected={lado === "previa"} className={`rel-aba${lado === "previa" ? " is-ativa" : ""}`} onClick={() => setLado("previa")}>
-              Pré-visualização
-            </button>
+        <div className="pdoc">
+          <div className="pdoc-estreito">
+            <div className="pdoc-estreito-linha">
+              <AmbientesCortina
+                ambientes={secoesComoAmbientes}
+                atual={secao}
+                onSelecionar={(nome) => alternar(nome as Secao)}
+                semBusca
+                semAbreviar
+                nomeDaLista="Seções do POP"
+                conta={(ambiente) => <span className="pdoc-lista-falta" aria-label="falta preencher">●</span>}
+                renderBotao={({ aberto, alternar: abrir }) => (
+                  <button type="button" className="chk-amb-botao pdoc-sel" aria-haspopup="listbox" aria-expanded={aberto} aria-label={`Seção: ${secaoAtualNaLista?.titulo}. Trocar de seção`} onClick={abrir}>
+                    <span className="chk-amb-botao-nome">
+                      <span className="pdoc-sel-tablet">Seção {posicaoDaSecao + 1} de {secoesDaLista.length} · {secaoAtualNaLista?.titulo}</span>
+                      <span className="pdoc-sel-celular">{secaoAtualNaLista?.titulo} · {posicaoDaSecao + 1} de {secoesDaLista.length}</span>
+                    </span>
+                    <span className="chk-amb-botao-seta" aria-hidden="true">{aberto ? "▴" : "▾"}</span>
+                  </button>
+                )}
+              />
+              <button type="button" className="ui-btn ui-btn--secondary pdoc-ver-folha" onClick={() => setVerFolha(true)}>
+                Ver folha
+              </button>
+              {comCartaz && (
+                <button type="button" className="ui-btn ui-btn--secondary pdoc-so-tablet" onClick={() => setCartazAberto(true)}>
+                  Gerar cartaz
+                </button>
+              )}
+              {onImprimir && (
+                <button type="button" className="ui-btn ui-btn--secondary pdoc-so-tablet" onClick={() => setEscolhendoImpressao(true)}>
+                  Imprimir / PDF
+                </button>
+              )}
+            </div>
+            {textoDaFaltaNaLinha && (
+              <p className="pdoc-falta-linha">
+                <span className="pdoc-falta-ponto" aria-hidden="true" /> {textoDaFaltaNaLinha}
+                {editavel && primeiraQueFalta && (
+                  <>
+                    {" · "}
+                    <button type="button" className="pdoc-definir" onClick={() => alternar(primeiraQueFalta.id as Secao)}>Definir</button>
+                  </>
+                )}
+              </p>
+            )}
+            {notasNaBarra}
           </div>
           <aside className="pdoc-secoes" aria-label="Seções do POP">
-            <h2 className="pdoc-lista-titulo">Seções · {textoDasSecoes(secoesDaLista)}</h2>
+            <h2 className="pdoc-lista-titulo">Seções · {secoesFeitas} de {secoesDaLista.length}</h2>
             <ul className="pdoc-lista">
               {secoesDaLista.map((item) => (
                 <li key={`${item.id}-${item.titulo}`}>
-                  <button type="button" className={`pdoc-item${secao === item.id ? " is-ativa" : ""}${tentouEnviar && secoesQueFaltam.some((falta) => falta.id === item.id) ? " is-falta" : ""}`} aria-current={secao === item.id ? "true" : undefined} onClick={() => alternar(item.id)}>
-                    <span className={`pdoc-marca${item.preenchida ? " is-ok" : ""}`} aria-hidden="true">{item.preenchida ? "✓" : ""}</span>
-                    <span>{item.titulo}</span>
+                  <button type="button" className={`pdoc-item${secao === item.id ? " is-ativa" : ""}${item.preenchida ? "" : " is-falta"}`} aria-current={secao === item.id ? "true" : undefined} onClick={() => alternar(item.id)}>
+                    <span className={`pdoc-marca${item.preenchida ? " is-ok" : " is-falta"}`} aria-hidden="true">{item.preenchida ? "✓" : ""}</span>
+                    <span className="pdoc-item-textos">
+                      <span className="pdoc-item-titulo">{item.titulo}</span>
+                      {!item.preenchida && item.falta && <span className="pdoc-item-sub">{item.falta}</span>}
+                    </span>
                     <span className="sr-only">{item.preenchida ? " (preenchida)" : " (falta preencher)"}</span>
-                    {tentouEnviar && secoesQueFaltam.some((falta) => falta.id === item.id) && <span className="pdoc-item-falta">falta</span>}
                   </button>
                 </li>
               ))}
@@ -638,14 +665,7 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
           </SecaoRecolhivel>
 
           <SecaoRecolhivel id="passos" titulo="Passos" resumo={`${(conteudo.passos || []).filter((passo) => passo.texto.trim()).length === 1 ? "1 escrito" : `${(conteudo.passos || []).filter((passo) => passo.texto.trim()).length} escritos`}`} aberta={secao === "passos"} onAlternar={alternar}>
-            {editavel && (
-              <div className="pdoc-barra-ia">
-                <span className="ui-row-sub">{passoFocado ? `Passo ${passos.indexOf(passoFocado) + 1} em foco` : "Toque em um passo para ditar ou melhorar o texto"}</span>
-                {passoFocado && (
-                  <FieldVoiceTools key={passoFocado.id} fieldKey={`pop-passo-${passoFocado.id}`} value={passoFocado.texto} onChange={(texto) => mudarPasso(passoFocado.id, texto)} contexto="Passo de um Procedimento Operacional Padronizado de segurança dos alimentos." />
-                )}
-              </div>
-            )}
+            {editavel && <p className="ui-row-sub pdoc-ajuda pdoc-ajuda-passos"><span className="pdoc-ajuda-clique">Clique</span><span className="pdoc-ajuda-toque">Toque</span> em um passo para editar. O microfone dita e a IA melhora o texto.</p>}
             {dicaDaNorma && (
               <div className="priv-faixa pdoc-dica" role="status">
                 <span title={dicaDaNorma.orientacao}>
@@ -697,8 +717,9 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
                       />
                       {avisar && <span className="ui-field-error ui-field-error--forte">Escreva este passo ou remova.</span>}
                     </span>
-                    {editavel && (
+                    {editavel && passo.id === passoEmFoco && (
                       <span className="pop-passo-acoes">
+                        <FieldVoiceTools key={passo.id} fieldKey={`pop-passo-${passo.id}`} value={passo.texto} soIcone rotuloIa="IA" onChange={(texto) => mudarPasso(passo.id, texto)} contexto="Passo de um Procedimento Operacional Padronizado de segurança dos alimentos." />
                         {menuDoPasso?.id === passo.id && menuDoPasso.tipo === "mais" && (
                           <span className="pop-passo-menu" role="menu" aria-label={`Ações do passo ${indice + 1}`}>
                             {passo.subtitulo === undefined && (
@@ -774,7 +795,7 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
                     ["temperatura", "Temperatura"],
                   ] as const
                 ).map(([chave, rotulo]) => (
-                  <Campo key={chave} rotulo={rotulo} valor={conteudo.higienizacao![chave]} desabilitado={!editavel} onChange={(valor) => mudar({ higienizacao: { ...conteudo.higienizacao!, [chave]: valor } })} />
+                  <Campo key={chave} guia={campoGuiadoDaHigienizacao(chave, Boolean(definicao.eReservatorio))} rotulo={rotulo} valor={conteudo.higienizacao![chave]} desabilitado={!editavel} onChange={(valor) => mudar({ higienizacao: { ...conteudo.higienizacao!, [chave]: valor } })} />
                 ))}
               </div>
             </SecaoRecolhivel>
@@ -782,18 +803,18 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
 
           {definicao?.bloco === "pragas" && conteudo.pragas && (
             <SecaoRecolhivel id="extra" titulo="Controle de pragas" resumo="medidas e comprovante" aberta={secao === "extra"} onAlternar={alternar}>
-              <Campo rotulo="Medidas preventivas" linhas={2} valor={conteudo.pragas.preventivas} desabilitado={!editavel} onChange={(valor) => mudar({ pragas: { ...conteudo.pragas!, preventivas: valor } })} />
-              <Campo rotulo="Medidas corretivas" linhas={2} valor={conteudo.pragas.corretivas} desabilitado={!editavel} onChange={(valor) => mudar({ pragas: { ...conteudo.pragas!, corretivas: valor } })} />
-              <Campo rotulo="Comprovante da empresa especializada (opcional)" valor={conteudo.pragas.comprovanteEmpresa} desabilitado={!editavel} onChange={(valor) => mudar({ pragas: { ...conteudo.pragas!, comprovanteEmpresa: valor } })} dica="Com controle químico, a norma pede o comprovante de execução." />
+              <Campo guia={CAMPOS_GUIADOS["pragas.preventivas"]} rotulo="Medidas preventivas" linhas={2} valor={conteudo.pragas.preventivas} desabilitado={!editavel} onChange={(valor) => mudar({ pragas: { ...conteudo.pragas!, preventivas: valor } })} />
+              <Campo guia={CAMPOS_GUIADOS["pragas.corretivas"]} rotulo="Medidas corretivas" linhas={2} valor={conteudo.pragas.corretivas} desabilitado={!editavel} onChange={(valor) => mudar({ pragas: { ...conteudo.pragas!, corretivas: valor } })} />
+              <Campo guia={CAMPOS_GUIADOS["pragas.comprovanteEmpresa"]} rotulo="Comprovante da empresa especializada (opcional)" valor={conteudo.pragas.comprovanteEmpresa} desabilitado={!editavel} onChange={(valor) => mudar({ pragas: { ...conteudo.pragas!, comprovanteEmpresa: valor } })} />
             </SecaoRecolhivel>
           )}
 
           {definicao?.bloco === "manipuladores" && conteudo.manipuladores && (
             <>
             <SecaoRecolhivel id="extra" titulo="Higiene e saúde" resumo="mãos e sintomas" aberta={secao === "extra"} onAlternar={alternar}>
-              <Campo rotulo="Lavagem e antissepsia das mãos: etapas" linhas={2} valor={conteudo.manipuladores.lavagemMaosEtapas} desabilitado={!editavel} onChange={(valor) => mudar({ manipuladores: { ...conteudo.manipuladores!, lavagemMaosEtapas: valor } })} />
-              <Campo rotulo="Lavagem e antissepsia das mãos: frequência" valor={conteudo.manipuladores.lavagemMaosFrequencia} desabilitado={!editavel} onChange={(valor) => mudar({ manipuladores: { ...conteudo.manipuladores!, lavagemMaosFrequencia: valor } })} />
-              <Campo rotulo="Medidas para lesões, sintomas ou suspeita de problema de saúde" linhas={2} valor={conteudo.manipuladores.lesoesSintomas} desabilitado={!editavel} onChange={(valor) => mudar({ manipuladores: { ...conteudo.manipuladores!, lesoesSintomas: valor } })} />
+              <Campo guia={CAMPOS_GUIADOS["manipuladores.lavagemMaosEtapas"]} rotulo="Lavagem e antissepsia das mãos: etapas" linhas={2} valor={conteudo.manipuladores.lavagemMaosEtapas} desabilitado={!editavel} onChange={(valor) => mudar({ manipuladores: { ...conteudo.manipuladores!, lavagemMaosEtapas: valor } })} />
+              <Campo guia={CAMPOS_GUIADOS["manipuladores.lavagemMaosFrequencia"]} rotulo="Lavagem e antissepsia das mãos: frequência" valor={conteudo.manipuladores.lavagemMaosFrequencia} desabilitado={!editavel} onChange={(valor) => mudar({ manipuladores: { ...conteudo.manipuladores!, lavagemMaosFrequencia: valor } })} />
+              <Campo guia={CAMPOS_GUIADOS["manipuladores.lesoesSintomas"]} rotulo="Medidas para lesões, sintomas ou suspeita de problema de saúde" linhas={2} valor={conteudo.manipuladores.lesoesSintomas} desabilitado={!editavel} onChange={(valor) => mudar({ manipuladores: { ...conteudo.manipuladores!, lesoesSintomas: valor } })} />
             </SecaoRecolhivel>
             <SecaoRecolhivel id="extra2" titulo="Exames e capacitação" resumo="exames e capacitação" aberta={secao === "extra2"} onAlternar={alternar}>
               <div className="pop-grade">
@@ -806,13 +827,13 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
                   </Select>
                 </label>
                 <Campo rotulo="Exames: válidos até" tipo="data" valor={conteudo.manipuladores.examesValidade} desabilitado={!editavel} onChange={(valor) => mudar({ manipuladores: { ...conteudo.manipuladores!, examesValidade: valor } })} />
-                <Campo rotulo="Exames: periodicidade" valor={conteudo.manipuladores.examesPeriodicidade} desabilitado={!editavel} onChange={(valor) => mudar({ manipuladores: { ...conteudo.manipuladores!, examesPeriodicidade: valor } })} />
+                <Campo guia={CAMPOS_GUIADOS["manipuladores.examesPeriodicidade"]} rotulo="Exames: periodicidade" valor={conteudo.manipuladores.examesPeriodicidade} desabilitado={!editavel} onChange={(valor) => mudar({ manipuladores: { ...conteudo.manipuladores!, examesPeriodicidade: valor } })} />
               </div>
               <p className="ui-row-sub">Guarde só “apto” e a validade. Nunca o laudo: é dado de saúde sensível.</p>
               <div className="pop-grade">
-                <Campo rotulo="Capacitação: carga horária" valor={conteudo.manipuladores.capacitacaoCargaHoraria} desabilitado={!editavel} onChange={(valor) => mudar({ manipuladores: { ...conteudo.manipuladores!, capacitacaoCargaHoraria: valor } })} />
-                <Campo rotulo="Capacitação: conteúdo" valor={conteudo.manipuladores.capacitacaoConteudo} desabilitado={!editavel} onChange={(valor) => mudar({ manipuladores: { ...conteudo.manipuladores!, capacitacaoConteudo: valor } })} />
-                <Campo rotulo="Capacitação: frequência" valor={conteudo.manipuladores.capacitacaoFrequencia} desabilitado={!editavel} onChange={(valor) => mudar({ manipuladores: { ...conteudo.manipuladores!, capacitacaoFrequencia: valor } })} dica="O registro nominal fica para um próximo pacote." />
+                <Campo guia={CAMPOS_GUIADOS["manipuladores.capacitacaoCargaHoraria"]} rotulo="Capacitação: carga horária" valor={conteudo.manipuladores.capacitacaoCargaHoraria} desabilitado={!editavel} onChange={(valor) => mudar({ manipuladores: { ...conteudo.manipuladores!, capacitacaoCargaHoraria: valor } })} />
+                <Campo guia={CAMPOS_GUIADOS["manipuladores.capacitacaoConteudo"]} rotulo="Capacitação: conteúdo" valor={conteudo.manipuladores.capacitacaoConteudo} desabilitado={!editavel} onChange={(valor) => mudar({ manipuladores: { ...conteudo.manipuladores!, capacitacaoConteudo: valor } })} />
+                <Campo guia={CAMPOS_GUIADOS["manipuladores.capacitacaoFrequencia"]} rotulo="Capacitação: frequência" valor={conteudo.manipuladores.capacitacaoFrequencia} desabilitado={!editavel} onChange={(valor) => mudar({ manipuladores: { ...conteudo.manipuladores!, capacitacaoFrequencia: valor } })} />
               </div>
             </SecaoRecolhivel>
             </>
@@ -853,7 +874,10 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
           )}
           </div>
           <aside className="pdoc-previa" aria-label="Pré-visualização da folha">
-            <h2 className="pdoc-lista-titulo">Pré-visualização da folha</h2>
+            <div className="pdoc-previa-topo">
+              <h2 className="pdoc-lista-titulo">Folha</h2>
+              {notasNaBarra}
+            </div>
             <div className="pdoc-previa-acoes">
               {comCartaz && (
                 <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => setCartazAberto(true)}>
@@ -867,7 +891,6 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
               )}
             </div>
             <PopFolha folha={folhaDaPrevia} modo="previa" />
-            <p className="ui-row-sub pdoc-ajuda">Atualiza enquanto você escreve.</p>
           </aside>
           {onImprimir && (
             // Cópia da folha só para o papel (o rascunho sai marcado “Rascunho” na linha de situação).
@@ -963,6 +986,21 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
                 Descartar rascunho
               </button>
             )}
+            {erroTitulo && (
+              <span className="pdoc-falta" role="alert">
+                Falta: Identificação
+              </span>
+            )}
+            {avisoDeConferencia && (onIrParaConferencia ? (
+              <button type="button" className="pdoc-chip-conferir pdoc-chip-conferir--link" title="Ir aos itens para conferir" onClick={onIrParaConferencia}>{avisoDeConferencia}</button>
+            ) : (
+              <span className="pdoc-chip-conferir" role="note">{avisoDeConferencia}</span>
+            ))}
+            {onIrParaConferencia && (
+              <button type="button" className="ui-btn ui-btn--secondary pdoc-ir-conferir" onClick={onIrParaConferencia}>
+                Ir para Conferir
+              </button>
+            )}
             <button
               type="button"
               className="ui-btn ui-btn--save"
@@ -985,20 +1023,33 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
             >
               Salvar rascunho
             </button>
-            {(tentouEnviar ? textoFalta : erroTitulo ? "Falta: Identificação" : "") && (
-              <span className="pdoc-falta" role="alert">
-                {tentouEnviar ? textoFalta : "Falta: Identificação"}
-              </span>
-            )}
-            {avisoDeConferencia && (onIrParaConferencia ? (
-              <button type="button" className="pdoc-chip-conferir pdoc-chip-conferir--link" title="Ir aos itens para conferir" onClick={onIrParaConferencia}>{avisoDeConferencia}</button>
-            ) : (
-              <span className="pdoc-chip-conferir" role="note">{avisoDeConferencia}</span>
-            ))}
-            <button type="button" className="ui-btn ui-btn--criar" onClick={enviarParaAprovar}>
-              Enviar para aprovação
-            </button>
           </div>
+        </div>
+      )}
+      {verFolha && (
+        <div className="pc-modal-layer pdoc-folha-camada" role="presentation">
+          <div className="pc-modal-backdrop" onClick={() => setVerFolha(false)} />
+          <section className="pdoc-folha-janela" role="dialog" aria-modal="true" aria-label="Folha do POP">
+            <header className="pdoc-folha-janela-topo">
+              <h2 className="pdoc-lista-titulo">Folha</h2>
+              <button type="button" className="ui-btn ui-btn--secondary pdoc-folha-fechar" aria-label="Fechar a folha" onClick={() => setVerFolha(false)}>✕</button>
+            </header>
+            <div className="pdoc-previa-acoes">
+              {comCartaz && (
+                <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => { setVerFolha(false); setCartazAberto(true); }}>
+                  Gerar cartaz
+                </button>
+              )}
+              {onImprimir && (
+                <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => { setVerFolha(false); setEscolhendoImpressao(true); }}>
+                  Imprimir / PDF
+                </button>
+              )}
+            </div>
+            <div className="pdoc-folha-janela-corpo">
+              <PopFolha folha={folhaDaPrevia} modo="previa" />
+            </div>
+          </section>
         </div>
       )}
       {cartazAberto && comCartaz && (

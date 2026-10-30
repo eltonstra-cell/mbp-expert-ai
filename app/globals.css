@@ -7334,3 +7334,99 @@ html:root:root body .chk-pc-num.is-na,html:root:root body .chk-seg.chk-seg--num.
 @media (max-width:519.98px){
   html[data-modo="campo"]:root:root body .chk-segmentos .chk-seg.chk-seg--num.chk-seg--na{border:0;background:#9AA5B5}
 }
+
+/* ===== RODADA 13 · lista de POPs: cabeçalho "POPs · N POPs · Responsável", linhas planas com fio, sem caixa nem borda de estado ===== */
+.pgl-cab{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-top:4px}
+.pgl-cab-textos{min-width:0}
+.pgl-cab-titulo{margin:0;font-family:var(--font-display),"Outfit",sans-serif;font-size:24px;font-weight:500;color:#1B2433}
+.pgl-cab-sub{margin:2px 0 0;font-size:14.5px;color:#526477}
+.pgl-cab-sub strong{font-weight:500;color:#263445}
+.pgl-add-curto{display:none}
+.pgl .pgl-lista{gap:0}
+.pgl .pgl-linha{min-height:62px;padding:8px 4px;border:0;border-bottom:1px solid #E3E8EE;border-radius:0;background:transparent}
+.pgl .pgl-linha.is-clicavel:hover{background:#F4F9FE}
+@media (max-width:760px){
+  .pgl-add-longo{display:none}
+  .pgl-add-curto{display:inline}
+  .pgl-adicionar-botao{padding:0 16px}
+  .pgl .pgl-linha{flex-wrap:nowrap}
+}
+
+/* ===== RODADA 13 · aba Documento: índice simples, passos em linhas, folha legível, seletor de seção e "Ver folha" no tablet e no celular ===== */
+.pdoc{grid-template-columns:250px minmax(0,1fr) 340px;gap:20px}
+.pdoc-estreito{display:none;grid-column:1/-1;flex-direction:column;gap:8px}
+.pdoc-estreito-linha{display:flex;flex-wrap:nowrap;align-items:center;gap:8px}
+.pdoc-estreito-linha .amb-seletor{flex:1 1 auto;min-width:0}
+html:root:root body .pdoc-sel{max-width:none;height:44px;font-size:16px}
+.pdoc-sel-celular{display:none}
+.pdoc-ver-folha,.pdoc-so-tablet{flex:none;height:44px;white-space:nowrap}
+.pdoc-lista-falta{flex:none;font-size:13px;color:#E0A800}
+.pdoc-falta-linha{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0;font-size:14.5px;color:#8A5A00}
+.pdoc-falta-ponto{width:10px;height:10px;border-radius:50%;background:#E0A800}
+.pdoc-definir{padding:0;border:0;background:transparent;font:inherit;color:#264A80;text-decoration:underline;cursor:pointer}
+.pdoc-ajuda-toque{display:none}
+.pdoc-ajuda-passos{margin:0}
+
+.pdoc .pdoc-lista{gap:0}
+.pdoc .pdoc-item{min-height:44px;padding:6px 12px;border:0;border-left:3px solid transparent;border-radius:0;background:transparent;font-size:15px;color:#1B2433}
+.pdoc .pdoc-item.is-ativa,.pdoc .pdoc-item.is-ativa.is-falta{border-left-color:#21A3A3;background:#E3F4F4;font-weight:500}
+.pdoc .pdoc-item.is-falta:not(.is-ativa){background:transparent}
+.pdoc .pdoc-marca{width:22px;height:22px;border:1.5px solid #E0A800;background:#fff}
+.pdoc .pdoc-marca.is-ok{border-color:#21805B;background:#21805B}
+.pdoc-item-textos{display:flex;flex-direction:column;min-width:0;text-align:left}
+.pdoc-item-sub{font-size:13px;font-weight:400;color:#8A5A00}
+
+.pdoc .pdoc-passos{gap:0}
+.pdoc .pdoc-passos .pop-passo{align-items:center;gap:10px;padding:6px 8px;border-bottom:1px solid #E3E8EE;border-radius:0}
+.pdoc .pdoc-passos .pop-passo.is-foco{border-bottom-color:transparent;border-radius:10px;background:#FFF6E5}
+.pdoc .pdoc-passos .pop-passo-n{width:24px;height:auto;margin-top:0;border-radius:0;background:transparent;font-size:14px;color:#526477}
+.pdoc .pdoc-passos .pop-passo-texto{min-height:0;padding:4px 0;border:0;background:transparent;box-shadow:none}
+.pdoc .pdoc-passos .pop-passo-acoes{flex:none;flex-wrap:nowrap;gap:6px}
+.pdoc .pdoc-passos .pop-passo-acoes .field-assist-tools{display:flex;gap:6px;margin:0}
+.pdoc .pdoc-passos .pop-passo-acoes button{display:inline-grid;place-items:center;box-sizing:border-box;width:32px;height:32px;min-width:32px;padding:0;border:1.5px solid #7F8BA3;border-radius:50%;background:#fff;font-size:15px;line-height:1;color:#263445}
+.pdoc .pdoc-passos .pop-passo-acoes .field-assist-voice{border-color:#B4491C;color:#B4491C}
+.pdoc .pdoc-passos .pop-passo-acoes .field-assist-ai{border-color:#2874DB;color:#2874DB;font-size:12px;font-weight:500}
+
+.pdoc-previa-topo{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 12px}
+.pdoc-previa-topo .pdoc-lista-titulo{margin:0;font-size:1.1rem;font-weight:500}
+.pfolha--previa{font-size:13px}
+.pfolha--previa .pfolha-titulo{font-size:20px}
+.pfolha-definir{color:#8A5A00}
+.pdoc-ir-conferir{height:44px;padding:0 18px;border:1.5px solid #264A80;border-radius:10px;background:#fff;font-weight:400;color:#264A80}
+.pdoc-folha-camada{place-items:end center}
+.pdoc-folha-janela{position:relative;z-index:1;display:flex;flex-direction:column;gap:10px;box-sizing:border-box;width:min(720px,100%);max-height:88dvh;padding:16px;border-radius:16px 16px 0 0;background:#fff}
+.pdoc-folha-janela-topo{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.pdoc-folha-janela-topo .pdoc-lista-titulo{margin:0;font-size:1.15rem;font-weight:500}
+.pdoc-folha-fechar{width:40px;height:40px;padding:0;border-radius:50%}
+.pdoc-folha-janela-corpo{min-height:0;overflow-y:auto}
+
+@media (max-width:1099px){
+  .pdoc{grid-template-columns:minmax(0,1fr);gap:10px}
+  .pdoc-estreito{display:flex}
+  .pdoc-secoes,.pdoc-previa{display:none}
+  .pdoc-ajuda-clique{display:none}
+  .pdoc-ajuda-toque{display:inline}
+}
+@media (max-width:599px){
+  .pdoc-sel-tablet,.pdoc-so-tablet{display:none}
+  .pdoc-sel-celular{display:inline}
+  .pdoc .pdoc-passos .pop-passo{flex-wrap:wrap}
+  .pdoc .pdoc-passos .pop-passo-campo{flex:1 1 calc(100% - 40px)}
+  .pdoc .pdoc-passos .pop-passo-acoes{flex-basis:100%;padding-left:34px}
+  .pdoc-rodape .pop-rodape-acoes{flex-wrap:nowrap}
+  .pdoc-ir-conferir,.pdoc-rodape .ui-btn--save{flex:1 1 0;padding:0 10px}
+}
+
+/* RODADA 13 · ajuste de altura da aba Documento (sem rolagem da página no PC; rodapé acima da barra no celular) */
+@media (min-width:1100px){
+  .pdoc-meio--passos .pdoc-passos.pop-passos--rolagem{max-height:calc(100dvh - 500px)}
+}
+@media (max-width:599px){
+  .pdoc-rodape{bottom:calc(76px + env(safe-area-inset-bottom))}
+  .pdoc-meio--passos .pdoc-passos.pop-passos--rolagem{max-height:calc(100dvh - 640px);min-height:96px}
+}
+@media (min-width:1100px){
+  .pdoc-previa{display:flex;flex-direction:column;max-height:calc(100dvh - 450px);overflow:hidden}
+  .pdoc-previa > :last-child{min-height:0;overflow-y:auto}
+}
+html:root:root body .pdoc-ir-conferir{border:1.5px solid #264A80;background:#fff;color:#264A80}

@@ -67,9 +67,9 @@ test("C2: lista de visitas sem chip repetido, com contadores e aviso em terra; o
 test("C1: Documento tem leitura com Imprimir/PDF e Editar, e edição em três colunas com rodapé fixo", () => {
   const editor = ler("../components/pc/PcPopEditor.tsx");
   assert.ok(editor.includes("Imprimir / PDF") && editor.includes("Editar (cria nova versão)") && editor.includes("pdoc-previa") && editor.includes("pdoc-secoes"));
-  assert.ok(editor.includes("Pré-visualização da folha") && editor.includes("Motivo da nova versão (opcional)") && editor.includes("Enviar para aprovação"));
+  assert.ok(editor.includes("Pré-visualização da folha") && editor.includes("Motivo da nova versão (opcional)") && !editor.includes("Enviar para aprovação"), "rodada 13: o envio para aprovação só existe na etapa 3 do Resumo");
   assert.ok(editor.includes("Salvar rascunho") && editor.includes("limparPassosEmBranco(passos)"), "salvar rascunho segue descartando passo em branco");
-  assert.ok(editor.includes("onEnviar(comConferenciaAtual(limpoParaGravar(rascunho)))") && editor.includes("secoesQueFaltam.length > 0 || faltas.length > 0 || erroTitulo"), "enviar para aprovação segue validando");
+  assert.ok(editor.includes("Ir para Conferir") && editor.includes("pdoc-ir-conferir"));
   const css = ler("../app/globals.css");
   assert.ok(css.includes(".pdoc-rodape{position:sticky;bottom:0") && css.includes("#pop-folha,#pop-folha *{visibility:visible}"));
 });

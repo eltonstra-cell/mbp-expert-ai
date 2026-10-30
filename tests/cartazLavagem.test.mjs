@@ -335,7 +335,7 @@ test("janela e editor: Estilo em chips com os 5 nomes, prévia sempre colorida, 
   assert.match(css, /\.ccp-chip\.is-ativo\{border-color:#21A3A3;background:#FFF6E5\}|\.ccp-estilo\.is-ativo,\.ccp-chip\.is-ativo\{border-color:#21A3A3;background:#FFF6E5\}/);
   assert.match(css, /\.pdoc-previa-acoes\{display:flex;flex-wrap:wrap/);
   const editor = ler("../components/pc/PcPopEditor.tsx");
-  const titulo = editor.indexOf('<h2 className="pdoc-lista-titulo">Pré-visualização da folha</h2>');
+  const titulo = editor.indexOf('<h2 className="pdoc-lista-titulo">Folha</h2>');
   const acoes = editor.indexOf('<div className="pdoc-previa-acoes">');
   assert.ok(titulo > 0 && acoes > titulo, "título e botões em linhas separadas");
   const page = ler("../app/page.tsx");

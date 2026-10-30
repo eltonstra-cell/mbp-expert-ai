@@ -1859,8 +1859,8 @@ detalhes:{chipDaAcaoNaBarra:chipVisivel,sobrepostos,pessoas:pessoas.map((c)=>c.t
       await js('[...document.querySelectorAll(".tr .tr-item, nav button, nav a, [role=tab]")].find((b)=>b.innerText.trim()==="POPs")?.click()');
       await esperar(async () => js('!!document.querySelector(".pgl-linha.is-clicavel")'), 12000);
       await foto(`25-lista-${nome}`);
-      const lista = JSON.parse(await js('JSON.stringify({linhas:document.querySelectorAll(".pgl-linha.is-clicavel").length,texto:document.querySelector(".pgl-linha.is-clicavel")?.innerText||"",abrirFechar:document.querySelectorAll(".pgg-secao [aria-expanded], .pgg-faixa-botao").length,faixasColoridas:document.querySelectorAll(".pgg-faixa").length,secoes:document.querySelectorAll(".pgg-secao").length,lateral:document.documentElement.scrollWidth<=innerWidth})'));
-      registrar(`25a. Lista de POPs (${nome} ${largura}px): lista plana (só rótulo de seção, sem abrir e fechar), linha 'Etapa N de 6 · nome' e sem rolagem lateral`, lista.abrirFechar === 0 && lista.faixasColoridas === 0 && lista.secoes >= 1 && /Etapa \d de 6 · /.test(lista.texto) && !/v1\.0/.test(lista.texto) && lista.lateral, JSON.stringify(lista));
+      const lista = JSON.parse(await js('JSON.stringify({linhas:document.querySelectorAll(".pgl-linha.is-clicavel").length,texto:document.querySelector(".pgl-linha.is-clicavel")?.innerText||"",abrirFechar:document.querySelectorAll(".pgg-secao [aria-expanded], .pgg-faixa-botao").length,faixasColoridas:document.querySelectorAll(".pgg-faixa").length,secoes:document.querySelectorAll(".pgg-secao").length,cab:!!document.querySelector(".pgl-cab-titulo"),sub:document.querySelector(".pgl-cab-sub")?.innerText||"",borda:getComputedStyle(document.querySelector(".pgl-linha.is-clicavel")).borderTopWidth+"|"+getComputedStyle(document.querySelector(".pgl-linha.is-clicavel")).borderBottomColor,lateral:document.documentElement.scrollWidth<=innerWidth})'));
+      registrar(`25a. Lista de POPs (${nome} ${largura}px): cabeçalho 'POPs · N POPs · Responsável', lista plana sem seção nem borda de estado (só fio embaixo), linha 'Etapa N de 6 · nome' e sem rolagem lateral`, lista.abrirFechar === 0 && lista.faixasColoridas === 0 && lista.secoes === 0 && lista.cab && /^\d+ POPs? · Responsável: /.test(lista.sub) && lista.borda.startsWith("0px|") && /Etapa \d de 6 · /.test(lista.texto) && !/v1\.0/.test(lista.texto) && lista.lateral, JSON.stringify(lista));
       await js('document.querySelector(".pgl-linha.is-clicavel")?.click()');
       await esperar(async () => js('!!document.querySelector(".ficha .ficha-aba")'), 12000);
       await n.esperar(700);
@@ -1910,6 +1910,50 @@ detalhes:{chipDaAcaoNaBarra:chipVisivel,sobrepostos,pessoas:pessoas.map((c)=>c.t
       await n.esperar(500);
       const apos = JSON.parse(await js('JSON.stringify((()=>{const b=[...document.querySelectorAll(".rz-btn")].find((x)=>/Marcar como conferido/.test(x.innerText));return b?{bg:getComputedStyle(b).backgroundColor,cor:getComputedStyle(b).color,off:b.disabled}:null})())'));
       registrar(`25g. Ficha do POP (${nome}): com todos os itens marcados, 'Marcar como conferido' fica azul-marinho com texto branco`, !!apos && !apos.off && apos.bg === "rgb(38, 74, 128)" && apos.cor === "rgb(255, 255, 255)", JSON.stringify(apos));
+      await js('[...document.querySelectorAll(".ficha-aba")].find((b)=>b.innerText.trim()==="Documento")?.click()');
+      await esperar(async () => js('!!document.querySelector(".pdoc")'), 12000);
+      await n.esperar(700);
+      await foto(`27-documento-${nome}`);
+      const dd = JSON.parse(await js(`JSON.stringify((()=>{
+        const r=(e)=>e?e.getBoundingClientRect():null;
+        const visivel=(e)=>!!e&&getComputedStyle(e).display!=="none"&&r(e).width>0;
+        const indice=document.querySelector(".pdoc-secoes");
+        const estreito=document.querySelector(".pdoc-estreito");
+        const previa=document.querySelector(".pdoc-previa");
+        const ativa=document.querySelector(".pdoc-item.is-ativa");
+        const falta=document.querySelector(".pdoc-item.is-falta:not(.is-ativa)");
+        const rodape=[...document.querySelectorAll(".pdoc-rodape .ui-btn")].map((b)=>b.innerText.trim());
+        const seletor=document.querySelector(".pdoc-sel");
+        const ir=document.querySelector(".pdoc-ir-conferir");
+        const salvar=document.querySelector(".pdoc-rodape .ui-btn--save");
+        const passo=document.querySelector(".pop-passo");
+        return {indice:visivel(indice),estreito:visivel(estreito),previa:visivel(previa),
+          ativaBg:ativa?getComputedStyle(ativa).backgroundColor:"",ativaBarra:ativa?getComputedStyle(ativa).borderLeftColor:"",
+          faltaTexto:falta?falta.innerText.replace(/\\s+/g," ").trim():"",
+          rodape,seletor:seletor?seletor.innerText.replace(/\\s+/g," ").trim():"",
+          irBorda:ir?getComputedStyle(ir).borderTopColor:"",irH:ir?Math.round(r(ir).height):0,salvarBg:salvar?getComputedStyle(salvar).backgroundColor:"",
+          passos:document.querySelectorAll(".pop-passo").length,
+          titulo:(document.querySelector(".pdoc-previa .pfolha-titulo")||{}).innerText||"",
+          tituloPx:document.querySelector(".pdoc-previa .pfolha-titulo")?getComputedStyle(document.querySelector(".pdoc-previa .pfolha-titulo")).fontSize:"",
+          rodapeVisivel:(()=>{const r=document.querySelector(".pdoc-rodape");const b=document.querySelector(".campo-bar");if(!r)return false;const q=r.getBoundingClientRect();return q.bottom<=innerHeight+1&&(!b||getComputedStyle(b).display==="none"||q.bottom<=b.getBoundingClientRect().top+1)})(),pagina:document.documentElement.scrollHeight<=innerHeight+1,alt:document.documentElement.scrollHeight+"/"+innerHeight,rolam:[...document.querySelectorAll("*")].filter((e)=>e.getBoundingClientRect().bottom>innerHeight+1&&getComputedStyle(e).display!=="none").slice(0,4).map((e)=>e.className+"@"+Math.round(e.getBoundingClientRect().bottom)),lateral:document.documentElement.scrollWidth<=innerWidth}})())`));
+      registrar(`27a. Documento (${nome} ${largura}px): ${nome === "pc" ? "índice de seções, passos e folha em três áreas" : "seletor de seção e Ver folha no lugar do índice e da folha"}; rodapé só com Tudo salvo, Ir para Conferir (contorno azul) e Salvar rascunho (verde)`, (nome === "pc" ? dd.indice && !dd.estreito && dd.previa : !dd.indice && dd.estreito && !dd.previa) && dd.rodape.includes("Ir para Conferir") && dd.rodape.includes("Salvar rascunho") && !dd.rodape.includes("Enviar para aprovação") && dd.irBorda === "rgb(38, 74, 128)" && dd.irH === 44 && dd.salvarBg !== "", JSON.stringify(dd));
+      if (nome === "pc") {
+        registrar("27b. Documento (pc): seção atual com fundo #E3F4F4 e barra #21A3A3; seção incompleta com o que falta; título da folha de 20 px", dd.ativaBg === "rgb(227, 244, 244)" && dd.ativaBarra === "rgb(33, 163, 163)" && /falta definir/.test(dd.faltaTexto + "") && dd.tituloPx === "20px", JSON.stringify(dd));
+      } else {
+        registrar(`27b. Documento (${nome}): seletor '${nome === "celular" ? "Passos · N de N" : "Seção N de N · Passos"}'`, nome === "celular" ? /^\S.* · \d+ de \d+/.test(dd.seletor) : /^Seção \d+ de \d+ · /.test(dd.seletor), JSON.stringify(dd));
+        await js('document.querySelector(".pdoc-ver-folha")?.click()');
+        await n.esperar(500);
+        await foto(`27-ver-folha-${nome}`);
+        const janela = JSON.parse(await js('JSON.stringify({abriu:!!document.querySelector(".pdoc-folha-janela"),folha:!!document.querySelector(".pdoc-folha-janela .pfolha"),botoes:[...document.querySelectorAll(".pdoc-folha-janela .pdoc-previa-acoes .ui-btn")].map((b)=>b.innerText.trim())})'));
+        registrar(`27c. Ver folha (${nome}): janela de baixo com a folha${nome === "celular" ? " (Gerar cartaz e Imprimir / PDF dentro dela)" : ""}`, janela.abriu && janela.folha && (nome !== "celular" || janela.botoes.includes("Imprimir / PDF")), JSON.stringify(janela));
+        await js('document.querySelector(".pdoc-folha-fechar")?.click()');
+        await n.esperar(300);
+      }
+      await js('(()=>{const t=document.querySelector(".pop-passo-texto");t?.focus();t?.dispatchEvent(new FocusEvent("focusin",{bubbles:true}))})()');
+      await n.esperar(400);
+      const passoSel = JSON.parse(await js('JSON.stringify((()=>{const li=document.querySelector(".pop-passo.is-foco");const b=li?[...li.querySelectorAll(".pop-passo-acoes button")]:[];return {achou:!!li,bg:li?getComputedStyle(li).backgroundColor:"",botoes:b.length,redondos:b.every((x)=>getComputedStyle(x).borderRadius.startsWith("50%")||parseFloat(getComputedStyle(x).borderRadius)>=16),outros:document.querySelectorAll(".pop-passo.is-foco").length}})())'));
+      registrar(`27d. Documento (${nome}): só o passo selecionado fica em creme #FFF6E5 e mostra os ícones redondos (ditar, IA, mover, ⋯)`, dd.passos === 0 || (passoSel.achou && passoSel.bg === "rgb(255, 246, 229)" && passoSel.botoes >= 4 && passoSel.redondos && passoSel.outros === 1), JSON.stringify(passoSel));
+      registrar(`27e. Documento (${nome} ${largura}x${altura}): cabe numa tela (rodapé à vista${nome === "celular" ? " acima da barra de baixo" : ", sem rolagem da página"})`, (nome === "celular" ? dd.rodapeVisivel : dd.pagina) && dd.lateral, JSON.stringify(dd));
     }
     await n.enviar("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
   } catch (erro) {

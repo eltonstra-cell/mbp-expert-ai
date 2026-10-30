@@ -69,9 +69,9 @@ test("lista de POPs: avisos juntos antes do topo, '+ Adicionar POP' abre o formu
   const css = ler("../app/globals.css");
   assert.ok(css.includes(".pgl-secao{margin:0;font-family:inherit;font-size:14.5px;font-weight:500"));
   const lista = ler("../components/pc/PcPopsLista.tsx");
-  assert.ok(lista.includes('className="pgl-avisos"') && lista.indexOf("pgl-avisos") < lista.indexOf("pgg-contadores-linha"));
+  assert.ok(lista.includes('className="pgl-avisos"') && lista.indexOf("pgl-avisos") < lista.indexOf("pgl-cab"));
   assert.ok(lista.includes("podeEditar && adicionando") && lista.includes("onEmBranco") && lista.includes("cancelarAdicao"));
-  assert.ok(lista.indexOf('className="pgl-acoes"') > lista.indexOf("pgg-contadores") && lista.indexOf('className="pgl-acoes"') < lista.indexOf("Criar POPs da norma"), "os botões ficam à direita dos contadores");
+  assert.ok(lista.indexOf('className="pgl-acoes"') > lista.indexOf("pgl-cab-sub") && lista.indexOf("MenuMais rotulo") > lista.indexOf('className="pgl-acoes"'), "o + Adicionar POP e o ⋯ ficam à direita do cabeçalho");
   assert.ok(ler("../app/page.tsx").includes("Vincular em Dados"));
 });
 

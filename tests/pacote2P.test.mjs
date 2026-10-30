@@ -52,11 +52,11 @@ const textosDoCatalogo = () => {
 // ===== 1.1 e 1.2: botão "+ Adicionar POP" e janela de modelos =====
 test("'+ Adicionar POP' fica à direita dos contadores, laranja médio de 44 px; 'Criar POPs da norma' só aparece quando falta criar", () => {
   const lista = ler("../components/pc/PcPopsLista.tsx");
-  assert.equal(lista.split("+ Adicionar POP").length - 1, 1, "só um botão '+ Adicionar POP'");
+  assert.equal(lista.split(">+ Adicionar POP<").length - 1, 1, "só um botão '+ Adicionar POP' (no celular a variante curta '+ POP')");
   assert.equal(lista.includes("pgl-add-menu"), false, "sem menu de duas opções");
   assert.equal(lista.includes("POP em branco"), false);
-  assert.ok(lista.indexOf("pgg-contadores\"") < lista.indexOf("pgl-acoes"), "os botões vêm depois dos contadores");
-  assert.match(lista, /temConjunto && faltamCriar > 0 && \(\s*<button type="button" className="ui-btn ui-btn--secondary"/);
+  assert.ok(lista.indexOf("pgl-cab-sub") < lista.indexOf("pgl-acoes"), "os botões vêm depois do cabeçalho");
+  assert.ok(lista.includes("faltantes.length > 1") && lista.includes("Criar os ${faltantes.length} POPs da norma"), "o criar do que falta fica no menu ⋯");
   assert.equal(lista.includes("Os POPs do modelo já foram criados"), false, "sem o texto solto quando o conjunto já foi criado");
   const css = ler("../app/globals.css");
   assert.match(css, /\.pgl-adicionar-botao\{height:44px;[^}]*background:#264A80/);
@@ -185,8 +185,7 @@ test("enviar incompleto: 'Falta: …' em âmbar, seção marcada na lista e a pr
   assert.deepEqual(secoesQueFaltamParaEnviar({ titulo: "X", conteudo: { passos: [{ id: "1", texto: "a" }, { id: "2", texto: "" }], responsavelExecucao: { nome: "A", cargo: "B" }, frequencia: "Diária" } }).map((falta) => falta.id), ["passos"]);
   assert.equal(textoDaFalta([]), "");
   const editor = ler("../components/pc/PcPopEditor.tsx");
-  assert.ok(editor.includes("function enviarParaAprovar()") && editor.includes("setTentouEnviar(true)") && editor.includes("setSecao(primeira.id)"));
-  assert.match(editor, /tentouEnviar && secoesQueFaltam\.some\(\(falta\) => falta\.id === item\.id\) \? " is-falta"/);
+  assert.ok(!editor.includes("function enviarParaAprovar()") && editor.includes("pdoc-item-sub") && editor.includes("item.falta"), "rodada 13: a seção incompleta mostra o que falta; o envio fica na etapa 3 do Resumo");
   assert.ok(editor.includes('className="pdoc-falta" role="alert"'));
   const css = ler("../app/globals.css");
   assert.match(css, /\.pdoc-falta\{[^}]*background:#FFE8A3/);
@@ -206,7 +205,7 @@ test("comp-13: chip informativo 'Será preciso conferir os itens de segurança a
 
 test("botões que ficavam mudos agora dizem por quê: Salvar sem título, Marcar como conferido e Criar POP", () => {
   const editor = ler("../components/pc/PcPopEditor.tsx");
-  assert.ok(editor.includes('"Falta: Identificação"'));
+  assert.ok(editor.includes("Falta: Identificação"));
   assert.ok(ler("../components/pc/PcResumoDoPop.tsx").includes("Marque todos os itens para liberar"));
   const janela = ler("../components/pc/PcModelosPop.tsx");
   assert.ok(janela.includes("Escolha um modelo</span>") && janela.includes("Falta: título"));

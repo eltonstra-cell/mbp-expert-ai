@@ -4,8 +4,9 @@ import { useState, type CSSProperties, type ReactNode } from "react";
 import type { Empresa, ProcedimentoOperacionalPadronizado } from "@/types";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
 import { RowMenu, type ItemMenu } from "@/components/ui/RowMenu";
+import MenuMais, { type ItemDoMenuMais } from "@/components/pc/MenuMais";
 import { MENSAGEM_NORMA_ALTERADA, MENSAGEM_SEM_NORMA_APLICADA, popPrecisaRevisarPorNorma } from "@/lib/popsNorma";
-import { COR_DO_ESTADO, botaoDaLinha, contadoresDaLista, estadoVisualDaLinha, filtrarLinhas, linhasDoGrupo, resumoDoGrupo, textoDoCriarDaNorma, POPS_EM_DESTAQUE, type FiltroDaLista, type LinhaComDetalhe } from "@/lib/popGestao";
+import { COR_DO_ESTADO, botaoDaLinha, contadoresDaLista, estadoVisualDaLinha, textoDoCriarDaNorma, type LinhaComDetalhe } from "@/lib/popGestao";
 import { acoesDoPop } from "@/lib/menuActions";
 import { AVISO_JA_TEM_DO_MODELO, adicionarPop, arquivarPop, duplicarPop } from "@/lib/pops";
 import MotivoDaMudanca from "@/components/pc/MotivoDaMudanca";
@@ -13,6 +14,8 @@ import PcModelosPop from "@/components/pc/PcModelosPop";
 import { ROTULO_CURTO_NAO_CONFERIDO, ROTULO_NAO_CONFERIDO, popNaoConferido } from "@/lib/popConferencia";
 import type { ResultadoDaCriacao } from "@/lib/popModelos";
 import type { AbaFicha } from "@/components/pc/PcFichaPop";
+
+const contadoresDe = (linhas: LinhaComDetalhe[]) => ({ pendencias: contadoresDaLista(linhas).vigentesComPendencia });
 
 type Props = {
   empresa: Pick<Empresa, "normasAplicadas" | "pops">;
@@ -38,7 +41,7 @@ type Props = {
   abas?: ReactNode | ((pendencias: number) => ReactNode);
   /** Chave do aparelho para lembrar quais grupos estão abertos (por empresa). */
   empresaId?: string;
-  /** Responsável do estabelecimento (fonte: Empresa › Dados), na ponta direita do cabeçalho "Conjunto da norma". */
+  /** Responsável do estabelecimento (fonte: Empresa › Dados), no subtítulo do cabeçalho "N POPs · Responsável". */
   responsavel?: { nome: string; cargo: string };
   onAlterarEmDados?: () => void;
   topo?: ReactNode;
@@ -46,17 +49,6 @@ type Props = {
   /** Quem arquiva: o motivo, o autor e a data ficam gravados no POP. */
   autor?: { nome: string; id?: string };
 };
-
-type ContadorDeFiltro = { id: FiltroDaLista | null; rotulo: string; conta: (c: ReturnType<typeof contadoresDaLista>) => number };
-
-// Contadores em texto (número em Outfit 22 + rótulo) que também filtram; o escolhido fica sublinhado em laranja e os zerados somem ("todos" sempre aparece).
-const CONTADORES: ContadorDeFiltro[] = [
-  { id: null, rotulo: "todos", conta: (c) => c.total },
-  { id: "com-pendencia", rotulo: "com pendência", conta: (c) => c.vigentesComPendencia },
-  { id: "aguardando", rotulo: "aguardando aprovação", conta: (c) => c.aguardando },
-  { id: "rascunho", rotulo: "rascunhos", conta: (c) => c.rascunho },
-  { id: "falta-criar", rotulo: "falta criar", conta: (c) => c.faltaCriar },
-];
 
 const ROTULO_DO_ESTADO_TEXTO: Record<string, string> = { Vigente: "Vigente", Rascunho: "Rascunho", "Aguardando aprovação": "Aguardando aprovação", "Revisão vencida": "Revisão vencida", "Falta criar": "Falta criar", Inativo: "Inativo" };
 
@@ -142,13 +134,8 @@ export default function PcPopsLista({
   const [codigo, setCodigo] = useState("");
   const [titulo, setTitulo] = useState("");
   const [erro, setErro] = useState<{ campo: "titulo" | "codigo"; aviso: string } | null>(null);
-  // Filtro só na tela (não é guardado): cada chip de contagem mostra só os POPs daquela situação; "Todos" limpa.
-  const [filtro, setFiltro] = useState<FiltroDaLista | null>(null);
-  const contadores = contadoresDaLista([...conjunto, ...outros]);
-  // Lista plana (rodada 12f): os grupos viraram só um rótulo de seção, sem abrir e fechar.
-  const [verTodosDoGrupo, setVerTodosDoGrupo] = useState<Record<string, boolean>>({});
-  const conjuntoVisivel = filtrarLinhas(conjunto, filtro);
-  const outrosVisiveis = filtrarLinhas(outros, filtro);
+  const linhasDosPops = [...conjunto, ...outros].filter((linha) => linha.pop);
+  const faltantes = conjunto.filter((linha) => !linha.pop && linha.definicao);
   const temConjunto = conjunto.length > 0;
   const nomeDoResponsavel = (responsavel?.nome || "").trim();
 
@@ -196,60 +183,81 @@ export default function PcPopsLista({
       });
   }
 
-  const respostaDoResponsavel = (
-    <span className="pgl-resp-linha">
-      Responsável: <strong>{nomeDoResponsavel || "ainda não definido"}</strong>
-      {nomeDoResponsavel && responsavel?.cargo ? ` · ${responsavel.cargo}` : ""}
-      {onAlterarEmDados && (
-        <>
-          {" · "}
-          <button type="button" className="pgl-resp-link" onClick={onAlterarEmDados}>
-            alterar em Dados
-          </button>
-        </>
-      )}
-    </span>
-  );
-
-  const pendenciasDaLista = contadores.vigentesComPendencia;
-
-  // Seção da lista: rótulo (título e resumo) e as linhas, sempre visíveis. Com mais de 8 POPs mostra os 5 mais urgentes.
-  function Grupo({ id, titulo, classe, linhas, todas, direita, aoFinalDasLinhas }: { id: string; titulo: string; classe: string; linhas: LinhaComDetalhe[]; todas: LinhaComDetalhe[]; direita?: ReactNode; aoFinalDasLinhas?: ReactNode }) {
-    const verTodos = Boolean(verTodosDoGrupo[id]);
-    const mostradas = linhasDoGrupo(linhas, verTodos);
-    return (
-      <section className="pgl-grupo" aria-label={titulo}>
-        <div className="pgg-secao">
-          <h3 className="pgg-secao-titulo">{titulo}</h3>
-          <span className="pgg-faixa-resumo">{resumoDoGrupo(todas)}</span>
-          {direita}
-        </div>
-        <div className="pgl-grupo-corpo">
-          {aoFinalDasLinhas}
-          {linhas.length === 0 && <div className="ui-empty">Nenhum POP nesta situação.</div>}
-          {mostradas.map((linha) => (
-            <Linha key={linha.chave} linha={linha} podeEditar={podeEditar} onAbrirFicha={onAbrirFicha} onCriarDoModelo={onCriarDoModelo} menu={id === "outros" && linha.pop ? menuDoOutro(linha.pop) : undefined} />
-          ))}
-          {linhas.length > mostradas.length && (
-            <button type="button" className="pc-link-btn pc-self-start" onClick={() => setVerTodosDoGrupo((atual) => ({ ...atual, [id]: true }))}>
-              Ver todos ({linhas.length})
-            </button>
-          )}
-          {verTodos && linhas.length > POPS_EM_DESTAQUE && linhas.length > 8 && (
-            <button type="button" className="pc-link-btn pc-self-start" onClick={() => setVerTodosDoGrupo((atual) => ({ ...atual, [id]: false }))}>
-              Mostrar só os {POPS_EM_DESTAQUE} mais urgentes
-            </button>
-          )}
-        </div>
-      </section>
-    );
+  // Menu ⋯ do cabeçalho: criar o que falta do conjunto da norma, ver arquivados e trocar o responsável (os POPs que faltam não ocupam linha na lista).
+  const itensDoMenu: ItemDoMenuMais[] = [];
+  if (podeEditar && temConjunto) {
+    for (const linha of faltantes) itensDoMenu.push({ rotulo: `Criar ${linha.codigo ? `${linha.codigo} · ` : ""}${linha.titulo}`, onClick: () => onCriarDoModelo(linha.definicao!.catalogoId) });
+    if (faltantes.length > 1) itensDoMenu.push({ rotulo: `Criar os ${faltantes.length} POPs da norma`, onClick: onCriarFaltantes, titulo: textoDoCriarDaNorma(faltamCriar) });
   }
+  if (arquivados > 0) itensDoMenu.push({ rotulo: verArquivados ? "Ocultar arquivados" : `Ver arquivados (${arquivados})`, onClick: onVerArquivados });
+  if (onAlterarEmDados) itensDoMenu.push({ rotulo: "Alterar o responsável em Dados", onClick: onAlterarEmDados });
+
+  const formularios = (
+    <>
+      {podeEditar && deModelo && onCriarDeModelo && (
+        <PcModelosPop
+          pops={pops}
+          onCancelar={() => setDeModelo(false)}
+          onEmBranco={() => {
+            setDeModelo(false);
+            setAdicionando(true);
+          }}
+          onCriar={(modeloId, codigo, titulo) => {
+            const resultado = onCriarDeModelo(modeloId, codigo, titulo);
+            if (resultado.ok) setDeModelo(false);
+            return resultado;
+          }}
+        />
+      )}
+      {podeEditar && adicionando && (
+        <div className="pgl-adicionar">
+          <label className="pc-add-code">
+            <input
+              className={`ui-input${erro?.campo === "codigo" ? " is-invalid" : ""}`}
+              value={codigo}
+              onChange={(evento) => {
+                setCodigo(evento.target.value);
+                if (erro?.campo === "codigo") setErro(null);
+              }}
+              placeholder="Código (opcional)"
+              aria-label="Código do POP (opcional)"
+              aria-invalid={erro?.campo === "codigo"}
+            />
+            {erro?.campo === "codigo" && <span className="ui-field-error">{erro.aviso}</span>}
+          </label>
+          <label className="pc-add-title">
+            <span className="ui-field-wrap">
+              <input
+                className={`ui-input pc-input-tools${erro?.campo === "titulo" ? " is-invalid" : ""}`}
+                value={titulo}
+                onChange={(evento) => {
+                  setTitulo(evento.target.value);
+                  if (erro?.campo === "titulo") setErro(null);
+                }}
+                placeholder="Título do POP"
+                aria-label="Título do POP"
+                aria-invalid={erro?.campo === "titulo"}
+              />
+              <span className="ui-field-tools">
+                <FieldVoiceTools fieldKey="novo-pop-titulo" value={titulo} onChange={setTitulo} contexto="Título curto e objetivo de um Procedimento Operacional Padronizado." />
+              </span>
+            </span>
+            {erro?.campo === "titulo" && <span className="ui-field-error">{erro.aviso}</span>}
+          </label>
+          <button type="button" className="ui-btn ui-btn--secondary" onClick={cancelarAdicao}>
+            Cancelar
+          </button>
+          <button type="button" className="ui-btn ui-btn--save" onClick={adicionar}>
+            Salvar
+          </button>
+        </div>
+      )}
+    </>
+  );
 
   return (
     <div className="pgl">
-      <h2 className="sr-only">POPs</h2>
-
-      {abas ? (typeof abas === "function" ? abas(pendenciasDaLista) : abas) : null}
+      {abas ? (typeof abas === "function" ? abas(contadoresDe(linhasDosPops).pendencias) : abas) : null}
       {topo}
 
       {(conjunto.length === 0 || avisoSemVinculo) && (
@@ -268,112 +276,30 @@ export default function PcPopsLista({
         </div>
       )}
 
-      <div className="pgg-contadores-linha">
-        <div className="pgg-contadores" role="group" aria-label="Mostrar POPs por situação">
-          {CONTADORES.filter((item) => item.id === null || item.conta(contadores) > 0).map((item) => {
-            const ativo = filtro === item.id;
-            return (
-              <button key={item.rotulo} type="button" className={`pgg-conta${ativo ? " is-ativo" : ""}`} aria-pressed={ativo} onClick={() => setFiltro(item.id === null ? null : filtro === item.id ? null : item.id)}>
-                <span className="pgg-conta-num">{item.conta(contadores)}</span> <span className="pgg-conta-rotulo">{item.rotulo}</span>
-              </button>
-            );
-          })}
+      <div className="pgl-cab">
+        <div className="pgl-cab-textos">
+          <h2 className="pgl-cab-titulo">POPs</h2>
+          <p className="pgl-cab-sub">
+            {linhasDosPops.length} {linhasDosPops.length === 1 ? "POP" : "POPs"} · Responsável: <strong>{nomeDoResponsavel || "ainda não definido"}</strong>
+          </p>
         </div>
         {podeEditar && (
           <div className="pgl-acoes">
-            {temConjunto && faltamCriar > 0 && (
-              <button type="button" className="ui-btn ui-btn--secondary" onClick={onCriarFaltantes} title={textoDoCriarDaNorma(faltamCriar)}>
-                Criar POPs da norma ({faltamCriar})
-              </button>
-            )}
-            <button type="button" className="pgl-adicionar-botao" aria-haspopup="dialog" onClick={() => (onCriarDeModelo ? setDeModelo(true) : setAdicionando(true))}>
-              + Adicionar POP
+            <button type="button" className="pgl-adicionar-botao" aria-haspopup="dialog" aria-label="Adicionar POP" onClick={() => (onCriarDeModelo ? setDeModelo(true) : setAdicionando(true))}>
+              <span className="pgl-add-longo">+ Adicionar POP</span>
+              <span className="pgl-add-curto" aria-hidden="true">+ POP</span>
             </button>
+            {itensDoMenu.length > 0 && <MenuMais rotulo="Mais ações dos POPs" itens={itensDoMenu} />}
           </div>
         )}
       </div>
 
+      {formularios}
       <div className="pgl-lista">
-        {temConjunto && (
-          <Grupo id="conjunto" titulo="Conjunto da norma" classe="pgg-faixa--norma" linhas={conjuntoVisivel} todas={conjunto} direita={<span className="pgg-faixa-direita">{respostaDoResponsavel}</span>} />
-        )}
-
-        <Grupo
-          id="outros"
-          titulo="Outros POPs e documentos da empresa"
-          classe="pgg-faixa--outros"
-          linhas={outrosVisiveis}
-          todas={outros}
-          direita={!temConjunto ? <span className="pgg-faixa-direita">{respostaDoResponsavel}</span> : undefined}
-          aoFinalDasLinhas={
-            <>
-              {podeEditar && deModelo && onCriarDeModelo && (
-                <PcModelosPop
-                  pops={pops}
-                  onCancelar={() => setDeModelo(false)}
-                  onEmBranco={() => {
-                    setDeModelo(false);
-                    setAdicionando(true);
-                  }}
-                  onCriar={(modeloId, codigo, titulo) => {
-                    const resultado = onCriarDeModelo(modeloId, codigo, titulo);
-                    if (resultado.ok) setDeModelo(false);
-                    return resultado;
-                  }}
-                />
-              )}
-              {podeEditar && adicionando && (
-                <div className="pgl-adicionar">
-                  <label className="pc-add-code">
-                    <input
-                      className={`ui-input${erro?.campo === "codigo" ? " is-invalid" : ""}`}
-                      value={codigo}
-                      onChange={(evento) => {
-                        setCodigo(evento.target.value);
-                        if (erro?.campo === "codigo") setErro(null);
-                      }}
-                      placeholder="Código (opcional)"
-                      aria-label="Código do POP (opcional)"
-                      aria-invalid={erro?.campo === "codigo"}
-                    />
-                    {erro?.campo === "codigo" && <span className="ui-field-error">{erro.aviso}</span>}
-                  </label>
-                  <label className="pc-add-title">
-                    <span className="ui-field-wrap">
-                      <input
-                        className={`ui-input pc-input-tools${erro?.campo === "titulo" ? " is-invalid" : ""}`}
-                        value={titulo}
-                        onChange={(evento) => {
-                          setTitulo(evento.target.value);
-                          if (erro?.campo === "titulo") setErro(null);
-                        }}
-                        placeholder="Título do POP"
-                        aria-label="Título do POP"
-                        aria-invalid={erro?.campo === "titulo"}
-                      />
-                      <span className="ui-field-tools">
-                        <FieldVoiceTools fieldKey="novo-pop-titulo" value={titulo} onChange={setTitulo} contexto="Título curto e objetivo de um Procedimento Operacional Padronizado." />
-                      </span>
-                    </span>
-                    {erro?.campo === "titulo" && <span className="ui-field-error">{erro.aviso}</span>}
-                  </label>
-                  <button type="button" className="ui-btn ui-btn--secondary" onClick={cancelarAdicao}>
-                    Cancelar
-                  </button>
-                  <button type="button" className="ui-btn ui-btn--save" onClick={adicionar}>
-                    Salvar
-                  </button>
-                </div>
-              )}
-              {outros.length === 0 && <div className="ui-empty">Nenhum outro POP ou documento cadastrado.</div>}
-            </>
-          }
-        />
-        {arquivados > 0 && (
-          <button type="button" className="pc-link-btn pc-self-start" onClick={onVerArquivados}>
-            {verArquivados ? "Ocultar arquivados" : `Ver arquivados (${arquivados})`}
-          </button>
-        )}
+        {linhasDosPops.length === 0 && !adicionando && !deModelo && <div className="ui-empty">Nenhum POP cadastrado.</div>}
+        {linhasDosPops.map((linha) => (
+          <Linha key={linha.chave} linha={linha} podeEditar={podeEditar} onAbrirFicha={onAbrirFicha} onCriarDoModelo={onCriarDoModelo} menu={!linha.definicao && linha.pop ? menuDoOutro(linha.pop) : undefined} />
+        ))}
       </div>
       {mensagem && <div className="ui-note">{mensagem}</div>}
       {avisoLocal && <div className="ui-note" role="status">{avisoLocal}</div>}

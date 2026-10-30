@@ -200,7 +200,7 @@ export type StatusPOP = "Rascunho" | "Aguardando aprovação" | "Em revisão" | 
 export type StatusDaVersao = StatusPOP | "Substituída";
 
 /** Frequência do POP em campo estruturado (rodada 12e). "outra" guarda o texto original. */
-export type TipoDeFrequencia = "diaria" | "semanal" | "mensal" | "outra";
+export type TipoDeFrequencia = "diaria" | "semanal" | "mensal" | "semestral" | "anual" | "outra";
 export type FrequenciaDoPop = { tipo: TipoDeFrequencia; texto?: string };
 
 /** Quem fez uma mudança de estado do POP e por quê (arquivar e inativar exigem motivo, autor e data). */
