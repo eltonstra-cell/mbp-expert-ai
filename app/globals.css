@@ -7328,3 +7328,23 @@ html:root:root body .ini5-venc-texto{flex:1;min-width:0}
 html:root:root body .ini5-venc-n{flex:none;font-weight:500;color:#8A5A00}
 html:root:root body .ini5-venc-n.is-zero{font-weight:400;color:#526477}
 html:root:root body .ini5-venc-seta{flex:none;font-size:22px;color:#526477}
+
+/* RODADA 15 · App desktop (janela instalada): camadas e sombras de tela cheia começam ABAIXO da barra de título (env(titlebar-area-height); no navegador vale 0) */
+html:root:root body :is(.mbp-sheet-layer,.pc-cmd-layer,.pc-dialog-layer,.pc-lightbox,.pc-modal-layer,.campo-sheet-layer,.voz-revisao-camada,.campo-detalhe,.ev7-fundo,.ev7-veu,.chk-cam-fundo,.foto-amp-fundo,.cor-fundo,.aviso-foto-camada,.esc-camada,.cf-camada,.ini-gaveta-camada,.amb-janela-camada,.amb-janela-fundo){top:env(titlebar-area-height,0px)}
+html:root:root body .amb-janela-fundo{height:auto}
+@media (min-width:1100px){
+  html:root:root body .amb-janela{top:env(titlebar-area-height,0px)}
+}
+
+/* RODADA 15 · Respostas marcadas: Conforme verde e Não conforme vermelho com texto branco simples; Não se aplica em cinza claro #E3E7EE, borda 1.5 px #7F8BA3, texto preto e ✓ antes do texto */
+html:root:root body .chk-foco-botoes .chk-resp.is-marcado.chk-resp--ok{border-color:#21805B;background:#21805B;color:#fff}
+html:root:root body .chk-foco-botoes .chk-resp.is-marcado.chk-resp--nc{border-color:#C83F45;background:#C83F45;color:#fff}
+html:root:root body .chk-foco-botoes .chk-resp.is-marcado.chk-resp--ok span,html:root:root body .chk-foco-botoes .chk-resp.is-marcado.chk-resp--nc span{color:#fff}
+html:root:root body .chk-foco-botoes .chk-resp.is-marcado.chk-resp--na{border:1.5px solid #7F8BA3;background:#E3E7EE;color:#000}
+html:root:root body .chk-foco-botoes .chk-resp.is-marcado.chk-resp--na span{color:#000}
+html:root:root body .chk-foco-botoes .chk-resp.is-marcado.chk-resp--ok .chk-resp-check,html:root:root body .chk-foco-botoes .chk-resp.is-marcado.chk-resp--nc .chk-resp-check{display:none}
+html:root:root body .chk-foco-botoes .chk-resp.is-marcado.chk-resp--na .chk-resp-check{display:inline-block}
+html:root:root body .chk-pc-num.is-na,html:root:root body .chk-seg.chk-seg--num.chk-seg--na:not(.is-atual){border:1.5px solid #7F8BA3;background:#E3E7EE;color:#000}
+@media (max-width:519.98px){
+  html[data-modo="campo"]:root:root body .chk-segmentos .chk-seg.chk-seg--num.chk-seg--na{border:0;background:#9AA5B5}
+}

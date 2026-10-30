@@ -45,6 +45,6 @@ export function frasesDaConciliacao(c: Conciliacao): string[] {
 export function avisoDeDivergencia(c: Conciliacao): string | null {
   if (!c.diverge) return null;
   const itens = `${c.itensNaoConformes} ${c.itensNaoConformes === 1 ? "item não conforme" : "itens não conformes"}`;
-  const registradas = `${c.ncsRegistradas} ${c.ncsRegistradas === 1 ? "registrada" : "registradas"}`;
+  const registradas = `${c.ncsRegistradas} ${c.ncsRegistradas === 1 ? "correção registrada" : "correções registradas"}`;
   return `O checklist tem ${itens} e há ${registradas}.`;
 }

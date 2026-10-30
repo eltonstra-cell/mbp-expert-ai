@@ -84,3 +84,11 @@ test("13h: CSS da janela (linhas de 44 px, atual #E3F4F4, painel à direita só 
   const campoItem = lerFonte("components/ChecklistFocoItem.tsx");
   assert.ok(campoItem.includes('className="chk-fonte-ver"') && campoItem.includes("fonteParaExibir(item.referencia) !== SEM_FONTE"));
 });
+
+test("rodada 15: camadas abaixo da barra de título, respostas marcadas e aviso de divergência em 'correções registradas'", () => {
+  const css = lerFonte("app/globals.css");
+  assert.ok(css.includes(".amb-janela-camada,.amb-janela-fundo){top:env(titlebar-area-height,0px)}") && css.includes("html:root:root body .amb-janela{top:env(titlebar-area-height,0px)}"));
+  assert.ok(css.includes("chk-resp--na{border:1.5px solid #7F8BA3;background:#E3E7EE;color:#000}"));
+  assert.ok(css.includes("chk-resp--ok{border-color:#21805B;background:#21805B;color:#fff}") && css.includes("chk-resp--nc{border-color:#C83F45;background:#C83F45;color:#fff}"));
+  assert.ok(css.includes(".chk-pc-num.is-na,html:root:root body .chk-seg.chk-seg--num.chk-seg--na:not(.is-atual){border:1.5px solid #7F8BA3;background:#E3E7EE;color:#000}"));
+});

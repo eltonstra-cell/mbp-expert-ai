@@ -59,5 +59,5 @@ test("aviso de divergência só aparece quando há divergência real", () => {
   const ok = conciliarNcs(checklist, [{ id: "n1", checklistItemId: "i1" }, { id: "n2", checklistItemId: "i2" }]);
   assert.equal(avisoDeDivergencia(ok), null);
   const falta = conciliarNcs(checklist, [{ id: "n1", checklistItemId: "i1" }]);
-  assert.equal(avisoDeDivergencia(falta), "O checklist tem 2 itens não conformes e há 1 registrada.");
+  assert.equal(avisoDeDivergencia(falta), "O checklist tem 2 itens não conformes e há 1 correção registrada.");
 });
