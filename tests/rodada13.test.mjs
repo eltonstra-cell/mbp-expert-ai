@@ -65,19 +65,19 @@ test("13g: telas ligadas à janela, ao seletor e às linhas novas", () => {
   const foco = lerFonte("components/ChecklistFocoItem.tsx");
   assert.ok(foco.includes("chk-amb-botao") && foco.includes("chk-pergunta-barra") && foco.includes("Pergunta {indice + 1} de {fila.length}"));
   const janela = lerFonte("components/AmbientesCortina.tsx");
-  assert.ok(janela.includes('placeholder="Buscar ambiente"') && janela.includes("createPortal") && janela.includes('aria-modal="true"'));
+  assert.ok(janela.includes("Buscar entre ${ambientes.length} ambientes") && janela.includes("createPortal") && janela.includes('role="listbox"') && !janela.includes("aria-modal") && janela.includes("ArrowDown") && janela.includes("Escape") && janela.includes("pointerdown"));
   const inicio = lerFonte("components/pc/PcInicio.tsx");
   assert.ok(inicio.includes("Vencimentos em 30 dias") && inicio.includes("cartao.divergencia"));
   const page = lerFonte("app/page.tsx");
   assert.ok(page.includes("destinoDoAvanco(lista, item.id)") && page.includes("Checklist concluído."));
 });
 
-test("13h: CSS da janela (linhas de 44 px, atual #E3F4F4, painel à direita só a partir de 1100 px)", () => {
+test("13h: CSS da lista suspensa (linhas de 44 px, atual #E3F4F4, sem painel lateral)", () => {
   const css = lerFonte("app/globals.css");
-  assert.ok(css.includes("height:44px;padding:0 20px 0 17px"));
-  assert.ok(css.includes(".amb-janela-linha.is-atual{border-left-color:#21A3A3;background:#E3F4F4"));
-  assert.ok(/html:root:root body .amb-janela{position:fixed;inset:auto 0 0 0/.test(css) && css.includes("html:root:root body .amb-janela{inset:0 0 0 auto;width:min(520px,100vw)"));
-  assert.ok(css.includes(".amb-janela-fundo{position:fixed;inset:0;"));
+  assert.ok(css.includes("height:44px;padding:0 16px 0 13px;border-left:3px solid transparent"));
+  assert.ok(css.includes(".amb-lista-linha.is-atual{border-left-color:#21A3A3;background:#E3F4F4;font-weight:500}"));
+  assert.ok(css.includes(".amb-lista{position:fixed;") && css.includes("border:1px solid #D6DCE5;border-radius:12px") && css.includes('.chk-amb-botao[aria-expanded="true"]{border-width:2px;border-color:#21A3A3}'));
+  assert.equal(css.includes(".amb-janela"), false, "sem painel lateral nem sombra de tela");
   // Rodada 14: respostas do PC com 16 px e texto preto; Salvar e próximo compacto; Ver fonte
   assert.ok(css.includes('.chk-foco-botoes .chk-resp:not(.is-marcado),html:not([data-modo="campo"]):root:root body .chk-foco-botoes .chk-resp:not(.is-marcado) span{color:#000}'));
   assert.ok(css.includes("ui-btn.ui-btn--save{flex:none;width:auto;max-width:none;height:44px"));
@@ -87,7 +87,7 @@ test("13h: CSS da janela (linhas de 44 px, atual #E3F4F4, painel à direita só 
 
 test("rodada 15: camadas abaixo da barra de título, respostas marcadas e aviso de divergência em 'correções registradas'", () => {
   const css = lerFonte("app/globals.css");
-  assert.ok(css.includes(".amb-janela-camada,.amb-janela-fundo){top:env(titlebar-area-height,0px)}") && css.includes("html:root:root body .amb-janela{top:env(titlebar-area-height,0px)}"));
+  assert.ok(css.includes(".ini-gaveta-camada){top:env(titlebar-area-height,0px)}"));
   assert.ok(css.includes("chk-resp--na{border:1.5px solid #7F8BA3;background:#E3E7EE;color:#000}"));
   assert.ok(css.includes("chk-resp--ok{border-color:#21805B;background:#21805B;color:#fff}") && css.includes("chk-resp--nc{border-color:#C83F45;background:#C83F45;color:#fff}"));
   assert.ok(css.includes(".chk-pc-num.is-na,html:root:root body .chk-seg.chk-seg--num.chk-seg--na:not(.is-atual){border:1.5px solid #7F8BA3;background:#E3E7EE;color:#000}"));

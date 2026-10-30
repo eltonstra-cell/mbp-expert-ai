@@ -26,7 +26,7 @@ test("B3: a lista de ambientes tem colunas fixas e não escreve 'Sem NCs'", () =
   // Rodada 13: a lista virou a janela de ambientes (linhas de 44 px, contagem à direita); a NC fica só para o leitor de tela.
   assert.equal(comp.includes("Sem NCs"), false);
   assert.ok(comp.includes("não conformidade") && comp.includes("sr-only"), "NC só para leitor de tela");
-  assert.ok(css.includes("height:44px;padding:0 20px 0 17px"));
+  assert.ok(css.includes("height:44px;padding:0 16px 0 13px;border-left:3px solid transparent"));
 });
 
 // ===== Rodada 9B =====

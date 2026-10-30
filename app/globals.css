@@ -7264,31 +7264,21 @@ html:root:root body .chk-pergunta-barra{display:none}
 html:not([data-modo="campo"]):root:root body .chk-foco-rodape .ui-btn--secondary.ui-btn--secondary{border:0;background:#E9E6E1;color:#1B2433}
 html:root:root body .chk-foco-rodape .ui-btn{border-radius:10px}
 
-.amb-janela-camada{position:fixed;inset:0;z-index:1200}
-.amb-janela-fundo{position:fixed;inset:0;width:100%;height:100%;padding:0;border:0;background:rgba(27,36,51,.45);cursor:default}
-html:root:root body .amb-janela{position:fixed;inset:auto 0 0 0;z-index:1;margin:0;transform:none;box-sizing:border-box;max-width:100vw;display:flex;flex-direction:column;max-height:min(88vh,780px);padding:8px 20px 12px;border-radius:24px 24px 0 0;background:#fff;color:#1B2433;box-shadow:0 -8px 32px rgba(27,36,51,.2);outline:none}
-.amb-janela-alca{align-self:center;width:44px;height:5px;margin:0 0 10px;border-radius:3px;background:#C9D0DE}
-.amb-janela-topo{display:flex;flex:none;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
-.amb-janela-titulo{margin:0;font-family:var(--font-display),"Outfit",sans-serif;font-size:21px;font-weight:500;line-height:1.25;color:#1B2433}
-.amb-janela-resumo{margin:2px 0 0;font-size:15px;color:#526477}
-html:root:root body .amb-janela-fechar{display:grid;flex:none;place-items:center;width:40px;height:40px;padding:0;border:0;border-radius:50%;background:#E9E6E1;color:#1B2433;cursor:pointer}
-html:root:root body .amb-janela-busca{box-sizing:border-box;display:flex;flex:none;align-items:center;gap:8px;height:44px;margin:0 0 8px;padding:0 14px;border:1.5px solid #7F8BA3;border-radius:22px;background:#fff;color:#526477}
-html:root:root body .amb-janela-busca:focus-within{border-color:#264A80}
-html:root:root body .amb-janela-busca input{flex:1;min-width:0;height:100%;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none;outline:none;font:inherit;font-size:16px;color:#1B2433}
-.amb-janela-lista{flex:1 1 auto;min-height:0;margin:0 -20px;padding:0;overflow-y:auto;list-style:none}
-html:root:root body .amb-janela-linha{box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;height:44px;padding:0 20px 0 17px;border:0;border-left:3px solid transparent;border-radius:0;background:transparent;color:#1B2433;font:inherit;font-size:16px;font-weight:400;text-align:left;cursor:pointer}
-html:root:root body .amb-janela-linha:hover{background:#F2F6F6}
-html:root:root body .amb-janela-linha:focus-visible{outline:3px solid #264A80;outline-offset:-3px}
-html:root:root body .amb-janela-linha.is-atual{border-left-color:#21A3A3;background:#E3F4F4;font-weight:500}
-.amb-janela-nome{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.amb-janela-conta{flex:none;font-size:15px;color:#526477}
-.amb-janela-linha.is-atual .amb-janela-conta{color:#168080}
-.amb-janela-feito{flex:none;font-size:16px;color:#21805B}
-.amb-janela-vazio{padding:14px 20px;font-size:15px;color:#526477}
-@media (min-width:1100px){
-  html:root:root body .amb-janela{inset:0 0 0 auto;width:min(520px,100vw);max-height:none;padding:24px 20px 16px;border-radius:0;box-shadow:-8px 0 32px rgba(27,36,51,.2)}
-  .amb-janela-alca{display:none}
-}
+/* RODADA 16 · Checklist: lista suspensa de ambientes logo abaixo da caixa (sem painel lateral, sem sombra na tela) */
+html:root:root body .chk-amb-botao[aria-expanded="true"]{border-width:2px;border-color:#21A3A3}
+.amb-lista{position:fixed;z-index:1200;box-sizing:border-box;display:flex;flex-direction:column;overflow:hidden;border:1px solid #D6DCE5;border-radius:12px;background:#fff;color:#1B2433;box-shadow:0 6px 18px rgba(27,36,51,.12)}
+html:root:root body .amb-lista-busca{box-sizing:border-box;display:flex;flex:none;align-items:center;gap:8px;height:44px;margin:8px 8px 4px;padding:0 14px;border:1.5px solid #7F8BA3;border-radius:22px;background:#fff;color:#526477}
+html:root:root body .amb-lista-busca:focus-within{border-color:#264A80}
+html:root:root body .amb-lista-busca input{flex:1;min-width:0;height:100%;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none;outline:none;font:inherit;font-size:16px;color:#1B2433}
+.amb-lista-opcoes{flex:1 1 auto;min-height:0;margin:0;padding:0 0 6px;overflow-y:auto;list-style:none}
+.amb-lista-linha{box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:12px;height:44px;padding:0 16px 0 13px;border-left:3px solid transparent;font-size:16px;font-weight:400;cursor:pointer}
+.amb-lista-linha.is-realce{background:#F2F6F6}
+.amb-lista-linha.is-atual{border-left-color:#21A3A3;background:#E3F4F4;font-weight:500}
+.amb-lista-nome{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.amb-lista-conta{flex:none;font-size:15px;color:#526477}
+.amb-lista-linha.is-atual .amb-lista-conta{color:#168080}
+.amb-lista-feito{flex:none;font-size:16px;color:#21805B}
+.amb-lista-vazio{padding:14px 16px;font-size:15px;color:#526477}
 
 /* RODADA 14 · Checklist (PC): respostas com 16 px e texto preto quando não marcadas; "Salvar e próximo →" compacto (44 px, largura do texto) */
 html:not([data-modo="campo"]):root:root body .chk-foco-botoes .chk-resp,html:not([data-modo="campo"]):root:root body .chk-foco-botoes .chk-resp span{font-size:16px}
@@ -7330,11 +7320,7 @@ html:root:root body .ini5-venc-n.is-zero{font-weight:400;color:#526477}
 html:root:root body .ini5-venc-seta{flex:none;font-size:22px;color:#526477}
 
 /* RODADA 15 · App desktop (janela instalada): camadas e sombras de tela cheia começam ABAIXO da barra de título (env(titlebar-area-height); no navegador vale 0) */
-html:root:root body :is(.mbp-sheet-layer,.pc-cmd-layer,.pc-dialog-layer,.pc-lightbox,.pc-modal-layer,.campo-sheet-layer,.voz-revisao-camada,.campo-detalhe,.ev7-fundo,.ev7-veu,.chk-cam-fundo,.foto-amp-fundo,.cor-fundo,.aviso-foto-camada,.esc-camada,.cf-camada,.ini-gaveta-camada,.amb-janela-camada,.amb-janela-fundo){top:env(titlebar-area-height,0px)}
-html:root:root body .amb-janela-fundo{height:auto}
-@media (min-width:1100px){
-  html:root:root body .amb-janela{top:env(titlebar-area-height,0px)}
-}
+html:root:root body :is(.mbp-sheet-layer,.pc-cmd-layer,.pc-dialog-layer,.pc-lightbox,.pc-modal-layer,.campo-sheet-layer,.voz-revisao-camada,.campo-detalhe,.ev7-fundo,.ev7-veu,.chk-cam-fundo,.foto-amp-fundo,.cor-fundo,.aviso-foto-camada,.esc-camada,.cf-camada,.ini-gaveta-camada){top:env(titlebar-area-height,0px)}
 
 /* RODADA 15 · Respostas marcadas: Conforme verde e Não conforme vermelho com texto branco simples; Não se aplica em cinza claro #E3E7EE, borda 1.5 px #7F8BA3, texto preto e ✓ antes do texto */
 html:root:root body .chk-foco-botoes .chk-resp.is-marcado.chk-resp--ok{border-color:#21805B;background:#21805B;color:#fff}

@@ -320,13 +320,13 @@ export default function ChecklistFocoItem({
                 <button
                   type="button"
                   className="chk-amb-botao"
-                  aria-haspopup="dialog"
+                  aria-haspopup="listbox"
                   aria-expanded={aberto}
                   aria-label={`Ambiente: ${ambienteRotulo}. Trocar de ambiente`}
                   onClick={alternar}
                 >
                   <span className="chk-amb-botao-nome">{ambienteRotulo}</span>
-                  <span className="chk-amb-botao-seta" aria-hidden="true">▾</span>
+                  <span className="chk-amb-botao-seta" aria-hidden="true">{aberto ? "▴" : "▾"}</span>
                 </button>
                 <span className="chk-foco-amb-resp" role="status">
                   {ambientes ? linhaDeProgressoDoAmbiente(ambientes, item.ambiente) : ""}

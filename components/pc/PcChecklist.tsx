@@ -166,9 +166,9 @@ export default function PcChecklist({ titulo, subtitulo, ambientes, ambienteAtua
                 atual={ambienteAtual}
                 onSelecionar={onAmbiente}
                 renderBotao={({ aberto, alternar }) => (
-                  <button type="button" className="chk-amb-botao" aria-haspopup="dialog" aria-expanded={aberto} aria-label={`Ambiente: ${infoAtual?.rotulo || ambienteAtual}. Trocar de ambiente`} onClick={alternar}>
+                  <button type="button" className="chk-amb-botao" aria-haspopup="listbox" aria-expanded={aberto} aria-label={`Ambiente: ${infoAtual?.rotulo || ambienteAtual}. Trocar de ambiente`} onClick={alternar}>
                     <span className="chk-amb-botao-nome">{infoAtual?.rotulo || ambienteAtual}</span>
-                    <span className="chk-amb-botao-seta" aria-hidden="true">▾</span>
+                    <span className="chk-amb-botao-seta" aria-hidden="true">{aberto ? "▴" : "▾"}</span>
                   </button>
                 )}
               />
