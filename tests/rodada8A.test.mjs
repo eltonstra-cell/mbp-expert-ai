@@ -281,7 +281,6 @@ test("A7(a) revisão: CNAE fora do formato só bloqueia o salvar em empresa nova
 });
 
 test("revisão 2 e 4: o Manual recebe o tipo efetivo; a consulta de CNPJ não apaga o ajuste do usuário", () => {
-  assert.ok(lerFonte("app/page.tsx").includes("<ManualBaseFields tipoDoEstabelecimento={tipoDoForm.rotulo}"));
   assert.equal(consultaPodeTrocarOTipo("Outro"), true);
   assert.equal(consultaPodeTrocarOTipo(""), true);
   assert.equal(consultaPodeTrocarOTipo("Lanchonete"), false);

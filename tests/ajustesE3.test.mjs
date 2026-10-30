@@ -122,13 +122,11 @@ test("3.3 Identificação complementar: contagem, completo/pendente e pré-preen
 });
 
 test("3.3 Identificação complementar: cartão recolhível, 3 colunas, campos de 40 px, selo 'do perfil do RT'", () => {
-  const c = ler("../components/IdentificacaoComplementar.tsx");
-  assert.ok(c.includes("useState(!completa)") && c.includes("do perfil do RT") && c.includes("Pendente") && c.includes("resumoDaIdentificacao"));
-  const css = ler("../app/globals.css");
-  assert.match(css, /\.idc-grade\{display:grid;grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
-  assert.match(css, /\.idc-input\{[^}]*height:40px/);
+  // Rodada 3: a Identificação complementar vive em PcManualDocumento (acordeão, "N de 10", máscaras), no lugar do componente antigo.
+  const c = ler("../components/pc/PcManualDocumento.tsx");
+  assert.ok(c.includes("do perfil do RT") && c.includes("{preenchidos} de {total}"));
   const page = ler("../app/page.tsx");
-  assert.ok(page.includes("<IdentificacaoComplementar") && page.includes("prefillDoPerfilDoRt("));
+  assert.ok(page.includes("<PcManualDocumento") && page.includes("prefillDoPerfilDoRt("));
   assert.equal(page.includes("camposIdentificacaoManual"), false);
 });
 

@@ -4,6 +4,8 @@ import Select from "@/components/Select";
 import { useEffect, useRef, useState, type DragEvent } from "react";
 import { mostrarToast } from "@/lib/toast";
 import { ListRow } from "@/components/ui/ListRow";
+import MenuMais from "@/components/pc/MenuMais";
+import { ordenarPorAtencao } from "@/lib/documentosCentral";
 import { Pill, type Tom } from "@/components/ui/Pill";
 import {
   ROTULO_DA_VALIDADE,
@@ -97,7 +99,9 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
   const [erro, setErro] = useState("");
   const entrada = useRef<HTMLInputElement | null>(null);
 
-  const vigentes = comprovantesVigentes(comprovantes).sort((a, b) => a.validade.localeCompare(b.validade));
+  // Na Central (Documentos › Comprovantes) a lista vem sem caixas e ordenada pelo que precisa de atenção primeiro; na ficha do POP segue como era.
+  const central = embutido && !popFixo;
+  const vigentes = central ? ordenarPorAtencao(comprovantesVigentes(comprovantes), hoje) : comprovantesVigentes(comprovantes).sort((a, b) => a.validade.localeCompare(b.validade));
   // Renovados de agora em diante ficam na lista com a etiqueta "Substituído" e fora das contagens (os antigos, sem o campo, seguem como estavam).
   const substituidos = comprovantes.filter((item) => Boolean(item.substituidoPor)).sort((a, b) => b.validade.localeCompare(a.validade));
   const contagem = contarPorValidade(vigentes, hoje);
@@ -117,7 +121,7 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
 
   // O "POP vinculado" acompanha o "Tipo": só vem preenchido quando o tipo combina com um POP que existe.
   useEffect(() => {
-    if (popFixo || !formAberto || editando) return;
+    if (popFixo || !formAberto || editando || dados.renovaId) return;
     if (!sugestaoDePop) return;
     setDados((atual) => {
       const novo = sugestaoDePop.situacao === "existe" ? sugestaoDePop.popId : undefined;
@@ -184,8 +188,29 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
   const campo = (nome: keyof DadosDoFormulario, valor: string) => setDados((atual) => ({ ...atual, [nome]: valor }));
 
   return (
-    <section className={`${embutido ? "ui-embed comp--embutido" : "ui-screen"} comp`} aria-label="Comprovantes e documentos com validade">
-      <div className="ui-head">
+    <section className={`${embutido ? "ui-embed comp--embutido" : "ui-screen"} comp${central ? " comp--central" : ""}`} aria-label="Comprovantes e documentos com validade">
+      {central && (
+        <div className="cdoc-titulo">
+          <div>
+            <h2 className="cdoc-h">Comprovantes</h2>
+            <p className="comp-resumo" role="group" aria-label="Situação dos comprovantes">
+              <span className="comp-resumo--nc">{contagem.vencidos} {contagem.vencidos === 1 ? "vencido" : "vencidos"}</span>
+              {" · "}
+              <span className="comp-resumo--pend">{contagem.venceEmBreve} {contagem.venceEmBreve === 1 ? "vence" : "vencem"} em 30 dias</span>
+              {" · "}
+              <span className="comp-resumo--ok">{contagem.emDia} em dia</span>
+            </p>
+            <p className="cdoc-sub cdoc-sub--pequeno">Ordenados pelo que precisa de atenção primeiro.</p>
+          </div>
+          {podeGerenciar && !formAberto && (
+            <button type="button" className="ui-btn ui-btn--laranja comp-anexar" onClick={() => abrir(vazio(tipoPadrao))}>
+              + Anexar comprovante
+            </button>
+          )}
+        </div>
+      )}
+      <div className={central ? "cdoc-lista" : "comp-corpo"}>
+      <div className="ui-head" hidden={central}>
         {embutido && <h3 className="reg-bloco-titulo">Comprovantes</h3>}
         {!embutido && (
           <div>
@@ -207,7 +232,7 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
         </div>
       </div>
 
-      <div className="comp-chips" role="group" aria-label="Situação dos comprovantes">
+      <div className="comp-chips" role="group" aria-label="Situação dos comprovantes" hidden={central}>
         <span className="comp-chip comp-chip--nc"><b>{contagem.vencidos}</b> vencidos</span>
         <span className="comp-chip comp-chip--pend"><b>{contagem.venceEmBreve}</b> vencem em 30 dias</span>
         <span className="comp-chip comp-chip--ok"><b>{contagem.emDia}</b> em dia</span>
@@ -396,7 +421,7 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
         {vigentes.length + substituidos.length === 0 ? (
           <div className="ui-empty">{mensagemVazia || "Nenhum comprovante anexado. Anexe o certificado de controle de pragas, da limpeza do reservatório ou o contrato do RT."}</div>
         ) : (
-          <div className="ui-list">
+          <div className="ui-list" role={central ? "list" : undefined}>
             {[...vigentes, ...substituidos].map((item) => {
               const substituido = Boolean(item.substituidoPor);
               const situacao = substituido ? "sem-validade" : situacaoDaValidade(item.validade, hoje);
@@ -410,6 +435,46 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
               const dias = diasEntre(hoje, item.validade);
               const detalhe = situacao === "vencido" ? `venceu há ${quantidade(Math.abs(dias), "dia", "dias")}` : dias === 0 ? "vence hoje" : `vence em ${quantidade(dias, "dia", "dias")}`;
               const codigo = item.popId ? codigoDoPop.get(item.popId) : undefined;
+              if (central) {
+                const estado = substituido ? "Substituído" : situacao === "vencido" ? `Vencido há ${quantidade(Math.abs(dias), "dia", "dias")}` : situacao === "vence-em-breve" ? (dias === 0 ? "Vence hoje" : `Vence em ${quantidade(dias, "dia", "dias")}`) : situacao === "sem-validade" ? "Sem validade" : "Em dia";
+                const itensDoMenu = [
+                  ...(item.blobPathname ? [{ rotulo: "Abrir arquivo", onClick: () => window.open(urlDoArquivo(item), "_blank", "noopener,noreferrer") }] : []),
+                  ...(podeGerenciar && !substituido
+                    ? [
+                        { rotulo: "Renovar", assumeFoco: true, onClick: () => abrir({ tipo: item.tipo, emissor: item.emissor, dataServico: "", validade: "", observacao: "", renovaId: item.id, ...(item.popId ? { popId: item.popId } : {}) }) },
+                        ...(onAlterarPop && listaDePops.some((pop) => !pop.arquivado) ? [{ rotulo: "Alterar POP vinculado", assumeFoco: true, onClick: () => setAlterandoPop({ id: item.id, popId: item.popId || "" }) }] : []),
+                        { rotulo: "Editar", assumeFoco: true, onClick: () => abrir({ id: item.id, tipo: item.tipo, emissor: item.emissor, dataServico: item.dataServico, validade: item.validade, observacao: item.observacao, ...(item.popId ? { popId: item.popId } : {}) }) },
+                        { rotulo: "Remover comprovante", perigo: true, assumeFoco: true, onClick: () => void confirmar("Remover este comprovante? O arquivo anexado também será apagado.", { titulo: "Remover comprovante", confirmarRotulo: "Remover", cancelarRotulo: "Cancelar" }).then((ok) => ok && onRemover(item)) },
+                      ]
+                    : []),
+                ];
+                return (
+                  <div key={item.id} className="comp-linha" role="listitem">
+                    <span className={`comp-bolinha comp-bolinha--${substituido ? "sem-validade" : situacao}`} aria-hidden="true" />
+                    <span className="comp-l-textos">
+                      <span className="comp-l-titulo">{rotuloDoTipo(item.tipo)}</span>
+                      <span className="comp-l-sub">
+                        {item.popId ? codigo || "POP" : "Sem POP vinculado"} · {situacao === "vencido" ? "venceu" : "vence"} {dataBr(item.validade)}
+                        {item.emissor ? ` · ${item.emissor}` : ""}
+                        {item.observacao ? ` · ${item.observacao}` : ""}
+                      </span>
+                      {tarja && (
+                        <span className="comp-tarja" role="note">
+                          <span>{tarja.texto}</span>
+                          {podeGerenciar && tarja.acao === "criar" && onCriarPopDoModelo && (
+                            <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={criarPopDaTarja}>Criar agora</button>
+                          )}
+                          {podeGerenciar && tarja.acao !== "criar" && onAlterarPop && (
+                            <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => setAlterandoPop({ id: item.id, popId: tarja.popSugeridoId || "" })}>{tarja.acao === "vincular" ? "Vincular" : "Mover"}</button>
+                          )}
+                        </span>
+                      )}
+                    </span>
+                    <span className={`comp-l-estado comp-l-estado--${substituido ? "sem-validade" : situacao}`}>{estado}</span>
+                    {itensDoMenu.length > 0 ? <MenuMais rotulo={`Mais ações de ${rotuloDoTipo(item.tipo)}`} itens={itensDoMenu} /> : <span className="comp-l-semmenu" />}
+                  </div>
+                );
+              }
               return (
                 <ListRow
                   key={item.id}
@@ -477,6 +542,7 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
             })}
           </div>
         )}
+      </div>
       </div>
     </section>
   );

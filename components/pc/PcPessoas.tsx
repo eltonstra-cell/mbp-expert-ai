@@ -3,9 +3,10 @@
 import Select from "@/components/Select";
 import { limparTextoDePessoa, nomeProprio } from "@/lib/nomeCargo";
 import { useState } from "react";
-import { ListRow } from "@/components/ui/ListRow";
 import { Pill, type Tom } from "@/components/ui/Pill";
-import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
+import Janela from "@/components/ui/Janela";
+import MenuMais from "@/components/pc/MenuMais";
+import { AVISO_DADOS_DE_SAUDE_PESSOA, LIMITE_CARGO_DA_PESSOA, LIMITE_NOME_DA_PESSOA, nomeRepetidoDePessoa, subtituloDePessoas, treinamentoDaPessoa } from "@/lib/documentosCentral";
 import { hojeISO } from "@/lib/popsNorma";
 import {
   AVISO_PRAZO_DE_CAPACITACAO,
@@ -52,6 +53,7 @@ export default function PcPessoas({ empresa, normas, colaboradores, capacitacoes
   const [aba, setAba] = useState<Aba>("colaboradores");
   const [pessoa, setPessoa] = useState<DadosDoColaboradorForm>({ nome: "", cargo: "" });
   const [pessoaTocada, setPessoaTocada] = useState(false);
+  const [janelaAberta, setJanelaAberta] = useState(false);
   const vazia = (): DadosDaCapacitacaoForm => ({ colaboradorId: "", conteudo: "", cargaHoraria: "", data: "", venceEm: "", instrutor: "" });
   const [cap, setCap] = useState<DadosDaCapacitacaoForm>(vazia);
   const [capTocada, setCapTocada] = useState(false);
@@ -66,12 +68,29 @@ export default function PcPessoas({ empresa, normas, colaboradores, capacitacoes
   const vigentes = capacitacoesVigentes(capacitacoes);
   const linhas = [...capacitacoes].sort((a, b) => b.data.localeCompare(a.data));
 
-  function salvarPessoa() {
-    setPessoaTocada(true);
-    if (Object.keys(errosPessoa).length) return;
-    onSalvarColaborador({ ...pessoa, nome: nomeProprio(pessoa.nome), cargo: limparTextoDePessoa(pessoa.cargo) });
+  function abrirNova() {
     setPessoa({ nome: "", cargo: "" });
     setPessoaTocada(false);
+    setJanelaAberta(true);
+  }
+
+  function abrirEdicao(item: Colaborador) {
+    setPessoa({ id: item.id, nome: item.nome, cargo: item.cargo });
+    setPessoaTocada(false);
+    setJanelaAberta(true);
+  }
+
+  function fecharJanela() {
+    setJanelaAberta(false);
+    setPessoa({ nome: "", cargo: "" });
+    setPessoaTocada(false);
+  }
+
+  function salvarPessoa() {
+    setPessoaTocada(true);
+    if (Object.keys(errosPessoa).length || nomeRepetidoDePessoa(pessoa.nome, colaboradores.map((item) => ({ id: item.id, nome: item.nome })), pessoa.id)) return;
+    onSalvarColaborador({ ...pessoa, nome: nomeProprio(pessoa.nome), cargo: limparTextoDePessoa(pessoa.cargo) });
+    fecharJanela();
   }
 
   function salvarCapacitacao() {
@@ -81,6 +100,10 @@ export default function PcPessoas({ empresa, normas, colaboradores, capacitacoes
     setCap(vazia());
     setCapTocada(false);
   }
+
+  const pessoasParaChecar = colaboradores.map((item) => ({ id: item.id, nome: item.nome }));
+  const erroDoNome = nomeRepetidoDePessoa(pessoa.nome, pessoasParaChecar, pessoa.id) ? "Já existe uma pessoa com este nome." : pessoaTocada && errosPessoa.nome ? errosPessoa.nome : "";
+  const erroDoCargo = pessoaTocada && errosPessoa.cargo ? errosPessoa.cargo : "";
 
   return (
     <section className={`${embutido ? "ui-embed pess--embutido" : "ui-screen"} pess`} aria-label="Pessoas da empresa">
@@ -96,68 +119,78 @@ export default function PcPessoas({ empresa, normas, colaboradores, capacitacoes
         </div>
       )}
 
-      <SegmentedTabs<Aba>
-        rotulo="Pessoas"
-        valor={aba}
-        onChange={setAba}
-        abas={[
-          { id: "colaboradores", rotulo: "Colaboradores", contagem: ativos.length },
-          { id: "capacitacao", rotulo: "Capacitação", contagem: vigentes.length },
-        ]}
-      />
+      <div className="cdoc-titulo">
+        <div>
+          <h2 className="cdoc-h">Pessoas</h2>
+          <p className="cdoc-sub">{subtituloDePessoas(ativos.length)}</p>
+        </div>
+        <button type="button" className="ui-btn ui-btn--laranja" onClick={abrirNova}>
+          + Adicionar pessoa
+        </button>
+      </div>
+
+      <div className="cdoc-abas" role="tablist" aria-label="Pessoas">
+        {([["colaboradores", "Colaboradores", ativos.length], ["capacitacao", "Capacitação", vigentes.length]] as [Aba, string, number][]).map(([id, rotulo, conta]) => (
+          <button key={id} type="button" role="tab" aria-selected={aba === id} className={`cdoc-aba${aba === id ? " is-ativa" : ""}`} onClick={() => setAba(id)}>
+            {rotulo} <span className="cdoc-aba-conta">{conta}</span>
+          </button>
+        ))}
+      </div>
 
       {aba === "colaboradores" && (
-        <div className="pess-cols">
-          <div className="pess-lista">
-            {colaboradores.length === 0 ? (
-              <div className="ui-empty">Nenhuma pessoa cadastrada. Cadastre a equipe para registrar leituras de POP e capacitações.</div>
-            ) : (
-              <div className="ui-list">
-                {[...colaboradores]
-                  .sort((a, b) => Number(b.ativo) - Number(a.ativo) || a.nome.localeCompare(b.nome, "pt-BR"))
-                  .map((item) => (
-                    <ListRow
-                      key={item.id}
-                      faixa={item.ativo ? "info" : "na"}
-                      esmaecida={!item.ativo}
-                      icone={<span aria-hidden="true">{item.nome.slice(0, 1).toUpperCase()}</span>}
-                      titulo={item.nome}
-                      secundario={item.cargo}
-                      pilulas={<Pill tom={item.ativo ? "ok" : "na"}>{item.ativo ? "Ativo" : "Inativo"}</Pill>}
-                      menu={[
-                        { rotulo: "Editar", onClick: () => setPessoa({ id: item.id, nome: item.nome, cargo: item.cargo }) },
+        <div className="cdoc-lista" role="list">
+          {colaboradores.length === 0 ? (
+            <div className="ui-empty">Nenhuma pessoa cadastrada. Cadastre a equipe para registrar leituras de POP e capacitações.</div>
+          ) : (
+            [...colaboradores]
+              .sort((a, b) => Number(b.ativo) - Number(a.ativo) || a.nome.localeCompare(b.nome, "pt-BR"))
+              .map((item) => {
+                const estado = treinamentoDaPessoa(item, capacitacoes, hoje);
+                return (
+                  <div key={item.id} role="listitem" className={`pess-linha-p${item.ativo ? "" : " is-inativa"}`}>
+                    <span className="pess-avatar" aria-hidden="true">{item.nome.slice(0, 1).toUpperCase()}</span>
+                    <span className="pess-textos">
+                      <span className="pess-nome">{item.nome}</span>
+                      <span className="pess-cargo">{item.cargo}</span>
+                    </span>
+                    <span className={`pess-estado pess-estado--${estado.id}`}>{estado.texto}</span>
+                    <MenuMais
+                      rotulo={`Mais ações de ${item.nome}`}
+                      itens={[
+                        { rotulo: "Editar", assumeFoco: true, onClick: () => abrirEdicao(item) },
                         { rotulo: item.ativo ? "Desativar" : "Reativar", onClick: () => onAlternarAtivo(item.id) },
                       ]}
                     />
-                  ))}
-              </div>
-            )}
-          </div>
-          <div className="ui-card pess-form">
-            <h2 className="ui-card-title">{pessoa.id ? "Editar pessoa" : "Cadastrar pessoa"}</h2>
-            <label className="pc-field">
-              <span className="ui-eyebrow">Nome</span>
-              <input className={`ui-input${pessoaTocada && errosPessoa.nome ? " is-invalid" : ""}`} value={pessoa.nome} onChange={(evento) => setPessoa({ ...pessoa, nome: evento.target.value })} aria-invalid={Boolean(pessoaTocada && errosPessoa.nome)} />
-              {pessoaTocada && errosPessoa.nome && <span className="ui-field-error">{errosPessoa.nome}</span>}
-            </label>
-            <label className="pc-field">
-              <span className="ui-eyebrow">Cargo</span>
-              <input className={`ui-input${pessoaTocada && errosPessoa.cargo ? " is-invalid" : ""}`} value={pessoa.cargo} onChange={(evento) => setPessoa({ ...pessoa, cargo: evento.target.value })} aria-invalid={Boolean(pessoaTocada && errosPessoa.cargo)} />
-              {pessoaTocada && errosPessoa.cargo && <span className="ui-field-error">{errosPessoa.cargo}</span>}
-            </label>
-            <p className="ui-row-sub">Guardamos só nome e cargo (e as datas dos treinamentos). Não é conta de acesso, e CPF, dados de saúde, foto e nascimento não entram aqui.</p>
-            <div className="comp-form-acoes">
-              {pessoa.id && (
-                <button type="button" className="ui-btn ui-btn--secondary" onClick={() => { setPessoa({ nome: "", cargo: "" }); setPessoaTocada(false); }}>
-                  Cancelar
-                </button>
-              )}
-              <button type="button" className="ui-btn ui-btn--save" onClick={salvarPessoa}>
-                Salvar pessoa
-              </button>
-            </div>
-          </div>
+                  </div>
+                );
+              })
+          )}
         </div>
+      )}
+
+      {janelaAberta && (
+        <Janela
+          titulo={pessoa.id ? "Editar pessoa" : "Adicionar pessoa"}
+          onFechar={fecharJanela}
+          rodape={
+            <>
+              <button type="button" className="ui-btn ui-btn--secondary" onClick={fecharJanela}>Cancelar</button>
+              <button type="button" className="ui-btn ui-btn--save" onClick={salvarPessoa}>Salvar pessoa</button>
+            </>
+          }
+        >
+          <label className="jan-campo">
+            <span className="jan-rotulo">Nome <span className="jan-conta">{pessoa.nome.length} de {LIMITE_NOME_DA_PESSOA}</span></span>
+            <input className={`ui-input${erroDoNome ? " is-invalid" : ""}`} value={pessoa.nome} maxLength={LIMITE_NOME_DA_PESSOA} aria-invalid={Boolean(erroDoNome)} aria-describedby={erroDoNome ? "pess-erro-nome" : undefined} onChange={(evento) => setPessoa({ ...pessoa, nome: evento.target.value })} />
+            {erroDoNome && <span id="pess-erro-nome" className="ui-field-error" role="alert">{erroDoNome}</span>}
+          </label>
+          <label className="jan-campo">
+            <span className="jan-rotulo">Cargo ou função <span className="jan-conta">{pessoa.cargo.length} de {LIMITE_CARGO_DA_PESSOA}</span></span>
+            <input className={`ui-input${erroDoCargo ? " is-invalid" : ""}`} value={pessoa.cargo} maxLength={LIMITE_CARGO_DA_PESSOA} placeholder="Ex.: Cozinheiro" aria-invalid={Boolean(erroDoCargo)} aria-describedby={erroDoCargo ? "pess-erro-cargo" : undefined} onChange={(evento) => setPessoa({ ...pessoa, cargo: evento.target.value })} />
+            {erroDoCargo && <span id="pess-erro-cargo" className="ui-field-error" role="alert">{erroDoCargo}</span>}
+          </label>
+          <p className="jan-aviso">{AVISO_DADOS_DE_SAUDE_PESSOA}</p>
+        </Janela>
       )}
 
       {aba === "capacitacao" && (

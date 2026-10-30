@@ -96,5 +96,5 @@ export function marcadosDoUltimoSalvo(assinaturaSalva: string): { setores: strin
 export function estadoDaBarraDeSalvar(temAlteracoes: boolean): { classe: "is-pendente" | "is-salvo"; marca: string; texto: string } {
   return temAlteracoes
     ? { classe: "is-pendente", marca: "●", texto: "Alterações ainda não salvas" }
-    : { classe: "is-salvo", marca: "✓", texto: "Todas as alterações desta área estão salvas" };
+    : { classe: "is-salvo", marca: "✓", texto: "Tudo salvo" };
 }

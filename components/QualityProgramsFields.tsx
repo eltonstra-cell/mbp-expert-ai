@@ -1,11 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import Select from "@/components/Select";
 import type {
   ProgramaControleQualidade,
   StatusProgramaControle,
 } from "@/types";
 import { DEFINICOES_PROGRAMAS_CONTROLE } from "@/lib/qualityPrograms";
+import { estadoVisualDoPrograma, resumoDosProgramas } from "@/lib/documentosCentral";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
 
 type Props = {
@@ -21,57 +23,58 @@ const statusDisponiveis: StatusProgramaControle[] = [
   "Não se aplica",
 ];
 
-export default function QualityProgramsFields({ programas, onChange, aberto = false }: Props) {
+// Programas de controle (Capítulo 3): linhas sem caixa, o estado como texto com bolinha de cor e seta. Tocar no nome abre os dados do programa.
+export default function QualityProgramsFields({ programas, onChange }: Props) {
+  const [aberto, setAberto] = useState<string | null>(null);
+
   function atualizar(indice: number, alteracao: Partial<ProgramaControleQualidade>) {
     onChange(programas.map((programa, atual) =>
       atual === indice ? { ...programa, ...alteracao } : programa
     ));
   }
 
-  const ativos = programas.filter((programa) =>
-    programa.status === "Implantado" || programa.status === "Em implantação"
-  ).length;
-
   return (
-    <details open={aberto} className="mt-4 min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-4">
-      <summary className="cursor-pointer list-none">
-        <div className="font-extrabold text-slate-950">Capítulo 3 — Programas de Controle de Qualidade</div>
-        <div className="mt-0.5 text-xs text-slate-500">
-          Informe a situação atual e toque no nome para completar os dados. {ativos === 1 ? "1 programa ativo ou em implantação" : `${ativos} programas ativos ou em implantação`}.
+    <section className="prog" aria-label="Programas de controle de qualidade">
+      <div className="cdoc-titulo">
+        <div>
+          <h2 className="cdoc-h">Programas</h2>
+          <p className="cdoc-sub">Capítulo 3 · Programas de Controle de Qualidade · {resumoDosProgramas(programas)}</p>
+          <p className="cdoc-sub">Toque no nome para completar os dados.</p>
         </div>
-      </summary>
+      </div>
 
-      <div className="mt-4 space-y-3">
+      <div className="cdoc-lista">
         {programas.map((programa, indice) => {
           const definicao = DEFINICOES_PROGRAMAS_CONTROLE.find((item) => item.nome === programa.nome);
           const preencherDetalhes = programa.status === "Implantado" || programa.status === "Em implantação";
+          const expandido = aberto === programa.id && preencherDetalhes;
+          const estado = estadoVisualDoPrograma(programa.status);
           return (
-            <details key={programa.id} className="min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white p-3">
-              <summary className="cursor-pointer list-none">
-                <div className="grid min-w-0 gap-2 md:grid-cols-[minmax(0,1fr)_180px] md:items-center">
-                  <div className="min-w-0">
-                    <div className="text-sm font-extrabold text-slate-900">{programa.nome}</div>
-                    <div className="mt-0.5 text-xs text-slate-500">{definicao?.objetivo}</div>
-                  </div>
+            <div key={programa.id} className="prog-item">
+              <div className="prog-linha">
+                <button type="button" className="prog-nome" aria-expanded={preencherDetalhes ? expandido : undefined} disabled={!preencherDetalhes} onClick={() => setAberto(expandido ? null : programa.id)}>
+                  <span className="prog-titulo">{programa.nome}</span>
+                  <span className="prog-descricao">{definicao?.objetivo}</span>
+                </button>
+                <span className={`prog-estado-wrap prog-estado-wrap--${estado.tom}`}>
                   <Select
                     aria-label={`Situação de ${programa.nome}`}
                     value={programa.status}
-                    onClick={(event) => event.stopPropagation()}
                     onChange={(event) => atualizar(indice, { status: event.target.value as StatusProgramaControle })}
-                    className="min-w-0 w-full rounded-lg border bg-white p-2 text-sm font-bold"
+                    className="prog-estado"
                   >
-                    {statusDisponiveis.map((status) => <option key={status}>{status}</option>)}
+                    {statusDisponiveis.map((status) => <option key={status} value={status}>{estadoVisualDoPrograma(status).texto}</option>)}
                   </Select>
-                </div>
-              </summary>
+                </span>
+              </div>
 
-              {preencherDetalhes && (
-                <div className="mt-3 grid min-w-0 gap-2 border-t border-slate-100 pt-3 md:grid-cols-2">
-                  <input value={programa.responsavel} onChange={(event) => atualizar(indice, { responsavel: event.target.value })} placeholder="Responsável" className="min-w-0 w-full rounded-lg border p-2 text-sm" />
-                  <input value={programa.frequencia} onChange={(event) => atualizar(indice, { frequencia: event.target.value })} placeholder="Frequência: ex. mensal" className="min-w-0 w-full rounded-lg border p-2 text-sm" />
+              {expandido && (
+                <div className="prog-detalhes">
+                  <input value={programa.responsavel} onChange={(event) => atualizar(indice, { responsavel: event.target.value })} placeholder="Responsável" aria-label="Responsável" className="ui-input" />
+                  <input value={programa.frequencia} onChange={(event) => atualizar(indice, { frequencia: event.target.value })} placeholder="Frequência: ex. mensal" aria-label="Frequência" className="ui-input" />
 
-                  <div className="min-w-0">
-                    <input value={programa.registro} onChange={(event) => atualizar(indice, { registro: event.target.value })} placeholder="Registro ou planilha utilizada" className="min-w-0 w-full rounded-lg border p-2 text-sm" />
+                  <div className="prog-campo">
+                    <input value={programa.registro} onChange={(event) => atualizar(indice, { registro: event.target.value })} placeholder="Registro ou planilha utilizada" aria-label="Registro ou planilha utilizada" className="ui-input" />
                     <FieldVoiceTools
                       fieldKey={`programa-registro-${programa.id}`}
                       value={programa.registro}
@@ -80,10 +83,10 @@ export default function QualityProgramsFields({ programas, onChange, aberto = fa
                     />
                   </div>
 
-                  <input value={programa.documentoRelacionado} onChange={(event) => atualizar(indice, { documentoRelacionado: event.target.value })} placeholder="POP ou documento relacionado" className="min-w-0 w-full rounded-lg border p-2 text-sm" />
+                  <input value={programa.documentoRelacionado} onChange={(event) => atualizar(indice, { documentoRelacionado: event.target.value })} placeholder="POP ou documento relacionado" aria-label="POP ou documento relacionado" className="ui-input" />
 
-                  <div className="min-w-0 md:col-span-2">
-                    <input value={programa.observacao} onChange={(event) => atualizar(indice, { observacao: event.target.value })} placeholder="Observação breve (opcional)" className="min-w-0 w-full rounded-lg border p-2 text-sm" />
+                  <div className="prog-campo prog-campo--largo">
+                    <input value={programa.observacao} onChange={(event) => atualizar(indice, { observacao: event.target.value })} placeholder="Observação breve (opcional)" aria-label="Observação breve" className="ui-input" />
                     <FieldVoiceTools
                       fieldKey={`programa-observacao-${programa.id}`}
                       value={programa.observacao}
@@ -93,10 +96,10 @@ export default function QualityProgramsFields({ programas, onChange, aberto = fa
                   </div>
                 </div>
               )}
-            </details>
+            </div>
           );
         })}
       </div>
-    </details>
+    </section>
   );
 }

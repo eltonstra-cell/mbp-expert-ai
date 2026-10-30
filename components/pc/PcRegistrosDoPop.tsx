@@ -8,6 +8,7 @@ import { agoraParaCampoLocal, formatarDataHora, localParaISO } from "@/lib/dataL
 import { useRegistrosDaEmpresa } from "@/components/RegistrosEmpresaContext";
 import { popVigente } from "@/lib/popsNorma";
 import { modeloPorId } from "@/lib/popModelos";
+import { LIMITE_DO_TEXTO_LIVRE } from "@/lib/documentosCentral";
 import { guardaDosRegistros, separarRegistros } from "@/lib/registrosEmpresa";
 import type { ProcedimentoOperacionalPadronizado, RegistroPop } from "@/types";
 
@@ -30,6 +31,10 @@ export default function PcRegistrosDoPop({ pop, comprovantes, mensagemDoComprova
   const [acaoCorretiva, setAcaoCorretiva] = useState("");
   const [corrigindo, setCorrigindo] = useState<RegistroPop | null>(null);
   const [tocado, setTocado] = useState(false);
+  // Campo já tocado (digitou ou saiu dele): o aviso aparece na hora, não só ao salvar.
+  const [campos, setCampos] = useState<Partial<Record<"data" | "descricao" | "acao", boolean>>>({});
+  const tocar = (nome: "data" | "descricao" | "acao") => setCampos((atual) => (atual[nome] ? atual : { ...atual, [nome]: true }));
+  const mostrar = (nome: "data" | "descricao" | "acao") => tocado || Boolean(campos[nome]);
   const [erroGeral, setErroGeral] = useState("");
   const [mostrarRevisar, setMostrarRevisar] = useState(false);
   const [novo, setNovo] = useState(false);
@@ -143,8 +148,8 @@ export default function PcRegistrosDoPop({ pop, comprovantes, mensagemDoComprova
             <div className="pop-registro-linha">
               <label className="pc-field">
                 <span className="ui-eyebrow">Data e hora</span>
-                <input type="datetime-local" className={`ui-input${tocado && erroData ? " is-invalid" : ""}`} value={dataHora} max={agoraParaCampo()} onChange={(evento) => setDataHora(evento.target.value)} aria-invalid={Boolean(tocado && erroData)} />
-                {tocado && erroData && <span className="ui-field-error">{erroData}</span>}
+                <input type="datetime-local" className={`ui-input${mostrar("data") && erroData ? " is-invalid" : ""}`} value={dataHora} max={agoraParaCampo()} onBlur={() => tocar("data")} onChange={(evento) => { tocar("data"); setDataHora(evento.target.value); }} aria-invalid={Boolean(mostrar("data") && erroData)} />
+                {mostrar("data") && erroData && <span className="ui-field-error" role="alert">{erroData}</span>}
               </label>
               <label className="pc-field">
                 <span className="ui-eyebrow">Ambiente (opcional)</span>
@@ -161,12 +166,12 @@ export default function PcRegistrosDoPop({ pop, comprovantes, mensagemDoComprova
             </div>
             <label className="pc-field">
               <span className="ui-eyebrow">O que foi feito</span>
-              <textarea className={`ui-input pop-area${tocado && erroDescricao ? " is-invalid" : ""}`} rows={2} value={descricao} onChange={(evento) => setDescricao(evento.target.value)} aria-invalid={Boolean(tocado && erroDescricao)} />
-              {tocado && erroDescricao && <span className="ui-field-error">{erroDescricao}</span>}
+              <textarea className={`ui-input pop-area${mostrar("descricao") && erroDescricao ? " is-invalid" : ""}`} rows={2} maxLength={LIMITE_DO_TEXTO_LIVRE} value={descricao} onBlur={() => tocar("descricao")} onChange={(evento) => { tocar("descricao"); setDescricao(evento.target.value); }} aria-invalid={Boolean(mostrar("descricao") && erroDescricao)} />
+              {mostrar("descricao") && erroDescricao && <span className="ui-field-error" role="alert">{erroDescricao}</span>}
             </label>
             <label className="pc-field">
               <span className="ui-eyebrow">Verificação (opcional)</span>
-              <input className="ui-input" value={verificacao} onChange={(evento) => setVerificacao(evento.target.value)} />
+              <input className="ui-input" maxLength={LIMITE_DO_TEXTO_LIVRE} value={verificacao} onChange={(evento) => setVerificacao(evento.target.value)} />
             </label>
             <label className="ui-row-sub">
               <input type="checkbox" checked={desvio} onChange={(evento) => setDesvio(evento.target.checked)} /> Houve desvio
@@ -174,10 +179,11 @@ export default function PcRegistrosDoPop({ pop, comprovantes, mensagemDoComprova
             {desvio && (
               <label className="pc-field">
                 <span className="ui-eyebrow">Ação corretiva (obrigatória)</span>
-                <textarea className={`ui-input pop-area${tocado && erroAcao ? " is-invalid" : ""}`} rows={2} value={acaoCorretiva} onChange={(evento) => setAcaoCorretiva(evento.target.value)} aria-invalid={Boolean(tocado && erroAcao)} />
-                {tocado && erroAcao && <span className="ui-field-error">{erroAcao}</span>}
+                <textarea className={`ui-input pop-area${mostrar("acao") && erroAcao ? " is-invalid" : ""}`} rows={2} maxLength={LIMITE_DO_TEXTO_LIVRE} value={acaoCorretiva} onBlur={() => tocar("acao")} onChange={(evento) => { tocar("acao"); setAcaoCorretiva(evento.target.value); }} aria-invalid={Boolean(mostrar("acao") && erroAcao)} />
+                {mostrar("acao") && erroAcao && <span className="ui-field-error" role="alert">{erroAcao}</span>}
               </label>
             )}
+            <p className="ui-row-sub reg-aviso-saude">Não registre dados de saúde de pessoas.</p>
             <div className="pop-registro-acoes">
               <span className="ui-row-sub">Responsável: {contexto.usuario?.nome || "quem está no app"} · versão {vigente.versao} do POP</span>
               <button type="button" className="ui-btn ui-btn--save ui-btn--small" onClick={salvar}>

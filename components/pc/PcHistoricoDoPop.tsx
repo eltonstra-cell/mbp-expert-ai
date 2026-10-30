@@ -5,9 +5,9 @@ import { formatarData } from "@/lib/dataLocal";
 import { atividadeDoPop, versoesDoHistorico } from "@/lib/popHistorico";
 
 // Aba Histórico: dois blocos, Versões e Atividade (linha do tempo). Só mostra o que o POP já guarda.
-export default function PcHistoricoDoPop({ pop, onBaixarPdf }: { pop: ProcedimentoOperacionalPadronizado; onBaixarPdf?: () => void }) {
-  const versoes = versoesDoHistorico(pop);
-  const atividade = atividadeDoPop(pop);
+export default function PcHistoricoDoPop({ pop, onBaixarPdf, ocultarNomes = false }: { pop: ProcedimentoOperacionalPadronizado; onBaixarPdf?: () => void; ocultarNomes?: boolean }) {
+  const versoes = versoesDoHistorico(pop, { ocultarNomes });
+  const atividade = atividadeDoPop(pop, { ocultarNomes });
   return (
     <div className="hist">
       <section className="hist-bloco" aria-label="Versões">

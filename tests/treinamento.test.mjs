@@ -135,5 +135,5 @@ test("Guarda de dados: cadastro e capacitação não têm campo de CPF, saúde, 
     assert.ok(!/cpf|nascimento|saude|saúde|foto|exame|atestado|laudo/i.test(trecho(nome)), nome);
   }
   const tela = readFileSync(new URL("../components/pc/PcPessoas.tsx", import.meta.url), "utf8");
-  assert.ok(tela.includes("Guardamos só nome e cargo"));
+  assert.ok(tela.includes("AVISO_DADOS_DE_SAUDE_PESSOA") && tela.includes("subtituloDePessoas"));
 });

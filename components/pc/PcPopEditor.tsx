@@ -96,14 +96,14 @@ function SecaoRecolhivel({ titulo, aberta, children }: { id: Secao; titulo: stri
   );
 }
 
-function Campo({ rotulo, valor, onChange, linhas, desabilitado, erro, tipo = "texto", dica, guia }: { rotulo: string; valor: string; onChange: (valor: string) => void; linhas?: number; desabilitado?: boolean; erro?: string; tipo?: "texto" | "data"; dica?: string; guia?: CampoGuiado | null }) {
+function Campo({ rotulo, valor, onChange, linhas, desabilitado, erro, tipo = "texto", dica, guia, limite, aoSair }: { rotulo: string; valor: string; onChange: (valor: string) => void; linhas?: number; desabilitado?: boolean; erro?: string; tipo?: "texto" | "data"; dica?: string; guia?: CampoGuiado | null; limite?: number; aoSair?: () => void }) {
   return (
     <label className="pc-field">
       <span className="ui-eyebrow">{rotulo}</span>
       {linhas ? (
         <CaixaQueCresce className={`ui-input pop-area${erro ? " is-invalid" : ""}`} linhasMinimas={linhas} value={valor} disabled={desabilitado} onChange={(evento) => onChange(evento.target.value)} aria-invalid={Boolean(erro)} />
       ) : (
-        <input type={tipo === "data" ? "date" : "text"} className={`ui-input${erro ? " is-invalid" : ""}`} value={valor} disabled={desabilitado} onChange={(evento) => onChange(evento.target.value)} aria-invalid={Boolean(erro)} />
+        <input type={tipo === "data" ? "date" : "text"} className={`ui-input${erro ? " is-invalid" : ""}`} value={valor} disabled={desabilitado} maxLength={limite} onBlur={aoSair} onChange={(evento) => onChange(evento.target.value)} aria-invalid={Boolean(erro)} />
       )}
       {erro ? <span className="ui-field-error">{erro}</span> : guia ? <span className="ui-row-sub pop-guia">{textoDoCampoGuiado(guia)} <span className="pop-conferir">conferir</span></span> : dica ? <span className="ui-row-sub">{dica}</span> : null}
     </label>
@@ -260,6 +260,8 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
   const [motivoDaNovaVersao, setMotivoDaNovaVersao] = useState("");
   const [secao, setSecao] = useState<Secao | null>("passos");
   const [tocado, setTocado] = useState(false);
+  const [tituloTocado, setTituloTocado] = useState(false);
+  const [nomeTocado, setNomeTocado] = useState(false);
   const [passoEmFoco, setPassoEmFoco] = useState<string | null>(null);
   /** Menu aberto numa linha de passo: "⋯" (subtítulo e remover) ou "↕" (subir e descer). Um por vez. */
   const [menuDoPasso, setMenuDoPasso] = useState<{ id: string; tipo: "mais" | "ordem" } | null>(null);
@@ -267,6 +269,36 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
   const [salvoEm, setSalvoEm] = useState("");
   const [confirmandoAprovacao, setConfirmandoAprovacao] = useState(false);
   const [verFolha, setVerFolha] = useState(false);
+  const folhaRef = useRef<HTMLElement | null>(null);
+  const botaoVerFolhaRef = useRef<HTMLButtonElement | null>(null);
+  // "Ver folha": o foco entra na janela ao abrir e volta ao botão ao fechar; Esc fecha e Tab fica preso dentro dela.
+  useEffect(() => {
+    if (!verFolha) return;
+    folhaRef.current?.focus();
+    return () => {
+      window.setTimeout(() => botaoVerFolhaRef.current?.focus(), 0);
+    };
+  }, [verFolha]);
+  function aoTeclarNaFolha(evento: React.KeyboardEvent<HTMLElement>) {
+    if (evento.key === "Escape") {
+      evento.preventDefault();
+      evento.stopPropagation();
+      setVerFolha(false);
+      return;
+    }
+    if (evento.key !== "Tab") return;
+    const focaveis = Array.from(folhaRef.current?.querySelectorAll<HTMLElement>('button:not([disabled]),a[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])') || []).filter((item) => item.offsetParent !== null);
+    if (focaveis.length === 0) return;
+    const primeiro = focaveis[0];
+    const ultimo = focaveis[focaveis.length - 1];
+    if (evento.shiftKey && (document.activeElement === primeiro || document.activeElement === folhaRef.current)) {
+      evento.preventDefault();
+      ultimo.focus();
+    } else if (!evento.shiftKey && document.activeElement === ultimo) {
+      evento.preventDefault();
+      primeiro.focus();
+    }
+  }
   const [outraPessoa, setOutraPessoa] = useState(false);
   const [, setMedida] = useState(0);
   // A lista de passos é a única que rola: ocupa o que sobra da tela entre o que está acima dela e o que está abaixo (botão, rodapé e barra de baixo).
@@ -559,7 +591,7 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
                   </button>
                 )}
               />
-              <button type="button" className="ui-btn ui-btn--secondary pdoc-ver-folha" onClick={() => setVerFolha(true)}>
+              <button type="button" ref={botaoVerFolhaRef} className="ui-btn ui-btn--secondary pdoc-ver-folha" onClick={() => setVerFolha(true)}>
                 Ver folha
               </button>
               {comCartaz && (
@@ -607,7 +639,10 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
           <SecaoRecolhivel id="identificacao" titulo="Identificação" resumo={rascunho.proximaRevisao ? `revisar até ${rascunho.proximaRevisao.split("-").reverse().join("/")}` : "revisar até: não definido"} aberta={secao === "identificacao"} onAlternar={alternar}>
             <div className="pop-grade">
               <Campo rotulo="Código" valor={rascunho.codigo} desabilitado={!editavel} onChange={(valor) => setRascunho({ ...rascunho, codigo: valor })} />
-              <Campo rotulo="Título" valor={rascunho.titulo} desabilitado={!editavel} erro={tocado ? erroTitulo : ""} onChange={(valor) => setRascunho({ ...rascunho, titulo: valor })} />
+              <Campo rotulo="Título" valor={rascunho.titulo} desabilitado={!editavel} erro={tocado || tituloTocado ? erroTitulo : ""} aoSair={() => setTituloTocado(true)} onChange={(valor) => {
+                setTituloTocado(true);
+                setRascunho({ ...rascunho, titulo: valor });
+              }} />
               <div className="pc-field">
                 <Campo rotulo="Revisar até" tipo="data" valor={rascunho.proximaRevisao} desabilitado={!podeEditar} onChange={(valor) => setRascunho({ ...rascunho, proximaRevisao: valor })} dica="Passou da data, o POP aprovado vira Vencido. A norma da empresa define os prazos mínimos." />
                 {podeEditar && (
@@ -667,7 +702,7 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
                   </Select>
                 </label>
                 {(outraPessoa || (executorNaTela.nome && executorNaTela.nome !== (dadosDoResponsavel?.nome || ""))) && (
-                  <Campo rotulo="Nome da pessoa" valor={executorNaTela.nome} desabilitado={!editavel} erro={tocado && !executorNaTela.nome.trim() ? "Informe o nome." : ""} onChange={(valor) => mudarResponsavel({ nome: valor, cargo: executorNaTela.cargo })} />
+                  <Campo rotulo="Nome da pessoa" valor={executorNaTela.nome} desabilitado={!editavel} limite={80} aoSair={() => setNomeTocado(true)} erro={(tocado || nomeTocado) && !executorNaTela.nome.trim() ? "Informe o nome." : ""} onChange={(valor) => { setOutraPessoa(true); mudarResponsavel({ nome: valor.slice(0, 80), cargo: executorNaTela.cargo }); }} />
                 )}
                 {diferencaDeDados && (
                   <span className="ui-row-sub pdoc-sugestao">
@@ -683,7 +718,7 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
                   </span>
                 )}
               </div>
-              <Campo rotulo="Cargo ou função" valor={executorNaTela.cargo} desabilitado={!editavel} erro={editavel && !executorNaTela.cargo.trim() ? "Falta informar o cargo" : ""} onChange={(valor) => mudarResponsavel({ nome: executorNaTela.nome, cargo: semPontuacaoNoInicio(valor) })} />
+              <Campo rotulo="Cargo ou função" valor={executorNaTela.cargo} desabilitado={!editavel} limite={60} erro={editavel && !executorNaTela.cargo.trim() ? "Falta informar o cargo" : ""} onChange={(valor) => mudarResponsavel({ nome: executorNaTela.nome, cargo: semPontuacaoNoInicio(valor).slice(0, 60) })} />
               <div className="pc-field">
                 <CampoDeFrequencia
                   frequencia={conteudo.frequencia}
@@ -1059,7 +1094,7 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
       {verFolha && (
         <div className="pc-modal-layer pdoc-folha-camada" role="presentation">
           <div className="pc-modal-backdrop" onClick={() => setVerFolha(false)} />
-          <section className="pdoc-folha-janela" role="dialog" aria-modal="true" aria-label="Folha do POP">
+          <section ref={folhaRef} tabIndex={-1} onKeyDown={aoTeclarNaFolha} className="pdoc-folha-janela" role="dialog" aria-modal="true" aria-label="Folha do POP">
             <header className="pdoc-folha-janela-topo">
               <h2 className="pdoc-lista-titulo">Folha</h2>
               <button type="button" className="ui-btn ui-btn--secondary pdoc-folha-fechar" aria-label="Fechar a folha" onClick={() => setVerFolha(false)}>✕</button>

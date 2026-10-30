@@ -1,6 +1,7 @@
 "use client";
 
 import PcHistoricoDoPop from "@/components/pc/PcHistoricoDoPop";
+import { veNomesNoHistorico } from "@/lib/popHistorico";
 import { useEffect, useMemo, useState } from "react";
 import type { CapaDosPops, ComprovanteTerceiro, Empresa, ProcedimentoOperacionalPadronizado, UsuarioSistema } from "@/types";
 import PcPopEditor from "@/components/pc/PcPopEditor";
@@ -227,7 +228,7 @@ export default function PcFichaPop({ pop, empresa, usuario, podeEditar, onImprim
 
         {aba === "historico" && (
           <div className="pop-registros-area rz-historico-extra">
-            <PcHistoricoDoPop pop={pop} onBaixarPdf={vigente && pop.status === "Aprovado" ? () => imprimir(false) : undefined} />
+            <PcHistoricoDoPop pop={pop} ocultarNomes={!veNomesNoHistorico(usuario?.perfil)} onBaixarPdf={vigente && pop.status === "Aprovado" ? () => imprimir(false) : undefined} />
             {hashAprovado && (
               <p className="ui-row-sub" title={hashAprovado}>
                 Conteúdo aprovado (v{vigente?.versao}): impressão digital {hashAprovado.slice(0, 12)}…

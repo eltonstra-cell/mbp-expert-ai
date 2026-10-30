@@ -78,7 +78,7 @@ function Linha({ linha, podeEditar, onAbrirFicha, onCriarDoModelo, menu }: { lin
         <span className="pgl-estado">
           {linha.registroAtrasado && <span className="pgl-estado-atraso">Registro atrasado · </span>}
           {revisar && <span className="pgl-estado-revisar" title={MENSAGEM_NORMA_ALTERADA}>Revisar · </span>}
-          <span className="pgl-estado-situacao" style={{ color: estado === "neutro" ? "#526477" : cor }}>{ROTULO_DO_ESTADO_TEXTO[linha.situacao] || linha.situacao}</span>
+          <span className="pgl-estado-situacao" style={{ color: estado === "neutro" ? "#526477" : linha.situacao === "Rascunho" ? "#8A5A00" : /^Aguardando/.test(linha.situacao) ? "#1D5F95" : cor }}>{ROTULO_DO_ESTADO_TEXTO[linha.situacao] || linha.situacao}</span>
           {naoConferido && !linha.detalhe?.startsWith("Etapa") && <span className="pgl-estado-cinza" title={ROTULO_NAO_CONFERIDO}> · {ROTULO_CURTO_NAO_CONFERIDO}</span>}
           {linha.detalhe ? <span className="pgl-estado-cinza"> · {linha.detalhe}</span> : null}
         </span>
@@ -299,7 +299,7 @@ export default function PcPopsLista({
       <div className="pgl-lista">
         {linhasDosPops.length === 0 && !adicionando && !deModelo && <div className="ui-empty">Nenhum POP cadastrado.</div>}
         {linhasDosPops.map((linha) => (
-          <Linha key={linha.chave} linha={linha} podeEditar={podeEditar} onAbrirFicha={onAbrirFicha} onCriarDoModelo={onCriarDoModelo} menu={!linha.definicao && linha.pop ? menuDoOutro(linha.pop) : undefined} />
+          <Linha key={linha.chave} linha={linha} podeEditar={podeEditar} onAbrirFicha={onAbrirFicha} onCriarDoModelo={onCriarDoModelo} menu={linha.pop ? menuDoOutro(linha.pop).filter((item) => !(linha.definicao && item.perigo)) : undefined} />
         ))}
       </div>
       {mensagem && <div className="ui-note">{mensagem}</div>}

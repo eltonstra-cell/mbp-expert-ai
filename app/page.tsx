@@ -2,7 +2,7 @@
 
 import Select from "@/components/Select";
 import { formatarCnpj } from "@/lib/cnpj";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import MetricCard from "@/components/MetricCard";
 import FaixaVisitaOutraEmpresa from "@/components/FaixaVisitaOutraEmpresa";
 import FaixaDaVisita from "@/components/FaixaDaVisita";
@@ -131,7 +131,7 @@ import BuscaNaBarra, { type ContextoDaVoz } from "@/components/BuscaNaBarra";
 import { quantidadeDeAmbientes, resumoAmbientes, vizinhoDoAmbiente } from "@/lib/checklistEnvs";
 import { NavIcon } from "@/components/NavIcons";
 import { chaveAtiva, itemDoMenu, itensVisiveis, nomeSemNumerosNoInicio, type NavContexto, type NavKey } from "@/lib/navigation";
-import ManualBaseFields from "@/components/ManualBaseFields";
+import PcManualDocumento from "@/components/pc/PcManualDocumento";
 import OperationalFlowsFields from "@/components/OperationalFlowsFields";
 import QualityProgramsFields from "@/components/QualityProgramsFields";
 import CentralEmpresaNav from "@/components/pc/CentralEmpresaNav";
@@ -148,7 +148,6 @@ import { aplicarDeltaDeEquipamentos, aplicarDeltaDeFluxos, aplicarDeltaDeLista, 
 import CadastroEquipamentos from "@/components/pc/CadastroEquipamentos";
 import { avisoParaEmitir, avisoParaFinalizar, erroDoCnpj, erroDoNomeDaEmpresa, itensRespondidos, pendenciasParaSalvarEmpresa } from "@/lib/regrasDoPacote3";
 import { ambientesParaVisita, limparVinculos, nomeJaExistente } from "@/lib/ambientesVisita";
-import IdentificacaoComplementar from "@/components/IdentificacaoComplementar";
 import { prefillDoPerfilDoRt, preencherIdentificacao, semOCampo, type CampoDaIdentificacao } from "@/lib/manualIdentificacao";
 import { estadoDaBarraDeSalvar, marcadosDoUltimoSalvo } from "@/lib/escolhaEmJanela";
 import { TENTATIVAS_DA_NUVEM, conexaoAtual, esperaAposFalhaDaNuvem, rotuloDoSeloComProblema, seloDeSincronizacao, umaTentativa } from "@/lib/conexao";
@@ -2774,6 +2773,67 @@ export default function Home() {
   const quemVeNosDocumentos = { ...quemVeNaCentral, editar: false };
   const secaoEmpresa: EmpresaSecao | null = editingEmpresaId ? resolverSubaba(empresaSecao, lerSubabaLembrada(editingEmpresaId), subabasVisiveis(quemVeNaCentral)) : empresaSecao;
   const subabaDosDocumentos = resolverSubaba(docSecao, null, subabasVisiveis(quemVeNosDocumentos));
+  // Documentos: a área ocupa o que sobra da janela (índice, título e rodapé fixos; só a lista rola por dentro). Mede de novo ao redimensionar e quando a altura da página muda (ex.: aviso no topo).
+  useLayoutEffect(() => {
+    // F6: em Registros e Histórico da ficha do POP (abaixo de 1100 px) a lista rola por dentro; a página não.
+    // A aba muda dentro da ficha (sem renderizar a página inteira), então um observador refaz a medida quando o conteúdo muda.
+    const ajustarListasDaFicha = () => {
+      const barraDeBaixo = document.querySelector<HTMLElement>(".campo-bar");
+      const reserva = (barraDeBaixo && getComputedStyle(barraDeBaixo).position === "fixed" ? barraDeBaixo.offsetHeight + 12 : 0) + 24;
+      for (const lista of Array.from(document.querySelectorAll<HTMLElement>(".pop-registros-area"))) {
+        if (window.innerWidth >= 1100) {
+          lista.style.maxHeight = "";
+          continue;
+        }
+        const altura = Math.max(220, Math.round(window.innerHeight - lista.getBoundingClientRect().top - reserva));
+        lista.style.maxHeight = `${altura}px`;
+        // O respiro que a página deixa embaixo é descontado pela medição real.
+        const excesso = document.documentElement.scrollHeight - window.innerHeight;
+        if (excesso > 0 && altura - excesso >= 220) lista.style.maxHeight = `${altura - excesso}px`;
+      }
+    };
+    ajustarListasDaFicha();
+    let quadro = 0;
+    const observadorDaFicha = new MutationObserver(() => {
+      cancelAnimationFrame(quadro);
+      quadro = requestAnimationFrame(ajustarListasDaFicha);
+    });
+    observadorDaFicha.observe(document.body, { childList: true, subtree: true });
+    window.addEventListener("resize", ajustarListasDaFicha);
+    const soltarFicha = () => {
+      cancelAnimationFrame(quadro);
+      observadorDaFicha.disconnect();
+      window.removeEventListener("resize", ajustarListasDaFicha);
+      for (const lista of Array.from(document.querySelectorAll<HTMLElement>(".pop-registros-area"))) lista.style.maxHeight = "";
+    };
+    const secao = document.querySelector<HTMLElement>(".central-empresa.cen-doc");
+    if (!secao) return soltarFicha;
+    const ajustar = () => {
+      const barraDeBaixo = document.querySelector<HTMLElement>(".campo-bar");
+      const reserva = (barraDeBaixo && getComputedStyle(barraDeBaixo).position === "fixed" ? barraDeBaixo.offsetHeight + 12 : 0) + 16;
+      const topo = secao.getBoundingClientRect().top;
+      const altura = Math.max(420, Math.round(window.innerHeight - topo - reserva));
+      secao.style.height = `${altura}px`;
+      // O que sobra embaixo da área (respiro da página, barra de baixo) é descontado pela medição real.
+      const excesso = document.documentElement.scrollHeight - window.innerHeight;
+      if (excesso > 0 && altura - excesso >= 420) secao.style.height = `${altura - excesso}px`;
+    };
+    ajustar();
+    window.addEventListener("resize", ajustar);
+    const observador = new ResizeObserver(ajustar);
+    observador.observe(document.documentElement);
+    return () => {
+      window.removeEventListener("resize", ajustar);
+      observador.disconnect();
+      secao.style.height = "";
+      soltarFicha();
+    };
+  });
+  // Contagens reais do índice de Documentos: POPs (sem os arquivados) e pessoas ativas.
+  const contagensDeDocumentos = (empresaId?: string, popsDaEmpresa?: Empresa["pops"]): Partial<Record<SubAbaCentral, number>> => ({
+    pops: (popsDaEmpresa || []).filter((pop) => !pop.arquivado).length,
+    pessoas: (db.colaboradores || []).filter((pessoa) => pessoa.empresaId === empresaId && pessoa.ativo).length,
+  });
   const visitaAtualCadastrada = visitaAtualId
     ? db.visitas.find((v) => v.id === visitaAtualId)
     : undefined;
@@ -6867,15 +6927,6 @@ export default function Home() {
             return { ...empresa, cartazLavagem: { ...(empresa.cartazLavagem || {}), tema: estilo }, capaDosPops: { ...restoDaCapa, ...(logotipo ? { logotipo } : {}) } };
           }) : undefined}
           onSalvarCapaDosPops={podeEditarDoc ? (capa) => atualizarEmpresaDosRegistros(empresaDoc.id, (empresa) => ({ ...empresa, capaDosPops: capa })) : undefined}
-          abas={(pendencias: number) => (
-            <CentralEmpresaNav
-              grupos={gruposVisiveis(podeEditarDoc ? quemVeNaCentral : quemVeNosDocumentos)}
-              subaba="pops"
-              onSubaba={podeEditarDoc ? irParaSubaba : setDocSecao}
-              contagens={{ pops: pendencias }}
-              indice
-            />
-          )}
           onAlterarEmDados={podeEditarDoc ? () => irParaSubaba("dados") : undefined}
           avisoSemVinculo={
             efetivo.vinculado ? undefined : (
@@ -8158,17 +8209,22 @@ export default function Home() {
             onVoltar={() => setView(modo === "campo" ? "campomais" : "inicio")}
           />
         ) : view === "pops" && atual && (telaVisivel("pops") || ehFiscal) ? (
-          <section className="central-empresa" aria-label="Documentos da empresa">
+          <section className={`central-empresa${fichaAbertaRotulo && subabaDosDocumentos === "pops" ? "" : " cen-doc"}`} aria-label="Documentos da empresa">
             <h1 className="sr-only">{ROTULO_DA_SUBABA[subabaDosDocumentos]}</h1>
             {fichaAbertaRotulo && subabaDosDocumentos === "pops" ? (
               caminhoClicavel(fichaAbertaRotulo, false)
-            ) : subabaDosDocumentos === "pops" ? null : (
-              <CentralEmpresaNav grupos={gruposVisiveis(quemVeNosDocumentos)} subaba={subabaDosDocumentos} onSubaba={setDocSecao} />
+            ) : (
+              <>
+                <CentralEmpresaNav soGrupos grupos={gruposVisiveis(quemVeNosDocumentos)} subaba={subabaDosDocumentos} onSubaba={setDocSecao} />
+                <aside className="cdoc-indice">
+                  <CentralEmpresaNav indice grupos={gruposVisiveis(quemVeNosDocumentos)} subaba={subabaDosDocumentos} onSubaba={setDocSecao} contagens={contagensDeDocumentos(atual.id, atual.pops)} />
+                </aside>
+              </>
             )}
             <div className="cen-conteudo">{conteudoDeDocumentos(subabaDosDocumentos, atual, false)}</div>
           </section>
         ) : view === "empresas" && showEmpresaForm && permitido("empresas.editar") ? (
-          <section className={`central-empresa${editingEmpresaId ? "" : " central-empresa--nova"}`} aria-label={editingEmpresaId ? "Central da Empresa" : "Nova empresa"}>
+          <section className={`central-empresa${editingEmpresaId ? "" : " central-empresa--nova"}${editingEmpresaId && secaoEmpresa && grupoDaSubaba(secaoEmpresa as SubAbaCentral) === "documentos" && !(fichaAbertaRotulo && secaoEmpresa === "pops") ? " cen-doc" : ""}`} aria-label={editingEmpresaId ? "Central da Empresa" : "Nova empresa"}>
             {editingEmpresaId && <h1 className="sr-only">{ROTULO_DA_SUBABA[(secaoEmpresa as SubAbaCentral) || "dados"] || "Central da Empresa"}</h1>}
             {!editingEmpresaId && (
             <div className="ui-head cen-cabeca">
@@ -8193,7 +8249,14 @@ export default function Home() {
 
             {editingEmpresaId && (fichaAbertaRotulo && secaoEmpresa === "pops" ? (
               caminhoClicavel(fichaAbertaRotulo, true)
-            ) : secaoEmpresa === "pops" ? null : (
+            ) : secaoEmpresa && grupoDaSubaba(secaoEmpresa as SubAbaCentral) === "documentos" ? (
+              <>
+                <CentralEmpresaNav soGrupos grupos={gruposVisiveis(quemVeNaCentral)} subaba={secaoEmpresa as SubAbaCentral} onSubaba={irParaSubaba} />
+                <aside className="cdoc-indice">
+                  <CentralEmpresaNav indice grupos={gruposVisiveis(quemVeNaCentral)} subaba={secaoEmpresa as SubAbaCentral} onSubaba={irParaSubaba} contagens={contagensDeDocumentos(editingEmpresaId, db.empresas[editingEmpresaId]?.pops)} />
+                </aside>
+              </>
+            ) : (
               <CentralEmpresaNav
                 grupos={gruposVisiveis(quemVeNaCentral)}
                 subaba={secaoEmpresa as SubAbaCentral}
@@ -8423,34 +8486,33 @@ export default function Home() {
                 )}
 
                 {editingEmpresaId && secaoEmpresa === "manual" && (
-                  <div className="mt-4 space-y-4">
-                    <IdentificacaoComplementar
-                      valores={form as unknown as Record<CampoDaIdentificacao, string>}
-                      rotulos={labels}
-                      doPerfil={camposDoPerfilRt}
-                      onChange={(campo, valor) => {
-                        setForm({ ...form, [campo]: valor });
-                        setCamposDoPerfilRt((atuais) => semOCampo(atuais, campo));
-                      }}
-                      onPreencher={() => {
-                        const empresaAberta = db.empresas[editingEmpresaId];
-                        const rt = empresaAberta ? usuarioRtDaEmpresa(empresaAberta) : undefined;
-                        const resultado = preencherIdentificacao(form as unknown as Record<CampoDaIdentificacao, string>, {
-                          rt: rt ? { nome: rt.nome, cargo: rt.cargo, crn: rt.crn, telefone: rt.telefone } : undefined,
-                          juntar: (cargo, crn) => nomeECargo(cargo, crn, " "),
-                          atividade: form.cnaeDescricao,
-                          responsavel: form.responsavel,
-                          cargoResponsavel: form.cargoResponsavel,
-                        });
-                        if (resultado.preenchidos.length === 0) return resultado.semFonte.length ? "Nada novo para preencher: o que falta não existe no cadastro." : "Tudo já está preenchido.";
-                        setForm({ ...form, ...resultado.valores });
-                        setCamposDoPerfilRt((atuais) => [...new Set([...atuais, ...resultado.doPerfil])]);
-                        const faltam = resultado.semFonte.length;
-                        return `${resultado.preenchidos.length === 1 ? "1 campo preenchido" : `${resultado.preenchidos.length} campos preenchidos`}.${faltam ? ` ${faltam === 1 ? "1 campo continua vazio" : `${faltam} campos continuam vazios`}: não há esse dado no cadastro.` : ""} Salve para guardar.`;
-                      }}
-                    />
-                    <ManualBaseFields tipoDoEstabelecimento={tipoDoForm.rotulo} responsabilidades={responsabilidadesEmpresa} onResponsabilidadesChange={setResponsabilidadesEmpresa} setores={setoresEmpresa} onSetoresChange={setSetoresEmpresa} equipamentos={equipamentosEmpresa} onEquipamentosChange={setEquipamentosEmpresa} modo="responsabilidades" />
-                  </div>
+                  <PcManualDocumento
+                    valores={form as unknown as Record<CampoDaIdentificacao, string>}
+                    rotulos={labels}
+                    doPerfil={camposDoPerfilRt}
+                    onChange={(campo, valor) => {
+                      setForm({ ...form, [campo]: valor });
+                      setCamposDoPerfilRt((atuais) => semOCampo(atuais, campo));
+                    }}
+                    onPreencher={() => {
+                      const empresaAberta = db.empresas[editingEmpresaId];
+                      const rt = empresaAberta ? usuarioRtDaEmpresa(empresaAberta) : undefined;
+                      const resultado = preencherIdentificacao(form as unknown as Record<CampoDaIdentificacao, string>, {
+                        rt: rt ? { nome: rt.nome, cargo: rt.cargo, crn: rt.crn, telefone: rt.telefone } : undefined,
+                        juntar: (cargo, crn) => nomeECargo(cargo, crn, " "),
+                        atividade: form.cnaeDescricao,
+                        responsavel: form.responsavel,
+                        cargoResponsavel: form.cargoResponsavel,
+                      });
+                      if (resultado.preenchidos.length === 0) return resultado.semFonte.length ? "Nada novo para preencher: o que falta não existe no cadastro." : "Tudo já está preenchido.";
+                      setForm({ ...form, ...resultado.valores });
+                      setCamposDoPerfilRt((atuais) => [...new Set([...atuais, ...resultado.doPerfil])]);
+                      const faltam = resultado.semFonte.length;
+                      return `${resultado.preenchidos.length === 1 ? "1 campo preenchido" : `${resultado.preenchidos.length} campos preenchidos`}.${faltam ? ` ${faltam === 1 ? "1 campo continua vazio" : `${faltam} campos continuam vazios`}: não há esse dado no cadastro.` : ""} Salve para guardar.`;
+                    }}
+                    responsabilidades={responsabilidadesEmpresa}
+                    onResponsabilidadesChange={setResponsabilidadesEmpresa}
+                  />
                 )}
 
                 {editingEmpresaId && secaoEmpresa === "ambientes" && db.empresas[editingEmpresaId] && (
