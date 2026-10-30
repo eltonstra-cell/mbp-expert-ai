@@ -1,10 +1,12 @@
 "use client";
 
 import Select from "@/components/Select";
+import CampoDeFrequencia from "@/components/pc/CampoDeFrequencia";
+import { conteudoComFrequencia, frequenciaDoPop } from "@/lib/popFrequencia";
 import { formatarCnpj } from "@/lib/cnpj";
 import { formatarData, formatarHora, hojeLocalISO } from "@/lib/dataLocal";
 import { limparTextoDePessoa, nomeECargo } from "@/lib/nomeCargo";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { CapaDosPops, ConteudoPop, Empresa, GrupoDeModeloPop, ItemDeModeloPop, PassoPop, ProcedimentoOperacionalPadronizado, UsuarioSistema } from "@/types";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
 import {
@@ -77,6 +79,8 @@ type Props = {
   onIrParaConferencia?: () => void;
   /** Documento (editor) ou Histórico (versões, aprovações e motivo). O cabeçalho e as abas ficam na ficha do POP. */
   parte?: "documento" | "historico";
+  /** A ficha pediu a impressão (Imprimir cópia / Imprimir para assinar): abre a janela de impressão; `assinar` junta o campo de assinatura do responsável. */
+  pedidoDeImpressao?: { n: number; assinar: boolean };
 };
 
 function SecaoRecolhivel({ titulo, aberta, children }: { id: Secao; titulo: string; resumo?: string; aberta: boolean; onAlternar?: (id: Secao) => void; children: ReactNode }) {
@@ -247,7 +251,7 @@ function horaCerta(): string {
 }
 
 // Documento (editor em painéis) e Histórico (versões, aprovações e motivo) do POP. O cabeçalho e as abas ficam na ficha (PcFichaPop).
-export default function PcPopEditor({ pop, empresa, usuario, podeEditar, responsavelDoEstabelecimento, onImprimir, onSalvarRascunho, onEnviar, onAprovar, onNovaVersao, onDescartar, mensagem, proximaAcao, onIrParaConferencia, capaDaEmpresa, onSalvarCapa, onTrocarIconeDeCapa, estiloDoCartaz, onSalvarCartaz, parte = "documento" }: Props) {
+export default function PcPopEditor({ pop, empresa, usuario, podeEditar, responsavelDoEstabelecimento, onImprimir, onSalvarRascunho, onEnviar, onAprovar, onNovaVersao, onDescartar, mensagem, proximaAcao, onIrParaConferencia, capaDaEmpresa, onSalvarCapa, onTrocarIconeDeCapa, estiloDoCartaz, onSalvarCartaz, parte = "documento", pedidoDeImpressao }: Props) {
   // Mais de um passo em branco vira um só logo ao abrir.
   const [rascunho, setRascunho] = useState<ProcedimentoOperacionalPadronizado>(() => (pop.conteudo?.passos ? { ...pop, conteudo: { ...pop.conteudo, passos: juntarPassosEmBrancoRepetidos(pop.conteudo.passos) } } : pop));
   const [motivoDaNovaVersao, setMotivoDaNovaVersao] = useState("");
@@ -263,6 +267,15 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
   const [versaoA, setVersaoA] = useState("");
   const [versaoB, setVersaoB] = useState("");
   const [escolhendoImpressao, setEscolhendoImpressao] = useState(false);
+  // "Imprimir para assinar": a folha leva um campo de assinatura do responsável (só no papel desta impressão).
+  const [paraAssinar, setParaAssinar] = useState(false);
+  const ultimoPedidoDeImpressao = useRef(0);
+  useEffect(() => {
+    if (!pedidoDeImpressao || pedidoDeImpressao.n === ultimoPedidoDeImpressao.current) return;
+    ultimoPedidoDeImpressao.current = pedidoDeImpressao.n;
+    setParaAssinar(pedidoDeImpressao.assinar);
+    setEscolhendoImpressao(true);
+  }, [pedidoDeImpressao]);
   // Capa que sai no papel desta impressão (a página 1 do PDF); sem ela o PDF é o de sempre.
   const [capaNoPapel, setCapaNoPapel] = useState<ModeloDaCapa | null>(null);
   // Cartaz "Como lavar as mãos": janela de escolhas e a cópia que sai no papel (A4, uma página).
@@ -418,6 +431,7 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
   const iconeEscolhidoDaCapa = eIconeConhecido(pop.iconeCapa) ? pop.iconeCapa : "";
   async function imprimirFolha(capa: CapaCompleta | null, icone: string) {
     setEscolhendoImpressao(false);
+    if (paraAssinar) window.addEventListener("afterprint", () => setParaAssinar(false), { once: true });
     // Vale o que está na janela (salvo ou não), nunca só o que está guardado na empresa.
     const modeloDaCapaImpressa = capa?.ativa ? modeloDaCapa(capa, { ...folhaDeLeitura.capa, iconeId: icone || iconeAutomaticoDaCapa }) : null;
     setCapaNoPapel(modeloDaCapaImpressa);
@@ -503,7 +517,7 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
             )}
           </div>
           {notasAbertas && itensDasNotasNaTela.length > 0 && <PainelDasNotas itens={itensDasNotasNaTela} onAcao={resolverPendencia} />}
-          <PopFolha folha={folhaDeLeitura} modo="leitura" id="pop-folha" />
+          <PopFolha folha={folhaDeLeitura} modo="leitura" id="pop-folha" assinatura={paraAssinar ? { nome: executorNaTela.nome, cargo: executorNaTela.cargo } : null} />
         </div>
       )}
 
@@ -598,11 +612,23 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
               </div>
               <Campo rotulo="Cargo ou função" valor={executorNaTela.cargo} desabilitado={!editavel} erro={tocado && !executorNaTela.cargo.trim() ? "Informe o cargo ou a função." : ""} onChange={(valor) => mudarResponsavel({ nome: executorNaTela.nome, cargo: semPontuacaoNoInicio(valor) })} />
               <div className="pc-field">
-                <Campo rotulo="Frequência" valor={conteudo.frequencia || ""} desabilitado={!editavel} erro={tocado && !(conteudo.frequencia || "").trim() ? "Informe a frequência." : ""} onChange={(valor) => mudar({ frequencia: valor })} />
+                <CampoDeFrequencia
+                  frequencia={conteudo.frequencia}
+                  estruturada={conteudo.frequenciaEstruturada}
+                  desabilitado={!editavel}
+                  erro={tocado && !frequenciaDoPop(conteudo) ? "Informe a frequência." : ""}
+                  onChange={(nova) => {
+                    const gravado = conteudoComFrequencia({ frequencia: conteudo.frequencia, frequenciaEstruturada: conteudo.frequenciaEstruturada }, nova);
+                    mudar({ frequencia: gravado.frequencia, frequenciaEstruturada: gravado.frequenciaEstruturada });
+                  }}
+                />
                 {editavel && sugestaoDaFrequencia && sugestaoDaFrequencia !== (conteudo.frequencia || "").trim() && (
                   <span className="ui-row-sub pdoc-sugestao">
                     Sugestão do modelo:{" "}
-                    <button type="button" className="pc-link-btn" title="Usar esta sugestão" onClick={() => mudar({ frequencia: sugestaoDaFrequencia })}>
+                    <button type="button" className="pc-link-btn" title="Usar esta sugestão" onClick={() => {
+                      const gravado = conteudoComFrequencia({ frequencia: "", frequenciaEstruturada: undefined }, frequenciaDoPop({ frequencia: sugestaoDaFrequencia }));
+                      mudar({ frequencia: gravado.frequencia, frequenciaEstruturada: gravado.frequenciaEstruturada });
+                    }}>
                       {sugestaoDaFrequencia}
                     </button>
                   </span>
@@ -1003,7 +1029,10 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
           guardada={capaDaEmpresa}
           podeSalvar={Boolean(onSalvarCapa && podeEditar)}
           avisoNaoConferido={popNaoConferido(comConferenciaAtual(rascunho))}
-          onCancelar={() => setEscolhendoImpressao(false)}
+          onCancelar={() => {
+            setEscolhendoImpressao(false);
+            setParaAssinar(false);
+          }}
           onSalvar={(capa, icone) => {
             onSalvarCapa?.({ ativa: capa.ativa, estilo: capa.estilo, cor: capa.cor, icone: capa.icone, ...(capa.logotipo ? { logotipo: capa.logotipo } : {}) });
             if (icone !== iconeEscolhidoDaCapa) onTrocarIconeDeCapa?.(comIconeDeCapa(pop, icone));

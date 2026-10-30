@@ -11,6 +11,8 @@ type Props = {
   id?: string;
   /** Capa opcional (página A4 inteira, sem cabeçalho nem numeração). Aparece apenas no papel e vira a página 1; sem ela nada muda. */
   capa?: ModeloDaCapa | null;
+  /** "Imprimir para assinar": campo de assinatura do responsável no fim da folha (só no papel desta impressão). */
+  assinatura?: { nome: string; cargo: string } | null;
 };
 
 function Tabela({ tabela }: { tabela: TabelaDaFolha }) {
@@ -49,7 +51,7 @@ function gruposDePassos(bloco: BlocoDaFolha): { inicio: number; fim: number; sub
 }
 
 // A folha do POP como a pessoa vai ler. Só apresenta; nada aqui grava.
-export default function PopFolha({ folha, modo, id, capa = null }: Props) {
+export default function PopFolha({ folha, modo, id, capa = null, assinatura = null }: Props) {
   return (
     <>
       {capa && modo === "leitura" && (
@@ -97,6 +99,16 @@ export default function PopFolha({ folha, modo, id, capa = null }: Props) {
         </section>
       ))}
       {folha.blocos.length === 0 && <p className="pfolha-linha is-branco">Nada preenchido ainda.</p>}
+      {assinatura && (
+        <section className="pfolha-assinatura" aria-label="Assinatura do responsável">
+          <div className="pfolha-assinatura-linha" />
+          <p className="pfolha-assinatura-texto">
+            Assinatura do responsável{assinatura.nome ? `: ${assinatura.nome}` : ""}
+            {assinatura.cargo ? ` · ${assinatura.cargo}` : ""}
+          </p>
+          <p className="pfolha-assinatura-texto">Data: ____ / ____ / ________</p>
+        </section>
+      )}
     </article>
     </>
   );

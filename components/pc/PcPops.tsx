@@ -10,6 +10,8 @@ import type { CapaDosPops } from "@/types";
 import PcPopsLista from "@/components/pc/PcPopsLista";
 import type { CabecalhoDeImpressao } from "@/lib/printFooter";
 import { useRegistrosDaEmpresa } from "@/components/RegistrosEmpresaContext";
+import { arquivarPop } from "@/lib/pops";
+import { inativarPop, reativarPop } from "@/lib/popInativo";
 import { aprovarPop, criarPopDoTextoBase, criarPopsFaltantesDoConjunto, descartarRascunho, conjuntoDaEmpresa, enviarParaAprovacao, hojeISO, iniciarNovaVersao, podeAprovarPop } from "@/lib/popsNorma";
 import { montarListaDePops } from "@/lib/popGestao";
 import { criarPopDeModelo, modeloPorId, type ResultadoDaCriacao } from "@/lib/popModelos";
@@ -201,6 +203,13 @@ export default function PcPops({ pops, empresa, usuario = null, podeEditar = fal
         estiloDoCartaz={estiloDaEmpresa(empresa.cartazLavagem?.tema)}
         onSalvarCartaz={onSalvarCartaz}
         onAtualizarConferencia={(novo) => onPersistir(pops.map((pop) => (pop.id === novo.id ? novo : pop)))}
+        onArquivar={(motivo) => {
+          onPersistir(arquivarPop(pops, popEmFicha.id, true, { motivo, porNome: usuario?.nome || "", porId: usuario?.id, em: new Date().toISOString() }));
+          setFichaId(null);
+          setMensagemFicha("");
+        }}
+        onInativar={(motivo) => executar(popEmFicha, () => inativarPop(popEmFicha, { motivo, porNome: usuario?.nome || "", porId: usuario?.id, em: new Date().toISOString() }), "POP inativado. A versão aprovada continua guardada.")}
+        onReativar={() => executar(popEmFicha, () => reativarPop(popEmFicha), "POP reativado em nova versão (rascunho). A versão aprovada continua guardada.")}
         onDescartar={(atual) => executar(popEmFicha, () => descartarRascunho(atual), "Rascunho descartado. A versão aprovada continua vigente.")}
         onNovaVersao={(novo) => executar(popEmFicha, () => iniciarNovaVersao(novo), "Nova versão criada em rascunho. A versão aprovada continua guardada.")}
       />
@@ -231,6 +240,7 @@ export default function PcPops({ pops, empresa, usuario = null, podeEditar = fal
       onAlterarEmDados={onAlterarEmDados}
       topo={topo}
       mensagem={mensagem}
+      autor={usuario ? { nome: usuario.nome, id: usuario.id } : undefined}
     />
   );
 }

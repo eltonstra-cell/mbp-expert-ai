@@ -7,7 +7,8 @@ import { RowMenu, type ItemMenu } from "@/components/ui/RowMenu";
 import { MENSAGEM_NORMA_ALTERADA, MENSAGEM_SEM_NORMA_APLICADA, popPrecisaRevisarPorNorma } from "@/lib/popsNorma";
 import { COR_DO_ESTADO, botaoDaLinha, contadoresDaLista, estadoVisualDaLinha, filtrarLinhas, grupoComecaAberto, linhasDoGrupo, resumoDoGrupo, textoDoCriarDaNorma, POPS_EM_DESTAQUE, type FiltroDaLista, type LinhaComDetalhe } from "@/lib/popGestao";
 import { acoesDoPop } from "@/lib/menuActions";
-import { adicionarPop, arquivarPop, duplicarPop } from "@/lib/pops";
+import { AVISO_JA_TEM_DO_MODELO, adicionarPop, arquivarPop, duplicarPop } from "@/lib/pops";
+import MotivoDaMudanca from "@/components/pc/MotivoDaMudanca";
 import PcModelosPop from "@/components/pc/PcModelosPop";
 import { ROTULO_CURTO_NAO_CONFERIDO, ROTULO_NAO_CONFERIDO, popNaoConferido } from "@/lib/popConferencia";
 import type { ResultadoDaCriacao } from "@/lib/popModelos";
@@ -42,6 +43,8 @@ type Props = {
   onAlterarEmDados?: () => void;
   topo?: ReactNode;
   mensagem?: string;
+  /** Quem arquiva: o motivo, o autor e a data ficam gravados no POP. */
+  autor?: { nome: string; id?: string };
 };
 
 type ContadorDeFiltro = { id: FiltroDaLista | null; rotulo: string; conta: (c: ReturnType<typeof contadoresDaLista>) => number };
@@ -84,7 +87,7 @@ function Linha({ linha, podeEditar, onAbrirFicha, onCriarDoModelo, menu }: { lin
           {linha.registroAtrasado && <span className="pgl-estado-atraso">Registro atrasado · </span>}
           {revisar && <span className="pgl-estado-revisar" title={MENSAGEM_NORMA_ALTERADA}>Revisar · </span>}
           <span className="pgl-estado-situacao" style={{ color: estado === "neutro" ? "#526477" : cor }}>{ROTULO_DO_ESTADO_TEXTO[linha.situacao] || linha.situacao}</span>
-          {naoConferido && <span className="pgl-estado-cinza" title={ROTULO_NAO_CONFERIDO}> · {ROTULO_CURTO_NAO_CONFERIDO}</span>}
+          {naoConferido && !linha.detalhe?.startsWith("Etapa") && <span className="pgl-estado-cinza" title={ROTULO_NAO_CONFERIDO}> · {ROTULO_CURTO_NAO_CONFERIDO}</span>}
           {linha.detalhe ? <span className="pgl-estado-cinza"> · {linha.detalhe}</span> : null}
         </span>
       </div>
@@ -131,7 +134,10 @@ export default function PcPopsLista({
   onAlterarEmDados,
   topo,
   mensagem,
+  autor,
 }: Props) {
+  const [arquivando, setArquivando] = useState<ProcedimentoOperacionalPadronizado | null>(null);
+  const [avisoLocal, setAvisoLocal] = useState("");
   const [adicionando, setAdicionando] = useState(false);
   const [deModelo, setDeModelo] = useState(false);
   const [codigo, setCodigo] = useState("");
@@ -191,9 +197,16 @@ export default function PcPopsLista({
       .map((acao): ItemMenu => {
         switch (acao) {
           case "duplicar":
-            return { rotulo: "Duplicar", onClick: () => onPersistir(duplicarPop(pops, pop.id, crypto.randomUUID())) };
+            return { rotulo: "Duplicar", onClick: () => {
+              const depois = duplicarPop(pops, pop.id, crypto.randomUUID());
+              if (depois === pops) setAvisoLocal(AVISO_JA_TEM_DO_MODELO);
+              else {
+                setAvisoLocal("");
+                onPersistir(depois);
+              }
+            } };
           case "arquivar":
-            return { rotulo: "Arquivar", confirmar: `Arquivar o POP "${pop.titulo || pop.codigo}"? Ele sai da lista, mas continua guardado.`, onClick: () => onPersistir(arquivarPop(pops, pop.id, true)) };
+            return { rotulo: "Arquivar", onClick: () => setArquivando(pop) };
           case "desarquivar":
             return { rotulo: "Desarquivar", onClick: () => onPersistir(arquivarPop(pops, pop.id, false)) };
           default:
@@ -388,6 +401,19 @@ export default function PcPopsLista({
         )}
       </div>
       {mensagem && <div className="ui-note">{mensagem}</div>}
+      {avisoLocal && <div className="ui-note" role="status">{avisoLocal}</div>}
+      {arquivando && (
+        <MotivoDaMudanca
+          titulo={`Arquivar ${arquivando.codigo || "o POP"}`}
+          explicacao="O POP sai da lista, mas continua guardado. O motivo, quem e quando ficam registrados."
+          rotuloDoBotao="Arquivar"
+          onCancelar={() => setArquivando(null)}
+          onConfirmar={(motivo) => {
+            onPersistir(arquivarPop(pops, arquivando.id, true, { motivo, porNome: autor?.nome || "", porId: autor?.id, em: new Date().toISOString() }));
+            setArquivando(null);
+          }}
+        />
+      )}
     </div>
   );
 }

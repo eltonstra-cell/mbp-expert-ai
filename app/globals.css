@@ -7146,3 +7146,81 @@ html:root:root body .ini-gaveta-abrir{width:100%}
   /* celular: sem rolagem de página; os atalhos do rodapé continuam em Relatórios e Mais */
   html:root:root body .ini4 .ini3-rodape{display:none}
 }
+
+/* RODADA 12e · assinatura do responsável na folha impressa ("Imprimir para assinar") */
+.pfolha-assinatura{margin-top:36px;break-inside:avoid}
+.pfolha-assinatura-linha{border-bottom:1px solid #1B2433;height:34px;max-width:360px}
+.pfolha-assinatura-texto{margin:6px 0 0;font-size:14px;color:#1B2433}
+
+/* RODADA 12e · ficha do POP em 4 abas e ciclo de 6 etapas (desenhos 36 a 47). Texto preto ou branco, peso 400/500, botões de 40 px e raio 10. */
+.rz-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:40px;padding:0 16px;border-radius:10px;border:2px solid #264A80;font:inherit;font-size:15px;font-weight:500;line-height:1.2;cursor:pointer;background:#fff;color:#1B2433}
+.rz-btn--pri{background:#264A80;color:#fff}
+.rz-btn--sec{background:#fff;color:#1B2433}
+.rz-btn--larga{width:100%;justify-content:flex-start}
+.rz-btn:disabled,.rz-btn[disabled]{background:#EEF1F5;border-color:#B4C2CE;color:#51606c;cursor:not-allowed}
+.rz-btn:focus-visible,.rz-link:focus-visible{outline:3px solid #2B54CF;outline-offset:2px}
+.rz-link{background:none;border:0;padding:0 2px;font:inherit;color:#1B2433;text-decoration:underline;cursor:pointer;min-height:32px}
+.rz-bolinha{display:inline-block;width:10px;height:10px;border-radius:50%;background:#AF640A;margin-right:6px;vertical-align:baseline}
+.rz-estado{display:inline-flex;align-items:center;font-size:16px;color:#1B2433}
+.rz-estado-versao{color:#55607A}
+.ficha-abas--texto{display:flex;gap:4px;border-bottom:1px solid #D8DDE8;background:none;padding:0}
+.ficha-abas--texto .ficha-aba{background:none;border:0;border-bottom:3px solid transparent;border-radius:0;padding:8px 14px;min-height:40px;font-size:16px;color:#55607A;font-weight:400}
+.ficha-abas--texto .ficha-aba.is-ativa{color:#1B2433;font-weight:500;border-bottom-color:#264A80;background:none}
+.rz-resumo{display:flex;flex-direction:column;gap:16px}
+.rz-etapas{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
+.rz-etapa{display:flex;align-items:center;gap:8px;min-height:40px;padding:0 10px;border-radius:10px;border:2px solid #A9B3C9;background:#fff;color:#1B2433;font-size:15px}
+.rz-etapa-bola{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;font-size:13px;flex:none}
+.rz-etapa--concluida{background:#21805B;border-color:#21805B;color:#fff}
+.rz-etapa--concluida .rz-etapa-bola{background:#fff;color:#21805B}
+.rz-etapa--atual{background:#264A80;border-color:#264A80;color:#fff;font-weight:500}
+.rz-etapa--atual .rz-etapa-bola{background:#fff;color:#264A80}
+.rz-etapa--futura .rz-etapa-bola{border:1px solid #A9B3C9}
+.rz-etapa-nome{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rz-faixa{background:#FFF6E5;border:1px solid #E8B04B;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;color:#1B2433}
+.rz-faixa.is-destaque{outline:3px solid #AF640A}
+.rz-faixa-topo{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.rz-faixa-titulo{margin:0;font-size:18px;font-weight:500}
+.rz-faixa-conta{font-size:15px;color:#55607A}
+.rz-faixa-conta.is-ok{color:#1B2433}
+.rz-faixa-texto,.rz-faixa-nota{margin:0;font-size:15px}
+.rz-faixa-nota--aviso{color:#8A3B00}
+.rz-faixa-acoes{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.rz-conferir-lista,.rz-verificacoes,.rz-faltam,.rz-equipe{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.rz-conferir-item{display:flex;align-items:flex-start;gap:10px;font-size:15px;min-height:32px}
+.rz-verificacoes li{display:flex;align-items:center;gap:10px;font-size:15px}
+.rz-verificacao-marca{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;border:2px solid #A9B3C9;flex:none;background:#fff}
+.rz-verificacoes li.is-ok .rz-verificacao-marca{background:#21805B;border-color:#21805B;color:#fff}
+.rz-faltam li{font-size:15px}
+.rz-equipe li{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:15px;min-height:32px;border-bottom:1px solid #F0D9A8}
+.rz-equipe li:last-child{border-bottom:0}
+.rz-equipe-cargo{color:#55607A}
+.rz-equipe-ok{display:inline-flex;align-items:center;gap:4px;color:#1B6B4A;white-space:nowrap}
+.rz-equipe-pend{display:inline-flex;align-items:center;color:#8A3B00;white-space:nowrap}
+.rz-equipe-pend .rz-bolinha{margin-right:6px}
+.rz-so-responsavel{font-size:15px;color:#1B2433}
+.rz-campos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0}
+.rz-campos>div{border:1px solid #D8DDE8;border-radius:10px;padding:8px 12px;background:#fff}
+.rz-campos dt{font-size:13px;color:#55607A;margin:0}
+.rz-campos dd{margin:2px 0 0;font-size:16px;color:#1B2433}
+.rz-frequencia{border:1px solid #D8DDE8;border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:10px;background:#fff}
+.rz-ciencia-escolha{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;max-height:46vh;overflow:auto}
+.rz-ciencia-form{display:flex;flex-direction:column;gap:10px}
+.rz-historico-extra{display:flex;flex-direction:column;gap:12px}
+@media (max-width:700px){
+  .rz-etapas{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media (max-width:600px){
+  .rz-etapas{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+  .rz-etapa{padding:0 6px;gap:5px;font-size:14px}
+  .rz-faixa{padding:12px}
+  .rz-campos{grid-template-columns:1fr}
+  .rz-faixa-acoes .rz-btn{flex:1 1 100%}
+  .ficha-abas--texto{overflow-x:auto}
+}
+@media (max-width:600px){
+  .ficha-abas--texto .ficha-aba{padding:8px 10px;font-size:15px;white-space:nowrap}
+  .ficha-abas--texto{gap:0}
+  .rz-campos{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+  .rz-campos>div{padding:6px 8px}
+  .rz-campos dd{font-size:15px}
+}
