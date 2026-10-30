@@ -236,7 +236,7 @@ test("Pacote de ajustes: pastel com texto grafite, aviso com ação sublinhada, 
   const apoio = ler("../components/pc/PcChecklist.tsx");
   assert.ok(!apoio.includes("Sem material de apoio"), "sem frase de apoio vazio");
   assert.ok(!apoio.includes("chk-apoio-fonte") && !apoio.includes("fonteDaPergunta"), "a fonte não é repetida na coluna de apoio");
-  assert.ok(ler("../components/ChecklistFocoItem.tsx").includes('{rotuloDaFonte(item.referencia)}</p>') && ler("../components/ChecklistFocoItem.tsx").includes('<p className={`chk-fonte-abaixo'), "a fonte fica logo abaixo do enunciado, uma vez");
+  assert.ok(ler("../components/ChecklistFocoItem.tsx").includes('{rotuloDaFonte(item.referencia)}</span>') && ler("../components/ChecklistFocoItem.tsx").includes('<p className={`chk-fonte-abaixo'), "a fonte fica logo abaixo do enunciado, uma vez");
 });
 
 test("responder o checklist não mostra aviso com Desfazer; só o lote tem Desfazer (acima do rodapé); tocar na resposta marcada limpa sem aviso", () => {

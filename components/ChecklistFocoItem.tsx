@@ -18,7 +18,7 @@ import { COR_DO_SEGMENTO, rotuloDoSegmento } from "@/lib/checklistSegmentos";
 import { useCapturaCamera } from "@/components/useCapturaMidia";
 import { estadosDosBotoes, gravidadeSugerida } from "@/lib/checklistUi";
 import { textoDeBaseLegal } from "@/lib/conteudoValidado";
-import { rotuloDaFonte } from "@/lib/fonteDaPergunta";
+import { fonteParaExibir, rotuloDaFonte, SEM_FONTE } from "@/lib/fonteDaPergunta";
 import type { EstadoVoz } from "@/lib/vozLinha";
 import { dependenciasDoNavegador, validarFotoEscolhida } from "@/lib/fotoCompressao";
 import type { ChecklistCriticidade, ChecklistItem, ChecklistStatus } from "@/types";
@@ -138,7 +138,11 @@ export default function ChecklistFocoItem({
   const [texto, setTexto] = useState(item.observacao || "");
   // Celular: o texto inteiro da pergunta fica atrás de um "i" discreto (a fonte aparece sempre, logo abaixo do enunciado).
   const [fonteAberta, setFonteAberta] = useState(false);
-  useEffect(() => setFonteAberta(false), [item.id]);
+  const [verFonte, setVerFonte] = useState(false);
+  useEffect(() => {
+    setFonteAberta(false);
+    setVerFonte(false);
+  }, [item.id]);
   const areaRef = useRef<HTMLTextAreaElement | null>(null);
   const primeiraRespostaRef = useRef<HTMLButtonElement | null>(null);
   const caixaRef = useRef<HTMLDivElement | null>(null);
@@ -394,7 +398,17 @@ export default function ChecklistFocoItem({
             i
           </button>
         )}
-        <p className={`chk-fonte-abaixo${naoConforme && rotuloDaFonte(item.referencia) === "Fonte não registrada" ? " chk-fonte-abaixo--vazia" : ""}`}>{rotuloDaFonte(item.referencia)}</p>
+        <p className={`chk-fonte-abaixo${naoConforme && rotuloDaFonte(item.referencia) === "Fonte não registrada" ? " chk-fonte-abaixo--vazia" : ""}`}>
+          <span className="chk-fonte-corte">{rotuloDaFonte(item.referencia)}</span>
+          {fonteParaExibir(item.referencia) !== SEM_FONTE && (
+            <button type="button" className="chk-fonte-ver" aria-expanded={verFonte} onClick={() => setVerFonte((valor) => !valor)}>
+              {verFonte ? "Ocultar fonte" : "Ver fonte"}
+            </button>
+          )}
+        </p>
+        {verFonte && fonteParaExibir(item.referencia) !== SEM_FONTE && (
+          <p className="chk-fonte-completa" role="note">{fonteParaExibir(item.referencia)}</p>
+        )}
         {campo && mostrarApoio && fonteAberta && (
           <div className="chk-fonte-linha chk-fonte-linha--campo" role="note">
             <p className="chk-fonte-pergunta">{item.titulo}</p>

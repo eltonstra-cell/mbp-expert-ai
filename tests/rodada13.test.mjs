@@ -76,5 +76,11 @@ test("13h: CSS da janela (linhas de 44 px, atual #E3F4F4, painel à direita só 
   const css = lerFonte("app/globals.css");
   assert.ok(css.includes("height:44px;padding:0 20px 0 17px"));
   assert.ok(css.includes(".amb-janela-linha.is-atual{border-left-color:#21A3A3;background:#E3F4F4"));
-  assert.ok(css.includes("@media (min-width:1100px){\n  .amb-janela{top:0;left:auto;width:min(480px,100vw)") || css.includes("@media (min-width:1100px){\r\n  .amb-janela{top:0;left:auto;width:min(480px,100vw)"));
+  assert.ok(/html:root:root body .amb-janela{position:fixed;inset:auto 0 0 0/.test(css) && css.includes("html:root:root body .amb-janela{inset:0 0 0 auto;width:min(520px,100vw)"));
+  assert.ok(css.includes(".amb-janela-fundo{position:fixed;inset:0;"));
+  // Rodada 14: respostas do PC com 16 px e texto preto; Salvar e próximo compacto; Ver fonte
+  assert.ok(css.includes('.chk-foco-botoes .chk-resp:not(.is-marcado),html:not([data-modo="campo"]):root:root body .chk-foco-botoes .chk-resp:not(.is-marcado) span{color:#000}'));
+  assert.ok(css.includes("ui-btn.ui-btn--save{flex:none;width:auto;max-width:none;height:44px"));
+  const campoItem = lerFonte("components/ChecklistFocoItem.tsx");
+  assert.ok(campoItem.includes('className="chk-fonte-ver"') && campoItem.includes("fonteParaExibir(item.referencia) !== SEM_FONTE"));
 });
