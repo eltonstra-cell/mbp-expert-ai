@@ -250,7 +250,7 @@ export async function PUT(request: Request) {
         ...dadosParaGravar,
         empresas: aprovacoes.empresas,
         // Registro de execução de POP em guarda não some, nem por quem grava o estado inteiro.
-        registrosPop: restaurarRegistrosEmGuarda(estadoAtual.registrosPop, dadosParaGravar.registrosPop, (empresaId) => (estadoAtual.empresas || {})[empresaId]?.uf, new Date().toISOString()),
+        registrosPop: restaurarRegistrosEmGuarda(estadoAtual.registrosPop, dadosParaGravar.registrosPop, (empresaId) => (estadoAtual.empresas || {})[empresaId], new Date().toISOString()),
         // Auditoria só cresce: nem o Administrador apaga ou altera o que o servidor já guardou.
         registrosAuditoria: unirAuditoriaSemApagar(estadoAtual.registrosAuditoria, [
           ...(dadosParaGravar.registrosAuditoria || []),

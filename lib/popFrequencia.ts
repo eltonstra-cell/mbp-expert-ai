@@ -55,7 +55,8 @@ export function conteudoComFrequencia<T extends Pick<ConteudoPop, "frequencia" |
     const { frequenciaEstruturada: _tirada, ...resto } = conteudo;
     return { ...resto, frequencia: "" } as T;
   }
-  const normalizada: FrequenciaDoPop = frequencia.tipo === "outra" ? { tipo: "outra", texto: (frequencia.texto || "").trim() } : { tipo: frequencia.tipo };
+  // O texto de "outra" fica como foi digitado (espaços no fim valem enquanto se digita); só o campo legível `frequencia` sai aparado.
+  const normalizada: FrequenciaDoPop = frequencia.tipo === "outra" ? { tipo: "outra", texto: frequencia.texto || "" } : { tipo: frequencia.tipo };
   return { ...conteudo, frequenciaEstruturada: normalizada, frequencia: textoDaFrequencia(normalizada) };
 }
 

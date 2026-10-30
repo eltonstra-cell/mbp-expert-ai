@@ -2675,6 +2675,15 @@ export default function Home() {
             return atualizado;
           });
         },
+        incluirCiencia: (leitura) => {
+          if (!podeGerenciarPessoasAqui || leitura.empresaId !== empresaDosRegistros.id) return;
+          setDb((o) => {
+            if ((o.leiturasPop || []).some((item) => item.id === leitura.id)) return o;
+            const atualizado: AppDB = { ...o, leiturasPop: [...(o.leiturasPop || []), leitura] };
+            salvarDBLocal(atualizado);
+            return atualizado;
+          });
+        },
         podeEditarEmpresa: permitido("empresas.editar", empresaDosRegistros.id),
         ncs: permitido("ncs.acompanhar", empresaDosRegistros.id) ? db.ncs.filter((nc) => nc.empresaId === empresaDosRegistros.id) : [],
         ambientes: empresaDosRegistros.setoresManual || [],

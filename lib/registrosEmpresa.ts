@@ -161,6 +161,10 @@ export type DadosDoRegistro = {
   descricao: string;
   ambiente?: string;
   corrigeRegistroId?: string;
+  /** Rodada 12e (B6): verificação feita, desvio da regra do POP e, havendo desvio, a ação corretiva (obrigatória). */
+  verificacao?: string;
+  desvio?: boolean;
+  acaoCorretiva?: string;
 };
 
 export type ResultadoDoRegistro = { ok: true; registro: RegistroPop } | { ok: false; erro: string };
@@ -169,6 +173,7 @@ export type ResultadoDoRegistro = { ok: true; registro: RegistroPop } | { ok: fa
 export function criarRegistroPop(dados: DadosDoRegistro, agora: Date = new Date()): ResultadoDoRegistro {
   if (!dados.descricao.trim()) return { ok: false, erro: "Descreva o que foi feito." };
   if (!dados.responsavel.trim()) return { ok: false, erro: "Informe o responsável." };
+  if (dados.desvio && !(dados.acaoCorretiva || "").trim()) return { ok: false, erro: "Houve desvio: informe a ação corretiva." };
   const quando = new Date(dados.dataHora);
   if (Number.isNaN(quando.getTime())) return { ok: false, erro: "Informe a data e a hora." };
   if (quando.getTime() > agora.getTime() + 5 * 60 * 1000) return { ok: false, erro: "A data e a hora não podem estar no futuro." };
@@ -185,6 +190,8 @@ export function criarRegistroPop(dados: DadosDoRegistro, agora: Date = new Date(
       descricao: dados.descricao.trim(),
       ...(dados.ambiente?.trim() ? { ambiente: dados.ambiente.trim() } : {}),
       ...(dados.corrigeRegistroId ? { corrigeRegistroId: dados.corrigeRegistroId } : {}),
+      ...(dados.verificacao?.trim() ? { verificacao: dados.verificacao.trim() } : {}),
+      ...(dados.desvio ? { desvio: true, acaoCorretiva: (dados.acaoCorretiva || "").trim() } : {}),
       criadoEm: agora.toISOString(),
     },
   };

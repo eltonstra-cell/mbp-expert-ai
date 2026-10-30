@@ -8,7 +8,7 @@ import { aprovarPop, enviarParaAprovacao, hashDoConteudoDoPop, iniciarNovaVersao
 import { arquivarPop, duplicarPop } from "../lib/pops.ts";
 import { inativarPop, podeInativarPop, reativarPop } from "../lib/popInativo.ts";
 import { unirAuditoriaSemApagar } from "../lib/auditoriaNaoApagavel.ts";
-import { guardaDeRegistrosDaUf, registroEmGuarda, restaurarRegistrosEmGuarda } from "../lib/guardaDeRegistros.ts";
+import { diasDeGuardaParaExclusao, registroEmGuarda, restaurarRegistrosEmGuarda } from "../lib/guardaDeRegistros.ts";
 import { cienciaPorFuncao, equipeDaCiencia, novaCiencia } from "../lib/cienciaPop.ts";
 
 const AGORA = "2026-10-20T12:00:00.000Z";
@@ -38,7 +38,9 @@ test("B1: frequência estruturada; texto antigo só vira diária/semanal/mensal 
   assert.equal(frequenciaDoPop({}), null);
   const gravado = conteudoComFrequencia({ frequencia: "" }, { tipo: "semanal" });
   assert.deepEqual(gravado, { frequenciaEstruturada: { tipo: "semanal" }, frequencia: "Semanal" }, "o texto legível acompanha (regras antigas seguem lendo)");
-  assert.deepEqual(conteudoComFrequencia({ frequencia: "x" }, { tipo: "outra", texto: " cada turno " }).frequenciaEstruturada, { tipo: "outra", texto: "cada turno" });
+  const outra = conteudoComFrequencia({ frequencia: "x" }, { tipo: "outra", texto: "cada turno " });
+  assert.equal(outra.frequencia, "cada turno");
+  assert.equal(outra.frequenciaEstruturada.texto, "cada turno ", "o texto digitado não é aparado a cada tecla");
   assert.equal(conteudoComFrequencia({ frequencia: "x", frequenciaEstruturada: { tipo: "outra", texto: "x" } }, null).frequenciaEstruturada, undefined);
 });
 
@@ -156,14 +158,16 @@ test("B4: a cópia nasce Rascunho sem aprovação nem versões; POP de modelo n�
 });
 
 test("B5: guarda de registros: RS 90 dias, demais UF 30; excluídos em guarda voltam", () => {
-  assert.equal(guardaDeRegistrosDaUf("rs").dias, 90);
-  assert.equal(guardaDeRegistrosDaUf("SP").dias, 30);
-  assert.equal(guardaDeRegistrosDaUf(undefined).dias, 30);
-  assert.match(guardaDeRegistrosDaUf("RS").fonte, /conferir/);
-  assert.equal(registroEmGuarda("2026-08-01T12:00:00.000Z", "RS", "2026-10-20T12:00:00.000Z"), true, "80 dias no RS: em guarda");
-  assert.equal(registroEmGuarda("2026-08-01T12:00:00.000Z", "SP", "2026-10-20T12:00:00.000Z"), false, "80 dias em SP: fora da guarda");
+  const rs = { normasAplicadas: ["rdc-216-2004", "ses-799-2023-rs"] };
+  const sp = { normasAplicadas: ["rdc-216-2004"] };
+  assert.equal(diasDeGuardaParaExclusao(rs), 90, "RS: a Portaria SES 799/2023 (90) é mais rígida que a RDC 216 (30)");
+  assert.equal(diasDeGuardaParaExclusao(sp), 30);
+  assert.equal(diasDeGuardaParaExclusao({ normasAplicadas: [] }), 30, "nunca menos que 30");
+  assert.equal(diasDeGuardaParaExclusao({ normasAplicadas: ["rdc-216-2004"], guardaRegistrosDias: 45 }), 45, "o RT pode definir prazo maior");
+  assert.equal(registroEmGuarda("2026-08-01T12:00:00.000Z", rs, "2026-10-20T12:00:00.000Z"), true, "80 dias no RS: em guarda");
+  assert.equal(registroEmGuarda("2026-08-01T12:00:00.000Z", sp, "2026-10-20T12:00:00.000Z"), false, "80 dias em SP: fora da guarda");
   const antes = [{ id: "r1", empresaId: "e1", criadoEm: "2026-10-10T12:00:00.000Z" }, { id: "r2", empresaId: "e1", criadoEm: "2025-01-01T12:00:00.000Z" }];
-  const depois = restaurarRegistrosEmGuarda(antes, [], () => "RS", "2026-10-20T12:00:00.000Z");
+  const depois = restaurarRegistrosEmGuarda(antes, [], () => rs, "2026-10-20T12:00:00.000Z");
   assert.deepEqual(depois.map((r) => r.id), ["r1"], "o recente volta; o antigo pode sair");
 });
 

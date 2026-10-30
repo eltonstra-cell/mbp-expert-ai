@@ -24,6 +24,9 @@ export default function PcRegistrosDoPop({ pop }: { pop: ProcedimentoOperacional
   const [dataHora, setDataHora] = useState(agoraParaCampo);
   const [descricao, setDescricao] = useState("");
   const [ambiente, setAmbiente] = useState("");
+  const [verificacao, setVerificacao] = useState("");
+  const [desvio, setDesvio] = useState(false);
+  const [acaoCorretiva, setAcaoCorretiva] = useState("");
   const [corrigindo, setCorrigindo] = useState<RegistroPop | null>(null);
   const [tocado, setTocado] = useState(false);
   const [erroGeral, setErroGeral] = useState("");
@@ -42,12 +45,13 @@ export default function PcRegistrosDoPop({ pop }: { pop: ProcedimentoOperacional
 
   const provaId = contexto.empresa?.registroProvaPorPop?.[pop.id] || "";
   const erroDescricao = !descricao.trim() ? "Descreva o que foi feito." : "";
+  const erroAcao = desvio && !acaoCorretiva.trim() ? "Houve desvio: informe a ação corretiva." : "";
   const erroData = !dataHora ? "Informe a data e a hora." : Date.parse(localParaISO(dataHora)) > Date.now() + 5 * 60 * 1000 ? "A data e a hora não podem estar no futuro." : "";
 
   function salvar() {
     setTocado(true);
     setErroGeral("");
-    if (erroDescricao || erroData || !vigente) return;
+    if (erroDescricao || erroData || erroAcao || !vigente) return;
     const resultado = contexto!.novoRegistro({
       popId: pop.id,
       popVersao: vigente.versao,
@@ -55,6 +59,9 @@ export default function PcRegistrosDoPop({ pop }: { pop: ProcedimentoOperacional
       descricao,
       ambiente,
       corrigeRegistroId: corrigindo?.id,
+      verificacao,
+      desvio,
+      acaoCorretiva,
     });
     if (!resultado.ok) {
       setErroGeral(resultado.erro);
@@ -62,6 +69,9 @@ export default function PcRegistrosDoPop({ pop }: { pop: ProcedimentoOperacional
     }
     setDescricao("");
     setAmbiente("");
+    setVerificacao("");
+    setDesvio(false);
+    setAcaoCorretiva("");
     setCorrigindo(null);
     setTocado(false);
     setDataHora(agoraParaCampo());
@@ -152,6 +162,20 @@ export default function PcRegistrosDoPop({ pop }: { pop: ProcedimentoOperacional
               <textarea className={`ui-input pop-area${tocado && erroDescricao ? " is-invalid" : ""}`} rows={2} value={descricao} onChange={(evento) => setDescricao(evento.target.value)} aria-invalid={Boolean(tocado && erroDescricao)} />
               {tocado && erroDescricao && <span className="ui-field-error">{erroDescricao}</span>}
             </label>
+            <label className="pc-field">
+              <span className="ui-eyebrow">Verificação (opcional)</span>
+              <input className="ui-input" value={verificacao} onChange={(evento) => setVerificacao(evento.target.value)} />
+            </label>
+            <label className="ui-row-sub">
+              <input type="checkbox" checked={desvio} onChange={(evento) => setDesvio(evento.target.checked)} /> Houve desvio
+            </label>
+            {desvio && (
+              <label className="pc-field">
+                <span className="ui-eyebrow">Ação corretiva (obrigatória)</span>
+                <textarea className={`ui-input pop-area${tocado && erroAcao ? " is-invalid" : ""}`} rows={2} value={acaoCorretiva} onChange={(evento) => setAcaoCorretiva(evento.target.value)} aria-invalid={Boolean(tocado && erroAcao)} />
+                {tocado && erroAcao && <span className="ui-field-error">{erroAcao}</span>}
+              </label>
+            )}
             <div className="pop-registro-acoes">
               <span className="ui-row-sub">Responsável: {contexto.usuario?.nome || "quem está no app"} · versão {vigente.versao} do POP</span>
               <button type="button" className="ui-btn ui-btn--save ui-btn--small" onClick={salvar}>

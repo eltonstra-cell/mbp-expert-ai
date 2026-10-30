@@ -5,7 +5,7 @@ import type { ResultadoDoRegistro, DadosDoRegistro } from "@/lib/registrosEmpres
 import type { Colaborador, ComprovanteTerceiro, Empresa, LeituraPop, NaoConformidade, RegistroPop, UsuarioSistema } from "@/types";
 import type { DadosDoFormulario } from "@/components/pc/PcComprovantes";
 
-export type NovoRegistroDados = Pick<DadosDoRegistro, "popId" | "popVersao" | "dataHora" | "descricao" | "ambiente" | "corrigeRegistroId">;
+export type NovoRegistroDados = Pick<DadosDoRegistro, "popId" | "popVersao" | "dataHora" | "descricao" | "ambiente" | "corrigeRegistroId" | "verificacao" | "desvio" | "acaoCorretiva">;
 
 // Dados da empresa que a lista de POPs e a ficha do POP (Registros, Comprovantes, Quem leu) usam, sem passar prop por todos os níveis.
 export type RegistrosEmpresaValor = {
@@ -22,6 +22,8 @@ export type RegistrosEmpresaValor = {
   colaboradores: Colaborador[];
   leituras: LeituraPop[];
   registrarLeitura: (popId: string, popVersao: string, colaboradorId: string, data: string) => void;
+  /** Inclui no estado local a ciência que o servidor acabou de gravar por PIN (mesmo id; sem isso o próximo salvar a apagaria). */
+  incluirCiencia: (leitura: LeituraPop) => void;
   novoRegistro: (dados: NovoRegistroDados) => ResultadoDoRegistro;
   definirGuarda: (dias: number) => void;
   definirProva: (popId: string, registroId: string) => void;
