@@ -4865,7 +4865,7 @@ button.esc-chip--mais:focus-visible{outline:3px solid #21A3A3;outline-offset:1px
 .pgg-secao{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 12px;padding:0 2px 6px;border-bottom:1px solid #D8DDE8;margin-top:4px}
 .pgg-secao-titulo{margin:0;font-size:15px;font-weight:500;color:#1B2433}
 .pgl-grupo-corpo{display:flex;flex-direction:column;gap:8px}
-.pgl .pgl-linha{display:flex;flex-wrap:nowrap;align-items:center;gap:12px;min-height:60px;padding:8px 12px;border:1.5px solid var(--cor-do-estado,#7F8BA3);border-radius:12px;background:#fff;box-shadow:none}
+.pgl .pgl-linha{display:flex;flex-wrap:nowrap;align-items:center;gap:12px;min-height:60px;padding:8px 12px;border:1.5px solid #D6DCE5;border-radius:12px;background:#fff;box-shadow:none}
 .pgl .pgl-linha.is-clicavel{cursor:pointer}
 .pgl .pgl-linha.is-clicavel:hover{background:#F4F9FE}
 .pgl .pgl-linha:focus-visible{outline:3px solid #21A3A3;outline-offset:2px}

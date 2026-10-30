@@ -137,7 +137,7 @@ test("etiquetas e cores da linha: Rascunho #FDEBC2, Aguardando #F6C65B, Vigente 
 test("linha de POP: fundo branco, moldura de 1,5 px na cor do estado, raio 12, 8 px entre linhas, a linha inteira abre o POP", () => {
   const css = ler("../app/globals.css");
   const bloco = css.slice(css.indexOf("/* ===== Pacote 4 · Central sem caixas"));
-  assert.match(bloco, /\.pgl \.pgl-linha\{display:flex;flex-wrap:nowrap;[^}]*min-height:60px[^}]*border:1\.5px solid var\(--cor-do-estado,#7F8BA3\);border-radius:12px;background:#fff;box-shadow:none\}/);
+  assert.match(bloco, /\.pgl \.pgl-linha\{display:flex;flex-wrap:nowrap;[^}]*min-height:60px[^}]*border:1\.5px solid #D6DCE5;border-radius:12px;background:#fff;box-shadow:none\}/);
   assert.match(bloco, /\.pgl-grupo-corpo\{display:flex;flex-direction:column;gap:8px\}/);
   assert.match(bloco, /\.pgl-bolinha\{[^}]*background:var\(--cor-do-estado,#7F8BA3\)\}/);
   const lista = ler("../components/pc/PcPopsLista.tsx");
