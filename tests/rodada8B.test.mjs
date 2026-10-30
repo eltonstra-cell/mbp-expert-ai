@@ -23,10 +23,10 @@ test("B2 (rodada 10): Importante selecionado em âmbar #E0A800 com texto #263445
 test("B3: a lista de ambientes tem colunas fixas e não escreve 'Sem NCs'", () => {
   const css = lerFonte("app/globals.css");
   const comp = lerFonte("components/AmbientesCortina.tsx");
+  // Rodada 13: a lista virou a janela de ambientes (linhas de 44 px, contagem à direita); a NC fica só para o leitor de tela.
   assert.equal(comp.includes("Sem NCs"), false);
-  assert.ok(comp.includes('className="amb-vazio"') && comp.includes("sem não conformidades"), "coluna vazia com texto só para leitor de tela");
-  assert.ok(css.includes("grid-template-columns:minmax(0,1fr) 110px 176px 80px"));
-  assert.ok(css.includes('html[data-modo="campo"] .amb-linha{grid-template-columns:minmax(0,1fr) 30px 84px 72px'));
+  assert.ok(comp.includes("não conformidade") && comp.includes("sr-only"), "NC só para leitor de tela");
+  assert.ok(css.includes("height:44px;padding:0 20px 0 17px"));
 });
 
 // ===== Rodada 9B =====
@@ -44,7 +44,7 @@ test("9B B3: a lista de ambientes usa o nome curto; nomes curtos repetidos volta
   const repetidos = ["Área de Preparo", "Área de Descanso"];
   assert.deepEqual(rotulosCurtosDosAmbientes(repetidos), repetidos, "dois nomes curtos iguais (\"Área\"): ficam os completos");
   const comp = readFileSync(new URL("../components/AmbientesCortina.tsx", import.meta.url), "utf8");
-  assert.ok(comp.includes("▲ {ambiente.naoConformes} NC") && comp.includes("rotulosCurtosDosAmbientes"));
+  assert.ok(comp.includes("rotulosCurtosDosAmbientes") && comp.includes("nomeCurtoDe"));
 });
 
 test("9B B1/B2/B4/B5: estilos", () => {

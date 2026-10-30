@@ -9,6 +9,8 @@ export type CartaoDoInicio = {
   rotulo: string;
   data: string;
   percentual: number;
+  /** Aviso quando o checklist e as correções registradas não batem; só aparece quando existe. */
+  divergencia?: string | null;
   /** "Próxima etapa: Recebimento" */
   proxima: string;
   onContinuar: () => void;
@@ -148,10 +150,18 @@ export default function PcInicio({ nome, avisoPops = null, cartao, outrasVisitas
     ...(atalhos?.onEvolucao ? [{ rotulo: "Evolução", onClick: atalhos.onEvolucao }] : []),
     ...(atalhos?.onEmitidos ? [{ rotulo: "Relatórios emitidos", onClick: atalhos.onEmitidos }] : []),
     ...(atalhos?.onDossie ? [{ rotulo: "Dossiê", onClick: atalhos.onDossie }] : []),
-    ...(correcoes && !semVencimentos ? [{ rotulo: `Vencimentos em 30 dias (${correcoes.vencimentos})`, onClick: correcoes.onTodosVencimentos }] : []),
     ...(correcoes?.onLembrete ? [{ rotulo: "Lembrete ao responsável", onClick: correcoes.onLembrete }] : []),
     ...(configuracao ? [{ rotulo: "Guia de uso em Ajuda e guias", onClick: configuracao.onGuia }] : []),
   ];
+
+  // "Vencimentos em 30 dias": linha própria dentro de "Hoje precisa de você" (documentos, treinamentos e prazos que vencem em até 30 dias).
+  const linhaDeVencimentos = correcoes && (
+    <button type="button" className="ini5-vencimentos" onClick={correcoes.onTodosVencimentos}>
+      <span className="ini5-venc-texto">Vencimentos em 30 dias</span>
+      <span className={`ini5-venc-n${semVencimentos ? " is-zero" : ""}`}>{semVencimentos ? "nenhum" : correcoes.vencimentos}</span>
+      <span className="ini5-venc-seta" aria-hidden="true">›</span>
+    </button>
+  );
 
   const outras = outrasVisitas > 0 && (
     <button type="button" className="ini2-link ini4-outras" onClick={onOutrasVisitas}>{`Outras visitas (${outrasVisitas})`}</button>
@@ -177,6 +187,7 @@ export default function PcInicio({ nome, avisoPops = null, cartao, outrasVisitas
                 <div className="ini3-cartao-textos">
                   <h3 className="ini3-cartao-titulo">{`${cartao.rotulo} · ${cartao.data}`}</h3>
                   <span className="ini3-cartao-sub">{cartao.proxima}</span>
+                  {cartao.divergencia && <span className="ini5-divergencia" role="status">{cartao.divergencia}</span>}
                 </div>
               </div>
               <div className="ini4-cartao-acoes">
@@ -198,6 +209,7 @@ export default function PcInicio({ nome, avisoPops = null, cartao, outrasVisitas
         <section className="ini2-tudo-em-dia" aria-label="Tudo em dia">
           <h2 className="ini2-tudo-titulo">Tudo em dia</h2>
           <p className="ini2-tudo-sub">{semVencimentos ? "Nenhuma correção aberta e nada vencendo nos próximos 30 dias." : "Nenhuma correção aberta."}</p>
+          {!semVencimentos && linhaDeVencimentos}
         </section>
       )}
 
@@ -213,6 +225,7 @@ export default function PcInicio({ nome, avisoPops = null, cartao, outrasVisitas
           <div className="ini3-lista">
             <LinhasDeCorrecao itens={mostrar} onAbrir={correcoes.onAbrirItem} />
           </div>
+          {linhaDeVencimentos}
           <div className="ini3-rodape-lista">
             <button type="button" className="ini2-link" onClick={() => setGavetaAberta(true)}>{`Ver todas as correções (${itens.length})`}</button>
           </div>

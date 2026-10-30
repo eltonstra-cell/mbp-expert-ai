@@ -126,3 +126,27 @@ export function vizinhoDoAmbiente(infos: InfoAmbiente[], atual: string | null, p
   if (indice < 0) return null;
   return infos[indice + passo]?.nome ?? null;
 }
+
+/** Quantos ambientes (não gerais) estão completos: o "N concluído(s)" do cabeçalho da janela de ambientes. */
+export function quantidadeConcluida(infos: InfoAmbiente[]): number {
+  return infos.filter((info) => !info.geral && info.total > 0 && info.respondidos >= info.total).length;
+}
+
+/** "14 ambientes · 1 concluído" (singular e plural certos). */
+export function resumoDaJanelaDeAmbientes(infos: InfoAmbiente[]): string {
+  const total = quantidadeDeAmbientes(infos);
+  const feitos = quantidadeConcluida(infos);
+  return `${total} ${total === 1 ? "ambiente" : "ambientes"} · ${feitos} ${feitos === 1 ? "concluído" : "concluídos"}`;
+}
+
+/** "Ambiente 3 de 14 · 3 de 13 respondidas · 23%". Verificação geral (Programas de Controle) não tem posição: começa em "Verificação geral". */
+export function linhaDeProgressoDoAmbiente(infos: InfoAmbiente[], atual: string | null): string {
+  const info = infos.find((candidato) => candidato.nome === atual);
+  if (!info) return "";
+  const percentual = info.total > 0 ? Math.round((info.respondidos / info.total) * 100) : 0;
+  const contas = `${info.respondidos} de ${info.total} respondidas · ${percentual}%`;
+  if (info.geral) return `Verificação geral · ${contas}`;
+  const fisicos = infos.filter((candidato) => !candidato.geral);
+  const posicao = fisicos.findIndex((candidato) => candidato.nome === info.nome) + 1;
+  return `Ambiente ${posicao} de ${fisicos.length} · ${contas}`;
+}

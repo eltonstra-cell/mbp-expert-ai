@@ -157,6 +157,7 @@ import { esquecerTela, lerContinuar, limparContinuar, registrarTela, type TelaRe
 import { nomeDeExibicaoDaEmpresa, nomeEmFormatoNatural } from "@/lib/nomeEmpresa";
 import PcImplantacao from "@/components/pc/PcImplantacao";
 import { mostrarToast } from "@/lib/toast";
+import { destinoDoAvanco } from "@/lib/avancoAutomatico";
 import { limparTextoDePessoa, nomeECargo, nomeProprio } from "@/lib/nomeCargo";
 import { diasEntreDatas, formatarData, formatarDataCurta, formatarDataHora, formatarHora, hojeLocalISO } from "@/lib/dataLocal";
 import { palavra as pal, quantidade as qtd } from "@/lib/plural";
@@ -5041,13 +5042,19 @@ export default function Home() {
   // Avanço automático: a resposta ("Conforme" ou "Não se aplica") já foi gravada; abre o próximo item, sem aviso (tocar de novo na resposta marcada a limpa).
   function avancarAposResponder(item: ChecklistItem) {
     const lista = itensEmOrdem();
-    const alvo = lista[lista.findIndex((registro) => registro.id === item.id) + 1];
+    const destino = destinoDoAvanco(lista, item.id);
     // Registro honesto: o relatório mostra quantas respostas foram seguidas do avanço automático.
     atualizarChecklistItem(item.id, { avancouSozinho: true });
-    if (!alvo) return;
-    setItemFocoId(alvo.id);
-    setAmbienteChecklistAtivo(alvo.ambiente);
-    setUltimoItemChecklistId(alvo.id);
+    if (!destino.alvo) {
+      // Último item da visita: se nada mais está pendente, avisa que o checklist terminou (sem finalizar a visita).
+      if (destino.tudoRespondido) mostrarToast("Checklist concluído. Confira o resumo e finalize a visita.");
+      return;
+    }
+    // Último item do ambiente: segue sozinho para o próximo ambiente e diz qual é (mesmo aviso do "Salvar e próximo").
+    if (destino.trocouDeAmbiente) mostrarToast(`Próximo ambiente: ${nomeDeExibicaoDoAmbiente(destino.alvo.ambiente)}`);
+    setItemFocoId(destino.alvo.id);
+    setAmbienteChecklistAtivo(destino.alvo.ambiente);
+    setUltimoItemChecklistId(destino.alvo.id);
   }
 
   function registrarRapido(abrirCamera = true) {
@@ -7110,6 +7117,8 @@ export default function Home() {
         data: fdata(visitaDoCartao.data),
         percentual: progressoDoChecklist(visitaDoCartao.checklist).percentual,
         proxima: `Próxima etapa: ${nomeCurtoDoAmbiente(proximaEtapaDaVisitaNoInicio(visitaDoCartao.id))}`,
+        // Aviso quando o checklist e as correções registradas não batem (só para quem acompanha correções; o Executor de campo não o vê).
+        divergencia: ehExecutor ? null : avisoDeDivergencia(conciliarNcs(visitaDoCartao.checklist || [], (db.ncs || []).filter((nc) => nc.visitaId === visitaDoCartao.id && !nc.inativaNoChecklist))),
         // PC abre a Central da visita (como o cartão sempre fez); tablet e celular vão direto ao próximo item.
         onContinuar: () => (ehPC ? abrirTelaRecente({ tipo: "visita", id: visitaDoCartao.id, rotulo: "" }) : continuar(visitaDoCartao.id, true, itemDoCartao)),
       }

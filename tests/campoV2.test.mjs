@@ -242,7 +242,10 @@ test("Pacote de ajustes: pastel com texto grafite, aviso com ação sublinhada, 
 test("responder o checklist não mostra aviso com Desfazer; só o lote tem Desfazer (acima do rodapé); tocar na resposta marcada limpa sem aviso", () => {
   const pagina = ler("../app/page.tsx");
   const trecho = pagina.slice(pagina.indexOf("function avancarAposResponder"), pagina.indexOf("function registrarRapido"));
-  assert.ok(!trecho.includes("mostrarToast") && !trecho.includes("Desfazer"));
+  assert.ok(!trecho.includes("Desfazer"), "sem aviso com Desfazer");
+  // Rodada 13: só dois avisos curtos, ao trocar de ambiente e ao concluir o checklist (nenhum por resposta).
+  assert.equal((trecho.match(/mostrarToast/g) || []).length, 2);
+  assert.ok(trecho.includes("Próximo ambiente:") && trecho.includes("Checklist concluído."));
   assert.ok(pagina.includes('className="lote-desfazer aviso-acima-do-rodape"'));
   assert.ok(!pagina.includes("Resposta limpa") && !pagina.includes("respostaLimpa") && !pagina.includes("desfazerLimpeza") && !pagina.includes("desfazerLimparResposta"), "sem o aviso Resposta limpa · Desfazer");
   assert.ok(/.aviso-acima-do-rodape{bottom:104px!important}/.test(ler("../app/globals.css")));

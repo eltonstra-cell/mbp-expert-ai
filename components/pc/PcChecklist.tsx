@@ -2,7 +2,8 @@
 
 import { useState, type ReactNode } from "react";
 import FotoAmpliada from "@/components/FotoAmpliada";
-import type { InfoAmbiente } from "@/lib/checklistEnvs";
+import AmbientesCortina from "@/components/AmbientesCortina";
+import { linhaDeProgressoDoAmbiente, type InfoAmbiente } from "@/lib/checklistEnvs";
 import { legendaDaEvidencia, rotuloDoSegmento } from "@/lib/checklistSegmentos";
 import type { ChecklistStatus } from "@/types";
 
@@ -144,10 +145,6 @@ function PainelDeApoio({ apoio }: { apoio: ApoioDoItem }) {
 export default function PcChecklist({ titulo, subtitulo, ambientes, ambienteAtual, onAmbiente, fila, itemAtualId, onItem, principal, apoio, colunaDeApoio, restanteDoLote, ditado }: Props) {
   const [recolhidosAbertos, setRecolhidosAbertos] = useState(false);
   const infoAtual = ambientes.find((ambiente) => ambiente.nome === ambienteAtual);
-  const respondidasAtual = infoAtual?.respondidos ?? 0;
-  const totalAtual = infoAtual?.total ?? fila.length;
-  const percentualAtual = totalAtual > 0 ? Math.round((respondidasAtual / totalAtual) * 100) : 0;
-  const secoes = ambientes;
   const recolhidos = fila.filter((item) => item.recolhido && item.id !== itemAtualId);
   // A coluna de apoio é decidida pela visita (colunaDeApoio), nunca pelo item: a pergunta e a observação não mudam de largura ao avançar.
   const temApoio = Boolean(apoio) && (colunaDeApoio ?? !apoioVazio(apoio as ApoioDoItem));
@@ -161,34 +158,22 @@ export default function PcChecklist({ titulo, subtitulo, ambientes, ambienteAtua
       </div>
 
       <div className={`chk-pc-corpo${temApoio ? "" : " chk-pc-corpo--sem-apoio"}`}>
-        <nav className="chk-secoes" aria-label="Seções do checklist">
-          <h2 className="chk-secoes-titulo">Seções</h2>
-          {secoes.map((ambiente) => {
-            const completa = ambiente.total > 0 && ambiente.respondidos >= ambiente.total;
-            return (
-              <button
-                key={ambiente.nome}
-                type="button"
-                className={`chk-secao${ambiente.nome === ambienteAtual ? " is-atual" : ""}${completa ? " is-completa" : ""}`}
-                aria-current={ambiente.nome === ambienteAtual ? "true" : undefined}
-                title={ambiente.nome}
-                onClick={() => onAmbiente(ambiente.nome)}
-              >
-                <span className="chk-secao-nome">{ambiente.rotulo}</span>
-                <span className="chk-secao-conta">
-                  {completa ? <span aria-hidden="true">✓ </span> : null}
-                  {ambiente.respondidos} de {ambiente.total}
-                </span>
-              </button>
-            );
-          })}
-        </nav>
         <div className="chk-pc-esq">
           <div className="chk-pc-faixa">
             <div className="chk-pc-ambiente">
-              <h2 className="chk-pc-ambiente-nome">{infoAtual?.rotulo || ambienteAtual}</h2>
+              <AmbientesCortina
+                ambientes={ambientes}
+                atual={ambienteAtual}
+                onSelecionar={onAmbiente}
+                renderBotao={({ aberto, alternar }) => (
+                  <button type="button" className="chk-amb-botao" aria-haspopup="dialog" aria-expanded={aberto} aria-label={`Ambiente: ${infoAtual?.rotulo || ambienteAtual}. Trocar de ambiente`} onClick={alternar}>
+                    <span className="chk-amb-botao-nome">{infoAtual?.rotulo || ambienteAtual}</span>
+                    <span className="chk-amb-botao-seta" aria-hidden="true">▾</span>
+                  </button>
+                )}
+              />
               <p className="chk-pc-ambiente-conta" role="status">
-                {respondidasAtual} de {totalAtual} respondidas · {percentualAtual}%
+                {linhaDeProgressoDoAmbiente(ambientes, ambienteAtual)}
               </p>
             </div>
             {(ditado || (restanteDoLote && restanteDoLote.quantos > 0)) && (

@@ -13,7 +13,7 @@ import CampoDeTemperatura, { ehItemDeTemperatura } from "@/components/CampoDeTem
 import type { ResultadoDaTemperatura } from "@/lib/limitesDeTemperatura";
 import { progressoDaCaminhada, textoDaCaminhada } from "@/lib/caminhada";
 import { NavIcon } from "@/components/NavIcons";
-import type { InfoAmbiente } from "@/lib/checklistEnvs";
+import { linhaDeProgressoDoAmbiente, type InfoAmbiente } from "@/lib/checklistEnvs";
 import { COR_DO_SEGMENTO, rotuloDoSegmento } from "@/lib/checklistSegmentos";
 import { useCapturaCamera } from "@/components/useCapturaMidia";
 import { estadosDosBotoes, gravidadeSugerida } from "@/lib/checklistUi";
@@ -139,8 +139,6 @@ export default function ChecklistFocoItem({
   // Celular: o texto inteiro da pergunta fica atrás de um "i" discreto (a fonte aparece sempre, logo abaixo do enunciado).
   const [fonteAberta, setFonteAberta] = useState(false);
   useEffect(() => setFonteAberta(false), [item.id]);
-  const [nomeAberto, setNomeAberto] = useState(false);
-  useEffect(() => setNomeAberto(false), [item.ambiente]);
   const areaRef = useRef<HTMLTextAreaElement | null>(null);
   const primeiraRespostaRef = useRef<HTMLButtonElement | null>(null);
   const caixaRef = useRef<HTMLDivElement | null>(null);
@@ -314,19 +312,22 @@ export default function ChecklistFocoItem({
         const corpo = (aberto: boolean, alternar?: () => void) => (
           <div className="chk-foco-amb">
             {alternar ? (
-              <div className="chk-foco-amb-top chk-foco-amb-botao">
-                <div className="chk-foco-amb-textos">
-                  {/* Tocar no nome mostra o nome inteiro (no celular ele fica em uma linha); o ▾ ao lado troca de ambiente. */}
-                  <button type="button" className="chk-foco-amb-nome-btn" aria-expanded={nomeAberto} onClick={() => setNomeAberto((valor) => !valor)}>
-                    <span className={`chk-foco-amb-nome${nomeAberto ? " is-aberto" : ""}`}>{ambienteRotulo}</span>
-                  </button>
-                  {!campo && posicaoNoAmbiente}
-                  {respondidasDoAmbiente}
-                </div>
-                <button type="button" className="chk-foco-amb-seta-btn" aria-label="Trocar de ambiente" aria-haspopup="dialog" aria-expanded={aberto} onClick={alternar}>
-                  <span className="chk-foco-amb-seta" aria-hidden="true">▾</span>
+              <>
+                <button
+                  type="button"
+                  className="chk-amb-botao"
+                  aria-haspopup="dialog"
+                  aria-expanded={aberto}
+                  aria-label={`Ambiente: ${ambienteRotulo}. Trocar de ambiente`}
+                  onClick={alternar}
+                >
+                  <span className="chk-amb-botao-nome">{ambienteRotulo}</span>
+                  <span className="chk-amb-botao-seta" aria-hidden="true">▾</span>
                 </button>
-              </div>
+                <span className="chk-foco-amb-resp" role="status">
+                  {ambientes ? linhaDeProgressoDoAmbiente(ambientes, item.ambiente) : ""}
+                </span>
+              </>
             ) : (
               <div className="chk-foco-amb-top">
                 <span className="chk-foco-amb-nome">{ambienteRotulo}</span>
@@ -334,6 +335,18 @@ export default function ChecklistFocoItem({
                 {respondidasDoAmbiente}
               </div>
             )}
+            {fila && onItem && campo && (() => {
+              const indice = fila.findIndex((outro) => outro.id === item.id);
+              return (
+                <div className="chk-pergunta-barra">
+                  <span className="chk-pergunta-rotulo">Pergunta {indice + 1} de {fila.length}</span>
+                  <span className="chk-pergunta-setas">
+                    <button type="button" aria-label="Pergunta anterior" disabled={indice <= 0} onClick={() => onItem(fila[indice - 1].id)}>‹</button>
+                    <button type="button" aria-label="Próxima pergunta" disabled={indice < 0 || indice >= fila.length - 1} onClick={() => onItem(fila[indice + 1].id)}>›</button>
+                  </span>
+                </div>
+              );
+            })()}
             {fila && onItem ? (
               <div className="chk-segmentos" role="group" aria-label="Itens do ambiente">
                 {fila.map((outro, indice) => (

@@ -59,8 +59,8 @@ test("Empresas (Campo): sem botão Selecionar, linha toda seleciona, pendência 
 
 test("Checklist PC: seções à esquerda, números numa linha só; celular: fonte vazia escondida só em Não conforme", () => {
   const pc = ler("../components/pc/PcChecklist.tsx");
-  assert.ok(pc.includes('className="chk-secoes"') && pc.includes("chk-pc-ambiente-conta"));
-  assert.ok(pc.indexOf('className="chk-secoes"') < pc.indexOf('className="chk-pc-esq"'));
+  // Rodada 13: as seções saíram da coluna da esquerda; o seletor "Cozinha / Produção ▾" abre a janela de ambientes.
+  assert.ok(!pc.includes("chk-secoes") && pc.includes("chk-pc-ambiente-conta") && pc.includes("chk-amb-botao"));
   const item = ler("../components/ChecklistFocoItem.tsx");
   assert.ok(item.includes("naoConforme && rotuloDaFonte(item.referencia) === \"Fonte não registrada\""));
   const css = ler("../app/globals.css");
