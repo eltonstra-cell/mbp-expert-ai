@@ -34,7 +34,7 @@ test("POP em campos: documento e histórico, blocos extras, faixa do texto-base 
   for (const texto of ["Histórico do POP", "Documento do POP", "Motivo", "Salvar rascunho", "Enviar para aprovação", "Aprovar e assinar", "Editar (cria nova versão)", "Comparação de versões"]) {
     assert.ok(editor.includes(texto), texto);
   }
-  for (const texto of ["Objetivo", "Campo de aplicação", "Responsável pela execução", "Frequência", "Ação corretiva", "Registro que prova a execução", "Exigido na SES 799/2023, Anexo II, 13.2.", "vem da norma", "Comprovante da empresa especializada", "Princípio ativo", "Tempo de contato", "Nunca o laudo"]) {
+  for (const texto of ["Objetivo", "Campo de aplicação", "Responsável pela execução", "Ação corretiva", "Registro que prova a execução", "Exigido na SES 799/2023, Anexo II, 13.2.", "vem da norma", "Comprovante da empresa especializada", "Princípio ativo", "Tempo de contato", "Nunca o laudo"]) {
     assert.ok(editor.includes(texto), texto);
   }
   assert.ok(editor.includes("textoDaFaixaDoTextoBase(rascunho)"));

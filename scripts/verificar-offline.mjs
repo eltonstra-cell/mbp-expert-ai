@@ -1817,6 +1817,38 @@ detalhes:{chipDaAcaoNaBarra:chipVisivel,sobrepostos,pessoas:pessoas.map((c)=>c.t
     registrar(`23. erro na seção da Estrutura: ${erro.message}`, false);
   }
 
+  // 25. Rodada 12e: ficha do POP em 4 abas, 6 etapas e faixa creme (PC, tablet 800 e celular 390), sem rolagem da página. Só a empresa de teste "Beyond Nutri".
+  try {
+    const semente25 = JSON.parse(await js(`localStorage.getItem(${JSON.stringify(CHAVE)})`));
+    const base25 = semente25.empresas["beyond-nutri"];
+    const pop25 = { id: "pop-t25", codigo: "POP-07", titulo: "Higienização de hortifrútis", versao: "1.0", status: "Rascunho", proximaRevisao: "", conteudo: { objetivo: "Teste", passos: [{ id: "p1", texto: "Lavar em água corrente" }], frequencia: "", responsavelExecucao: "Elton Volmir Strapazon, Nutricionista" } };
+    semente25.empresas["beyond-nutri"] = { ...base25, pops: [pop25] };
+    semente25.empresaAtualId = "beyond-nutri";
+    await n.enviar("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+    await js(`localStorage.setItem(${JSON.stringify(CHAVE)}, ${JSON.stringify(JSON.stringify(semente25))})`);
+    await n.ir(app.base);
+    await esperar(async () => js('!!document.querySelector(".tr")'), 20000);
+    await n.esperar(2000);
+    await js('[...document.querySelectorAll(".tr .tr-item")].find((b)=>b.innerText.trim()==="POPs")?.click()');
+    await esperar(async () => js('!!document.querySelector(".pgl-linha.is-clicavel")'), 12000);
+    const lista25 = await js('document.querySelector(".pgl-linha.is-clicavel")?.innerText||""');
+    registrar("25a. Lista de POPs: a linha mostra 'Etapa N de 6 · nome' em vez de 'modelo não conferido · v1.0'", /Etapa \d de 6 · /.test(lista25) && !/v1\.0/.test(lista25), JSON.stringify(lista25));
+    await js('document.querySelector(".pgl-linha.is-clicavel")?.click()');
+    await esperar(async () => js('!!document.querySelector(".ficha .ficha-aba")'), 12000);
+    const tamanhos25 = [["pc", 1440, 900, false], ["tablet", 800, 1280, false], ["celular", 390, 844, true]];
+    for (const [nome, largura, altura, movel] of tamanhos25) {
+      await n.enviar("Emulation.setDeviceMetricsOverride", { width: largura, height: altura, deviceScaleFactor: 1, mobile: movel });
+      await n.esperar(700);
+      await foto(`25-ficha-${nome}`);
+      const d = JSON.parse(await js(`JSON.stringify((()=>{const abas=[...document.querySelectorAll(".ficha-aba")].map((b)=>b.innerText.trim());const et=[...document.querySelectorAll(".rz-etapa")];const faixa=document.querySelector(".rz-faixa");const btn=[...document.querySelectorAll(".rz-btn")].map((b)=>Math.round(b.getBoundingClientRect().height));return {abas,etapas:et.length,atual:et.filter((e)=>e.classList.contains("rz-etapa--atual")).length,faixa:!!faixa,faixaBg:faixa&&getComputedStyle(faixa).backgroundColor,btn,pagina:document.documentElement.scrollHeight<=innerHeight+1,lateral:document.documentElement.scrollWidth<=innerWidth,caminho:(document.querySelector(".ficha-caminho")||{}).innerText||"",pilulas:!!document.querySelector(".ficha-abas--texto .ficha-aba")&&getComputedStyle(document.querySelector(".ficha-abas--texto .ficha-aba")).backgroundColor==="rgba(0, 0, 0, 0)"}})())`));
+      registrar(`25b. Ficha do POP (${nome} ${largura}px): 4 abas em texto, 6 etapas com uma atual, faixa creme, botões de 40 px, sem rolagem lateral (o caminho já está no topo da tela)`, JSON.stringify(d.abas) === JSON.stringify(["Resumo", "Documento", "Registros", "Histórico"]) && d.etapas === 6 && d.atual === 1 && d.faixa && d.faixaBg === "rgb(255, 246, 229)" && d.btn.every((h) => h >= 40 && h <= 44) && d.pilulas && d.lateral, JSON.stringify(d));
+      if (!d.pagina) registrar(`25c. Ficha do POP (${nome}): a página inteira rola (${largura}x${altura}); deve rolar só por dentro`, false, JSON.stringify(d));
+    }
+    await n.enviar("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+  } catch (erro) {
+    registrar(`25. erro na seção da ficha do POP: ${erro.message}`, false);
+  }
+
   await n.enviar("Emulation.clearDeviceMetricsOverride");
 } catch (erro) {
   registrar(`erro na verificação: ${erro.message}`, false);

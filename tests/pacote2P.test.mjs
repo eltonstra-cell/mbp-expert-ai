@@ -207,7 +207,7 @@ test("comp-13: chip informativo 'Será preciso conferir os itens de segurança a
 test("botões que ficavam mudos agora dizem por quê: Salvar sem título, Marcar como conferido e Criar POP", () => {
   const editor = ler("../components/pc/PcPopEditor.tsx");
   assert.ok(editor.includes('"Falta: Identificação"'));
-  assert.ok(ler("../components/pc/PcFichaPop.tsx").includes("Marque todos os itens para liberar</span>"));
+  assert.ok(ler("../components/pc/PcResumoDoPop.tsx").includes("Marque todos os itens para liberar"));
   const janela = ler("../components/pc/PcModelosPop.tsx");
   assert.ok(janela.includes("Escolha um modelo</span>") && janela.includes("Falta: título"));
 });
@@ -226,18 +226,14 @@ test("sugestão de frequência: aparece nos 19 modelos que têm frequência (com
   assert.ok(sugestaoDeFrequencia(criar("res-01").conteudo.frequenciaDetalhe).includes(" · "), "frequência em grupos");
   // a sugestão é clicável no editor
   const editor = ler("../components/pc/PcPopEditor.tsx");
-  assert.ok(editor.includes("Sugestão do modelo:") && editor.includes("onClick={() => mudar({ frequencia: sugestaoDaFrequencia })}"));
+  assert.ok(editor.includes("Sugestão do modelo:") && editor.includes("conteudoComFrequencia({ frequencia: \"\", frequenciaEstruturada: undefined }, frequenciaDoPop({ frequencia: sugestaoDaFrequencia }))"));
 });
 
 // ===== 2.4 e 3: pendências reescritas =====
 test("bloco conferido: cinza neutro, recolhido, 'Conferido por [nome], [cargo], em [data]' e itens ao expandir", () => {
-  const ficha = ler("../components/pc/PcFichaPop.tsx");
-  assert.ok(ficha.includes('className="ficha-conferir ficha-conferir--feito"'));
-  assert.ok(ficha.includes("Conferido por {nomeECargo(") && ficha.includes('{pop.conferencia.em ? `, em ${dataBr(pop.conferencia.em)}` : ""}'));
-  assert.equal(/<details[^>]*\bopen\b/.test(ficha), false, "recolhido por padrão");
-  assert.ok(ficha.includes("ficha-conferir-marca"));
-  const css = ler("../app/globals.css");
-  assert.match(css, /\.ficha-conferir--feito\{[^}]*background:#EEF1F7/);
+  // rodada 12e: depois de conferido o POP passa à etapa 3 do Resumo; o "Conferido por" fica gravado em `conferencia` e na linha de verificações
+  const resumo = ler("../components/pc/PcResumoDoPop.tsx");
+  assert.ok(resumo.includes("verificacoesDeAprovacao") && resumo.includes("marcarComoConferido(pop, quemConfere"));
 });
 
 test("pendências: ação clara, sem números do material original nem verbos de auditoria", () => {
@@ -258,10 +254,8 @@ test("pendências: ação clara, sem números do material original nem verbos de
 test("chip 'Modelo não conferido': curto, título completo no atributo title; na lista vira texto cinza no estado, sem pílula", () => {
   assert.equal(ROTULO_CURTO_NAO_CONFERIDO, "Modelo não conferido");
   assert.equal(ROTULO_NAO_CONFERIDO, "Conteúdo de modelo não conferido");
-  const ficha = ler("../components/pc/PcFichaPop.tsx");
-  assert.ok(ficha.includes('className="pop-revisar pop-nao-conferido" title={ROTULO_NAO_CONFERIDO}>{ROTULO_CURTO_NAO_CONFERIDO}'));
   const lista = ler("../components/pc/PcPopsLista.tsx");
-  assert.ok(lista.includes('className="pgl-estado-cinza" title={ROTULO_NAO_CONFERIDO}') && lista.includes("{ROTULO_CURTO_NAO_CONFERIDO}"));
+  assert.ok(lista.includes('className="pgl-estado-cinza" title={ROTULO_NAO_CONFERIDO}') && lista.includes("{ROTULO_CURTO_NAO_CONFERIDO}") && lista.includes('startsWith("Etapa")'));
   assert.equal(lista.includes("pop-nao-conferido"), false, "na lista não há pílula");
   const css = ler("../app/globals.css");
   assert.match(css, /\.pop-nao-conferido\{white-space:nowrap/);

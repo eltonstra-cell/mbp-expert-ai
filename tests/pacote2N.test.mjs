@@ -35,7 +35,7 @@ test("data curta: com ano quando não for o ano corrente, em um helper só", () 
   assert.equal(formatarDataCurtaHora("2027-03-05T15:00:00.000Z", "2026-10-21"), "05/03/2027 · 12:00");
   assert.equal(formatarDataCurtaHora("2026-03-05T15:00:00.000Z", "2026-10-21"), "05/03 · 12:00");
   // Resumo da ficha, comprovantes (próxima ação) e demais usam o mesmo helper
-  assert.ok(ler("../components/pc/PcFichaPop.tsx").includes("const dataCurta = (iso?: string) => formatarDataCurta(iso);"));
+  assert.ok(ler("../components/pc/PcResumoDoPop.tsx").includes("formatarDataCurta(item.dataDaCiencia)"));
   assert.ok(ler("../lib/popGestao.ts").includes("return formatarDataCurta(iso);"));
   assert.ok(ler("../lib/validadeDeAcesso.ts").includes("formatarDataCurta(dataNoFuso("));
   // ninguém corta dia/mês do texto completo na mão

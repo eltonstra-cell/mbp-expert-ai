@@ -142,9 +142,8 @@ test("Próxima ação de leitura: sem os nomes e com 'Ver quem falta' que leva a
   assert.equal(acao.texto, "Faltam 3 pessoas lerem a v1.1");
   assert.ok(!/maria|Paulo|Ana/.test(acao.texto));
   assert.equal(acao.botao.rotulo, "Ver quem falta");
-  const ficha = ler("../components/pc/PcFichaPop.tsx");
-  assert.ok(ficha.includes('document.getElementById("ficha-quem-nao-leu")') && ficha.includes("scrollIntoView") && ficha.includes("onClick={() => irParaOBotao()}"));
-  assert.ok(ler("../components/pc/QuemAindaNaoLeu.tsx").includes('id="ficha-quem-nao-leu"'));
+  // rodada 12e: "Ver quem falta" virou a etapa 4 do Resumo, com a lista da equipe e "Colher ciência"
+  assert.ok(ler("../components/pc/PcResumoDoPop.tsx").includes("Colher ciência") && ler("../components/pc/PcResumoDoPop.tsx").includes("Pendente"));
   assert.match(ler("../app/globals.css"), /\.ficha-cartao-rotulo\{font-size:\.875rem;color:#263445\}/);
 });
 

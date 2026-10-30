@@ -125,7 +125,8 @@ test("Quem ainda não leu: só os pendentes da versão vigente; todos leram → 
   assert.equal(pendentesDeLeitura(todos.linhas).length, 0);
   const bloco = ler("../components/pc/QuemAindaNaoLeu.tsx");
   assert.ok(bloco.includes("Quem ainda não leu") && bloco.includes("Todos leram a v{versao}") && bloco.includes("Registrar leitura") && bloco.includes("podeRegistrar && registrando"));
-  assert.ok(ler("../components/pc/PcFichaPop.tsx").includes("podeRegistrar={contexto.podeGerenciarPessoas}"));
+  // rodada 12e: a ficha colhe a ciência por PIN (ColherCiencia) só para quem gerencia pessoas
+  assert.ok(ler("../components/pc/PcFichaPop.tsx").includes("verPessoas && vigente && contexto ? () => setColhendo(true)"));
 });
 
 import { cssDoDocumentoImpresso, FONTE_DA_MARGEM } from "../lib/printFooter.ts";

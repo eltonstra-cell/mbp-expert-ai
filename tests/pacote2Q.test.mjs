@@ -147,9 +147,9 @@ test("linha de POP: fundo branco, moldura de 1,5 px na cor do estado, raio 12, 8
 
 test("próxima ação: a frase completa vai ao topo da ficha (sem duplicar no Resumo, que já tem o cartão)", () => {
   const ficha = ler("../components/pc/PcFichaPop.tsx");
-  assert.ok(ficha.includes('aba !== "resumo" && aba !== "documento" && (') && ficha.includes("Próxima ação:"));
-  assert.ok(ficha.includes("proximaAcao={linha.acao.texto}"), "na aba Documento a frase vai para a linha dos botões (etapa 3)");
-  assert.ok(ficha.indexOf("Próxima ação:") < ficha.indexOf('className="ficha-abas"'));
+  // rodada 12e: a próxima ação é a faixa creme da etapa atual no Resumo; o topo mostra "etapa N de 6"
+  assert.ok(ficha.includes("etapa ${etapa.numero} de ${TOTAL_DE_ETAPAS}") && ficha.includes("<PcResumoDoPop"));
+  assert.ok(ficha.indexOf("etapa ${etapa.numero}") < ficha.indexOf('className="ficha-abas'));
 });
 
 test("espaços: ~74 px entre o bloco do topo e 'Conjunto da norma'; cabeçalhos de seção 14,5 px #526477 com 24 px acima e 10 abaixo", () => {

@@ -433,10 +433,10 @@ test("lista de POPs: '+ Adicionar POP' abre direto a janela de modelos (com 'Com
   assert.match(lista, /Começar em branco|onEmBranco/);
   assert.match(lista, /setDeModelo\(true\)/);
   assert.match(lista, /popNaoConferido\(linha\.pop\)/);
-  const ficha = ler("../components/pc/PcFichaPop.tsx");
-  assert.match(ficha, /Para conferir antes de aprovar/);
-  assert.match(ficha, /Marcar como conferido/);
-  assert.match(ficha, /popNaoConferido\(pop\) && <span className="pop-revisar pop-nao-conferido" title=\{ROTULO_NAO_CONFERIDO\}>\{ROTULO_CURTO_NAO_CONFERIDO\}/);
+  // rodada 12e: a conferência é a etapa 2 do Resumo; o estado do POP aparece como "Etapa N de 6" (sem o chip âmbar na ficha)
+  const resumo = ler("../components/pc/PcResumoDoPop.tsx");
+  assert.match(resumo, /Para conferir antes de aprovar/);
+  assert.match(resumo, /Marcar como conferido/);
   const painel = ler("../components/pc/PcModelosPop.tsx");
   assert.match(painel, /Criar POP/);
   assert.match(painel, /aria-label="Buscar modelo de POP"/);

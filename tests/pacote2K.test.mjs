@@ -103,7 +103,7 @@ test("Central e lista de POPs: sem 'Voltar às empresas', sem frase repetida e s
 
 test("Resumo da ficha: botões na linha do título de cada bloco e textos escuros", () => {
   const ficha = ler("../components/pc/PcFichaPop.tsx");
-  assert.ok(ficha.includes("ficha-sub-linha") && !ficha.includes("ficha-rodape-resumo"));
+  assert.ok(ler("../components/pc/PcResumoDoPop.tsx").includes("rz-faixa-topo") && !ficha.includes("ficha-rodape-resumo"));
   assert.match(ler("../app/globals.css"), /\.ficha-lista,\.ficha-vazio\{font-size:1rem;color:#263445\}/);
 });
 
