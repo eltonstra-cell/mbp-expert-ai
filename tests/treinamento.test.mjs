@@ -66,11 +66,11 @@ test("Capacitação: validação, situação com datas de borda e sugestão só 
   assert.equal(sugerirVencimentoDaCapacitacao({ normasAplicadas: ["ses-799-2023-rs"] }, ""), null);
 });
 
-test("Referências de capacitação: só o que a norma da empresa cita, todas marcadas conferir", () => {
+test("Referências de capacitação: só o que a norma da empresa cita, conferidas no texto (sem a marca conferir)", () => {
   assert.deepEqual(referenciasDeCapacitacao({ normasAplicadas: [] }), []);
   const rs = referenciasDeCapacitacao({ normasAplicadas: ["rdc-216-2004", "ses-799-2023-rs"] });
   assert.ok(rs.length >= 3);
-  assert.ok(rs.every((ref) => ref.conferir));
+  assert.ok(rs.every((ref) => !ref.conferir));
   assert.ok(rs.some((ref) => ref.orientacao.includes("12 h")));
   assert.ok(rs.some((ref) => ref.orientacao.toLowerCase().includes("admissão")));
 });

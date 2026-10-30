@@ -222,6 +222,12 @@ Projeto separado do FoodControl. **Atenção:** o projeto Neon "mbp-expert-ai" t
 - Título do POP em linha própria com o ⋯; abaixo "● Rascunho · v1.0 · etapa N de 6" (Rascunho em #8A5A00). Etapa 3: rascunho completo = "Pronto para enviar" + "Enviar para aprovação"; depois de enviado = "Aguardando aprovação de <responsável>" e só o responsável vê "Aprovar versão X".
 - Lista de POPs plana: cada seção é só um rótulo (`pgg-secao`), sem abrir e fechar (a chave `mbp-pops-grupos:` do aparelho não é mais usada). A linha tem borda neutra #D6DCE5; o estado aparece só na bolinha.
 
+## Catálogo de normas conferido nos PDFs (Parte C da 12e, 2026-10-30)
+- `lib/normas/rdc216-2004.ts` e `ses799-2023-rs.ts` foram conferidos item a item nos PDFs de `docs/normas/` (a pasta `docs/` fica fora do commit; os arquivos se chamam `*.pdf.pdf`). Cada item traz `fonteNoTexto` (norma, item e página do PDF) e não tem mais a marca `conferir`. Item novo ou alterado só perde o `conferir` com `fonteNoTexto`; teste em `tests/popsNorma.test.mjs`.
+- Guarda de registros: RDC 216 item 4.11.3 = 30 dias (p. 8); Portaria SES 799/2023 Anexo I item 13.2 = 90 dias (p. 8), repetido no Anexo II item 13.4. Reservatório: RDC 4.4.4 = máximo de seis meses; Portaria Anexo I 6.5 = frequência mínima semestral por empresa especializada e licenciada.
+- O item 4.12 da RDC é "Responsabilidade" (curso do responsável; sem carga horária nem prazo). Os POPs de pragas, reservatório e higiene dos manipuladores são os itens 4.11.4 (b–d), 4.11.6, 4.11.7 e 4.11.8 (Portaria: Anexo II 13.7, 13.9, 13.10, 13.11).
+- A cópia da RDC é do Saúde Legis (impressa em 19/07/2017) e traz a advertência de que não substitui o Diário Oficial; vigência da Portaria continua a confirmar.
+
 ## Agentes e fluxo de trabalho
 - Funcionalidade nova ou mudança em mais de um arquivo, tabela ou tela: usar o agente arquiteto antes de implementar e perguntar ao usuário só o que o pedido não respondeu.
 - Depois de qualquer mudança de código: usar o revisor-codigo.

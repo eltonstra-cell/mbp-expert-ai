@@ -50,7 +50,7 @@ test("Reservatório: validade sugerida em 6 meses, marcada conferir; outros tipo
   assert.equal(somarMeses("2026-10-20", 6), "2027-04-20");
   const sugestao = sugerirValidade("reservatorio", "2026-10-20");
   assert.equal(sugestao.validade, "2027-04-20");
-  assert.equal(sugestao.conferir, true);
+  assert.equal(sugestao.conferir, false);
   assert.ok(sugestao.texto.includes("Confira no certificado"));
   assert.ok(sugestao.fonte.includes("4.4.4"));
   for (const tipo of ["pragas", "contrato-rt", "outro"]) assert.equal(sugerirValidade(tipo, "2026-10-20"), null);
@@ -68,7 +68,7 @@ test("Guarda: RS usa 90 dias da SES (conferir); outra UF usa o prazo do RT, com 
   assert.equal(rs.dias, 90);
   assert.equal(rs.origem, "norma");
   assert.ok(rs.citacao.includes("Anexo I, 13.2"));
-  assert.equal(rs.conferir, true);
+  assert.equal(rs.conferir, false);
   assert.ok(rs.aviso.includes("Confira no texto oficial"));
 
   const sem = guardaDosRegistros({ normasAplicadas: ["rdc-216-2004"] });

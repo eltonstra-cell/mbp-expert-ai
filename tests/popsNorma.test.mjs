@@ -37,8 +37,8 @@ test("Catálogo: só RDC 216/2004 e SES 799/2023 (RS), com fonte, conferidoEm e 
     assert.ok(norma.versaoCatalogo && norma.dataVersao);
   }
   const rdc = normaPorId("rdc-216-2004");
-  assert.ok(rdc.avisos.includes("Conferir no texto oficial da ANVISA antes de usar com clientes."));
-  assert.equal(rdc.conferidoEm, null);
+  assert.equal(rdc.conferidoEm, "2026-10-30");
+  assert.ok(rdc.avisos.some((aviso) => aviso.includes("Diário Oficial")));
   assert.equal(rdc.itens["estrutura-do-pop"].rotulo, "4.11.2");
   assert.equal(rdc.itens["lista-de-pops"].rotulo, "4.11.4");
   assert.equal(rdc.itens["higienizacao"].rotulo, "4.11.5");
@@ -47,13 +47,22 @@ test("Catálogo: só RDC 216/2004 e SES 799/2023 (RS), com fonte, conferidoEm e 
   assert.equal(rdc.itens["reservatorio-intervalo"].rotulo, "4.4.4");
   assert.equal(rdc.itens["guarda-de-registros"].rotulo, "4.11.3");
   const ses = normaPorId("ses-799-2023-rs");
+  assert.equal(ses.conferidoEm, "2026-10-30");
   assert.equal(ses.itens["lista-de-pops"].rotulo, "Anexo II, 13.7 (a–d)");
+  assert.equal(ses.itens["pragas"].rotulo, "Anexo II, 13.9");
+  assert.equal(ses.itens["reservatorio-pop"].rotulo, "Anexo II, 13.10");
+  assert.equal(ses.itens["manipuladores"].rotulo, "Anexo II, 13.11");
   assert.equal(ses.itens["acao-corretiva"].rotulo, "Anexo II, 13.2");
   assert.equal(ses.itens["guarda-de-registros"].rotulo, "Anexo I, 13.2");
   assert.match(ses.itens["guarda-de-registros"].orientacao, /90 dias/);
   assert.match(rdc.itens["guarda-de-registros"].orientacao, /30 dias/);
-  // citações sem numeração confirmada ficam marcadas "conferir"
-  assert.equal(ses.itens["manipuladores"].conferir, true);
+  // todo item conferido no PDF traz a fonte com a página e não fica marcado "conferir"
+  for (const norma of [rdc, ses]) for (const [id, item] of Object.entries(norma.itens)) {
+    assert.ok(!item.conferir, `${norma.id}/${id}`);
+    assert.match(item.fonteNoTexto, /p\. \d+/, `${norma.id}/${id}`);
+  }
+  assert.match(rdc.itens["guarda-de-registros"].fonteNoTexto, /4\.11\.3, p\. 8/);
+  assert.match(ses.itens["guarda-de-registros"].fonteNoTexto, /Anexo I, item 13\.2, p\. 8/);
   assert.ok(ses.avisos.includes("Vigência da Portaria SES 799/2023: confirmar no diário oficial."));
   assert.ok(ses.avisos.includes("Exigência municipal: confirmar com a Vigilância Sanitária."));
 });

@@ -8,6 +8,8 @@ export type ItemDeNorma = {
   orientacao: string;
   /** Citação ainda não conferida no texto oficial: o app mostra "conferir". */
   conferir?: boolean;
+  /** Onde o item foi conferido: norma, item e página do PDF guardado em docs/normas/. Sem ele, o item não foi conferido no texto. */
+  fonteNoTexto?: string;
   /** Prazo em dias citado no item (ex.: guarda dos registros). Vale o que o item diz; o app só o exibe. */
   prazoDias?: number;
   /** Prazo em meses citado no item (ex.: intervalo da limpeza do reservatório). */
