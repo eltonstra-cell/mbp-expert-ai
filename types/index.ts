@@ -354,7 +354,7 @@ export type ProcedimentoOperacionalPadronizado = {
   /** Conferência do conteúdo de modelo: quem e quando. Sem `conferido`, a folha avisa que os valores são do modelo. */
   conferencia?: { conferido: boolean; por?: { nome: string; cargo: string }; em?: string };
   /** Pendências do modelo para o RT marcar uma a uma antes de aprovar. */
-  itensAConferir?: { texto: string; feito: boolean }[];
+  itensAConferir?: { texto: string; feito: boolean; /** Título curto do item (rodada 12f); sem ele, a ficha usa o do modelo ou o trecho até os dois-pontos. */ titulo?: string }[];
 };
 
 export type ChecklistStatus = "Pendente" | "Conforme" | "Não Conforme" | "Não se aplica";

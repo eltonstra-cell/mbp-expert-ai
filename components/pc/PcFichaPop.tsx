@@ -99,7 +99,7 @@ export default function PcFichaPop({ pop, empresa, usuario, podeEditar, onImprim
   const dadosDoResponsavel = responsavelDoEstabelecimento ? { nome: responsavelDoEstabelecimento.nome, cargo: responsavelDoEstabelecimento.cargo } : undefined;
   const etapa = etapaDoPop(pop, { equipe: equipe ? { total: equipe.total, confirmadas: equipe.confirmadas } : undefined, dadosDoResponsavel, hoje });
   const estado =
-    pop.status === "Aprovado" ? { texto: "Vigente", cor: "#21805B" } : pop.status === "Inativo" ? { texto: "Inativo", cor: "#6B7587" } : pop.arquivado ? { texto: "Arquivado", cor: "#6B7587" } : { texto: pop.status, cor: "#AF640A" };
+    pop.status === "Aprovado" ? { texto: "Vigente", cor: "#21805B", corTexto: "#1B2433" } : pop.status === "Inativo" ? { texto: "Inativo", cor: "#6B7587", corTexto: "#1B2433" } : pop.arquivado ? { texto: "Arquivado", cor: "#6B7587", corTexto: "#1B2433" } : { texto: pop.status, cor: "#AF640A", corTexto: "#8A5A00" };
   const abas: AbaVisivel[] = ["resumo", "documento", ...(contexto ? (["registros"] as AbaVisivel[]) : []), "historico"];
   const editorVisivel = aba === "documento" || aba === "historico";
 
@@ -123,22 +123,21 @@ export default function PcFichaPop({ pop, empresa, usuario, podeEditar, onImprim
       <div className="ficha-topo">
         <div className="ficha-titulo-linha">
           <h1 className="ficha-titulo">{`${pop.codigo ? `${pop.codigo} · ` : ""}${pop.titulo || "POP"}`}</h1>
-          <span className="rz-estado">
-            <i className="rz-bolinha" style={{ background: estado.cor }} aria-hidden="true" />
-            {estado.texto}
-            <span className="rz-estado-versao">
-              {" "}
-              · v{pop.versao}
-              {etapa ? ` · etapa ${etapa.numero} de ${TOTAL_DE_ETAPAS}` : ""}
-            </span>
+          {itensDoMenu.length > 0 && <MenuMais rotulo="Mais ações do POP" itens={itensDoMenu} />}
+        </div>
+        <p className="rz-estado">
+          <i className="rz-bolinha" style={{ background: estado.cor }} aria-hidden="true" />
+          <span className="rz-estado-nome" style={{ color: estado.corTexto }}>{estado.texto}</span>
+          <span className="rz-estado-versao">
+            {` · v${pop.versao}`}
+            {etapa ? ` · etapa ${etapa.numero} de ${TOTAL_DE_ETAPAS}` : ""}
           </span>
           {popPrecisaRevisarPorNorma(pop) && (
             <span className="pop-revisar" title={MENSAGEM_NORMA_ALTERADA}>
               revisar
             </span>
           )}
-          {itensDoMenu.length > 0 && <MenuMais rotulo="Mais ações do POP" itens={itensDoMenu} />}
-        </div>
+        </p>
         <div className="ficha-abas ficha-abas--texto" role="tablist" aria-label="Partes do POP">
           {abas.map((id) => (
             <button key={id} type="button" role="tab" aria-selected={aba === id} className={`ficha-aba${aba === id ? " is-ativa" : ""}`} onClick={() => setAba(id)}>

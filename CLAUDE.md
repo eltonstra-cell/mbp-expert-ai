@@ -216,6 +216,12 @@ Projeto separado do FoodControl. **Atenção:** o projeto Neon "mbp-expert-ai" t
 - Ciência com PIN (LGPD): `lib/pinCiencia.ts` e `app/api/pops/ciencia` (tabela `mbp_pop_pin` criada em runtime; scrypt, 5 tentativas e bloqueio de 15 min). Grava só pessoa, versão, data e hora (`LeituraPop.viaPin`). Base legal: obrigação do empregador, não consentimento; boa prática, não exigência da norma; pode precisar de revisão jurídica. Nunca guardar IP, localização ou dado de saúde.
 - Pendente (precisa dos PDFs oficiais): item 4.12 da RDC 216, modelos de pragas, reservatório e higiene/saúde dos manipuladores, e POP-01 a 04 nascendo de modelos. Texto de norma não é escrito de memória.
 
+## Rodada 12f (v2.46-dev): ajustes da ficha do POP
+- Linha de etapas do Resumo em círculos de 30 px (28 no celular) ligados por uma linha (verde até a etapa atual, cinza #D6DCE5 depois); as 6 etapas ficam na mesma linha em qualquer largura (sem quebra em 3 por linha). Responsável e cargo (no celular, "Responsável"), Frequência e Versão são texto simples ACIMA da faixa creme (#FFF6E5, borda #F0D9A0); falta de dado = "Definir" em azul. Sem as linhas "Falta: …".
+- Itens de conferência dos modelos têm título curto (`lib/popTitulosConferencia.ts`, mesma ordem das `pendencias` do catálogo gerado; o catálogo NÃO foi editado). POP novo grava `itensAConferir[].titulo`; POP antigo não é alterado: a ficha usa o título do modelo pela posição ou o trecho até os dois-pontos. O texto completo abre com a seta, um item por vez (PC e tablet: o primeiro aberto; celular: todos fechados). A lista rola por dentro; título e botões ficam fixos.
+- Título do POP em linha própria com o ⋯; abaixo "● Rascunho · v1.0 · etapa N de 6" (Rascunho em #8A5A00). Etapa 3: rascunho completo = "Pronto para enviar" + "Enviar para aprovação"; depois de enviado = "Aguardando aprovação de <responsável>" e só o responsável vê "Aprovar versão X".
+- Lista de POPs plana: cada seção é só um rótulo (`pgg-secao`), sem abrir e fechar (a chave `mbp-pops-grupos:` do aparelho não é mais usada).
+
 ## Agentes e fluxo de trabalho
 - Funcionalidade nova ou mudança em mais de um arquivo, tabela ou tela: usar o agente arquiteto antes de implementar e perguntar ao usuário só o que o pedido não respondeu.
 - Depois de qualquer mudança de código: usar o revisor-codigo.

@@ -9,6 +9,10 @@ import { arquivarPop, duplicarPop } from "../lib/pops.ts";
 import { inativarPop, podeInativarPop, reativarPop } from "../lib/popInativo.ts";
 import { unirAuditoriaSemApagar } from "../lib/auditoriaNaoApagavel.ts";
 import { diasDeGuardaParaExclusao, registroEmGuarda, restaurarRegistrosEmGuarda } from "../lib/guardaDeRegistros.ts";
+import { TITULOS_DAS_PENDENCIAS, tituloDoItemAConferir, tituloPeloTrecho } from "../lib/popTitulosConferencia.ts";
+import { CATALOGO_DE_MODELOS_POP } from "../lib/modelos/popsModelosDados.ts";
+import { criarPopDeModelo } from "../lib/popModelos.ts";
+import { readFileSync } from "node:fs";
 import { cienciaPorFuncao, equipeDaCiencia, novaCiencia } from "../lib/cienciaPop.ts";
 
 const AGORA = "2026-10-20T12:00:00.000Z";
@@ -195,4 +199,51 @@ test("D: ciência por pessoa (só pessoa, versão, data e hora), uma por versão
   const equipe = equipeDaCiencia("p1", "1.0", dados.colaboradores, [r.leitura]);
   assert.equal(`${equipe.confirmadas} de ${equipe.total}`, "1 de 3");
   assert.deepEqual(cienciaPorFuncao(equipe.linhas), [{ funcao: "Cozinha", total: 2, confirmadas: 1 }, { funcao: "Salão", total: 1, confirmadas: 0 }]);
+});
+
+// ===== Rodada 12f: ficha do POP (etapa 2, desenhos 48 a 50) =====
+test("12f: todo modelo tem um título curto por item de conferência, na mesma ordem", () => {
+  for (const modelo of CATALOGO_DE_MODELOS_POP.pops) {
+    const titulos = TITULOS_DAS_PENDENCIAS[modelo.id] || [];
+    assert.equal(titulos.length, (modelo.pendencias || []).length, `títulos de ${modelo.id}`);
+    assert.ok(titulos.every((titulo) => titulo.length > 0 && titulo.length <= 52), `títulos curtos de ${modelo.id}`);
+  }
+  assert.deepEqual(TITULOS_DAS_PENDENCIAS["comp-02"], ["Retirar os itens: reescrever a frase", "Limpeza interna: reescrever a frase", "Religar: confirmar o tempo de espera", "Ações corretivas: decidir se mantém", "Álcool 70: padronizar a escrita"]);
+});
+
+test("12f: título do item = o gravado, o do modelo na mesma posição, ou o trecho até os dois-pontos; o texto completo não muda", () => {
+  const antigo = { origemModelo: { id: "comp-02", versaoCatalogo: 1 }, itensAConferir: [{ texto: "Procedimento (religar): confirmar o tempo.", feito: false }, { texto: "Outro assunto: detalhe", feito: false, titulo: "Meu título" }] };
+  assert.equal(tituloDoItemAConferir(antigo, 0), "Retirar os itens: reescrever a frase");
+  assert.equal(tituloDoItemAConferir(antigo, 1), "Meu título");
+  assert.equal(tituloDoItemAConferir({ itensAConferir: [{ texto: "Procedimento (religar): confirmar o tempo.", feito: false }] }, 0), "Procedimento (religar)");
+  assert.equal(tituloPeloTrecho("Sem dois pontos"), "Sem dois pontos");
+  assert.equal(antigo.itensAConferir[0].texto, "Procedimento (religar): confirmar o tempo.");
+});
+
+test("12f: POP novo de modelo grava o título e mantém o texto completo da pendência", () => {
+  const modelo = CATALOGO_DE_MODELOS_POP.pops.find((item) => item.id === "comp-02");
+  const feito = criarPopDeModelo({ modelo, pops: [], empresa: "Beyond Nutri", responsavel: { nome: "Elton Volmir Strapazon", cargo: "Nutricionista" }, id: "x1", gerarId: () => "i", codigo: "POP-08" });
+  assert.equal(feito.ok, true);
+  assert.equal(feito.pop.itensAConferir[0].titulo, "Retirar os itens: reescrever a frase");
+  assert.equal(feito.pop.itensAConferir[0].texto, modelo.pendencias[0]);
+});
+
+test("12f: Resumo com círculos ligados por linha, campos acima da faixa, itens com seta e etapa 3 em dois momentos", () => {
+  const resumo = readFileSync(new URL("../components/pc/PcResumoDoPop.tsx", import.meta.url), "utf8");
+  const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+  const ficha = readFileSync(new URL("../components/pc/PcFichaPop.tsx", import.meta.url), "utf8");
+  assert.ok(resumo.indexOf('className="rz-campos"') < resumo.indexOf("{faixaDaEtapa()}"), "campos acima da faixa");
+  assert.ok(!resumo.includes("Falta: {"), "sem as linhas 'Falta: …'");
+  assert.ok(resumo.includes("Conferir antes de aprovar") && resumo.includes("aria-expanded={aberto}") && resumo.includes("tituloDoItemAConferir"));
+  assert.ok(resumo.includes("Pronto para enviar") && resumo.includes("Aguardando aprovação de") && resumo.includes("Só o responsável ("));
+  assert.ok(resumo.includes('matchMedia("(max-width:599px)")'), "celular: todos fechados");
+  assert.match(css, /\.rz-etapa-bola\{[^}]*width:30px;height:30px;border-radius:50%/);
+  assert.match(css, /\.rz-etapa--concluida \.rz-etapa-bola\{background:#21805B/);
+  assert.match(css, /\.rz-etapa--atual \.rz-etapa-bola\{background:#264A80/);
+  assert.match(css, /\.rz-etapa--concluida::before,\.rz-etapa--atual::before\{background:#21805B\}/);
+  assert.match(css, /\.rz-etapa::before\{[^}]*background:#D6DCE5/);
+  assert.match(css, /\.rz-faixa\{background:#FFF6E5;border:1px solid #F0D9A0/);
+  assert.match(css, /\.rz-faixa \.rz-btn--pri:disabled\{background:#E3E7EE;border-color:#E3E7EE;color:#526477\}/);
+  assert.ok(!/\.rz-etapas\{grid-template-columns:repeat\(3/.test(css), "sem a quebra em 3 por linha");
+  assert.ok(ficha.includes("\u00A0· v") && ficha.includes('corTexto: "#8A5A00"'));
 });

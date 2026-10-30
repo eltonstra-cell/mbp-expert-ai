@@ -1821,28 +1821,70 @@ detalhes:{chipDaAcaoNaBarra:chipVisivel,sobrepostos,pessoas:pessoas.map((c)=>c.t
   try {
     const semente25 = JSON.parse(await js(`localStorage.getItem(${JSON.stringify(CHAVE)})`));
     const base25 = semente25.empresas["beyond-nutri"];
-    const pop25 = { id: "pop-t25", codigo: "POP-07", titulo: "Higienização de hortifrútis", versao: "1.0", status: "Rascunho", proximaRevisao: "", conteudo: { objetivo: "Teste", passos: [{ id: "p1", texto: "Lavar em água corrente" }], frequencia: "", responsavelExecucao: "Elton Volmir Strapazon, Nutricionista" } };
+    const pop25 = { id: "pop-t25", codigo: "POP-08", titulo: "Higienização de equipamentos de refrigeração (geladeiras e freezers)", versao: "1.0", status: "Rascunho", proximaRevisao: "", origemModelo: { id: "comp-02", versaoCatalogo: 1 }, conferencia: { conferido: false }, itensAConferir: ["Procedimento (retirar os itens): a frase sobre passar os itens para outro equipamento ou caixa térmica com gelo está incompleta e confusa: reescrever.","Procedimento (limpeza interna): a frase sobre esfregar as paredes internas está confusa: reescrever.","Procedimento (religar): confirmar o tempo de espera de 20 minutos antes de religar o equipamento.","Ações corretivas: frase genérica: decidir se mantém, suaviza ou retira.","Materiais e procedimento: Álcool 70 aparece escrito de formas diferentes: padronizar."].map((texto) => ({ texto, feito: false })), conteudo: { objetivo: "Teste", passos: [{ id: "p1", texto: "Lavar em água corrente" }], frequencia: "", responsavelExecucao: "Elton Volmir Strapazon, Nutricionista" } };
     semente25.empresas["beyond-nutri"] = { ...base25, pops: [pop25] };
     semente25.empresaAtualId = "beyond-nutri";
-    await n.enviar("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
-    await js(`localStorage.setItem(${JSON.stringify(CHAVE)}, ${JSON.stringify(JSON.stringify(semente25))})`);
-    await n.ir(app.base);
-    await esperar(async () => js('!!document.querySelector(".tr")'), 20000);
-    await n.esperar(2000);
-    await js('[...document.querySelectorAll(".tr .tr-item")].find((b)=>b.innerText.trim()==="POPs")?.click()');
-    await esperar(async () => js('!!document.querySelector(".pgl-linha.is-clicavel")'), 12000);
-    const lista25 = await js('document.querySelector(".pgl-linha.is-clicavel")?.innerText||""');
-    registrar("25a. Lista de POPs: a linha mostra 'Etapa N de 6 · nome' em vez de 'modelo não conferido · v1.0'", /Etapa \d de 6 · /.test(lista25) && !/v1\.0/.test(lista25), JSON.stringify(lista25));
-    await js('document.querySelector(".pgl-linha.is-clicavel")?.click()');
-    await esperar(async () => js('!!document.querySelector(".ficha .ficha-aba")'), 12000);
     const tamanhos25 = [["pc", 1440, 900, false], ["tablet", 800, 1280, false], ["celular", 390, 844, true]];
     for (const [nome, largura, altura, movel] of tamanhos25) {
       await n.enviar("Emulation.setDeviceMetricsOverride", { width: largura, height: altura, deviceScaleFactor: 1, mobile: movel });
+      await js(`localStorage.setItem(${JSON.stringify(CHAVE)}, ${JSON.stringify(JSON.stringify(semente25))})`);
+      await n.ir(app.base);
+      await esperar(async () => js('!!document.querySelector(".tr, .nav-inferior, nav")'), 20000);
+      await n.esperar(2000);
+      await js('[...document.querySelectorAll(".tr .tr-item, nav button, nav a, [role=tab]")].find((b)=>b.innerText.trim()==="POPs")?.click()');
+      await esperar(async () => js('!!document.querySelector(".pgl-linha.is-clicavel")'), 12000);
+      await foto(`25-lista-${nome}`);
+      const lista = JSON.parse(await js('JSON.stringify({linhas:document.querySelectorAll(".pgl-linha.is-clicavel").length,texto:document.querySelector(".pgl-linha.is-clicavel")?.innerText||"",abrirFechar:document.querySelectorAll(".pgg-secao [aria-expanded], .pgg-faixa-botao").length,faixasColoridas:document.querySelectorAll(".pgg-faixa").length,secoes:document.querySelectorAll(".pgg-secao").length,lateral:document.documentElement.scrollWidth<=innerWidth})'));
+      registrar(`25a. Lista de POPs (${nome} ${largura}px): lista plana (só rótulo de seção, sem abrir e fechar), linha 'Etapa N de 6 · nome' e sem rolagem lateral`, lista.abrirFechar === 0 && lista.faixasColoridas === 0 && lista.secoes >= 1 && /Etapa \d de 6 · /.test(lista.texto) && !/v1\.0/.test(lista.texto) && lista.lateral, JSON.stringify(lista));
+      await js('document.querySelector(".pgl-linha.is-clicavel")?.click()');
+      await esperar(async () => js('!!document.querySelector(".ficha .ficha-aba")'), 12000);
       await n.esperar(700);
       await foto(`25-ficha-${nome}`);
-      const d = JSON.parse(await js(`JSON.stringify((()=>{const abas=[...document.querySelectorAll(".ficha-aba")].map((b)=>b.innerText.trim());const et=[...document.querySelectorAll(".rz-etapa")];const faixa=document.querySelector(".rz-faixa");const btn=[...document.querySelectorAll(".rz-btn")].map((b)=>Math.round(b.getBoundingClientRect().height));return {abas,etapas:et.length,atual:et.filter((e)=>e.classList.contains("rz-etapa--atual")).length,faixa:!!faixa,faixaBg:faixa&&getComputedStyle(faixa).backgroundColor,btn,pagina:document.documentElement.scrollHeight<=innerHeight+1,lateral:document.documentElement.scrollWidth<=innerWidth,caminho:(document.querySelector(".ficha-caminho")||{}).innerText||"",pilulas:!!document.querySelector(".ficha-abas--texto .ficha-aba")&&getComputedStyle(document.querySelector(".ficha-abas--texto .ficha-aba")).backgroundColor==="rgba(0, 0, 0, 0)"}})())`));
-      registrar(`25b. Ficha do POP (${nome} ${largura}px): 4 abas em texto, 6 etapas com uma atual, faixa creme, botões de 40 px, sem rolagem lateral (o caminho já está no topo da tela)`, JSON.stringify(d.abas) === JSON.stringify(["Resumo", "Documento", "Registros", "Histórico"]) && d.etapas === 6 && d.atual === 1 && d.faixa && d.faixaBg === "rgb(255, 246, 229)" && d.btn.every((h) => h >= 40 && h <= 44) && d.pilulas && d.lateral, JSON.stringify(d));
-      if (!d.pagina) registrar(`25c. Ficha do POP (${nome}): a página inteira rola (${largura}x${altura}); deve rolar só por dentro`, false, JSON.stringify(d));
+      const d = JSON.parse(await js(`JSON.stringify((()=>{
+        const r=(e)=>e?e.getBoundingClientRect():null;
+        const abas=[...document.querySelectorAll(".ficha-aba")].map((b)=>b.innerText.trim());
+        const et=[...document.querySelectorAll(".rz-etapa")];
+        const bolas=et.map((e)=>e.querySelector(".rz-etapa-bola"));
+        const faixa=document.querySelector(".rz-faixa");
+        const campos=document.querySelector(".rz-campos");
+        const btn=[...document.querySelectorAll(".rz-btn")].map((b)=>Math.round(r(b).height));
+        const marcar=[...document.querySelectorAll(".rz-btn")].find((b)=>/Marcar como conferido/.test(b.innerText));
+        const itens=[...document.querySelectorAll(".rz-item")];
+        const estado=document.querySelector(".rz-estado");
+        const titulo=document.querySelector(".ficha-titulo");
+        const antes=et.map((e)=>getComputedStyle(e,"::before").backgroundColor);
+        return {abas,etapas:et.length,atual:et.filter((e)=>e.classList.contains("rz-etapa--atual")).length,
+          mesmaLinha:new Set(bolas.map((b)=>Math.round(r(b).top))).size===1,
+          bola:Math.round(r(bolas[0]).width),
+          bolaAtualBg:getComputedStyle(bolas[1]).backgroundColor,bolaFuturaBorda:getComputedStyle(bolas[3]).borderTopColor,
+          linhaCor:antes.slice(1),
+          nomeAtualPeso:getComputedStyle(et[1].querySelector(".rz-etapa-nome")).fontWeight,
+          nomes:et.map((e)=>e.querySelector(".rz-etapa-nome").innerText),
+          nomeCortado:et.some((e)=>{const x=e.querySelector(".rz-etapa-nome");return x.scrollWidth>x.clientWidth+1;}),
+          camposAcima:!!campos&&!!faixa&&r(campos).bottom<=r(faixa).top+1,
+          camposTexto:campos?campos.innerText.replace(/\\s+/g," "):"",
+          semFalta:!/Falta:/.test(document.querySelector(".rz-resumo")?.innerText||""),
+          faixa:!!faixa,faixaBg:faixa&&getComputedStyle(faixa).backgroundColor,faixaBorda:faixa&&getComputedStyle(faixa).borderTopColor,
+          itens:itens.length,abertos:itens.filter((i)=>i.classList.contains("is-aberto")).length,
+          primeiroAberto:!!itens[0]&&itens[0].classList.contains("is-aberto"),
+          tituloItem:itens[0]?itens[0].querySelector(".rz-item-titulo").innerText.replace(/\\s+/g," ").trim():"",
+          marcarBg:marcar&&getComputedStyle(marcar).backgroundColor,marcarCor:marcar&&getComputedStyle(marcar).color,
+          btn,pilulas:!!document.querySelector(".ficha-abas--texto .ficha-aba")&&getComputedStyle(document.querySelector(".ficha-abas--texto .ficha-aba")).backgroundColor==="rgba(0, 0, 0, 0)",
+          estadoTexto:estado?estado.innerText.replace(/\\s+/g," ").trim():"",estadoCor:estado&&getComputedStyle(estado.querySelector(".rz-estado-nome")).color,
+          chipsDeEstado:document.querySelectorAll(".ficha-topo .rz-estado, .ficha-topo .ui-chip, .ficha-topo .pop-chip").length,
+          tituloLinhas:Math.round(r(titulo).height/parseFloat(getComputedStyle(titulo).lineHeight)),
+          menuNaLinhaDoTitulo:!!document.querySelector(".ficha-titulo-linha button")&&Math.abs(r(document.querySelector(".ficha-titulo-linha button")).top-r(titulo).top)<30,
+          pagina:document.documentElement.scrollHeight<=innerHeight+1,alturas:[document.documentElement.scrollHeight,innerHeight,document.body.scrollHeight],lateral:document.documentElement.scrollWidth<=innerWidth}})())`));
+      const esperadoAberto = nome === "celular" ? d.abertos === 0 : d.abertos === 1 && d.primeiroAberto;
+      registrar(`25b. Ficha do POP (${nome} ${largura}px): 4 abas em texto, 6 círculos de ${movel ? 28 : 30} px na mesma linha com nomes inteiros, uma etapa atual, linha verde até a atual e cinza depois`, JSON.stringify(d.abas) === JSON.stringify(["Resumo", "Documento", "Registros", "Histórico"]) && d.etapas === 6 && d.atual === 1 && d.mesmaLinha && d.bola === (movel ? 28 : 30) && d.bolaAtualBg === "rgb(38, 74, 128)" && d.bolaFuturaBorda === "rgb(127, 139, 163)" && d.linhaCor[0] === "rgb(33, 128, 91)" && d.linhaCor[1] === "rgb(214, 220, 229)" && d.nomeAtualPeso === "500" && !d.nomeCortado && d.pilulas && d.lateral, JSON.stringify(d));
+      registrar(`25c. Ficha do POP (${nome} ${largura}px): Responsável, Frequência e Versão em texto simples acima da faixa creme (#FFF6E5, borda #F0D9A0), sem 'Falta:'`, d.camposAcima && d.semFalta && /Definir/.test(d.camposTexto) && d.faixa && d.faixaBg === "rgb(255, 246, 229)" && d.faixaBorda === "rgb(240, 217, 160)" && (nome !== "celular" || (/Responsável Definir/.test(d.camposTexto) && !/e cargo/.test(d.camposTexto))), JSON.stringify(d));
+      registrar(`25d. Ficha do POP (${nome} ${largura}px): itens com título curto e seta (${nome === "celular" ? "todos fechados" : "o primeiro aberto, um por vez"}); 'Marcar como conferido' cinza #E3E7EE até marcar tudo; botões de 40 px`, d.itens === 5 && esperadoAberto && d.tituloItem.startsWith("Retirar os itens: reescrever a frase") && d.marcarBg === "rgb(227, 231, 238)" && d.marcarCor === "rgb(82, 100, 119)" && d.btn.every((h) => h >= 40 && h <= 44), JSON.stringify(d));
+      registrar(`25e. Ficha do POP (${nome} ${largura}px): título em linha própria (até 2 linhas) com o ⋯ ao lado, situação 'Rascunho · v1.0 · etapa 2 de 6' em âmbar escuro e um único estado`, /^Rascunho · v1\.0 · etapa 2 de 6/.test(d.estadoTexto) && d.estadoCor === "rgb(138, 90, 0)" && d.chipsDeEstado === 1 && d.tituloLinhas <= 2 && d.menuNaLinhaDoTitulo, JSON.stringify(d));
+      registrar(`25f. Ficha do POP (${nome} ${largura}x${altura}): cabe numa tela, sem rolagem da página`, d.pagina, JSON.stringify(d));
+      await js('[...document.querySelectorAll(".rz-item-linha input")].forEach((i)=>{if(!i.checked)i.click();})');
+      await n.esperar(500);
+      const apos = JSON.parse(await js('JSON.stringify((()=>{const b=[...document.querySelectorAll(".rz-btn")].find((x)=>/Marcar como conferido/.test(x.innerText));return b?{bg:getComputedStyle(b).backgroundColor,cor:getComputedStyle(b).color,off:b.disabled}:null})())'));
+      registrar(`25g. Ficha do POP (${nome}): com todos os itens marcados, 'Marcar como conferido' fica azul-marinho com texto branco`, !!apos && !apos.off && apos.bg === "rgb(38, 74, 128)" && apos.cor === "rgb(255, 255, 255)", JSON.stringify(apos));
     }
     await n.enviar("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
   } catch (erro) {

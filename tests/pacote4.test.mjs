@@ -144,5 +144,7 @@ test("75. grupos que abrem e fecham: resumo, abertura automática, 5 mais urgent
   assert.deepEqual(urgentes.map((l) => l.id), [9, 8, 7, 6, 5], "os mais urgentes (menor prioridade primeiro)");
   assert.equal(linhasDoGrupo(muitos, true).length, 10);
   const lista = ler("../components/pc/PcPopsLista.tsx");
-  assert.ok(lista.includes("mbp-pops-grupos:") && lista.includes("grupoComecaAberto(todas)") && lista.includes("Ver todos ("));
+  assert.ok(lista.includes("Ver todos ("), "o corte nos mais urgentes continua");
+  // rodada 12f: lista plana, só rótulo de seção (sem abrir e fechar)
+  assert.ok(!lista.includes("mbp-pops-grupos:") && !lista.includes("aria-expanded") && lista.includes("pgg-secao-titulo"));
 });

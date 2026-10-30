@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import type { Empresa, ProcedimentoOperacionalPadronizado } from "@/types";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
 import { RowMenu, type ItemMenu } from "@/components/ui/RowMenu";
 import { MENSAGEM_NORMA_ALTERADA, MENSAGEM_SEM_NORMA_APLICADA, popPrecisaRevisarPorNorma } from "@/lib/popsNorma";
-import { COR_DO_ESTADO, botaoDaLinha, contadoresDaLista, estadoVisualDaLinha, filtrarLinhas, grupoComecaAberto, linhasDoGrupo, resumoDoGrupo, textoDoCriarDaNorma, POPS_EM_DESTAQUE, type FiltroDaLista, type LinhaComDetalhe } from "@/lib/popGestao";
+import { COR_DO_ESTADO, botaoDaLinha, contadoresDaLista, estadoVisualDaLinha, filtrarLinhas, linhasDoGrupo, resumoDoGrupo, textoDoCriarDaNorma, POPS_EM_DESTAQUE, type FiltroDaLista, type LinhaComDetalhe } from "@/lib/popGestao";
 import { acoesDoPop } from "@/lib/menuActions";
 import { AVISO_JA_TEM_DO_MODELO, adicionarPop, arquivarPop, duplicarPop } from "@/lib/pops";
 import MotivoDaMudanca from "@/components/pc/MotivoDaMudanca";
@@ -129,7 +129,6 @@ export default function PcPopsLista({
   pops,
   onPersistir,
   abas,
-  empresaId,
   responsavel,
   onAlterarEmDados,
   topo,
@@ -146,26 +145,8 @@ export default function PcPopsLista({
   // Filtro só na tela (não é guardado): cada chip de contagem mostra só os POPs daquela situação; "Todos" limpa.
   const [filtro, setFiltro] = useState<FiltroDaLista | null>(null);
   const contadores = contadoresDaLista([...conjunto, ...outros]);
-  // Cada grupo é um painel que abre e fecha; o estado fica no aparelho, por empresa. Sem escolha guardada, abre sozinho quando há POP fora de "vigente".
-  const chaveDosGrupos = `mbp-pops-grupos:${empresaId || "empresa"}`;
-  const [grupos, setGrupos] = useState<Record<string, boolean>>({});
+  // Lista plana (rodada 12f): os grupos viraram só um rótulo de seção, sem abrir e fechar.
   const [verTodosDoGrupo, setVerTodosDoGrupo] = useState<Record<string, boolean>>({});
-  useEffect(() => {
-    try {
-      setGrupos(JSON.parse(window.localStorage.getItem(chaveDosGrupos) || "{}") || {});
-    } catch {
-      setGrupos({});
-    }
-  }, [chaveDosGrupos]);
-  function alternarGrupo(id: string, abertoAgora: boolean) {
-    const proximo = { ...grupos, [id]: !abertoAgora };
-    setGrupos(proximo);
-    try {
-      window.localStorage.setItem(chaveDosGrupos, JSON.stringify(proximo));
-    } catch {
-      /* sem armazenamento: vale só nesta abertura */
-    }
-  }
   const conjuntoVisivel = filtrarLinhas(conjunto, filtro);
   const outrosVisiveis = filtrarLinhas(outros, filtro);
   const temConjunto = conjunto.length > 0;
@@ -232,40 +213,34 @@ export default function PcPopsLista({
 
   const pendenciasDaLista = contadores.vigentesComPendencia;
 
-  // Painel de um grupo: faixa de cabeçalho clicável (chevron), resumo e, aberto, as linhas. Com mais de 8 POPs mostra os 5 mais urgentes.
+  // Seção da lista: rótulo (título e resumo) e as linhas, sempre visíveis. Com mais de 8 POPs mostra os 5 mais urgentes.
   function Grupo({ id, titulo, classe, linhas, todas, direita, aoFinalDasLinhas }: { id: string; titulo: string; classe: string; linhas: LinhaComDetalhe[]; todas: LinhaComDetalhe[]; direita?: ReactNode; aoFinalDasLinhas?: ReactNode }) {
-    const aberto = grupos[id] ?? grupoComecaAberto(todas);
     const verTodos = Boolean(verTodosDoGrupo[id]);
     const mostradas = linhasDoGrupo(linhas, verTodos);
     return (
       <section className="pgl-grupo" aria-label={titulo}>
-        <div className={`pgg-faixa ${classe}`}>
-          <button type="button" className="pgg-faixa-botao" aria-expanded={aberto} onClick={() => alternarGrupo(id, aberto)}>
-            <span className="pgg-faixa-seta" aria-hidden="true">{aberto ? "▾" : "▸"}</span>
-            <span className="pgg-faixa-titulo">{titulo}</span>
-            <span className="pgg-faixa-resumo">{resumoDoGrupo(todas)}</span>
-          </button>
+        <div className="pgg-secao">
+          <h3 className="pgg-secao-titulo">{titulo}</h3>
+          <span className="pgg-faixa-resumo">{resumoDoGrupo(todas)}</span>
           {direita}
         </div>
-        {aberto && (
-          <div className="pgl-grupo-corpo">
-            {aoFinalDasLinhas}
-            {linhas.length === 0 && <div className="ui-empty">Nenhum POP nesta situação.</div>}
-            {mostradas.map((linha) => (
-              <Linha key={linha.chave} linha={linha} podeEditar={podeEditar} onAbrirFicha={onAbrirFicha} onCriarDoModelo={onCriarDoModelo} menu={id === "outros" && linha.pop ? menuDoOutro(linha.pop) : undefined} />
-            ))}
-            {linhas.length > mostradas.length && (
-              <button type="button" className="pc-link-btn pc-self-start" onClick={() => setVerTodosDoGrupo((atual) => ({ ...atual, [id]: true }))}>
-                Ver todos ({linhas.length})
-              </button>
-            )}
-            {verTodos && linhas.length > POPS_EM_DESTAQUE && linhas.length > 8 && (
-              <button type="button" className="pc-link-btn pc-self-start" onClick={() => setVerTodosDoGrupo((atual) => ({ ...atual, [id]: false }))}>
-                Mostrar só os {POPS_EM_DESTAQUE} mais urgentes
-              </button>
-            )}
-          </div>
-        )}
+        <div className="pgl-grupo-corpo">
+          {aoFinalDasLinhas}
+          {linhas.length === 0 && <div className="ui-empty">Nenhum POP nesta situação.</div>}
+          {mostradas.map((linha) => (
+            <Linha key={linha.chave} linha={linha} podeEditar={podeEditar} onAbrirFicha={onAbrirFicha} onCriarDoModelo={onCriarDoModelo} menu={id === "outros" && linha.pop ? menuDoOutro(linha.pop) : undefined} />
+          ))}
+          {linhas.length > mostradas.length && (
+            <button type="button" className="pc-link-btn pc-self-start" onClick={() => setVerTodosDoGrupo((atual) => ({ ...atual, [id]: true }))}>
+              Ver todos ({linhas.length})
+            </button>
+          )}
+          {verTodos && linhas.length > POPS_EM_DESTAQUE && linhas.length > 8 && (
+            <button type="button" className="pc-link-btn pc-self-start" onClick={() => setVerTodosDoGrupo((atual) => ({ ...atual, [id]: false }))}>
+              Mostrar só os {POPS_EM_DESTAQUE} mais urgentes
+            </button>
+          )}
+        </div>
       </section>
     );
   }

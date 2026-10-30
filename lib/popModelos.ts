@@ -1,6 +1,7 @@
 // Catálogo de modelos de POP ("A partir de modelo"): lista, busca, código livre e criação do POP em rascunho não conferido.
 // Os valores numéricos dos modelos (temperaturas, tempos, concentrações, prazos) NÃO foram verificados.
 import type { ConteudoPop, GrupoDeModeloPop, ItemDeModeloPop, PassoPop, ProcedimentoOperacionalPadronizado, TabelaDoPop } from "../types/index.ts";
+import { tituloDaPendencia } from "./popTitulosConferencia.ts";
 import { CATALOGO_DE_MODELOS_POP } from "./modelos/popsModelosDados.ts";
 import { nomeECargo, limparTextoDePessoa } from "./nomeCargo.ts";
 import { textoDoItem, subitensDoItem, tabelaDoItem } from "./popConteudoModelo.ts";
@@ -228,7 +229,7 @@ export function criarPopDeModelo(entrada: EntradaDeCriacao): ResultadoDaCriacao 
       conteudo: conteudoDoModelo(modelo, variaveis, entrada.gerarId),
       origemModelo: { id: modelo.id, versaoCatalogo: entrada.versaoCatalogo ?? CATALOGO_DE_MODELOS.versao },
       conferencia: { conferido: false },
-      itensAConferir: modelo.pendencias.map((texto) => ({ texto: resolverVariaveis(texto, variaveis), feito: false })).filter((item) => item.texto),
+      itensAConferir: modelo.pendencias.map((texto, indice) => ({ texto: resolverVariaveis(texto, variaveis), feito: false, ...(tituloDaPendencia(modelo.id, indice) ? { titulo: tituloDaPendencia(modelo.id, indice) } : {}) })).filter((item) => item.texto),
     },
   };
 }
