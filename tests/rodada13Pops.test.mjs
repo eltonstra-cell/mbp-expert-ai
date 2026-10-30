@@ -33,7 +33,7 @@ test("frequência: Semestral, Anual e Outra existem e são reconhecidas", () => 
 test("frequência definida tira a pendência do índice e a folha avisa 'frequência a definir' só sem ela", () => {
   assert.equal(FREQUENCIA_A_DEFINIR, "frequência a definir");
   const origem = ler("../lib/popDocumento.ts");
-  assert.ok(origem.includes("falta definir a frequência") && origem.includes("opcoes.marcarBranco && executor"));
+  assert.ok(origem.includes("a frequência") && origem.includes("opcoes.marcarBranco && executor"));
   assert.equal(typeof secoesDoEditor, "function");
   const folha = ler("../components/pc/PopFolha.tsx");
   assert.ok(folha.includes("pfolha-definir"));

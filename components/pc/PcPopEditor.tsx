@@ -2,11 +2,11 @@
 
 import Select from "@/components/Select";
 import CampoDeFrequencia from "@/components/pc/CampoDeFrequencia";
-import { conteudoComFrequencia, frequenciaDoPop } from "@/lib/popFrequencia";
+import { conteudoComFrequencia, frequenciaDoPop, tipoReconhecidoNoTexto } from "@/lib/popFrequencia";
 import { formatarCnpj } from "@/lib/cnpj";
 import { formatarData, formatarHora, hojeLocalISO } from "@/lib/dataLocal";
 import { limparTextoDePessoa, nomeECargo } from "@/lib/nomeCargo";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { CapaDosPops, ConteudoPop, Empresa, GrupoDeModeloPop, ItemDeModeloPop, PassoPop, ProcedimentoOperacionalPadronizado, UsuarioSistema } from "@/types";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
 import {
@@ -267,6 +267,30 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
   const [salvoEm, setSalvoEm] = useState("");
   const [confirmandoAprovacao, setConfirmandoAprovacao] = useState(false);
   const [verFolha, setVerFolha] = useState(false);
+  const [outraPessoa, setOutraPessoa] = useState(false);
+  const [, setMedida] = useState(0);
+  // A lista de passos é a única que rola: ocupa o que sobra da tela entre o que está acima dela e o que está abaixo (botão, rodapé e barra de baixo).
+  const listaDePassos = useRef<HTMLOListElement>(null);
+  useLayoutEffect(() => {
+    const lista = listaDePassos.current;
+    if (!lista) return;
+    const rolagem = lista.scrollTop;
+    lista.style.maxHeight = "";
+    const retangulo = lista.getBoundingClientRect();
+    const meio = lista.closest(".pdoc-meio");
+    const abaixoNoMeio = meio ? Math.max(0, meio.getBoundingClientRect().bottom - retangulo.bottom) : 0;
+    const rodape = document.querySelector(".pdoc-rodape")?.getBoundingClientRect().height ?? 0;
+    const barra = document.querySelector(".campo-bar");
+    const alturaDaBarra = barra && getComputedStyle(barra).display !== "none" ? barra.getBoundingClientRect().height : 0;
+    const livre = window.innerHeight - retangulo.top - abaixoNoMeio - rodape - alturaDaBarra - 16;
+    lista.style.maxHeight = `${Math.max(120, Math.floor(livre))}px`;
+    lista.scrollTop = rolagem;
+  });
+  useEffect(() => {
+    const reajustar = () => setMedida((n) => n + 1);
+    window.addEventListener("resize", reajustar);
+    return () => window.removeEventListener("resize", reajustar);
+  }, []);
   const [versaoA, setVersaoA] = useState("");
   const [versaoB, setVersaoB] = useState("");
   const [escolhendoImpressao, setEscolhendoImpressao] = useState(false);
@@ -560,7 +584,6 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
                 )}
               </p>
             )}
-            {notasNaBarra}
           </div>
           <aside className="pdoc-secoes" aria-label="Seções do POP">
             <h2 className="pdoc-lista-titulo">Seções · {secoesFeitas} de {secoesDaLista.length}</h2>
@@ -622,7 +645,30 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
           <SecaoRecolhivel id="responsavel" titulo="Responsável e frequência" resumo={executorNaTela.nome ? `${executorNaTela.nome}${conteudo.frequencia ? ` · ${conteudo.frequencia}` : ""}` : "em branco"} aberta={secao === "responsavel"} onAlternar={alternar}>
             <div className="pop-grade">
               <div className="pc-field">
-                <Campo rotulo="Responsável pela execução (nome)" valor={executorNaTela.nome} desabilitado={!editavel} erro={tocado && !executorNaTela.nome.trim() ? "Informe o nome." : ""} onChange={(valor) => mudarResponsavel({ nome: valor, cargo: executorNaTela.cargo })} />
+                <label className="pc-field">
+                  <span className="ui-eyebrow">Responsável pela execução</span>
+                  <Select
+                    className="ui-input ui-input--lista"
+                    value={outraPessoa || (executorNaTela.nome && executorNaTela.nome !== (dadosDoResponsavel?.nome || "")) ? "__outra" : executorNaTela.nome}
+                    disabled={!editavel}
+                    onChange={(evento) => {
+                      const valor = evento.target.value;
+                      if (valor === "__outra") {
+                        setOutraPessoa(true);
+                        return;
+                      }
+                      setOutraPessoa(false);
+                      mudarResponsavel({ nome: valor, cargo: valor && valor === dadosDoResponsavel?.nome ? dadosDoResponsavel?.cargo || executorNaTela.cargo : executorNaTela.cargo });
+                    }}
+                  >
+                    <option value="">Escolha o responsável</option>
+                    {dadosDoResponsavel?.nome ? <option value={dadosDoResponsavel.nome}>{dadosDoResponsavel.nome}</option> : null}
+                    <option value="__outra">Outra pessoa…</option>
+                  </Select>
+                </label>
+                {(outraPessoa || (executorNaTela.nome && executorNaTela.nome !== (dadosDoResponsavel?.nome || ""))) && (
+                  <Campo rotulo="Nome da pessoa" valor={executorNaTela.nome} desabilitado={!editavel} erro={tocado && !executorNaTela.nome.trim() ? "Informe o nome." : ""} onChange={(valor) => mudarResponsavel({ nome: valor, cargo: executorNaTela.cargo })} />
+                )}
                 {diferencaDeDados && (
                   <span className="ui-row-sub pdoc-sugestao">
                     Os Dados trazem “{diferencaDeDados}”
@@ -637,7 +683,7 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
                   </span>
                 )}
               </div>
-              <Campo rotulo="Cargo ou função" valor={executorNaTela.cargo} desabilitado={!editavel} erro={tocado && !executorNaTela.cargo.trim() ? "Informe o cargo ou a função." : ""} onChange={(valor) => mudarResponsavel({ nome: executorNaTela.nome, cargo: semPontuacaoNoInicio(valor) })} />
+              <Campo rotulo="Cargo ou função" valor={executorNaTela.cargo} desabilitado={!editavel} erro={editavel && !executorNaTela.cargo.trim() ? "Falta informar o cargo" : ""} onChange={(valor) => mudarResponsavel({ nome: executorNaTela.nome, cargo: semPontuacaoNoInicio(valor) })} />
               <div className="pc-field">
                 <CampoDeFrequencia
                   frequencia={conteudo.frequencia}
@@ -649,14 +695,14 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
                     mudar({ frequencia: gravado.frequencia, frequenciaEstruturada: gravado.frequenciaEstruturada });
                   }}
                 />
-                {editavel && sugestaoDaFrequencia && sugestaoDaFrequencia !== (conteudo.frequencia || "").trim() && (
+                {editavel && sugestaoDaFrequencia && tipoReconhecidoNoTexto(sugestaoDaFrequencia) && sugestaoDaFrequencia !== (conteudo.frequencia || "").trim() && (
                   <span className="ui-row-sub pdoc-sugestao">
-                    Sugestão do modelo:{" "}
+                    Sugestão: {sugestaoDaFrequencia}{" · "}
                     <button type="button" className="pc-link-btn" title="Usar esta sugestão" onClick={() => {
                       const gravado = conteudoComFrequencia({ frequencia: "", frequenciaEstruturada: undefined }, frequenciaDoPop({ frequencia: sugestaoDaFrequencia }));
                       mudar({ frequencia: gravado.frequencia, frequenciaEstruturada: gravado.frequenciaEstruturada });
                     }}>
-                      {sugestaoDaFrequencia}
+                      Usar
                     </button>
                   </span>
                 )}
@@ -667,15 +713,19 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
           <SecaoRecolhivel id="passos" titulo="Passos" resumo={`${(conteudo.passos || []).filter((passo) => passo.texto.trim()).length === 1 ? "1 escrito" : `${(conteudo.passos || []).filter((passo) => passo.texto.trim()).length} escritos`}`} aberta={secao === "passos"} onAlternar={alternar}>
             {editavel && <p className="ui-row-sub pdoc-ajuda pdoc-ajuda-passos"><span className="pdoc-ajuda-clique">Clique</span><span className="pdoc-ajuda-toque">Toque</span> em um passo para editar. O microfone dita e a IA melhora o texto.</p>}
             {dicaDaNorma && (
-              <div className="priv-faixa pdoc-dica" role="status">
-                <span title={dicaDaNorma.orientacao}>
-                  {dicaDaNorma.orientacao} ({dicaDaNorma.norma}, {dicaDaNorma.item})
+              <div className="pdoc-dica pdoc-dica--creme" role="status">
+                <span className="pdoc-dica-texto" title={dicaDaNorma.orientacao}>{dicaDaNorma.orientacao}</span>
+                <span className="pdoc-dica-fonte">
+                  {dicaDaNorma.norma}, {dicaDaNorma.item}
+                  {dicaDaNorma.conferir && <span className="pop-conferir">conferir</span>}
+                  {" · "}
+                  <button type="button" className="pc-link-btn" onClick={() => alternar("referencias")}>Ver fontes</button>
                 </span>
-                {dicaDaNorma.conferir && <span className="pop-conferir">conferir</span>}
               </div>
             )}
             {editavel && temPassoEmBranco && <span className="ui-row-sub">Escreva o passo em branco antes de adicionar outro.</span>}
-            <ol className="pop-passos pop-passos--rolagem pdoc-passos">
+            {passos.length === 0 && <p className="ui-row-sub pdoc-vazio">Nenhum passo ainda. Os passos ficam em branco para o RT e a empresa preencherem.</p>}
+            <ol ref={listaDePassos} className="pop-passos pop-passos--rolagem pdoc-passos scroll-fino">
               {passos.map((passo: PassoPop, indice) => {
                 const vazio = !passo.texto.trim();
                 const avisar = vazio && (tocado || passosTocados[passo.id]);
@@ -761,7 +811,6 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
                 + Adicionar passo
               </button>
             )}
-            {passos.length === 0 && <p className="ui-row-sub">Nenhum passo ainda. Os passos ficam em branco para o RT e a empresa preencherem.</p>}
             {tocado && !passos.some((passo) => passo.texto.trim()) && <span className="ui-field-error">Escreva ao menos um passo.</span>}
             {tocado && temPassoEmBranco && passos.some((passo) => passo.texto.trim()) && (
               <span className="ui-field-error">
@@ -903,20 +952,6 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
 
       {parte === "historico" && (
         <div className="pop-versoes">
-          <div className="ui-list">
-            {versoes.map((versao) => (
-              <div key={versao.versao} className="ui-card pop-versao-linha">
-                <span className="pop-versao-n">v{versao.versao}</span>
-                <span className="pop-versao-textos">
-                  <span className="pop-versao-linha1">
-                    {!versao.aprovacao ? versao.status : ""}
-                    {versao.aprovacao ? `Aprovada por ${nomeECargo(versao.aprovacao.nome, versao.aprovacao.cargo)} em ${formatarData(versao.aprovacao.em)}` : ""}
-                  </span>
-                  <span className="pop-versao-motivo">Motivo: {versao.motivo?.trim() || (versao.versao === versoes[0]?.versao ? "primeira versão" : "não informado")}</span>
-                </span>
-              </div>
-            ))}
-          </div>
           {versoes.length >= 2 ? (
             <>
               <div className="pop-comparar-escolha">
@@ -986,11 +1021,6 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
                 Descartar rascunho
               </button>
             )}
-            {erroTitulo && (
-              <span className="pdoc-falta" role="alert">
-                Falta: Identificação
-              </span>
-            )}
             {avisoDeConferencia && (onIrParaConferencia ? (
               <button type="button" className="pdoc-chip-conferir pdoc-chip-conferir--link" title="Ir aos itens para conferir" onClick={onIrParaConferencia}>{avisoDeConferencia}</button>
             ) : (
@@ -1034,6 +1064,7 @@ export default function PcPopEditor({ pop, empresa, usuario, podeEditar, respons
               <h2 className="pdoc-lista-titulo">Folha</h2>
               <button type="button" className="ui-btn ui-btn--secondary pdoc-folha-fechar" aria-label="Fechar a folha" onClick={() => setVerFolha(false)}>✕</button>
             </header>
+            {notasNaBarra}
             <div className="pdoc-previa-acoes">
               {comCartaz && (
                 <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => { setVerFolha(false); setCartazAberto(true); }}>

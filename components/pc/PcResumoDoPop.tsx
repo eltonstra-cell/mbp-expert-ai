@@ -1,16 +1,21 @@
 "use client";
 
+import Chevron from "@/components/ui/Chevron";
 import { useEffect, useState } from "react";
 import type { FrequenciaDoPop, ProcedimentoOperacionalPadronizado } from "@/types";
 import CampoDeFrequencia from "@/components/pc/CampoDeFrequencia";
 import { confirmar } from "@/lib/dialogos";
-import { formatarData, formatarDataCurta } from "@/lib/dataLocal";
+import { diasEntreDatas as diasEntre, formatarData, formatarDataCurta, formatarHora } from "@/lib/dataLocal";
 import { equipeDaCiencia } from "@/lib/cienciaPop";
 import { TOTAL_DE_ETAPAS, linhaDeEtapas, verificacoesDeAprovacao, type EtapaDoPop } from "@/lib/popCiclo";
 import { MENSAGEM_APROVAR_NAO_CONFERIDO, bloqueioDeAprovacao, exigenciaDeAprovacao, itensFeitos, marcarComoConferido, marcarItemAConferir, podeMarcarComoConferido } from "@/lib/popConferencia";
 import { conteudoComFrequencia, frequenciaDoPop, textoDaFrequencia } from "@/lib/popFrequencia";
 import { responsavelDaExecucao, type NomeECargo } from "@/lib/responsavelDoPop";
 import { tituloDoItemAConferir } from "@/lib/popTitulosConferencia";
+import { useRegistrosDaEmpresa } from "@/components/RegistrosEmpresaContext";
+import { resumoDosRegistros } from "@/lib/popRegistrosResumo";
+import { hojeISO, popPrecisaRevisarPorNorma } from "@/lib/popsNorma";
+import { guardaDosRegistros } from "@/lib/registrosEmpresa";
 
 type Props = {
   pop: ProcedimentoOperacionalPadronizado;
@@ -32,6 +37,10 @@ type Props = {
   onAprovar: (pop: ProcedimentoOperacionalPadronizado) => void;
   onColherCiencia?: () => void;
   onImprimirCopia?: () => void;
+  /** Abre a aba Registros (etapa 5). */
+  onAbrirRegistros?: () => void;
+  /** Cria a nova versão em rascunho (etapa 6). */
+  onNovaVersao?: () => void;
 };
 
 const Marca = () => (
@@ -43,7 +52,14 @@ const Marca = () => (
 // Resumo da ficha do POP (rodada 12e): as 6 etapas do ciclo, UMA faixa creme com a ação da etapa atual e campos curtos embaixo.
 // A etapa é derivada do estado do POP (lib/popCiclo.ts). As regras de aprovação não mudam: só o responsável vinculado aprova (o servidor
 // repete a checagem), o modelo comp-13 bloqueia sem conferência e os demais modelos pedem "Aprovar mesmo assim?".
-export default function PcResumoDoPop({ pop, etapa, dadosDoResponsavel, nomeDoAprovador, motivoParaNaoAprovar, podeEditar, podeAprovar, quemConfere, equipe, destacarConferencia, onAbrirDocumento, onAtualizarPop, onEnviar, onAprovar, onColherCiencia, onImprimirCopia }: Props) {
+// O catálogo escreve "Procedimento (retirar os itens): a frase…"; na tela o texto começa direto no que tem de ser feito.
+function textoSemPrefixo(texto: string): string {
+  const limpo = texto.replace(/^Procedimento \([^)]*\):\s*/i, "");
+  return limpo ? limpo.charAt(0).toUpperCase() + limpo.slice(1) : texto;
+}
+
+export default function PcResumoDoPop({ pop, etapa, dadosDoResponsavel, nomeDoAprovador, motivoParaNaoAprovar, podeEditar, podeAprovar, quemConfere, equipe, destacarConferencia, onAbrirDocumento, onAtualizarPop, onEnviar, onAprovar, onColherCiencia, onImprimirCopia, onAbrirRegistros, onNovaVersao }: Props) {
+  const contextoDeRegistros = useRegistrosDaEmpresa();
   const [definindo, setDefinindo] = useState(false);
   // Item de conferência aberto (um por vez): no PC e no tablet o primeiro vem aberto; no celular, todos fechados.
   const [itemAberto, setItemAberto] = useState<number | null>(null);
@@ -116,12 +132,12 @@ export default function PcResumoDoPop({ pop, etapa, dadosDoResponsavel, nomeDoAp
                       <input type="checkbox" aria-label={titulo} checked={item.feito} disabled={!podeEditar} onChange={(evento) => onAtualizarPop(marcarItemAConferir(pop, indice, evento.target.checked))} />
                       <button type="button" className="rz-item-titulo" aria-expanded={aberto} aria-controls={`rz-item-texto-${indice}`} onClick={() => setItemAberto(aberto ? null : indice)}>
                         <span>{titulo}</span>
-                        <span className="rz-item-seta" aria-hidden="true">{aberto ? "⌄" : "›"}</span>
+                        <span className="rz-item-seta" aria-hidden="true"><Chevron aberto={aberto} /></span>
                       </button>
                     </div>
                     {aberto && (
                       <p id={`rz-item-texto-${indice}`} className="rz-item-texto">
-                        {item.texto}
+                        {textoSemPrefixo(item.texto)}
                       </p>
                     )}
                   </li>
@@ -151,7 +167,7 @@ export default function PcResumoDoPop({ pop, etapa, dadosDoResponsavel, nomeDoAp
     if (etapa.numero === 3) {
       const aguardando = pop.status === "Aguardando aprovação" || pop.status === "Em revisão";
       // Rascunho completo: "Pronto para enviar" e o botão de enviar; depois de enviado, "Aguardando aprovação de <responsável>" e, só para ele, "Aprovar versão X".
-      const tituloDaEtapa3 = aguardando ? (nomeDoAprovador ? `Aguardando aprovação de ${nomeDoAprovador}` : "Aguardando aprovação") : todasOk ? "Pronto para enviar" : "Falta para enviar";
+      const tituloDaEtapa3 = aguardando && todasOk && podeAprovar ? "Pronto para aprovar" : aguardando ? (nomeDoAprovador ? `Aguardando aprovação de ${nomeDoAprovador}` : "Aguardando aprovação") : todasOk ? "Pronto para enviar" : "Falta para enviar";
       return (
         <div className="rz-faixa" role="group" aria-label={tituloDaEtapa3}>
           <div className="rz-faixa-topo">
@@ -229,7 +245,7 @@ export default function PcResumoDoPop({ pop, etapa, dadosDoResponsavel, nomeDoAp
               ))}
             </ul>
           )}
-          <p className="rz-faixa-nota">Confirmação por PIN no aparelho do gestor. Registra pessoa, versão e data.</p>
+          <p className="rz-faixa-nota">Confirmação por PIN no tablet. Registra pessoa, versão e data.</p>
           <div className="rz-faixa-acoes">
             {onImprimirCopia && (
               <button type="button" className="rz-btn rz-btn--sec" onClick={onImprimirCopia}>
@@ -242,6 +258,75 @@ export default function PcResumoDoPop({ pop, etapa, dadosDoResponsavel, nomeDoAp
               </button>
             )}
           </div>
+        </div>
+      );
+    }
+    if (etapa.numero === 5) {
+      const resumo = resumoDosRegistros(pop.id, pop.conteudo, contextoDeRegistros?.registros, hojeISO(), pop.aprovacao?.em);
+      const guarda = contextoDeRegistros?.empresa ? guardaDosRegistros(contextoDeRegistros.empresa) : null;
+      const naoFeitos = resumo.esperados30 === null ? 0 : resumo.esperados30 - resumo.feitos30;
+      return (
+        <div className="rz-faixa" role="group" aria-label="Registros em andamento">
+          <div className="rz-faixa-topo">
+            <h3 className="rz-faixa-titulo">Registros em andamento</h3>
+          </div>
+          <ul className="rz-linhas">
+            <li>
+              <span>Próximo registro</span>
+              <span>{resumo.proximo ? <><span className={resumo.proximo.urgente ? "rz-terra" : undefined}>{resumo.proximo.texto}</span>{resumo.frequencia ? ` · ${resumo.frequencia}` : ""}</> : "Defina a frequência"}</span>
+            </li>
+            <li>
+              <span>Último registro</span>
+              <span>{!contextoDeRegistros ? "—" : resumo.ultimo ? <>{formatarDataCurta(resumo.ultimo.dataHora)} · {formatarHora(resumo.ultimo.dataHora)} · {resumo.ultimo.quem} · <span className={resumo.ultimo.comDesvio ? "rz-ambar" : "rz-verde"}>{resumo.ultimo.comDesvio ? "Ação corretiva" : "Conforme"}</span></> : "Nenhum ainda"}</span>
+            </li>
+            {contextoDeRegistros && resumo.esperados30 !== null && (
+              <li>
+                <span>Últimos 30 dias</span>
+                <span>{resumo.feitos30} de {resumo.esperados30} feitos{naoFeitos > 0 ? <> · <span className="rz-ambar">{naoFeitos} {naoFeitos === 1 ? "não feito" : "não feitos"}</span></> : null}</span>
+              </li>
+            )}
+          </ul>
+          {guarda?.dias ? <p className="rz-faixa-nota">Guarda dos registros: {guarda.dias} dias{guarda.citacao ? ` (${guarda.citacao})` : ""}.</p> : null}
+          {onAbrirRegistros && (
+            <div className="rz-faixa-acoes">
+              <button type="button" className="rz-btn rz-btn--sec" onClick={onAbrirRegistros}>
+                Ver registros
+              </button>
+              <button type="button" className="rz-btn rz-btn--terra" onClick={onAbrirRegistros}>
+                + Novo registro
+              </button>
+            </div>
+          )}
+        </div>
+      );
+    }
+    if (etapa.numero === 6) {
+      const dias = pop.proximaRevisao ? diasEntre(hojeISO(), pop.proximaRevisao) : null;
+      return (
+        <div className="rz-faixa" role="group" aria-label="Revisão do POP">
+          <div className="rz-faixa-topo">
+            <h3 className="rz-faixa-titulo">Revisão do POP</h3>
+          </div>
+          <ul className="rz-linhas">
+            <li>
+              <span>Próxima revisão</span>
+              <span>{pop.proximaRevisao ? <>{formatarData(pop.proximaRevisao)}{dias !== null ? (dias < 0 ? <> · <span className="rz-terra">vencida há {-dias} {dias === -1 ? "dia" : "dias"}</span></> : ` · em ${dias} ${dias === 1 ? "dia" : "dias"}`) : null}</> : "Sem data definida"}</span>
+            </li>
+            {popPrecisaRevisarPorNorma(pop) && (
+              <li>
+                <span>Motivo para antecipar</span>
+                <span className="rz-ambar">Norma alterada</span>
+              </li>
+            )}
+          </ul>
+          <p className="rz-faixa-nota">Uma nova versão volta ao ciclo (Criar, Conferir, Aprovar). A versão vigente continua valendo até a nova ser aprovada.</p>
+          {podeEditar && onNovaVersao && (
+            <div className="rz-faixa-acoes">
+              <button type="button" className="rz-btn rz-btn--terra" onClick={onNovaVersao}>
+                Criar nova versão
+              </button>
+            </div>
+          )}
         </div>
       );
     }

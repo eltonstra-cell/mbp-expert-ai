@@ -1,7 +1,6 @@
 "use client";
 
 import { useId } from "react";
-import Select from "@/components/Select";
 import { OPCOES_DE_FREQUENCIA, frequenciaDoPop } from "@/lib/popFrequencia";
 import type { FrequenciaDoPop, TipoDeFrequencia } from "@/types";
 
@@ -21,28 +20,27 @@ export default function CampoDeFrequencia({ frequencia, estruturada, desabilitad
   const tipo: TipoDeFrequencia | "" = atual?.tipo || "";
   return (
     <div className="freq-campo">
-      <label className="pc-field">
+      <div className="pc-field" role="radiogroup" aria-label="Frequência" aria-invalid={Boolean(erro)} aria-describedby={erro ? idDoErro : undefined}>
         <span className="ui-eyebrow">Frequência</span>
-        <Select
-          className={`ui-input ui-input--lista${erro ? " is-invalid" : ""}`}
-          value={tipo}
-          disabled={desabilitado}
-          aria-invalid={Boolean(erro)}
-          aria-describedby={erro ? idDoErro : undefined}
-          onChange={(evento) => {
-            const novo = evento.target.value as TipoDeFrequencia | "";
-            if (!novo) onChange(null);
-            else onChange(novo === "outra" ? { tipo: "outra", texto: atual?.tipo === "outra" ? atual.texto || "" : "" } : { tipo: novo });
-          }}
-        >
-          <option value="">Escolha a frequência</option>
+        <div className="freq-grade">
           {OPCOES_DE_FREQUENCIA.map((opcao) => (
-            <option key={opcao.tipo} value={opcao.tipo}>
+            <button
+              key={opcao.tipo}
+              type="button"
+              role="radio"
+              aria-checked={tipo === opcao.tipo}
+              disabled={desabilitado}
+              className={`freq-opcao${tipo === opcao.tipo ? " is-escolhida" : ""}${erro && !tipo ? " is-invalid" : ""}`}
+              onClick={() => {
+                if (tipo === opcao.tipo) return;
+                onChange(opcao.tipo === "outra" ? { tipo: "outra", texto: atual?.tipo === "outra" ? atual.texto || "" : "" } : { tipo: opcao.tipo });
+              }}
+            >
               {opcao.rotulo}
-            </option>
+            </button>
           ))}
-        </Select>
-      </label>
+        </div>
+      </div>
       {tipo === "outra" && (
         <label className="pc-field">
           <span className="ui-eyebrow">Qual frequência?</span>

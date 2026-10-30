@@ -186,6 +186,7 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
   return (
     <section className={`${embutido ? "ui-embed comp--embutido" : "ui-screen"} comp`} aria-label="Comprovantes e documentos com validade">
       <div className="ui-head">
+        {embutido && <h3 className="reg-bloco-titulo">Comprovantes</h3>}
         {!embutido && (
           <div>
             <h1 className="ui-title">Comprovantes e documentos com validade</h1>

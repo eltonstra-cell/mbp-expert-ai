@@ -6873,6 +6873,7 @@ export default function Home() {
               subaba="pops"
               onSubaba={podeEditarDoc ? irParaSubaba : setDocSecao}
               contagens={{ pops: pendencias }}
+              indice
             />
           )}
           onAlterarEmDados={podeEditarDoc ? () => irParaSubaba("dados") : undefined}

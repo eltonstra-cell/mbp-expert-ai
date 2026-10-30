@@ -27,7 +27,7 @@ export function secoesDoEditor(pop: Pick<ProcedimentoOperacionalPadronizado, "co
     { id: "identificacao", titulo: "Identificação", preenchida: escrito(pop.titulo) },
     { id: "objetivo", titulo: "Objetivo e aplicação", preenchida: escrito(c.objetivo) },
     { id: "referencias", titulo: "Referências", preenchida: true },
-    { id: "responsavel", titulo: "Responsável e frequência", preenchida: escrito(executor.nome) && escrito(executor.cargo) && escrito(c.frequencia), falta: faltaDoResponsavel(escrito(executor.nome) && escrito(executor.cargo), escrito(c.frequencia)) },
+    { id: "responsavel", titulo: "Responsável e frequência", preenchida: escrito(executor.nome) && escrito(executor.cargo) && escrito(c.frequencia), falta: faltaDoResponsavel(escrito(executor.nome), escrito(executor.cargo), escrito(c.frequencia)) },
     { id: "passos", titulo: "Passos", preenchida: (c.passos || []).some((passo) => escrito(passo.texto)) && (c.passos || []).every((passo) => escrito(passo.texto)) },
     { id: "acao", titulo: "Ação corretiva e registro", preenchida: escrito(c.acaoCorretiva) },
   ];
@@ -48,10 +48,10 @@ export function secoesDoEditor(pop: Pick<ProcedimentoOperacionalPadronizado, "co
   return secoes;
 }
 
-function faltaDoResponsavel(temResponsavel: boolean, temFrequencia: boolean): string | undefined {
-  if (temResponsavel && temFrequencia) return undefined;
-  if (!temResponsavel && !temFrequencia) return "falta definir o responsável e a frequência";
-  return temResponsavel ? "falta definir a frequência" : "falta definir o responsável";
+function faltaDoResponsavel(temNome: boolean, temCargo: boolean, temFrequencia: boolean): string | undefined {
+  const faltas = [!temNome && "o responsável", temNome && !temCargo && "o cargo", !temFrequencia && "a frequência"].filter(Boolean) as string[];
+  if (faltas.length === 0) return undefined;
+  return `falta ${faltas.length === 1 ? faltas[0] : `${faltas.slice(0, -1).join(", ")} e ${faltas[faltas.length - 1]}`}`;
 }
 
 /** "5 de 7 preenchidas" */

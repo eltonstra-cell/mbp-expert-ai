@@ -181,7 +181,7 @@ export default function AmbientesCortina({ ambientes, atual, onSelecionar, rende
                 onMouseMove={() => setRealce(indice)}
                 onClick={() => escolher(ambiente.nome)}
               >
-                <span className="amb-lista-nome">{nomeCurtoDe(ambiente.nome)}</span>
+                <span className="amb-lista-nome">{semAbreviar ? nomeCurtoDe(ambiente.nome) : ambiente.rotulo}</span>
                 {completo ? (
                   <span className="amb-lista-feito" aria-label="concluído">✓</span>
                 ) : conta ? (

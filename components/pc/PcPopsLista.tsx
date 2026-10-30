@@ -256,8 +256,9 @@ export default function PcPopsLista({
   );
 
   return (
-    <div className="pgl">
-      {abas ? (typeof abas === "function" ? abas(contadoresDe(linhasDosPops).pendencias) : abas) : null}
+    <div className="pgl pgl--indice">
+      {abas ? <aside className="pgl-indice">{typeof abas === "function" ? abas(contadoresDe(linhasDosPops).pendencias) : abas}</aside> : null}
+      <div className="pgl-conteudo">
       {topo}
 
       {(conjunto.length === 0 || avisoSemVinculo) && (
@@ -315,6 +316,7 @@ export default function PcPopsLista({
           }}
         />
       )}
+      </div>
     </div>
   );
 }

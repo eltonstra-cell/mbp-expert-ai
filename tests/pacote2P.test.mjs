@@ -186,7 +186,7 @@ test("enviar incompleto: 'Falta: …' em âmbar, seção marcada na lista e a pr
   assert.equal(textoDaFalta([]), "");
   const editor = ler("../components/pc/PcPopEditor.tsx");
   assert.ok(!editor.includes("function enviarParaAprovar()") && editor.includes("pdoc-item-sub") && editor.includes("item.falta"), "rodada 13: a seção incompleta mostra o que falta; o envio fica na etapa 3 do Resumo");
-  assert.ok(editor.includes('className="pdoc-falta" role="alert"'));
+  assert.ok(!editor.includes("Falta: Identificação"), "rodada 14: a pendência já aparece no índice; sai do rodapé");
   const css = ler("../app/globals.css");
   assert.match(css, /\.pdoc-falta\{[^}]*background:#FFE8A3/);
   assert.match(css, /\.pdoc-item\.is-falta\{border-color:#21A3A3/);
@@ -205,7 +205,7 @@ test("comp-13: chip informativo 'Será preciso conferir os itens de segurança a
 
 test("botões que ficavam mudos agora dizem por quê: Salvar sem título, Marcar como conferido e Criar POP", () => {
   const editor = ler("../components/pc/PcPopEditor.tsx");
-  assert.ok(editor.includes("Falta: Identificação"));
+  assert.ok(!editor.includes("Falta: Identificação"));
   assert.ok(ler("../components/pc/PcResumoDoPop.tsx").includes("Marque todos os itens para liberar"));
   const janela = ler("../components/pc/PcModelosPop.tsx");
   assert.ok(janela.includes("Escolha um modelo</span>") && janela.includes("Falta: título"));
@@ -225,7 +225,7 @@ test("sugestão de frequência: aparece nos 19 modelos que têm frequência (com
   assert.ok(sugestaoDeFrequencia(criar("res-01").conteudo.frequenciaDetalhe).includes(" · "), "frequência em grupos");
   // a sugestão é clicável no editor
   const editor = ler("../components/pc/PcPopEditor.tsx");
-  assert.ok(editor.includes("Sugestão do modelo:") && editor.includes("conteudoComFrequencia({ frequencia: \"\", frequenciaEstruturada: undefined }, frequenciaDoPop({ frequencia: sugestaoDaFrequencia }))"));
+  assert.ok(!editor.includes("Sugestão do modelo:") && editor.includes("tipoReconhecidoNoTexto(sugestaoDaFrequencia)") && editor.includes("conteudoComFrequencia({ frequencia: \"\", frequenciaEstruturada: undefined }, frequenciaDoPop({ frequencia: sugestaoDaFrequencia }))"));
 });
 
 // ===== 2.4 e 3: pendências reescritas =====

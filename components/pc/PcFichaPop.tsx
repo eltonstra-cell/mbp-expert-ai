@@ -1,5 +1,6 @@
 "use client";
 
+import PcHistoricoDoPop from "@/components/pc/PcHistoricoDoPop";
 import { useEffect, useMemo, useState } from "react";
 import type { CapaDosPops, ComprovanteTerceiro, Empresa, ProcedimentoOperacionalPadronizado, UsuarioSistema } from "@/types";
 import PcPopEditor from "@/components/pc/PcPopEditor";
@@ -166,6 +167,8 @@ export default function PcFichaPop({ pop, empresa, usuario, podeEditar, onImprim
             onAprovar={onAprovar}
             onColherCiencia={verPessoas && vigente && contexto ? () => setColhendo(true) : undefined}
             onImprimirCopia={vigente ? () => imprimir(false) : undefined}
+            onAbrirRegistros={contexto ? () => setAba("registros") : undefined}
+            onNovaVersao={() => onNovaVersao(pop)}
           />
         )}
 
@@ -197,30 +200,34 @@ export default function PcFichaPop({ pop, empresa, usuario, podeEditar, onImprim
 
         {aba === "registros" && contexto && (
           <div className="pop-registros-area">
-            <PcRegistrosDoPop pop={pop} />
-            {verComprovantes && (
-              <PcComprovantes
-                embutido
-                empresa=""
-                comprovantes={comprovantesDoPop}
-                podeGerenciar={contexto.podeGerenciarComprovantes}
-                online={contexto.online}
-                onSalvar={(dados, arquivo) => contexto.salvarComprovante({ ...dados, popId: pop.id }, arquivo)}
-                onRemover={contexto.removerComprovante}
-                urlDoArquivo={contexto.urlDoComprovante}
-                popFixo={{ id: pop.id, rotulo: pop.titulo, catalogoId: pop.catalogoId }}
-                pops={popsDaEmpresa}
-                onAlterarPop={contexto.podeGerenciarComprovantes ? contexto.alterarPopDoComprovante : undefined}
-                onCriarPopDoModelo={contexto.criarPopDoModelo}
-                mensagemVazia={mensagemDeComprovanteVazio(pop)}
-                onVoltar={() => setAba("resumo")}
-              />
-            )}
+            <PcRegistrosDoPop
+              pop={pop}
+              mensagemDoComprovante={mensagemDeComprovanteVazio(pop)}
+              comprovantes={verComprovantes ? (
+            <PcComprovantes
+              embutido
+              empresa=""
+              comprovantes={comprovantesDoPop}
+              podeGerenciar={contexto.podeGerenciarComprovantes}
+              online={contexto.online}
+              onSalvar={(dados, arquivo) => contexto.salvarComprovante({ ...dados, popId: pop.id }, arquivo)}
+              onRemover={contexto.removerComprovante}
+              urlDoArquivo={contexto.urlDoComprovante}
+              popFixo={{ id: pop.id, rotulo: pop.titulo, catalogoId: pop.catalogoId }}
+              pops={popsDaEmpresa}
+              onAlterarPop={contexto.podeGerenciarComprovantes ? contexto.alterarPopDoComprovante : undefined}
+              onCriarPopDoModelo={contexto.criarPopDoModelo}
+              mensagemVazia={mensagemDeComprovanteVazio(pop)}
+              onVoltar={() => setAba("resumo")}
+            />
+              ) : undefined}
+            />
           </div>
         )}
 
         {aba === "historico" && (
           <div className="pop-registros-area rz-historico-extra">
+            <PcHistoricoDoPop pop={pop} onBaixarPdf={vigente && pop.status === "Aprovado" ? () => imprimir(false) : undefined} />
             {hashAprovado && (
               <p className="ui-row-sub" title={hashAprovado}>
                 Conteúdo aprovado (v{vigente?.versao}): impressão digital {hashAprovado.slice(0, 12)}…
