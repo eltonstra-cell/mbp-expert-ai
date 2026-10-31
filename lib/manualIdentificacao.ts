@@ -18,10 +18,16 @@ export const CAMPOS_DA_IDENTIFICACAO = [
 
 export type CampoDaIdentificacao = (typeof CAMPOS_DA_IDENTIFICACAO)[number];
 
+/** CPF/CNPJ, endereço e telefone do Consultor/RT são opcionais (a Portaria SES 799/2023 não os exige): não entram na contagem nem em "Faltam". */
+export const CAMPOS_OPCIONAIS_DO_RT: readonly CampoDaIdentificacao[] = ["consultorCpfCnpj", "consultorEndereco", "consultorTelefone"];
+
+/** Os 7 campos que contam: atividades, nome do RT, profissão e registro, data de elaboração, elaborado, revisado e aprovado por. */
+export const CAMPOS_QUE_CONTAM: readonly CampoDaIdentificacao[] = CAMPOS_DA_IDENTIFICACAO.filter((campo) => !CAMPOS_OPCIONAIS_DO_RT.includes(campo));
+
 const escrito = (valor: string | undefined) => Boolean((valor || "").trim());
 
 export function contarPreenchidos(valores: Partial<Record<CampoDaIdentificacao, string>>): { preenchidos: number; total: number } {
-  return { preenchidos: CAMPOS_DA_IDENTIFICACAO.filter((campo) => escrito(valores[campo])).length, total: CAMPOS_DA_IDENTIFICACAO.length };
+  return { preenchidos: CAMPOS_QUE_CONTAM.filter((campo) => escrito(valores[campo])).length, total: CAMPOS_QUE_CONTAM.length };
 }
 
 /** "3 de 10 preenchidos". */
@@ -105,6 +111,8 @@ export type FontesParaPreencher = {
   daAutomacao?: CampoDaIdentificacao[];
 };
 
+const semAcento = (texto: string) => texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+
 export type ResultadoDoPreencher = {
   valores: Partial<Record<CampoDaIdentificacao, string>>;
   /** Campos que vieram do perfil do RT (selo "do perfil do RT"). */
@@ -136,12 +144,20 @@ export function preencherIdentificacao(atuais: Partial<Record<CampoDaIdentificac
     if (!novo || !livre(campo) || novo === (atuais[campo] || "")) return;
     valores[campo] = novo;
   };
-  quer("consultorNome", (fontes.rt?.nome || "").trim() || (fontes.nomeDoUsuarioRt || "").trim() || (fontes.responsavel || "").trim());
-  quer("consultorTelefone", mascararTelefone(fontes.rt?.telefone || ""));
-  // O cadastro do usuário (cargo e CRN) é a fonte; o texto "registroProfissional" só vale quando os dois estão vazios.
-  quer("consultorRegistro", fontes.juntar(fontes.rt?.cargo, fontes.rt?.crn).trim() || (fontes.rt?.registroProfissional || "").trim());
-  quer("consultorCpfCnpj", fontes.rt?.cpfCnpj || "");
-  quer("consultorEndereco", fontes.rt?.endereco || "");
+  // Nome, telefone e profissão/registro vêm da MESMA pessoa. Se o nome foi digitado e não é o do RT, esses campos pessoais não são
+  // completados com os dados do RT (seriam de outra pessoa); o digitado fica como está.
+  const nomeDigitado = !livre("consultorNome") ? (atuais.consultorNome || "").trim() : "";
+  const nomeDoRt = (fontes.rt?.nome || "").trim();
+  const outraPessoa = Boolean(fontes.rt) && Boolean(nomeDigitado) && semAcento(nomeDigitado) !== semAcento(nomeDoRt);
+  quer("consultorNome", nomeDoRt || (fontes.rt ? "" : (fontes.nomeDoUsuarioRt || "").trim() || (fontes.responsavel || "").trim()));
+  if (!outraPessoa) {
+    quer("consultorTelefone", mascararTelefone(fontes.rt?.telefone || ""));
+    // O cadastro do usuário (cargo e CRN) é a fonte; o texto "registroProfissional" só vale quando os dois estão vazios.
+    quer("consultorRegistro", fontes.juntar(fontes.rt?.cargo, fontes.rt?.crn).trim() || (fontes.rt?.registroProfissional || "").trim());
+    // Opcionais: o Preencher os completa quando o RT os tem, mas eles não contam em "Faltam".
+    quer("consultorCpfCnpj", fontes.rt?.cpfCnpj || "");
+    quer("consultorEndereco", fontes.rt?.endereco || "");
+  }
   const nomeFinal = (valores.consultorNome ?? atuais.consultorNome ?? "").trim();
   quer("atividadeDescricao", fontes.atividade || "");
   quer("elaboradoPor", nomeFinal);
@@ -155,8 +171,49 @@ export function preencherIdentificacao(atuais: Partial<Record<CampoDaIdentificac
     // Campos que vieram do Preencher e continuam sem edição do usuário (os de antes que não mudaram e os de agora).
     doPerfil: CAMPOS_DA_IDENTIFICACAO.filter((campo) => colocados.includes(campo) || (automaticos.has(campo) && escrito(atuais[campo]))),
     preenchidos: colocados,
-    semFonte: CAMPOS_DA_IDENTIFICACAO.filter((campo) => !escrito(finais[campo])),
+    semFonte: CAMPOS_QUE_CONTAM.filter((campo) => !escrito(finais[campo])),
   };
+}
+
+/** Origem de um campo colocado pelo Preencher: qual RT (id do usuário) e o valor que ele pôs. Guardada no Manual da empresa. */
+export type OrigemDoCampo = { usuarioId: string; valor: string };
+export type OrigemDosCampos = Partial<Record<CampoDaIdentificacao, OrigemDoCampo>>;
+
+/** Campos ainda "do Preencher": têm origem e o valor atual é o mesmo que o Preencher pôs (editado pelo usuário = deixa de valer). */
+export function camposAindaDoPreencher(origem: OrigemDosCampos | undefined, valores: Partial<Record<CampoDaIdentificacao, string>>): CampoDaIdentificacao[] {
+  return CAMPOS_DA_IDENTIFICACAO.filter((campo) => origem?.[campo] && escrito(valores[campo]) && (valores[campo] || "").trim() === origem[campo]!.valor.trim());
+}
+
+/** Origem a gravar: só dos campos que continuam sem edição, todos com o RT que forneceu os dados. */
+export function origemParaGravar(campos: CampoDaIdentificacao[], valores: Partial<Record<CampoDaIdentificacao, string>>, antes: OrigemDosCampos | undefined, usuarioIdDoRt: string | undefined): OrigemDosCampos {
+  const origem: OrigemDosCampos = {};
+  for (const campo of campos) {
+    const valor = (valores[campo] || "").trim();
+    if (!valor) continue;
+    const anterior = antes?.[campo];
+    if (anterior && anterior.valor.trim() === valor) origem[campo] = anterior;
+    else if (usuarioIdDoRt) origem[campo] = { usuarioId: usuarioIdDoRt, valor };
+  }
+  return origem;
+}
+
+type EmpresaComManual = { id: string; nomeFantasia?: string; razaoSocial?: string; consultorCpfCnpj?: string; consultorEndereco?: string; origemDoPreencher?: Record<string, { usuarioId: string; valor: string }> };
+export type OfertaDeOutroManual = { empresaId: string; empresaNome: string; cpfCnpj?: string; endereco?: string; cpfFinal?: string };
+
+/** CPF/CNPJ ou endereço do MESMO RT (casado pelo id do usuário, nunca pelo nome) em outro Manual, quando falta no atual. */
+export function ofertaDeOutroManual(empresas: EmpresaComManual[], usuarioIdDoRt: string | undefined, empresaAtualId: string, atuais: Partial<Record<CampoDaIdentificacao, string>>): OfertaDeOutroManual | null {
+  if (!usuarioIdDoRt) return null;
+  const querCpf = !escrito(atuais.consultorCpfCnpj);
+  const querEndereco = !escrito(atuais.consultorEndereco);
+  if (!querCpf && !querEndereco) return null;
+  for (const outra of empresas) {
+    if (outra.id === empresaAtualId || outra.origemDoPreencher?.consultorNome?.usuarioId !== usuarioIdDoRt) continue;
+    const cpfCnpj = querCpf ? (outra.consultorCpfCnpj || "").trim() : "";
+    const endereco = querEndereco ? (outra.consultorEndereco || "").trim() : "";
+    if (!cpfCnpj && !endereco) continue;
+    return { empresaId: outra.id, empresaNome: outra.nomeFantasia || outra.razaoSocial || "outra empresa", ...(cpfCnpj ? { cpfCnpj, cpfFinal: cpfCnpj.replace(/\D/g, "").slice(-2) } : {}), ...(endereco ? { endereco } : {}) };
+  }
+  return null;
 }
 
 /** Frase do botão "Preencher com dados do RT" (uma linha): quantos campos entraram e quantos ainda faltam. */

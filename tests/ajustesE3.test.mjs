@@ -99,8 +99,8 @@ test("3.1 topo do POP: Próxima ação na linha dos botões, abas de 36 px, selo
 test("3.3 Identificação complementar: contagem, completo/pendente e pré-preenchimento do perfil do RT", () => {
   assert.equal(CAMPOS_DA_IDENTIFICACAO.length, 10);
   const vazio = Object.fromEntries(CAMPOS_DA_IDENTIFICACAO.map((campo) => [campo, ""]));
-  assert.deepEqual(contarPreenchidos(vazio), { preenchidos: 0, total: 10 });
-  assert.equal(resumoDaIdentificacao({ ...vazio, consultorNome: "Ana", elaboradoPor: " " }), "1 de 10 preenchidos");
+  assert.deepEqual(contarPreenchidos(vazio), { preenchidos: 0, total: 7 });
+  assert.equal(resumoDaIdentificacao({ ...vazio, consultorNome: "Ana", elaboradoPor: " " }), "1 de 7 preenchidos");
   assert.equal(identificacaoCompleta(vazio), false);
   const cheio = Object.fromEntries(CAMPOS_DA_IDENTIFICACAO.map((campo) => [campo, "x"]));
   assert.equal(identificacaoCompleta(cheio), true);

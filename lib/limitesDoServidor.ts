@@ -39,6 +39,21 @@ const erro = (campo: string, mensagem: string): Erro => ({ campo, mensagem });
 const ehData = (valor: unknown) => typeof valor === "string" && /^\d{4}-\d{2}-\d{2}$/.test(valor);
 
 /** Carga horária: número maior que zero (horas). Vazio = erro. */
+const CAMPOS_COM_ORIGEM = ["atividadeDescricao", "consultorNome", "consultorCpfCnpj", "consultorEndereco", "consultorTelefone", "consultorRegistro", "dataElaboracaoManual", "elaboradoPor", "revisadoPor", "aprovadoPor"];
+
+/** Rodada 10, B: `origemDoPreencher` é {campo: {usuarioId, valor}}; só campos conhecidos, textos curtos, nada além disso. Vazio/ausente é válido. */
+export function origemDoPreencherMalFormada(valor: unknown, idsDeUsuarios?: Set<string>): boolean {
+  if (valor === undefined || valor === null) return false;
+  if (typeof valor !== "object" || Array.isArray(valor)) return true;
+  const itens = Object.entries(valor as Record<string, unknown>);
+  if (itens.length > CAMPOS_COM_ORIGEM.length) return true;
+  return itens.some(([campo, origem]) => {
+    if (!CAMPOS_COM_ORIGEM.includes(campo) || !origem || typeof origem !== "object" || Array.isArray(origem)) return true;
+    const { usuarioId, valor: texto, ...sobra } = origem as Record<string, unknown>;
+    return Object.keys(sobra).length > 0 || typeof usuarioId !== "string" || usuarioId.length === 0 || usuarioId.length > 80 || (idsDeUsuarios !== undefined && !idsDeUsuarios.has(usuarioId)) || typeof texto !== "string" || texto.length > 600;
+  });
+}
+
 export function erroDaCargaHoraria(valor: unknown): string {
   if (typeof valor !== "number" || !Number.isFinite(valor)) return "Informe a carga horária em horas";
   if (valor <= 0) return "Precisa ser maior que zero";
@@ -164,6 +179,8 @@ export function separarItensInvalidos<T extends Partial<AppDB>>(atual: Partial<A
       return atualizado;
     });
   }
+  // O usuarioId da origem do Preencher precisa existir na lista de usuários (a recebida ou, na falta dela, a gravada).
+  const idsDeUsuarios = new Set(((Array.isArray(recebido.usuarios) ? recebido.usuarios : atual?.usuarios) || []).map((pessoa) => String((pessoa as { id?: unknown })?.id)));
   const empresas = recebido.empresas;
   if (empresas && typeof empresas === "object") {
     const novas: Record<string, unknown> = { ...empresas };
@@ -189,6 +206,11 @@ export function separarItensInvalidos<T extends Partial<AppDB>>(atual: Partial<A
       if (respRecebido && (respMalFormado || !iguais(respRecebido, gravadaEmpresa?.responsavelEstabelecimento) && (!textoAte(respRecebido.nome, LIMITE_DA_NOVA_EMPRESA.responsavel) || !textoAte(respRecebido.cargo, LIMITE_DA_NOVA_EMPRESA.responsavel)))) {
         rejeitados.push({ colecao: "empresas", item: empresaId, campo: "responsavel", mensagem: `O campo pode ter no máximo ${LIMITE_DA_NOVA_EMPRESA.responsavel} caracteres.` });
         atualizada = { ...atualizada, responsavelEstabelecimento: gravadaEmpresa?.responsavelEstabelecimento };
+      }
+      // Rodada 10, B: origem de cada campo colocado pelo Preencher (tipo e tamanho); malformada volta ao gravado.
+      if (!iguais(atualizada.origemDoPreencher, gravadaEmpresa?.origemDoPreencher) && origemDoPreencherMalFormada(atualizada.origemDoPreencher, idsDeUsuarios)) {
+        rejeitados.push({ colecao: "empresas", item: empresaId, campo: "origemDoPreencher", mensagem: "Origem dos campos preenchidos inválida." });
+        atualizada = { ...atualizada, origemDoPreencher: gravadaEmpresa?.origemDoPreencher };
       }
       if (!iguais(atualizada.responsabilidadesManual, gravadaEmpresa?.responsabilidadesManual)) {
         const problema = erroDaEmpresa({ responsabilidadesManual: atualizada.responsabilidadesManual });

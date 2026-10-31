@@ -45,7 +45,7 @@ test("B: Administrador sem RT vinculado: o nome vem do mesmo lugar do 'aprovado 
   assert.equal(r.valores.elaboradoPor, "Maria");
   assert.equal(r.valores.aprovadoPor, "Maria, Gerente");
   assert.equal(r.valores.consultorCpfCnpj, undefined);
-  assert.ok(r.semFonte.includes("consultorCpfCnpj") && r.semFonte.includes("consultorEndereco"));
+  assert.ok(!r.semFonte.includes("consultorCpfCnpj") && !r.semFonte.includes("consultorEndereco") && r.semFonte.includes("consultorRegistro"));
   assert.equal(fraseDoPreencher(r.preenchidos.length, r.semFonte.length).includes("preencha abaixo"), true);
 });
 

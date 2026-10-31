@@ -69,7 +69,8 @@ test("consulta: 'Confirmei tudo' fica visível com campos pendentes, mesmo com a
   assert.ok(falha.mensagem);
   assert.equal(botaoConfirmeiTudoVisivel({ camposPendentes: true, propostaPendente: false }), true);
   const tela = lerFonte("app/page.tsx");
-  assert.ok(tela.includes("{confirmeiTudoVisivel && (") && tela.includes("{mensagensDaConsultaTela.avisoPreenchido && <span>Preenchido pela consulta."));
+  // Rodada 9 (v2.46): a Nova empresa não tem mais o botão "Confirmei tudo"; a regra pura continua valendo para quem a usar.
+  assert.equal(tela.includes("Confirmei tudo"), false);
 });
 
 // ===== 1: chip Sincronizado sem caixa =====

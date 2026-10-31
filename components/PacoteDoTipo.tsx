@@ -80,6 +80,8 @@ export default function PacoteDoTipoPainel({ tipo, ambientesDaEmpresa, equipamen
   if (compacto) {
     return (
       <>
+        <span className="pacote-resumo-pc">O app propõe {resumo}. Nada é criado sem você escolher.</span>
+        <span className="pacote-resumo-cel"><strong>Ambientes e equipamentos</strong>{contar(ambientesNovos.length, "ambiente", "ambientes")} · {contar(equipamentosNovos.length, "equipamento", "equipamentos")} · {contar(fluxosNovos.length, "fluxo", "fluxos")}</span>
         <button type="button" className="ui-btn ui-btn--secondary pacote-tipo-ver" aria-haspopup="dialog" onClick={() => setAberta(true)}>Escolher ambientes</button>
         {aberta && (
           <JanelaDoPacote
@@ -224,7 +226,7 @@ function JanelaDoPacote({ tipo, ambientesDaEmpresa, ambientes: ambientesDoPacote
 
   const erroDoNovoNome = novoNome ? mensagemDoConflito(conflitoDeNomeNovo(novoNome, [...ambientesDaEmpresa, ...ambientes])) : "";
   function incluirNovo() {
-    const nome = (novoNome || "").trim().replace(/s+/g, " ");
+    const nome = (novoNome || "").trim().replace(/\s+/g, " ");
     if (!nome || erroDoNovoNome) return;
     setProprios((atuais) => [...atuais, nome]);
     setNovoNome(null);

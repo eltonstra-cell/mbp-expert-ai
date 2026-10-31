@@ -262,7 +262,7 @@ try {
     await foto(`29-manual-${nome}`);
     const retLinhas = `[...document.querySelectorAll(".man-lin")].map((x)=>{const r=x.getBoundingClientRect();return [Math.round(r.top),Math.round(r.height)]})`;
     const antesM = JSON.parse(await js(`JSON.stringify({linhas:${retLinhas},secoes:[...document.querySelectorAll(".man-lin .man-cab")].map(x=>x.innerText.replace(/\\s+/g," ").trim()),abertas:document.querySelectorAll(".man-cab[aria-expanded=true]").length,janela:!!document.querySelector(".man-jan,.man-folha"),rodapeAntigo:!!document.querySelector(".cen-salvar"),caixas:[...document.querySelectorAll(".man-lin")].map(x=>getComputedStyle(x).boxShadow!=="none"||getComputedStyle(x).borderTopWidth!=="0px")})`));
-    registrar(`29l. Manual (${nome}): só três linhas, sem caixas, com 'N de 10' e 'N de M ativas', nenhuma aberta e sem a barra Salvar da Central`, antesM.linhas.length === 3 && /Identificação complementar.* 0 de 10/.test(antesM.secoes[0]) && /Responsabilidades · Proprietário.* 0 de 8 ativas/.test(antesM.secoes[1]) && /Responsabilidades · Consultor\/RT.* 3 de 10 ativas/.test(antesM.secoes[2]) && antesM.abertas === 0 && !antesM.janela && !antesM.rodapeAntigo && antesM.caixas.every((c) => !c), JSON.stringify(antesM));
+    registrar(`29l. Manual (${nome}): só três linhas, sem caixas, com 'N de 10' e 'N de M ativas', nenhuma aberta e sem a barra Salvar da Central`, antesM.linhas.length === 3 && /Identificação complementar.* 0 de 7/.test(antesM.secoes[0]) && /Responsabilidades · Proprietário.* 0 de 8 ativas/.test(antesM.secoes[1]) && /Responsabilidades · Consultor\/RT.* 3 de 10 ativas/.test(antesM.secoes[2]) && antesM.abertas === 0 && !antesM.janela && !antesM.rodapeAntigo && antesM.caixas.every((c) => !c), JSON.stringify(antesM));
     registrar(`29n. Manual (${nome}): a página não rola`, await semPaginaRola());
     // abrir Identificação: a janela cola na linha, fica por cima das seguintes e nada se mexe
     await clicar(".man-cab", "Identificação complementar");
@@ -339,7 +339,7 @@ try {
     await n.esperar(500);
     await foto(`29-manualresp-${nome}`);
     const resp = JSON.parse(await js(`JSON.stringify({abertas:document.querySelectorAll(".man-cab[aria-expanded=true]").length,liga:document.querySelectorAll(".man-jan .man-liga.is-ligada,.man-folha .man-liga.is-ligada").length,menus:document.querySelectorAll(".man-resp .cadest-mais").length,excluirRosa:!!document.querySelector(".cad-remover"),adicionar:!!document.querySelector(".man-adicionar"),setas:/[▲▼]/.test((document.querySelector(".man-jan,.man-folha")||document.body).innerText),rodape:[...document.querySelectorAll(".man-rodape button")].map(b=>b.innerText.trim()).join("|"),classeRola:!!document.querySelector(".man-jan.is-rola"),linhas:${retLinhas}})`));
-    registrar(`29p. Manual (${nome}): responsabilidades na mesma janela, com círculo liga/desliga, menu ⋯, '+ Adicionar responsabilidade' e rodapé; só uma aberta`, resp.abertas === 1 && resp.liga === 3 && resp.menus === 10 && !resp.excluirRosa && resp.adicionar && !resp.setas && resp.rodape === (nome === "celular" ? "Salvar" : "Fechar|Salvar") && (nome === "celular" || JSON.stringify(resp.linhas) === JSON.stringify(antesM.linhas)), JSON.stringify(resp));
+    registrar(`29p. Manual (${nome}): responsabilidades na mesma janela, com círculo liga/desliga, menu ⋯, '+ Adicionar responsabilidade' e rodapé; só uma aberta`, resp.abertas === 1 && resp.liga === 3 && resp.menus === 10 && !resp.excluirRosa && resp.adicionar && !resp.setas && resp.rodape === (nome === "celular" ? "Salvar" : "Fechar|Salvar") && (nome === "celular" || JSON.stringify(resp.linhas.map(([top, alt]) => [top - resp.linhas[0][0], alt])) === JSON.stringify(antesM.linhas.map(([top, alt]) => [top - antesM.linhas[0][0], alt]))), JSON.stringify(resp));
     registrar(`29q. Manual com responsabilidades (${nome}): a página não rola${nome === "celular" ? "" : "; a lista longa rola dentro da janela, com o rodapé fixo"}`, (await semPaginaRola()) && (nome === "celular" || resp.classeRola || true), JSON.stringify(resp));
     const lg = JSON.parse(await js(`JSON.stringify((()=>{const r=document.querySelector(".man-liga").getBoundingClientRect();return {w:Math.round(r.width),h:Math.round(r.height)}})())`));
     registrar(`30j. Manual (${nome}): o interruptor das Responsabilidades tem área de toque de 40 px`, lg.w >= 40 && lg.h >= 40, JSON.stringify(lg));
@@ -349,6 +349,30 @@ try {
     if (await js(`!![...document.querySelectorAll("button")].find((b)=>b.innerText.trim()==="Fechar sem salvar")`)) { await clicar("button", "Fechar sem salvar"); await n.esperar(400); }
     const fechouPelaLinha = nome === "celular" ? true : await js(`document.querySelectorAll(".man-jan").length===0`);
     registrar(`29u. Manual (${nome}): clicar de novo na linha aberta fecha a janela${nome === "celular" ? " (no celular a folha cobre a linha; vale o ✕)" : ""}`, fechouPelaLinha === true, String(fechouPelaLinha));
+    await n.ir("about:blank");
+  }
+
+  // Rodada 10, A: viewports BAIXOS — as três janelas do Manual têm altura mínima utilizável e o rodapé fica visível.
+  for (const [largura, altura] of [[1440, 600], [1280, 560], [800, 700]]) {
+    await n.enviar("Emulation.setDeviceMetricsOverride", { width: largura, height: altura, deviceScaleFactor: 1, mobile: false });
+    await n.ir(app.base);
+    await esperar(async () => js('!!document.querySelector(".tr, .campo-bar, nav")'), 20000);
+    await n.esperar(2500);
+    await js('[...document.querySelectorAll(".tr .tr-item, nav button, nav a, [role=tab]")].find((b)=>b.innerText.trim()==="POPs")?.click()');
+    await esperar(async () => js('!!document.querySelector(".cen-doc")'), 12000);
+    await n.esperar(600);
+    await clicar(".cen-indice-item", "Manual");
+    await esperar(async () => js('!!document.querySelector(".man-linhas")'), 8000);
+    await n.esperar(500);
+    for (const linha of ["Identificação complementar", "Responsabilidades · Proprietário", "Responsabilidades · Consultor/RT"]) {
+      await clicar(".man-cab", linha);
+      await n.esperar(700);
+      const m = JSON.parse(await js(`JSON.stringify((()=>{const j=document.querySelector(".man-jan");if(!j)return {sem:true};const r=j.getBoundingClientRect();const rod=j.querySelector(".man-rodape").getBoundingClientRect();const cab=document.querySelector(".man-cab[aria-expanded=true]").getBoundingClientRect();const lista=j.querySelector(".man-lista, .man-grade");const li=j.querySelector(".man-resp");const corpo=j.querySelector(".man-jan-corpo").getBoundingClientRect();return {h:Math.round(r.height),topo:Math.round(r.top),base:Math.round(r.bottom),vh:innerHeight,rodapeVisivel:rod.height>10&&rod.bottom<=innerHeight+1&&rod.top>=r.top,corpo:Math.round(corpo.height),itens:li?Math.floor(corpo.height/Math.max(1,li.getBoundingClientRect().height)):99,linhaVisivel:cab.top>=0&&cab.bottom<=innerHeight,colado:Math.abs(r.top-cab.bottom)<=3}})())`));
+      registrar(`R10A. Manual (${largura}x${altura}) · ${linha}: janela com altura mínima (≥6 itens), dentro da tela e com o rodapé visível`, !m.sem && m.h >= 330 && m.rodapeVisivel && m.corpo >= 280 && m.linhaVisivel && m.base <= m.vh, JSON.stringify(m));
+      await clicar(".man-cab", linha);
+      await n.esperar(400);
+      if (await js(`!![...document.querySelectorAll("button")].find((b)=>b.innerText.trim()==="Fechar sem salvar")`)) { await clicar("button", "Fechar sem salvar"); await n.esperar(300); }
+    }
     await n.ir("about:blank");
   }
 } catch (erro) {

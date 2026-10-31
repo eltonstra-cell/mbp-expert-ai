@@ -15,7 +15,7 @@ import {
   tomDoResumo,
 } from "@/lib/documentosCentral";
 import { usePilhaDeJanelas } from "../usePilhaDeJanelas";
-import { CAMPOS_DA_IDENTIFICACAO, ativosDoPapel, contarPreenchidos, mascaraCompletaParaAvancar, proximoCampoDaIdentificacao, sugestoesQueFaltam, type CampoDaIdentificacao } from "@/lib/manualIdentificacao";
+import { CAMPOS_DA_IDENTIFICACAO, type OfertaDeOutroManual, ativosDoPapel, contarPreenchidos, mascaraCompletaParaAvancar, proximoCampoDaIdentificacao, sugestoesQueFaltam, type CampoDaIdentificacao } from "@/lib/manualIdentificacao";
 import type { PapelResponsabilidadeManual, ResponsabilidadeManual } from "@/types";
 
 type Props = {
@@ -43,6 +43,9 @@ type Props = {
   onSalvar: (empresaId: string) => void;
   /** "Fechar sem salvar": a tela volta aos valores do último salvo (o digitado não fica no formulário). */
   onDescartar?: () => void;
+  /** CPF/endereço do mesmo RT em outro Manual (só Administrador e RT): oferta de uma linha, aplicada só depois do "Usar". */
+  oferta?: OfertaDeOutroManual | null;
+  onUsarOferta?: (oferta: OfertaDeOutroManual) => void;
 };
 
 type Secao = "identificacao" | PapelResponsabilidadeManual;
@@ -56,7 +59,7 @@ const erroDoCampo = (campo: CampoDaIdentificacao, valor: string) => (campo === "
 const FOCAVEIS = 'button:not([disabled]),input:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
 
 // Manual da empresa: três linhas (sem caixas). Clicar abre uma janela que desce colada na linha, por cima das seguintes (no celular, uma folha que sobe de baixo). Uma aberta por vez; o rodapé com o estado e o Salvar fica dentro da janela.
-export default function PcManualDocumento({ valores, rotulos, doPerfil, onChange, onPreencher, semRtVinculado = false, sugestoesDeAtividade = [], errosDoServidor, responsabilidades, onResponsabilidadesChange, temAlteracoes, salvando = false, erroDoSalvar = "", empresaId, onSalvar, onDescartar }: Props) {
+export default function PcManualDocumento({ valores, rotulos, doPerfil, onChange, onPreencher, semRtVinculado = false, sugestoesDeAtividade = [], errosDoServidor, responsabilidades, onResponsabilidadesChange, temAlteracoes, salvando = false, erroDoSalvar = "", empresaId, onSalvar, onDescartar, oferta = null, onUsarOferta }: Props) {
   const [aberta, setAberta] = useState<Secao | null>(null);
   const [celular, setCelular] = useState(false);
   const { ehTopo, coberta } = usePilhaDeJanelas(Boolean(aberta));
@@ -68,6 +71,7 @@ export default function PcManualDocumento({ valores, rotulos, doPerfil, onChange
   const campos = useRef<Partial<Record<CampoDaIdentificacao, HTMLInputElement | HTMLTextAreaElement | null>>>({});
   const linhas = useRef<Partial<Record<Secao, HTMLButtonElement | null>>>({});
   const janela = useRef<HTMLDivElement | null>(null);
+  const espacador = useRef<HTMLDivElement | null>(null);
   const espera = useRef<number | null>(null);
   const [tocados, setTocados] = useState<Partial<Record<CampoDaIdentificacao, boolean>>>({});
   const [emEdicao, setEmEdicao] = useState<string | null>(null);
@@ -91,28 +95,56 @@ export default function PcManualDocumento({ valores, rotulos, doPerfil, onChange
     caixa.style.height = `${Math.min(caixa.scrollHeight + (caixa.offsetHeight - caixa.clientHeight), 240)}px`;
   }, [valores.atividadeDescricao, aberta, celular]);
 
-  // A janela do PC e do tablet nasce colada embaixo da linha aberta, com a largura dela. Se não couber na altura visível, a área dos campos rola por dentro (título e rodapé ficam fixos).
+  // A janela do PC e do tablet nasce colada embaixo da linha aberta, com a largura dela. Tem altura mínima utilizável (ALTURA_MINIMA_DA_JANELA): se não couber abaixo da linha, a página ganha espaço embaixo (espaçador) e rola para trazer a linha ao topo; se ainda assim não couber, só a área dos campos rola por dentro (título e rodapé ficam fixos).
   useLayoutEffect(() => {
-    if (!aberta || celular) { setPosicao(null); return; }
+    const espaco = espacador.current;
+    if (!aberta || celular) { setPosicao(null); if (espaco) espaco.style.height = "0px"; return; }
     const medir = () => {
       const linha = linhas.current[aberta];
       const caixa = janela.current;
       if (!linha) return;
-      const r = linha.getBoundingClientRect();
-      setPosicao((antes) => (antes && antes.top === r.bottom && antes.left === r.left && antes.width === r.width ? antes : { top: r.bottom, left: r.left, width: r.width }));
+      if (espaco) espaco.style.height = "0px";
+      let r = linha.getBoundingClientRect();
       if (caixa) {
         caixa.classList.remove("is-rola");
         caixa.style.maxHeight = "";
-        const livre = window.innerHeight - r.bottom - 12;
-        if (caixa.scrollHeight > livre) {
+        caixa.style.height = "";
+        const natural = caixa.scrollHeight;
+        const minimo = Math.min(natural, ALTURA_MINIMA_DA_JANELA, window.innerHeight - 24);
+        const livre = () => window.innerHeight - r.bottom - 12;
+        if (livre() < minimo && espaco) {
+          // A rolagem é do primeiro ancestral com overflow próprio (ou da página); o espaçador cobre o que falta + o vão até a borda dele.
+          let pai: HTMLElement | null = linha.parentElement;
+          while (pai && pai !== document.body && getComputedStyle(pai).overflowY === "visible") pai = pai.parentElement;
+          const rolagem = pai && pai !== document.body && pai !== document.documentElement ? pai : (document.scrollingElement as HTMLElement | null);
+          if (rolagem) {
+            const borda = rolagem === document.scrollingElement ? window.innerHeight : rolagem.getBoundingClientRect().bottom;
+            espaco.style.height = `${Math.ceil(minimo - livre()) + 12 + Math.max(0, borda - espaco.getBoundingClientRect().top)}px`;
+            const topo = rolagem === document.scrollingElement ? 0 : rolagem.getBoundingClientRect().top;
+            rolagem.scrollTop += Math.max(0, Math.min(r.top - topo - 8, minimo - livre() + 12));
+            r = linha.getBoundingClientRect();
+          }
+        }
+        if (natural > livre()) {
           caixa.classList.add("is-rola");
-          caixa.style.maxHeight = `${Math.max(180, livre)}px`;
+          // Altura explícita: com a área dos campos em "flex: 1 1 0" a altura automática colapsaria (corpo vazio, rodapé colado no título).
+          caixa.style.height = `${Math.max(minimo, livre())}px`;
         }
       }
+      const top = topoDaJanela(r.bottom, caixa?.offsetHeight ?? 0);
+      setPosicao((antes) => (antes && antes.top === top && antes.left === r.left && antes.width === r.width ? antes : { top, left: r.left, width: r.width }));
+    };
+    const acompanhar = () => {
+      const linha = linhas.current[aberta];
+      if (!linha) return;
+      const r = linha.getBoundingClientRect();
+      const top = topoDaJanela(r.bottom, janela.current?.offsetHeight ?? 0);
+      setPosicao((antes) => (antes && antes.top === top && antes.left === r.left && antes.width === r.width ? antes : { top, left: r.left, width: r.width }));
     };
     medir();
     window.addEventListener("resize", medir);
-    return () => window.removeEventListener("resize", medir);
+    window.addEventListener("scroll", acompanhar, true);
+    return () => { window.removeEventListener("resize", medir); window.removeEventListener("scroll", acompanhar, true); };
   }, [aberta, celular, responsabilidades.length, emEdicao, valores.atividadeDescricao]);
 
   useEffect(() => {
@@ -231,6 +263,12 @@ export default function PcManualDocumento({ valores, rotulos, doPerfil, onChange
       {resultado && (
         <span className="man-preencher-apoio" role="status">
           {resultado}
+        </span>
+      )}
+      {oferta && onUsarOferta && (
+        <span className="man-oferta">
+          Encontrado no Manual de {oferta.empresaNome}: {[oferta.cpfFinal ? `CPF/CNPJ final ${oferta.cpfFinal}` : "", oferta.endereco ? "endereço" : ""].filter(Boolean).join(" e ")}.
+          <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => onUsarOferta(oferta)}>Usar</button>
         </span>
       )}
     </div>
@@ -444,6 +482,8 @@ export default function PcManualDocumento({ valores, rotulos, doPerfil, onChange
         })}
       </ul>
 
+      <div ref={espacador} aria-hidden="true" style={{ height: 0, flex: "none" }} />
+
       {aberto && typeof document !== "undefined" && createPortal(
         celular ? (
           <div className="man-folha-camada" {...(coberta ? { inert: true } : {})}>
@@ -462,6 +502,14 @@ export default function PcManualDocumento({ valores, rotulos, doPerfil, onChange
     </section>
   );
 }
+
+/** Colada na linha; só quando nem a rolagem dá a altura mínima (tela muito baixa) ela sobe e cobre a linha, para nunca ficar espremida nem cortada embaixo. */
+function topoDaJanela(baseDaLinha: number, altura: number): number {
+  return Math.min(baseDaLinha, Math.max(8, window.innerHeight - 12 - altura));
+}
+
+/** Altura mínima da janela que desce da linha (PC e tablet): cabe título, cerca de 6 itens da lista e o rodapé. */
+const ALTURA_MINIMA_DA_JANELA = 420;
 
 /** CPF/CNPJ e telefone já no tamanho final (ou com texto a mais): o erro aparece na hora, sem esperar sair do campo. */
 function mascaraCompleta(campo: CampoDaIdentificacao, valor: string): boolean {

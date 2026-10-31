@@ -8014,3 +8014,36 @@ html:root:root body .central-empresa--nova .nova-cancelar{height:44px}
   html:root:root body .esc-janela .esc-rodape-botoes>.ui-btn{white-space:normal;height:auto;min-height:44px;line-height:1.2;text-align:center}
   html:root:root body .esc-janela .esc-rodape-botoes>.ui-btn:first-child{flex:0 0 36%}
 }
+
+/* Rodada 10 */
+html:root:root body .man-oferta{display:flex;flex-basis:100%;flex-wrap:wrap;align-items:center;gap:8px;font-size:13px;color:#46526A}
+
+/* RODADA 10 · D: Nova empresa ao desenho — PC em duas colunas (Receita à esquerda, "Complete" à direita), tipo em largura toda */
+html:root:root body .pacote-resumo-pc{flex:1 1 320px;font-size:14px;color:#55607A}
+html:root:root body .pacote-resumo-cel{display:none}
+html:root:root body .nova-tipo-linha>span:first-child{flex:1 1 100%}
+@media (min-width:1200px){
+  /* Duas colunas só fora do "Corrigir dados" (com as caixas abertas, o fluxo em uma coluna de campos continua) */
+  html:root:root body .nova-form:not(:has(.nova-campo--razaoSocial)){grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px 28px;grid-auto-flow:row dense}
+  html:root:root body .nova-form:not(:has(.nova-campo--razaoSocial))>*{grid-column:1}
+  html:root:root body .nova-form:not(:has(.nova-campo--razaoSocial))>.nova-campo--cnpj{grid-column:1;grid-row:1}
+  html:root:root body .nova-form:not(:has(.nova-campo--razaoSocial)) .nova-campo--cnpj .flex{max-width:320px}
+  html:root:root body .nova-form:not(:has(.nova-campo--razaoSocial))>.nova-receita{grid-column:1;grid-row:2 / span 4}
+  html:root:root body .nova-form:not(:has(.nova-campo--razaoSocial))>.nova-complete{grid-column:2;grid-row:1;align-self:end;margin:0}
+  html:root:root body .nova-form:not(:has(.nova-campo--razaoSocial))>.nova-campo--horarioFuncionamento{grid-column:2;grid-row:2}
+  html:root:root body .nova-form:not(:has(.nova-campo--razaoSocial))>.nova-campo--email{grid-column:2;grid-row:3}
+  html:root:root body .nova-form:not(:has(.nova-campo--razaoSocial))>.nova-resp{grid-column:2;grid-row:4}
+  html:root:root body .nova-form:not(:has(.nova-campo--razaoSocial))>.nova-cor,html:root:root body .nova-form:not(:has(.nova-campo--razaoSocial))>.nova-mais{grid-column:2;grid-row:5}
+  html:root:root body .nova-form:not(:has(.nova-campo--razaoSocial))>[class*="proposta"],html:root:root body .nova-form:not(:has(.nova-campo--razaoSocial))>.propostacnpj{grid-column:1 / -1;grid-row:6}
+  html:root:root body .nova-form:not(:has(.nova-campo--razaoSocial))>.nova-tipo-linha{grid-column:1 / -1;grid-row:8}
+  html:root:root body .nova-form:not(:has(.nova-campo--razaoSocial))>.nova-campo--tipo{grid-column:1 / -1;grid-row:9}
+  html:root:root body .nova-receita-lista{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (min-width:768px) and (max-width:1199px){
+  html:root:root body .nova-form>.nova-campo--horarioFuncionamento,html:root:root body .nova-form>.nova-campo--email{grid-column:span 1}
+}
+@media (max-width:767px){
+  html:root:root body .pacote-resumo-pc{display:none}
+  html:root:root body .pacote-resumo-cel{display:flex;flex-direction:column;gap:2px;flex:1 1 auto;font-size:14px;color:#55607A}
+  html:root:root body .pacote-resumo-cel strong{font-size:15px;font-weight:600;color:#1B2433}
+}

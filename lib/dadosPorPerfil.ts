@@ -33,11 +33,11 @@ export function semDadosDoConsultor(empresa: Empresa): Empresa {
 }
 
 /** Campos da empresa que o servidor guarda e que Executor de campo e Fiscal não recebem (a visão filtrada nunca volta ao banco). */
-export const CAMPOS_DA_EMPRESA_SO_DA_GESTAO = ["consultorCpfCnpj", "consultorEndereco", "consultorTelefone", "consultorNome", "elaboradoPor", "revisadoPor", "aprovadoPor", "camposDoPreencher", "cadastrosRevisados", "responsavelEstabelecimento"] as const;
+export const CAMPOS_DA_EMPRESA_SO_DA_GESTAO = ["consultorCpfCnpj", "consultorEndereco", "consultorTelefone", "consultorNome", "elaboradoPor", "revisadoPor", "aprovadoPor", "camposDoPreencher", "origemDoPreencher", "cadastrosRevisados", "responsavelEstabelecimento"] as const;
 
 /** Rodada 5, G1: além dos dados do consultor, sai todo nome de pessoa que o Executor e o Fiscal não precisam ver. */
 export function semNomesNaEmpresa(empresa: Empresa): Empresa {
-  const { cadastrosRevisados: _revisados, camposDoPreencher: _doPreencher, ...resto } = semDadosDoConsultor(empresa);
+  const { cadastrosRevisados: _revisados, camposDoPreencher: _doPreencher, origemDoPreencher: _origem, ...resto } = semDadosDoConsultor(empresa);
   const copia: Empresa = { ...resto };
   if (copia.consultorNome) copia.consultorNome = "";
   if (copia.elaboradoPor) copia.elaboradoPor = "";

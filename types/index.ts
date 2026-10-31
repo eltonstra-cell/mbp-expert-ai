@@ -39,6 +39,8 @@ export type Empresa = {
   aprovadoPor?: string;
   /** Campos da Identificação complementar que o botão Preencher colocou e o usuário ainda não editou (podem ser atualizados num novo clique). */
   camposDoPreencher?: string[];
+  /** Origem de cada campo colocado pelo "Preencher com dados do RT": qual RT (id do usuário) e o valor. Opcional; só para Administrador e RT. */
+  origemDoPreencher?: Record<string, { usuarioId: string; valor: string }>;
   horariosFuncionamento?: HorarioFuncionamento[];
   responsabilidadesManual?: ResponsabilidadeManual[];
   setoresManual?: string[];

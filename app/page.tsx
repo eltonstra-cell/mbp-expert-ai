@@ -150,7 +150,7 @@ import { avisoParaEmitir, avisoParaFinalizar, erroDoCnpj, erroDoNomeDaEmpresa, i
 import { ambientesParaVisita, limparVinculos, nomeJaExistente } from "@/lib/ambientesVisita";
 import { LIMITE_DA_IDENTIFICACAO } from "@/lib/documentosCentral";
 import { enderecoEmUmaLinha, erroDoEmail, situacaoDoCnpj } from "@/lib/novaEmpresa";
-import { dadosParaOCadastroDoRt, registroDoRt, rtVinculadoDaEmpresa, fraseDoPreencher, prefillDoPerfilDoRt, preencherIdentificacao, semOCampo, sugestoesDeAtividade, type CampoDaIdentificacao } from "@/lib/manualIdentificacao";
+import { camposAindaDoPreencher, ofertaDeOutroManual, origemParaGravar, dadosParaOCadastroDoRt, registroDoRt, rtVinculadoDaEmpresa, fraseDoPreencher, prefillDoPerfilDoRt, preencherIdentificacao, semOCampo, sugestoesDeAtividade, type CampoDaIdentificacao } from "@/lib/manualIdentificacao";
 import { estadoDaBarraDeSalvar, marcadosDoUltimoSalvo } from "@/lib/escolhaEmJanela";
 import { TENTATIVAS_DA_NUVEM, conexaoAtual, esperaAposFalhaDaNuvem, rotuloDoSeloComProblema, seloDeSincronizacao, umaTentativa } from "@/lib/conexao";
 import { mostrarVoltar, nivelAcima, registrarLocal, voltarUma, type LocalDeTela } from "@/lib/historicoDeTelas";
@@ -332,9 +332,9 @@ const labels: Record<string, string> = {
   atividadeDescricao: "Atividades, produção e serviços realizados",
   cargoResponsavel: "Cargo do responsável pelo estabelecimento",
   consultorNome: "Nome do Consultor/RT",
-  consultorCpfCnpj: "CPF ou CNPJ do Consultor/RT",
-  consultorEndereco: "Endereço do Consultor/RT",
-  consultorTelefone: "Telefone do Consultor/RT",
+  consultorCpfCnpj: "CPF ou CNPJ do Consultor/RT (opcional)",
+  consultorEndereco: "Endereço do Consultor/RT (opcional)",
+  consultorTelefone: "Telefone do Consultor/RT (opcional)",
   consultorRegistro: "Profissão e registro no conselho",
   dataElaboracaoManual: "Data de elaboração do Manual",
   elaboradoPor: "Manual elaborado por",
@@ -3862,6 +3862,12 @@ export default function Home() {
       programasControleQualidade: normalizarProgramasControle(programasEmpresa),
       pops: normalizarPops(popsEmpresa),
       ...(camposDoPerfilRt.length ? { camposDoPreencher: camposDoPerfilRt } : {}),
+      ...(() => {
+        // Rodada 10, B: de onde veio cada campo do Preencher (RT e valor), para um novo clique atualizar o que ninguém editou.
+        const rtDaGravacao = anterior ? usuarioRtDaEmpresa(anterior) : undefined;
+        const origem = origemParaGravar(camposDoPerfilRt, form as unknown as Record<CampoDaIdentificacao, string>, anterior?.origemDoPreencher as never, rtDaGravacao?.id);
+        return Object.keys(origem).length ? { origemDoPreencher: origem } : {};
+      })(),
       criadoEm: anterior?.criadoEm || new Date().toISOString(),
       cor: form.cor || (anterior ? anterior.cor : proximaCorLivre(Object.values(db.empresas))),
       ...(anterior
@@ -4058,8 +4064,9 @@ export default function Home() {
   function editarEmpresa(empresa: Empresa) {
     if (!exigirPermissao("empresas.editar", empresa.id)) return;
     const rtDaEmpresa = usuarioRtDaEmpresa(empresa);
+    // Nome, telefone e registro vêm da mesma pessoa: o RT só entra sozinho ao abrir quando os três estão em branco.
     const prefillRt = prefillDoPerfilDoRt(
-      { consultorNome: empresa.consultorNome, consultorTelefone: empresa.consultorTelefone, consultorRegistro: empresa.consultorRegistro },
+      (empresa.consultorNome || empresa.consultorTelefone || empresa.consultorRegistro) ? { consultorNome: empresa.consultorNome || "-", consultorTelefone: empresa.consultorTelefone || "-", consultorRegistro: empresa.consultorRegistro || "-" } : {},
       rtDaEmpresa,
       registroDoRt
     );
@@ -4114,7 +4121,7 @@ export default function Home() {
     );
     const popsCarregados = normalizarPops(empresa.pops);
     setForm(formCarregado);
-    setCamposDoPerfilRt([...new Set([...prefillRt.doPerfil, ...((empresa.camposDoPreencher || []) as CampoDaIdentificacao[])])]);
+    setCamposDoPerfilRt([...new Set([...prefillRt.doPerfil, ...camposAindaDoPreencher(empresa.origemDoPreencher as never, formCarregado as unknown as Record<CampoDaIdentificacao, string>), ...((empresa.camposDoPreencher || []) as CampoDaIdentificacao[])])]);
     setCapacidadeForm(capacidadeParaFormulario(empresa.capacidade));
     setResponsabilidadesEmpresa(responsabilidadesCarregadas);
     setSetoresEmpresa(setoresCarregados);
@@ -8309,7 +8316,7 @@ export default function Home() {
             <div className="ui-head cen-cabeca">
               <div>
                 {!editingEmpresaId && <h1 className="ui-title">Nova empresa</h1>}
-                {!editingEmpresaId && <p className="ui-subtitle">Digite o CNPJ, confira os dados básicos e salve para abrir a Central da Empresa.</p>}
+                {!editingEmpresaId && <p className="ui-subtitle">Digite o CNPJ: o app busca os dados e você só completa o que faltar.</p>}
               </div>
             </div>
             )}
@@ -8368,7 +8375,7 @@ export default function Home() {
                           onBlur={() => setTocouCnpjEmpresa(true)}
                           onChange={(e) => setForm({ ...form, cnpj: e.target.value })}
                         />
-                        <button type="button" onClick={buscar} className="ui-btn ui-btn--criar" disabled={loading}>
+                        <button type="button" onClick={buscar} className={`ui-btn ${editingEmpresaId ? "ui-btn--criar" : "ui-btn--secondary"}`} disabled={loading}>
                           {loading ? "..." : editingEmpresaId ? "Consultar de novo" : "Buscar"}
                         </button>
                       </div>
@@ -8388,7 +8395,7 @@ export default function Home() {
                         if (situacao.tipo === "arquivada") return <span className="cnpj-consulta-msg" role="status">Existe uma empresa arquivada com este CNPJ. Você pode cadastrar de novo.</span>;
                         return null;
                       })()}
-                      {!editingEmpresaId && (tocouCnpjEmpresa || tentouSalvarEmpresa || form.cnpj.replace(/D/g, "").length >= 14) && erroDoCnpj(form.cnpj) && <span className="ui-field-error" role="alert">{erroDoCnpj(form.cnpj)}</span>}
+                      {!editingEmpresaId && (tocouCnpjEmpresa || tentouSalvarEmpresa || form.cnpj.replace(/\D/g, "").length >= 14) && erroDoCnpj(form.cnpj) && <span className="ui-field-error" role="alert">{erroDoCnpj(form.cnpj)}</span>}
                     </label>
 
                     {propostaCnpj && (
@@ -8619,6 +8626,14 @@ export default function Home() {
                       setCamposDoPerfilRt((atuais) => semOCampo(atuais, campo));
                     }}
                     semRtVinculado={!(db.empresas[editingEmpresaId] && usuarioRtDaEmpresa(db.empresas[editingEmpresaId]))}
+                    oferta={(() => {
+                      // Só Administrador e Consultor/RT veem a oferta (traz CPF e endereço de outro Manual do MESMO RT, casado pelo id).
+                      if (usuarioDaSessao && usuarioDaSessao.perfil !== "Administrador" && usuarioDaSessao.perfil !== "Consultor/RT") return null;
+                      const aberta = db.empresas[editingEmpresaId];
+                      const rtOferta = aberta ? usuarioRtDaEmpresa(aberta) : undefined;
+                      return ofertaDeOutroManual(Object.values(db.empresas), rtOferta?.id, editingEmpresaId, form as unknown as Record<CampoDaIdentificacao, string>);
+                    })()}
+                    onUsarOferta={(oferta) => setForm({ ...form, ...(oferta.cpfCnpj ? { consultorCpfCnpj: oferta.cpfCnpj } : {}), ...(oferta.endereco ? { consultorEndereco: oferta.endereco } : {}) })}
                     onPreencher={() => {
                       const empresaAberta = db.empresas[editingEmpresaId];
                       const rt = empresaAberta ? usuarioRtDaEmpresa(empresaAberta) : undefined;
