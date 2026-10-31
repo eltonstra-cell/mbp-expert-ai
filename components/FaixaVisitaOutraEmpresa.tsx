@@ -38,7 +38,7 @@ export default function FaixaVisitaOutraEmpresa({
       ) : (
         <span className="faixa-outra-texto" title={`Esta visita é de ${empresaDaVisita}. A empresa ativa é ${empresaAtiva}.`}>
           <span className="faixa-longo">Esta visita é de {empresaDaVisita}. A empresa ativa é {empresaAtiva}.</span>
-          <span className="faixa-curto">Visita de {empresaDaVisita}</span>
+          <span className="faixa-curto">Esta visita é de {empresaDaVisita}</span>
         </span>
       )}
       {onTrocar && (

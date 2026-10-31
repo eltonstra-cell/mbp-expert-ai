@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Chevron from "@/components/ui/Chevron";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
 import MenuMais from "@/components/pc/MenuMais";
@@ -14,7 +14,7 @@ import {
   mascararTelefone,
   tomDoResumo,
 } from "@/lib/documentosCentral";
-import { CAMPOS_DA_IDENTIFICACAO, ativosDoPapel, contarPreenchidos, type CampoDaIdentificacao } from "@/lib/manualIdentificacao";
+import { CAMPOS_DA_IDENTIFICACAO, ativosDoPapel, contarPreenchidos, mascaraCompletaParaAvancar, proximoCampoDaIdentificacao, type CampoDaIdentificacao } from "@/lib/manualIdentificacao";
 import type { PapelResponsabilidadeManual, ResponsabilidadeManual } from "@/types";
 
 type Props = {
@@ -23,8 +23,12 @@ type Props = {
   /** Campos que vieram do perfil do RT e ainda não foram editados (selo "do perfil do RT"). */
   doPerfil: CampoDaIdentificacao[];
   onChange: (campo: CampoDaIdentificacao, valor: string) => void;
-  /** Botão "Preencher com dados do RT": completa os campos vazios e devolve a frase do resultado. */
-  onPreencher?: () => string;
+  /** Botão "Preencher com dados do RT": completa os campos vazios e devolve a frase do resultado, se falta algo no cadastro do RT e o primeiro campo ainda vazio. */
+  onPreencher?: () => { texto: string; faltamNoRt: boolean; primeiroVazio: CampoDaIdentificacao | null };
+  /** Link "Completar o cadastro do RT" (perfil do RT ou Acessos, conforme o perfil de quem usa). */
+  onCompletarCadastroDoRt?: () => void;
+  /** Sugestões de atividade a partir do CNAE principal e dos secundários. */
+  sugestoesDeAtividade?: string[];
   responsabilidades: ResponsabilidadeManual[];
   onResponsabilidadesChange: (responsabilidades: ResponsabilidadeManual[]) => void;
 };
@@ -36,9 +40,11 @@ const PAPEIS: PapelResponsabilidadeManual[] = ["Proprietário", "Consultor/RT"];
 const erroDoCampo = (campo: CampoDaIdentificacao, valor: string) => (campo === "consultorCpfCnpj" ? erroDoCpfCnpj(valor) : campo === "consultorTelefone" ? erroDoTelefone(valor) : "");
 
 // Manual da empresa: três linhas recolhíveis no mesmo nível (uma aberta por vez): Identificação complementar e as Responsabilidades de cada papel.
-export default function PcManualDocumento({ valores, rotulos, doPerfil, onChange, onPreencher, responsabilidades, onResponsabilidadesChange }: Props) {
+export default function PcManualDocumento({ valores, rotulos, doPerfil, onChange, onPreencher, onCompletarCadastroDoRt, sugestoesDeAtividade = [], responsabilidades, onResponsabilidadesChange }: Props) {
   const [aberta, setAberta] = useState<Secao>("identificacao");
-  const [resultado, setResultado] = useState("");
+  const [resultado, setResultado] = useState<{ texto: string; faltamNoRt: boolean } | null>(null);
+  const campos = useRef<Partial<Record<CampoDaIdentificacao, HTMLInputElement | HTMLTextAreaElement | null>>>({});
+  const espera = useRef<number | null>(null);
   const [tocados, setTocados] = useState<Partial<Record<CampoDaIdentificacao, boolean>>>({});
   const [emEdicao, setEmEdicao] = useState<string | null>(null);
   const { preenchidos, total } = contarPreenchidos(valores);
@@ -48,6 +54,30 @@ export default function PcManualDocumento({ valores, rotulos, doPerfil, onChange
   function escrever(campo: CampoDaIdentificacao, bruto: string) {
     const valor = campo === "consultorCpfCnpj" ? mascararCpfCnpj(bruto) : campo === "consultorTelefone" ? mascararTelefone(bruto) : bruto.slice(0, LIMITE_DA_IDENTIFICACAO[campo] ?? 200);
     onChange(campo, valor);
+  }
+
+  // Vai ao próximo campo e o traz para a vista dentro da área interna (a página não rola).
+  function irPara(campo: CampoDaIdentificacao | null) {
+    if (!campo) return;
+    const alvo = campos.current[campo];
+    if (!alvo) return;
+    alvo.focus({ preventScroll: true });
+    alvo.scrollIntoView({ block: "nearest" });
+  }
+
+  // Máscara completa (CNPJ, celular, data) avança sozinha; CPF de 11 dígitos e telefone fixo esperam um instante, para não cortar quem ainda digita um CNPJ ou um celular.
+  function aposDigitar(campo: CampoDaIdentificacao, valor: string) {
+    if (espera.current !== null) window.clearTimeout(espera.current);
+    espera.current = null;
+    const quando = mascaraCompletaParaAvancar(campo, valor);
+    if (quando === "agora") irPara(proximoCampoDaIdentificacao(campo));
+    else if (quando === "depois") espera.current = window.setTimeout(() => { if (campos.current[campo] && document.activeElement === campos.current[campo]) irPara(proximoCampoDaIdentificacao(campo)); }, 900);
+  }
+
+  function aoTeclar(campo: CampoDaIdentificacao, evento: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) {
+    if (evento.key !== "Enter" || evento.shiftKey || evento.nativeEvent.isComposing) return;
+    evento.preventDefault();
+    irPara(proximoCampoDaIdentificacao(campo));
   }
 
   function adicionar(papel: PapelResponsabilidadeManual) {
@@ -90,23 +120,54 @@ export default function PcManualDocumento({ valores, rotulos, doPerfil, onChange
           <div id="man-id" className="man-corpo">
             {onPreencher && (
               <div className="man-preencher">
-                <button type="button" className="ui-btn ui-btn--secondary" onClick={() => setResultado(onPreencher())}>
+                <button
+                  type="button"
+                  className="ui-btn ui-btn--secondary"
+                  onClick={() => {
+                    const feito = onPreencher();
+                    setResultado({ texto: feito.texto, faltamNoRt: feito.faltamNoRt });
+                    window.setTimeout(() => irPara(feito.primeiroVazio), 0);
+                  }}
+                >
                   Preencher com dados do RT
                 </button>
-                <span className="man-preencher-apoio" role="status">{resultado || "Completa só os campos vazios. O que você digitou não muda."}</span>
+                <span className="man-preencher-apoio" role="status">
+                  {resultado?.texto || "Completa só os campos vazios. O que você digitou não muda."}
+                  {resultado?.faltamNoRt && onCompletarCadastroDoRt && (
+                    <> <button type="button" className="man-link" onClick={onCompletarCadastroDoRt}>Completar o cadastro do RT</button></>
+                  )}
+                </span>
               </div>
             )}
             <div className="man-grade">
               {CAMPOS_DA_IDENTIFICACAO.map((campo, posicao) => {
                 const erro = tocados[campo] || mascaraCompleta(campo, valores[campo]) ? erroDoCampo(campo, valores[campo]) : "";
                 const idErro = `man-erro-${campo}`;
+                const ehAtividade = campo === "atividadeDescricao";
+                const aoMudar = (valorBruto: string) => {
+                  escrever(campo, valorBruto);
+                  aposDigitar(campo, valorBruto);
+                };
                 return (
                   <label key={campo} className={`man-campo${posicao === 0 ? " man-campo--duplo" : ""}`}>
                     <span className="man-rotulo">
                       {rotulos[campo] || campo}
                       {doPerfil.includes(campo) && <span className="idc-selo">do perfil do RT</span>}
                     </span>
+                    {ehAtividade ? (
+                      <textarea
+                        ref={(el) => { campos.current[campo] = el; }}
+                        rows={2}
+                        className={`ui-input man-atividade${erro ? " is-invalid" : ""}`}
+                        value={valores[campo]}
+                        maxLength={LIMITE_DA_IDENTIFICACAO[campo]}
+                        onChange={(evento) => aoMudar(evento.target.value)}
+                        onKeyDown={(evento) => aoTeclar(campo, evento)}
+                        onBlur={() => setTocados((atuais) => (atuais[campo] ? atuais : { ...atuais, [campo]: true }))}
+                      />
+                    ) : (
                     <input
+                      ref={(el) => { campos.current[campo] = el; }}
                       type={campo === "dataElaboracaoManual" ? "date" : "text"}
                       className={`ui-input${erro ? " is-invalid" : ""}${campo === "dataElaboracaoManual" && !valores[campo] ? " is-data-vazia" : ""}`}
                       value={valores[campo]}
@@ -114,9 +175,19 @@ export default function PcManualDocumento({ valores, rotulos, doPerfil, onChange
                       maxLength={campo === "dataElaboracaoManual" ? undefined : LIMITE_DA_IDENTIFICACAO[campo]}
                       aria-invalid={Boolean(erro)}
                       aria-describedby={erro ? idErro : undefined}
-                      onChange={(evento) => escrever(campo, evento.target.value)}
+                      onChange={(evento) => aoMudar(evento.target.value)}
+                      onKeyDown={(evento) => aoTeclar(campo, evento)}
                       onBlur={() => setTocados((atuais) => (atuais[campo] ? atuais : { ...atuais, [campo]: true }))}
                     />
+                    )}
+                    {ehAtividade && (
+                      <span className="man-sugestoes">
+                        {sugestoesDeAtividade.length > 0 && <span className="man-sugestoes-rotulo">Sugestões do CNAE:</span>}
+                        {sugestoesDeAtividade.map((texto) => (
+                          <button key={texto} type="button" className="man-sugestao" onClick={() => { escrever(campo, texto); window.setTimeout(() => irPara(campo), 0); }}>{texto}</button>
+                        ))}
+                      </span>
+                    )}
                     {erro && <span id={idErro} className="ui-field-error" role="alert">{erro}</span>}
                   </label>
                 );

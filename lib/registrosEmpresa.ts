@@ -293,19 +293,26 @@ export const ROTULO_DA_CAPACITACAO: Record<SituacaoDaValidade, string> = {
   "sem-validade": "Sem vencimento",
 };
 
+/** "Vence em" precisa ser depois de "Feito em" (AAAA-MM-DD; sem vencimento vale). Mesma regra no navegador e no servidor. */
+export function erroDoVencimento(feitoEm: string | undefined, venceEm: string | undefined): string {
+  if (!venceEm || !feitoEm) return "";
+  return venceEm > feitoEm ? "" : "Precisa ser depois de Feito em";
+}
+
 export type ErrosDaCapacitacao = Partial<Record<"colaboradorId" | "conteudo" | "cargaHoraria" | "data" | "venceEm", string>>;
 
 export function validarCapacitacao(dados: { colaboradorId: string; conteudo: string; cargaHoraria: number | string; data: string; venceEm: string }): ErrosDaCapacitacao {
   const erros: ErrosDaCapacitacao = {};
   if (!dados.colaboradorId) erros.colaboradorId = "Escolha a pessoa.";
   if (!dados.conteudo.trim()) erros.conteudo = "Informe o conteúdo do treinamento.";
-  const horas = Number(String(dados.cargaHoraria).replace(",", "."));
-  if (!Number.isFinite(horas) || horas <= 0) erros.cargaHoraria = "Informe a carga horária em horas.";
-  else if (horas > 1000) erros.cargaHoraria = "Carga horária alta demais.";
+  const horas = String(dados.cargaHoraria).trim() === "" ? NaN : Number(String(dados.cargaHoraria).replace(",", "."));
+  if (!Number.isFinite(horas)) erros.cargaHoraria = "Informe a carga horária em horas.";
+  else if (horas <= 0) erros.cargaHoraria = "Precisa ser maior que zero.";
+  else if (horas > 1000) erros.cargaHoraria = "No máximo 1000 horas.";
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dados.data)) erros.data = "Informe a data.";
   if (dados.venceEm) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dados.venceEm)) erros.venceEm = "Data de vencimento inválida.";
-    else if (!erros.data && dados.venceEm < dados.data) erros.venceEm = "O vencimento não pode ser antes da data do treinamento.";
+    else if (!erros.data && erroDoVencimento(dados.data, dados.venceEm)) erros.venceEm = erroDoVencimento(dados.data, dados.venceEm);
   }
   return erros;
 }

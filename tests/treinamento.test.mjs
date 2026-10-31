@@ -50,7 +50,7 @@ test("Capacitação: validação, situação com datas de borda e sugestão só 
   assert.deepEqual(validarCapacitacao(ok), {});
   assert.deepEqual(Object.keys(validarCapacitacao({ colaboradorId: "", conteudo: "", cargaHoraria: "0", data: "", venceEm: "" })).sort(), ["cargaHoraria", "colaboradorId", "conteudo", "data"]);
   assert.equal(validarCapacitacao({ ...ok, cargaHoraria: "8,5" }).cargaHoraria, undefined);
-  assert.equal(validarCapacitacao({ ...ok, venceEm: "2026-09-30" }).venceEm, "O vencimento não pode ser antes da data do treinamento.");
+  assert.equal(validarCapacitacao({ ...ok, venceEm: "2026-09-30" }).venceEm, "Precisa ser depois de Feito em");
   assert.deepEqual(validarCapacitacao({ ...ok, venceEm: "" }), {}, "vencimento é opcional e sempre editável");
 
   const hoje = "2026-10-20";

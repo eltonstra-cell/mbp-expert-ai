@@ -21,7 +21,9 @@ export function resumoDosRegistros(
   conteudo: ConteudoPop | undefined,
   registros: RegistroPop[] | undefined,
   hoje: string,
-  aprovadoEm?: string
+  aprovadoEm?: string,
+  /** Só POP aprovado (ativado) tem registro a cobrar: rascunho nunca fica "atrasado". */
+  ativado = true
 ): ResumoDeRegistros {
   const doPop = (registros || []).filter((registro) => registro.popId === popId).sort((a, b) => b.dataHora.localeCompare(a.dataHora));
   const dias = diasDaFrequenciaDoPop(conteudo, diasDaFrequencia);
@@ -29,7 +31,7 @@ export function resumoDosRegistros(
   const ultimoRegistro = doPop[0];
   const base = ultimoRegistro ? dataISOLocal(ultimoRegistro.dataHora) : aprovadoEm ? dataISOLocal(aprovadoEm) : "";
   let proximo: ResumoDeRegistros["proximo"] = null;
-  if (dias && base) {
+  if (ativado && dias && base) {
     const devido = somarDias(base, dias);
     const atraso = diasEntreDatas(devido, hoje);
     proximo = atraso === 0 ? { texto: "Hoje", urgente: true } : atraso > 0 ? { texto: `Atrasado há ${atraso} ${atraso === 1 ? "dia" : "dias"}`, urgente: true } : { texto: formatarDataCurta(devido, hoje), urgente: false };

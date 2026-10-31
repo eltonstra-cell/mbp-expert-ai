@@ -7,7 +7,7 @@ import type {
   StatusProgramaControle,
 } from "@/types";
 import { DEFINICOES_PROGRAMAS_CONTROLE } from "@/lib/qualityPrograms";
-import { estadoVisualDoPrograma, resumoDosProgramas } from "@/lib/documentosCentral";
+import { estadoVisualDoPrograma, contagemDosProgramas } from "@/lib/documentosCentral";
 import FieldVoiceTools from "@/components/FieldVoiceTools";
 
 type Props = {
@@ -38,9 +38,14 @@ export default function QualityProgramsFields({ programas, onChange }: Props) {
       <div className="cdoc-titulo">
         <div>
           <h2 className="cdoc-h">Programas</h2>
-          <p className="cdoc-sub">Capítulo 3 · Programas de Controle de Qualidade · {resumoDosProgramas(programas)}</p>
-          <p className="cdoc-sub"><span className="cdoc-sub-pc">Clique no nome para completar os dados.</span><span className="cdoc-sub-toque">Toque no nome para completar os dados.</span></p>
         </div>
+      </div>
+      <div className="prog-capitulo">
+        <div className="prog-capitulo-texto">
+          <p className="prog-capitulo-titulo">Capítulo 3 · Programas de Controle de Qualidade</p>
+          <p className="prog-capitulo-dica"><span className="cdoc-sub-pc">Clique no nome para completar os dados.</span><span className="cdoc-sub-toque">Toque no nome para completar os dados.</span></p>
+        </div>
+        <p className="prog-capitulo-conta">{contagemDosProgramas(programas)}</p>
       </div>
 
       <div className="cdoc-lista">

@@ -88,7 +88,7 @@ test("tarja do comprovante: preso a outro POP → Mover; sem POP → Vincular; P
   const preso = tarjaDoComprovante({ tipo: "reservatorio", popId: "p1" }, popsDaEmpresa(true));
   assert.equal(preso.acao, "mover");
   assert.equal(preso.popSugeridoId, "p2");
-  assert.ok(preso.texto.startsWith("Este tipo costuma pertencer ao POP de "));
+  assert.ok(preso.texto.startsWith("Costuma ficar no POP de "));
   const semPop = tarjaDoComprovante({ tipo: "reservatorio" }, popsDaEmpresa(true));
   assert.equal(semPop.acao, "vincular");
   assert.equal(semPop.popSugeridoId, "p2");

@@ -55,6 +55,13 @@ export function estadoVisualDoPrograma(status: StatusProgramaControle): EstadoVi
 }
 
 /** "1 ativo e 1 em implantação". */
+/** "2 ativos · 1 em implantação": as contagens à direita do cabeçalho do capítulo. */
+export function contagemDosProgramas(programas: { status: StatusProgramaControle }[]): string {
+  const ativos = programas.filter((programa) => programa.status === "Implantado").length;
+  const emImplantacao = programas.filter((programa) => programa.status === "Em implantação").length;
+  return `${ativos} ${ativos === 1 ? "ativo" : "ativos"} · ${emImplantacao} em implantação`;
+}
+
 export function resumoDosProgramas(programas: { status: StatusProgramaControle }[]): string {
   const ativos = programas.filter((programa) => programa.status === "Implantado").length;
   const emImplantacao = programas.filter((programa) => programa.status === "Em implantação").length;

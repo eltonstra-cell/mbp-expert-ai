@@ -130,3 +130,45 @@ export function preencherIdentificacao(atuais: Partial<Record<CampoDaIdentificac
     semFonte: CAMPOS_DA_IDENTIFICACAO.filter((campo) => !escrito(finais[campo])),
   };
 }
+
+/** Campos do consultor/RT que o cadastro do RT pode (ou deveria) fornecer: se faltam, o link leva a completar o cadastro. */
+const CAMPOS_DO_RT: CampoDaIdentificacao[] = ["consultorNome", "consultorCpfCnpj", "consultorEndereco", "consultorTelefone", "consultorRegistro"];
+
+export function faltamNoCadastroDoRt(semFonte: CampoDaIdentificacao[]): CampoDaIdentificacao[] {
+  return semFonte.filter((campo) => CAMPOS_DO_RT.includes(campo));
+}
+
+/** Frase do botão "Preencher com dados do RT": quantos campos entraram e o que falta no cadastro do RT. */
+export function fraseDoPreencher(preenchidos: number, faltamNoRt: string[]): string {
+  const entrada = preenchidos === 0 ? "Nada novo para preencher." : preenchidos === 1 ? "1 campo preenchido." : `${preenchidos} campos preenchidos.`;
+  return faltamNoRt.length ? `${entrada} Faltam no cadastro do RT: ${faltamNoRt.join(", ")}.` : `${entrada}${preenchidos > 0 ? " Salve para guardar." : ""}`;
+}
+
+/** Próximo campo depois de `campo` na ordem da tela (nulo no último). */
+export function proximoCampoDaIdentificacao(campo: CampoDaIdentificacao): CampoDaIdentificacao | null {
+  const posicao = CAMPOS_DA_IDENTIFICACAO.indexOf(campo);
+  return posicao >= 0 && posicao < CAMPOS_DA_IDENTIFICACAO.length - 1 ? CAMPOS_DA_IDENTIFICACAO[posicao + 1] : null;
+}
+
+/** Máscara completa para o avanço automático: CNPJ (14) e celular (11) avançam na hora; CPF de 11 dígitos, telefone fixo e data esperam um instante. */
+export function mascaraCompletaParaAvancar(campo: CampoDaIdentificacao, valor: string): "agora" | "depois" | "nao" {
+  const digitos = valor.replace(/\D/g, "").length;
+  if (campo === "consultorCpfCnpj") return digitos === 14 ? "agora" : digitos === 11 ? "depois" : "nao";
+  if (campo === "consultorTelefone") return digitos === 11 ? "agora" : digitos === 10 ? "depois" : "nao";
+  if (campo === "dataElaboracaoManual") return /^\d{4}-\d{2}-\d{2}$/.test(valor) && Number(valor.slice(0, 4)) >= 1900 ? "depois" : "nao";
+  return "nao";
+}
+
+/** Sugestões de "atividade de produção": a descrição do CNAE principal e as dos secundários (sem repetir; só as que cabem no limite do campo). */
+export function sugestoesDeAtividade(principal: string | undefined, secundarios: { descricao: string }[] | undefined, limite: number): string[] {
+  const vistos = new Set<string>();
+  const lista: string[] = [];
+  for (const texto of [principal || "", ...(secundarios || []).map((item) => item.descricao || "")]) {
+    const limpo = texto.trim();
+    const chave = limpo.toLocaleLowerCase("pt-BR");
+    if (!limpo || limpo.length > limite || vistos.has(chave)) continue;
+    vistos.add(chave);
+    lista.push(limpo);
+  }
+  return lista;
+}

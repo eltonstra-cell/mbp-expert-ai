@@ -49,7 +49,7 @@ export default function PcRegistrosDoPop({ pop, comprovantes, mensagemDoComprova
     [contexto?.registros, pop.id, guarda?.dias]
   );
   if (!contexto) return null;
-  const resumo = resumoDosRegistros(pop.id, vigente?.conteudo, contexto.registros, hojeISO(), vigente?.aprovacao?.em);
+  const resumo = resumoDosRegistros(pop.id, vigente?.conteudo, contexto.registros, hojeISO(), vigente?.aprovacao?.em, pop.status === "Aprovado");
 
   const provaId = contexto.empresa?.registroProvaPorPop?.[pop.id] || "";
   const erroDescricao = !descricao.trim() ? "Descreva o que foi feito." : "";

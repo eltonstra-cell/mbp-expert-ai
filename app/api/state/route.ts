@@ -1,4 +1,4 @@
-import { validarLimitesDeTexto } from "@/lib/limitesDoServidor";
+import { separarItensInvalidos, type Rejeitado } from "@/lib/limitesDoServidor";
 import { NextResponse } from "next/server";
 import { isAccessControlActive } from "@/lib/accessMode";
 import { neon } from "@neondatabase/serverless";
@@ -196,6 +196,8 @@ export async function PUT(request: Request) {
     await ensureTable(sql);
     const atualAntesDaGravacao = await currentState(sql);
     let dadosParaGravar = data as AppDB;
+    // Itens recusados por limite de texto ou campo não permitido: o resto é gravado e o navegador recebe a lista, com o campo de cada um.
+    let rejeitados: Rejeitado[] = [];
     // Conflito (409): o estado devolvido passa pelo mesmo filtro do GET, nunca cru.
     let filtroDoConflito: (dados: unknown) => unknown = (dados) => dados;
 
@@ -231,10 +233,9 @@ export async function PUT(request: Request) {
         // Chaves de topo desconhecidas são descartadas; o restante é gravado.
         dadosParaGravar = forma.estado as unknown as AppDB;
       }
-      const limites = validarLimitesDeTexto(estadoAtual, dadosParaGravar);
-      if (!limites.ok) {
-        return NextResponse.json({ error: limites.mensagem, detalhe: "limite-de-texto" }, { status: 400 });
-      }
+      const separado = separarItensInvalidos(estadoAtual, dadosParaGravar);
+      dadosParaGravar = separado.estado;
+      rejeitados = separado.rejeitados;
       if (acesso.usuario.perfil === "Administrador") {
         // Excluir usuário só vale para quem nunca entrou nem registrou nada (nunca Administrador nem o próprio).
         const remocao = validarRemocaoDeUsuarios(estadoAtual.usuarios || [], dadosParaGravar.usuarios || [], {
@@ -298,6 +299,7 @@ export async function PUT(request: Request) {
         return NextResponse.json({
           ok: true,
           configured: true,
+          rejeitados,
           updatedAt: inserted[0].updated_at,
         });
       }
@@ -332,6 +334,7 @@ export async function PUT(request: Request) {
       return NextResponse.json({
         ok: true,
         configured: true,
+        rejeitados,
         updatedAt: updated[0].updated_at,
       });
     }

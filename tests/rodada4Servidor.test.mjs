@@ -25,8 +25,8 @@ test("D1: o Executor de campo não recebe nomes de aprovação, conferência nem
   assert.equal(vigente.aprovacao.hashDoConteudo, "abc");
 });
 
-test("D1: gestão e Fiscal continuam recebendo os nomes", () => {
-  for (const perfil of ["Consultor/RT", "Cliente Gestor", "Gerente", "Fiscal"]) {
+test("D1: gestão continua recebendo os nomes (o Fiscal deixou de receber na rodada 5)", () => {
+  for (const perfil of ["Consultor/RT", "Cliente Gestor", "Gerente"]) {
     const json = texto(filtrarEstadoPorUsuario(base, quem(perfil)));
     assert.equal(json.includes("Maria Aprovadora"), true, perfil);
   }
@@ -38,7 +38,7 @@ test("D3: CPF/CNPJ, endereço e telefone do consultor só vão para gestão e co
     assert.equal(e.consultorCpfCnpj, undefined, perfil);
     assert.equal(e.consultorEndereco, undefined, perfil);
     assert.equal(e.consultorTelefone, undefined, perfil);
-    assert.equal(e.consultorNome, "Consultor");
+    assert.equal(e.consultorNome, "");
   }
   for (const perfil of ["Administrador", "Consultor/RT", "Cliente Gestor", "Gerente"]) {
     const e = filtrarEstadoPorUsuario(base, quem(perfil)).empresas.e1;

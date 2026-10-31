@@ -138,7 +138,7 @@ export function tarjaDoComprovante(
   const sugerido = popsDaEmpresa.find((pop) => !pop.arquivado && pop.catalogoId === esperado);
   const base = { catalogoId: esperado, titulo: definicao.titulo };
   if (!sugerido) return { ...base, acao: "criar", texto: avisoDePopAusente(definicao) };
-  return { ...base, acao: comprovante.popId ? "mover" : "vincular", texto: `Este tipo costuma pertencer ao POP de ${definicao.titulo}`, popSugeridoId: sugerido.id };
+  return { ...base, acao: comprovante.popId ? "mover" : "vincular", texto: `Costuma ficar no POP de ${definicao.titulo}`, popSugeridoId: sugerido.id };
 }
 
 /** Rótulo do Tipo travado na ficha de um POP: o tipo do comprovante (inclusive o herdado numa renovação); "Outro documento deste POP" só para o tipo "outro". */

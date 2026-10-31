@@ -7,44 +7,54 @@ const css = ler("../app/globals.css");
 const central = ler("../components/pc/PcCentral.tsx");
 const pagina = ler("../app/page.tsx");
 
-test("Central da visita: sem a fileira de 4 números nem o cartão 'Atividade da visita'; ficam Próxima etapa, atalhos e NCs em aberto", () => {
+test("Central da visita (rodada 5): sem a fileira de 4 números nem o cartão 'Atividade da visita'; ficam Próxima etapa, seis cartões e NCs em aberto", () => {
   assert.ok(!central.includes("StatStrip") && !central.includes("Resumo da visita") && !central.includes("Atividade da visita"));
-  assert.ok(central.includes("Próxima etapa") && central.includes("pc-steps-row") && central.includes("Não conformidades em aberto"));
+  assert.ok(central.includes("Próxima etapa") && central.includes("cc2-grade") && central.includes("Não conformidades em aberto"));
   assert.ok(!pagina.includes("indicadores={{") && !pagina.includes("atividade={{"));
 });
 
-test("Central: cada cartão tem UMA linha de texto com o número real; o escopo das correções fica no title/aria; sem 'N conformes · N itens sem resposta'", () => {
-  assert.ok(pagina.includes('resumo: `${respondidos} de ${totalChecklist} ${totalChecklist === 1 ? "item" : "itens"}`'));
+test("Central: cada cartão tem UMA linha de texto; o Checklist diz 'N itens a responder'; o escopo das correções fica no title/aria", () => {
+  assert.ok(pagina.includes('qtd(pendentesChecklist, "item a responder", "itens a responder")'));
   assert.ok(!pagina.includes('qtd(conformesChecklist, "conforme", "conformes")'));
   assert.ok(pagina.includes('qtd(linhasConferenciaRel.filter((linha) => !linha.ok).length, "pendência", "pendências")'));
   assert.ok(pagina.includes('resumo: `${ncsAbertas} ${ncsAbertas === 1 ? "aberta" : "abertas"} nesta visita`') && pagina.includes("nesta visita (o menu conta as abertas da empresa toda)"));
   assert.ok(pagina.includes('"Nenhum a criar"'));
   assert.ok(central.includes("aria-label={passo.titulo ?") && central.includes("title={passo.titulo ??"));
+  // o "X de Y respondidos" fica só na Próxima etapa
+  assert.ok(central.includes("respondidos · {proxima.percentual}%") && !/resumo: `${respondidos} de/.test(pagina));
 });
 
-test("Central: a faixa de abas NÃO aparece na Central (os cartões são a navegação) e continua nas telas internas; Finalizar visita no topo usa o fluxo da faixa", () => {
+test("Central: a faixa de abas NÃO aparece na Central e continua nas telas internas; 'Finalizar visita' é botão de contorno e usa o fluxo da faixa", () => {
   assert.ok(pagina.includes('modoVisitaNoMenu && visitaAtual && view !== "visita" ? ('));
   assert.ok(pagina.includes('onFinalizar={visitaAtual.status !== "Concluída" && permitido("visitas.concluir", visitaAtual.empresaId) ? () => (modo === "campo" ? setConfirmaFinalizarCampo(true) : void finalizarInspecao()) : null}'));
-  assert.ok(central.includes("pc-central-finalizar") && central.includes("Finalizar visita") && !central.includes("Editar ambientes"));
-  // "Editar ambientes" foi para o menu ⋯ da tela (rodada 12c)
-  assert.ok(css.includes("pc-central-finalizar{border:0;background:#21805B;color:#fff}"));
+  assert.ok(central.includes("cc2-finalizar") && central.includes("Finalizar visita") && !central.includes("Editar ambientes"));
+  assert.ok(css.includes("cc2-finalizar{flex:none;height:40px;padding:0 18px;border:1.5px solid #7F8BA3;border-radius:10px;background:#fff;color:#1B2433"), "contorno #7F8BA3 com texto preto (verde só em Salvar)");
 });
 
-test("Central: cartões de 84 px com ícone branco em quadrado colorido (cores do DS) e seta '›'; cartão branco com texto grafite", () => {
-  assert.ok(css.includes(".pc-steps-row .pc-step-card{height:84px;min-height:84px;"));
-  for (const [tom, cor] of [["ok", "#21805B"], ["info", "#1F78B4"], ["nc", "#C83F45"], ["pend", "#168080"], ["lilas", "#526477"]]) assert.ok(css.includes(`.pc-steps-row .pc-step-card--${tom} .pc-step-tile{background:${cor}}`), tom);
-  assert.ok(central.includes('className="pc-step-arrow" aria-hidden="true">›<'));
-  assert.ok(css.includes(".pc-steps-row .pc-step-name,.pc-steps-row .pc-step-sum{min-width:0;overflow:visible;text-overflow:clip;white-space:normal;overflow-wrap:break-word;font-weight:400;color:#263445}"), "sem reticências nos cartões da Central");
+test("Central: seis cartões iguais com círculo de cor forte e ícone branco, em grade de 3 colunas (2 no tablet e no celular)", () => {
+  for (const [chave, cor] of [["checklist", "#21805B"], ["evidencias", "#2874DB"], ["correcoes", "#C83F45"], ["pops", "#168080"], ["relatorio", "#526477"], ["equipamentos", "#B4491C"]]) assert.ok(central.includes(`${chave}: "${cor}"`), chave);
+  assert.ok(central.includes('className="cc2-seta" aria-hidden="true">›<'));
+  assert.ok(css.includes("cc2-grade{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))"));
+  assert.ok(css.includes("@media (max-width:1099px){html:root:root body .cc2-grade{grid-template-columns:repeat(2,minmax(0,1fr))}}"));
+  assert.ok(css.includes("cc2-icone{display:grid;flex:none;place-items:center;width:44px;height:44px;border-radius:50%;color:#fff}"));
+  assert.ok(css.includes("cc2-cartao{display:flex;align-items:center;gap:12px;min-width:0;min-height:76px;padding:10px 14px;border:1px solid #E3E8EE"));
 });
 
-test("Central: lista de não conformidades sem chip 'Aberta' nem 'Acompanhar →'; linha inteira clicável com seta; 'Ver todas (N) →' no topo", () => {
-  assert.ok(!central.includes("Acompanhar →"));
-  assert.ok(central.includes('nc.status !== "Aberta" ?') && central.includes("onClick={nc.onAbrir}") && central.includes("seta"));
+test("Central: Próxima etapa em cartão branco (borda #E3E8EE), ícone circular marinho, barra de 6 px e botão laranja com texto branco", () => {
+  assert.ok(css.includes("cc2-proxima{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:16px;flex:none;padding:16px 18px;border:1px solid #E3E8EE;border-radius:12px;background:#fff}"));
+  assert.ok(css.includes("cc2-proxima-icone{display:grid;place-items:center;width:44px;height:44px;border-radius:50%;background:#264A80;color:#fff}"));
+  assert.ok(css.includes("cc2-barra{height:6px;"));
+  assert.ok(css.includes("cc2-continuar{flex:none;height:44px;padding:0 20px;border:0;border-radius:10px;background:#CC4510;color:#fff"));
+});
+
+test("Central: lista de não conformidades com círculo vermelho e ícone branco; linha inteira clicável; 'Ver todas (N) →' no topo; só ela rola", () => {
+  assert.ok(!central.includes("Acompanhar →") && !central.includes("<ListRow"));
+  assert.ok(central.includes('nc.status !== "Aberta"') && central.includes("onClick={nc.onAbrir}"));
   assert.ok(central.includes("Ver todas ({totalNcsAbertas}) →"));
-  assert.ok(central.indexOf("Ver todas") < central.indexOf("<ListRow"), "o link fica no topo da lista");
-  const linha = ler("../components/ui/ListRow.tsx");
-  assert.ok(linha.includes('role={clicavel ? "button" : undefined}') && linha.includes("ui-row-seta"));
-  assert.ok(css.includes(".pc-open-list .ui-row.is-clickable:focus-visible{outline:3px solid #264A80"));
+  assert.ok(central.indexOf("Ver todas") < central.indexOf("cc2-ncs-lista"), "o link fica no topo da lista");
+  assert.ok(css.includes("cc2-nc-icone{display:grid;flex:none;place-items:center;width:32px;height:32px;border-radius:50%;background:#C83F45;color:#fff}"));
+  assert.ok(css.includes("cc2-ncs-lista{display:flex;flex:1 1 0;flex-direction:column;gap:0;min-height:0;overflow-y:auto;"));
+  assert.ok(css.includes("cc2-ver-todas{border:0;background:transparent;font:inherit;font-size:15px;color:#264A80"));
   assert.ok(pagina.includes("nomeCurtoDoAmbiente(nomeDeExibicaoDoAmbiente(nc.ambiente))"));
 });
 
@@ -71,12 +81,11 @@ test("Correções: a aba da visita conta abertas da visita; a barra lateral cont
   assert.ok(pagina.includes('ncsAbertas={campo && view === "correcoes" ? 0 : ncsAbertas}') && pagina.includes("vencidas={ncsVencidasDaEmpresa}"));
 });
 
-test("Central: equipamento e programas vazios viram linha compacta; 'Cadastrar ›' só com permissão de editar a empresa", () => {
-  assert.ok(!central.includes("pc-vazio-linha") && !central.includes("Nenhum programa ativo") && central.includes("Nenhum cadastrado"));
-  assert.ok(central.includes("equipamentos.onCadastrar ? ("));
+test("Central: Equipamentos e móveis é o sexto cartão; vazio diz 'Nenhum cadastrado' e 'Cadastrar' só com permissão de editar a empresa", () => {
+  assert.ok(central.includes("Nenhum cadastrado") && central.includes("Equipamentos e móveis"));
+  assert.ok(central.includes("disabled={!equipamentos.onCadastrar}"));
   assert.ok(pagina.includes('"Nenhum equipamento cadastrado"'));
   assert.ok(/onCadastrar: atual && atual\.id === visitaAtual\.empresaId && permitido\("empresas\.editar", atual\.id\) \? \(\) => void abrirSecaoEmpresaPeloMenu\("equipamentos"\) : null/.test(pagina), "Cadastrar leva à aba Equipamentos (Estrutura › Equipamentos)");
-  assert.ok(!central.includes("Nenhum programa ativo para esta visita"));
 });
 
 test("Pontinhos coloridos dos cartões de número saíram; espaço entre a faixa de abas e o título da Central", () => {

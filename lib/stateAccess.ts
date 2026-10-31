@@ -4,7 +4,7 @@ import { protegerCarimboDasEvidencias } from "./fotosDoItem.ts";
 import { preservarEvidenciasEmRelatorio } from "./relatorioEmitido.ts";
 import { podeEditarQuestionario } from "./questionarioAmbiente.ts";
 import { popComoVigente } from "./popsNorma.ts";
-import { semDadosDoConsultor, semNomesDeAprovacao } from "./dadosPorPerfil.ts";
+import { CAMPOS_DA_EMPRESA_SO_DA_GESTAO, registrosSemNomesDosOutros, semNomesNaEmpresa, semNomesNoPop } from "./dadosPorPerfil.ts";
 import { comPerfilProprio } from "./userManagement.ts";
 import { permissoesEfetivas } from "./screenAccess.ts";
 import { acessoVigente } from "./validadeDeAcesso.ts";
@@ -83,7 +83,7 @@ export function filtrarEstadoPorUsuario(
     const somenteAprovados = Object.fromEntries(
       Object.entries(empresas).map(([id, empresa]) => [
         id,
-        { ...semDadosDoConsultor(empresa), pops: (empresa.pops || []).flatMap((pop) => popComoVigente(pop) ?? []) },
+        { ...semNomesNaEmpresa(empresa), pops: (empresa.pops || []).flatMap((pop) => popComoVigente(pop) ?? []).map(semNomesNoPop) },
       ])
     );
     return {
@@ -95,8 +95,9 @@ export function filtrarEstadoPorUsuario(
       evidencias: [],
       usuarios: [usuario],
       registrosAuditoria: [],
-      registrosPop,
-      comprovantes,
+      registrosPop: registrosSemNomesDosOutros(registrosPop, usuario.id),
+      // Fiscal lê os relatórios emitidos (documento assinado, decisão anterior); não vê quem mexeu no POP dos comprovantes.
+      comprovantes: comprovantes.map((item) => (item.historicoDePop ? { ...item, historicoDePop: item.historicoDePop.map((h) => ({ ...h, porNome: "Responsável", porId: "" })) } : item)),
       colaboradores,
       capacitacoes,
       leiturasPop,
@@ -116,7 +117,7 @@ export function filtrarEstadoPorUsuario(
   return {
     ...data,
     empresas: semPops
-      ? Object.fromEntries(Object.entries(empresas).map(([id, empresa]) => [id, { ...semDadosDoConsultor(empresa), pops: (empresa.pops || []).flatMap((pop) => popComoVigente(pop) ?? []).map(semNomesDeAprovacao) }]))
+      ? Object.fromEntries(Object.entries(empresas).map(([id, empresa]) => [id, { ...semNomesNaEmpresa(empresa), pops: (empresa.pops || []).flatMap((pop) => popComoVigente(pop) ?? []).map(semNomesNoPop) }]))
       : empresas,
     empresaAtualId:
       data.empresaAtualId && empresaIds.has(data.empresaAtualId)
@@ -127,7 +128,7 @@ export function filtrarEstadoPorUsuario(
     evidencias,
     usuarios: [usuario],
     registrosAuditoria,
-    registrosPop,
+    registrosPop: semPops ? registrosSemNomesDosOutros(registrosPop, usuario.id) : registrosPop,
     comprovantes,
     colaboradores,
     capacitacoes,
@@ -361,12 +362,14 @@ export function mesclarEstadoPorUsuario(
         empresas[empresaId] = {
           ...comIa,
           ...(visaoFiltrada && gravada
-            ? { pops: gravada.pops, consultorCpfCnpj: gravada.consultorCpfCnpj, consultorEndereco: gravada.consultorEndereco, consultorTelefone: gravada.consultorTelefone }
+            ? { pops: gravada.pops, ...Object.fromEntries(CAMPOS_DA_EMPRESA_SO_DA_GESTAO.map((campo) => [campo, gravada[campo]])) }
             : {}),
           questionarios: podeEditarQuestionario(efetivo) ? comIa.questionarios : gravada?.questionarios,
           // Os passos de "Colocar a empresa em dia" só nascem com a empresa (Administrador): quem edita não liga nem desliga.
           implantacao: gravada?.implantacao,
-          responsavelEstabelecimento: comIa.responsavelEstabelecimento
+          responsavelEstabelecimento: visaoFiltrada
+            ? gravada?.responsavelEstabelecimento
+            : comIa.responsavelEstabelecimento
             ? { ...comIa.responsavelEstabelecimento, usuarioId: gravada?.responsavelEstabelecimento?.usuarioId }
             : gravada?.responsavelEstabelecimento,
         };

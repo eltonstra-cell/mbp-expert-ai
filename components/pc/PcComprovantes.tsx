@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type DragEvent } from "react";
 import { mostrarToast } from "@/lib/toast";
 import { ListRow } from "@/components/ui/ListRow";
 import MenuMais from "@/components/pc/MenuMais";
+import Janela from "@/components/ui/Janela";
 import { ordenarPorAtencao } from "@/lib/documentosCentral";
 import { Pill, type Tom } from "@/components/ui/Pill";
 import {
@@ -359,24 +360,51 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
       )}
 
       <div className="comp-lista">
-        {alterandoPop && onAlterarPop && (
-          <div className="ui-card comp-alterar-pop" role="group" aria-label={popFixo ? "Mover para outro POP" : "Alterar POP vinculado"}>
-            <label className="pc-field">
-              <span className="ui-eyebrow">{popFixo ? "Mover" : "POP vinculado de"} {rotuloDoTipo(comprovantes.find((item) => item.id === alterandoPop.id)?.tipo || "outro")}{popFixo ? " para o POP" : ""}</span>
-              <Select className="ui-input ui-input--lista" value={alterandoPop.popId} onChange={(evento) => setAlterandoPop({ ...alterandoPop, popId: evento.target.value })}>
-                {popFixo ? <option value="">Escolha o POP…</option> : <option value="">Nenhum (comprovante geral da empresa)</option>}
-                {listaDePops.filter((pop) => !pop.arquivado && pop.id !== popFixo?.id).map((pop) => (
-                  <option key={pop.id} value={pop.id}>
-                    {rotuloDoPop(pop)}
-                  </option>
-                ))}
-              </Select>
-            </label>
-            {(() => {
-              const alvoDoPainel = comprovantes.find((item) => item.id === alterandoPop.id);
-              const sugestaoDoPainel = alvoDoPainel ? tarjaDoComprovante(alvoDoPainel, listaDePops) : null;
-              if (!sugestaoDoPainel || sugestaoDoPainel.acao !== "criar") return null;
-              return (
+        {alterandoPop && onAlterarPop && (() => {
+          const alvo = comprovantes.find((item) => item.id === alterandoPop.id);
+          const tipoDoAlvo = rotuloDoTipo(alvo?.tipo || "outro");
+          const titulo = popFixo ? "Mover para outro POP" : alvo && !alvo.popId ? "Vincular a um POP" : "Alterar POP vinculado";
+          const sugestaoDoPainel = alvo ? tarjaDoComprovante(alvo, listaDePops) : null;
+          return (
+            <Janela
+              titulo={titulo}
+              onFechar={() => setAlterandoPop(null)}
+              rodape={
+                <>
+                  <button type="button" className="ui-btn ui-btn--secondary" onClick={() => setAlterandoPop(null)}>
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    className="ui-btn ui-btn--save"
+                    disabled={Boolean(popFixo) && !alterandoPop.popId}
+                    onClick={async () => {
+                      const destino = listaDePops.find((pop) => pop.id === alterandoPop.popId);
+                      if (alvo && popFixo) {
+                        const nome = destino?.codigo || destino?.titulo || "outro POP";
+                        if (!(await confirmar(`O comprovante sai desta ficha e vai para o ${nome}. O histórico fica registrado.`, { titulo: "Mover comprovante", confirmarRotulo: "Mover", cancelarRotulo: "Cancelar" }))) return;
+                      }
+                      if (alvo) onAlterarPop(alvo, alterandoPop.popId || undefined);
+                      setAlterandoPop(null);
+                    }}
+                  >
+                    {popFixo ? "Mover" : "Salvar"}
+                  </button>
+                </>
+              }
+            >
+              <label className="jan-campo">
+                <span className="jan-rotulo">{popFixo ? "Mover" : "POP vinculado de"} {tipoDoAlvo}{popFixo ? " para o POP" : ""}</span>
+                <Select className="ui-input ui-input--lista" value={alterandoPop.popId} onChange={(evento) => setAlterandoPop({ ...alterandoPop, popId: evento.target.value })}>
+                  {popFixo ? <option value="">Escolha o POP…</option> : <option value="">Nenhum (comprovante geral da empresa)</option>}
+                  {listaDePops.filter((pop) => !pop.arquivado && pop.id !== popFixo?.id).map((pop) => (
+                    <option key={pop.id} value={pop.id}>
+                      {rotuloDoPop(pop)}
+                    </option>
+                  ))}
+                </Select>
+              </label>
+              {sugestaoDoPainel && sugestaoDoPainel.acao === "criar" && (
                 <div className="comp-tarja" role="note">
                   <span>{sugestaoDoPainel.texto}</span>
                   {onCriarPopDoModelo && (
@@ -392,32 +420,10 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
                     </button>
                   )}
                 </div>
-              );
-            })()}
-            <div className="comp-form-acoes">
-              <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => setAlterandoPop(null)}>
-                Cancelar
-              </button>
-              <button
-                type="button"
-                className="ui-btn ui-btn--save ui-btn--small"
-                disabled={Boolean(popFixo) && !alterandoPop.popId}
-                onClick={async () => {
-                  const alvo = comprovantes.find((item) => item.id === alterandoPop.id);
-                  const destino = listaDePops.find((pop) => pop.id === alterandoPop.popId);
-                  if (alvo && popFixo) {
-                    const nome = destino?.codigo || destino?.titulo || "outro POP";
-                    if (!(await confirmar(`O comprovante sai desta ficha e vai para o ${nome}. O histórico fica registrado.`, { titulo: "Mover comprovante", confirmarRotulo: "Mover", cancelarRotulo: "Cancelar" }))) return;
-                  }
-                  if (alvo) onAlterarPop(alvo, alterandoPop.popId || undefined);
-                  setAlterandoPop(null);
-                }}
-              >
-                {popFixo ? "Mover" : "Salvar"}
-              </button>
-            </div>
-          </div>
-        )}
+              )}
+            </Janela>
+          );
+        })()}
         {vigentes.length + substituidos.length === 0 ? (
           <div className="ui-empty">{mensagemVazia || "Nenhum comprovante anexado. Anexe o certificado de controle de pragas, da limpeza do reservatório ou o contrato do RT."}</div>
         ) : (

@@ -4,11 +4,12 @@ import Select from "@/components/Select";
 import { limparTextoDePessoa, nomeProprio } from "@/lib/nomeCargo";
 import { useRef, useState } from "react";
 import { mostrarToast } from "@/lib/toast";
-import { Pill, type Tom } from "@/components/ui/Pill";
+import { confirmar } from "@/lib/dialogos";
 import Janela from "@/components/ui/Janela";
 import MenuMais from "@/components/pc/MenuMais";
 import { AVISO_DADOS_DE_SAUDE_PESSOA, LIMITE_CARGO_DA_PESSOA, LIMITE_NOME_DA_PESSOA, nomeRepetidoDePessoa, subtituloDePessoas, treinamentoDaPessoa } from "@/lib/documentosCentral";
 import { hojeISO } from "@/lib/popsNorma";
+import { LIMITE_DO_CONTEUDO_DO_TREINAMENTO, LIMITE_DO_INSTRUTOR } from "@/lib/limitesDoServidor";
 import {
   AVISO_PRAZO_DE_CAPACITACAO,
   ROTULO_DA_CAPACITACAO,
@@ -18,7 +19,6 @@ import {
   sugerirVencimentoDaCapacitacao,
   validarCapacitacao,
   validarColaborador,
-  type SituacaoDaValidade,
 } from "@/lib/registrosEmpresa";
 import type { Capacitacao, Colaborador, Empresa } from "@/types";
 
@@ -41,8 +41,6 @@ type Props = {
 
 type Aba = "colaboradores" | "capacitacao";
 
-const TOM: Record<SituacaoDaValidade, Tom> = { "em-dia": "ok", "vence-em-breve": "amber", vencido: "nc", "sem-validade": "na" };
-
 function dataBr(iso: string) {
   if (!iso) return "—";
   const [ano, mes, dia] = iso.split("-");
@@ -61,7 +59,9 @@ export default function PcPessoas({ empresa, normas, colaboradores, capacitacoes
   const [verInativos, setVerInativos] = useState(false);
   const vazia = (): DadosDaCapacitacaoForm => ({ colaboradorId: "", conteudo: "", cargaHoraria: "", data: "", venceEm: "", instrutor: "" });
   const [cap, setCap] = useState<DadosDaCapacitacaoForm>(vazia);
-  const [capTocada, setCapTocada] = useState(false);
+  const [treinoAberto, setTreinoAberto] = useState(false);
+  // Campos em que a pessoa já passou (ou tentou registrar): o erro aparece na hora, no campo.
+  const [tocados, setTocados] = useState<Record<string, boolean>>({});
   const hoje = hojeISO();
 
   const nomes = new Map(colaboradores.map((item) => [item.id, item]));
@@ -102,13 +102,35 @@ export default function PcPessoas({ empresa, normas, colaboradores, capacitacoes
     fecharJanela();
   }
 
-  function salvarCapacitacao() {
-    setCapTocada(true);
-    if (Object.keys(errosCap).length) return;
-    onSalvarCapacitacao(cap);
-    setCap(vazia());
-    setCapTocada(false);
+  function abrirTreino(colaboradorId = "") {
+    setCap({ ...vazia(), colaboradorId });
+    setTocados({});
+    setTreinoAberto(true);
   }
+
+  function fecharTreino() {
+    setTreinoAberto(false);
+    setCap(vazia());
+    setTocados({});
+  }
+
+  function salvarCapacitacao() {
+    if (Object.keys(errosCap).length) {
+      setTocados({ colaboradorId: true, cargaHoraria: true, conteudo: true, data: true, venceEm: true });
+      return;
+    }
+    onSalvarCapacitacao(cap);
+    fecharTreino();
+  }
+
+  const tocar = (campo: string) => setTocados((atual) => (atual[campo] ? atual : { ...atual, [campo]: true }));
+  // Vencimento e carga horária acusam na hora em que há valor; os demais, ao sair do campo ou ao tentar registrar.
+  const erroDe = (campo: keyof typeof errosCap) => {
+    if (!errosCap[campo]) return "";
+    if (tocados[campo]) return errosCap[campo] || "";
+    if ((campo === "venceEm" || campo === "cargaHoraria") && String(cap[campo]).trim()) return errosCap[campo] || "";
+    return "";
+  };
 
   const pessoasParaChecar = colaboradores.map((item) => ({ id: item.id, nome: item.nome }));
   const erroDoNome = nomeRepetidoDePessoa(pessoa.nome, pessoasParaChecar, pessoa.id) ? "Já existe uma pessoa com este nome." : (pessoaTocada || nomeTocado) && errosPessoa.nome ? errosPessoa.nome : "";
@@ -143,9 +165,14 @@ export default function PcPessoas({ empresa, normas, colaboradores, capacitacoes
           <h2 className="cdoc-h">Pessoas</h2>
           <p className="cdoc-sub">{subtituloDePessoas(ativos.length)}</p>
         </div>
-        {colaboradores.length > 0 && ativos.length > 0 && aba === "colaboradores" && (
+        {aba === "colaboradores" && listaVisivel.length > 0 && (
           <button type="button" className="ui-btn ui-btn--laranja" onClick={abrirNova}>
             + Adicionar pessoa
+          </button>
+        )}
+        {aba === "capacitacao" && ativos.length > 0 && (
+          <button type="button" className="ui-btn ui-btn--laranja" onClick={() => abrirTreino()}>
+            + Registrar treinamento
           </button>
         )}
       </div>
@@ -176,11 +203,16 @@ export default function PcPessoas({ empresa, normas, colaboradores, capacitacoes
                       <span className="pess-nome">{item.nome}</span>
                       <span className="pess-cargo">{item.cargo}</span>
                     </span>
-                    <span className={`pess-estado pess-estado--${estado.id}`}>{estado.texto}</span>
+                    {item.ativo && estado.id === "sem-registro" ? (
+                      <button type="button" className="pess-estado pess-estado--sem-registro pess-estado-link" onClick={() => abrirTreino(item.id)}>{estado.texto}</button>
+                    ) : (
+                      <span className={`pess-estado pess-estado--${estado.id}`}>{estado.texto}</span>
+                    )}
                     <MenuMais
                       rotulo={`Mais ações de ${item.nome}`}
                       itens={[
                         { rotulo: "Editar", assumeFoco: true, onClick: () => abrirEdicao(item) },
+                        ...(item.ativo ? [{ rotulo: "Registrar treinamento", assumeFoco: true, onClick: () => abrirTreino(item.id) }] : []),
                         { rotulo: item.ativo ? "Desativar" : "Reativar", onClick: () => (item.ativo ? desativar(item) : onAlternarAtivo(item.id)) },
                       ]}
                     />
@@ -222,55 +254,67 @@ export default function PcPessoas({ empresa, normas, colaboradores, capacitacoes
       )}
 
       {aba === "capacitacao" && (
-        <div className="pess-cols" role="tabpanel" id="pess-painel-capacitacao" aria-labelledby="pess-aba-capacitacao">
-          <div className="pess-lista">
-            {linhas.length === 0 ? (
-              <div className="ui-empty">Nenhuma capacitação registrada.</div>
-            ) : (
-              <table className="pess-tabela">
-                <thead>
-                  <tr>
-                    <th>Pessoa</th>
-                    <th>Treinamento</th>
-                    <th>Horas</th>
-                    <th>Feito em</th>
-                    <th>Vence em</th>
-                    <th>Situação</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {linhas.map((item) => {
-                    const situacao = situacaoDaValidade(item.venceEm, hoje);
-                    const vigente = vigentes.some((v) => v.id === item.id);
-                    return (
-                      <tr key={item.id} className={vigente ? "" : "is-antiga"}>
-                        <td>{nomes.get(item.colaboradorId)?.nome || "—"}</td>
-                        <td title={item.instrutor ? `Instrutor: ${item.instrutor}` : undefined}>{item.conteudo}</td>
-                        <td>{item.cargaHoraria} h</td>
-                        <td>{dataBr(item.data)}</td>
-                        <td>{dataBr(item.venceEm)}</td>
-                        <td>
-                          <Pill tom={vigente ? TOM[situacao] : "na"}>{vigente ? ROTULO_DA_CAPACITACAO[situacao] : "Substituída"}</Pill>
-                        </td>
-                        <td>
-                          <button type="button" className="ui-btn ui-btn--soft ui-btn--small" aria-label="Remover este registro de capacitação" title="Remover" onClick={() => onRemoverCapacitacao(item.id)}>
-                            ✕
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
-          </div>
-          <div className="ui-card pess-form">
-            <h2 className="ui-card-title">Registrar capacitação</h2>
-            <div className="pess-linha pess-linha--2-1">
-            <label className="pc-field">
-              <span className="ui-eyebrow">Pessoa</span>
-              <Select className={`ui-input${capTocada && errosCap.colaboradorId ? " is-invalid" : ""}`} value={cap.colaboradorId} onChange={(evento) => setCap({ ...cap, colaboradorId: evento.target.value })}>
+        <div className="cdoc-lista" role="tabpanel" id="pess-painel-capacitacao" aria-labelledby="pess-aba-capacitacao">
+          {linhas.length === 0 ? (
+            <div className="pess-vazio">
+              <p className="pess-vazio-texto">Nenhum treinamento registrado.</p>
+              {ativos.length > 0 && <button type="button" className="ui-btn ui-btn--laranja" onClick={() => abrirTreino()}>+ Registrar treinamento</button>}
+            </div>
+          ) : (
+            <table className="pess-tabela">
+              <thead>
+                <tr>
+                  <th>Pessoa</th>
+                  <th>Treinamento</th>
+                  <th>Horas</th>
+                  <th>Feito em</th>
+                  <th>Vence em</th>
+                  <th>Situação</th>
+                  <th><span className="sr-only">Ações</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                {linhas.map((item) => {
+                  const situacao = situacaoDaValidade(item.venceEm, hoje);
+                  const vigente = vigentes.some((v) => v.id === item.id);
+                  return (
+                    <tr key={item.id} className={vigente ? "" : "is-antiga"}>
+                      <td>{nomes.get(item.colaboradorId)?.nome || "—"}</td>
+                      <td title={item.instrutor ? `Instrutor: ${item.instrutor}` : undefined}>{item.conteudo}</td>
+                      <td>{item.cargaHoraria} h</td>
+                      <td>{dataBr(item.data)}</td>
+                      <td>{dataBr(item.venceEm)}</td>
+                      <td>
+                        <span className={`pess-sit pess-sit--${vigente ? situacao : "antiga"}`}>{vigente ? ROTULO_DA_CAPACITACAO[situacao] : "Substituída"}</span>
+                      </td>
+                      <td className="pess-acoes">
+                        <MenuMais rotulo="Mais ações deste treinamento" itens={[{ rotulo: "Remover", onClick: () => { void confirmar("Remover este registro de treinamento? Esta ação não pode ser desfeita.", { titulo: "Remover treinamento", confirmarRotulo: "Remover", cancelarRotulo: "Cancelar" }).then((sim) => { if (sim) onRemoverCapacitacao(item.id); }); } }]} />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+
+      {treinoAberto && (
+        <Janela
+          titulo="Registrar treinamento"
+          largura={600}
+          onFechar={fecharTreino}
+          rodape={
+            <>
+              <button type="button" className="ui-btn ui-btn--secondary" onClick={fecharTreino}>Cancelar</button>
+              <button type="button" className="ui-btn ui-btn--save" onClick={salvarCapacitacao}>Registrar treinamento</button>
+            </>
+          }
+        >
+          <div className="trn-linha trn-linha--pessoa">
+            <label className="jan-campo">
+              <span className="jan-rotulo">Pessoa</span>
+              <Select className={`ui-input${erroDe("colaboradorId") ? " is-invalid" : ""}`} value={cap.colaboradorId} onChange={(evento) => setCap({ ...cap, colaboradorId: evento.target.value })} onBlur={() => tocar("colaboradorId")}>
                 <option value="">Escolha</option>
                 {ativos.map((item) => (
                   <option key={item.id} value={item.id}>
@@ -278,64 +322,56 @@ export default function PcPessoas({ empresa, normas, colaboradores, capacitacoes
                   </option>
                 ))}
               </Select>
-              {capTocada && errosCap.colaboradorId && <span className="ui-field-error">{errosCap.colaboradorId}</span>}
+              {erroDe("colaboradorId") && <span className="ui-field-error" role="alert">{erroDe("colaboradorId")}</span>}
             </label>
-            <label className="pc-field">
-              <span className="ui-eyebrow">Carga horária (h)</span>
-              <input className={`ui-input${capTocada && errosCap.cargaHoraria ? " is-invalid" : ""}`} inputMode="decimal" value={cap.cargaHoraria} onChange={(evento) => setCap({ ...cap, cargaHoraria: evento.target.value.replace(/[^\d,.]/g, "") })} aria-invalid={Boolean(capTocada && errosCap.cargaHoraria)} />
-              {capTocada && errosCap.cargaHoraria && <span className="ui-field-error">{errosCap.cargaHoraria}</span>}
+            <label className="jan-campo">
+              <span className="jan-rotulo">Carga horária (h)</span>
+              <input className={`ui-input${erroDe("cargaHoraria") ? " is-invalid" : ""}`} inputMode="decimal" value={cap.cargaHoraria} aria-invalid={Boolean(erroDe("cargaHoraria"))} onBlur={() => tocar("cargaHoraria")} onChange={(evento) => setCap({ ...cap, cargaHoraria: evento.target.value.replace(/[^\d,.]/g, "") })} />
+              {erroDe("cargaHoraria") && <span className="ui-field-error" role="alert">{erroDe("cargaHoraria")}</span>}
             </label>
-            </div>
-            <label className="pc-field">
-              <span className="ui-eyebrow">Conteúdo</span>
-              <input className={`ui-input${capTocada && errosCap.conteudo ? " is-invalid" : ""}`} value={cap.conteudo} onChange={(evento) => setCap({ ...cap, conteudo: evento.target.value })} aria-invalid={Boolean(capTocada && errosCap.conteudo)} />
-              {capTocada && errosCap.conteudo && <span className="ui-field-error">{errosCap.conteudo}</span>}
-            </label>
-            <div className="pess-linha pess-linha--3">
-              <label className="pc-field">
-                <span className="ui-eyebrow">Feito em</span>
-                <input type="date" className={`ui-input${capTocada && errosCap.data ? " is-invalid" : ""}`} value={cap.data} max={hoje} onChange={(evento) => setCap({ ...cap, data: evento.target.value })} aria-invalid={Boolean(capTocada && errosCap.data)} />
-                {capTocada && errosCap.data && <span className="ui-field-error">{errosCap.data}</span>}
-              </label>
-              <label className="pc-field">
-                <span className="ui-eyebrow">Vence em</span>
-                <input type="date" className={`ui-input${errosCap.venceEm && cap.venceEm ? " is-invalid" : ""}`} value={cap.venceEm} onChange={(evento) => setCap({ ...cap, venceEm: evento.target.value })} aria-invalid={Boolean(errosCap.venceEm && cap.venceEm)} />
-                {cap.venceEm && errosCap.venceEm && <span className="ui-field-error">{errosCap.venceEm}</span>}
-              </label>
-              <label className="pc-field">
-                <span className="ui-eyebrow">Instrutor (opcional)</span>
-                <input className="ui-input" value={cap.instrutor} onChange={(evento) => setCap({ ...cap, instrutor: evento.target.value })} />
-              </label>
-            </div>
-            {sugestao && (
-              <div className="priv-faixa comp-sugestao" role="status">
-                <span>{sugestao.texto}</span>
-                <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => setCap({ ...cap, venceEm: sugestao.venceEm })}>
-                  Usar
-                </button>
-              </div>
-            )}
-            <p className="ui-row-sub">{AVISO_PRAZO_DE_CAPACITACAO}</p>
-            <details className="pess-apoio">
-              <summary className="ui-row-sub">O que a norma da empresa cita sobre capacitação ({referencias.length})</summary>
-              {referencias.length === 0 ? (
-                <span className="ui-row-sub">Nenhuma norma com referência de capacitação aplicada a esta empresa.</span>
-              ) : (
-                referencias.map((ref) => (
-                  <span key={`${ref.norma}-${ref.rotulo}-${ref.orientacao}`} className="ui-row-sub pess-ref">
-                    {ref.norma} · {ref.rotulo}: {ref.orientacao}
-                    {ref.conferir ? <span className="em-breve pop-conferir"> conferir</span> : null}
-                  </span>
-                ))
-              )}
-            </details>
-            <div className="comp-form-acoes">
-              <button type="button" className="ui-btn ui-btn--save" onClick={salvarCapacitacao}>
-                Registrar capacitação
-              </button>
-            </div>
           </div>
-        </div>
+          <label className="jan-campo">
+            <span className="jan-rotulo">Conteúdo <span className="jan-conta">{cap.conteudo.length} de {LIMITE_DO_CONTEUDO_DO_TREINAMENTO}</span></span>
+            <input className={`ui-input${erroDe("conteudo") ? " is-invalid" : ""}`} value={cap.conteudo} maxLength={LIMITE_DO_CONTEUDO_DO_TREINAMENTO} aria-invalid={Boolean(erroDe("conteudo"))} onBlur={() => tocar("conteudo")} onChange={(evento) => setCap({ ...cap, conteudo: evento.target.value })} />
+            {erroDe("conteudo") && <span className="ui-field-error" role="alert">{erroDe("conteudo")}</span>}
+          </label>
+          <div className="trn-linha trn-linha--datas">
+            <label className="jan-campo">
+              <span className="jan-rotulo">Feito em</span>
+              <input type="date" className={`ui-input${erroDe("data") ? " is-invalid" : ""}`} value={cap.data} max={hoje} aria-invalid={Boolean(erroDe("data"))} onBlur={() => tocar("data")} onChange={(evento) => setCap({ ...cap, data: evento.target.value })} />
+              {erroDe("data") && <span className="ui-field-error" role="alert">{erroDe("data")}</span>}
+            </label>
+            <label className="jan-campo">
+              <span className="jan-rotulo">Vence em</span>
+              <input type="date" className={`ui-input${erroDe("venceEm") ? " is-invalid" : ""}`} value={cap.venceEm} aria-invalid={Boolean(erroDe("venceEm"))} onBlur={() => tocar("venceEm")} onChange={(evento) => setCap({ ...cap, venceEm: evento.target.value })} />
+              {erroDe("venceEm") && <span className="ui-field-error" role="alert">{erroDe("venceEm")}</span>}
+            </label>
+            <label className="jan-campo">
+              <span className="jan-rotulo">Instrutor (opcional) <span className="jan-conta">{cap.instrutor.length} de {LIMITE_DO_INSTRUTOR}</span></span>
+              <input className="ui-input" value={cap.instrutor} maxLength={LIMITE_DO_INSTRUTOR} onChange={(evento) => setCap({ ...cap, instrutor: evento.target.value })} />
+            </label>
+          </div>
+          {sugestao && (
+            <p className="jan-sugestao" role="status">
+              <span>{sugestao.texto}</span>
+              <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => setCap({ ...cap, venceEm: sugestao.venceEm })}>Usar</button>
+            </p>
+          )}
+          <p className="jan-aviso">{AVISO_PRAZO_DE_CAPACITACAO}</p>
+          <details className="pess-apoio">
+            <summary>O que a norma da empresa cita sobre capacitação ({referencias.length})</summary>
+            {referencias.length === 0 ? (
+              <span className="ui-row-sub">Nenhuma norma com referência de capacitação aplicada a esta empresa.</span>
+            ) : (
+              referencias.map((ref) => (
+                <span key={`${ref.norma}-${ref.rotulo}-${ref.orientacao}`} className="ui-row-sub pess-ref">
+                  {ref.norma} · {ref.rotulo}: {ref.orientacao}
+                  {ref.conferir ? <span className="em-breve pop-conferir"> conferir</span> : null}
+                </span>
+              ))
+            )}
+          </details>
+        </Janela>
       )}
     </section>
   );

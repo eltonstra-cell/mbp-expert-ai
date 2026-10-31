@@ -148,7 +148,8 @@ import { aplicarDeltaDeEquipamentos, aplicarDeltaDeFluxos, aplicarDeltaDeLista, 
 import CadastroEquipamentos from "@/components/pc/CadastroEquipamentos";
 import { avisoParaEmitir, avisoParaFinalizar, erroDoCnpj, erroDoNomeDaEmpresa, itensRespondidos, pendenciasParaSalvarEmpresa } from "@/lib/regrasDoPacote3";
 import { ambientesParaVisita, limparVinculos, nomeJaExistente } from "@/lib/ambientesVisita";
-import { prefillDoPerfilDoRt, preencherIdentificacao, semOCampo, type CampoDaIdentificacao } from "@/lib/manualIdentificacao";
+import { LIMITE_DA_IDENTIFICACAO } from "@/lib/documentosCentral";
+import { faltamNoCadastroDoRt, fraseDoPreencher, prefillDoPerfilDoRt, preencherIdentificacao, semOCampo, sugestoesDeAtividade, type CampoDaIdentificacao } from "@/lib/manualIdentificacao";
 import { estadoDaBarraDeSalvar, marcadosDoUltimoSalvo } from "@/lib/escolhaEmJanela";
 import { TENTATIVAS_DA_NUVEM, conexaoAtual, esperaAposFalhaDaNuvem, rotuloDoSeloComProblema, seloDeSincronizacao, umaTentativa } from "@/lib/conexao";
 import { mostrarVoltar, nivelAcima, registrarLocal, voltarUma, type LocalDeTela } from "@/lib/historicoDeTelas";
@@ -156,6 +157,7 @@ import { esquecerTela, lerContinuar, limparContinuar, registrarTela, type TelaRe
 import { nomeDeExibicaoDaEmpresa, nomeEmFormatoNatural } from "@/lib/nomeEmpresa";
 import PcImplantacao from "@/components/pc/PcImplantacao";
 import { mostrarToast } from "@/lib/toast";
+import { rotuloDaColecao } from "@/lib/limitesDoServidor";
 import { destinoDoAvanco } from "@/lib/avancoAutomatico";
 import { limparTextoDePessoa, nomeECargo, nomeProprio } from "@/lib/nomeCargo";
 import { diasEntreDatas, formatarData, formatarDataCurta, formatarDataHora, formatarHora, hojeLocalISO } from "@/lib/dataLocal";
@@ -985,6 +987,7 @@ export default function Home() {
   const [syncAtualizadoEm, setSyncAtualizadoEm] = useState("");
   const ultimaNuvemRef = useRef<number>(0);
   const ultimaNuvemVersaoRef = useRef<string | null>(null);
+  const ultimoAvisoDeRejeicaoRef = useRef("");
   const aplicandoNuvemRef = useRef(false);
   const falhasSyncRef = useRef(0);
   const retrySyncTimerRef = useRef<number | null>(null);
@@ -1103,6 +1106,8 @@ export default function Home() {
   const [estadoEstrutura, setEstadoEstrutura] = useState<EstadoDoSalvamento>("salvo");
   // Salvar da Central em Documentos: "Salvando…" por um instante, depois "✓ Tudo salvo" (e o botão apagado até nova alteração).
   const [salvandoDocumentos, setSalvandoDocumentos] = useState(false);
+  // Por que o Salvar da Central foi barrado (some quando o formulário muda); o rodapé mostra o erro em vez de "Salvando…".
+  const [erroDoSalvar, setErroDoSalvar] = useState("");
   const assinaturaEmpresaAtual = assinaturaEdicaoEmpresa({
     form,
     responsabilidades: responsabilidadesEmpresa,
@@ -2422,8 +2427,20 @@ export default function Home() {
         if (response.ok) {
           const result = await response.json();
 
+          // Itens recusados pelo servidor (limite de texto ou campo não permitido): o resto foi gravado; diz qual item e qual campo, uma vez por mensagem.
+          if (Array.isArray(result?.rejeitados) && result.rejeitados.length > 0) {
+            const texto = (result.rejeitados as { colecao: string; mensagem: string }[]).slice(0, 3).map((item) => `${rotuloDaColecao(item.colecao)}: ${item.mensagem}`).join(" ");
+            if (texto !== ultimoAvisoDeRejeicaoRef.current) {
+              ultimoAvisoDeRejeicaoRef.current = texto;
+              mostrarToast(`Não gravamos ${result.rejeitados.length === 1 ? "1 item" : `${result.rejeitados.length} itens`}. ${texto}`, { tipo: "aviso", duracaoMs: 8000 });
+            }
+          } else {
+            ultimoAvisoDeRejeicaoRef.current = "";
+          }
+
           if (result?.configured !== false) {
-            registrarBase(db, result.updatedAt || null);
+            // Com itens recusados o estado local diverge do gravado: a base só avança quando nada foi recusado.
+            if (!(Array.isArray(result?.rejeitados) && result.rejeitados.length > 0)) registrarBase(db, result.updatedAt || null);
             ultimaNuvemVersaoRef.current = result.updatedAt || null;
             ultimaNuvemRef.current = result.updatedAt
               ? new Date(result.updatedAt).getTime()
@@ -3767,8 +3784,12 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.cnpj, editingEmpresaId, showEmpresaForm]);
 
-  function salvarEmpresa() {
-    if (!exigirPermissao("empresas.editar")) return;
+  useEffect(() => {
+    setErroDoSalvar("");
+  }, [form, secaoEmpresa]);
+
+  function salvarEmpresa(): boolean {
+    if (!exigirPermissao("empresas.editar")) return false;
     setTentouSalvarEmpresa(true);
     const faltasDaEmpresa = pendenciasParaSalvarEmpresa(form, Boolean(editingEmpresaId));
     // Só bloqueia o CNAE fora do formato em empresa nova ou quando o código foi MUDADO; empresa antiga com o CNAE intacto mostra o aviso e salva.
@@ -3776,11 +3797,13 @@ export default function Home() {
     if (cnaeBloqueiaSalvar(form.cnae, cnaeSalvo, !editingEmpresaId, Boolean(cnaeDaConsulta) && normalizarCnae(form.cnae) === cnaeDaConsulta)) faltasDaEmpresa.push("Corrija o CNAE: ele precisa ter 7 dígitos e existir na tabela oficial.");
     if (faltasDaEmpresa.length) {
       setMsg(faltasDaEmpresa.join(" "));
-      return;
+      setErroDoSalvar(faltasDaEmpresa.join(" "));
+      return false;
     }
     if (Object.keys(validarCapacidade(capacidadeForm)).length) {
+      setErroDoSalvar("Confira os números de capacidade e turnos antes de salvar.");
       void avisar("Confira os números de capacidade e turnos antes de salvar.");
-      return;
+      return false;
     }
     const id = editingEmpresaId || form.cnpj.replace(/\D/g, "") || crypto.randomUUID();
     const anterior = editingEmpresaId ? db.empresas[editingEmpresaId] : undefined;
@@ -3859,7 +3882,9 @@ export default function Home() {
     setEmpresaSecao(null);
     setShowEmpresaForm(true);
     setMsg("");
+    setErroDoSalvar("");
     setView("empresas");
+    return true;
   }
 
   // Renomear ambiente próprio: mostra quantos registros serão afetados antes de confirmar; o formulário muda já, o resto ao Salvar.
@@ -8511,12 +8536,19 @@ export default function Home() {
                         responsavel: form.responsavel,
                         cargoResponsavel: form.cargoResponsavel,
                       });
-                      if (resultado.preenchidos.length === 0) return resultado.semFonte.length ? "Nada novo para preencher: o que falta não existe no cadastro." : "Tudo já está preenchido.";
-                      setForm({ ...form, ...resultado.valores });
-                      setCamposDoPerfilRt((atuais) => [...new Set([...atuais, ...resultado.doPerfil])]);
-                      const faltam = resultado.semFonte.length;
-                      return `${resultado.preenchidos.length === 1 ? "1 campo preenchido" : `${resultado.preenchidos.length} campos preenchidos`}.${faltam ? ` ${faltam === 1 ? "1 campo continua vazio" : `${faltam} campos continuam vazios`}: não há esse dado no cadastro.` : ""} Salve para guardar.`;
+                      if (resultado.preenchidos.length > 0) {
+                        setForm({ ...form, ...resultado.valores });
+                        setCamposDoPerfilRt((atuais) => [...new Set([...atuais, ...resultado.doPerfil])]);
+                      }
+                      const faltamNoRt = faltamNoCadastroDoRt(resultado.semFonte);
+                      return {
+                        texto: resultado.semFonte.length === 0 && resultado.preenchidos.length === 0 ? "Tudo já está preenchido." : fraseDoPreencher(resultado.preenchidos.length, faltamNoRt.map((campo) => (labels as Record<string, string>)[campo] || campo)),
+                        faltamNoRt: faltamNoRt.length > 0,
+                        primeiroVazio: resultado.semFonte[0] ?? null,
+                      };
                     }}
+                    onCompletarCadastroDoRt={destinoDoCrn ? () => { if (destinoDoCrn === "perfil") setPerfilAberto(true); else setView("acessos"); } : undefined}
+                    sugestoesDeAtividade={sugestoesDeAtividade(form.cnaeDescricao, db.empresas[editingEmpresaId]?.cnaesSecundarios, LIMITE_DA_IDENTIFICACAO.atividadeDescricao)}
                     responsabilidades={responsabilidadesEmpresa}
                     onResponsabilidadesChange={setResponsabilidadesEmpresa}
                   />
@@ -8614,8 +8646,14 @@ export default function Home() {
                 {!editingEmpresaId && msg && <span className="cen-salvar-aviso">{msg}</span>}
                 {editingEmpresaId && (
                   <span className="cen-salvar-aviso" role="status">
-                    <span className="cen-salvar-marca" aria-hidden="true">{salvandoDocumentos ? "…" : estadoDaBarraDeSalvar(empresaTemAlteracoes).marca}</span>
-                    {salvandoDocumentos ? "Salvando…" : estadoDaBarraDeSalvar(empresaTemAlteracoes).texto}
+                    {erroDoSalvar && !salvandoDocumentos ? (
+                      <span className="cen-salvar-erro" role="alert">{erroDoSalvar}</span>
+                    ) : (
+                      <>
+                        <span className="cen-salvar-marca" aria-hidden="true">{salvandoDocumentos ? "…" : estadoDaBarraDeSalvar(empresaTemAlteracoes).marca}</span>
+                        {salvandoDocumentos ? "Salvando…" : estadoDaBarraDeSalvar(empresaTemAlteracoes).texto}
+                      </>
+                    )}
                   </span>
                 )}
                 <button
@@ -8626,9 +8664,11 @@ export default function Home() {
                       salvarEmpresa();
                       return;
                     }
-                    setSalvandoDocumentos(true);
-                    salvarEmpresa();
-                    window.setTimeout(() => setSalvandoDocumentos(false), 700);
+                    // "Salvando…" só aparece quando o salvamento realmente começou; se a validação barra, o erro fica à vista e nada é anunciado.
+                    if (salvarEmpresa()) {
+                      setSalvandoDocumentos(true);
+                      window.setTimeout(() => setSalvandoDocumentos(false), 700);
+                    }
                   }}
                   className={`ui-btn ui-btn--save${editingEmpresaId && !empresaTemAlteracoes && !salvandoDocumentos ? " is-apagado" : ""}`}
                 >
@@ -9604,7 +9644,7 @@ export default function Home() {
             campo={modo === "campo"}
             dataDaVisita={fdata(visitaAtual.data)}
             passos={([
-              { chave: "checklist", rotulo: "Checklist", resumo: `${respondidos} de ${totalChecklist} ${totalChecklist === 1 ? "item" : "itens"}`, icone: "checklist", tom: "ok" },
+              { chave: "checklist", rotulo: "Checklist", resumo: pendentesChecklist > 0 ? qtd(pendentesChecklist, "item a responder", "itens a responder") : "Tudo respondido", titulo: `${respondidos} de ${totalChecklist} ${totalChecklist === 1 ? "item respondido" : "itens respondidos"}`, icone: "checklist", tom: "ok" },
               { chave: "evidencias", rotulo: "Evidências", resumo: `${fotosVisita} ${fotosVisita === 1 ? "foto" : "fotos"} · ${audiosVisita} ${audiosVisita === 1 ? "áudio" : "áudios"}`, icone: "evidencias", tom: "info" },
               { chave: "correcoes", rotulo: "Correções", resumo: `${ncsAbertas} ${ncsAbertas === 1 ? "aberta" : "abertas"} nesta visita`, titulo: `${qtd(ncsAbertas, "correção aberta", "correções abertas")} nesta visita (o menu conta as abertas da empresa toda)`, icone: "ncs", tom: "nc" },
               { chave: "pops", rotulo: "POPs da visita", resumo: resumoPopsVisita.pendentes > 0 ? `${resumoPopsVisita.pendentes} a criar` : "Nenhum a criar", titulo: resumoPopsVisita.pendentes > 0 ? `${resumoPopsVisita.pendentes} a criar ou em rascunho` : undefined, icone: "pops", tom: "pend" },
