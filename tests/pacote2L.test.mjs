@@ -104,7 +104,7 @@ test("tarja do comprovante: preso a outro POP → Mover; sem POP → Vincular; P
   const arquivado = [{ id: "p1", catalogoId: "higienizacao-instalacoes" }, { id: "p2", catalogoId: "higienizacao-reservatorio", arquivado: true }];
   assert.equal(tarjaDoComprovante({ tipo: "reservatorio", popId: "p1" }, arquivado).acao, "criar");
   const tela = ler("../components/pc/PcComprovantes.tsx");
-  assert.ok(tela.includes("Criar agora") && tela.includes('tarja.acao === "vincular" ? "Vincular" : "Mover"') && tela.includes('className="comp-tarja"'));
+  assert.ok(tela.includes("Criar agora") && tela.includes('aria-label={`Vincular comprovante ${nomeDoItem}`}') && tela.includes('item.popId ? "Mover para outro POP"') && tela.includes('className="comp-tarja"'));
   assert.ok(tela.includes("sugestaoDoPainel") && tela.includes("comp-pop-fixo"));
   assert.ok(ler("../components/pc/PcFichaPop.tsx").includes("onCriarPopDoModelo={contexto.criarPopDoModelo}"));
   assert.match(ler("../app/globals.css"), /\.comp-tarja\{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 12px;width:100%/);

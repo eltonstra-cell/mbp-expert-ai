@@ -4,7 +4,7 @@ import { protegerCarimboDasEvidencias } from "./fotosDoItem.ts";
 import { preservarEvidenciasEmRelatorio } from "./relatorioEmitido.ts";
 import { podeEditarQuestionario } from "./questionarioAmbiente.ts";
 import { popComoVigente } from "./popsNorma.ts";
-import { CAMPOS_DA_EMPRESA_SO_DA_GESTAO, registrosSemNomesDosOutros, semNomesNaEmpresa, semNomesNoPop } from "./dadosPorPerfil.ts";
+import { CAMPOS_DA_EMPRESA_SO_DA_GESTAO, evidenciasSemNomes, manterNomesGravadosDasEvidencias, registrosSemNomesDosOutros, semNomesNaEmpresa, semNomesNoPop, visitasSemNomes } from "./dadosPorPerfil.ts";
 import { comPerfilProprio } from "./userManagement.ts";
 import { permissoesEfetivas } from "./screenAccess.ts";
 import { acessoVigente } from "./validadeDeAcesso.ts";
@@ -123,9 +123,9 @@ export function filtrarEstadoPorUsuario(
       data.empresaAtualId && empresaIds.has(data.empresaAtualId)
         ? data.empresaAtualId
         : Object.keys(empresas)[0] || null,
-    visitas,
+    visitas: semPops ? visitasSemNomes(visitas) : visitas,
     ncs: semPops ? [] : ncs,
-    evidencias,
+    evidencias: semPops ? evidenciasSemNomes(evidencias) : evidencias,
     usuarios: [usuario],
     registrosAuditoria,
     registrosPop: semPops ? registrosSemNomesDosOutros(registrosPop, usuario.id) : registrosPop,
@@ -430,6 +430,7 @@ export function mesclarEstadoPorUsuario(
     );
     // Foto citada em relatório emitido não some por uma mesclagem.
     evidencias = preservarEvidenciasEmRelatorio(atual.evidencias, evidencias, atual.relatoriosEmitidos);
+    if (usuario.perfil === "Executor de campo") evidencias = manterNomesGravadosDasEvidencias(evidencias, atual.evidencias);
   }
 
   return {

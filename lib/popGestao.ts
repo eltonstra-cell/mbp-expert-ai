@@ -137,11 +137,18 @@ export function correcoesAtrasadasDoPop(
   }).length;
 }
 
+/** POP com versão em uso: Aprovado, ou Em revisão que ainda tem versão aprovada vigente (ela segue em uso). Rascunho, aguardando aprovação, inativo e arquivado não têm registro a cobrar. */
+export function popAtivado(pop: ProcedimentoOperacionalPadronizado): boolean {
+  if (pop.arquivado || pop.status === "Inativo") return false;
+  if (pop.status === "Aprovado") return true;
+  return pop.status === "Em revisão" && popVigente(pop) !== null;
+}
+
 /** Registro atrasado: a frequência do POP é legível e o último registro (ou a aprovação) é mais antigo que ela. */
 export function registroAtrasado(pop: ProcedimentoOperacionalPadronizado, registros: RegistroPop[] | undefined, hoje: string = hojeISO()): boolean {
   // Rascunho, aguardando aprovação, em revisão, inativo e arquivado não têm registro a cobrar: só POP aprovado (ativado) entra na conta,
   // mesmo que exista uma versão aprovada antiga guardada.
-  if (pop.status !== "Aprovado") return false;
+  if (!popAtivado(pop)) return false;
   const vigente = popVigente(pop);
   if (!vigente) return false;
   // Rodada 12e: o cálculo usa a frequência ESTRUTURADA (ou a lida do texto antigo); "outra" só conta se o texto for uma periodicidade conhecida.

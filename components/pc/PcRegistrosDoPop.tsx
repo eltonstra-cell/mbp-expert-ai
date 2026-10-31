@@ -1,5 +1,6 @@
 "use client";
 
+import { popAtivado } from "@/lib/popGestao";
 import Select from "@/components/Select";
 import { useMemo, useState, type ReactNode } from "react";
 import { resumoDosRegistros } from "@/lib/popRegistrosResumo";
@@ -49,7 +50,7 @@ export default function PcRegistrosDoPop({ pop, comprovantes, mensagemDoComprova
     [contexto?.registros, pop.id, guarda?.dias]
   );
   if (!contexto) return null;
-  const resumo = resumoDosRegistros(pop.id, vigente?.conteudo, contexto.registros, hojeISO(), vigente?.aprovacao?.em, pop.status === "Aprovado");
+  const resumo = resumoDosRegistros(pop.id, vigente?.conteudo, contexto.registros, hojeISO(), vigente?.aprovacao?.em, popAtivado(pop));
 
   const provaId = contexto.empresa?.registroProvaPorPop?.[pop.id] || "";
   const erroDescricao = !descricao.trim() ? "Descreva o que foi feito." : "";

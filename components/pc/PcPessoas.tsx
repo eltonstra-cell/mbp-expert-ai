@@ -48,6 +48,10 @@ function dataBr(iso: string) {
 }
 
 // Pessoas da empresa: cadastro leve (nome e cargo) e capacitação nominal com vencimento. Não é conta de acesso.
+function itensDoTreinamento(id: string, onRemover: (id: string) => void) {
+  return [{ rotulo: "Remover", onClick: () => { void confirmar("Remover este registro de treinamento? Esta ação não pode ser desfeita.", { titulo: "Remover treinamento", confirmarRotulo: "Remover", cancelarRotulo: "Cancelar" }).then((sim) => { if (sim) onRemover(id); }); } }];
+}
+
 export default function PcPessoas({ empresa, normas, colaboradores, capacitacoes, onSalvarColaborador, onAlternarAtivo, onSalvarCapacitacao, onRemoverCapacitacao, onVoltar, embutido = false }: Props) {
   const [aba, setAba] = useState<Aba>("colaboradores");
   const [pessoa, setPessoa] = useState<DadosDoColaboradorForm>({ nome: "", cargo: "" });
@@ -203,8 +207,8 @@ export default function PcPessoas({ empresa, normas, colaboradores, capacitacoes
                       <span className="pess-nome">{item.nome}</span>
                       <span className="pess-cargo">{item.cargo}</span>
                     </span>
-                    {item.ativo && estado.id === "sem-registro" ? (
-                      <button type="button" className="pess-estado pess-estado--sem-registro pess-estado-link" onClick={() => abrirTreino(item.id)}>{estado.texto}</button>
+                    {item.ativo && (estado.id === "sem-registro" || estado.id === "vencido") ? (
+                      <button type="button" className={`pess-estado pess-estado--${estado.id} pess-estado-link`} onClick={() => abrirTreino(item.id)}>{estado.texto}</button>
                     ) : (
                       <span className={`pess-estado pess-estado--${estado.id}`}>{estado.texto}</span>
                     )}
@@ -288,13 +292,32 @@ export default function PcPessoas({ empresa, normas, colaboradores, capacitacoes
                         <span className={`pess-sit pess-sit--${vigente ? situacao : "antiga"}`}>{vigente ? ROTULO_DA_CAPACITACAO[situacao] : "Substituída"}</span>
                       </td>
                       <td className="pess-acoes">
-                        <MenuMais rotulo="Mais ações deste treinamento" itens={[{ rotulo: "Remover", onClick: () => { void confirmar("Remover este registro de treinamento? Esta ação não pode ser desfeita.", { titulo: "Remover treinamento", confirmarRotulo: "Remover", cancelarRotulo: "Cancelar" }).then((sim) => { if (sim) onRemoverCapacitacao(item.id); }); } }]} />
+                        <MenuMais rotulo={`Mais ações do treinamento de ${nomes.get(item.colaboradorId)?.nome || "pessoa"}: ${item.conteudo}`} itens={itensDoTreinamento(item.id, onRemoverCapacitacao)} />
                       </td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
+          )}
+          {linhas.length > 0 && (
+            <ul className="pess-cap-lista" aria-label="Treinamentos">
+              {linhas.map((item) => {
+                const situacao = situacaoDaValidade(item.venceEm, hoje);
+                const vigente = vigentes.some((v) => v.id === item.id);
+                const pessoaDoTreino = nomes.get(item.colaboradorId)?.nome || "—";
+                return (
+                  <li key={item.id} className={`pess-cap-item${vigente ? "" : " is-antiga"}`}>
+                    <span className="pess-cap-textos">
+                      <span className="pess-cap-titulo">{pessoaDoTreino} · {item.conteudo}</span>
+                      <span className="pess-cap-sub">{item.cargaHoraria} h · feito em {dataBr(item.data)} · vence em {dataBr(item.venceEm)}</span>
+                    </span>
+                    <span className={`pess-sit pess-sit--${vigente ? situacao : "antiga"}`}>{vigente ? ROTULO_DA_CAPACITACAO[situacao] : "Substituída"}</span>
+                    <MenuMais rotulo={`Mais ações do treinamento de ${pessoaDoTreino}: ${item.conteudo}`} itens={itensDoTreinamento(item.id, onRemoverCapacitacao)} />
+                  </li>
+                );
+              })}
+            </ul>
           )}
         </div>
       )}
@@ -331,9 +354,10 @@ export default function PcPessoas({ empresa, normas, colaboradores, capacitacoes
             </label>
           </div>
           <label className="jan-campo">
-            <span className="jan-rotulo">Conteúdo <span className="jan-conta">{cap.conteudo.length} de {LIMITE_DO_CONTEUDO_DO_TREINAMENTO}</span></span>
-            <input className={`ui-input${erroDe("conteudo") ? " is-invalid" : ""}`} value={cap.conteudo} maxLength={LIMITE_DO_CONTEUDO_DO_TREINAMENTO} aria-invalid={Boolean(erroDe("conteudo"))} onBlur={() => tocar("conteudo")} onChange={(evento) => setCap({ ...cap, conteudo: evento.target.value })} />
+            <span className="jan-rotulo">Conteúdo</span>
+            <input className={`ui-input${erroDe("conteudo") ? " is-invalid" : ""}`} value={cap.conteudo} placeholder="Ex.: Boas práticas de manipulação" maxLength={LIMITE_DO_CONTEUDO_DO_TREINAMENTO} aria-invalid={Boolean(erroDe("conteudo"))} onBlur={() => tocar("conteudo")} onChange={(evento) => setCap({ ...cap, conteudo: evento.target.value })} />
             {erroDe("conteudo") && <span className="ui-field-error" role="alert">{erroDe("conteudo")}</span>}
+            <span className="jan-conta jan-conta--baixo">{cap.conteudo.length} de {LIMITE_DO_CONTEUDO_DO_TREINAMENTO}</span>
           </label>
           <div className="trn-linha trn-linha--datas">
             <label className="jan-campo">
@@ -347,8 +371,9 @@ export default function PcPessoas({ empresa, normas, colaboradores, capacitacoes
               {erroDe("venceEm") && <span className="ui-field-error" role="alert">{erroDe("venceEm")}</span>}
             </label>
             <label className="jan-campo">
-              <span className="jan-rotulo">Instrutor (opcional) <span className="jan-conta">{cap.instrutor.length} de {LIMITE_DO_INSTRUTOR}</span></span>
+              <span className="jan-rotulo">Instrutor (opcional)</span>
               <input className="ui-input" value={cap.instrutor} maxLength={LIMITE_DO_INSTRUTOR} onChange={(evento) => setCap({ ...cap, instrutor: evento.target.value })} />
+              <span className="jan-conta jan-conta--baixo">{cap.instrutor.length} de {LIMITE_DO_INSTRUTOR}</span>
             </label>
           </div>
           {sugestao && (

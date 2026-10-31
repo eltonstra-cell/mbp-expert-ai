@@ -153,17 +153,19 @@ export function separarItensInvalidos<T extends Partial<AppDB>>(atual: Partial<A
       if (!empresa || typeof empresa !== "object") continue;
       const gravada = (atual?.empresas || {})[empresaId];
       let atualizada: Record<string, unknown> = { ...(empresa as unknown as Record<string, unknown>) };
-      const problemaEmpresa = iguais(
-        Object.fromEntries(Object.keys(LIMITE_DA_IDENTIFICACAO).map((campo) => [campo, atualizada[campo]])),
-        Object.fromEntries(Object.keys(LIMITE_DA_IDENTIFICACAO).map((campo) => [campo, (gravada as unknown as Record<string, unknown> | undefined)?.[campo]]))
-      ) && iguais(atualizada.responsabilidadesManual, (gravada as unknown as Record<string, unknown> | undefined)?.responsabilidadesManual)
-        ? null
-        : erroDaEmpresa(atualizada);
-      if (problemaEmpresa) {
-        rejeitados.push({ colecao: "empresas", item: empresaId, campo: problemaEmpresa.campo, mensagem: problemaEmpresa.mensagem });
-        const volta: Record<string, unknown> = { ...atualizada };
-        for (const campo of [...Object.keys(LIMITE_DA_IDENTIFICACAO), "responsabilidadesManual"]) volta[campo] = (gravada as unknown as Record<string, unknown> | undefined)?.[campo];
-        atualizada = volta;
+      // Rodada 6, I4: só o campo que passou do limite é recusado (volta ao gravado); os demais seguem.
+      const gravadaEmpresa = gravada as unknown as Record<string, unknown> | undefined;
+      for (const [campo, limite] of Object.entries(LIMITE_DA_IDENTIFICACAO)) {
+        if (iguais(atualizada[campo], gravadaEmpresa?.[campo]) || textoAte(atualizada[campo], limite)) continue;
+        rejeitados.push({ colecao: "empresas", item: empresaId, campo, mensagem: `O campo pode ter no máximo ${limite} caracteres.` });
+        atualizada = { ...atualizada, [campo]: gravadaEmpresa?.[campo] };
+      }
+      if (!iguais(atualizada.responsabilidadesManual, gravadaEmpresa?.responsabilidadesManual)) {
+        const problema = erroDaEmpresa({ responsabilidadesManual: atualizada.responsabilidadesManual });
+        if (problema) {
+          rejeitados.push({ colecao: "empresas", item: empresaId, campo: problema.campo, mensagem: problema.mensagem });
+          atualizada = { ...atualizada, responsabilidadesManual: gravadaEmpresa?.responsabilidadesManual };
+        }
       }
       const gravados = new Map((gravada?.pops || []).map((pop) => [pop.id, pop]));
       if (Array.isArray(atualizada.pops)) {

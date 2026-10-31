@@ -14,7 +14,7 @@ import {
   mascararTelefone,
   tomDoResumo,
 } from "@/lib/documentosCentral";
-import { CAMPOS_DA_IDENTIFICACAO, ativosDoPapel, contarPreenchidos, mascaraCompletaParaAvancar, proximoCampoDaIdentificacao, type CampoDaIdentificacao } from "@/lib/manualIdentificacao";
+import { CAMPOS_DA_IDENTIFICACAO, ativosDoPapel, contarPreenchidos, mascaraCompletaParaAvancar, proximoCampoDaIdentificacao, type CampoDaIdentificacao , sugestoesQueFaltam } from "@/lib/manualIdentificacao";
 import type { PapelResponsabilidadeManual, ResponsabilidadeManual } from "@/types";
 
 type Props = {
@@ -29,6 +29,8 @@ type Props = {
   onCompletarCadastroDoRt?: () => void;
   /** Sugestões de atividade a partir do CNAE principal e dos secundários. */
   sugestoesDeAtividade?: string[];
+  /** Campos que o servidor recusou (limite de texto): aviso dentro do próprio campo. */
+  errosDoServidor?: Record<string, string>;
   responsabilidades: ResponsabilidadeManual[];
   onResponsabilidadesChange: (responsabilidades: ResponsabilidadeManual[]) => void;
 };
@@ -40,7 +42,7 @@ const PAPEIS: PapelResponsabilidadeManual[] = ["Proprietário", "Consultor/RT"];
 const erroDoCampo = (campo: CampoDaIdentificacao, valor: string) => (campo === "consultorCpfCnpj" ? erroDoCpfCnpj(valor) : campo === "consultorTelefone" ? erroDoTelefone(valor) : "");
 
 // Manual da empresa: três linhas recolhíveis no mesmo nível (uma aberta por vez): Identificação complementar e as Responsabilidades de cada papel.
-export default function PcManualDocumento({ valores, rotulos, doPerfil, onChange, onPreencher, onCompletarCadastroDoRt, sugestoesDeAtividade = [], responsabilidades, onResponsabilidadesChange }: Props) {
+export default function PcManualDocumento({ valores, rotulos, doPerfil, onChange, onPreencher, onCompletarCadastroDoRt, sugestoesDeAtividade = [], errosDoServidor, responsabilidades, onResponsabilidadesChange }: Props) {
   const [aberta, setAberta] = useState<Secao>("identificacao");
   const [resultado, setResultado] = useState<{ texto: string; faltamNoRt: boolean } | null>(null);
   const campos = useRef<Partial<Record<CampoDaIdentificacao, HTMLInputElement | HTMLTextAreaElement | null>>>({});
@@ -141,9 +143,10 @@ export default function PcManualDocumento({ valores, rotulos, doPerfil, onChange
             )}
             <div className="man-grade">
               {CAMPOS_DA_IDENTIFICACAO.map((campo, posicao) => {
-                const erro = tocados[campo] || mascaraCompleta(campo, valores[campo]) ? erroDoCampo(campo, valores[campo]) : "";
+                const erro = (tocados[campo] || mascaraCompleta(campo, valores[campo]) ? erroDoCampo(campo, valores[campo]) : "") || errosDoServidor?.[campo] || "";
                 const idErro = `man-erro-${campo}`;
                 const ehAtividade = campo === "atividadeDescricao";
+                const faltantes = ehAtividade ? sugestoesQueFaltam(sugestoesDeAtividade, valores.atividadeDescricao || "") : [];
                 const aoMudar = (valorBruto: string) => {
                   escrever(campo, valorBruto);
                   aposDigitar(campo, valorBruto);
@@ -182,8 +185,8 @@ export default function PcManualDocumento({ valores, rotulos, doPerfil, onChange
                     )}
                     {ehAtividade && (
                       <span className="man-sugestoes">
-                        {sugestoesDeAtividade.length > 0 && <span className="man-sugestoes-rotulo">Sugestões do CNAE:</span>}
-                        {sugestoesDeAtividade.map((texto) => (
+                        {faltantes.length > 0 && <span className="man-sugestoes-rotulo">Sugestões do CNAE:</span>}
+                        {faltantes.map((texto) => (
                           <button key={texto} type="button" className="man-sugestao" onClick={() => { escrever(campo, texto); window.setTimeout(() => irPara(campo), 0); }}>{texto}</button>
                         ))}
                       </span>

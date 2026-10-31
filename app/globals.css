@@ -7747,9 +7747,9 @@ html:root:root body .man-adicionar{margin-top:4px}
 html:root:root body .jan-rodape .ui-btn--save:disabled,html:root:root body .jan-rodape .ui-btn--save.is-apagado{background:#1E7A3E;color:#fff;opacity:.5;border:0}
 html:root:root body .jan-caixa .ui-field-error{font-size:15px}
 html:root:root body .pess-linha-p.is-inativa .pess-nome,html:root:root body .man-resp.is-desligada .man-resp-texto{color:#55607A}
-/* RODADA 5 · H: texto branco sobre laranja com 4,5:1 ou mais (#E8591A tinha 3,57:1; #CC4510 tem 4,74:1). Só botões com texto; o círculo "Registrar" só tem ícone e mantém a cor. */
-html:root:root body :is(.ui-btn--laranja,.pgl-adicionar-botao,.pgl-aprovar,.cc-continuar,.cc-proxima-botao){border:0;background:#CC4510;color:#fff;font-weight:400}
-html:root:root body :is(.ui-btn--laranja,.pgl-adicionar-botao,.pgl-aprovar,.cc-continuar,.cc-proxima-botao):hover:not(:disabled){background:#B33D0E}
+/* RODADA 5 · H: texto branco sobre laranja com 4,5:1 ou mais (#E8591A tinha 3,57:1; var(--botao-laranja) tem 4,74:1). Só botões com texto; o círculo "Registrar" só tem ícone e mantém a cor. */
+html:root:root body :is(.ui-btn--laranja,.pgl-adicionar-botao,.pgl-aprovar,.cc-continuar,.cc-proxima-botao){border:0;background:var(--botao-laranja);color:#fff;font-weight:400}
+html:root:root body :is(.ui-btn--laranja,.pgl-adicionar-botao,.pgl-aprovar,.cc-continuar,.cc-proxima-botao):hover:not(:disabled){background:var(--botao-laranja-hover)}
 /* RODADA 5 · B: Capacitação em largura total e janela "Registrar treinamento" */
 html:root:root body .pess-tabela{width:100%;font-size:15px}
 html:root:root body .pess-tabela th{padding:8px 10px;font-size:14px;font-weight:500;color:#55607A}
@@ -7789,8 +7789,8 @@ html:root:root body .cc2-ambiente{font-size:20px;line-height:1.25;font-weight:40
 html:root:root body .cc2-barra{height:6px;border-radius:3px;background:#E3E8EE;overflow:hidden}
 html:root:root body .cc2-barra>span{display:block;height:100%;border-radius:3px;background:#264A80}
 html:root:root body .cc2-resp{font-size:15px;color:#526477}
-html:root:root body .cc2-continuar{flex:none;height:44px;padding:0 20px;border:0;border-radius:10px;background:#CC4510;color:#fff;font-size:16px;font-weight:400;white-space:nowrap;cursor:pointer}
-html:root:root body .cc2-continuar:hover:not(:disabled){background:#B33D0E}
+html:root:root body .cc2-continuar{flex:none;height:44px;padding:0 20px;border:0;border-radius:10px;background:var(--botao-laranja);color:#fff;font-size:16px;font-weight:400;white-space:nowrap;cursor:pointer}
+html:root:root body .cc2-continuar:hover:not(:disabled){background:var(--botao-laranja-hover)}
 html:root:root body .cc2-continuar:disabled{opacity:.45;cursor:not-allowed}
 html:root:root body .cc2-continuar:focus-visible,html:root:root body .cc2-cartao:focus-visible,html:root:root body .cc2-nc:focus-visible,html:root:root body .cc2-finalizar:focus-visible,html:root:root body .cc2-ver-todas:focus-visible,html:root:root body .cc2-programas:focus-visible{outline:3px solid #264A80;outline-offset:2px}
 html:root:root body .cc2-grade{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;flex:none}
@@ -7830,7 +7830,7 @@ html:root:root body .cc2-finalizar:hover{background:#F1F3F7}
 html[data-modo="campo"]:root:root body .cc2{gap:12px}
 html[data-modo="campo"]:root:root body .cc2-finalizar{align-self:stretch}
 /* RODADA 5 · C: cabeçalho do Capítulo 3 em caixa verde suave, com as contagens à direita em texto simples */
-html:root:root body .prog-capitulo{display:flex;align-items:center;justify-content:space-between;gap:16px;flex:none;margin:0 0 18px;padding:12px 16px;border:1px solid #CFE6D8;border-radius:10px;background:#EAF5EE;color:#1B2433}
+html:root:root body .prog-capitulo{display:flex;align-items:center;justify-content:space-between;gap:16px;flex:none;margin:0 0 18px;padding:12px 16px;border:1px solid #F0D9A0;border-radius:10px;background:#FFF6E5;color:#1B2433}
 html:root:root body .prog-capitulo-texto{display:flex;flex-direction:column;gap:2px;min-width:0}
 html:root:root body .prog-capitulo p{margin:0;font-size:15px;line-height:1.4;font-weight:400;color:#1B2433}
 html:root:root body .prog-capitulo-titulo{font-weight:500}
@@ -7851,3 +7851,46 @@ html:root:root body .man-link{padding:0;border:0;background:transparent;font:inh
 /* RODADA 5 F1: a lista de POPs ocupa a largura inteira de Documentos (o align-items:start do modo com indice encolhia o conteudo) */
 html:root:root body .cen-doc .pgl{align-items:stretch}
 html:root:root body .cen-doc .pgl-conteudo{align-self:stretch;width:100%}
+
+/* RODADA 6 · A: cor única dos botões laranja com texto (branco sobre #D9500F = 4,1:1); o círculo "Registrar" (só ícone) segue #E8591A. */
+:root{--botao-laranja:#D9500F;--botao-laranja-hover:#BF450C}
+/* RODADA 6 · C: contador abaixo do campo, à direita; menu ⋯ com a altura do conteúdo; "vencido" clicável em vermelho */
+html:root:root body .jan-conta--baixo{align-self:flex-end;margin-top:-2px;font-size:14px;color:#526477}
+html:root:root body .cadest-menu{height:auto;align-content:flex-start}
+html:root:root body .cadest-menu-item{flex:none}
+html:root:root body .pess-estado-link.pess-estado--vencido{color:#B83A33}
+/* RODADA 6 · G: no tablet e no celular a tabela de Capacitação vira lista */
+html:root:root body .pess-cap-lista{display:none;margin:0;padding:0;list-style:none}
+@media (max-width:1099px){
+  html:root:root body .pess-tabela{display:none}
+  html:root:root body .pess-cap-lista{display:block}
+  html:root:root body .pess-cap-item{display:grid;grid-template-columns:minmax(0,1fr) auto 40px;align-items:center;gap:4px 10px;padding:10px 0;border-bottom:1px solid #E3E8EE}
+  html:root:root body .pess-cap-item.is-antiga{opacity:.6}
+  html:root:root body .pess-cap-textos{display:flex;flex-direction:column;gap:2px;min-width:0}
+  html:root:root body .pess-cap-titulo{font-size:16px;font-weight:500;color:#1B2433;overflow-wrap:anywhere}
+  html:root:root body .pess-cap-sub{font-size:15px;color:#526477}
+}
+
+/* RODADA 6 · D: barra segmentada da Próxima etapa e linhas de NC de altura fixa (a lista termina numa linha inteira) */
+html:root:root body .cc2-barra{display:flex;background:#E3E7EE}
+html:root:root body .cc2-barra>span{height:100%;border-radius:0;flex:none}
+html:root:root body .cc2-barra>.cc2-barra-ok{background:#21805B}
+html:root:root body .cc2-barra>.cc2-barra-nc{background:#C83F45}
+html:root:root body .cc2-barra>.cc2-barra-na{background:#8A96AD}
+html:root:root body .cc2-nc{box-sizing:border-box;height:64px;min-height:64px;flex:none}
+html:root:root body .cc2-nc-titulo,html:root:root body .cc2-nc-sub{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* RODADA 6 · E: vencimento ao lado do título; comprovante substituído apagado */
+html:root:root body .comp-l-venc{font-size:15px;font-weight:400;color:#526477}
+html:root:root body .comp-linha.is-substituido .comp-l-titulo,html:root:root body .comp-linha.is-substituido .comp-l-sub,html:root:root body .comp-linha.is-substituido .comp-l-venc,html:root:root body .comp-linha.is-substituido .comp-l-estado{color:#526477}
+
+/* RODADA 6 · F: folga em cima e embaixo da área que rola, para o contorno de foco aparecer inteiro */
+html:root:root body .man-corpo{padding-top:10px;padding-bottom:14px;scroll-padding:12px 0}
+html:root:root body .man-grade .man-campo{scroll-margin:12px 0}
+html:root:root body .man-sugestoes-rotulo{font-size:15px}
+
+/* RODADA 6 · H: piso de toque (40 px) e de fonte (15 px em texto de leitura) nos itens apontados pela revisao da rodada 5 */
+html:root:root body :is(.cc2-ver-todas,.cc2-programas,.pess-estado-link,.man-sugestao){min-height:40px;display:inline-flex;align-items:center}
+html:root:root body .man-sugestao{font-size:15px;padding:6px 12px}
+html:root:root body .pess-tabela th{font-size:15px}
+@media (max-width:640px){html:root:root body .cc2-resumo{font-size:15px}}

@@ -141,7 +141,7 @@ export function faltamNoCadastroDoRt(semFonte: CampoDaIdentificacao[]): CampoDaI
 /** Frase do botão "Preencher com dados do RT": quantos campos entraram e o que falta no cadastro do RT. */
 export function fraseDoPreencher(preenchidos: number, faltamNoRt: string[]): string {
   const entrada = preenchidos === 0 ? "Nada novo para preencher." : preenchidos === 1 ? "1 campo preenchido." : `${preenchidos} campos preenchidos.`;
-  return faltamNoRt.length ? `${entrada} Faltam no cadastro do RT: ${faltamNoRt.join(", ")}.` : `${entrada}${preenchidos > 0 ? " Salve para guardar." : ""}`;
+  return faltamNoRt.length ? `${entrada} Faltam ${faltamNoRt.length} no cadastro do RT.` : `${entrada}${preenchidos > 0 ? " Salve para guardar." : ""}`;
 }
 
 /** Próximo campo depois de `campo` na ordem da tela (nulo no último). */
@@ -157,6 +157,13 @@ export function mascaraCompletaParaAvancar(campo: CampoDaIdentificacao, valor: s
   if (campo === "consultorTelefone") return digitos === 11 ? "agora" : digitos === 10 ? "depois" : "nao";
   if (campo === "dataElaboracaoManual") return /^\d{4}-\d{2}-\d{2}$/.test(valor) && Number(valor.slice(0, 4)) >= 1900 ? "depois" : "nao";
   return "nao";
+}
+
+/** Tira das sugestões as que o campo Atividades já traz (sem diferença de caixa, acento ou espaços). */
+export function sugestoesQueFaltam(sugestoes: string[], atual: string): string[] {
+  const limpo = (texto: string) => texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+  const campo = limpo(atual);
+  return sugestoes.filter((texto) => !campo.includes(limpo(texto)));
 }
 
 /** Sugestões de "atividade de produção": a descrição do CNAE principal e as dos secundários (sem repetir; só as que cabem no limite do campo). */

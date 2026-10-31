@@ -1,5 +1,6 @@
 "use client";
 
+import { useLayoutEffect, useRef } from "react";
 import { NavIcon, type NavIconName } from "@/components/NavIcons";
 import { confirmar } from "@/lib/dialogos";
 import { CampoTelaFixa } from "@/components/campo/CampoTelas";
@@ -73,6 +74,28 @@ export default function PcCentral({
   totalNcsAbertas,
   onFinalizar,
 }: Props) {
+  const ncsRef = useRef<HTMLDivElement>(null);
+  // A lista de NCs rola por dentro e termina sempre numa linha inteira: a altura vira múltiplo da altura da linha.
+  useLayoutEffect(() => {
+    const caixa = ncsRef.current;
+    const lista = caixa?.querySelector<HTMLElement>(".cc2-ncs-lista");
+    const cab = caixa?.querySelector<HTMLElement>(".cc2-ncs-cab");
+    if (!caixa || !lista || !cab) return;
+    const ajustar = () => {
+      lista.style.flex = "1 1 0";
+      lista.style.height = "";
+      const linha = lista.querySelector<HTMLElement>(".cc2-nc")?.offsetHeight || 0;
+      const livre = lista.clientHeight;
+      if (!linha || !livre) return;
+      const inteiras = Math.max(1, Math.floor(livre / linha));
+      if (inteiras * linha < lista.scrollHeight - 1) { lista.style.flex = "none"; lista.style.height = `${inteiras * linha}px`; }
+    };
+    ajustar();
+    const obs = new ResizeObserver(() => ajustar());
+    obs.observe(caixa);
+    return () => obs.disconnect();
+  }, [ncsAbertas]);
+
   const finalizar = () => {
     if (!onFinalizar) return;
     if (campo && proxima.respondidos === 0) {
@@ -131,7 +154,17 @@ export default function PcCentral({
           <div className="cc2-eyebrow">Próxima etapa{dataDaVisita ? ` · ${dataDaVisita}` : ""}</div>
           <div className="cc2-ambiente">{proxima.titulo}</div>
           <div className="cc2-barra" role="progressbar" aria-label="Progresso do checklist" aria-valuemin={0} aria-valuemax={100} aria-valuenow={proxima.percentual}>
-            <span style={{ width: `${Math.max(0, Math.min(100, proxima.percentual))}%` }} />
+            {(() => {
+              const total = Math.max(1, proxima.total);
+              const parte = (n: number) => `${Math.max(0, Math.min(100, (n / total) * 100))}%`;
+              return (
+                <>
+                  <span className="cc2-barra-ok" style={{ width: parte(proxima.conformes) }} />
+                  <span className="cc2-barra-nc" style={{ width: parte(proxima.naoConformes) }} />
+                  <span className="cc2-barra-na" style={{ width: parte(proxima.naoSeAplica) }} />
+                </>
+              );
+            })()}
           </div>
           <div className="cc2-resp">
             {proxima.respondidos} de {proxima.total} respondidos · {proxima.percentual}%
@@ -154,7 +187,7 @@ export default function PcCentral({
       )}
 
       {ncsAbertas && ncsAbertas.length > 0 && (
-        <div className="cc2-ncs">
+        <div className="cc2-ncs" ref={ncsRef}>
           <div className="cc2-ncs-cab">
             <h2 className="cc2-ncs-titulo">Não conformidades em aberto</h2>
             <button type="button" className="cc2-ver-todas" onClick={onVerNcs}>Ver todas ({totalNcsAbertas}) →</button>

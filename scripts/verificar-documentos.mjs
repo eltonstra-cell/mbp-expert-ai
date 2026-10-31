@@ -113,7 +113,7 @@ try {
     const botoes = JSON.parse(await js(`JSON.stringify({add:(document.querySelector(".pgl-adicionar-botao")?getComputedStyle(document.querySelector(".pgl-adicionar-botao")).backgroundColor:"-"),aprovar:document.querySelector(".pgl-aprovar")?getComputedStyle(document.querySelector(".pgl-aprovar")).backgroundColor:"-"})`));
     const lar = JSON.parse(await js(`JSON.stringify({pops:(()=>{const e=document.querySelector(".pgl-lista")||document.querySelector(".pgl");const r=e&&e.getBoundingClientRect();return r&&[Math.round(r.left),Math.round(r.right)]})(),add:(()=>{const e=document.querySelector(".pgl-acoes");const r=e&&e.getBoundingClientRect();return r&&[Math.round(r.left),Math.round(r.right)]})(),area:(()=>{const e=document.querySelector(".cen-doc");const r=e&&e.getBoundingClientRect();return r&&[Math.round(r.left),Math.round(r.right)]})(),cadeia:(()=>{let e=document.querySelector(".pgl-lista"),o=[];while(e&&o.length<7){const r=e.getBoundingClientRect();const c=getComputedStyle(e);o.push(String(e.className).slice(0,22)+":"+Math.round(r.left)+"-"+Math.round(r.right)+":"+c.display+":"+c.maxWidth);e=e.parentElement}return o})(),pgl:(()=>{const e=document.querySelector(".pgl");const r=e&&e.getBoundingClientRect();return r&&[Math.round(r.left),Math.round(r.right),getComputedStyle(e).gridTemplateColumns]})()})`));
     registrar(`29c0. POPs (${nome}): lista na largura de Documentos e '+ Adicionar POP' na borda direita`, Boolean(lar.pops) && Boolean(lar.area) && lar.pops[1] >= lar.area[1] - 40 && (!lar.add || lar.add[1] >= lar.area[1] - 40), JSON.stringify(lar));
-    registrar(`29c. POPs (${nome}): '+ Adicionar POP' laranja com texto branco (sem azul-marinho)`, botoes.add === "rgb(204, 69, 16)", JSON.stringify(botoes));
+    registrar(`29c. POPs (${nome}): '+ Adicionar POP' laranja com texto branco (sem azul-marinho)`, botoes.add === "rgb(217, 80, 15)", JSON.stringify(botoes));
 
     // F6: Registros e Histórico do POP não rolam a página no tablet e no celular.
     if (nome !== "pc") {
@@ -147,7 +147,7 @@ try {
     await esperar(async () => js('!!document.querySelector(".pess-linha-p")'), 8000);
     await foto(`29-pessoas-${nome}`);
     const pes = JSON.parse(await js(`JSON.stringify({linhas:document.querySelectorAll(".pess-linha-p").length,estados:[...document.querySelectorAll(".pess-estado")].map(x=>x.innerText),avatar:getComputedStyle(document.querySelector(".pess-avatar")).backgroundColor,botao:getComputedStyle(document.querySelector(".ui-btn--laranja")).backgroundColor,abas:[...document.querySelectorAll(".cdoc-aba")].map(x=>x.innerText.replace(/\\s+/g," ").trim()),sub:document.querySelector(".cdoc-sub")?.innerText})`));
-    registrar(`29d. Pessoas (${nome}): linhas sem caixa com avatar creme, estados do treinamento e abas de texto`, pes.linhas === 4 && pes.estados.join("|") === "Treinamento em dia|Treinamento pendente|Treinamento em dia|Treinamento sem registro" && pes.avatar === "rgb(255, 246, 229)" && /Colaboradores 4/.test(pes.abas[0]) && /Capacitação 3/.test(pes.abas[1]) && pes.botao === "rgb(204, 69, 16)", JSON.stringify(pes));
+    registrar(`29d. Pessoas (${nome}): linhas sem caixa com avatar creme, estados do treinamento e abas de texto`, pes.linhas === 4 && pes.estados.join("|") === "Treinamento em dia|Treinamento pendente|Treinamento em dia|Treinamento sem registro" && pes.avatar === "rgb(255, 246, 229)" && /Colaboradores 4/.test(pes.abas[0]) && /Capacitação 3/.test(pes.abas[1]) && pes.botao === "rgb(217, 80, 15)", JSON.stringify(pes));
     registrar(`29e. Pessoas (${nome}): a página não rola`, await semPaginaRola());
     const ind = JSON.parse(await js(`JSON.stringify({titulo:!!document.querySelector(".cen-indice-titulo"),conta:[...document.querySelectorAll(".cen-indice-conta")].map(x=>getComputedStyle(x).color),botaoMais:(()=>{const b=document.querySelector(".pess-linha-p .cadest-mais");if(!b)return null;const s=getComputedStyle(b);return {borda:s.borderTopWidth,fundo:s.backgroundColor}})()})`));
     registrar(`30a. Documentos (${nome}): contadores do índice em cinza #526477 e sem o rótulo 'Documentos' acima do índice; ⋯ de Pessoas sem caixa`, !ind.titulo && (nome === "celular" || (ind.conta.length > 0 && ind.conta.every((c) => c === "rgb(82, 100, 119)"))) && ind.botaoMais && ind.botaoMais.borda === "0px" && /rgba\(0, 0, 0, 0\)|transparent/.test(ind.botaoMais.fundo), JSON.stringify(ind));
@@ -184,6 +184,25 @@ try {
     await n.esperar(400);
     registrar(`29g. Adicionar pessoa (${nome}): Esc fecha a janela`, await js('!document.querySelector(".jan-caixa")'));
 
+    // Rodada 6 · Capacitação: tabela no PC, lista no tablet/celular; janela com contadores abaixo; menu ⋯ sem sobra
+    await js('document.getElementById("pess-aba-capacitacao")?.click()');
+    await n.esperar(400);
+    const cap6 = JSON.parse(await js(`JSON.stringify((()=>{const t=document.querySelector(".pess-tabela");const l=document.querySelector(".pess-cap-lista");const area=document.querySelector(".cdoc-lista");const vis=(e)=>!!e&&getComputedStyle(e).display!=="none";return {tabela:vis(t),lista:vis(l),itens:l?l.querySelectorAll(".pess-cap-item").length:0,semRolagemLateral:area.scrollWidth<=area.clientWidth+1,sub:l?.querySelector(".pess-cap-sub")?.innerText||""}})())`));
+    registrar(`31a. Capacitação (${nome}): ${nome === "pc" ? "tabela" : "lista"} sem rolagem lateral`, nome === "pc" ? cap6.tabela && !cap6.lista && cap6.semRolagemLateral : !cap6.tabela && cap6.lista && cap6.itens > 0 && /h · feito em .* · vence em /.test(cap6.sub) && cap6.semRolagemLateral, JSON.stringify(cap6));
+    await js(`(()=>{const b=nome=>[...document.querySelectorAll(".pess-cap-item .cadest-mais, .pess-tabela .cadest-mais")].find(x=>getComputedStyle(x).display!=="none"&&x.offsetParent);b()?.click()})()`.replace("nome=>","()=>").replace("b()?.click()","b()?.click()"));
+    await n.esperar(300);
+    const men6 = JSON.parse(await js(`JSON.stringify((()=>{const m=document.querySelector(".cadest-menu");if(!m)return null;const filhos=[...m.children].reduce((t,c)=>t+c.getBoundingClientRect().height,0);const r=m.getBoundingClientRect();const cs=getComputedStyle(m);return {altura:Math.round(r.height),conteudo:Math.round(filhos+parseFloat(cs.paddingTop)+parseFloat(cs.paddingBottom)+parseFloat(cs.borderTopWidth)+parseFloat(cs.borderBottomWidth))}})())`));
+    registrar(`31b. Capacitação (${nome}): menu ⋯ com a altura do conteúdo`, Boolean(men6) && Math.abs(men6.altura - men6.conteudo) <= 2, JSON.stringify(men6));
+    await js('document.dispatchEvent(new KeyboardEvent("keydown",{key:"Escape",bubbles:true}))');
+    await n.esperar(200);
+    await clicar("button", "+ Registrar treinamento");
+    await esperar(async () => js('!!document.querySelector(".jan-caixa")'), 5000);
+    await n.esperar(300);
+    const trn6 = JSON.parse(await js(`JSON.stringify((()=>{const cx=document.querySelector(".jan-caixa");const campos=[...cx.querySelectorAll(".jan-campo")];const achar=(t)=>campos.find(c=>c.querySelector(".jan-rotulo")?.innerText.includes(t));const conta=(c)=>{const k=c.querySelector(".jan-conta--baixo");const i=c.querySelector("input");if(!k||!i)return null;const kr=k.getBoundingClientRect(),ir=i.getBoundingClientRect(),cr=c.getBoundingClientRect();return {abaixo:kr.top>=ir.bottom-1,direita:Math.abs(kr.right-ir.right)<=4,cor:getComputedStyle(k).color,texto:k.innerText.trim()}};const co=achar("Conteúdo"),ins=achar("Instrutor");return {conteudo:co&&conta(co),instrutor:ins&&conta(ins),placeholder:co?.querySelector("input")?.placeholder,rotuloLimpo:!cx.querySelector(".jan-rotulo .jan-conta")}})())`));
+    registrar(`31c. Registrar treinamento (${nome}): contadores abaixo do campo, à direita, em cinza #526477, e placeholder do Conteúdo`, Boolean(trn6.conteudo && trn6.instrutor) && trn6.conteudo.abaixo && trn6.conteudo.direita && trn6.instrutor.abaixo && trn6.instrutor.direita && trn6.conteudo.cor === "rgb(82, 100, 119)" && trn6.conteudo.texto === "0 de 200" && trn6.instrutor.texto === "0 de 80" && trn6.placeholder === "Ex.: Boas práticas de manipulação" && trn6.rotuloLimpo, JSON.stringify(trn6));
+    await js('document.querySelector(".jan-caixa").dispatchEvent(new KeyboardEvent("keydown",{key:"Escape",bubbles:true}))');
+    await n.esperar(300);
+
     // Programas
     await irPara("Programas");
     await esperar(async () => js('!!document.querySelector(".prog-item")'), 8000);
@@ -191,6 +210,7 @@ try {
     await foto(`29-programas-${nome}`);
     const prog = JSON.parse(await js(`JSON.stringify({sub:[(document.querySelector(".prog-capitulo")||{}).innerText||""],estados:[...document.querySelectorAll(".prog-estado .sel-texto")].map(x=>x.innerText),rodape:document.querySelector(".cen-salvar")?.innerText.replace(/\\s+/g," ").trim(),rodapeBg:document.querySelector(".cen-salvar")&&getComputedStyle(document.querySelector(".cen-salvar")).backgroundColor})`));
     registrar(`29h. Programas (${nome}): cabeçalho 'Capítulo 3 · … · 1 ativo e 1 em implantação', estados em texto (Ativo/Em implantação/Não iniciado) e rodapé branco com 'Tudo salvo'`, /Capítulo 3 · Programas de Controle de Qualidade/.test(prog.sub[0]) && /1 ativo · 1 em implantação/.test(prog.sub[0]) && prog.estados[0] === "Ativo" && prog.estados[1] === "Em implantação" && prog.estados[2] === "Não iniciado" && /Tudo salvo/.test(prog.rodape) && prog.rodapeBg === "rgb(255, 255, 255)", JSON.stringify(prog));
+    registrar(`31d. Programas (${nome}): caixa do Capítulo 3 em creme com borda #F0D9A0 e texto preto`, await js(`(()=>{const c=document.querySelector(".prog-capitulo");if(!c)return false;const e=getComputedStyle(c);return e.backgroundColor==="rgb(255, 246, 229)"&&e.borderTopColor==="rgb(240, 217, 160)"&&e.color==="rgb(27, 36, 51)"})()`));
     registrar(`29i. Programas (${nome}): a página não rola`, await semPaginaRola());
     const pg = JSON.parse(await js(`JSON.stringify({sub:(document.querySelector(".prog-capitulo")||{}).innerText||"",linha:Math.round(document.querySelector(".prog-item").getBoundingClientRect().height),folga:(()=>{const l=document.querySelector(".cdoc-lista");const s=document.querySelector(".prog-estado-wrap");return Math.round(l.getBoundingClientRect().right-s.getBoundingClientRect().right)})()})`));
     registrar(`30f. Programas (${nome}): linhas de cerca de 64 px, folga à direita para a barra de rolagem e texto '${nome === "pc" ? "Clique" : "Toque"} no nome…'`, pg.linha >= 60 && pg.linha <= 72 && pg.folga >= 10 && new RegExp(nome === "pc" ? "Clique no nome" : "Toque no nome").test(pg.sub) && !(nome === "pc" ? /Toque no nome/ : /Clique no nome/).test(pg.sub), JSON.stringify(pg));
@@ -223,7 +243,7 @@ try {
     await esperar(async () => js('!!document.querySelector(".comp-linha")'), 8000);
     await foto(`29-comprovantes-${nome}`);
     const comp = JSON.parse(await js(`JSON.stringify({resumo:document.querySelector(".comp-resumo")?.innerText,linhas:[...document.querySelectorAll(".comp-linha .comp-l-estado")].map(x=>x.innerText),botao:getComputedStyle(document.querySelector(".comp-anexar")).backgroundColor,largo:Math.round(document.querySelector(".comp-anexar").getBoundingClientRect().width)})`));
-    registrar(`29j. Comprovantes (${nome}): resumo em texto colorido, vencidos primeiro e '+ Anexar comprovante' laranja${nome === "celular" ? " de largura total" : ""}`, /1 vencido · 1 vence em 30 dias · 1 em dia/.test(comp.resumo) && /^Vencido há 10 dias/.test(comp.linhas[0]) && comp.botao === "rgb(204, 69, 16)" && (nome !== "celular" || comp.largo > 300), JSON.stringify(comp));
+    registrar(`29j. Comprovantes (${nome}): resumo em texto colorido, vencidos primeiro e '+ Anexar comprovante' laranja${nome === "celular" ? " de largura total" : ""}`, /1 vencido · 1 vence em 30 dias · 1 em dia/.test(comp.resumo) && /^Vencido há 10 dias/.test(comp.linhas[0]) && comp.botao === "rgb(217, 80, 15)" && (nome !== "celular" || comp.largo > 300), JSON.stringify(comp));
     registrar(`29k. Comprovantes (${nome}): a página não rola`, await semPaginaRola());
     await js('document.querySelector(".comp-anexar")?.click()');
     await n.esperar(500);

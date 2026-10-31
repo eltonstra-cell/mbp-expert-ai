@@ -44,14 +44,14 @@ test("Central: Próxima etapa em cartão branco (borda #E3E8EE), ícone circular
   assert.ok(css.includes("cc2-proxima{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:16px;flex:none;padding:16px 18px;border:1px solid #E3E8EE;border-radius:12px;background:#fff}"));
   assert.ok(css.includes("cc2-proxima-icone{display:grid;place-items:center;width:44px;height:44px;border-radius:50%;background:#264A80;color:#fff}"));
   assert.ok(css.includes("cc2-barra{height:6px;"));
-  assert.ok(css.includes("cc2-continuar{flex:none;height:44px;padding:0 20px;border:0;border-radius:10px;background:#CC4510;color:#fff"));
+  assert.ok(css.includes("cc2-continuar{flex:none;height:44px;padding:0 20px;border:0;border-radius:10px;background:var(--botao-laranja);color:#fff"));
 });
 
 test("Central: lista de não conformidades com círculo vermelho e ícone branco; linha inteira clicável; 'Ver todas (N) →' no topo; só ela rola", () => {
   assert.ok(!central.includes("Acompanhar →") && !central.includes("<ListRow"));
   assert.ok(central.includes('nc.status !== "Aberta"') && central.includes("onClick={nc.onAbrir}"));
   assert.ok(central.includes("Ver todas ({totalNcsAbertas}) →"));
-  assert.ok(central.indexOf("Ver todas") < central.indexOf("cc2-ncs-lista"), "o link fica no topo da lista");
+  assert.ok(central.indexOf("Ver todas") < central.indexOf("className=\"cc2-ncs-lista\""), "o link fica no topo da lista");
   assert.ok(css.includes("cc2-nc-icone{display:grid;flex:none;place-items:center;width:32px;height:32px;border-radius:50%;background:#C83F45;color:#fff}"));
   assert.ok(css.includes("cc2-ncs-lista{display:flex;flex:1 1 0;flex-direction:column;gap:0;min-height:0;overflow-y:auto;"));
   assert.ok(css.includes("cc2-ver-todas{border:0;background:transparent;font:inherit;font-size:15px;color:#264A80"));

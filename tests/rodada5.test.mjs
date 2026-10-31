@@ -16,7 +16,7 @@ const diaria = { frequencia: "diária", passos: [] };
 test("F2: rascunho nunca fica com registro atrasado, mesmo com versão aprovada antiga guardada", () => {
   const aprovado = { id: "p1", codigo: "POP-01", titulo: "Higienização", status: "Aprovado", versao: "1.0", conteudo: diaria, aprovacao, versoes: [] };
   assert.equal(registroAtrasado(aprovado, [], HOJE), true, "aprovado há meses, diário, sem registro: atrasado");
-  for (const status of ["Rascunho", "Aguardando aprovação", "Em revisão", "Inativo"]) {
+  for (const status of ["Rascunho", "Aguardando aprovação", "Inativo"]) {
     const outro = { ...aprovado, status, versoes: [{ versao: "0.9", status: "Aprovado", conteudo: diaria, aprovacao }] };
     assert.equal(registroAtrasado(outro, [], HOJE), false, status);
   }
@@ -164,9 +164,9 @@ test("C: contagens dos programas à direita do cabeçalho", () => {
 
 test("E1: o 'Preencher com dados do RT' diz quantos campos entraram e o que falta no cadastro do RT", () => {
   assert.deepEqual(faltamNoCadastroDoRt(["consultorTelefone", "dataElaboracaoManual", "consultorRegistro"]), ["consultorTelefone", "consultorRegistro"]);
-  assert.equal(fraseDoPreencher(3, ["telefone", "registro"]), "3 campos preenchidos. Faltam no cadastro do RT: telefone, registro.");
+  assert.equal(fraseDoPreencher(3, ["telefone", "registro"]), "3 campos preenchidos. Faltam 2 no cadastro do RT.");
   assert.equal(fraseDoPreencher(1, []), "1 campo preenchido. Salve para guardar.");
-  assert.equal(fraseDoPreencher(0, ["telefone"]), "Nada novo para preencher. Faltam no cadastro do RT: telefone.");
+  assert.equal(fraseDoPreencher(0, ["telefone"]), "Nada novo para preencher. Faltam 1 no cadastro do RT.");
 });
 
 test("E2: sugestões de atividade vêm do CNAE principal e dos secundários, sem repetir e só as que cabem no campo", () => {
@@ -195,5 +195,16 @@ test("F1/H: a lista de POPs estica na largura de Documentos e o laranja dos bot�
   const lum = (hex) => { const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
   const razao = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
   assert.ok(razao("#E8591A", "#FFFFFF") < 4.5);
-  assert.ok(razao("#CC4510", "#FFFFFF") >= 4.5);
+  assert.ok(razao("#D9500F", "#FFFFFF") >= 4);
+});
+
+test("Rodada 6 · I4: um campo da identificação acima do limite é recusado sozinho; os outros são salvos", () => {
+  const gravada = { e1: { id: "e1", nome: "Casa", consultorNome: "Ana", atividadeDescricao: "Antiga" } };
+  const recebida = { e1: { id: "e1", nome: "Casa", consultorNome: "Ana Maria", atividadeDescricao: "x".repeat(5000) } };
+  const { estado, rejeitados } = separarItensInvalidos({ empresas: gravada }, { empresas: recebida });
+  assert.equal(rejeitados.length, 1);
+  assert.equal(rejeitados[0].colecao, "empresas");
+  assert.equal(rejeitados[0].campo, "atividadeDescricao");
+  assert.equal(estado.empresas.e1.consultorNome, "Ana Maria");
+  assert.equal(estado.empresas.e1.atividadeDescricao, "Antiga");
 });

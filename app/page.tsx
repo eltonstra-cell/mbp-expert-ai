@@ -1108,6 +1108,7 @@ export default function Home() {
   const [salvandoDocumentos, setSalvandoDocumentos] = useState(false);
   // Por que o Salvar da Central foi barrado (some quando o formulário muda); o rodapé mostra o erro em vez de "Salvando…".
   const [erroDoSalvar, setErroDoSalvar] = useState("");
+  const [errosDoServidorNaEmpresa, setErrosDoServidorNaEmpresa] = useState<Record<string, string>>({});
   const assinaturaEmpresaAtual = assinaturaEdicaoEmpresa({
     form,
     responsabilidades: responsabilidadesEmpresa,
@@ -2427,6 +2428,7 @@ export default function Home() {
         if (response.ok) {
           const result = await response.json();
 
+          setErrosDoServidorNaEmpresa(Object.fromEntries(((Array.isArray(result?.rejeitados) ? result.rejeitados : []) as { colecao: string; campo: string; mensagem: string }[]).filter((item) => item.colecao === "empresas").map((item) => [item.campo, item.mensagem])));
           // Itens recusados pelo servidor (limite de texto ou campo não permitido): o resto foi gravado; diz qual item e qual campo, uma vez por mensagem.
           if (Array.isArray(result?.rejeitados) && result.rejeitados.length > 0) {
             const texto = (result.rejeitados as { colecao: string; mensagem: string }[]).slice(0, 3).map((item) => `${rotuloDaColecao(item.colecao)}: ${item.mensagem}`).join(" ");
@@ -8521,6 +8523,7 @@ export default function Home() {
                   <PcManualDocumento
                     valores={form as unknown as Record<CampoDaIdentificacao, string>}
                     rotulos={labels}
+                    errosDoServidor={errosDoServidorNaEmpresa}
                     doPerfil={camposDoPerfilRt}
                     onChange={(campo, valor) => {
                       setForm({ ...form, [campo]: valor });

@@ -1,5 +1,6 @@
 "use client";
 
+import { popAtivado } from "@/lib/popGestao";
 import Chevron from "@/components/ui/Chevron";
 import { useEffect, useState } from "react";
 import type { FrequenciaDoPop, ProcedimentoOperacionalPadronizado } from "@/types";
@@ -262,7 +263,7 @@ export default function PcResumoDoPop({ pop, etapa, dadosDoResponsavel, nomeDoAp
       );
     }
     if (etapa.numero === 5) {
-      const resumo = resumoDosRegistros(pop.id, pop.conteudo, contextoDeRegistros?.registros, hojeISO(), pop.aprovacao?.em, pop.status === "Aprovado");
+      const resumo = resumoDosRegistros(pop.id, pop.conteudo, contextoDeRegistros?.registros, hojeISO(), pop.aprovacao?.em, popAtivado(pop));
       const guarda = contextoDeRegistros?.empresa ? guardaDosRegistros(contextoDeRegistros.empresa) : null;
       const naoFeitos = resumo.esperados30 === null ? 0 : resumo.esperados30 - resumo.feitos30;
       return (

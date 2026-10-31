@@ -51,3 +51,26 @@ export function semNomesNoPop(pop: ProcedimentoOperacionalPadronizado): Procedim
 export function registrosSemNomesDosOutros(registros: RegistroPop[], usuarioId: string): RegistroPop[] {
   return registros.map((registro) => (registro.responsavelId === usuarioId ? registro : { ...registro, responsavel: ROTULO_SEM_NOME }));
 }
+
+/** Rodada 6, I1: o Executor de campo não recebe o nome de quem respondeu pela visita nem de quem registrou a foto. */
+export function visitasSemNomes<T extends { responsavel?: string; responsavelIdentificacao?: string; historicoStatus?: { responsavel?: string }[] }>(visitas: T[]): T[] {
+  return visitas.map((visita) => ({
+    ...visita,
+    responsavel: ROTULO_SEM_NOME,
+    ...(visita.responsavelIdentificacao !== undefined ? { responsavelIdentificacao: ROTULO_SEM_NOME } : {}),
+    ...(visita.historicoStatus ? { historicoStatus: visita.historicoStatus.map((item) => (item.responsavel ? { ...item, responsavel: ROTULO_SEM_NOME } : item)) } : {}),
+  }));
+}
+
+export function evidenciasSemNomes<T extends { registradoPorNome?: string }>(evidencias: T[]): T[] {
+  return evidencias.map((evidencia) => (evidencia.registradoPorNome ? { ...evidencia, registradoPorNome: ROTULO_SEM_NOME } : evidencia));
+}
+
+/** O que chegou do Executor nunca troca o nome já gravado pelo texto mascarado: o gravado vale. */
+export function manterNomesGravadosDasEvidencias<T extends { id: string; registradoPorNome?: string }>(mescladas: T[], gravadas: T[]): T[] {
+  const porId = new Map(gravadas.map((item) => [item.id, item]));
+  return mescladas.map((item) => {
+    const antes = porId.get(item.id);
+    return antes && item.registradoPorNome !== antes.registradoPorNome ? { ...item, registradoPorNome: antes.registradoPorNome } : item;
+  });
+}

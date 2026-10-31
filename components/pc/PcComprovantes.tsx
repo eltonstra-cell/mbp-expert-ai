@@ -432,7 +432,9 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
               const substituido = Boolean(item.substituidoPor);
               const situacao = substituido ? "sem-validade" : situacaoDaValidade(item.validade, hoje);
               const popDoItem = item.popId ? listaDePops.find((pop) => pop.id === item.popId) : undefined;
-              const tarja = substituido ? null : tarjaDoComprovante(item, listaDePops);
+              const tarja = substituido || item.popId ? null : tarjaDoComprovante(item, listaDePops);
+              const nomeDoItem = `${rotuloDoTipo(item.tipo)}${item.validade ? ` (vence ${dataBr(item.validade)})` : ""}`;
+              const textoDaTarja = tarja ? (tarja.acao === "criar" ? tarja.texto : `Sugestão: ${tarja.popSugeridoId && codigoDoPop.get(tarja.popSugeridoId) ? `${codigoDoPop.get(tarja.popSugeridoId)} · ` : ""}${tarja.titulo}`) : "";
               const criarPopDaTarja = () => {
                 if (!tarja || !onCriarPopDoModelo) return;
                 const novoId = onCriarPopDoModelo(tarja.catalogoId);
@@ -448,36 +450,36 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
                   ...(podeGerenciar && !substituido
                     ? [
                         { rotulo: "Renovar", assumeFoco: true, onClick: () => abrir({ tipo: item.tipo, emissor: item.emissor, dataServico: "", validade: "", observacao: "", renovaId: item.id, ...(item.popId ? { popId: item.popId } : {}) }) },
-                        ...(onAlterarPop && listaDePops.some((pop) => !pop.arquivado) ? [{ rotulo: "Alterar POP vinculado", assumeFoco: true, onClick: () => setAlterandoPop({ id: item.id, popId: item.popId || "" }) }] : []),
+                        ...(onAlterarPop && listaDePops.some((pop) => !pop.arquivado) ? [{ rotulo: item.popId ? "Mover para outro POP" : "Vincular a um POP", assumeFoco: true, onClick: () => setAlterandoPop({ id: item.id, popId: item.popId || "" }) }] : []),
                         { rotulo: "Editar", assumeFoco: true, onClick: () => abrir({ id: item.id, tipo: item.tipo, emissor: item.emissor, dataServico: item.dataServico, validade: item.validade, observacao: item.observacao, ...(item.popId ? { popId: item.popId } : {}) }) },
                         { rotulo: "Remover comprovante", perigo: true, assumeFoco: true, onClick: () => void confirmar("Remover este comprovante? O arquivo anexado também será apagado.", { titulo: "Remover comprovante", confirmarRotulo: "Remover", cancelarRotulo: "Cancelar" }).then((ok) => ok && onRemover(item)) },
                       ]
                     : []),
                 ];
                 return (
-                  <div key={item.id} className="comp-linha" role="listitem">
+                  <div key={item.id} className={`comp-linha${substituido ? " is-substituido" : ""}`} role="listitem">
                     <span className={`comp-bolinha comp-bolinha--${substituido ? "sem-validade" : situacao}`} aria-hidden="true" />
                     <span className="comp-l-textos">
-                      <span className="comp-l-titulo">{rotuloDoTipo(item.tipo)}</span>
+                      <span className="comp-l-titulo">{rotuloDoTipo(item.tipo)}{item.validade ? <span className="comp-l-venc"> · {situacao === "vencido" ? "venceu" : "vence"} {dataBr(item.validade)}</span> : null}</span>
                       <span className="comp-l-sub">
-                        {item.popId ? codigo || "POP" : "Sem POP vinculado"} · {situacao === "vencido" ? "venceu" : "vence"} {dataBr(item.validade)}
+                        {item.popId ? codigo || "POP" : "Sem POP vinculado"}
                         {item.emissor ? ` · ${item.emissor}` : ""}
                         {item.observacao ? ` · ${item.observacao}` : ""}
                       </span>
                       {tarja && (
                         <span className="comp-tarja" role="note">
-                          <span>{tarja.texto}</span>
+                          <span>{textoDaTarja}</span>
                           {podeGerenciar && tarja.acao === "criar" && onCriarPopDoModelo && (
                             <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={criarPopDaTarja}>Criar agora</button>
                           )}
                           {podeGerenciar && tarja.acao !== "criar" && onAlterarPop && (
-                            <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => setAlterandoPop({ id: item.id, popId: tarja.popSugeridoId || "" })}>{tarja.acao === "vincular" ? "Vincular" : "Mover"}</button>
+                            <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" aria-label={`Vincular comprovante ${nomeDoItem}`} onClick={() => setAlterandoPop({ id: item.id, popId: tarja.popSugeridoId || "" })}>Vincular</button>
                           )}
                         </span>
                       )}
                     </span>
                     <span className={`comp-l-estado comp-l-estado--${substituido ? "sem-validade" : situacao}`}>{estado}</span>
-                    {itensDoMenu.length > 0 ? <MenuMais rotulo={`Mais ações de ${rotuloDoTipo(item.tipo)}`} itens={itensDoMenu} /> : <span className="comp-l-semmenu" />}
+                    {itensDoMenu.length > 0 ? <MenuMais rotulo={`Mais ações de ${nomeDoItem}`} itens={itensDoMenu} /> : <span className="comp-l-semmenu" />}
                   </div>
                 );
               }
@@ -529,15 +531,15 @@ export default function PcComprovantes({ empresa, comprovantes, podeGerenciar, o
                     // A tarja fica DENTRO do cartão, como faixa amarela no rodapé dele (fio de 1 px, sem folga nem borda própria).
                     tarja ? (
                       <div className="comp-tarja" role="note">
-                        <span>{tarja.texto}</span>
+                        <span>{textoDaTarja}</span>
                         {podeGerenciar && tarja.acao === "criar" && onCriarPopDoModelo && (
                           <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={criarPopDaTarja}>
                             Criar agora
                           </button>
                         )}
                         {podeGerenciar && tarja.acao !== "criar" && onAlterarPop && (
-                          <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => setAlterandoPop({ id: item.id, popId: tarja.popSugeridoId || "" })}>
-                            {tarja.acao === "vincular" ? "Vincular" : "Mover"}
+                          <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" aria-label={`Vincular comprovante ${nomeDoItem}`} onClick={() => setAlterandoPop({ id: item.id, popId: tarja.popSugeridoId || "" })}>
+                            Vincular
                           </button>
                         )}
                       </div>
