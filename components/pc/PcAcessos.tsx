@@ -15,7 +15,8 @@ import ConfirmarExclusaoModal from "@/components/pc/ConfirmarExclusaoModal";
 import { telasDiferentesDoPadrao, type TelasDoUsuario } from "@/lib/screenAccess";
 import type { ItemMenu } from "@/components/ui/RowMenu";
 import { acoesDoAcesso } from "@/lib/menuActions";
-import { contarPessoas, filtrarPessoas, type FiltroPessoas } from "@/lib/userManagement";
+import { avisoDoCrn, contarPessoas, filtrarPessoas, type FiltroPessoas } from "@/lib/userManagement";
+import { mascararTelefone } from "@/lib/documentosCentral";
 import { nomeProprio } from "@/lib/nomeCargo";
 import { nomeDeExibicaoDaEmpresa } from "@/lib/nomeEmpresa";
 import { PERFIS_NOVOS, PODE_E_NAO_PODE } from "@/lib/perfisTexto";
@@ -136,7 +137,7 @@ export default function PcAcessos({
       : "";
   const erroEmpresas =
     formulario && formulario.perfil !== "Administrador" && formulario.empresaIds.length === 0
-      ? "Escolha ao menos uma empresa autorizada."
+      ? "Marque ao menos uma empresa"
       : "";
   const erroValidade =
     formulario && formulario.perfil === "Fiscal" && !formulario.jaEraFiscal && !(formulario.validadeDias && (PRAZOS_DE_VALIDADE as readonly number[]).includes(formulario.validadeDias))
@@ -232,13 +233,14 @@ export default function PcAcessos({
                 {(formulario.perfil === "Consultor/RT" || formulario.perfil === "Administrador") && (
                   <label className="pc-field">
                     <span className="ui-eyebrow">CRN (assina os relatórios)</span>
-                    <input className="ui-input" value={formulario.crn || ""} onChange={(evento) => onCampo({ crn: evento.target.value })} placeholder="Ex.: CRN-2 12345" />
+                    <input className={`ui-input${avisoDoCrn(formulario.crn) ? " is-aviso" : ""}`} value={formulario.crn || ""} maxLength={40} onChange={(evento) => onCampo({ crn: evento.target.value })} placeholder="Ex.: CRN-2 12345" aria-describedby="acc-crn-dica" />
+                    <span id="acc-crn-dica" className={avisoDoCrn(formulario.crn) ? "ui-field-aviso" : "ui-row-sub"}>{avisoDoCrn(formulario.crn) || "Formato: CRN-2 12345 (região e número)."}</span>
                   </label>
                 )}
                 {(formulario.perfil === "Consultor/RT" || formulario.perfil === "Administrador") && (
                   <label className="pc-field">
                     <span className="ui-eyebrow">Telefone (sai no relatório)</span>
-                    <input className="ui-input" inputMode="tel" value={formulario.telefone || ""} onChange={(evento) => onCampo({ telefone: evento.target.value })} placeholder="Ex.: (51) 99999-0000" />
+                    <input className="ui-input" inputMode="tel" value={formulario.telefone || ""} maxLength={15} onChange={(evento) => onCampo({ telefone: mascararTelefone(evento.target.value) })} placeholder="Ex.: (51) 99999-0000" />
                   </label>
                 )}
                 <label className="pc-field">
@@ -271,7 +273,7 @@ export default function PcAcessos({
                 )}
                 {formulario.perfil !== "Administrador" && (
                   <div className="pc-form-empresas">
-                    <span className="ui-eyebrow">Empresas autorizadas</span>
+                    <span className="pc-empresas-cab"><span className="ui-eyebrow">Empresas autorizadas</span>{erroEmpresas && <span className="ui-field-error" role="alert">{erroEmpresas}</span>}</span>
                     <div className="pc-empresas-grid">
                       {empresas.map((empresa) => (
                         <label key={empresa.id} className="pc-check">
@@ -284,7 +286,6 @@ export default function PcAcessos({
                         </label>
                       ))}
                     </div>
-                    {erroEmpresas && <span className="ui-field-error">{erroEmpresas}</span>}
                   </div>
                 )}
                 <div className="ui-footer-actions pc-form-actions">

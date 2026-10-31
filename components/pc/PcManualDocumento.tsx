@@ -14,6 +14,7 @@ import {
   mascararTelefone,
   tomDoResumo,
 } from "@/lib/documentosCentral";
+import { usePilhaDeJanelas } from "../usePilhaDeJanelas";
 import { CAMPOS_DA_IDENTIFICACAO, ativosDoPapel, contarPreenchidos, mascaraCompletaParaAvancar, proximoCampoDaIdentificacao, sugestoesQueFaltam, type CampoDaIdentificacao } from "@/lib/manualIdentificacao";
 import type { PapelResponsabilidadeManual, ResponsabilidadeManual } from "@/types";
 
@@ -37,7 +38,11 @@ type Props = {
   temAlteracoes: boolean;
   salvando?: boolean;
   erroDoSalvar?: string;
-  onSalvar: () => void;
+  /** Empresa cujo Manual está na tela; o Salvar devolve o id capturado quando a janela abriu. */
+  empresaId: string;
+  onSalvar: (empresaId: string) => void;
+  /** "Fechar sem salvar": a tela volta aos valores do último salvo (o digitado não fica no formulário). */
+  onDescartar?: () => void;
 };
 
 type Secao = "identificacao" | PapelResponsabilidadeManual;
@@ -51,9 +56,13 @@ const erroDoCampo = (campo: CampoDaIdentificacao, valor: string) => (campo === "
 const FOCAVEIS = 'button:not([disabled]),input:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
 
 // Manual da empresa: três linhas (sem caixas). Clicar abre uma janela que desce colada na linha, por cima das seguintes (no celular, uma folha que sobe de baixo). Uma aberta por vez; o rodapé com o estado e o Salvar fica dentro da janela.
-export default function PcManualDocumento({ valores, rotulos, doPerfil, onChange, onPreencher, semRtVinculado = false, sugestoesDeAtividade = [], errosDoServidor, responsabilidades, onResponsabilidadesChange, temAlteracoes, salvando = false, erroDoSalvar = "", onSalvar }: Props) {
+export default function PcManualDocumento({ valores, rotulos, doPerfil, onChange, onPreencher, semRtVinculado = false, sugestoesDeAtividade = [], errosDoServidor, responsabilidades, onResponsabilidadesChange, temAlteracoes, salvando = false, erroDoSalvar = "", empresaId, onSalvar, onDescartar }: Props) {
   const [aberta, setAberta] = useState<Secao | null>(null);
   const [celular, setCelular] = useState(false);
+  const { ehTopo, coberta } = usePilhaDeJanelas(Boolean(aberta));
+  const empresaAoAbrir = useRef(empresaId);
+  useEffect(() => { if (aberta) empresaAoAbrir.current = empresaId; // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aberta]);
   const [posicao, setPosicao] = useState<Posicao | null>(null);
   const [resultado, setResultado] = useState<string | null>(null);
   const campos = useRef<Partial<Record<CampoDaIdentificacao, HTMLInputElement | HTMLTextAreaElement | null>>>({});
@@ -126,6 +135,7 @@ export default function PcManualDocumento({ valores, rotulos, doPerfil, onChange
     if (temAlteracoes) {
       const ok = await confirmar("Há alterações ainda não salvas. Fechar mesmo assim?", { titulo: "Alterações não salvas", confirmarRotulo: "Fechar sem salvar", cancelarRotulo: "Continuar editando" });
       if (!ok) return;
+      onDescartar?.();
     }
     const linha = aberta ? linhas.current[aberta] : null;
     setAberta(null);
@@ -245,7 +255,6 @@ export default function PcManualDocumento({ valores, rotulos, doPerfil, onChange
           <label key={campo} className={`man-campo${posicaoDoCampo === 0 ? " man-campo--duplo" : ""}`}>
             <span className="man-rotulo">
               {rotulos[campo] || campo}
-              {doPerfil.includes(campo) && <span className="idc-selo">do perfil do RT</span>}
             </span>
             {ehAtividade ? (
               <span className="man-atividade-caixa">
@@ -363,7 +372,7 @@ export default function PcManualDocumento({ valores, rotulos, doPerfil, onChange
       {estadoDoRodape}
       <span className="man-rodape-botoes">
         {!celular && <button type="button" className="ui-btn ui-btn--secondary" onClick={() => void fechar()}>Fechar</button>}
-        <button type="button" disabled={salvando} className={`ui-btn ui-btn--save${!temAlteracoes && !salvando ? " is-apagado" : ""}`} onClick={onSalvar}>{salvando ? "Salvando…" : "Salvar"}</button>
+        <button type="button" disabled={salvando} className={`ui-btn ui-btn--save${!temAlteracoes && !salvando ? " is-apagado" : ""}`} onClick={() => onSalvar(empresaAoAbrir.current)}>{salvando ? "Salvando…" : "Salvar"}</button>
       </span>
     </div>
   );
@@ -399,7 +408,7 @@ export default function PcManualDocumento({ valores, rotulos, doPerfil, onChange
   const aberto = linhasDaLista.find((linha) => linha.secao === aberta);
 
   return (
-    <section className="man" aria-label="Manual de Boas Práticas" onKeyDown={(evento) => { if (evento.key === "Escape" && aberta && !evento.defaultPrevented) { evento.stopPropagation(); void fechar(); } }}>
+    <section className="man" aria-label="Manual de Boas Práticas" onKeyDown={(evento) => { if (evento.key === "Escape" && aberta && !evento.defaultPrevented && ehTopo()) { evento.stopPropagation(); void fechar(); } }}>
       <div className="cdoc-titulo">
         <div>
           <h2 className="cdoc-h">Manual</h2>
@@ -437,14 +446,14 @@ export default function PcManualDocumento({ valores, rotulos, doPerfil, onChange
 
       {aberto && typeof document !== "undefined" && createPortal(
         celular ? (
-          <div className="man-folha-camada">
+          <div className="man-folha-camada" {...(coberta ? { inert: true } : {})}>
             <div className="man-folha-fundo" onClick={() => void fechar()} />
             <div ref={janela} className="man-folha" role="dialog" aria-modal="true" aria-label={aberto.titulo}>
               {conteudoDe(aberto.secao, aberto.titulo, aberto.resumo)}
             </div>
           </div>
         ) : (
-          <div ref={janela} className="man-jan" role="dialog" aria-label={aberto.titulo} style={posicao ? { top: posicao.top, left: posicao.left, width: posicao.width } : { visibility: "hidden" }}>
+          <div ref={janela} className="man-jan" {...(coberta ? { inert: true } : {})} role="dialog" aria-label={aberto.titulo} style={posicao ? { top: posicao.top, left: posicao.left, width: posicao.width } : { visibility: "hidden" }}>
             {conteudoDe(aberto.secao, aberto.titulo, aberto.resumo)}
           </div>
         ),

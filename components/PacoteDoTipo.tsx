@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { usePilhaDeJanelas } from "./usePilhaDeJanelas";
+import { conflitoDeNomeNovo, mensagemDoConflito } from "@/lib/nomesDeAmbiente";
 import Select from "@/components/Select";
 import { nomeExibidoDoSetor, pacoteDoTipo, publicoDoSetor, rotuloDoTipo } from "@/lib/tiposDeEstabelecimento";
 import { DEFINICOES_FLUXOS_OPERACIONAIS, PERGUNTAS_POR_FLUXO } from "@/lib/operationalFlows";
@@ -44,6 +46,8 @@ type Props = {
   onAplicar: (escolha: EscolhaDoPacote) => void;
   onDesfazer: () => void;
   aplicadoAgora: boolean;
+  /** Só o botão "Escolher ambientes" (a Nova empresa mostra a linha do tipo ao lado). */
+  compacto?: boolean;
 };
 
 type Aba = "ambientes" | "equipamentos" | "fluxos";
@@ -52,7 +56,7 @@ const contar = (n: number, singular: string, plural: string) => `${n} ${n === 1 
 const SEGUNDOS_DO_AVISO = 6;
 
 // "Para este tipo, o app propõe": ambientes, equipamentos e fluxos já marcados; o RT desmarca o que não existe e confirma. As perguntas não mudam.
-export default function PacoteDoTipoPainel({ tipo, ambientesDaEmpresa, equipamentosDaEmpresa, fluxosAplicaveis, onAplicar, onDesfazer, aplicadoAgora }: Props) {
+export default function PacoteDoTipoPainel({ tipo, ambientesDaEmpresa, equipamentosDaEmpresa, fluxosAplicaveis, onAplicar, onDesfazer, aplicadoAgora, compacto = false }: Props) {
   const pacote = pacoteDoTipo(tipo);
   const ambientesNovos = pacote.ambientes.filter((ambiente) => !ambientesDaEmpresa.includes(ambiente));
   const equipamentosNovos = pacote.equipamentos.filter((item) => !equipamentosDaEmpresa.includes(`${item.ambiente}|${item.nome.toLocaleLowerCase("pt-BR")}`));
@@ -73,6 +77,28 @@ export default function PacoteDoTipoPainel({ tipo, ambientesDaEmpresa, equipamen
     );
   }
   if (total === 0) return null;
+  if (compacto) {
+    return (
+      <>
+        <button type="button" className="ui-btn ui-btn--secondary pacote-tipo-ver" aria-haspopup="dialog" onClick={() => setAberta(true)}>Escolher ambientes</button>
+        {aberta && (
+          <JanelaDoPacote
+            tipo={tipo}
+            ambientesDaEmpresa={ambientesDaEmpresa}
+            ambientes={ambientesNovos}
+            equipamentos={equipamentosNovos}
+            fluxos={fluxosNovos}
+            onAgoraNao={() => setAberta(false)}
+            onAplicar={(escolha) => {
+              setAberta(false);
+              setAplicado(`${contar(escolha.ambientes.length, "ambiente", "ambientes")}, ${contar(escolha.equipamentos.length, "equipamento", "equipamentos")}, ${contar(escolha.fluxos.length, "fluxo", "fluxos")}`);
+              onAplicar(escolha);
+            }}
+          />
+        )}
+      </>
+    );
+  }
 
   return (
     <section className="pacote-tipo md:col-span-2" aria-label="Sugestão para o tipo de estabelecimento">
@@ -110,7 +136,12 @@ type PropsJanela = {
 };
 
 // Mesma janela da escolha de setores (classes esc-*): portal, rolagem da página travada, Esc = "Agora não", Tab preso dentro; só a lista rola.
-function JanelaDoPacote({ tipo, ambientesDaEmpresa, ambientes, equipamentos, fluxos, onAgoraNao, onAplicar }: PropsJanela) {
+function JanelaDoPacote({ tipo, ambientesDaEmpresa, ambientes: ambientesDoPacote, equipamentos, fluxos, onAgoraNao, onAplicar }: PropsJanela) {
+  // Ambientes próprios acrescentados aqui entram marcados, junto com os do pacote.
+  const [proprios, setProprios] = useState<string[]>([]);
+  const [novoNome, setNovoNome] = useState<string | null>(null);
+  const ambientes = [...ambientesDoPacote, ...proprios];
+  const { ehTopo, coberta } = usePilhaDeJanelas();
   const [estado, setEstado] = useState<EstadoDoPacote>(ESTADO_INICIAL_DO_PACOTE);
   const [aba, setAba] = useState<Aba>("ambientes");
   const [aviso, setAviso] = useState("");
@@ -151,6 +182,7 @@ function JanelaDoPacote({ tipo, ambientesDaEmpresa, ambientes, equipamentos, flu
   useEffect(() => {
     if (!montado) return;
     function aoTeclar(evento: KeyboardEvent) {
+      if (!ehTopo()) return;
       if (evento.key === "Escape") {
         evento.preventDefault();
         fecharRef.current();
@@ -189,6 +221,14 @@ function JanelaDoPacote({ tipo, ambientesDaEmpresa, ambientes, equipamentos, flu
   const fluxosMarcados = fluxos.filter((fluxo) => estaMarcado(estado, chaveDeFluxo(fluxo)));
   const resumoDosFluxos = resumoDeFluxosPorSetor(fluxosMarcados.map((fluxo) => ({ setor: setorDoFluxo(fluxo) })), PERGUNTAS_POR_FLUXO);
   const fluxosSemSetor = fluxosMarcados.filter((fluxo) => !setorDoFluxo(fluxo)).length;
+
+  const erroDoNovoNome = novoNome ? mensagemDoConflito(conflitoDeNomeNovo(novoNome, [...ambientesDaEmpresa, ...ambientes])) : "";
+  function incluirNovo() {
+    const nome = (novoNome || "").trim().replace(/s+/g, " ");
+    if (!nome || erroDoNovoNome) return;
+    setProprios((atuais) => [...atuais, nome]);
+    setNovoNome(null);
+  }
 
   function mudarAmbiente(ambiente: string) {
     const r = alternarAmbiente(estado, ambiente, equipamentos);
@@ -242,7 +282,7 @@ function JanelaDoPacote({ tipo, ambientesDaEmpresa, ambientes, equipamentos, flu
   );
 
   const janela = (
-    <div className="esc-camada" role="presentation">
+    <div className="esc-camada" role="presentation" {...(coberta ? { inert: true } : {})}>
       <div className="esc-fundo" onClick={onAgoraNao} />
       <section ref={janelaRef} className="esc-janela pacote-janela" role="dialog" aria-modal="true" aria-labelledby="pacote-titulo">
         <header className="esc-cabeca">
@@ -273,7 +313,7 @@ function JanelaDoPacote({ tipo, ambientesDaEmpresa, ambientes, equipamentos, flu
           {atual.total === 0 && <p className="esc-vazio">Nada novo a propor.</p>}
 
           {aba === "ambientes" &&
-            agruparAmbientesPorPublico(ambientes, publicoDoSetor).map((grupo) => (
+            agruparAmbientesPorPublico(ambientesDoPacote, publicoDoSetor).map((grupo) => (
               <div key={grupo.grupo} className="pacote-sub-grupo">
                 <h4 className="pacote-subtitulo">{grupo.grupo}</h4>
                 <ul className="esc-opcoes">
@@ -281,6 +321,37 @@ function JanelaDoPacote({ tipo, ambientesDaEmpresa, ambientes, equipamentos, flu
                 </ul>
               </div>
             ))}
+
+          {aba === "ambientes" && (
+            <div className="pacote-proprio">
+              {proprios.length > 0 && (
+                <div className="pacote-sub-grupo">
+                  <h4 className="pacote-subtitulo">Ambientes próprios</h4>
+                  <ul className="esc-opcoes">{proprios.map((ambiente) => opcao(chaveDeAmbiente(ambiente), ambiente, ambiente, estaMarcado(estado, chaveDeAmbiente(ambiente)), () => mudarAmbiente(ambiente)))}</ul>
+                </div>
+              )}
+              {novoNome === null ? (
+                <button type="button" className="ui-btn ui-btn--secondary pacote-adicionar" onClick={() => setNovoNome("")}>+ Adicionar outro ambiente</button>
+              ) : (
+                <div className="pacote-novo">
+                  <input
+                    className={`ui-input${erroDoNovoNome ? " is-invalid" : ""}`}
+                    value={novoNome}
+                    maxLength={60}
+                    placeholder="Nome do ambiente"
+                    aria-label="Nome do novo ambiente"
+                    aria-invalid={Boolean(erroDoNovoNome)}
+                    autoFocus
+                    onChange={(evento) => setNovoNome(evento.target.value)}
+                    onKeyDown={(evento) => { if (evento.key === "Enter") { evento.preventDefault(); incluirNovo(); } }}
+                  />
+                  <button type="button" className="ui-btn ui-btn--secondary" disabled={!novoNome.trim() || Boolean(erroDoNovoNome)} onClick={incluirNovo}>Incluir</button>
+                  <button type="button" className="ui-btn ui-btn--secondary" onClick={() => setNovoNome(null)}>Cancelar</button>
+                  {erroDoNovoNome && <span className="ui-field-error" role="alert">{erroDoNovoNome}</span>}
+                </div>
+              )}
+            </div>
+          )}
 
           {aba === "equipamentos" &&
             agruparPorAmbiente(equipamentos).map((grupo) => {
@@ -347,7 +418,7 @@ function JanelaDoPacote({ tipo, ambientesDaEmpresa, ambientes, equipamentos, flu
           </span>
           <div className="esc-rodape-botoes">
             <button type="button" className="ui-btn ui-btn--secondary pacote-agora-nao" onClick={onAgoraNao}>Agora não</button>
-            <button type="button" className="ui-btn ui-btn--primary" onClick={aplicar}>Aplicar o que está marcado</button>
+            <button type="button" className="ui-btn ui-btn--save pacote-aplicar" onClick={aplicar}>Aplicar o que está marcado</button>
           </div>
         </footer>
       </section>

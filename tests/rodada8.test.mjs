@@ -20,7 +20,7 @@ test("A: RT Convidado e vinculado à empresa fornece o nome para o Administrador
 });
 
 test("B: Preencher traz nome, elaborado, revisado e data de hoje; CPF, endereço, telefone e registro vêm do cadastro do RT", () => {
-  const r = preencherIdentificacao({}, { rt: { nome: rt.nome, cargo: "Nutricionista", crn: "CRN-2 1", telefone: "(51) 99999-0000", cpfCnpj: "529.982.247-25", endereco: "Rua A, 10", registroProfissional: "Nutricionista RT CRN-2 1" }, juntar, hoje: "2026-10-31", responsavel: "Maria", cargoResponsavel: "Gerente" });
+  const r = preencherIdentificacao({}, { rt: { nome: rt.nome, telefone: "(51) 99999-0000", cpfCnpj: "529.982.247-25", endereco: "Rua A, 10", registroProfissional: "Nutricionista RT CRN-2 1" }, juntar, hoje: "2026-10-31", responsavel: "Maria", cargoResponsavel: "Gerente" });
   assert.equal(r.valores.consultorNome, rt.nome);
   assert.equal(r.valores.elaboradoPor, rt.nome);
   assert.equal(r.valores.revisadoPor, rt.nome);
@@ -51,7 +51,9 @@ test("B: Administrador sem RT vinculado: o nome vem do mesmo lugar do 'aprovado 
 
 test("C: salvar o Manual grava no cadastro do RT só o que é novo e válido, sem apagar nada", () => {
   const manual = { consultorCpfCnpj: "529.982.247-25", consultorEndereco: "Rua A, 10", consultorTelefone: "(51) 99999-0000", consultorRegistro: "Nutricionista RT CRN-2 1" };
-  assert.deepEqual(dadosParaOCadastroDoRt(manual, rt), { cpfCnpj: "529.982.247-25", endereco: "Rua A, 10", registroProfissional: "Nutricionista RT CRN-2 1", telefone: "(51) 99999-0000" });
+  const semCargoNemCrn = { ...rt, cargo: undefined, crn: undefined };
+  assert.deepEqual(dadosParaOCadastroDoRt(manual, semCargoNemCrn), { cpfCnpj: "529.982.247-25", endereco: "Rua A, 10", registroProfissional: "Nutricionista RT CRN-2 1", telefone: "(51) 99999-0000" });
+  assert.deepEqual(dadosParaOCadastroDoRt(manual, rt), { cpfCnpj: "529.982.247-25", endereco: "Rua A, 10", telefone: "(51) 99999-0000" }, "com cargo/CRN o registro não é gravado");
   assert.equal(dadosParaOCadastroDoRt(manual, { cpfCnpj: "529.982.247-25", endereco: "Rua A, 10", registroProfissional: "Nutricionista RT CRN-2 1", telefone: "(51) 99999-0000" }), null);
   assert.equal(dadosParaOCadastroDoRt({ consultorCpfCnpj: "123", consultorTelefone: "(51) 9" }, rt), null, "CPF e telefone inválidos não vão");
   assert.equal(dadosParaOCadastroDoRt({ consultorEndereco: "" }, rt), null, "campo vazio não apaga");

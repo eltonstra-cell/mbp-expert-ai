@@ -37,6 +37,8 @@ export type Empresa = {
   elaboradoPor?: string;
   revisadoPor?: string;
   aprovadoPor?: string;
+  /** Campos da Identificação complementar que o botão Preencher colocou e o usuário ainda não editou (podem ser atualizados num novo clique). */
+  camposDoPreencher?: string[];
   horariosFuncionamento?: HorarioFuncionamento[];
   responsabilidadesManual?: ResponsabilidadeManual[];
   setoresManual?: string[];

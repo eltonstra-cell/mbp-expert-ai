@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { usePilhaDeJanelas } from "./usePilhaDeJanelas";
 import { assinarDialogos, dialogoAtual, encerrarDialogoAtual, type Dialogo } from "@/lib/dialogos";
 
 const SEM_DIALOGO = () => null;
@@ -23,6 +24,7 @@ function Janela({ dialogo }: { dialogo: Dialogo }) {
   const [texto, setTexto] = useState(dialogo.tipo === "pergunta" ? dialogo.valorInicial : "");
   const principalRef = useRef<HTMLButtonElement | null>(null);
   const campoRef = useRef<HTMLInputElement | null>(null);
+  const { ehTopo } = usePilhaDeJanelas();
 
   const cancelar = () => {
     if (dialogo.tipo === "confirmacao") dialogo.resolver(false);
@@ -40,7 +42,7 @@ function Janela({ dialogo }: { dialogo: Dialogo }) {
   useEffect(() => {
     (campoRef.current ?? principalRef.current)?.focus();
     const aoTeclar = (evento: KeyboardEvent) => {
-      if (evento.key === "Escape") cancelar();
+      if (evento.key === "Escape" && ehTopo()) cancelar();
     };
     window.addEventListener("keydown", aoTeclar);
     return () => window.removeEventListener("keydown", aoTeclar);

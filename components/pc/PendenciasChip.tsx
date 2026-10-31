@@ -18,12 +18,26 @@ export default function PendenciasChip({ faltas, onAbrir, texto = false }: { fal
   useLayoutEffect(() => {
     if (!aberta || !botaoRef.current) return;
     const caixa = botaoRef.current.getBoundingClientRect();
-    setPosicao({ top: caixa.bottom + 6, left: Math.max(8, Math.min(caixa.left, window.innerWidth - 300)) });
+    const janela = janelaRef.current?.getBoundingClientRect();
+    const largura = janela?.width || 280;
+    const altura = janela?.height || 160;
+    const margem = 8;
+    const maxTopo = window.innerHeight - altura - margem;
+    const noCentro = Math.max(margem, Math.min(caixa.top + caixa.height / 2 - altura / 2, maxTopo));
+    // Ao lado do chip (não cobre a barra de progresso nem a linha vizinha); sem espaço nos lados, acima ou abaixo.
+    if (caixa.right + 8 + largura <= window.innerWidth - margem) setPosicao({ top: noCentro, left: caixa.right + 8 });
+    else if (caixa.left - 8 - largura >= margem) setPosicao({ top: noCentro, left: caixa.left - 8 - largura });
+    else {
+      const left = Math.max(margem, Math.min(caixa.left, window.innerWidth - largura - margem));
+      const cabeEmCima = caixa.top - 6 - altura >= margem;
+      const cabeEmBaixo = caixa.bottom + 6 + altura <= window.innerHeight - margem;
+      setPosicao({ top: cabeEmCima && !cabeEmBaixo ? caixa.top - 6 - altura : Math.max(margem, Math.min(caixa.bottom + 6, maxTopo)), left });
+    }
   }, [aberta]);
 
   useEffect(() => {
     if (!aberta) return;
-    const fecharFora = (evento: MouseEvent) => {
+    const fecharFora = (evento: PointerEvent) => {
       const alvo = evento.target as Node;
       if (botaoRef.current?.contains(alvo) || janelaRef.current?.contains(alvo)) return;
       setAberta(false);
@@ -32,11 +46,11 @@ export default function PendenciasChip({ faltas, onAbrir, texto = false }: { fal
       if (evento.key === "Escape") setAberta(false);
     };
     const fechar = () => setAberta(false);
-    window.addEventListener("mousedown", fecharFora);
+    window.addEventListener("pointerdown", fecharFora);
     window.addEventListener("keydown", fecharEsc);
     window.addEventListener("scroll", fechar, true);
     return () => {
-      window.removeEventListener("mousedown", fecharFora);
+      window.removeEventListener("pointerdown", fecharFora);
       window.removeEventListener("keydown", fecharEsc);
       window.removeEventListener("scroll", fechar, true);
     };

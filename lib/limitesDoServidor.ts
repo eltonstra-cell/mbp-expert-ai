@@ -3,6 +3,7 @@
 // Nunca corta texto: o item inválido é recusado com o nome do campo e o restante é gravado (`separarItensInvalidos`).
 import type { AppDB } from "../types/index.ts";
 import { erroDoVencimento } from "./registrosEmpresa.ts";
+import { LIMITE_DA_NOVA_EMPRESA } from "./novaEmpresa.ts";
 import { LIMITE_DO_CADASTRO_DO_RT } from "./userManagement.ts";
 import { LIMITE_CARGO_DA_PESSOA, LIMITE_DA_IDENTIFICACAO, LIMITE_DA_RESPONSABILIDADE, LIMITE_DO_TEXTO_LIVRE, LIMITE_NOME_DA_PESSOA } from "./documentosCentral.ts";
 
@@ -176,6 +177,18 @@ export function separarItensInvalidos<T extends Partial<AppDB>>(atual: Partial<A
         if (iguais(atualizada[campo], gravadaEmpresa?.[campo]) || textoAte(atualizada[campo], limite)) continue;
         rejeitados.push({ colecao: "empresas", item: empresaId, campo, mensagem: `O campo pode ter no máximo ${limite} caracteres.` });
         atualizada = { ...atualizada, [campo]: gravadaEmpresa?.[campo] };
+      }
+      // Rodada 9, E: horário (120), e-mail (120) e responsável do estabelecimento (80): recusa sem truncar.
+      for (const campo of ["horarioFuncionamento", "email"] as const) {
+        if (iguais(atualizada[campo], gravadaEmpresa?.[campo]) || textoAte(atualizada[campo], LIMITE_DA_NOVA_EMPRESA[campo])) continue;
+        rejeitados.push({ colecao: "empresas", item: empresaId, campo, mensagem: `O campo pode ter no máximo ${LIMITE_DA_NOVA_EMPRESA[campo]} caracteres.` });
+        atualizada = { ...atualizada, [campo]: gravadaEmpresa?.[campo] };
+      }
+      const respRecebido = atualizada.responsavelEstabelecimento as { nome?: unknown; cargo?: unknown } | undefined;
+      const respMalFormado = respRecebido !== undefined && respRecebido !== null && (typeof respRecebido !== "object" || Array.isArray(respRecebido) || Object.keys(respRecebido).some((chave) => !["nome", "cargo", "usuarioId"].includes(chave)));
+      if (respRecebido && (respMalFormado || !iguais(respRecebido, gravadaEmpresa?.responsavelEstabelecimento) && (!textoAte(respRecebido.nome, LIMITE_DA_NOVA_EMPRESA.responsavel) || !textoAte(respRecebido.cargo, LIMITE_DA_NOVA_EMPRESA.responsavel)))) {
+        rejeitados.push({ colecao: "empresas", item: empresaId, campo: "responsavel", mensagem: `O campo pode ter no máximo ${LIMITE_DA_NOVA_EMPRESA.responsavel} caracteres.` });
+        atualizada = { ...atualizada, responsavelEstabelecimento: gravadaEmpresa?.responsavelEstabelecimento };
       }
       if (!iguais(atualizada.responsabilidadesManual, gravadaEmpresa?.responsabilidadesManual)) {
         const problema = erroDaEmpresa({ responsabilidadesManual: atualizada.responsabilidadesManual });

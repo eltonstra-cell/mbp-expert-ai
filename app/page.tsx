@@ -149,7 +149,8 @@ import CadastroEquipamentos from "@/components/pc/CadastroEquipamentos";
 import { avisoParaEmitir, avisoParaFinalizar, erroDoCnpj, erroDoNomeDaEmpresa, itensRespondidos, pendenciasParaSalvarEmpresa } from "@/lib/regrasDoPacote3";
 import { ambientesParaVisita, limparVinculos, nomeJaExistente } from "@/lib/ambientesVisita";
 import { LIMITE_DA_IDENTIFICACAO } from "@/lib/documentosCentral";
-import { dadosParaOCadastroDoRt, rtVinculadoDaEmpresa, fraseDoPreencher, prefillDoPerfilDoRt, preencherIdentificacao, semOCampo, sugestoesDeAtividade, type CampoDaIdentificacao } from "@/lib/manualIdentificacao";
+import { enderecoEmUmaLinha, erroDoEmail, situacaoDoCnpj } from "@/lib/novaEmpresa";
+import { dadosParaOCadastroDoRt, registroDoRt, rtVinculadoDaEmpresa, fraseDoPreencher, prefillDoPerfilDoRt, preencherIdentificacao, semOCampo, sugestoesDeAtividade, type CampoDaIdentificacao } from "@/lib/manualIdentificacao";
 import { estadoDaBarraDeSalvar, marcadosDoUltimoSalvo } from "@/lib/escolhaEmJanela";
 import { TENTATIVAS_DA_NUVEM, conexaoAtual, esperaAposFalhaDaNuvem, rotuloDoSeloComProblema, seloDeSincronizacao, umaTentativa } from "@/lib/conexao";
 import { mostrarVoltar, nivelAcima, registrarLocal, voltarUma, type LocalDeTela } from "@/lib/historicoDeTelas";
@@ -375,6 +376,9 @@ const formEmpresaVazio = {
   revisadoPor: "",
   aprovadoPor: "",
 };
+
+/** Campos que a Receita informa: na Nova empresa ficam num cartão de leitura e só viram caixas em "Corrigir dados". */
+const CAMPOS_DA_RECEITA = ["nomeFantasia", "razaoSocial", "situacao", "cnae", "cnaeDescricao", "logradouro", "numero", "complemento", "bairro", "cep", "municipio", "uf", "telefone"];
 
 const camposEmpresaPrincipais = [
   "nomeFantasia", "razaoSocial", "situacao", "cnae", "cnaeDescricao", "tipo",
@@ -1085,6 +1089,8 @@ export default function Home() {
   const [semFantasiaNaReceita, setSemFantasiaNaReceita] = useState(false);
   const [semEmailNaConsulta, setSemEmailNaConsulta] = useState(false);
   const [respNovaAberta, setRespNovaAberta] = useState(false);
+  const [corrigirReceita, setCorrigirReceita] = useState(false);
+  const [alterandoTipo, setAlterandoTipo] = useState(false);
   const [cnaesSecundariosForm, setCnaesSecundariosForm] = useState<{ codigo: string; descricao: string }[]>([]);
   const [consultaEmForm, setConsultaEmForm] = useState("");
   const cnpjConsultadoRef = useRef("");
@@ -3790,7 +3796,12 @@ export default function Home() {
     setErroDoSalvar("");
   }, [form, secaoEmpresa]);
 
-  function salvarEmpresa(): boolean {
+  function salvarEmpresa(empresaEsperada?: string): boolean {
+    // O Manual grava SEMPRE na empresa cujo Manual foi aberto; nunca na que estiver ativa quando o botão é tocado.
+    if (empresaEsperada && empresaEsperada !== editingEmpresaIdRef.current) {
+      void avisar("Este Manual pertence a outra empresa e não foi salvo. Abra a empresa certa e tente de novo.");
+      return false;
+    }
     if (!exigirPermissao("empresas.editar")) return false;
     setTentouSalvarEmpresa(true);
     const faltasDaEmpresa = pendenciasParaSalvarEmpresa(form, Boolean(editingEmpresaId));
@@ -3802,12 +3813,25 @@ export default function Home() {
       setErroDoSalvar(faltasDaEmpresa.join(" "));
       return false;
     }
+    // CNPJ já cadastrado: empresa ATIVA bloqueia o cadastro novo; a arquivada deixa cadastrar (a arquivada não é tocada).
+    if (!editingEmpresaId) {
+      const situacao = situacaoDoCnpj(db.empresas, form.cnpj);
+      const erroEmail = erroDoEmail(form.email);
+      const bloqueio = situacao.tipo === "ativa" ? "Já existe uma empresa ativa com este CNPJ. Abra a existente." : erroEmail;
+      if (bloqueio) {
+        setMsg(bloqueio);
+        setErroDoSalvar(bloqueio);
+        return false;
+      }
+    }
     if (Object.keys(validarCapacidade(capacidadeForm)).length) {
       setErroDoSalvar("Confira os números de capacidade e turnos antes de salvar.");
       void avisar("Confira os números de capacidade e turnos antes de salvar.");
       return false;
     }
-    const id = editingEmpresaId || form.cnpj.replace(/\D/g, "") || crypto.randomUUID();
+    // Empresa nova: o id é o CNPJ só quando está livre; se o id já existe (empresa arquivada com o mesmo CNPJ), nasce com id próprio e a arquivada não é sobrescrita.
+    const cnpjSoDigitos = form.cnpj.replace(/\D/g, "");
+    const id = editingEmpresaId || (cnpjSoDigitos && !db.empresas[cnpjSoDigitos] ? cnpjSoDigitos : crypto.randomUUID());
     const anterior = editingEmpresaId ? db.empresas[editingEmpresaId] : undefined;
     // Campos de texto editados nesta sessão: sem espaços nas pontas nem repetidos (o que não mudou não é tocado).
     const formParaGravar = { ...form, ...camposAparadosAoSalvar(form as unknown as Record<string, unknown>, anterior as unknown as Record<string, unknown> | undefined) };
@@ -3837,6 +3861,7 @@ export default function Home() {
       fluxosOperacionais: adequarFluxosAosSetores(fluxosEmpresa, setoresEmpresa),
       programasControleQualidade: normalizarProgramasControle(programasEmpresa),
       pops: normalizarPops(popsEmpresa),
+      ...(camposDoPerfilRt.length ? { camposDoPreencher: camposDoPerfilRt } : {}),
       criadoEm: anterior?.criadoEm || new Date().toISOString(),
       cor: form.cor || (anterior ? anterior.cor : proximaCorLivre(Object.values(db.empresas))),
       ...(anterior
@@ -4036,7 +4061,7 @@ export default function Home() {
     const prefillRt = prefillDoPerfilDoRt(
       { consultorNome: empresa.consultorNome, consultorTelefone: empresa.consultorTelefone, consultorRegistro: empresa.consultorRegistro },
       rtDaEmpresa,
-      (cargo, crn) => nomeECargo(cargo, crn, " ")
+      registroDoRt
     );
     const formCarregado = {
       cor: corDaEmpresa(empresa),
@@ -4089,7 +4114,7 @@ export default function Home() {
     );
     const popsCarregados = normalizarPops(empresa.pops);
     setForm(formCarregado);
-    setCamposDoPerfilRt(prefillRt.doPerfil);
+    setCamposDoPerfilRt([...new Set([...prefillRt.doPerfil, ...((empresa.camposDoPreencher || []) as CampoDaIdentificacao[])])]);
     setCapacidadeForm(capacidadeParaFormulario(empresa.capacidade));
     setResponsabilidadesEmpresa(responsabilidadesCarregadas);
     setSetoresEmpresa(setoresCarregados);
@@ -5258,6 +5283,7 @@ export default function Home() {
       escolherDestinoDaCaixa(destino);
       return;
     }
+    if (!(await liberarEdicaoParaTrocarEmpresa())) return;
     if (!(await confirmarComFila("trocar"))) return;
     destinoAposTrocaRef.current = { empresaId, destino };
     setDb((o) => ({ ...o, empresaAtualId: empresaId }));
@@ -6897,6 +6923,21 @@ export default function Home() {
     }
   }
 
+  // Trocar de empresa com alteração não salva fica BLOQUEADO até salvar ("Continuar editando") ou descartar. A pergunta abre na frente de tudo (pilha única de janelas).
+  // Ao trocar, a edição da empresa antiga fecha: a Central nunca fica aberta mostrando uma empresa que já não é a ativa.
+  async function liberarEdicaoParaTrocarEmpresa(): Promise<boolean> {
+    if (empresaTemAlteracoes) {
+      const ok = await confirmar("Há alterações ainda não salvas nesta empresa. Salve antes de trocar, ou descarte para trocar agora.", { titulo: "Alterações não salvas", confirmarRotulo: "Descartar e trocar", cancelarRotulo: "Continuar editando", perigoso: true });
+      if (!ok) return false;
+    }
+    if (showEmpresaForm) {
+      setShowEmpresaForm(false);
+      setEditingEmpresaId(null);
+      setEmpresaSecao(null);
+    }
+    return true;
+  }
+
   async function confirmarSaidaDaEdicao() {
     if (!empresaTemAlteracoes) return true;
     return confirmar(
@@ -8031,6 +8072,7 @@ export default function Home() {
             onEscolher={async (id) => {
               setTrocarEmpresaAberto(false);
               if (id === db.empresaAtualId) return;
+              if (!(await liberarEdicaoParaTrocarEmpresa())) return;
               if (!(await confirmarComFila("trocar"))) return;
               setDb((o) => ({ ...o, empresaAtualId: id }));
               setVisitaAtualId(null);
@@ -8269,18 +8311,6 @@ export default function Home() {
                 {!editingEmpresaId && <h1 className="ui-title">Nova empresa</h1>}
                 {!editingEmpresaId && <p className="ui-subtitle">Digite o CNPJ, confira os dados básicos e salve para abrir a Central da Empresa.</p>}
               </div>
-              <button
-                type="button"
-                className="ui-btn ui-btn--secondary"
-                onClick={async () => {
-                  if (!(await confirmarSaidaDaEdicao())) return;
-                  setShowEmpresaForm(false);
-                  setEditingEmpresaId(null);
-                  setEmpresaSecao(null);
-                }}
-              >
-                Cancelar
-              </button>
             </div>
             )}
 
@@ -8343,6 +8373,21 @@ export default function Home() {
                         </button>
                       </div>
                       {mensagensDaConsultaTela.mensagem && <span className="cnpj-consulta-msg" role="status">{mensagensDaConsultaTela.mensagem}</span>}
+                      {!editingEmpresaId && !propostaCnpj && (camposDaConsulta.length > 0 || Boolean(consultaEmForm)) && <span className="nova-encontrado" role="status">✓ Encontrado</span>}
+                      {!editingEmpresaId && (() => {
+                        const situacao = situacaoDoCnpj(db.empresas, form.cnpj);
+                        if (situacao.tipo === "ativa") {
+                          const existente = db.empresas[situacao.empresa.id];
+                          return (
+                            <span className="ui-field-error nova-cnpj-repetido" role="alert">
+                              Este CNPJ já está cadastrado em {nomeParaExibir(existente)}.{" "}
+                              <button type="button" className="man-link" onClick={() => { if (existente) editarEmpresa(existente); }}>Abrir a existente</button>
+                            </span>
+                          );
+                        }
+                        if (situacao.tipo === "arquivada") return <span className="cnpj-consulta-msg" role="status">Existe uma empresa arquivada com este CNPJ. Você pode cadastrar de novo.</span>;
+                        return null;
+                      })()}
                       {!editingEmpresaId && (tocouCnpjEmpresa || tentouSalvarEmpresa || form.cnpj.replace(/D/g, "").length >= 14) && erroDoCnpj(form.cnpj) && <span className="ui-field-error" role="alert">{erroDoCnpj(form.cnpj)}</span>}
                     </label>
 
@@ -8355,13 +8400,49 @@ export default function Home() {
                       />
                     )}
 
-                    {confirmeiTudoVisivel && (
-                      <p className="nova-consulta-aviso md:col-span-2" role="status">
-                        {mensagensDaConsultaTela.avisoPreenchido && <span>Preenchido pela consulta. Confira e edite o que precisar.</span>}
-                        <button type="button" className="ui-btn ui-btn--secondary" onClick={() => setCamposDaConsulta((atual) => atual.filter((campo) => campo === "tipo"))}>Confirmei tudo</button>
-                      </p>
+                    {!editingEmpresaId && (
+                      <section className="nova-receita" aria-label="Dados da Receita">
+                        <div className="nova-receita-topo">
+                          <strong>Dados da Receita</strong>
+                          {(camposDaConsulta.length > 0 || Boolean(consultaEmForm)) && <span className="nova-fonte">sugerido · fonte BrasilAPI</span>}
+                          <button type="button" className="man-link nova-corrigir" aria-expanded={corrigirReceita} onClick={() => setCorrigirReceita((aberto) => !aberto)}>{corrigirReceita ? "Concluir correção" : form.razaoSocial || form.nomeFantasia || form.cnae ? "Corrigir dados" : "Preencher à mão"}</button>
+                        </div>
+                        {!(form.razaoSocial || form.nomeFantasia || form.cnae) && !corrigirReceita ? (
+                          <p className="nova-receita-vazio">Digite o CNPJ e toque em Buscar. Se a Receita não responder, preencha à mão.</p>
+                        ) : !corrigirReceita ? (
+                          <dl className="nova-receita-lista">
+                            <div><dt>Razão social</dt><dd>{form.razaoSocial || "—"}</dd></div>
+                            <div><dt>Nome fantasia</dt><dd>{form.nomeFantasia || "Sem nome fantasia na Receita"}</dd></div>
+                            <div><dt>Situação</dt><dd>{form.situacao || "—"}</dd></div>
+                            <div><dt>CNAE principal</dt><dd>{[form.cnae, form.cnaeDescricao].filter(Boolean).join(" · ") || "—"}</dd></div>
+                            <div className="nova-receita-larga"><dt>Endereço</dt><dd>{enderecoEmUmaLinha(form) || "—"}</dd></div>
+                            <div><dt>Telefone</dt><dd>{form.telefone || "—"}</dd></div>
+                            {avisoUf && <div className="nova-receita-larga"><dd className="cnpj-uf-aviso" role="status">{avisoUf}</dd></div>}
+                          </dl>
+                        ) : null}
+                        {(tocouNomeEmpresa || tentouSalvarEmpresa) && !corrigirReceita && erroDoNomeDaEmpresa(form.nomeFantasia, form.razaoSocial) && <span className="ui-field-error" role="alert">{erroDoNomeDaEmpresa(form.nomeFantasia, form.razaoSocial)}</span>}
+                      </section>
                     )}
-                    {camposEmpresaPrincipais.filter((k) => k !== "responsavel" && k !== "cargoResponsavel").map((k) => (
+                    {!editingEmpresaId && (
+                      <div className="nova-tipo-linha">
+                        <span>
+                          Tipo: <strong>{tipoDoForm.rotulo}</strong>{tipoDoForm.ajustado ? ", escolhido por você" : ", pelo CNAE"} ·{" "}
+                          <button type="button" className="man-link" aria-expanded={alterandoTipo} onClick={() => setAlterandoTipo((aberto) => !aberto)}>{alterandoTipo ? "pronto" : "alterar"}</button>
+                        </span>
+                        <PacoteDoTipoPainel
+                          compacto
+                          tipo={tipoDoForm.rotulo}
+                          ambientesDaEmpresa={setoresEmpresa}
+                          equipamentosDaEmpresa={equipamentosEmpresa.map((item) => `${item.setor}|${item.nome.toLocaleLowerCase("pt-BR")}`)}
+                          fluxosAplicaveis={fluxosEmpresa.filter((fluxo) => fluxo.aplicavel).map((fluxo) => fluxo.tipo)}
+                          onAplicar={aplicarPacoteDoTipo}
+                          onDesfazer={desfazerPacoteDoTipo}
+                          aplicadoAgora={Boolean(pacoteDesfazer)}
+                        />
+                      </div>
+                    )}
+                    {!editingEmpresaId && <h2 className="nova-complete">Complete o que a Receita não informa</h2>}
+                    {camposEmpresaPrincipais.filter((k) => k !== "responsavel" && k !== "cargoResponsavel" && (editingEmpresaId || (k === "tipo" ? alterandoTipo : corrigirReceita || !CAMPOS_DA_RECEITA.includes(k)))).map((k) => (
                   <label key={k} className={editingEmpresaId ? (k === "cnaeDescricao" ? "md:col-span-2" : undefined) : `nova-campo nova-campo--${k}`}>
                     <span className="mb-1 block text-xs font-bold text-slate-500">
                       {labels[k] || k}
@@ -8375,7 +8456,6 @@ export default function Home() {
                           {tipoLegado && <option value={form.tipo}>{form.tipo}</option>}
                           
                         </Select>
-                        {tipoSugerido && <button type="button" className="ui-btn ui-btn--secondary pacote-confirmar-tipo" onClick={() => { setTipoSugerido(false); setCamposDaConsulta((atual) => atual.filter((item) => item !== "tipo")); }}>Confirmar tipo</button>}
                       </span>
                     ) : k === "cnaeDescricao" ? (
                       <CaixaQueCresce
@@ -8391,6 +8471,7 @@ export default function Home() {
                         className={`w-full rounded-xl border p-3${camposDaConsulta.includes(k) ? " is-da-consulta" : ""}${k === "cnae" && (validacaoDoCnae.situacao === "formato" || (validacaoDoCnae.situacao === "inexistente" && !cnaeInexistenteDaConsulta)) ? " cnae-invalido" : ""}`}
                         value={form[k]}
                         inputMode={k === "cnae" ? "numeric" : undefined}
+                        maxLength={k === "horarioFuncionamento" || k === "email" ? 120 : undefined}
                         aria-describedby={k === "cnae" && validacaoDoCnae.mensagem ? "empresa-cnae-aviso" : undefined}
                         placeholder={k === "horarioFuncionamento" ? "Ex.: Seg a sáb, 11h às 23h" : k === "nomeFantasia" && semFantasiaNaReceita ? "Sem nome fantasia na Receita" : undefined}
                         aria-invalid={k === "nomeFantasia" && (tocouNomeEmpresa || tentouSalvarEmpresa) && Boolean(erroDoNomeDaEmpresa(form.nomeFantasia, form.razaoSocial))}
@@ -8406,10 +8487,12 @@ export default function Home() {
                       <button type="button" className="ui-btn ui-btn--secondary nova-usar-razao" onClick={() => mudarCampoDaEmpresa("nomeFantasia", form.razaoSocial)}>Usar a razão social</button>
                     )}
                     {k === "email" && semEmailNaConsulta && !form.email.trim() && <span className="cad-dica">A consulta não traz e-mail (a BrasilAPI não informa). Preencha à mão.</span>}
+                    {k === "email" && !editingEmpresaId && !semEmailNaConsulta && !form.email.trim() && <span className="cad-dica">A Receita não informa e-mail.</span>}
+                    {k === "email" && !editingEmpresaId && erroDoEmail(form.email) && <span className="ui-field-error" role="alert">{erroDoEmail(form.email)}</span>}
                     {k === "nomeFantasia" && (tocouNomeEmpresa || tentouSalvarEmpresa) && erroDoNomeDaEmpresa(form.nomeFantasia, form.razaoSocial) && <span className="ui-field-error" role="alert">{erroDoNomeDaEmpresa(form.nomeFantasia, form.razaoSocial)}</span>}
                   </label>
                     ))}
-                    <PacoteDoTipoPainel
+                    {editingEmpresaId && <PacoteDoTipoPainel
                       tipo={tipoDoForm.rotulo}
                       ambientesDaEmpresa={setoresEmpresa}
                       equipamentosDaEmpresa={equipamentosEmpresa.map((item) => `${item.setor}|${item.nome.toLocaleLowerCase("pt-BR")}`)}
@@ -8417,7 +8500,7 @@ export default function Home() {
                       onAplicar={aplicarPacoteDoTipo}
                       onDesfazer={desfazerPacoteDoTipo}
                       aplicadoAgora={Boolean(pacoteDesfazer)}
-                    />
+                    />}
                     {(() => {
                       // Responsável do estabelecimento: escolhe-se primeiro o acesso vinculado; nome e cargo vêm desse usuário (em leitura).
                       const vinculado = db.usuarios.find((pessoa) => pessoa.id === usuarioResponsavelForm);
@@ -8425,13 +8508,8 @@ export default function Home() {
                       const podeVincular = !usuarioDaSessao || usuarioDaSessao.perfil === "Administrador";
                       return (
                         <fieldset className={editingEmpresaId ? "md:col-span-2 rounded-xl p-3" : "nova-resp md:col-span-2 rounded-xl p-3"}>
-                          <legend className="px-1 text-[15px] font-normal text-[color:var(--ink-2)]">Responsável do estabelecimento</legend>
-                          {!editingEmpresaId && !vinculado && (
-                            <button type="button" className="ui-btn ui-btn--secondary nova-resp-botao" aria-expanded={respNovaAberta} onClick={() => setRespNovaAberta((aberta) => !aberta)}>
-                              {respNovaAberta ? "Recolher responsável" : "Informar responsável (opcional)"}
-                            </button>
-                          )}
-                          <div className={`grid gap-3 md:grid-cols-3${!editingEmpresaId && !vinculado && !respNovaAberta ? " hidden" : ""}`}>
+                          <legend className="px-1 text-[15px] font-normal text-[color:var(--ink-2)]">Responsável do estabelecimento{editingEmpresaId ? "" : " (opcional)"}</legend>
+                          <div className="grid gap-3 md:grid-cols-3">
                             {editingEmpresaId && (
                               <label>
                                 <span className="mb-1 block text-xs font-bold text-slate-500">Acesso vinculado (quem aprova os POPs)</span>
@@ -8459,7 +8537,7 @@ export default function Home() {
                             )}
                             <label>
                               <span className="mb-1 block text-xs font-bold text-slate-500">Nome</span>
-                              <input type="text" className="w-full rounded-xl border p-3 disabled:bg-slate-100" value={vinculado ? vinculado.nome : form.responsavel} readOnly={Boolean(vinculado)} onChange={(e) => setForm({ ...form, responsavel: e.target.value })} />
+                              <input type="text" className="w-full rounded-xl border p-3 disabled:bg-slate-100" value={vinculado ? vinculado.nome : form.responsavel} maxLength={80} readOnly={Boolean(vinculado)} onChange={(e) => setForm({ ...form, responsavel: e.target.value })} />
                             </label>
                             <label>
                               <span className="mb-1 block text-xs font-bold text-slate-500">Cargo</span>
@@ -8473,7 +8551,7 @@ export default function Home() {
                               {vinculado && !cargoDoUsuario && <span className="mt-1 block text-xs text-slate-500">Sem cargo em Acessos: informe aqui ou cadastre em Acessos.</span>}
                             </label>
                           </div>
-                          {!editingEmpresaId && (respNovaAberta || vinculado) && <p className="mt-2 text-xs text-slate-500">Depois de salvar a empresa, escolha o acesso vinculado: nome e cargo passam a vir dele.</p>}
+                          {!editingEmpresaId && <p className="mt-2 text-xs text-slate-500">Depois de salvar a empresa, escolha o acesso vinculado: nome e cargo passam a vir dele.</p>}
                         </fieldset>
                       );
                     })()}
@@ -8515,10 +8593,18 @@ export default function Home() {
                         </div>
                       </fieldset>
                     )}
-                    <div className="md:col-span-2">
-                      <span className="mb-1 block text-xs font-bold text-slate-500">Cor</span>
-                      <BolinhasDeCor valor={form.cor} onEscolher={(cor) => setForm({ ...form, cor })} rotulo="Cor da empresa" variante="linha" />
-                    </div>
+                    {!editingEmpresaId && ehCelular ? (
+                      <details className="nova-mais">
+                        <summary>Mais opções</summary>
+                        <span className="mb-1 block text-xs font-bold text-slate-500">Cor</span>
+                        <BolinhasDeCor valor={form.cor} onEscolher={(cor) => setForm({ ...form, cor })} rotulo="Cor da empresa" variante="linha" />
+                      </details>
+                    ) : (
+                      <div className="md:col-span-2 nova-cor">
+                        <span className="mb-1 block text-xs font-bold text-slate-500">Cor</span>
+                        <BolinhasDeCor valor={form.cor} onEscolher={(cor) => setForm({ ...form, cor })} rotulo="Cor da empresa" variante="linha" />
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -8540,17 +8626,16 @@ export default function Home() {
                       const veDadosPessoais = !usuarioDaSessao || usuarioDaSessao.perfil === "Administrador" || usuarioDaSessao.perfil === "Consultor/RT";
                       const resultado = preencherIdentificacao(form as unknown as Record<CampoDaIdentificacao, string>, {
                         rt: rt ? { nome: rt.nome, cargo: rt.cargo, crn: rt.crn, telefone: veDadosPessoais ? rt.telefone : undefined, ...(veDadosPessoais ? { cpfCnpj: rt.cpfCnpj, endereco: rt.endereco, registroProfissional: rt.registroProfissional } : {}) } : undefined,
-                        juntar: (cargo, crn) => nomeECargo(cargo, crn, " "),
+                        juntar: registroDoRt,
+                        daAutomacao: camposDoPerfilRt,
                         atividade: form.cnaeDescricao,
                         responsavel: form.responsavel,
                         cargoResponsavel: form.cargoResponsavel,
                         nomeDoUsuarioRt: usuarioDaSessao?.perfil === "Consultor/RT" ? usuarioDaSessao.nome || sessaoAtual?.name || "" : undefined,
                         hoje: new Date().toLocaleDateString("sv-SE"),
                       });
-                      if (resultado.preenchidos.length > 0) {
-                        setForm({ ...form, ...resultado.valores });
-                        setCamposDoPerfilRt((atuais) => [...new Set([...atuais, ...resultado.doPerfil])]);
-                      }
+                      if (resultado.preenchidos.length > 0) setForm({ ...form, ...resultado.valores });
+                      setCamposDoPerfilRt(resultado.doPerfil);
                       return {
                         texto: resultado.semFonte.length === 0 && resultado.preenchidos.length === 0 ? "Tudo já está preenchido." : fraseDoPreencher(resultado.preenchidos.length, resultado.semFonte.length),
                         primeiroVazio: resultado.semFonte[0] ?? null,
@@ -8560,10 +8645,17 @@ export default function Home() {
                     responsabilidades={responsabilidadesEmpresa}
                     onResponsabilidadesChange={setResponsabilidadesEmpresa}
                     temAlteracoes={empresaTemAlteracoes}
+                    onDescartar={() => {
+                      const salva = db.empresas[editingEmpresaId];
+                      if (!salva) return;
+                      editarEmpresa(salva);
+                      setEmpresaSecao("manual");
+                    }}
                     salvando={salvandoDocumentos}
                     erroDoSalvar={erroDoSalvar}
-                    onSalvar={() => {
-                      if (salvarEmpresa()) {
+                    empresaId={editingEmpresaId}
+                    onSalvar={(empresaDoManual) => {
+                      if (salvarEmpresa(empresaDoManual)) {
                         setSalvandoDocumentos(true);
                         window.setTimeout(() => setSalvandoDocumentos(false), 700);
                       }
@@ -8660,7 +8752,23 @@ export default function Home() {
 
             {(!editingEmpresaId || ["dados", "fluxos", "programas"].includes(secaoEmpresa || "")) && (
               <div className={`cen-salvar${editingEmpresaId ? ` ${estadoDaBarraDeSalvar(empresaTemAlteracoes).classe}` : ""}`}>
-                {!editingEmpresaId && msg && <span className="cen-salvar-aviso">{msg}</span>}
+                {!editingEmpresaId && msg && <span className="cen-salvar-aviso" role="alert">{msg}</span>}
+                {!editingEmpresaId && (
+                  <button
+                    type="button"
+                    className="ui-btn ui-btn--secondary nova-cancelar"
+                    onClick={async () => {
+                      if (!(await confirmarSaidaDaEdicao())) return;
+                      setShowEmpresaForm(false);
+                      setEditingEmpresaId(null);
+                      setEmpresaSecao(null);
+                      setCorrigirReceita(false);
+                      setAlterandoTipo(false);
+                    }}
+                  >
+                    Cancelar
+                  </button>
+                )}
                 {editingEmpresaId && (
                   <span className="cen-salvar-aviso" role="status">
                     {erroDoSalvar && !salvandoDocumentos ? (

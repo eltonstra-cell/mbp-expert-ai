@@ -7937,3 +7937,80 @@ html:root:root body .man-folha .man-preencher{padding-bottom:8px}
 /* RODADA 8 · Manual: Atividades cresce com o texto; aviso pequeno de RT não vinculado */
 html:root:root body .man-atividade{height:auto;min-height:44px;max-height:240px;overflow-y:hidden;resize:none}
 html:root:root body .man-sem-rt{grid-column:1 / -1;margin:0;font-size:14px;color:#55607A}
+
+/* RODADA 9 · A: a janela do Manual fica SEMPRE abaixo dos diálogos e do Trocar empresa (pilha única) */
+html:root:root body .man-jan{z-index:80}
+html:root:root body .man-folha-camada{z-index:85}
+html:root:root body [inert]{pointer-events:none}
+
+/* RODADA 9 · C: Acessos */
+html:root:root body .pc-empresas-cab{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px}
+html:root:root body .ui-field-aviso{font-size:14px;color:var(--botao-laranja,#D9500F)}
+
+/* RODADA 9 · F: Pacote — marcado = quadradinho turquesa com ✓ branco e fundo creme; desmarcado = fundo branco e quadradinho vazio com borda */
+html:root:root body .esc-janela .esc-caixa{appearance:none;display:grid;place-items:center;width:22px;height:22px;border:1.5px solid #7F8BA3;border-radius:6px;background:#fff}
+html:root:root body .esc-janela .esc-caixa:checked{border-color:#21A3A3;background:#21A3A3}
+html:root:root body .esc-janela .esc-caixa:checked::after{content:"✓";width:auto;height:auto;margin:0;border:0;transform:none;font-size:14px;line-height:1;font-weight:400;color:#fff}
+html:root:root body .pacote-janela .esc-opcao{background:#fff;border-color:#D5DEE6}
+html:root:root body .pacote-janela .esc-opcao.is-on{background:#FFF6E5;border-color:#F0D9A0}
+html:root:root body .pacote-janela .pacote-aplicar{height:44px;color:#fff}
+html:root:root body .pacote-proprio{margin-top:8px}
+html:root:root body .pacote-novo{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+html:root:root body .pacote-novo .ui-input{flex:1 1 220px;min-width:0}
+
+/* RODADA 9 · E: Nova empresa — cartão "Dados da Receita", linha do tipo, rodapé fixo; sem rolagem interna aninhada */
+html:root:root body .nova-form{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px 16px}
+html:root:root body .nova-form>.nova-campo--cnpj{order:0}
+html:root:root body .nova-form>.propostacnpj,html:root:root body .nova-form>[class*="proposta"]{order:5}
+html:root:root body .nova-form>.nova-receita{order:10}
+html:root:root body .nova-form>.nova-campo{order:20}
+html:root:root body .nova-form>.nova-campo--cnpj{order:0}
+html:root:root body .nova-form>.nova-tipo-linha{order:30}
+html:root:root body .nova-form>.nova-campo--tipo{order:31}
+html:root:root body .nova-form>.nova-complete{order:40}
+html:root:root body .nova-form>.nova-campo--horarioFuncionamento,html:root:root body .nova-form>.nova-campo--email{order:50;grid-column:span 2}
+html:root:root body .nova-form>.nova-resp{order:60}
+html:root:root body .nova-form>.nova-cor,html:root:root body .nova-form>.nova-mais{order:70}
+html:root:root body .nova-receita{padding:12px 16px;border:1px solid #F0D9A0;border-radius:12px;background:#FFF6E5;color:#1B2433}
+html:root:root body .nova-receita-topo{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;margin-bottom:6px}
+html:root:root body .nova-fonte{font-size:14px;color:#55607A}
+html:root:root body .nova-corrigir{margin-left:auto;font-size:15px}
+html:root:root body .nova-receita-lista{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px 16px;margin:0}
+html:root:root body .nova-receita-lista dt{font-size:13px;color:#55607A}
+html:root:root body .nova-receita-lista dd{margin:0;font-size:15px;line-height:20px;overflow-wrap:anywhere}
+html:root:root body .nova-receita-larga{grid-column:1 / -1}
+html:root:root body .nova-receita-vazio{margin:0;font-size:15px;color:#55607A}
+html:root:root body .nova-encontrado{display:block;margin-top:4px;font-size:15px;color:#1E7A3E}
+html:root:root body .nova-tipo-linha{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 16px;font-size:15px;color:#1B2433}
+html:root:root body .nova-tipo-linha .ui-btn{height:40px}
+html:root:root body .nova-complete{margin:4px 0 0;font-size:16px;font-weight:500;color:#1B2433}
+html:root:root body .nova-mais summary{min-height:40px;display:flex;align-items:center;font-size:15px;cursor:pointer;color:#1B2433}
+html:root:root body .central-empresa--nova .cen-salvar{display:flex;align-items:center;justify-content:flex-end;gap:10px}
+html:root:root body .central-empresa--nova .cen-salvar-aviso{margin-right:auto;color:#B83A33}
+html:root:root body .central-empresa--nova .nova-cancelar{height:44px}
+@media (min-width:768px){
+  html:root:root body .central-empresa--nova{height:auto;min-height:0}
+  html:root:root body .central-empresa--nova .cen-conteudo{overflow:visible;padding-right:0}
+}
+@media (max-width:1199px){html:root:root body .nova-receita-lista{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:767px){
+  html:root:root body .central-empresa--nova{height:auto;min-height:0;padding-bottom:84px}
+  html:root:root body .central-empresa--nova .cen-conteudo{overflow:visible}
+  html:root:root body .central-empresa--nova .cen-salvar{position:fixed;left:0;right:0;bottom:0;z-index:60;padding:10px 16px;background:#fff;border-top:1px solid #E3E8EE}
+  html:root:root body .nova-form{grid-template-columns:minmax(0,1fr)}
+  html:root:root body .nova-form>*{grid-column:1 / -1}
+  html:root:root body .nova-receita-lista{grid-template-columns:minmax(0,1fr)}
+}
+
+/* RODADA 9 · celular: rodapé da janela do pacote sem corte e a Nova empresa sem a barra de baixo por trás do rodapé fixo */
+@media (max-width:767px){
+  html:root:root body .esc-janela .esc-rodape{flex-wrap:wrap;padding:12px 16px}
+  html:root:root body .esc-janela .esc-rodape>*:first-child{flex:1 1 100%}
+  html:root:root body .esc-janela .esc-rodape-botoes{flex:1 1 100%}
+  html:root:root body .esc-janela .esc-rodape-botoes>.ui-btn{flex:1 1 0;min-width:0;padding-left:10px;padding-right:10px}
+  html:root:root body:has(.central-empresa--nova) .campo-bar{display:none}
+}
+@media (max-width:767px){
+  html:root:root body .esc-janela .esc-rodape-botoes>.ui-btn{white-space:normal;height:auto;min-height:44px;line-height:1.2;text-align:center}
+  html:root:root body .esc-janela .esc-rodape-botoes>.ui-btn:first-child{flex:0 0 36%}
+}

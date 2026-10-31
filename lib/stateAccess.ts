@@ -4,7 +4,7 @@ import { protegerCarimboDasEvidencias } from "./fotosDoItem.ts";
 import { preservarEvidenciasEmRelatorio } from "./relatorioEmitido.ts";
 import { podeEditarQuestionario } from "./questionarioAmbiente.ts";
 import { popComoVigente } from "./popsNorma.ts";
-import { CAMPOS_DA_EMPRESA_SO_DA_GESTAO, evidenciasSemNomes, manterNomesGravadosDasEvidencias, registrosSemNomesDosOutros, semNomesNaEmpresa, semNomesNoPop, visitasSemNomes } from "./dadosPorPerfil.ts";
+import { CAMPOS_DA_EMPRESA_SO_DA_GESTAO, relatoriosSemTelefoneDoRt, evidenciasSemNomes, manterNomesGravadosDasEvidencias, registrosSemNomesDosOutros, semNomesNaEmpresa, semNomesNoPop, visitasSemNomes } from "./dadosPorPerfil.ts";
 import { comPerfilProprio, semDadosPessoaisDoRt } from "./userManagement.ts";
 import { permissoesEfetivas } from "./screenAccess.ts";
 import { acessoVigente } from "./validadeDeAcesso.ts";
@@ -101,7 +101,7 @@ export function filtrarEstadoPorUsuario(
       colaboradores,
       capacitacoes,
       leiturasPop,
-      relatoriosEmitidos,
+      relatoriosEmitidos: relatoriosSemTelefoneDoRt(relatoriosEmitidos),
     };
   }
   // Executor de campo: não recebe correções; dos POPs recebe só os aprovados, para ler no checklist ("Ver POP").

@@ -1,6 +1,6 @@
 // Manual › Identificação complementar e Responsabilidades: regras puras (sem tela).
 import type { PapelResponsabilidadeManual, ResponsabilidadeManual } from "../types/index.ts";
-import { erroDoCpfCnpj, erroDoTelefone } from "./documentosCentral.ts";
+import { erroDoCpfCnpj, erroDoTelefone, mascararTelefone } from "./documentosCentral.ts";
 
 /** Campos do cartão "Identificação complementar", na ordem da tela. */
 export const CAMPOS_DA_IDENTIFICACAO = [
@@ -54,7 +54,7 @@ export function prefillDoPerfilDoRt(salvos: Partial<Record<CampoDaIdentificacao,
   const doPerfil: CampoDaIdentificacao[] = [];
   const candidatos: [CampoDaIdentificacao, string][] = [
     ["consultorNome", (rt?.nome || "").trim()],
-    ["consultorTelefone", (rt?.telefone || "").trim()],
+    ["consultorTelefone", mascararTelefone(rt?.telefone || "")],
     ["consultorRegistro", juntar(rt?.cargo, rt?.crn).trim()],
   ];
   for (const [campo, doRt] of candidatos) {
@@ -101,6 +101,8 @@ export type FontesParaPreencher = {
   hoje?: string;
   /** Há um Consultor/RT vinculado à empresa (ou o próprio RT logado)? Sem ele, o nome vem do mesmo lugar do "aprovado por". */
   semRtVinculado?: boolean;
+  /** Campos que o próprio Preencher colocou antes e o usuário ainda não editou: podem ser atualizados num novo clique. */
+  daAutomacao?: CampoDaIdentificacao[];
 };
 
 export type ResultadoDoPreencher = {
@@ -112,44 +114,47 @@ export type ResultadoDoPreencher = {
   semFonte: CampoDaIdentificacao[];
 };
 
+/** "Profissão e registro": "<cargo> · CRN <número>" (ex.: "Nutricionista RT · CRN 6599"); o CRN que já começa com "CRN" não repete a sigla. */
+export function registroDoRt(cargo?: string, crn?: string): string {
+  const c = (cargo || "").trim();
+  const n = (crn || "").trim();
+  const registro = n ? (/^crn/i.test(n) ? n : `CRN ${n}`) : "";
+  return [c, registro].filter(Boolean).join(" · ");
+}
+
 /**
- * Botão "Preencher": completa SÓ os campos vazios, com dados que já existem (perfil do RT, responsável do estabelecimento e CNAE da empresa).
- * O que já foi digitado nunca é trocado.
+ * Botão "Preencher": completa os campos vazios, e também os que o próprio Preencher colocou antes e o usuário não editou
+ * (`daAutomacao`: assim um nome antigo não fica preso). O que o usuário digitou nunca é trocado.
+ * Fonte do RT: o Consultor/RT vinculado (`rt`); sem ele, o usuário logado se for Consultor/RT; sem os dois, o nome do "aprovado por".
  */
 export function preencherIdentificacao(atuais: Partial<Record<CampoDaIdentificacao, string>>, fontes: FontesParaPreencher): ResultadoDoPreencher {
-  const nomeDoRt = (fontes.rt?.nome || "").trim() || (fontes.nomeDoUsuarioRt || "").trim();
-  const { valores, doPerfil } = prefillDoPerfilDoRt(atuais, nomeDoRt ? { ...fontes.rt, nome: nomeDoRt } : fontes.rt, fontes.juntar);
-  const doRt: [CampoDaIdentificacao, string][] = [
-    ["consultorCpfCnpj", (fontes.rt?.cpfCnpj || "").trim()],
-    ["consultorEndereco", (fontes.rt?.endereco || "").trim()],
-    // O texto "profissão e registro" guardado no cadastro vale mais que cargo + CRN juntos.
-    ["consultorRegistro", (fontes.rt?.registroProfissional || "").trim()],
-  ];
-  for (const [campo, valor] of doRt) {
-    if (escrito(atuais[campo]) || !valor) continue;
-    valores[campo] = valor;
-    if (!doPerfil.includes(campo)) doPerfil.push(campo);
-  }
-  // Sem nome no cadastro do RT, vale o mesmo nome que alimenta "Manual aprovado por" (só o nome, sem o cargo).
-  const nomeDoAprovador = (fontes.responsavel || "").trim();
-  if (!escrito(atuais.consultorNome) && !escrito(valores.consultorNome) && nomeDoAprovador) valores.consultorNome = nomeDoAprovador;
-  const depois = { ...atuais, ...valores };
-  const candidatos: [CampoDaIdentificacao, string][] = [
-    ["atividadeDescricao", (fontes.atividade || "").trim()],
-    ["elaboradoPor", (depois.consultorNome || "").trim()],
-    ["revisadoPor", (depois.consultorNome || "").trim()],
-    ["aprovadoPor", [fontes.responsavel, fontes.cargoResponsavel].map((parte) => (parte || "").trim()).filter(Boolean).join(", ")],
-    ["dataElaboracaoManual", (fontes.hoje || "").trim()],
-  ];
-  for (const [campo, valor] of candidatos) {
-    if (escrito(atuais[campo]) || escrito(valores[campo]) || !valor) continue;
-    valores[campo] = valor;
-  }
+  const automaticos = new Set(fontes.daAutomacao || []);
+  const livre = (campo: CampoDaIdentificacao) => !escrito(atuais[campo]) || automaticos.has(campo);
+  const valores: Partial<Record<CampoDaIdentificacao, string>> = {};
+  const quer = (campo: CampoDaIdentificacao, valor: string) => {
+    const novo = valor.trim();
+    if (!novo || !livre(campo) || novo === (atuais[campo] || "")) return;
+    valores[campo] = novo;
+  };
+  quer("consultorNome", (fontes.rt?.nome || "").trim() || (fontes.nomeDoUsuarioRt || "").trim() || (fontes.responsavel || "").trim());
+  quer("consultorTelefone", mascararTelefone(fontes.rt?.telefone || ""));
+  // O cadastro do usuário (cargo e CRN) é a fonte; o texto "registroProfissional" só vale quando os dois estão vazios.
+  quer("consultorRegistro", fontes.juntar(fontes.rt?.cargo, fontes.rt?.crn).trim() || (fontes.rt?.registroProfissional || "").trim());
+  quer("consultorCpfCnpj", fontes.rt?.cpfCnpj || "");
+  quer("consultorEndereco", fontes.rt?.endereco || "");
+  const nomeFinal = (valores.consultorNome ?? atuais.consultorNome ?? "").trim();
+  quer("atividadeDescricao", fontes.atividade || "");
+  quer("elaboradoPor", nomeFinal);
+  quer("revisadoPor", nomeFinal);
+  quer("aprovadoPor", [fontes.responsavel, fontes.cargoResponsavel].map((parte) => (parte || "").trim()).filter(Boolean).join(", "));
+  quer("dataElaboracaoManual", fontes.hoje || "");
   const finais = { ...atuais, ...valores };
+  const colocados = CAMPOS_DA_IDENTIFICACAO.filter((campo) => escrito(valores[campo]));
   return {
     valores,
-    doPerfil,
-    preenchidos: CAMPOS_DA_IDENTIFICACAO.filter((campo) => escrito(valores[campo])),
+    // Campos que vieram do Preencher e continuam sem edição do usuário (os de antes que não mudaram e os de agora).
+    doPerfil: CAMPOS_DA_IDENTIFICACAO.filter((campo) => colocados.includes(campo) || (automaticos.has(campo) && escrito(atuais[campo]))),
+    preenchidos: colocados,
     semFonte: CAMPOS_DA_IDENTIFICACAO.filter((campo) => !escrito(finais[campo])),
   };
 }
@@ -205,7 +210,7 @@ export type DadosDoRtParaGravar = { cpfCnpj?: string; endereco?: string; registr
  */
 export function dadosParaOCadastroDoRt(
   manual: Partial<Record<CampoDaIdentificacao, string>>,
-  cadastro: { cpfCnpj?: string; endereco?: string; registroProfissional?: string; telefone?: string } | undefined
+  cadastro: { cpfCnpj?: string; endereco?: string; registroProfissional?: string; telefone?: string; cargo?: string; crn?: string } | undefined
 ): DadosDoRtParaGravar | null {
   const novos: DadosDoRtParaGravar = {};
   const cpf = (manual.consultorCpfCnpj || "").trim();
@@ -213,17 +218,19 @@ export function dadosParaOCadastroDoRt(
   const endereco = (manual.consultorEndereco || "").trim();
   if (endereco && endereco !== (cadastro?.endereco || "")) novos.endereco = endereco;
   const registro = (manual.consultorRegistro || "").trim();
-  if (registro && registro !== (cadastro?.registroProfissional || "")) novos.registroProfissional = registro;
+  // Cargo e CRN do cadastro são a fonte do "Profissão e registro"; o texto só é guardado quando o RT não tem nenhum dos dois.
+  const temCargoOuCrn = Boolean((cadastro?.cargo || "").trim() || (cadastro?.crn || "").trim());
+  if (registro && !temCargoOuCrn && registro !== (cadastro?.registroProfissional || "")) novos.registroProfissional = registro;
   const telefone = (manual.consultorTelefone || "").trim();
   if (telefone && !erroDoTelefone(telefone) && telefone !== (cadastro?.telefone || "")) novos.telefone = telefone;
   return Object.keys(novos).length ? novos : null;
 }
 
 /**
- * RT que fornece os dados ao Manual: o próprio usuário logado, se for Consultor/RT; senão o primeiro Consultor/RT com a empresa em
- * "Acessos" (Convidado vale: só Suspenso fica de fora). Sem vínculo com a empresa, nenhum RT de outra empresa é usado.
+ * RT que fornece os dados ao Manual: o Consultor/RT vinculado à empresa (primeiro com a empresa em "Acessos"; Convidado vale); só se não houver, o usuário logado se for Consultor/RT. O Administrador logado nunca passa na frente de um RT vinculado (Convidado vale: só Suspenso fica de fora). Sem vínculo com a empresa, nenhum RT de outra empresa é usado.
  */
 export function rtVinculadoDaEmpresa<T extends { perfil: string; status: string; empresaIds: string[] }>(usuarios: T[], empresaId: string, logado: T | undefined | null): T | undefined {
-  if (logado?.perfil === "Consultor/RT") return logado;
-  return usuarios.find((pessoa) => pessoa.perfil === "Consultor/RT" && pessoa.status !== "Suspenso" && pessoa.empresaIds.includes(empresaId));
+  const vinculado = usuarios.find((pessoa) => pessoa.perfil === "Consultor/RT" && pessoa.status !== "Suspenso" && pessoa.empresaIds.includes(empresaId));
+  if (vinculado) return vinculado;
+  return logado?.perfil === "Consultor/RT" ? logado : undefined;
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { usePilhaDeJanelas } from "./usePilhaDeJanelas";
 import { ROTULO_DO_SELO, chipPendente, quantosChipsCabem, contadorDaJanela, escolhaMudou, linhaDeContagem, marcadosNaOrdem } from "@/lib/escolhaEmJanela";
 
 export type OpcaoDeEscolha = { id: string; titulo: string; descricao?: string };
@@ -147,6 +148,7 @@ function JanelaDeEscolha({ titulo, apoio, opcoes, marcadasAoAbrir, onCancelar, o
   const [montado, setMontado] = useState(false);
   const janelaRef = useRef<HTMLElement | null>(null);
   const cancelarRef = useRef(onCancelar);
+  const { ehTopo, coberta } = usePilhaDeJanelas();
   cancelarRef.current = onCancelar;
 
   useEffect(() => {
@@ -173,6 +175,7 @@ function JanelaDeEscolha({ titulo, apoio, opcoes, marcadasAoAbrir, onCancelar, o
   useEffect(() => {
     if (!montado) return;
     function aoTeclar(evento: KeyboardEvent) {
+      if (!ehTopo()) return;
       if (evento.key === "Escape") {
         evento.preventDefault();
         cancelarRef.current();
@@ -200,7 +203,7 @@ function JanelaDeEscolha({ titulo, apoio, opcoes, marcadasAoAbrir, onCancelar, o
   }
 
   const janela = (
-    <div className="esc-camada" role="presentation">
+    <div className="esc-camada" role="presentation" {...(coberta ? { inert: true } : {})}>
       <div className="esc-fundo" onClick={onCancelar} />
       <section ref={janelaRef} className="esc-janela" role="dialog" aria-modal="true" aria-labelledby="esc-titulo">
         <header className="esc-cabeca">

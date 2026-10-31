@@ -22,6 +22,16 @@ export type DadosUsuarioPreparacao = {
   telefone?: string;
 };
 
+/**
+ * Aviso suave do CRN (nunca bloqueia): aceita "CRN-2 12345" e números legados só com dígitos; o resto ganha uma dica no campo.
+ */
+export function avisoDoCrn(valor: string | undefined | null): string {
+  const texto = (valor || "").trim();
+  if (!texto) return "";
+  if (/^\d{3,6}$/.test(texto) || /^crn[- ]?\d{1,2}[ -]?\d{3,6}$/i.test(texto)) return "";
+  return "Formato esperado: CRN-2 12345 (região e número).";
+}
+
 /** Telefone só com dígitos e os sinais comuns, até 20 caracteres; vazio vira undefined. */
 export function limparTelefone(texto: string | undefined | null): string | undefined {
   const limpo = (texto || "").replace(/[^0-9()+\- ]/g, "").replace(/\s+/g, " ").trim().slice(0, 20);

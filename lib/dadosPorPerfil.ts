@@ -2,6 +2,15 @@
 // CPF/CNPJ, endereço e telefone do consultor nunca vão ao Executor de campo nem ao Fiscal.
 import type { AprovacaoPop, Empresa, ProcedimentoOperacionalPadronizado, RegistroPop } from "../types/index.ts";
 
+/** Rodada 9, D: o relatório emitido traz o telefone do RT na assinatura; o Fiscal recebe o relatório sem esse telefone (o dado fica guardado no servidor). */
+export function relatoriosSemTelefoneDoRt<T extends { assinatura?: { telefone?: string } }>(relatorios: T[]): T[] {
+  return relatorios.map((relatorio) => {
+    if (!relatorio.assinatura || relatorio.assinatura.telefone === undefined) return relatorio;
+    const { telefone: _telefone, ...resto } = relatorio.assinatura;
+    return { ...relatorio, assinatura: resto };
+  });
+}
+
 export const ROTULO_SEM_NOME = "Responsável";
 
 const aprovacaoAnonima = (aprovacao: AprovacaoPop | undefined): AprovacaoPop | undefined =>
@@ -24,11 +33,11 @@ export function semDadosDoConsultor(empresa: Empresa): Empresa {
 }
 
 /** Campos da empresa que o servidor guarda e que Executor de campo e Fiscal não recebem (a visão filtrada nunca volta ao banco). */
-export const CAMPOS_DA_EMPRESA_SO_DA_GESTAO = ["consultorCpfCnpj", "consultorEndereco", "consultorTelefone", "consultorNome", "elaboradoPor", "revisadoPor", "aprovadoPor", "cadastrosRevisados", "responsavelEstabelecimento"] as const;
+export const CAMPOS_DA_EMPRESA_SO_DA_GESTAO = ["consultorCpfCnpj", "consultorEndereco", "consultorTelefone", "consultorNome", "elaboradoPor", "revisadoPor", "aprovadoPor", "camposDoPreencher", "cadastrosRevisados", "responsavelEstabelecimento"] as const;
 
 /** Rodada 5, G1: além dos dados do consultor, sai todo nome de pessoa que o Executor e o Fiscal não precisam ver. */
 export function semNomesNaEmpresa(empresa: Empresa): Empresa {
-  const { cadastrosRevisados: _revisados, ...resto } = semDadosDoConsultor(empresa);
+  const { cadastrosRevisados: _revisados, camposDoPreencher: _doPreencher, ...resto } = semDadosDoConsultor(empresa);
   const copia: Empresa = { ...resto };
   if (copia.consultorNome) copia.consultorNome = "";
   if (copia.elaboradoPor) copia.elaboradoPor = "";

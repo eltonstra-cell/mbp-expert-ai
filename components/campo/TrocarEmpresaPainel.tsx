@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import type { CSSProperties } from "react";
+import { usePilhaDeJanelas } from "../usePilhaDeJanelas";
 import { iniciaisDaEmpresa } from "@/lib/navigation";
 import type { OpcaoDeEmpresa } from "@/lib/trocarEmpresa";
 
@@ -21,16 +22,18 @@ export default function TrocarEmpresaPainel({
   /** Atalho "+ Nova empresa" (só quem pode cadastrar empresa). */
   onNovaEmpresa?: () => void;
 }) {
+  const { ehTopo, coberta } = usePilhaDeJanelas();
   useEffect(() => {
     const aoTeclar = (evento: KeyboardEvent) => {
-      if (evento.key === "Escape") onFechar();
+      if (evento.key === "Escape" && ehTopo()) onFechar();
     };
     window.addEventListener("keydown", aoTeclar);
     return () => window.removeEventListener("keydown", aoTeclar);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onFechar]);
 
   return (
-    <div className="campo-sheet-layer" role="dialog" aria-modal="true" aria-label="Trocar empresa">
+    <div className="campo-sheet-layer" {...(coberta ? { inert: true } : {})} role="dialog" aria-modal="true" aria-label="Trocar empresa">
       <button type="button" className="campo-sheet-fundo" aria-label="Fechar" onClick={onFechar} />
       <div className="campo-sheet">
         <div className="campo-sheet-body">

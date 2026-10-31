@@ -65,7 +65,7 @@ const foto = async (nome) => {
 };
 
 try {
-  await n.enviar("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+  await n.enviar("Emulation.setDeviceMetricsOverride", { width: Number(process.env.VERIFICAR_LARGURA || 1440), height: Number(process.env.VERIFICAR_ALTURA || 900), deviceScaleFactor: 1, mobile: Number(process.env.VERIFICAR_LARGURA || 1440) < 768 });
   await n.ir("about:blank");
   const e = await montarEstado();
   // Empresa de teste com ambientes (dois de nome próprio) e um equipamento, para as partes 7 e 8.
@@ -79,7 +79,7 @@ try {
   await n.ir(app.base);
   await esperar(async () => /Nova empresa/.test(await texto()), 20000);
   await n.esperar(1500);
-  await clicarContendo("Nova empresa");
+  if (!(await clicarContendo("Nova empresa"))) await clicarContendo("+ Nova");
   await esperar(async () => js('!!document.querySelector("input[aria-invalid]")||[...document.querySelectorAll("span")].some(s=>s.innerText==="CNPJ")'), 10000);
   const campoCnpj = `section[aria-label="Nova empresa"] label input`;
 
@@ -100,21 +100,26 @@ try {
   await foto("1-proposta");
   await clicar("Usar estes dados");
   await n.esperar(500);
-  const depois = await js(`[...document.querySelectorAll("section[aria-label='Nova empresa'] label")].map(l=>({r:l.querySelector("span")?.innerText||"",v:l.querySelector("input,textarea")?.value||""})).filter(x=>x.r.includes("Razão social")||x.r.includes("Nome fantasia")).map(x=>x.v).join("|")`);
-  registrar("2d. 'Usar estes dados' preenche razão social e fantasia", depois.includes("RESTAURANTE SABOR DE TESTE LTDA") && depois.includes("Sabor de Teste"), depois);
-  registrar("2e. campos da consulta ficam marcados 'da consulta'", /da consulta/.test(await texto()));
-  registrar("2e2. UF vem RS (deduzida pelo CEP) com aviso 'UF não veio da consulta, confirme' e telefone formatado", /UF não veio da consulta, confirme/.test(await texto()) && (await js(`JSON.stringify([...document.querySelectorAll("section[aria-label='Nova empresa'] input")].map(i=>i.value))`)).includes("(51) 3333-3333") && (await js(`JSON.stringify([...document.querySelectorAll("section[aria-label='Nova empresa'] input")].map(i=>i.value))`)).includes("RS"));
-  registrar("2f. o CNAE sugere o tipo 'Restaurante', marcado 'sugerido pelo CNAE', com opção de trocar", /sugerido pelo CNAE/.test(await texto()) && (await js(`[...document.querySelectorAll("button")].some(b=>b.innerText.includes("Confirmar tipo"))`)));
+  const depois = await js(`document.querySelector(".nova-receita")?.innerText||""`);
+  registrar("2d. 'Usar estes dados' preenche razão social e fantasia (no cartão 'Dados da Receita')", depois.includes("RESTAURANTE SABOR DE TESTE LTDA") && depois.includes("Sabor de Teste"), depois);
+  registrar("2e. o cartão da Receita traz a marca 'sugerido · fonte BrasilAPI'", /sugerido · fonte BrasilAPI/.test(await texto()));
+  registrar("2e2. UF vem RS (deduzida pelo CEP) com aviso 'UF não veio da consulta, confirme', endereço em uma linha e telefone formatado", /UF não veio da consulta, confirme/.test(await texto()) && depois.includes("(51) 3333-3333") && /[/]RS/.test(depois));
+  registrar("2f. o CNAE sugere o tipo 'Restaurante' ('Tipo: Restaurante, pelo CNAE · alterar'), sem botão 'Confirmar tipo' nem 'Confirmei tudo'", /Tipo: Restaurante, pelo CNAE/.test(await texto()) && !(await js(`[...document.querySelectorAll("button")].some(b=>/Confirmar tipo|Confirmei tudo/.test(b.innerText))`)));
+  await clicar("Corrigir dados");
+  await n.esperar(200);
   await js(`(()=>{const el=[...document.querySelectorAll("section[aria-label='Nova empresa'] label")].find(l=>(l.querySelector("span")?.innerText||"").includes("Nome fantasia")).querySelector("input");el.focus();const d=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value");d.set.call(el,"Sabor de Teste Centro");el.dispatchEvent(new Event("input",{bubbles:true}))})()`);
   await n.esperar(300);
   const marcasFantasia = await js(`(()=>{const l=[...document.querySelectorAll("section[aria-label='Nova empresa'] label")].find(l=>(l.querySelector("span")?.innerText||"").includes("Nome fantasia"));return l.querySelector(".chip-consulta")?"marcado":"sem marca"})()`);
-  registrar("2g. editar o campo tira a marca 'da consulta'", marcasFantasia === "sem marca");
+  registrar("2g. editar o campo (em 'Corrigir dados') tira a marca 'da consulta'", marcasFantasia === "sem marca");
 
   // 3. Pacote do tipo: propõe ambientes, equipamentos e fluxos; o RT desmarca e confirma; desfazer.
-  registrar("3a. o tipo propõe ambientes, equipamentos e fluxos, sem criar nada ainda", /o app propõe \d+ ambientes?, \d+ equipamentos? e \d+ fluxos?/.test(await texto()) && /Nada é criado sem a sua confirmação/.test(await texto()));
-  await clicar("Ver e escolher");
+  registrar("3a. o tipo oferece 'Escolher ambientes' e o cartão 'Dados da Receita' aparece, sem criar nada ainda", (await texto()).includes("Escolher ambientes") && (await texto()).includes("Dados da Receita"));
+  await clicar("Escolher ambientes");
   await n.esperar(300);
   registrar("3a2. 'Ver e escolher' abre uma JANELA (mo\dal) com título 'Pacote \de Restaurante' (sem contagens) e ro\dapé fixo", await js(`(()=>{const j=\document.querySelector(".esc-janela.pacote-janela");if(!j)return false;const t=j.querySelector("h2").innerText;const r=j.querySelector(".esc-ro\dape");return /^Pacote \de Restaurante$/.test(t)&&!!r&&[...r.querySelectorAll("button")].map(b=>b.innerText).join("|")==="Agora não|Aplicar o que está marca\do"&&j.getBoun\dingClientRect().bottom<=innerHeight})()`));
+  registrar("3a2b. Rodada 9F: caixa marcada tem fundo turquesa e ✓ branco visível; 'Aplicar o que está marcado' é verde; contador acompanha ('Marcar todos' alterna)", await js(`(()=>{const c=document.querySelector(".esc-janela .esc-caixa:checked");if(!c)return false;const b=getComputedStyle(c);const a=getComputedStyle(c,"::after");const ap=[...document.querySelectorAll(".esc-janela button")].find(x=>x.innerText.includes("Aplicar o que está marcado"));return b.backgroundColor==="rgb(33, 163, 163)"&&a.content.includes("✓")&&a.color==="rgb(255, 255, 255)"&&!!ap&&ap.className.includes("ui-btn--save")})()`));
+  registrar("3a2c. Rodada 9F: '+ Adicionar outro ambiente' existe na aba Ambientes", (await texto()).includes("+ Adicionar outro ambiente"));
+  registrar("3a2d. Rodada 9E: o cartão 'Dados da Receita' tem endereço em uma linha e 'Corrigir dados'; não há 'Confirmei tudo'", await js(`(()=>{const c=document.querySelector(".nova-receita");return !!c&&/Corrigir dados|Concluir correção|Preencher à mão/.test(c.innerText)&&!document.body.innerText.includes("Confirmei tudo")})()`));
   registrar("3a3. títulos \do grupo em negrito e 16px ou mais, sem contagem no bloco (ela fica nas abas); nomes curtos nos ambientes", await js(`(()=>{const t=\document.querySelector(".pacote-grupo-titulo");const cs=getCompute\dStyle(t);const itens=[...\document.querySelectorAll(".esc-opcao-titulo")].map(x=>x.innerText);return Number(cs.fontWeight)>=700&&parseFloat(cs.fontSize)>=16&&itens.inclu\des("Cozinha")&&itens.inclu\des("Central \de gás")&&itens.inclu\des("Refeitório")})()`));
   await foto("2-pacote");
   await js(`[...document.querySelectorAll(".pacote-aba")].find(b=>b.innerText.startsWith("Equipamentos")).click()`);
@@ -143,7 +148,7 @@ try {
   registrar("3b. aplicado: aparece 'Pacote de Restaurante aplicado' com Desfazer", /Pacote de Restaurante aplicado/.test(await texto()) && (await js(`[...document.querySelectorAll("button")].some(b=>b.innerText.trim()==="Desfazer")`)));
   await clicar("Desfazer");
   await n.esperar(400);
-  registrar("3c. Desfazer devolve o cadastro ao que era (de novo propõe o pacote)", /o app propõe/.test(await texto()));
+  registrar("3c. Desfazer devolve o cadastro ao que era (de novo propõe o pacote)", /Escolher ambientes/.test(await texto()));
 
   // 4. MEI: nome do titular e CPF não entram.
   await js(`localStorage.setItem("__consultas","0")`);
