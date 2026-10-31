@@ -149,7 +149,7 @@ import CadastroEquipamentos from "@/components/pc/CadastroEquipamentos";
 import { avisoParaEmitir, avisoParaFinalizar, erroDoCnpj, erroDoNomeDaEmpresa, itensRespondidos, pendenciasParaSalvarEmpresa } from "@/lib/regrasDoPacote3";
 import { ambientesParaVisita, limparVinculos, nomeJaExistente } from "@/lib/ambientesVisita";
 import { LIMITE_DA_IDENTIFICACAO } from "@/lib/documentosCentral";
-import { faltamNoCadastroDoRt, fraseDoPreencher, prefillDoPerfilDoRt, preencherIdentificacao, semOCampo, sugestoesDeAtividade, type CampoDaIdentificacao } from "@/lib/manualIdentificacao";
+import { dadosParaOCadastroDoRt, rtVinculadoDaEmpresa, fraseDoPreencher, prefillDoPerfilDoRt, preencherIdentificacao, semOCampo, sugestoesDeAtividade, type CampoDaIdentificacao } from "@/lib/manualIdentificacao";
 import { estadoDaBarraDeSalvar, marcadosDoUltimoSalvo } from "@/lib/escolhaEmJanela";
 import { TENTATIVAS_DA_NUVEM, conexaoAtual, esperaAposFalhaDaNuvem, rotuloDoSeloComProblema, seloDeSincronizacao, umaTentativa } from "@/lib/conexao";
 import { mostrarVoltar, nivelAcima, registrarLocal, voltarUma, type LocalDeTela } from "@/lib/historicoDeTelas";
@@ -3862,11 +3862,15 @@ export default function Home() {
           ? { nome: nomeResponsavel, cargo: cargoResponsavel, ...(vinculoResponsavel ? { usuarioId: vinculoResponsavel } : {}) }
           : undefined,
     };
+    // Rodada 8: CPF/CNPJ, endereço, telefone e profissão/registro do Manual vão também para o cadastro do RT vinculado (só Administrador ou o próprio RT; o servidor repete a regra).
+    const rtDoManual = !usuarioDaSessao || usuarioDaSessao.perfil === "Administrador" || usuarioDaSessao.perfil === "Consultor/RT" ? usuarioRtDaEmpresa({ ...emp, id }) : undefined;
+    const dadosDoRt = rtDoManual ? dadosParaOCadastroDoRt(emp as unknown as Record<string, string>, rtDoManual) : null;
     setDb((o) => {
       const base: AppDB = {
         ...o,
         empresaAtualId: id,
         empresas: { ...o.empresas, [id]: emp },
+        ...(rtDoManual && dadosDoRt ? { usuarios: o.usuarios.map((pessoa) => (pessoa.id === rtDoManual.id ? { ...pessoa, ...dadosDoRt } : pessoa)) } : {}),
         visitas: o.visitas.map((visita) => {
           if (visita.empresaId !== id) return visita;
           const possuiRespostas = checklistPossuiRespostas(visita.checklist);
@@ -4023,8 +4027,7 @@ export default function Home() {
 
   // RT da empresa para preencher a identificação do Manual: a pessoa logada (se for RT) ou o primeiro RT com acesso à empresa.
   function usuarioRtDaEmpresa(empresa: Empresa) {
-    if (usuarioDaSessao?.perfil === "Consultor/RT") return usuarioDaSessao;
-    return db.usuarios.find((pessoa) => pessoa.perfil === "Consultor/RT" && pessoa.status !== "Suspenso" && pessoa.empresaIds.includes(empresa.id));
+    return rtVinculadoDaEmpresa(db.usuarios, empresa.id, usuarioDaSessao);
   }
 
   function editarEmpresa(empresa: Empresa) {
@@ -8529,29 +8532,30 @@ export default function Home() {
                       setForm({ ...form, [campo]: valor });
                       setCamposDoPerfilRt((atuais) => semOCampo(atuais, campo));
                     }}
+                    semRtVinculado={!(db.empresas[editingEmpresaId] && usuarioRtDaEmpresa(db.empresas[editingEmpresaId]))}
                     onPreencher={() => {
                       const empresaAberta = db.empresas[editingEmpresaId];
                       const rt = empresaAberta ? usuarioRtDaEmpresa(empresaAberta) : undefined;
+                      // CPF/CNPJ, endereço e telefone do RT só para Administrador e Consultor/RT (o servidor já não os entrega aos outros perfis).
+                      const veDadosPessoais = !usuarioDaSessao || usuarioDaSessao.perfil === "Administrador" || usuarioDaSessao.perfil === "Consultor/RT";
                       const resultado = preencherIdentificacao(form as unknown as Record<CampoDaIdentificacao, string>, {
-                        rt: rt ? { nome: rt.nome, cargo: rt.cargo, crn: rt.crn, telefone: rt.telefone } : undefined,
+                        rt: rt ? { nome: rt.nome, cargo: rt.cargo, crn: rt.crn, telefone: veDadosPessoais ? rt.telefone : undefined, ...(veDadosPessoais ? { cpfCnpj: rt.cpfCnpj, endereco: rt.endereco, registroProfissional: rt.registroProfissional } : {}) } : undefined,
                         juntar: (cargo, crn) => nomeECargo(cargo, crn, " "),
                         atividade: form.cnaeDescricao,
                         responsavel: form.responsavel,
                         cargoResponsavel: form.cargoResponsavel,
                         nomeDoUsuarioRt: usuarioDaSessao?.perfil === "Consultor/RT" ? usuarioDaSessao.nome || sessaoAtual?.name || "" : undefined,
+                        hoje: new Date().toLocaleDateString("sv-SE"),
                       });
                       if (resultado.preenchidos.length > 0) {
                         setForm({ ...form, ...resultado.valores });
                         setCamposDoPerfilRt((atuais) => [...new Set([...atuais, ...resultado.doPerfil])]);
                       }
-                      const faltamNoRt = faltamNoCadastroDoRt(resultado.semFonte);
                       return {
-                        texto: resultado.semFonte.length === 0 && resultado.preenchidos.length === 0 ? "Tudo já está preenchido." : fraseDoPreencher(resultado.preenchidos.length, faltamNoRt.map((campo) => (labels as Record<string, string>)[campo] || campo)),
-                        faltamNoRt: faltamNoRt.length > 0,
+                        texto: resultado.semFonte.length === 0 && resultado.preenchidos.length === 0 ? "Tudo já está preenchido." : fraseDoPreencher(resultado.preenchidos.length, resultado.semFonte.length),
                         primeiroVazio: resultado.semFonte[0] ?? null,
                       };
                     }}
-                    onCompletarCadastroDoRt={destinoDoCrn ? () => { if (destinoDoCrn === "perfil") setPerfilAberto(true); else setView("acessos"); } : undefined}
                     sugestoesDeAtividade={sugestoesDeAtividade(form.cnaeDescricao, db.empresas[editingEmpresaId]?.cnaesSecundarios, LIMITE_DA_IDENTIFICACAO.atividadeDescricao)}
                     responsabilidades={responsabilidadesEmpresa}
                     onResponsabilidadesChange={setResponsabilidadesEmpresa}

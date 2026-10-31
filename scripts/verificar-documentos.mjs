@@ -296,7 +296,15 @@ try {
     await n.esperar(300);
     const sug3 = JSON.parse(await js(`JSON.stringify([...document.querySelectorAll(".man-sug-item")].map(x=>x.innerText))`));
     registrar(`29r. Manual (${nome}): lista 'Sugestões do CNAE' desce do campo Atividades; escolher grava no campo, avança e a sugestão já aplicada some da lista`, !!sug1 && sug1.cab === "Sugestões do CNAE" && sug1.colada && itens1 >= 2 && sug2.campo.includes(sug1.itens[0]) && sug2.foco !== "Atividades, produção e serviços realizados" && !sug3.includes(sug1.itens[0]) && sug3.length === itens1 - 1, JSON.stringify({ sug1, sug2, sug3 }));
+    registrar(`29l3. Manual (${nome}): a mensagem do Preencher não tem o link "Completar o cadastro do RT" e termina com "preencha abaixo" quando ainda falta algo`, !!pre && !(await js(`!!document.querySelector(".man-preencher .man-link")`)) && !/Completar o cadastro/.test(pre.texto) && (/preencha abaixo.$/.test(pre.texto) || /Salve para guardar|Tudo já/.test(pre.texto)), JSON.stringify(pre));
     await js(`document.activeElement?.blur()`);
+    // Atividades cresce com o texto: sem barra de rolagem interna e sem texto cortado
+    const antesAtv = await js(`document.querySelector(".man-atividade").value`);
+    await js(`(()=>{const a=document.querySelector(".man-atividade");const set=Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,"value").set;set.call(a,"Produção e venda de refeições, lanches e sobremesas, com serviço de entrega e atendimento no salão, preparo de marmitas, buffet para eventos e cozinha de apoio com estoque refrigerado e seco".repeat(1));a.dispatchEvent(new Event("input",{bubbles:true}))})()`);
+    await n.esperar(300);
+    const cresce = JSON.parse(await js(`JSON.stringify((()=>{const a=document.querySelector(".man-atividade");const j=document.querySelector(".man-jan");return {altura:Math.round(a.getBoundingClientRect().height),semBarra:a.scrollHeight<=a.clientHeight+1,overflow:getComputedStyle(a).overflowY,janelaRola:!!(j&&j.classList.contains("is-rola"))}})())`));
+    registrar(`29v. Manual (${nome}): Atividades cresce com o texto (mais de uma linha), sem barra de rolagem interna e sem texto cortado${nome === "celular" ? "" : "; a janela continua sem rolagem interna quando cabe"}`, cresce.altura > 50 && cresce.semBarra && cresce.overflow !== "scroll", JSON.stringify(cresce));
+    await js(`(()=>{const a=document.querySelector(".man-atividade");const set=Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,"value").set;set.call(a,${JSON.stringify(antesAtv)});a.dispatchEvent(new Event("input",{bubbles:true}))})()`);
     // máscara e validação na hora
     const digitar = (rotulo, texto) => js(`(()=>{const l=[...document.querySelectorAll(".man-campo")].find(x=>x.innerText.includes(${JSON.stringify(rotulo)}));const i=l.querySelector("input");const set=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value").set;set.call(i,${JSON.stringify(texto)});i.dispatchEvent(new Event("input",{bubbles:true}));return true})()`);
     await digitar("CPF ou CNPJ", "12345678901");

@@ -5,7 +5,7 @@ import { separarItensInvalidos, validarLimitesDeTexto } from "../lib/limitesDoSe
 import { montarLinhaDoPop, registroAtrasado } from "../lib/popGestao.ts";
 import { resumoDosRegistros } from "../lib/popRegistrosResumo.ts";
 import { erroDoVencimento, validarCapacitacao } from "../lib/registrosEmpresa.ts";
-import { faltamNoCadastroDoRt, fraseDoPreencher, mascaraCompletaParaAvancar, proximoCampoDaIdentificacao, sugestoesDeAtividade } from "../lib/manualIdentificacao.ts";
+import { fraseDoPreencher, mascaraCompletaParaAvancar, proximoCampoDaIdentificacao, sugestoesDeAtividade } from "../lib/manualIdentificacao.ts";
 import { contagemDosProgramas } from "../lib/documentosCentral.ts";
 
 const HOJE = "2026-10-31";
@@ -163,10 +163,9 @@ test("C: contagens dos programas à direita do cabeçalho", () => {
 });
 
 test("E1: o 'Preencher com dados do RT' diz quantos campos entraram e o que falta no cadastro do RT", () => {
-  assert.deepEqual(faltamNoCadastroDoRt(["consultorTelefone", "dataElaboracaoManual", "consultorRegistro"]), ["consultorTelefone", "consultorRegistro"]);
-  assert.equal(fraseDoPreencher(3, ["telefone", "registro"]), "3 campos preenchidos. Faltam 2 no cadastro do RT.");
-  assert.equal(fraseDoPreencher(1, []), "1 campo preenchido. Salve para guardar.");
-  assert.equal(fraseDoPreencher(0, ["telefone"]), "Nada novo para preencher. Faltam 1 no cadastro do RT.");
+  assert.equal(fraseDoPreencher(3, 2), "3 campos preenchidos. Faltam 2, preencha abaixo.");
+  assert.equal(fraseDoPreencher(1, 0), "1 campo preenchido. Salve para guardar.");
+  assert.equal(fraseDoPreencher(0, 1), "Nada novo para preencher. Faltam 1, preencha abaixo.");
 });
 
 test("E2: sugestões de atividade vêm do CNAE principal e dos secundários, sem repetir e só as que cabem no campo", () => {

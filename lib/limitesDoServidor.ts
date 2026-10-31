@@ -3,6 +3,7 @@
 // Nunca corta texto: o item inválido é recusado com o nome do campo e o restante é gravado (`separarItensInvalidos`).
 import type { AppDB } from "../types/index.ts";
 import { erroDoVencimento } from "./registrosEmpresa.ts";
+import { LIMITE_DO_CADASTRO_DO_RT } from "./userManagement.ts";
 import { LIMITE_CARGO_DA_PESSOA, LIMITE_DA_IDENTIFICACAO, LIMITE_DA_RESPONSABILIDADE, LIMITE_DO_TEXTO_LIVRE, LIMITE_NOME_DA_PESSOA } from "./documentosCentral.ts";
 
 const CAMPOS_DE_COLABORADOR = new Set(["id", "empresaId", "nome", "cargo", "ativo", "criadoEm"]);
@@ -145,6 +146,22 @@ export function separarItensInvalidos<T extends Partial<AppDB>>(atual: Partial<A
       if (gravado) resultado.push(gravado);
     }
     estado[colecao] = resultado;
+  }
+  // Rodada 8: dados pessoais do RT no cadastro de usuário (CPF/CNPJ, endereço, profissão e registro): campo acima do limite é recusado sozinho.
+  if (Array.isArray(recebido.usuarios)) {
+    const gravadosUsuarios = new Map((atual?.usuarios || []).map((item) => [item.id, item as unknown as Record<string, unknown>]));
+    estado.usuarios = (recebido.usuarios as unknown as Record<string, unknown>[]).map((usuario) => {
+      if (!usuario || typeof usuario !== "object") return usuario;
+      const gravado = gravadosUsuarios.get(String(usuario.id));
+      let atualizado = usuario;
+      for (const [campo, limite] of Object.entries(LIMITE_DO_CADASTRO_DO_RT)) {
+        if (iguais(atualizado[campo], gravado?.[campo]) || (atualizado[campo] === undefined) || (typeof atualizado[campo] === "string" && (atualizado[campo] as string).length <= limite)) continue;
+        rejeitados.push({ colecao: "usuarios", item: String(usuario.id), campo, mensagem: `O campo pode ter no máximo ${limite} caracteres.` });
+        const { [campo]: _recusado, ...resto } = atualizado;
+        atualizado = gravado?.[campo] === undefined ? resto : { ...resto, [campo]: gravado[campo] };
+      }
+      return atualizado;
+    });
   }
   const empresas = recebido.empresas;
   if (empresas && typeof empresas === "object") {

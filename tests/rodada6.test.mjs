@@ -51,7 +51,7 @@ test("I1 (c): Consultor/RT e Cliente Gestor continuam recebendo os nomes", () =>
 
 // ---------- F: Manual ----------
 test("F: frase do Preencher em uma linha e sugestões que já estão no campo somem", () => {
-  assert.equal(fraseDoPreencher(3, ["a", "b"]), "3 campos preenchidos. Faltam 2 no cadastro do RT.");
+  assert.equal(fraseDoPreencher(3, 2), "3 campos preenchidos. Faltam 2, preencha abaixo.");
   assert.deepEqual(sugestoesQueFaltam(["Restaurante", "Lanchonete"], "restaurante, bar"), ["Lanchonete"]);
   assert.deepEqual(sugestoesQueFaltam(["Restaurante"], "Restaurante"), []);
 });

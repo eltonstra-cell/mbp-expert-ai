@@ -1,5 +1,6 @@
 // Manual › Identificação complementar e Responsabilidades: regras puras (sem tela).
 import type { PapelResponsabilidadeManual, ResponsabilidadeManual } from "../types/index.ts";
+import { erroDoCpfCnpj, erroDoTelefone } from "./documentosCentral.ts";
 
 /** Campos do cartão "Identificação complementar", na ordem da tela. */
 export const CAMPOS_DA_IDENTIFICACAO = [
@@ -36,7 +37,7 @@ export function identificacaoCompleta(valores: Partial<Record<CampoDaIdentificac
 }
 
 /** Perfil do RT (Acessos / Meu perfil): só estes dados existem hoje; não há CPF, CNPJ nem endereço no perfil. */
-export type PerfilDoRt = { nome?: string; cargo?: string; crn?: string; telefone?: string };
+export type PerfilDoRt = { nome?: string; cargo?: string; crn?: string; telefone?: string; cpfCnpj?: string; endereco?: string; registroProfissional?: string };
 
 export type PrefillDoPerfil = {
   valores: Partial<Record<CampoDaIdentificacao, string>>;
@@ -96,6 +97,10 @@ export type FontesParaPreencher = {
   cargoResponsavel?: string;
   /** Nome de quem está logado, SÓ quando o perfil dele é Consultor/RT: sugestão para o nome quando o cadastro do RT não tem nome. */
   nomeDoUsuarioRt?: string;
+  /** Data de hoje (AAAA-MM-DD): entra em "Data de elaboração" só se estiver vazia. */
+  hoje?: string;
+  /** Há um Consultor/RT vinculado à empresa (ou o próprio RT logado)? Sem ele, o nome vem do mesmo lugar do "aprovado por". */
+  semRtVinculado?: boolean;
 };
 
 export type ResultadoDoPreencher = {
@@ -114,12 +119,27 @@ export type ResultadoDoPreencher = {
 export function preencherIdentificacao(atuais: Partial<Record<CampoDaIdentificacao, string>>, fontes: FontesParaPreencher): ResultadoDoPreencher {
   const nomeDoRt = (fontes.rt?.nome || "").trim() || (fontes.nomeDoUsuarioRt || "").trim();
   const { valores, doPerfil } = prefillDoPerfilDoRt(atuais, nomeDoRt ? { ...fontes.rt, nome: nomeDoRt } : fontes.rt, fontes.juntar);
+  const doRt: [CampoDaIdentificacao, string][] = [
+    ["consultorCpfCnpj", (fontes.rt?.cpfCnpj || "").trim()],
+    ["consultorEndereco", (fontes.rt?.endereco || "").trim()],
+    // O texto "profissão e registro" guardado no cadastro vale mais que cargo + CRN juntos.
+    ["consultorRegistro", (fontes.rt?.registroProfissional || "").trim()],
+  ];
+  for (const [campo, valor] of doRt) {
+    if (escrito(atuais[campo]) || !valor) continue;
+    valores[campo] = valor;
+    if (!doPerfil.includes(campo)) doPerfil.push(campo);
+  }
+  // Sem nome no cadastro do RT, vale o mesmo nome que alimenta "Manual aprovado por" (só o nome, sem o cargo).
+  const nomeDoAprovador = (fontes.responsavel || "").trim();
+  if (!escrito(atuais.consultorNome) && !escrito(valores.consultorNome) && nomeDoAprovador) valores.consultorNome = nomeDoAprovador;
   const depois = { ...atuais, ...valores };
   const candidatos: [CampoDaIdentificacao, string][] = [
     ["atividadeDescricao", (fontes.atividade || "").trim()],
     ["elaboradoPor", (depois.consultorNome || "").trim()],
     ["revisadoPor", (depois.consultorNome || "").trim()],
     ["aprovadoPor", [fontes.responsavel, fontes.cargoResponsavel].map((parte) => (parte || "").trim()).filter(Boolean).join(", ")],
+    ["dataElaboracaoManual", (fontes.hoje || "").trim()],
   ];
   for (const [campo, valor] of candidatos) {
     if (escrito(atuais[campo]) || escrito(valores[campo]) || !valor) continue;
@@ -134,17 +154,10 @@ export function preencherIdentificacao(atuais: Partial<Record<CampoDaIdentificac
   };
 }
 
-/** Campos do consultor/RT que o cadastro do RT pode (ou deveria) fornecer: se faltam, o link leva a completar o cadastro. */
-const CAMPOS_DO_RT: CampoDaIdentificacao[] = ["consultorNome", "consultorCpfCnpj", "consultorEndereco", "consultorTelefone", "consultorRegistro"];
-
-export function faltamNoCadastroDoRt(semFonte: CampoDaIdentificacao[]): CampoDaIdentificacao[] {
-  return semFonte.filter((campo) => CAMPOS_DO_RT.includes(campo));
-}
-
-/** Frase do botão "Preencher com dados do RT": quantos campos entraram e o que falta no cadastro do RT. */
-export function fraseDoPreencher(preenchidos: number, faltamNoRt: string[]): string {
+/** Frase do botão "Preencher com dados do RT" (uma linha): quantos campos entraram e quantos ainda faltam. */
+export function fraseDoPreencher(preenchidos: number, faltam: number): string {
   const entrada = preenchidos === 0 ? "Nada novo para preencher." : preenchidos === 1 ? "1 campo preenchido." : `${preenchidos} campos preenchidos.`;
-  return faltamNoRt.length ? `${entrada} Faltam ${faltamNoRt.length} no cadastro do RT.` : `${entrada}${preenchidos > 0 ? " Salve para guardar." : ""}`;
+  return faltam > 0 ? `${entrada} Faltam ${faltam}, preencha abaixo.` : `${entrada}${preenchidos > 0 ? " Salve para guardar." : ""}`;
 }
 
 /** Próximo campo depois de `campo` na ordem da tela (nulo no último). */
@@ -181,4 +194,36 @@ export function sugestoesDeAtividade(principal: string | undefined, secundarios:
     lista.push(limpo);
   }
   return lista;
+}
+
+export type DadosDoRtParaGravar = { cpfCnpj?: string; endereco?: string; registroProfissional?: string; telefone?: string };
+
+/**
+ * Ao salvar o Manual: o que vai também para o cadastro do Consultor/RT vinculado (campos opcionais novos).
+ * Só entra campo preenchido, válido (CPF/CNPJ e telefone sem erro) e DIFERENTE do que o cadastro já tem; nada é apagado.
+ * Devolve null quando não há o que gravar. O nome da conta do RT não é trocado.
+ */
+export function dadosParaOCadastroDoRt(
+  manual: Partial<Record<CampoDaIdentificacao, string>>,
+  cadastro: { cpfCnpj?: string; endereco?: string; registroProfissional?: string; telefone?: string } | undefined
+): DadosDoRtParaGravar | null {
+  const novos: DadosDoRtParaGravar = {};
+  const cpf = (manual.consultorCpfCnpj || "").trim();
+  if (cpf && !erroDoCpfCnpj(cpf) && cpf !== (cadastro?.cpfCnpj || "")) novos.cpfCnpj = cpf;
+  const endereco = (manual.consultorEndereco || "").trim();
+  if (endereco && endereco !== (cadastro?.endereco || "")) novos.endereco = endereco;
+  const registro = (manual.consultorRegistro || "").trim();
+  if (registro && registro !== (cadastro?.registroProfissional || "")) novos.registroProfissional = registro;
+  const telefone = (manual.consultorTelefone || "").trim();
+  if (telefone && !erroDoTelefone(telefone) && telefone !== (cadastro?.telefone || "")) novos.telefone = telefone;
+  return Object.keys(novos).length ? novos : null;
+}
+
+/**
+ * RT que fornece os dados ao Manual: o próprio usuário logado, se for Consultor/RT; senão o primeiro Consultor/RT com a empresa em
+ * "Acessos" (Convidado vale: só Suspenso fica de fora). Sem vínculo com a empresa, nenhum RT de outra empresa é usado.
+ */
+export function rtVinculadoDaEmpresa<T extends { perfil: string; status: string; empresaIds: string[] }>(usuarios: T[], empresaId: string, logado: T | undefined | null): T | undefined {
+  if (logado?.perfil === "Consultor/RT") return logado;
+  return usuarios.find((pessoa) => pessoa.perfil === "Consultor/RT" && pessoa.status !== "Suspenso" && pessoa.empresaIds.includes(empresaId));
 }

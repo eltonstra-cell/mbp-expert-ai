@@ -553,6 +553,10 @@ export type UsuarioSistema = {
   cargo?: string;
   /** Telefone do RT, opcional; só entra no relatório emitido quando preenchido. */
   telefone?: string;
+  /** RT: CPF ou CNPJ, endereço e "profissão e registro" que o Manual usa (opcionais; só Administrador e o próprio RT leem ou gravam). */
+  cpfCnpj?: string;
+  endereco?: string;
+  registroProfissional?: string;
 };
 
 export type AcaoPermissao =

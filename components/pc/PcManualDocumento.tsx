@@ -23,10 +23,10 @@ type Props = {
   /** Campos que vieram do perfil do RT e ainda não foram editados (selo "do perfil do RT"). */
   doPerfil: CampoDaIdentificacao[];
   onChange: (campo: CampoDaIdentificacao, valor: string) => void;
-  /** Botão "Preencher com dados do RT": completa os campos vazios e devolve a frase do resultado, se falta algo no cadastro do RT e o primeiro campo ainda vazio. */
-  onPreencher?: () => { texto: string; faltamNoRt: boolean; primeiroVazio: CampoDaIdentificacao | null };
-  /** Link "Completar o cadastro do RT" (perfil do RT ou Acessos, conforme o perfil de quem usa). */
-  onCompletarCadastroDoRt?: () => void;
+  /** Botão "Preencher com dados do RT": completa os campos vazios e devolve a frase do resultado (uma linha) e o primeiro campo ainda vazio. */
+  onPreencher?: () => { texto: string; primeiroVazio: CampoDaIdentificacao | null };
+  /** Não há Consultor/RT vinculado à empresa: os dados pessoais ficam só neste Manual (linha pequena de aviso). */
+  semRtVinculado?: boolean;
   /** Sugestões de atividade a partir do CNAE principal e dos secundários. */
   sugestoesDeAtividade?: string[];
   /** Campos que o servidor recusou (limite de texto): aviso dentro do próprio campo. */
@@ -51,11 +51,11 @@ const erroDoCampo = (campo: CampoDaIdentificacao, valor: string) => (campo === "
 const FOCAVEIS = 'button:not([disabled]),input:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
 
 // Manual da empresa: três linhas (sem caixas). Clicar abre uma janela que desce colada na linha, por cima das seguintes (no celular, uma folha que sobe de baixo). Uma aberta por vez; o rodapé com o estado e o Salvar fica dentro da janela.
-export default function PcManualDocumento({ valores, rotulos, doPerfil, onChange, onPreencher, onCompletarCadastroDoRt, sugestoesDeAtividade = [], errosDoServidor, responsabilidades, onResponsabilidadesChange, temAlteracoes, salvando = false, erroDoSalvar = "", onSalvar }: Props) {
+export default function PcManualDocumento({ valores, rotulos, doPerfil, onChange, onPreencher, semRtVinculado = false, sugestoesDeAtividade = [], errosDoServidor, responsabilidades, onResponsabilidadesChange, temAlteracoes, salvando = false, erroDoSalvar = "", onSalvar }: Props) {
   const [aberta, setAberta] = useState<Secao | null>(null);
   const [celular, setCelular] = useState(false);
   const [posicao, setPosicao] = useState<Posicao | null>(null);
-  const [resultado, setResultado] = useState<{ texto: string; faltamNoRt: boolean } | null>(null);
+  const [resultado, setResultado] = useState<string | null>(null);
   const campos = useRef<Partial<Record<CampoDaIdentificacao, HTMLInputElement | HTMLTextAreaElement | null>>>({});
   const linhas = useRef<Partial<Record<Secao, HTMLButtonElement | null>>>({});
   const janela = useRef<HTMLDivElement | null>(null);
@@ -73,6 +73,14 @@ export default function PcManualDocumento({ valores, rotulos, doPerfil, onChange
     consulta.addEventListener("change", ler);
     return () => consulta.removeEventListener("change", ler);
   }, []);
+
+  // Atividades cresce com o texto (sem barra de rolagem interna e sem texto cortado) até um limite generoso.
+  useLayoutEffect(() => {
+    const caixa = campos.current.atividadeDescricao;
+    if (!caixa) return;
+    caixa.style.height = "auto";
+    caixa.style.height = `${Math.min(caixa.scrollHeight + (caixa.offsetHeight - caixa.clientHeight), 240)}px`;
+  }, [valores.atividadeDescricao, aberta, celular]);
 
   // A janela do PC e do tablet nasce colada embaixo da linha aberta, com a largura dela. Se não couber na altura visível, a área dos campos rola por dentro (título e rodapé ficam fixos).
   useLayoutEffect(() => {
@@ -96,7 +104,7 @@ export default function PcManualDocumento({ valores, rotulos, doPerfil, onChange
     medir();
     window.addEventListener("resize", medir);
     return () => window.removeEventListener("resize", medir);
-  }, [aberta, celular, responsabilidades.length, emEdicao]);
+  }, [aberta, celular, responsabilidades.length, emEdicao, valores.atividadeDescricao]);
 
   useEffect(() => {
     if (!aberta) return;
@@ -204,7 +212,7 @@ export default function PcManualDocumento({ valores, rotulos, doPerfil, onChange
         className="ui-btn ui-btn--secondary"
         onClick={() => {
           const feito = onPreencher();
-          setResultado({ texto: feito.texto, faltamNoRt: feito.faltamNoRt });
+          setResultado(feito.texto);
           window.setTimeout(() => irPara(feito.primeiroVazio), 0);
         }}
       >
@@ -212,10 +220,7 @@ export default function PcManualDocumento({ valores, rotulos, doPerfil, onChange
       </button>
       {resultado && (
         <span className="man-preencher-apoio" role="status">
-          {resultado.texto}
-          {resultado.faltamNoRt && onCompletarCadastroDoRt && (
-            <> <button type="button" className="man-link" onClick={onCompletarCadastroDoRt}>Completar o cadastro do RT</button></>
-          )}
+          {resultado}
         </span>
       )}
     </div>
@@ -296,6 +301,7 @@ export default function PcManualDocumento({ valores, rotulos, doPerfil, onChange
           </label>
         );
       })}
+      {semRtVinculado && <p className="man-sem-rt">Sem RT vinculado: dados salvos só neste Manual</p>}
     </div>
   );
 

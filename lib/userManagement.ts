@@ -278,12 +278,46 @@ export type DadosDoPerfilProprio = { crn?: string; cargo?: string; telefone?: st
 
 /** Só CRN, cargo na assinatura e telefone, limpos; vazio vira undefined (remove o campo). Perfil, e-mail, status e o resto nunca passam por aqui. */
 export function camposDoPerfilProprio(dados: DadosDoPerfilProprio | undefined | null): DadosDoPerfilProprio {
-  const crn = (dados?.crn || "").replace(/\s+/g, " ").trim().slice(0, 40);
-  const cargo = limparTextoDePessoa(dados?.cargo).slice(0, 80);
-  return { crn: crn || undefined, cargo: cargo || undefined, telefone: limparTelefone(dados?.telefone) };
+  const texto = (valor: unknown) => (typeof valor === "string" ? valor : "");
+  const crn = texto(dados?.crn).replace(/\s+/g, " ").trim().slice(0, 40);
+  const cargo = limparTextoDePessoa(texto(dados?.cargo)).slice(0, 80);
+  return { crn: crn || undefined, cargo: cargo || undefined, telefone: limparTelefone(texto(dados?.telefone)) };
 }
 
-/** O usuário com os três campos do perfil próprio trocados; o resto fica exatamente como estava. */
-export function comPerfilProprio<T extends UsuarioSistema>(usuario: T, dados: DadosDoPerfilProprio | undefined | null): T {
-  return { ...usuario, ...camposDoPerfilProprio(dados) };
+/** Dados pessoais do RT que o Manual guarda no cadastro dele (aditivo): CPF/CNPJ, endereço e profissão com registro. */
+export const CAMPOS_PESSOAIS_DO_RT = ["cpfCnpj", "endereco", "registroProfissional"] as const;
+export type CampoPessoalDoRt = (typeof CAMPOS_PESSOAIS_DO_RT)[number];
+export type DadosPessoaisDoRt = Partial<Record<CampoPessoalDoRt, string>>;
+export const LIMITE_DOS_DADOS_DO_RT: Record<CampoPessoalDoRt, number> = { cpfCnpj: 18, endereco: 120, registroProfissional: 80 };
+/** Limites que o servidor confere no cadastro do RT (os três pessoais mais os do perfil próprio: nunca corta, recusa). */
+export const LIMITE_DO_CADASTRO_DO_RT: Record<string, number> = { ...LIMITE_DOS_DADOS_DO_RT, telefone: 20, crn: 40, cargo: 80 };
+
+/** Só os campos pessoais preenchidos e dentro do limite (nunca corta: o que passa do limite é ignorado, o servidor já o recusou). */
+export function dadosPessoaisDoRtValidos(dados: DadosPessoaisDoRt | undefined | null): DadosPessoaisDoRt {
+  const saida: DadosPessoaisDoRt = {};
+  for (const campo of CAMPOS_PESSOAIS_DO_RT) {
+    const valor = typeof dados?.[campo] === "string" ? dados[campo]!.replace(/\s+/g, " ").trim() : "";
+    if (valor && valor.length <= LIMITE_DOS_DADOS_DO_RT[campo]) saida[campo] = valor;
+  }
+  return saida;
+}
+
+/** Só quem pode ter CPF/CNPJ e endereço no cadastro: Administrador e Consultor/RT. Os demais perfis nunca os recebem. */
+export function podeTerDadosPessoaisDoRt(perfil: PerfilUsuario | undefined): boolean {
+  return perfil === "Administrador" || perfil === "Consultor/RT";
+}
+
+export function semDadosPessoaisDoRt<T extends UsuarioSistema>(usuario: T): T {
+  if (podeTerDadosPessoaisDoRt(usuario.perfil)) return usuario;
+  const { cpfCnpj: _cpf, endereco: _endereco, registroProfissional: _registro, ...resto } = usuario;
+  return resto as T;
+}
+
+/**
+ * O usuário com CRN, cargo e telefone trocados (perfil próprio); o resto fica como estava.
+ * Os dados pessoais do Manual só entram quando vêm preenchidos (nunca apagam o que já está no cadastro) e só para Consultor/RT.
+ */
+export function comPerfilProprio<T extends UsuarioSistema>(usuario: T, dados: (DadosDoPerfilProprio & DadosPessoaisDoRt) | undefined | null): T {
+  const base = { ...usuario, ...camposDoPerfilProprio(dados) };
+  return usuario.perfil === "Consultor/RT" ? { ...base, ...dadosPessoaisDoRtValidos(dados) } : base;
 }

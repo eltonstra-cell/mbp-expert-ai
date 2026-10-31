@@ -5,7 +5,7 @@ import { preservarEvidenciasEmRelatorio } from "./relatorioEmitido.ts";
 import { podeEditarQuestionario } from "./questionarioAmbiente.ts";
 import { popComoVigente } from "./popsNorma.ts";
 import { CAMPOS_DA_EMPRESA_SO_DA_GESTAO, evidenciasSemNomes, manterNomesGravadosDasEvidencias, registrosSemNomesDosOutros, semNomesNaEmpresa, semNomesNoPop, visitasSemNomes } from "./dadosPorPerfil.ts";
-import { comPerfilProprio } from "./userManagement.ts";
+import { comPerfilProprio, semDadosPessoaisDoRt } from "./userManagement.ts";
 import { permissoesEfetivas } from "./screenAccess.ts";
 import { acessoVigente } from "./validadeDeAcesso.ts";
 
@@ -93,7 +93,7 @@ export function filtrarEstadoPorUsuario(
       visitas: [],
       ncs: [],
       evidencias: [],
-      usuarios: [usuario],
+      usuarios: [semDadosPessoaisDoRt(usuario)],
       registrosAuditoria: [],
       registrosPop: registrosSemNomesDosOutros(registrosPop, usuario.id),
       // Fiscal lê os relatórios emitidos (documento assinado, decisão anterior); não vê quem mexeu no POP dos comprovantes.
@@ -126,7 +126,7 @@ export function filtrarEstadoPorUsuario(
     visitas: semPops ? visitasSemNomes(visitas) : visitas,
     ncs: semPops ? [] : ncs,
     evidencias: semPops ? evidenciasSemNomes(evidencias) : evidencias,
-    usuarios: [usuario],
+    usuarios: [semDadosPessoaisDoRt(usuario)],
     registrosAuditoria,
     registrosPop: semPops ? registrosSemNomesDosOutros(registrosPop, usuario.id) : registrosPop,
     comprovantes,
