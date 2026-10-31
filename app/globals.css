@@ -8008,7 +8008,6 @@ html:root:root body .central-empresa--nova .nova-cancelar{height:44px}
   html:root:root body .esc-janela .esc-rodape>*:first-child{flex:1 1 100%}
   html:root:root body .esc-janela .esc-rodape-botoes{flex:1 1 100%}
   html:root:root body .esc-janela .esc-rodape-botoes>.ui-btn{flex:1 1 0;min-width:0;padding-left:10px;padding-right:10px}
-  html:root:root body:has(.central-empresa--nova) .campo-bar{display:none}
 }
 @media (max-width:767px){
   html:root:root body .esc-janela .esc-rodape-botoes>.ui-btn{white-space:normal;height:auto;min-height:44px;line-height:1.2;text-align:center}
@@ -8046,4 +8045,74 @@ html:root:root body .nova-tipo-linha>span:first-child{flex:1 1 100%}
   html:root:root body .pacote-resumo-pc{display:none}
   html:root:root body .pacote-resumo-cel{display:flex;flex-direction:column;gap:2px;flex:1 1 auto;font-size:14px;color:#55607A}
   html:root:root body .pacote-resumo-cel strong{font-size:15px;font-weight:600;color:#1B2433}
+}
+
+/* RODADA 11 · A: Nova empresa igual ao desenho (um cartão da Receita, "Complete…", linha do Tipo, rodapé fixo) */
+html:root:root body .ne{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px 40px;align-items:start}
+html:root:root body .ne-esq,html:root:root body .ne-dir{display:flex;flex-direction:column;gap:12px;min-width:0}
+html:root:root body .ne-cnpj-linha{display:flex;align-items:center;gap:12px}
+html:root:root body .ne-cnpj-linha input{flex:0 1 320px;min-width:0;height:44px;padding:0 12px;font-size:1rem}
+html:root:root body .ne-buscar{height:44px;flex:none;background:#fff;color:#1F3A68;border:1px solid #1F3A68}
+html:root:root body .ne-cnpj-linha .nova-encontrado{margin:0;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+html:root:root body .ne .nova-receita-lista{grid-template-columns:minmax(0,1fr);gap:6px}
+html:root:root body .ne .nova-receita-lista>div{display:grid;grid-template-columns:130px minmax(0,1fr);gap:0 12px}
+html:root:root body .ne .nova-ativa{color:#1E7A3E}
+html:root:root body .ne .nova-complete{margin:0 0 2px;font-size:18px;font-weight:500}
+html:root:root body .ne-par{display:flex;flex-direction:column;gap:12px}
+html:root:root body .ne .nova-campo input.rounded-xl,html:root:root body .ne .ne-resp input{height:44px;padding:0 12px;font-size:1rem}
+html:root:root body .ne-card-campos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px}
+html:root:root body .ne-card-campos .nova-campo--nomeFantasia,html:root:root body .ne-card-campos .nova-campo--razaoSocial,html:root:root body .ne-card-campos .nova-campo--cnaeDescricao,html:root:root body .ne-card-campos .nova-campo--logradouro{grid-column:1 / -1}
+html:root:root body .ne-card-campos input.rounded-xl{height:40px;padding:0 10px}
+html:root:root body .ne-tipo-caixa{grid-column:1 / -1;display:flex;flex-direction:column;gap:8px}
+html:root:root body .ne-tipo{display:flex;align-items:center;gap:14px;width:100%;padding:12px 16px;border:1px solid #E3E8EE;border-radius:12px;background:#fff;text-align:left;font:inherit;color:#1B2433}
+html:root:root body .ne-tipo-icone{display:inline-flex;align-items:center;justify-content:center;flex:none;width:44px;height:44px;border-radius:999px;background:#B8501F;color:#fff}
+html:root:root body .ne-tipo-texto{display:flex;flex:1 1 auto;flex-direction:column;gap:2px;min-width:0;font-size:15px}
+html:root:root body .ne-tipo-linha{font-size:17px}
+html:root:root body .ne-tipo .pacote-resumo-pc{display:block;flex:none;font-size:14px;color:#55607A}
+html:root:root body .ne-tipo .pacote-tipo-ver{flex:none;height:44px;background:#fff;color:#1F3A68;border:1px solid #1F3A68}
+html:root:root body .ne-tipo--linha{cursor:pointer}
+html:root:root body .ne-tipo--linha .ne-tipo-texto strong{font-size:16px;font-weight:600}
+html:root:root body .ne-tipo--linha .ne-tipo-texto span{flex:none;font-size:14px;color:#55607A}
+html:root:root body .ne-tipo-seta{font-size:22px;color:#55607A}
+html:root:root body .ne .nova-mais{grid-column:1 / -1;display:flex;flex-direction:column;gap:10px}
+html:root:root body .ne-resp .mb-1,html:root:root body .ne .nova-campo>.mb-1{font-size:14px;font-weight:500;color:#1B2433}
+@media (min-width:768px){
+  html:root:root body .central-empresa--nova{height:calc(100dvh - 128px);min-height:0;gap:8px}
+  html:root:root body .central-empresa--nova .cen-conteudo{overflow-y:auto;overflow-x:hidden;padding-right:4px}
+  html:root:root body .central-empresa--nova .cen-salvar{position:static;flex:none;border-top:1px solid #E3E8EE;padding-top:12px}
+}
+@media (min-width:768px) and (max-width:1199px){
+  html:root:root body .ne{grid-template-columns:minmax(0,1fr)}
+  html:root:root body .ne-par{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+  html:root:root body .central-empresa--nova{height:calc(100dvh - 210px)}
+}
+@media (max-width:767px){
+  html:root:root body .ne{grid-template-columns:minmax(0,1fr);gap:12px}
+  html:root:root body .ne-cnpj-linha{flex-wrap:wrap}
+  html:root:root body .ne-cnpj-linha input{flex:1 1 0}
+  html:root:root body .ne .nova-receita-lista>div{grid-template-columns:minmax(0,1fr);gap:0}
+  html:root:root body .ne .nova-receita-lista dt{font-size:13px}
+  html:root:root body .central-empresa--nova{padding-bottom:150px}
+  html:root:root body .central-empresa--nova .cen-salvar{bottom:var(--ne-barra,84px)}
+}
+
+/* RODADA 11 · A9: Pacote igual ao desenho (✕, links "Desmarcar todos" e "+ Adicionar outro ambiente", rodapé com o número em negrito) */
+html:root:root body .pacote-titulo-linha{position:relative;padding-right:48px}
+html:root:root body .pacote-fechar{position:absolute;top:-4px;right:0;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border:1px solid #D6DCE5;border-radius:999px;background:#fff;color:#1B2433;font-size:16px;cursor:pointer}
+html:root:root body .pacote-marcar-todos,html:root:root body .pacote-adicionar{height:auto;min-height:32px;padding:0;border:0;background:none;font-size:15px;text-decoration:none;color:#1F3A68}
+html:root:root body .pacote-adicionar-ex{color:#55607A}
+html:root:root body .pacote-so-cel{display:none}
+@media (max-width:767px){
+  html:root:root body .pacote-so-pc{display:none}
+  html:root:root body .pacote-so-cel{display:inline}
+}
+html:root:root body .ne .nova-receita-lista>.nova-receita-larga{display:block}
+
+/* RODADA 11 · D: Acessos — a nota do CRN fica sob o campo do CRN, sem esticar Telefone e Cargo */
+html:root:root body .acc-grade{align-items:start}
+html:root:root body .acc-grade>.pc-field{align-self:start}
+@media (max-width:767px){
+  html:root:root body .pacote-abas{gap:12px}
+  html:root:root body .pacote-aba{white-space:nowrap;padding-left:0;padding-right:0;font-size:14px}
+  html:root:root body .pacote-aba .pacote-aba-conta{display:inline;margin-left:4px;font-size:13px}
 }

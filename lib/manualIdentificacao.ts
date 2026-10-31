@@ -109,6 +109,8 @@ export type FontesParaPreencher = {
   semRtVinculado?: boolean;
   /** Campos que o próprio Preencher colocou antes e o usuário ainda não editou: podem ser atualizados num novo clique. */
   daAutomacao?: CampoDaIdentificacao[];
+  /** "Substituir" (R11): troca nome, telefone, registro, elaborado e revisado (e CPF/endereço, se o RT os tem) pelos do RT, mesmo os digitados. */
+  forcarPessoa?: boolean;
 };
 
 const semAcento = (texto: string) => texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
@@ -137,6 +139,8 @@ export function registroDoRt(cargo?: string, crn?: string): string {
  */
 export function preencherIdentificacao(atuais: Partial<Record<CampoDaIdentificacao, string>>, fontes: FontesParaPreencher): ResultadoDoPreencher {
   const automaticos = new Set(fontes.daAutomacao || []);
+  const automaticosDeAntes = new Set(automaticos);
+  if (fontes.forcarPessoa) for (const campo of CAMPOS_DA_PESSOA) automaticos.add(campo);
   const livre = (campo: CampoDaIdentificacao) => !escrito(atuais[campo]) || automaticos.has(campo);
   const valores: Partial<Record<CampoDaIdentificacao, string>> = {};
   const quer = (campo: CampoDaIdentificacao, valor: string) => {
@@ -169,10 +173,41 @@ export function preencherIdentificacao(atuais: Partial<Record<CampoDaIdentificac
   return {
     valores,
     // Campos que vieram do Preencher e continuam sem edição do usuário (os de antes que não mudaram e os de agora).
-    doPerfil: CAMPOS_DA_IDENTIFICACAO.filter((campo) => colocados.includes(campo) || (automaticos.has(campo) && escrito(atuais[campo]))),
+    doPerfil: CAMPOS_DA_IDENTIFICACAO.filter((campo) => colocados.includes(campo) || (automaticosDeAntes.has(campo) && escrito(atuais[campo]))),
     preenchidos: colocados,
     semFonte: CAMPOS_QUE_CONTAM.filter((campo) => !escrito(finais[campo])),
   };
+}
+
+/** Campos que descrevem a pessoa do RT: vêm todos da mesma fonte (e só mudam juntos no "Substituir"). */
+const CAMPOS_DA_PESSOA: CampoDaIdentificacao[] = ["consultorNome", "consultorTelefone", "consultorRegistro", "consultorCpfCnpj", "consultorEndereco", "elaboradoPor", "revisadoPor"];
+
+export type ConflitoDoPreencher = { texto: string; campos: CampoDaIdentificacao[] };
+
+/**
+ * Há valor salvo (digitado, ou de antes do rastreio de origem) DIFERENTE do que o RT da empresa traz? Então o Preencher pergunta
+ * "Substituir?" em vez de dizer "Nada novo". Só com RT vinculado; campo ainda "do Preencher" (editável sozinho) não conta.
+ */
+export function conflitoDoPreencher(atuais: Partial<Record<CampoDaIdentificacao, string>>, fontes: FontesParaPreencher): ConflitoDoPreencher | null {
+  const rt = fontes.rt;
+  if (!rt) return null;
+  const automaticos = new Set(fontes.daAutomacao || []);
+  const salvo = (campo: CampoDaIdentificacao) => (!automaticos.has(campo) ? (atuais[campo] || "").trim() : "");
+  const nomeDoRt = (rt.nome || "").trim();
+  const diferentes: { campo: CampoDaIdentificacao; rotulo: string; salvo: string; doRt: string }[] = [];
+  const confere = (campo: CampoDaIdentificacao, rotulo: string, doRt: string, igual: (a: string, b: string) => boolean) => {
+    const guardado = salvo(campo);
+    if (guardado && doRt && !igual(guardado, doRt)) diferentes.push({ campo, rotulo, salvo: guardado, doRt });
+  };
+  confere("consultorNome", "nome", nomeDoRt, (a, b) => semAcento(a) === semAcento(b));
+  confere("consultorTelefone", "telefone", mascararTelefone(rt.telefone || ""), (a, b) => a.replace(/\D/g, "") === b.replace(/\D/g, ""));
+  confere("consultorRegistro", "profissão e registro", fontes.juntar(rt.cargo, rt.crn).trim() || (rt.registroProfissional || "").trim(), (a, b) => semAcento(a) === semAcento(b));
+  if (diferentes.length === 0) return null;
+  const nome = diferentes.find((item) => item.campo === "consultorNome");
+  const texto = nome
+    ? `O Manual já tem ${nome.salvo}. O RT da empresa é ${nome.doRt}. Substituir?`
+    : `O Manual já tem ${diferentes[0].salvo} em ${diferentes[0].rotulo}. O RT da empresa${nomeDoRt ? ` (${nomeDoRt})` : ""} tem ${diferentes[0].doRt}. Substituir?`;
+  return { texto, campos: diferentes.map((item) => item.campo) };
 }
 
 /** Origem de um campo colocado pelo Preencher: qual RT (id do usuário) e o valor que ele pôs. Guardada no Manual da empresa. */

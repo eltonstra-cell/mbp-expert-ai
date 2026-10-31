@@ -15,7 +15,7 @@ import {
   tomDoResumo,
 } from "@/lib/documentosCentral";
 import { usePilhaDeJanelas } from "../usePilhaDeJanelas";
-import { CAMPOS_DA_IDENTIFICACAO, type OfertaDeOutroManual, ativosDoPapel, contarPreenchidos, mascaraCompletaParaAvancar, proximoCampoDaIdentificacao, sugestoesQueFaltam, type CampoDaIdentificacao } from "@/lib/manualIdentificacao";
+import { CAMPOS_DA_IDENTIFICACAO, fraseDoPreencher, type OfertaDeOutroManual, ativosDoPapel, contarPreenchidos, mascaraCompletaParaAvancar, proximoCampoDaIdentificacao, sugestoesQueFaltam, type CampoDaIdentificacao } from "@/lib/manualIdentificacao";
 import type { PapelResponsabilidadeManual, ResponsabilidadeManual } from "@/types";
 
 type Props = {
@@ -25,7 +25,7 @@ type Props = {
   doPerfil: CampoDaIdentificacao[];
   onChange: (campo: CampoDaIdentificacao, valor: string) => void;
   /** Botão "Preencher com dados do RT": completa os campos vazios e devolve a frase do resultado (uma linha) e o primeiro campo ainda vazio. */
-  onPreencher?: () => { texto: string; primeiroVazio: CampoDaIdentificacao | null };
+  onPreencher?: () => RetornoDoPreencher;
   /** Não há Consultor/RT vinculado à empresa: os dados pessoais ficam só neste Manual (linha pequena de aviso). */
   semRtVinculado?: boolean;
   /** Sugestões de atividade a partir do CNAE principal e dos secundários. */
@@ -48,6 +48,13 @@ type Props = {
   onUsarOferta?: (oferta: OfertaDeOutroManual) => void;
 };
 
+/** Resultado do Preencher: quantos campos entraram, o primeiro ainda vazio e, se há valor salvo diferente do RT, a pergunta "Substituir?". */
+export type RetornoDoPreencher = {
+  preenchidos: number;
+  primeiroVazio: CampoDaIdentificacao | null;
+  conflito?: { texto: string; substituir: () => { preenchidos: number; primeiroVazio: CampoDaIdentificacao | null } };
+};
+
 type Secao = "identificacao" | PapelResponsabilidadeManual;
 
 type Posicao = { top: number; left: number; width: number };
@@ -67,7 +74,8 @@ export default function PcManualDocumento({ valores, rotulos, doPerfil, onChange
   useEffect(() => { if (aberta) empresaAoAbrir.current = empresaId; // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [aberta]);
   const [posicao, setPosicao] = useState<Posicao | null>(null);
-  const [resultado, setResultado] = useState<string | null>(null);
+  const [resultado, setResultado] = useState<{ colocados: number } | null>(null);
+  const [conflito, setConflito] = useState<RetornoDoPreencher["conflito"] | null>(null);
   const campos = useRef<Partial<Record<CampoDaIdentificacao, HTMLInputElement | HTMLTextAreaElement | null>>>({});
   const linhas = useRef<Partial<Record<Secao, HTMLButtonElement | null>>>({});
   const janela = useRef<HTMLDivElement | null>(null);
@@ -254,15 +262,35 @@ export default function PcManualDocumento({ valores, rotulos, doPerfil, onChange
         className="ui-btn ui-btn--secondary"
         onClick={() => {
           const feito = onPreencher();
-          setResultado(feito.texto);
+          setResultado({ colocados: feito.preenchidos });
+          setConflito(feito.conflito || null);
           window.setTimeout(() => irPara(feito.primeiroVazio), 0);
         }}
       >
         Preencher com dados do RT
       </button>
-      {resultado && (
+      {resultado && !conflito && (
         <span className="man-preencher-apoio" role="status">
-          {resultado}
+          {/* Recalculado a cada alteração: o "Faltam N" some assim que o Manual fica completo (sem recarregar). */}
+          {resultado.colocados === 0 && total - preenchidos === 0 ? "Tudo já está preenchido." : fraseDoPreencher(resultado.colocados, total - preenchidos)}
+        </span>
+      )}
+      {conflito && (
+        <span className="man-substituir" role="alert">
+          <span>{conflito.texto}</span>
+          <button
+            type="button"
+            className="ui-btn ui-btn--secondary ui-btn--small"
+            onClick={() => {
+              const feito = conflito.substituir();
+              setConflito(null);
+              setResultado({ colocados: feito.preenchidos });
+              window.setTimeout(() => irPara(feito.primeiroVazio), 0);
+            }}
+          >
+            Substituir
+          </button>
+          <button type="button" className="ui-btn ui-btn--secondary ui-btn--small" onClick={() => { setConflito(null); setResultado({ colocados: 0 }); }}>Manter</button>
         </span>
       )}
       {oferta && onUsarOferta && (

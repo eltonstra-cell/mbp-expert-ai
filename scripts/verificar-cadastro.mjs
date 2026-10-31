@@ -45,6 +45,7 @@ const servidorFalso = `
 const app = await iniciarApp();
 const n = await abrirNavegador({ porta: 9600 + Math.floor(Math.random() * 90) });
 const js = (c) => n.avaliar(c);
+const ROTULO_PACOTE = Number(process.env.VERIFICAR_LARGURA || 1440) < 768 ? "Ambientes e equipamentos" : "Escolher ambientes";
 const texto = () => js("document.body.innerText");
 const flag = (k, v) => js(`localStorage.setItem(${JSON.stringify(k)}, ${v ? '"1"' : '"0"'})`);
 const esperar = async (cond, ms = 12000) => {
@@ -81,7 +82,7 @@ try {
   await n.esperar(1500);
   if (!(await clicarContendo("Nova empresa"))) await clicarContendo("+ Nova");
   await esperar(async () => js('!!document.querySelector("input[aria-invalid]")||[...document.querySelectorAll("span")].some(s=>s.innerText==="CNPJ")'), 10000);
-  const campoCnpj = `section[aria-label="Nova empresa"] label input`;
+  const campoCnpj = `section[aria-label="Nova empresa"] input[aria-label="CNPJ"]`;
 
   // 1. CNPJ inválido: avisa no campo, na hora, e não consulta.
   await digitar(campoCnpj, "11222333000182");
@@ -91,21 +92,20 @@ try {
 
   // 2. CNPJ válido: consulta sozinha, chega como PROPOSTA (nada preenchido até "Usar estes dados").
   await digitar(campoCnpj, CNPJ_EMPRESA);
-  const veioProposta = await esperar(async () => /Dados encontrados para este CNPJ/.test(await texto()), 12000);
-  registrar("2a. CNPJ válido: a consulta chega como proposta com botão 'Usar estes dados'", veioProposta && /Usar estes dados/.test(await texto()));
-  const antes = await js(`[...document.querySelectorAll("section[aria-label='Nova empresa'] label")].map(l=>({r:l.querySelector("span")?.innerText||"",v:l.querySelector("input,textarea")?.value||""})).filter(x=>x.r.includes("Razão social")||x.r.includes("Nome fantasia")).map(x=>x.v).join("|")`);
-  registrar("2b. nada foi preenchido antes de o RT confirmar", antes === "|" || antes === "", JSON.stringify(antes));
-  registrar("2c. a proposta traz CNAE principal e secundários (recolhíveis, com código e descrição)", (await texto()).includes("5611-2/01") && (await texto()).includes("CNAEs secundários (1)") && (await js(`(()=>{const d=document.querySelector(".cnpj-prop-cnaes");return !!d&&!d.open&&d.textContent.includes("5611-2/03 · Lanchonetes")})()`)));
-  registrar("2c2. a proposta mostra a fonte usada e a UF 'EX' da consulta não aparece (vira RS pelo CEP)", /fonte: BrasilAPI/.test(await texto()) && !/ EX/.test(await js(`document.querySelector(".cnpj-proposta").innerText`)) && /Porto Alegre|PORTO ALEGRE/.test(await js(`document.querySelector(".cnpj-proposta").innerText`)));
+  // Rodada 11: encontrou, os dados já valem (sem "Usar estes dados"), num único cartão "Dados da Receita".
+  const veioProposta = await esperar(async () => (await js(`document.querySelector(".nova-receita")?.innerText||""`)).includes("RESTAURANTE SABOR DE TESTE LTDA"), 12000);
+  const textoTela = await texto();
+  registrar("2a. CNPJ válido: os dados entram sozinhos no cartão, com '✓ Encontrado' e sem 'Usar estes dados', 'Confirmei tudo' nem 'Confirmar tipo'", veioProposta && /✓ Encontrado/.test(textoTela) && !/Usar estes dados|Confirmei tudo|Confirmar tipo/.test(textoTela), textoTela.slice(0, 300));
+  registrar("2b. um único cartão 'Dados da Receita' (sem painel de proposta ao mesmo tempo)", await js(`document.querySelectorAll(".nova-receita").length===1&&!document.querySelector(".cnpj-proposta")`));
+  registrar("2c. o cartão traz razão social, fantasia, situação, CNAE principal, endereço em uma linha e telefone", await js(`(()=>{const t=document.querySelector(".nova-receita").innerText;return /Razão social/.test(t)&&/Nome fantasia/.test(t)&&/CNAE principal/.test(t)&&/5611/.test(t)&&/Endereço/.test(t)&&(innerWidth<768||/Telefone/.test(t))})()`));
   await foto("1-proposta");
-  await clicar("Usar estes dados");
-  await n.esperar(500);
   const depois = await js(`document.querySelector(".nova-receita")?.innerText||""`);
   registrar("2d. 'Usar estes dados' preenche razão social e fantasia (no cartão 'Dados da Receita')", depois.includes("RESTAURANTE SABOR DE TESTE LTDA") && depois.includes("Sabor de Teste"), depois);
-  registrar("2e. o cartão da Receita traz a marca 'sugerido · fonte BrasilAPI'", /sugerido · fonte BrasilAPI/.test(await texto()));
-  registrar("2e2. UF vem RS (deduzida pelo CEP) com aviso 'UF não veio da consulta, confirme', endereço em uma linha e telefone formatado", /UF não veio da consulta, confirme/.test(await texto()) && depois.includes("(51) 3333-3333") && /[/]RS/.test(depois));
+    registrar("2e2. UF vem RS (deduzida pelo CEP) com aviso 'UF não veio da consulta, confirme', endereço em uma linha e telefone formatado", /UF não veio da consulta, confirme/.test(await texto()) && (Number(process.env.VERIFICAR_LARGURA || 1440) < 768 || depois.includes("(51) 3333-3333")) && /[/]RS/.test(depois));
+  // Celular: a linha do Tipo fica em "Mais opções".
+  await js(`document.querySelector(".nova-mais")?.setAttribute("open","")`);
   registrar("2f. o CNAE sugere o tipo 'Restaurante' ('Tipo: Restaurante, pelo CNAE · alterar'), sem botão 'Confirmar tipo' nem 'Confirmei tudo'", /Tipo: Restaurante, pelo CNAE/.test(await texto()) && !(await js(`[...document.querySelectorAll("button")].some(b=>/Confirmar tipo|Confirmei tudo/.test(b.innerText))`)));
-  await clicar("Corrigir dados");
+  (await clicar("Corrigir dados")) || (await clicar("Corrigir"));
   await n.esperar(200);
   await js(`(()=>{const el=[...document.querySelectorAll("section[aria-label='Nova empresa'] label")].find(l=>(l.querySelector("span")?.innerText||"").includes("Nome fantasia")).querySelector("input");el.focus();const d=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value");d.set.call(el,"Sabor de Teste Centro");el.dispatchEvent(new Event("input",{bubbles:true}))})()`);
   await n.esperar(300);
@@ -113,8 +113,8 @@ try {
   registrar("2g. editar o campo (em 'Corrigir dados') tira a marca 'da consulta'", marcasFantasia === "sem marca");
 
   // 3. Pacote do tipo: propõe ambientes, equipamentos e fluxos; o RT desmarca e confirma; desfazer.
-  registrar("3a. o tipo oferece 'Escolher ambientes' e o cartão 'Dados da Receita' aparece, sem criar nada ainda", (await texto()).includes("Escolher ambientes") && (await texto()).includes("Dados da Receita"));
-  await clicar("Escolher ambientes");
+  registrar("3a. o tipo oferece 'Escolher ambientes' e o cartão 'Dados da Receita' aparece, sem criar nada ainda", (await texto()).includes(ROTULO_PACOTE) && (await texto()).includes("Dados da Receita"));
+  await clicarContendo(ROTULO_PACOTE);
   await n.esperar(300);
   registrar("3a2. 'Ver e escolher' abre uma JANELA (mo\dal) com título 'Pacote \de Restaurante' (sem contagens) e ro\dapé fixo", await js(`(()=>{const j=\document.querySelector(".esc-janela.pacote-janela");if(!j)return false;const t=j.querySelector("h2").innerText;const r=j.querySelector(".esc-ro\dape");return /^Pacote \de Restaurante$/.test(t)&&!!r&&[...r.querySelectorAll("button")].map(b=>b.innerText).join("|")==="Agora não|Aplicar o que está marca\do"&&j.getBoun\dingClientRect().bottom<=innerHeight})()`));
   registrar("3a2b. Rodada 9F: caixa marcada tem fundo turquesa e ✓ branco visível; 'Aplicar o que está marcado' é verde; contador acompanha ('Marcar todos' alterna)", await js(`(()=>{const c=document.querySelector(".esc-janela .esc-caixa:checked");if(!c)return false;const b=getComputedStyle(c);const a=getComputedStyle(c,"::after");const ap=[...document.querySelectorAll(".esc-janela button")].find(x=>x.innerText.includes("Aplicar o que está marcado"));return b.backgroundColor==="rgb(33, 163, 163)"&&a.content.includes("✓")&&a.color==="rgb(255, 255, 255)"&&!!ap&&ap.className.includes("ui-btn--save")})()`));
@@ -148,16 +148,15 @@ try {
   registrar("3b. aplicado: aparece 'Pacote de Restaurante aplicado' com Desfazer", /Pacote de Restaurante aplicado/.test(await texto()) && (await js(`[...document.querySelectorAll("button")].some(b=>b.innerText.trim()==="Desfazer")`)));
   await clicar("Desfazer");
   await n.esperar(400);
-  registrar("3c. Desfazer devolve o cadastro ao que era (de novo propõe o pacote)", /Escolher ambientes/.test(await texto()));
+  registrar("3c. Desfazer devolve o cadastro ao que era (de novo propõe o pacote)", (await texto()).includes(ROTULO_PACOTE));
 
   // 4. MEI: nome do titular e CPF não entram.
   await js(`localStorage.setItem("__consultas","0")`);
   await digitar(campoCnpj, CNPJ_MEI);
-  const veioMei = await esperar(async () => /Empresário individual ou MEI/.test(await texto()), 12000);
-  registrar("4a. MEI: a proposta avisa que o nome do titular e o CPF não são guardados", veioMei);
-  await clicar("Usar estes dados");
+  const veioMei = await esperar(async () => /nome do titular não é guardado/.test(await texto()), 12000);
+  registrar("4a. MEI: os dados entram e a tela avisa que o nome do titular e o CPF não são guardados", veioMei);
   await n.esperar(500);
-  const campos = await js(`JSON.stringify([...document.querySelectorAll("section[aria-label='Nova empresa'] input,section[aria-label='Nova empresa'] textarea")].map(i=>i.value))`);
+  const campos = await js(`JSON.stringify(document.querySelector(".nova-receita")?.innerText||"")`);
   registrar("4b. MEI: razão social fica vazia (inclusive a da consulta anterior) e a fantasia vem; nenhum CPF em nenhum campo", campos.includes("Marmitas da Casa") && !campos.includes("RESTAURANTE SABOR") && !/\d{3}\.?\d{3}\.?\d{3}-?\d{2}/.test(campos.replace(/\d{14}/g, "")), "");
   registrar("4c. MEI: pede o nome do estabelecimento", /nome do titular não é guardado|nome do estabelecimento/.test(await texto()));
   await foto("3-mei");
@@ -169,17 +168,16 @@ try {
   await n.esperar(600);
   await clicarContendo("Buscar");
   await n.esperar(500);
-  registrar("5a. sem sinal: mensagem curta e o cadastro manual segue normal", /Sem sinal: preencha à mão/.test(await texto()));
+  registrar("5a. sem sinal: mensagem curta no cartão e o cadastro manual segue normal ('Preencher à mão')", /Sem sinal: preencha à mão/.test(await texto()) && /Preencher à mão|Corrigir/.test(await js(`document.querySelector(".nova-receita")?.innerText||""`)));
+  if (!(await clicar("Preencher à mão"))) (await clicar("Corrigir dados")) || (await clicar("Corrigir"));
+  await n.esperar(300);
   await js(`(()=>{const el=[...document.querySelectorAll("section[aria-label='Nova empresa'] label")].find(l=>(l.querySelector("span")?.innerText||"").includes("Razão social")).querySelector("input");el.focus();const d=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value");d.set.call(el,"Digitada Sem Sinal Ltda");el.dispatchEvent(new Event("input",{bubbles:true}))})()`);
   await n.esperar(300);
   registrar("5b. sem sinal: dá para digitar normalmente", (await js(`JSON.stringify([...document.querySelectorAll("section[aria-label='Nova empresa'] input")].map(i=>i.value))`)).includes("Digitada Sem Sinal Ltda"));
   await flag("__off", false);
   await js(`window.dispatchEvent(new Event("online"))`);
   await clicarContendo("Buscar");
-  registrar("5c. com o sinal de volta, a consulta refeita chega como proposta", await esperar(async () => /Dados encontrados para este CNPJ/.test(await texto()), 12000));
-  await clicar("Ignorar");
-  await n.esperar(300);
-  registrar("5d. 'Ignorar' descarta a proposta sem mexer no que foi digitado", !/Dados encontrados para este CNPJ/.test(await texto()) && (await js(`JSON.stringify([...document.querySelectorAll("section[aria-label='Nova empresa'] input")].map(i=>i.value))`)).includes("Digitada Sem Sinal Ltda"));
+  registrar("5c. com o sinal de volta, a consulta refeita preenche o cartão sozinha", await esperar(async () => (await js(`document.querySelector(".nova-receita")?.innerText||""`)).includes("RESTAURANTE SABOR DE TESTE LTDA"), 12000));
 
   // 6. Falha da consulta não trava.
   await flag("__falha", true);
