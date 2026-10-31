@@ -8538,6 +8538,7 @@ export default function Home() {
                         atividade: form.cnaeDescricao,
                         responsavel: form.responsavel,
                         cargoResponsavel: form.cargoResponsavel,
+                        nomeDoUsuarioRt: usuarioDaSessao?.perfil === "Consultor/RT" ? usuarioDaSessao.nome || sessaoAtual?.name || "" : undefined,
                       });
                       if (resultado.preenchidos.length > 0) {
                         setForm({ ...form, ...resultado.valores });
@@ -8554,6 +8555,15 @@ export default function Home() {
                     sugestoesDeAtividade={sugestoesDeAtividade(form.cnaeDescricao, db.empresas[editingEmpresaId]?.cnaesSecundarios, LIMITE_DA_IDENTIFICACAO.atividadeDescricao)}
                     responsabilidades={responsabilidadesEmpresa}
                     onResponsabilidadesChange={setResponsabilidadesEmpresa}
+                    temAlteracoes={empresaTemAlteracoes}
+                    salvando={salvandoDocumentos}
+                    erroDoSalvar={erroDoSalvar}
+                    onSalvar={() => {
+                      if (salvarEmpresa()) {
+                        setSalvandoDocumentos(true);
+                        window.setTimeout(() => setSalvandoDocumentos(false), 700);
+                      }
+                    }}
                   />
                 )}
 
@@ -8644,7 +8654,7 @@ export default function Home() {
               </>
             </div>
 
-            {(!editingEmpresaId || ["dados", "manual", "fluxos", "programas"].includes(secaoEmpresa || "")) && (
+            {(!editingEmpresaId || ["dados", "fluxos", "programas"].includes(secaoEmpresa || "")) && (
               <div className={`cen-salvar${editingEmpresaId ? ` ${estadoDaBarraDeSalvar(empresaTemAlteracoes).classe}` : ""}`}>
                 {!editingEmpresaId && msg && <span className="cen-salvar-aviso">{msg}</span>}
                 {editingEmpresaId && (

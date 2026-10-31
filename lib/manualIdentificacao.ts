@@ -94,6 +94,8 @@ export type FontesParaPreencher = {
   atividade?: string;
   responsavel?: string;
   cargoResponsavel?: string;
+  /** Nome de quem está logado, SÓ quando o perfil dele é Consultor/RT: sugestão para o nome quando o cadastro do RT não tem nome. */
+  nomeDoUsuarioRt?: string;
 };
 
 export type ResultadoDoPreencher = {
@@ -110,7 +112,8 @@ export type ResultadoDoPreencher = {
  * O que já foi digitado nunca é trocado.
  */
 export function preencherIdentificacao(atuais: Partial<Record<CampoDaIdentificacao, string>>, fontes: FontesParaPreencher): ResultadoDoPreencher {
-  const { valores, doPerfil } = prefillDoPerfilDoRt(atuais, fontes.rt, fontes.juntar);
+  const nomeDoRt = (fontes.rt?.nome || "").trim() || (fontes.nomeDoUsuarioRt || "").trim();
+  const { valores, doPerfil } = prefillDoPerfilDoRt(atuais, nomeDoRt ? { ...fontes.rt, nome: nomeDoRt } : fontes.rt, fontes.juntar);
   const depois = { ...atuais, ...valores };
   const candidatos: [CampoDaIdentificacao, string][] = [
     ["atividadeDescricao", (fontes.atividade || "").trim()],
